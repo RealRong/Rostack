@@ -5,7 +5,7 @@ import type {
   RecordId
 } from '@dataview/core/types'
 import type { DocumentOperation } from '@dataview/core/op'
-import type { MutationCompileHandlerInput } from '@shared/mutation'
+import type { MutationCompileHandlerInput } from '@shared/mutation/engine'
 import { string } from '@shared/core'
 import {
   createDocumentReader,

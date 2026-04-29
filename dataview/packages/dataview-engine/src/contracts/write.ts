@@ -1,11 +1,13 @@
 import type { DataDoc } from '@dataview/core/types'
 import type { DocumentOperation } from '@dataview/core/op'
 import type {
-  ApplyCommit,
-  CommitStream,
-  MutationCommitRecord,
   MutationFootprint
 } from '@shared/mutation'
+import type {
+  ApplyCommit,
+  CommitStream,
+  MutationCommitRecord
+} from '@shared/mutation/write'
 
 export type EngineApplyCommit = ApplyCommit<
   DataDoc,

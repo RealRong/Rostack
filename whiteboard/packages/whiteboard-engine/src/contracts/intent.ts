@@ -1,4 +1,4 @@
-import type { MutationResult } from '@shared/mutation'
+import type { MutationResult } from '@shared/mutation/engine'
 import type { OrderMode } from '@whiteboard/core/types'
 import type {
   CanvasIntent,

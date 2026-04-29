@@ -1,9 +1,13 @@
 import type {
   HistoryPort,
   MutationFootprint,
-  MutationOptions,
-  MutationReplaceResult
 } from '@shared/mutation'
+import type {
+  MutationOptions
+} from '@shared/mutation/engine'
+import type {
+  MutationReplaceResult
+} from '@shared/mutation/write'
 import type {
   CoreRegistries,
   Document,

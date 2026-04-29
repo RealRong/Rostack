@@ -7,9 +7,11 @@ import type {
   PerformanceRuntime
 } from '@dataview/engine/runtime/performance'
 import type {
-  MutationCommitRecord,
   MutationFootprint
 } from '@shared/mutation'
+import type {
+  MutationCommitRecord
+} from '@shared/mutation/write'
 import type {
   DataDoc
 } from '@dataview/core/types'

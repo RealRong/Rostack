@@ -1,13 +1,15 @@
 import { describe, expect, test } from 'vitest'
 import type {
-  MutationEntitySpec,
-  MutationPathCodec
+  MutationEntitySpec
 } from '@shared/mutation'
 import {
   createDeltaBuilder,
   createTypedMutationDelta,
   defineEntityMutationSchema
 } from '@shared/mutation'
+import type {
+  MutationPathCodec
+} from '@shared/mutation/typed'
 
 type ItemId = `item_${number}`
 type ItemField = 'title' | 'status'

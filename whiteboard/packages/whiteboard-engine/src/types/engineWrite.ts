@@ -1,9 +1,11 @@
 import type {
-  MutationCommit,
   MutationFootprint,
-  MutationCommitRecord,
   MutationReplaceCommit,
 } from '@shared/mutation'
+import type {
+  MutationCommit,
+  MutationCommitRecord
+} from '@shared/mutation/write'
 import type {
   Document,
   Operation

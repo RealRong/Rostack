@@ -8,10 +8,10 @@ import type {
 import type { Input } from '../contracts/editor'
 import type {
   ExecutionScope,
-  WhiteboardSceneExecution
+  WhiteboardExecution
 } from '../contracts/execution'
 import {
-  createEmptyWhiteboardSceneExecution
+  createEmptyWhiteboardExecution
 } from '../contracts/execution'
 
 const enqueueAll = <TId extends string>(
@@ -27,10 +27,10 @@ const toScope = <TId extends string>(
   values: Iterable<TId>
 ): ExecutionScope<TId> => new Set(values)
 
-export const createWhiteboardSceneExecution = (
+export const createWhiteboardExecution = (
   input: Input
-): WhiteboardSceneExecution => {
-  const execution = createEmptyWhiteboardSceneExecution()
+): WhiteboardExecution => {
+  const execution = createEmptyWhiteboardExecution()
   const graphTargets = input.delta.graph.targets()
   const runtimeDelta = input.runtime.delta
 

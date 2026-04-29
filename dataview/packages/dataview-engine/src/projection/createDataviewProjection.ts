@@ -4,9 +4,11 @@ import type {
 } from '@dataview/core/types'
 import {
   createProjection,
-  type ProjectionPhaseTable,
   type ProjectionStoreTree
 } from '@shared/projection'
+import type {
+  ProjectionPhaseTable
+} from '@shared/projection/createProjection'
 import {
   createDataviewFrame
 } from '@dataview/engine/active/frame'

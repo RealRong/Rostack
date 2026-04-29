@@ -10,7 +10,7 @@ import {
   uiChange
 } from '../contracts/delta'
 import {
-  createEmptyWhiteboardSceneExecution
+  createEmptyWhiteboardExecution
 } from '../contracts/execution'
 import type {
   EditorSceneLayout
@@ -56,7 +56,7 @@ export const createWorking = (input: {
 
   return {
     layout: input.layout,
-    execution: createEmptyWhiteboardSceneExecution(),
+    execution: createEmptyWhiteboardExecution(),
     draft: {
       node: new Map()
     },

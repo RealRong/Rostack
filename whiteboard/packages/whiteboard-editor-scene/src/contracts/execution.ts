@@ -5,7 +5,6 @@ import type {
   MindmapId,
   NodeId
 } from '@whiteboard/core/types'
-import type { EdgeLabelKey, EdgeStaticId } from './render'
 import type { SceneItemKey } from './delta'
 
 export type ExecutionScope<TId extends string> = ReadonlySet<TId> | 'all'
@@ -35,31 +34,37 @@ export interface WhiteboardRuntimeDelta {
   }
 }
 
-export interface WhiteboardGraphExecutionChange {
-  entity: {
-    node: ExecutionScope<NodeId>
-    edge: ExecutionScope<EdgeId>
-    mindmap: ExecutionScope<MindmapId>
-    group: ExecutionScope<GroupId>
+export interface WhiteboardGraphFacts {
+  node: {
+    entity: ExecutionScope<NodeId>
+    geometry: ExecutionScope<NodeId>
+    content: ExecutionScope<NodeId>
+    owner: ExecutionScope<NodeId>
   }
-  geometry: {
-    node: ExecutionScope<NodeId>
-    edge: ExecutionScope<EdgeId>
-    mindmap: ExecutionScope<MindmapId>
-    group: ExecutionScope<GroupId>
+  edge: {
+    entity: ExecutionScope<EdgeId>
+    geometry: ExecutionScope<EdgeId>
+    content: ExecutionScope<EdgeId>
   }
-  content: {
-    node: ExecutionScope<NodeId>
-    edge: ExecutionScope<EdgeId>
+  mindmap: {
+    entity: ExecutionScope<MindmapId>
+    geometry: ExecutionScope<MindmapId>
+    owner: ExecutionScope<MindmapId>
   }
-  owner: {
-    node: ExecutionScope<NodeId>
-    mindmap: ExecutionScope<MindmapId>
-    group: ExecutionScope<GroupId>
+  group: {
+    entity: ExecutionScope<GroupId>
+    geometry: ExecutionScope<GroupId>
+    owner: ExecutionScope<GroupId>
   }
 }
 
-export interface WhiteboardSceneExecution {
+export interface WhiteboardUiFacts {
+  node: ExecutionScope<NodeId>
+  edge: ExecutionScope<EdgeId>
+  chrome: boolean
+}
+
+export interface WhiteboardExecution {
   reset: boolean
   order: boolean
   target: {
@@ -74,28 +79,9 @@ export interface WhiteboardSceneExecution {
     mindmap: ReadonlySet<MindmapId>
     ui: boolean
   }
-  change: {
-    graph: WhiteboardGraphExecutionChange
-    items: ExecutionScope<SceneItemKey>
-    ui: {
-      node: ExecutionScope<NodeId>
-      edge: ExecutionScope<EdgeId>
-      chrome: boolean
-    }
-    render: {
-      node: ExecutionScope<NodeId>
-      edge: {
-        statics: ExecutionScope<EdgeStaticId>
-        active: ExecutionScope<EdgeId>
-        labels: ExecutionScope<EdgeLabelKey>
-        masks: ExecutionScope<EdgeId>
-      }
-      chrome: {
-        scene: boolean
-        edge: boolean
-      }
-    }
-  }
+  graph: WhiteboardGraphFacts
+  items: ExecutionScope<SceneItemKey>
+  ui: WhiteboardUiFacts
 }
 
 const createEmptyScope = <TId extends string>(): ExecutionScope<TId> => new Set<TId>()
@@ -125,31 +111,37 @@ export const createEmptyWhiteboardRuntimeDelta = (): WhiteboardRuntimeDelta => (
   }
 })
 
-export const createEmptyWhiteboardGraphExecutionChange = (): WhiteboardGraphExecutionChange => ({
-  entity: {
-    node: createEmptyScope<NodeId>(),
-    edge: createEmptyScope<EdgeId>(),
-    mindmap: createEmptyScope<MindmapId>(),
-    group: createEmptyScope<GroupId>()
+export const createEmptyWhiteboardGraphFacts = (): WhiteboardGraphFacts => ({
+  node: {
+    entity: createEmptyScope<NodeId>(),
+    geometry: createEmptyScope<NodeId>(),
+    content: createEmptyScope<NodeId>(),
+    owner: createEmptyScope<NodeId>()
   },
-  geometry: {
-    node: createEmptyScope<NodeId>(),
-    edge: createEmptyScope<EdgeId>(),
-    mindmap: createEmptyScope<MindmapId>(),
-    group: createEmptyScope<GroupId>()
+  edge: {
+    entity: createEmptyScope<EdgeId>(),
+    geometry: createEmptyScope<EdgeId>(),
+    content: createEmptyScope<EdgeId>()
   },
-  content: {
-    node: createEmptyScope<NodeId>(),
-    edge: createEmptyScope<EdgeId>()
+  mindmap: {
+    entity: createEmptyScope<MindmapId>(),
+    geometry: createEmptyScope<MindmapId>(),
+    owner: createEmptyScope<MindmapId>()
   },
-  owner: {
-    node: createEmptyScope<NodeId>(),
-    mindmap: createEmptyScope<MindmapId>(),
-    group: createEmptyScope<GroupId>()
+  group: {
+    entity: createEmptyScope<GroupId>(),
+    geometry: createEmptyScope<GroupId>(),
+    owner: createEmptyScope<GroupId>()
   }
 })
 
-export const createEmptyWhiteboardSceneExecution = (): WhiteboardSceneExecution => ({
+export const createEmptyWhiteboardUiFacts = (): WhiteboardUiFacts => ({
+  node: createEmptyScope<NodeId>(),
+  edge: createEmptyScope<EdgeId>(),
+  chrome: false
+})
+
+export const createEmptyWhiteboardExecution = (): WhiteboardExecution => ({
   reset: false,
   order: false,
   target: {
@@ -164,28 +156,9 @@ export const createEmptyWhiteboardSceneExecution = (): WhiteboardSceneExecution 
     mindmap: new Set(),
     ui: false
   },
-  change: {
-    graph: createEmptyWhiteboardGraphExecutionChange(),
-    items: createEmptyScope<SceneItemKey>(),
-    ui: {
-      node: createEmptyScope<NodeId>(),
-      edge: createEmptyScope<EdgeId>(),
-      chrome: false
-    },
-    render: {
-      node: createEmptyScope<NodeId>(),
-      edge: {
-        statics: createEmptyScope<EdgeStaticId>(),
-        active: createEmptyScope<EdgeId>(),
-        labels: createEmptyScope<EdgeLabelKey>(),
-        masks: createEmptyScope<EdgeId>()
-      },
-      chrome: {
-        scene: false,
-        edge: false
-      }
-    }
-  }
+  graph: createEmptyWhiteboardGraphFacts(),
+  items: createEmptyScope<SceneItemKey>(),
+  ui: createEmptyWhiteboardUiFacts()
 })
 
 export const isExecutionScopeAll = <TId extends string>(

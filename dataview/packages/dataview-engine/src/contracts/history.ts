@@ -1,8 +1,10 @@
 import type {
   HistoryPort,
-  MutationFootprint,
-  MutationResult
+  MutationFootprint
 } from '@shared/mutation'
+import type {
+  MutationResult
+} from '@shared/mutation/engine'
 import type { DocumentOperation } from '@dataview/core/op'
 import type {
   EngineApplyCommit

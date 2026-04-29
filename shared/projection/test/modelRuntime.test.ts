@@ -1,11 +1,12 @@
 import { store } from '../../core/src/index.ts'
 import { expect, it } from 'vitest'
-import {
-  createMutationChangeMap,
-  readMutationChangeIds,
-  type MutationChange,
-  type MutationChangeInput
+import type {
+  MutationDelta
 } from '@shared/mutation'
+import type {
+  ProjectionFamilyChange,
+  ProjectionFamilySnapshot
+} from '../src'
 import { createProjection } from '../src'
 
 type Item = {
@@ -13,116 +14,142 @@ type Item = {
   value: number
 }
 
-const createDelta = (
-  changes: Record<string, MutationChangeInput>
-) => ({
-  changes: createMutationChangeMap(
-    Object.fromEntries(
-      Object.entries(changes).map(([key, change]) => [
-        key,
-        normalizeChange(change)
-      ])
-    )
-  )
-})
-
-const normalizeChange = (
-  change: MutationChangeInput
-): MutationChange => {
-  if (change === true) {
-    return {
-      ids: 'all'
-    }
-  }
-
-  if (Array.isArray(change)) {
-    return {
-      ids: change
-    }
-  }
-
-  return change
+type Input = {
+  delta: MutationDelta
+  items: readonly Item[]
 }
 
-const hasDeltaKey = (
-  delta: {
-    reset?: true
-    changes: ReturnType<typeof createMutationChangeMap>
-  },
-  key: string
-): boolean => delta.reset === true
-  || delta.changes.has(key)
+type State = {
+  items: Map<string, Item>
+  change: ProjectionFamilyChange<string, Item>
+}
 
-it('projection runtime exposes current output and keyed family subscriptions', () => {
-  const runtime = createProjection({
+const EMPTY_CHANGES = Object.freeze(
+  Object.create(null)
+) as MutationDelta['changes']
+
+const hasChange = (
+  delta: MutationDelta,
+  key: string
+): boolean => (
+  delta.reset === true
+  || Object.prototype.hasOwnProperty.call(delta.changes, key)
+)
+
+const readIds = (
+  delta: MutationDelta,
+  key: string
+): readonly string[] | 'all' | undefined => (
+  delta.reset === true
+    ? 'all'
+    : delta.changes[key]?.ids
+)
+
+const toSnapshot = (
+  items: Map<string, Item>
+): ProjectionFamilySnapshot<string, Item> => ({
+  ids: [...items.keys()],
+  byId: items
+})
+
+const buildItemChange = (input: {
+  delta: MutationDelta
+  snapshot: ProjectionFamilySnapshot<string, Item>
+}): ProjectionFamilyChange<string, Item> => {
+  if (input.delta.reset === true) {
+    return 'replace'
+  }
+
+  const written = readIds(input.delta, 'items.write')
+  const removed = readIds(input.delta, 'items.remove')
+  if (written === 'all' || removed === 'all') {
+    return 'replace'
+  }
+
+  const nextSet = new Set(written ?? [])
+  ;(removed ?? []).forEach((id) => {
+    nextSet.delete(id)
+  })
+
+  if (
+    nextSet.size === 0
+    && (removed?.length ?? 0) === 0
+    && !hasChange(input.delta, 'items.order')
+  ) {
+    return 'skip'
+  }
+
+  const set = [...nextSet].map((id) => {
+    const value = input.snapshot.byId.get(id)
+    if (value === undefined) {
+      throw new Error(`Missing item snapshot for ${id}.`)
+    }
+
+    return [id, value] as const
+  })
+
+  return {
+    ...(hasChange(input.delta, 'items.order')
+      ? {
+          ids: input.snapshot.ids
+        }
+      : {}),
+    ...(set.length > 0
+      ? {
+          set
+        }
+      : {}),
+    ...(removed?.length
+      ? {
+          remove: removed
+        }
+      : {})
+  }
+}
+
+const createDelta = (
+  changes: MutationDelta['changes'] = EMPTY_CHANGES
+): MutationDelta => ({
+  changes
+})
+
+it('projection runtime exposes capture and keyed family subscriptions', () => {
+  const runtime = createProjection<Input, State, {}, {
+    revision: number
+    count: number
+  }, 'items', {
+    items: {
+      kind: 'family'
+      read(state: State): ProjectionFamilySnapshot<string, Item>
+      change(state: State): ProjectionFamilyChange<string, Item>
+    }
+  }>({
     createState: () => ({
-      items: new Map<string, Item>()
+      items: new Map<string, Item>(),
+      change: 'skip'
     }),
     createRead: () => ({}),
-    output: ({ state, revision }) => ({
+    capture: ({ state, revision }) => ({
       revision,
       count: state.items.size
     }),
-    surface: {
+    stores: {
       items: {
-        kind: 'family' as const,
-        read: (state: {
-          items: Map<string, Item>
-        }) => ({
-          ids: [...state.items.keys()],
-          byId: state.items
-        }),
-        patch: ({ input }) => {
-          if (input.delta.reset === true) {
-            return 'replace'
-          }
-
-          const written = readMutationChangeIds<string>(
-            input.delta.changes.get('items.write')
-          )
-          const removed = readMutationChangeIds<string>(
-            input.delta.changes.get('items.remove')
-          )
-          if (written === 'all' || removed === 'all') {
-            return 'replace'
-          }
-
-          const set = new Set(written ?? [])
-          const remove = [...(removed ?? [])]
-          remove.forEach((id) => {
-            set.delete(id)
-          })
-
-          if (set.size === 0 && remove.length === 0 && !hasDeltaKey(input.delta, 'items.order')) {
-            return 'skip'
-          }
-
-          return {
-            ...(hasDeltaKey(input.delta, 'items.order')
-              ? {
-                  order: true as const
-                }
-              : {}),
-            ...(set.size > 0
-              ? {
-                  set: [...set]
-                }
-              : {}),
-            ...(remove.length > 0
-              ? {
-                  remove
-                }
-              : {})
-          }
-        }
+        kind: 'family',
+        read: (state) => toSnapshot(state.items),
+        change: (state) => state.change
       }
     },
     phases: {
       items: (ctx) => {
         ctx.state.items = new Map(
-          ctx.input.items.map((item: Item) => [item.id, item] as const)
+          ctx.input.items.map((item) => [item.id, item] as const)
         )
-        ctx.phase.items.changed = true
+        ctx.state.change = buildItemChange({
+          delta: ctx.input.delta,
+          snapshot: toSnapshot(ctx.state.items)
+        })
+        ctx.phase.items.changed = ctx.state.change !== 'skip'
       }
     }
   })
@@ -132,14 +159,16 @@ it('projection runtime exposes current output and keyed family subscriptions', (
   })
 
   expect(projected.get('a')).toBeUndefined()
-  expect(runtime.current()).toEqual({
+  expect(runtime.capture()).toEqual({
     revision: 0,
     count: 0
   })
 
   const first = runtime.update({
     delta: createDelta({
-      'items.write': ['a']
+      'items.write': {
+        ids: ['a']
+      }
     }),
     items: [{
       id: 'a',
@@ -148,15 +177,17 @@ it('projection runtime exposes current output and keyed family subscriptions', (
   })
 
   expect(projected.get('a')).toBe(1)
-  expect(first.output).toEqual({
+  expect(first.capture).toEqual({
     revision: 1,
     count: 1
   })
-  expect(runtime.current()).toEqual(first.output)
+  expect(runtime.capture()).toEqual(first.capture)
 
   runtime.update({
     delta: createDelta({
-      'items.write': ['a']
+      'items.write': {
+        ids: ['a']
+      }
     }),
     items: [{
       id: 'a',
@@ -165,7 +196,7 @@ it('projection runtime exposes current output and keyed family subscriptions', (
   })
 
   expect(projected.get('a')).toBe(2)
-  expect(runtime.current()).toEqual({
+  expect(runtime.capture()).toEqual({
     revision: 2,
     count: 1
   })

@@ -7,11 +7,13 @@ import {
   type RecordWrite
 } from '@shared/draft'
 import type {
-  MutationCustomReduceInput,
   MutationCustomTable,
   MutationDeltaInput,
   MutationFootprint
 } from '@shared/mutation'
+import type {
+  MutationCustomReduceInput
+} from '@shared/mutation/engine'
 import {
   createEdgeLabelPatch,
   readEdgeLabelUpdateFromPatch

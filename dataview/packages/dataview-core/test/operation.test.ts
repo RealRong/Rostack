@@ -61,7 +61,7 @@ test('MutationEngine applies canonical field.create with shared inverse', () => 
 
   assert.ok(result.commit.document.fields.byId.field_notes)
   assert.equal(result.commit.inverse[0]?.type, 'field.delete')
-  assert.ok(result.commit.delta.changes.has('field.create'))
+  assert.ok(Boolean(result.commit.delta.changes['field.create']))
 })
 
 test('custom external.version.bump skips history and emits delta', () => {
@@ -77,5 +77,5 @@ test('custom external.version.bump skips history and emits delta', () => {
   }
 
   assert.equal(result.commit.inverse.length, 0)
-  assert.ok(result.commit.delta.changes.has('external.version'))
+  assert.ok(Boolean(result.commit.delta.changes['external.version']))
 })

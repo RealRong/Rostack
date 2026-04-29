@@ -1,8 +1,10 @@
 import { metrics } from '@shared/core'
 import type {
-  CommitRecord,
   MutationDelta
 } from '@shared/mutation'
+import type {
+  CommitRecord
+} from '@shared/mutation/write'
 import type {
   CommitTrace,
   PerformanceApi,

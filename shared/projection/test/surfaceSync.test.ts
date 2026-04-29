@@ -1,12 +1,12 @@
 import { expect, it } from 'vitest'
-import {
-  createMutationChangeMap,
-  EMPTY_MUTATION_CHANGE_MAP,
-  readMutationChangeIds,
-  type MutationChange,
-  type MutationChangeInput,
-  type MutationDelta
+import type {
+  MutationDelta
 } from '@shared/mutation'
+import type {
+  ProjectionFamilyChange,
+  ProjectionFamilySnapshot,
+  ProjectionValueChange
+} from '../src'
 import { createProjection } from '../src'
 
 type Item = {
@@ -19,61 +19,35 @@ type Input = {
   value: number
   items?: readonly Item[]
   skipValue?: boolean
-  customPatch?: 'replace' | 'skip' | {
-    order?: true
-    set?: readonly string[]
-    remove?: readonly string[]
-  }
+  customPatch?: 'replace' | 'skip' | ProjectionFamilyChange<string, Item>
 }
 
 type State = {
   value: number
-  skipValue: boolean
-  items: {
-    ids: readonly string[]
-    byId: ReadonlyMap<string, Item>
-  }
-  customPatch: Input['customPatch']
+  items: ProjectionFamilySnapshot<string, Item>
+  valueChange: ProjectionValueChange<number>
+  declaredValueChange: ProjectionValueChange<number>
+  itemsChange: ProjectionFamilyChange<string, Item>
+  customItemsChange: ProjectionFamilyChange<string, Item>
 }
+
+const EMPTY_CHANGES = Object.freeze(
+  Object.create(null)
+) as MutationDelta['changes']
 
 const createDelta = (
-  changes?: Record<string, MutationChangeInput>
+  changes: MutationDelta['changes'] = EMPTY_CHANGES
 ): MutationDelta => ({
-  changes: changes
-    ? createMutationChangeMap(
-        Object.fromEntries(
-          Object.entries(changes).map(([key, change]) => [
-            key,
-            normalizeChange(change)
-          ])
-        )
-      )
-    : EMPTY_MUTATION_CHANGE_MAP
+  changes
 })
-
-const normalizeChange = (
-  change: MutationChangeInput
-): MutationChange => {
-  if (change === true) {
-    return {
-      ids: 'all'
-    }
-  }
-
-  if (Array.isArray(change)) {
-    return {
-      ids: change
-    }
-  }
-
-  return change
-}
 
 const hasDeltaKey = (
   delta: MutationDelta,
   key: string
-): boolean => delta.reset === true
-  || delta.changes.has(key)
+): boolean => (
+  delta.reset === true
+  || Object.prototype.hasOwnProperty.call(delta.changes, key)
+)
 
 const readTouchedIds = (
   delta: MutationDelta,
@@ -83,7 +57,7 @@ const readTouchedIds = (
     return 'all'
   }
 
-  const ids = readMutationChangeIds<string>(delta.changes.get(key))
+  const ids = delta.changes[key]?.ids
   if (ids === 'all') {
     return 'all'
   }
@@ -99,37 +73,116 @@ const sameOrder = <T,>(
   && left.every((value, index) => Object.is(value, right[index]))
 )
 
+const toSnapshot = (
+  items: readonly Item[] | undefined
+): ProjectionFamilySnapshot<string, Item> => {
+  if (!items?.length) {
+    return {
+      ids: [],
+      byId: new Map()
+    }
+  }
+
+  return {
+    ids: items.map((item) => item.id),
+    byId: new Map(items.map((item) => [item.id, item] as const))
+  }
+}
+
+const buildItemsChange = (input: {
+  delta: MutationDelta
+  snapshot: ProjectionFamilySnapshot<string, Item>
+}): ProjectionFamilyChange<string, Item> => {
+  if (input.delta.reset === true) {
+    return 'replace'
+  }
+
+  const created = readTouchedIds(input.delta, 'items.create')
+  const updated = readTouchedIds(input.delta, 'items.update')
+  const removed = readTouchedIds(input.delta, 'items.remove')
+  const order = hasDeltaKey(input.delta, 'items.order')
+  if (
+    created !== 'all'
+    && updated !== 'all'
+    && removed !== 'all'
+    && created.size === 0
+    && updated.size === 0
+    && removed.size === 0
+    && !order
+  ) {
+    return 'skip'
+  }
+
+  if (created === 'all' || updated === 'all' || removed === 'all') {
+    return 'replace'
+  }
+
+  const touched = new Set<string>([
+    ...created,
+    ...updated
+  ])
+  removed.forEach((id) => {
+    touched.delete(id)
+  })
+
+  const set = [...touched].map((id) => {
+    const value = input.snapshot.byId.get(id)
+    if (value === undefined) {
+      throw new Error(`Missing item snapshot for ${id}.`)
+    }
+
+    return [id, value] as const
+  })
+
+  return {
+    ...(order
+      ? {
+          ids: input.snapshot.ids
+        }
+      : {}),
+    ...(set.length > 0
+      ? {
+          set
+        }
+      : {}),
+    ...(removed.size > 0
+      ? {
+          remove: [...removed]
+        }
+      : {})
+  }
+}
+
 const createRuntime = (hooks: {
   onReadValue?(): void
   onReadItems?(): void
 } = {}) => createProjection({
   createState: (): State => ({
     value: 0,
-    skipValue: false,
-    items: {
-      ids: [],
-      byId: new Map()
-    },
-    customPatch: 'replace'
+    items: toSnapshot(undefined),
+    valueChange: 'skip',
+    declaredValueChange: 'skip',
+    itemsChange: 'skip',
+    customItemsChange: 'skip'
   }),
   createRead: () => ({}),
-  output: ({ state }) => ({
+  capture: ({ state }) => ({
     value: state.value,
     itemCount: state.items.ids.length
   }),
-  surface: {
+  stores: {
     value: {
       kind: 'value' as const,
       read: (state: State) => {
         hooks.onReadValue?.()
         return state.value
       },
-      changed: ({ state }: { state: State }) => !state.skipValue
+      change: (state: State) => state.valueChange
     },
     declaredValue: {
       kind: 'value' as const,
       read: (state: State) => state.value,
-      changed: ({ input }) => hasDeltaKey(input.delta, 'value.changed')
+      change: (state: State) => state.declaredValueChange
     },
     items: {
       kind: 'family' as const,
@@ -138,77 +191,44 @@ const createRuntime = (hooks: {
         return state.items
       },
       idsEqual: sameOrder,
-      patch: ({ input }) => {
-        if (input.delta.reset === true) {
-          return 'replace'
-        }
-
-        const created = readTouchedIds(input.delta, 'items.create')
-        const updated = readTouchedIds(input.delta, 'items.update')
-        const removed = readTouchedIds(input.delta, 'items.remove')
-        const order = hasDeltaKey(input.delta, 'items.order')
-        if (
-          created !== 'all'
-          && updated !== 'all'
-          && removed !== 'all'
-          && created.size === 0
-          && updated.size === 0
-          && removed.size === 0
-          && !order
-        ) {
-          return 'skip'
-        }
-        if (created === 'all' || updated === 'all' || removed === 'all') {
-          return 'replace'
-        }
-
-        const set = new Set<string>([
-          ...created,
-          ...updated
-        ])
-        removed.forEach((id) => {
-          set.delete(id)
-        })
-
-        return {
-          ...(order
-            ? {
-                order: true as const
-              }
-            : {}),
-          ...(set.size > 0
-            ? {
-                set: [...set]
-              }
-            : {}),
-          ...(removed.size > 0
-            ? {
-                remove: [...removed]
-              }
-            : {})
-        }
-      }
+      change: (state: State) => state.itemsChange
     },
     customItems: {
       kind: 'family' as const,
       read: (state: State) => state.items,
       idsEqual: sameOrder,
-      changed: ({ input }) => hasDeltaKey(input.delta, 'items.custom'),
-      patch: ({ state }: { state: State }) => state.customPatch ?? 'replace'
+      change: (state: State) => state.customItemsChange
     }
   },
   phases: {
     apply: (ctx) => {
       ctx.state.value = ctx.input.value
-      ctx.state.skipValue = ctx.input.skipValue === true
       ctx.state.items = ctx.input.items
-        ? {
-            ids: ctx.input.items.map((item) => item.id),
-            byId: new Map(ctx.input.items.map((item) => [item.id, item] as const))
-          }
+        ? toSnapshot(ctx.input.items)
         : ctx.state.items
-      ctx.state.customPatch = ctx.input.customPatch
-      ctx.phase.apply.changed = true
+      ctx.state.valueChange = ctx.input.skipValue === true
+        ? 'skip'
+        : {
+            value: ctx.state.value
+          }
+      ctx.state.declaredValueChange = hasDeltaKey(ctx.input.delta, 'value.changed')
+        ? {
+            value: ctx.state.value
+          }
+        : 'skip'
+      ctx.state.itemsChange = buildItemsChange({
+        delta: ctx.input.delta,
+        snapshot: ctx.state.items
+      })
+      ctx.state.customItemsChange = hasDeltaKey(ctx.input.delta, 'items.custom')
+        ? (ctx.input.customPatch ?? 'replace')
+        : 'skip'
+      ctx.phase.apply.changed = (
+        ctx.state.valueChange !== 'skip'
+        || ctx.state.declaredValueChange !== 'skip'
+        || ctx.state.itemsChange !== 'skip'
+        || ctx.state.customItemsChange !== 'skip'
+      )
     }
   }
 })
@@ -257,7 +277,9 @@ it('declared changed keys gate value store updates', async () => {
 
   runtime.update({
     delta: createDelta({
-      'value.changed': true
+      'value.changed': {
+        ids: 'all'
+      }
     }),
     value: 2
   })
@@ -272,7 +294,9 @@ it('simple family patch applies only touched keys and preserves ids reference', 
 
   runtime.update({
     delta: createDelta({
-      'items.create': ['a', 'b']
+      'items.create': {
+        ids: ['a', 'b']
+      }
     }),
     value: 0,
     items: [{
@@ -296,7 +320,9 @@ it('simple family patch applies only touched keys and preserves ids reference', 
 
   runtime.update({
     delta: createDelta({
-      'items.update': ['a']
+      'items.update': {
+        ids: ['a']
+      }
     }),
     value: 0,
     items: [{
@@ -321,7 +347,9 @@ it('custom family patch builder can skip writes', async () => {
 
   runtime.update({
     delta: createDelta({
-      'items.custom': true
+      'items.custom': {
+        ids: 'all'
+      }
     }),
     value: 0,
     items: [{
@@ -338,7 +366,9 @@ it('custom family patch builder can skip writes', async () => {
 
   runtime.update({
     delta: createDelta({
-      'items.custom': true
+      'items.custom': {
+        ids: 'all'
+      }
     }),
     value: 0,
     items: [{

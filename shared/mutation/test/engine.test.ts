@@ -1,10 +1,12 @@
 import { describe, expect, test } from 'vitest'
 import {
   MutationEngine,
-  type MutationEntitySpec,
-  type MutationIntentTable,
-  type MutationCurrent
+  type MutationEntitySpec
 } from '@shared/mutation'
+import type {
+  MutationCurrent,
+  MutationIntentTable
+} from '@shared/mutation/engine'
 
 type ItemId = `item_${number}`
 
@@ -149,7 +151,7 @@ describe('MutationEngine current API', () => {
       type: 'item.delete',
       id: 'item_1'
     }])
-    expect(result.commit.delta.changes.has('item.create')).toBe(true)
+    expect(Boolean(result.commit.delta.changes['item.create'])).toBe(true)
     expect(commits).toEqual(['apply'])
     expect(snapshots).toEqual([{
       rev: 1,
@@ -180,8 +182,8 @@ describe('MutationEngine current API', () => {
       title: 'First'
     })
     expect(result.commit.document.activeItemId).toBe('item_1')
-    expect(result.commit.delta.changes.has('item.create')).toBe(true)
-    expect(result.commit.delta.changes.has('document.activeItemId')).toBe(true)
+    expect(Boolean(result.commit.delta.changes['item.create'])).toBe(true)
+    expect(Boolean(result.commit.delta.changes['document.activeItemId'])).toBe(true)
   })
 
   test('replace publishes a reset delta and clears local history', () => {

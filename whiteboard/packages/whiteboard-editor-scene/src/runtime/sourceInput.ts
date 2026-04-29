@@ -1,7 +1,6 @@
 import { scheduler } from '@shared/core'
 import { idDelta } from '@shared/delta'
 import {
-  EMPTY_MUTATION_CHANGE_MAP,
   type MutationDelta
 } from '@shared/mutation'
 import type {
@@ -29,13 +28,17 @@ import type {
   EditorSceneSourceSnapshot
 } from '../contracts/source'
 
+const EMPTY_MUTATION_CHANGES = Object.freeze(
+  Object.create(null)
+) as Record<string, never>
+
 const BOOTSTRAP_DOCUMENT_DELTA: MutationDelta = {
   reset: true,
-  changes: EMPTY_MUTATION_CHANGE_MAP
+  changes: EMPTY_MUTATION_CHANGES
 }
 
 const EMPTY_DOCUMENT_DELTA: MutationDelta = {
-  changes: EMPTY_MUTATION_CHANGE_MAP
+  changes: EMPTY_MUTATION_CHANGES
 }
 
 const createTouchedIdDelta = <TId extends string>(

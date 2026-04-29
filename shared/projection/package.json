@@ -4,7 +4,10 @@
   "version": "0.0.0",
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./createProjection": "./src/createProjection.ts",
+    "./core": "./src/core.ts",
+    "./trace": "./src/trace.ts"
   },
   "scripts": {
     "build": "tsdown --config tsdown.config.ts",

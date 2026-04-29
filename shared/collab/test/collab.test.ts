@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict'
 import { test } from 'vitest'
-import {
-  type ApplyCommit,
-  type MutationCommitRecord,
-  type MutationReplaceCommit,
-} from '@shared/mutation'
+import type {
+  ApplyCommit,
+  MutationCommitRecord,
+  MutationReplaceCommit,
+} from '@shared/mutation/write'
 import { createMutationCollabSession } from '../src'
 import { createHistoryPort } from '../../mutation/src/localHistory'
 

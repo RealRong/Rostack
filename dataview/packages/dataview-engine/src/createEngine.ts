@@ -15,10 +15,11 @@ import {
   entities
 } from '@dataview/core/entities'
 import {
-  EMPTY_MUTATION_CHANGE_MAP,
-  MutationEngine,
-  type MutationOptions
+  MutationEngine
 } from '@shared/mutation'
+import type {
+  MutationOptions
+} from '@shared/mutation/engine'
 import { createActiveViewApi } from '@dataview/engine/active/api/active'
 import { createFieldsApi } from '@dataview/engine/api/fields'
 import { createRecordsApi } from '@dataview/engine/api/records'
@@ -58,6 +59,10 @@ const DEFAULT_HISTORY_CONFIG = {
   captureRemote: false
 } as const
 
+const EMPTY_MUTATION_CHANGES = Object.freeze(
+  Object.create(null)
+) as Record<string, never>
+
 export const createEngine = (options: CreateEngineOptions): Engine => {
   const performance = createPerformanceRuntime(options.performance)
   const historyConfig = {
@@ -95,7 +100,7 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
     document: mutationEngine.current().document,
     delta: createDataviewMutationDelta({
       reset: true,
-      changes: EMPTY_MUTATION_CHANGE_MAP
+      changes: EMPTY_MUTATION_CHANGES
     })
   })
 

@@ -1,97 +1,150 @@
-# Whiteboard Phase Runtime 变薄最终 API 与实施方案
+# Whiteboard 最终简化模型与实施方案
 
 ## 约束
 
 - 不保留兼容层。
-- 不保留旧 `patch.ts` 组织方式作为长期形态。
-- 不新增第二套 runtime / delta / phase graph。
+- 不新增第二套 runtime / delta / facts。
 - 不把问题重新推回 `shared/projection`。
-- 优化目标是把 `whiteboard-editor-scene/src/model/*/patch.ts` 从“厚 phase runtime”收敛成“薄 phase coordinator + 领域单元”。
+- 不牺牲精准增量通知性能。
+- 优化目标不是“拆更多层”，而是把 whiteboard 收敛回问题本质。
 
-## 现状结论
+## 本质模型
 
-当前 `graph/ui/render` 下面的 `patch.ts` 太长，不是因为单个算法本身很长，而是因为一个文件里混了过多职责。
+whiteboard 这条链最终只应当有三件事：
 
-典型问题：
+1. `index build`
+2. `view model build`
+3. `精准 fanout`
 
-- `graph/patch.ts`
-  - 同时负责 target resolve、queue/fanout、index patch、entity patch、execution change compile。
-- `ui/patch.ts`
-  - 同时负责 touched scope 推导、node/edge/chrome view build、state write、delta write、graph.state 镜像同步。
-- `render/patch.ts`
-  - 同时负责 render view build、scope collect、equality/reuse、store patch、delta write、overlay/chrome patch。
+更具体地说：
 
-根因不是 projection，而是 phase runtime 边界太厚：
+- `graph`
+  - build index
+  - patch graph view model
+  - 产出 graph facts
+- `ui`
+  - 基于 graph facts + runtime facts
+  - patch ui view model
+  - 产出 ui facts
+- `render`
+  - 基于 graph/ui/items facts
+  - patch render view model
 
-- phase file 同时承担 planner、builder、differ、publisher、orchestrator。
-- reset 路径和 incremental 路径在多个 store 上重复展开。
-- `execution.change.*` 在 phase 间被重复解释。
-- 一个 phase 内部包含多个 store family，但没有清晰的子单元 API。
+“精准 fanout”只是增量执行方式，不应再膨胀成一套厚 runtime 概念体系。
+
+## 现状问题
+
+当前复杂度偏高，不是因为本质问题复杂，而是因为同一份语义被重复表达了几次。
+
+重复层：
+
+- 上游先产 `target/runtime`
+- graph 再编一遍 `execution.change.graph`
+- ui/render 再从这些 facts 重新拼 touched scope
+- 每个 store 再各自实现一遍 reset/incremental patch 模板
+- 最后再写 state / delta
+
+所以现在的问题不是“能力不够”，而是：
+
+- 同一语义重复解释
+- 相同模板重复实现
+- phase 文件同时承担太多职责
 
 ## 第一部分：最终 API 设计
 
-## 1. 总体原则
+## 1. 顶层结构
 
-每个 phase 只保留一个薄 coordinator：
+最终只保留三个 phase 入口：
 
 ```ts
-runXxxPhase(input): number
+patchGraphState(input): number
+patchUiState(input): number
+patchRenderState(input): number
 ```
 
-coordinator 只负责：
-
-- reset 当前 phase delta
-- 创建 phase frame
-- 顺序调用若干 phase unit
-- 汇总 changed count
-- 回写 `execution.change.xxx`
-
-coordinator 不再负责：
-
-- 大量 scope 拼装
-- 具体 view build 细节
-- family patch 细节
-- equality / reuse 细节
-
-## 2. Phase Unit
-
-每个 phase 被拆成多个 unit。unit 直接对应一个 state store 或一类稳定职责。
-
-统一接口：
+它们本质上分别表示：
 
 ```ts
-interface WhiteboardPhaseUnit<TFrame> {
-  key: string
-  scope(frame: TFrame): boolean
-  run(frame: TFrame): number
-}
+graph = build index + patch graph vm + build graph facts
+ui = patch ui vm from graph/runtime facts + build ui facts
+render = patch render vm from graph/ui/items facts
 ```
 
-解释：
+不引入：
 
-- `scope(frame)`
-  - 只判断这个 unit 本轮是否需要运行。
-- `run(frame)`
-  - 只更新自己负责的 state / delta。
-  - 返回 changed count。
+- `WhiteboardPhaseUnit<T>`
+- `runGraphPhase / runUiPhase / runRenderPhase`
+- `xxxUnit.ts`
+- `execution.change.render`
 
-unit 不返回新的语义模型，不再额外包装 `action/emit`。
+## 2. 最终目录形态
 
-## 3. Phase Frame
+### 2.1 graph
 
-每个 phase 有自己的 frame，frame 是 phase 内唯一共享上下文。
+- `model/graph/patch.ts`
+- `model/graph/context.ts`
+- `model/graph/queue.ts`
+- `model/graph/facts.ts`
+- `model/graph/nodes.ts`
+- `model/graph/mindmaps.ts`
+- `model/graph/edges.ts`
+- `model/graph/groups.ts`
 
-### 3.1 graph
+### 2.2 ui
+
+- `model/ui/patch.ts`
+- `model/ui/context.ts`
+- `model/ui/facts.ts`
+- `model/ui/nodes.ts`
+- `model/ui/edges.ts`
+- `model/ui/chrome.ts`
+
+### 2.3 render
+
+- `model/render/patch.ts`
+- `model/render/context.ts`
+- `model/render/family.ts`
+- `model/render/nodes.ts`
+- `model/render/statics.ts`
+- `model/render/labels.ts`
+- `model/render/masks.ts`
+- `model/render/active.ts`
+- `model/render/overlay.ts`
+- `model/render/chrome.ts`
+
+规则：
+
+- `patch.ts`
+  - 只保留 phase coordinator。
+- `context.ts`
+  - 只保留本 phase 预计算输入。
+- `facts.ts`
+  - 只保留本 phase 写给下游的 facts。
+- 其它文件
+  - 直接按领域对象命名。
+- `render/family.ts`
+  - 是唯一值得保留的公共 patch 内核。
+
+## 3. Context
+
+每个 phase 只保留一个 `context.ts`。
+
+`context` 的职责很简单：
+
+- 接收 phase 原始输入
+- 一次性算好这个 phase 会重复消费的信息
+
+### 3.1 GraphContext
 
 ```ts
-interface GraphPhaseFrame {
+interface GraphContext {
   revision: number
   current: Input
   working: WorkingState
-  execution: WhiteboardSceneExecution
+  execution: WhiteboardExecution
   reset: boolean
 
-  targets: {
+  target: {
     node: ExecutionScope<NodeId>
     edge: ExecutionScope<EdgeId>
     mindmap: ExecutionScope<MindmapId>
@@ -108,13 +161,13 @@ interface GraphPhaseFrame {
 }
 ```
 
-### 3.2 ui
+### 3.2 UiContext
 
 ```ts
-interface UiPhaseFrame {
+interface UiContext {
   current: Input
   working: WorkingState
-  execution: WhiteboardSceneExecution
+  execution: WhiteboardExecution
   reset: boolean
 
   touched: {
@@ -125,13 +178,13 @@ interface UiPhaseFrame {
 }
 ```
 
-### 3.3 render
+### 3.3 RenderContext
 
 ```ts
-interface RenderPhaseFrame {
+interface RenderContext {
   current: Input
   working: WorkingState
-  execution: WhiteboardSceneExecution
+  execution: WhiteboardExecution
   reset: boolean
 
   touched: {
@@ -148,184 +201,19 @@ interface RenderPhaseFrame {
 }
 ```
 
-关键点：
+原则：
 
-- frame 里只保留 phase 原生输入。
-- 不再让每个 store 自己重新从 `execution.change.*` 拼 touched scope。
-- `touched` 在 phase frame 创建时统一计算一次。
+- touched / target / queue 只算一次
+- 各领域 patch 文件不再自己重复拼 scope
 
-## 4. Graph 最终拆分
+## 4. Execution / Facts 最终形态
 
-`graph/patch.ts` 最终只保留：
+最终不再保留 `execution.change.*` 这一层。
 
-```ts
-export const patchGraphState = (input) => {
-  const frame = createGraphPhaseFrame(input)
-  return runGraphPhase(frame)
-}
-```
-
-graph phase unit：
-
-- `graph/index`
-  - 更新 indexes
-- `graph/node`
-  - patch standalone nodes
-- `graph/mindmap`
-  - patch mindmaps
-- `graph/mindmapMembers`
-  - patch nodes owned by touched mindmaps
-- `graph/edge`
-  - patch edges
-- `graph/group`
-  - patch groups
-- `graph/change`
-  - 从 `working.delta.graph + current.delta + runtime session` 编译 `execution.change.graph`
-
-其中：
-
-- queue/fanout 逻辑下沉到 `graph/queue.ts`
-- target resolve 下沉到 `graph/frame.ts`
-- execution change compile 下沉到 `graph/change.ts`
-
-最终 `graph/patch.ts` 不再包含：
-
-- `resolveGraphTargets(...)`
-- `fanoutNodeGeometry(...)`
-- `compileGraphExecutionChange(...)`
-
-这些都应该变成 phase 内部模块。
-
-## 5. UI 最终拆分
-
-`ui/patch.ts` 最终只保留：
+最终只保留：
 
 ```ts
-export const patchUiState = (input) => {
-  const frame = createUiPhaseFrame(input)
-  return runUiPhase(frame)
-}
-```
-
-ui phase unit：
-
-- `ui/node`
-  - patch node ui family
-- `ui/edge`
-  - patch edge ui family
-- `ui/chrome`
-  - patch chrome value
-- `ui/change`
-  - 发布 `execution.change.ui`
-
-配套模块：
-
-- `ui/frame.ts`
-  - 统一收集 touched node / edge / chrome
-- `ui/nodeUnit.ts`
-  - `buildNodeUiView`
-  - `patchNodeUiFamily`
-- `ui/edgeUnit.ts`
-  - `buildEdgeUiView`
-  - `patchEdgeUiFamily`
-- `ui/chromeUnit.ts`
-  - `buildChromeView`
-  - `patchChromeValue`
-
-关键约束：
-
-- `graph.state.node === ui.nodes`
-- `graph.state.edge === ui.edges`
-- `graph.state.chrome === ui.chrome`
-
-这不是 patch 末尾的镜像同步逻辑，而是 state owner 设计：
-
-```ts
-working.graph.state.node = working.ui.nodes
-working.graph.state.edge = working.ui.edges
-working.graph.state.chrome = working.ui.chrome
-```
-
-长期目标是：
-
-- `graph.state.*` 不再被当作独立写模型。
-- 它只是 `ui.*` 的别名视图。
-
-## 6. Render 最终拆分
-
-`render/patch.ts` 最终只保留：
-
-```ts
-export const patchRenderState = (input) => {
-  const frame = createRenderPhaseFrame(input)
-  return runRenderPhase(frame)
-}
-```
-
-render phase unit：
-
-- `render/node`
-- `render/edgeStatics`
-- `render/edgeLabels`
-- `render/edgeMasks`
-- `render/edgeActive`
-- `render/overlay`
-- `render/chrome`
-- `render/change`
-
-每个 unit 只负责一个 store：
-
-```ts
-interface RenderFamilyUnit<TKey extends string, TValue> {
-  read(state: WorkingState): {
-    ids: readonly TKey[]
-    byId: ReadonlyMap<TKey, TValue>
-  }
-  build(frame: RenderPhaseFrame, id: string): TValue | undefined
-  equal(left: TValue, right: TValue): boolean
-  writeDelta(input: {
-    working: WorkingState
-    previous: TValue | undefined
-    next: TValue | undefined
-    id: TKey
-  }): void
-}
-```
-
-解释：
-
-- `build(...)`
-  - 只负责生成 candidate view。
-- `equal(...)`
-  - 只负责复用判定。
-- `writeDelta(...)`
-  - 只负责把结果写入 `working.delta.render.*`。
-
-`patchFamily` 过程应共享，不再为 node/statics/labels/masks/active 各写一套：
-
-```ts
-patchFamilyReset(...)
-patchFamilyTouched(...)
-patchValue(...)
-```
-
-长期目标：
-
-- reset / touched patch 走统一 family patch kernel
-- 各个 render store 只提供 build/equal/writeDelta 三个 domain hook
-
-## 7. Execution 最终形态
-
-当前 `execution` 同时承担：
-
-- 上游 target
-- runtime touched
-- phase 间 change
-
-长期保留这一层，但变薄：
-
-```ts
-interface WhiteboardSceneExecution {
+interface WhiteboardExecution {
   reset: boolean
   order: boolean
   target: {
@@ -340,22 +228,25 @@ interface WhiteboardSceneExecution {
     mindmap: ReadonlySet<MindmapId>
     ui: boolean
   }
-  change: {
-    graph: WhiteboardGraphFacts
-    items: ExecutionScope<SceneItemKey>
-    ui: WhiteboardUiFacts
-    render: WhiteboardRenderFacts
-  }
+  graph: WhiteboardGraphFacts
+  items: ExecutionScope<SceneItemKey>
+  ui: WhiteboardUiFacts
 }
 ```
 
-要求：
+说明：
 
-- `change.graph/ui/render` 是 phase facts，不是 phase 内临时变量容器。
-- 每个 phase 只写自己的 facts。
-- 下游 phase 只消费 facts，不自己重新拼语义。
+- `execution.graph`
+  - graph phase 写，下游 ui/render 读
+- `execution.items`
+  - items phase 写，下游 render 读
+- `execution.ui`
+  - ui phase 写，下游 render 读
+- render 不再回写 `execution`
 
-因此需要引入更直接的 fact 结构：
+### 4.1 Graph Facts
+
+按消费方组织，不按产出方实现方便组织：
 
 ```ts
 interface WhiteboardGraphFacts {
@@ -383,177 +274,348 @@ interface WhiteboardGraphFacts {
 }
 ```
 
-而不是当前这种“按 entity/geometry/content/owner 横切，再在下游反复组合”。
+### 4.2 Ui Facts
 
-最终原则：
+```ts
+interface WhiteboardUiFacts {
+  node: ExecutionScope<NodeId>
+  edge: ExecutionScope<EdgeId>
+  chrome: boolean
+}
+```
 
-- facts 结构按消费方组织，不按产出方实现细节组织。
+### 4.3 为什么没有 Render Facts
 
-## 8. Source Input 最终定位
+因为 render 当前没有下游消费方。
 
-`runtime/sourceInput.ts` 负责从 source snapshot 推导 runtime delta。
+精准通知完全来自：
 
-这层可以保留，但职责必须固定：
+- `working.delta.render.node`
+- `working.delta.render.edge.statics`
+- `working.delta.render.edge.active`
+- `working.delta.render.edge.labels`
+- `working.delta.render.edge.masks`
+- `working.delta.render.chrome.*`
 
-- 只产出 source/runtime facts
-- 不直接承担 graph/ui/render 的派生语义
+所以：
 
-允许：
+- 不需要 `execution.render`
+- 不需要 `execution.change.render`
 
-- preview touched ids
-- hover/selection/edit/tool 是否变化
-- active animation tick ids
+## 5. Graph 最终设计
 
-不允许：
+`graph/patch.ts` 最终只保留：
 
-- 直接替 graph/ui/render 拼 phase-specific scope
+```ts
+export const patchGraphState = (input) => {
+  const ctx = createGraphContext(input)
 
-phase-specific scope 必须在各自 `createXxxPhaseFrame(...)` 中基于 facts 统一生成。
+  const count =
+    patchGraphNodes(ctx)
+    + patchGraphMindmaps(ctx)
+    + patchGraphMindmapNodes(ctx)
+    + patchGraphEdges(ctx)
+    + patchGraphGroups(ctx)
 
-## 第二部分：实施方案
+  ctx.execution.graph = buildGraphFacts(ctx)
+  return count
+}
+```
 
-## Phase 1. 抽出 graph/ui/render 的 phase frame
+graph 的本质：
+
+- build index
+- patch graph vm
+- build facts
+
+其中：
+
+- `context.ts`
+  - target resolve
+- `queue.ts`
+  - queue + fanout 容器
+- `facts.ts`
+  - facts compile
+
+## 6. UI 最终设计
+
+`ui/patch.ts` 最终只保留：
+
+```ts
+export const patchUiState = (input) => {
+  const ctx = createUiContext(input)
+
+  const count =
+    patchUiNodes(ctx)
+    + patchUiEdges(ctx)
+    + patchUiChrome(ctx)
+
+  ctx.execution.ui = buildUiFacts(ctx)
+  return count
+}
+```
+
+ui 的本质：
+
+- 从 graph facts + runtime facts
+- patch ui vm
+- build ui facts
+
+关键约束：
+
+- `graph.state.node === ui.nodes`
+- `graph.state.edge === ui.edges`
+- `graph.state.chrome === ui.chrome`
+
+这不是补同步逻辑，而是 state owner 设计。
+
+## 7. Render 最终设计
+
+`render/patch.ts` 最终只保留：
+
+```ts
+export const patchRenderState = (input) => {
+  const ctx = createRenderContext(input)
+
+  return (
+    patchRenderNodes(ctx)
+    + patchRenderStatics(ctx)
+    + patchRenderLabels(ctx)
+    + patchRenderMasks(ctx)
+    + patchRenderActive(ctx)
+    + patchRenderOverlay(ctx)
+    + patchRenderChrome(ctx)
+  )
+}
+```
+
+render 的本质：
+
+- 从 graph/ui/items facts
+- patch render vm
+
+render 唯一公共内核：
+
+```ts
+model/render/family.ts
+```
+
+最终公共 API 只保留：
+
+```ts
+patchFamilyReset(...)
+patchFamilyTouched(...)
+patchValue(...)
+```
+
+这层用于统一：
+
+- reset patch
+- touched patch
+- previous/next/equal/reuse 模板
+- delta 写回接入点
+
+node/statics/labels/masks/active 不再各写一套重复模板。
+
+## 6. 可复用清单
+
+这里按“能复用到什么层级”明确分层。
+
+### 6.1 真正通用的底层内核
+
+这些是数据结构 / 更新模板问题，可以复用。
+
+- `ExecutionScope` 容器与集合操作
+  - `hasAny`
+  - `union`
+  - `fromValues`
+  - `all`
+- family/value patch 模板
+  - `patchFamilyReset`
+  - `patchFamilyTouched`
+  - `patchValue`
+- previous/next/equal/reuse 模板
+- family delta 写回模板接入点
+
+这层不理解 node/edge/mindmap，只理解：
+
+- 这是 value 还是 family
+- 这是 reset 还是 touched
+- 如何比较
+- 如何写 delta
+
+### 6.2 Whiteboard 内部基础模块
+
+这些可以在 whiteboard 内复用，但不要做成跨域 DSL。
+
+- `graph/context.ts`
+- `ui/context.ts`
+- `render/context.ts`
+- `graph/queue.ts`
+- `graph/facts.ts`
+- `ui/facts.ts`
+- `render/family.ts`
+
+这层的职责是：
+
+- 承载 whiteboard 内的通用执行样式
+- 不承载 graph/ui/render 的具体业务语义
+
+### 6.3 必须留在领域文件里的
+
+这些不能抽成通用设施，否则会变绕。
+
+- graph fanout 业务规则
+  - node geometry 影响 edge/group
+  - mindmap 影响 member nodes
+- index build 语义
+  - `ownerByNode`
+  - `mindmapNodes`
+  - `edgeNodesByEdge`
+  - `groupIdsBySignature`
+- entity patch 语义
+  - `patchNode`
+  - `patchEdge`
+  - `patchMindmap`
+  - `patchGroup`
+- ui / render view build 语义
+  - label
+  - overlay
+  - statics bucket
+  - active edge
+
+规则：
+
+- 可复用的是模板和容器
+- 不可复用的是领域规则
+
+## 7. 实施方案
+
+## Phase 1. 收口 execution 命名与死层
 
 目标：
 
-- phase 开头统一创建 frame
-- touched / target / queue 不再散落在 patch 文件中间
+- 去掉多余层级
+- 去掉无消费方结构
 
 实施：
 
-- 新增：
-  - `model/graph/frame.ts`
-  - `model/ui/frame.ts`
-  - `model/render/frame.ts`
-- 把 scope 收集逻辑移出 `patch.ts`
+- 删除 `execution.change.render`
+- 删除 `execution.change.*` 这一层
+- 改成直接：
+  - `execution.graph`
+  - `execution.items`
+  - `execution.ui`
 
 完成标准：
 
-- `patch.ts` 不再大段拼 `Set`
-- `execution.change.*` 的消费先统一进入 frame
+- 下游不再写 `execution.change.graph...`
+- render 不再回写 `execution`
 
-## Phase 2. graph phase 拆成 unit
+## Phase 2. graph 收敛回三件事
 
 目标：
 
-- `graph/patch.ts` 只剩 orchestration
+- `graph = build index + patch graph vm + build facts`
 
 实施：
 
-- 新增：
+- 提取：
+  - `graph/context.ts`
   - `graph/queue.ts`
-  - `graph/change.ts`
-  - `graph/nodeUnit.ts`
-  - `graph/mindmapUnit.ts`
-  - `graph/edgeUnit.ts`
-  - `graph/groupUnit.ts`
-- 将 queue/fanout 和 change compile 全部移出
+  - `graph/facts.ts`
+  - `graph/nodes.ts`
+  - `graph/mindmaps.ts`
+  - `graph/edges.ts`
+  - `graph/groups.ts`
 
 完成标准：
 
-- `graph/patch.ts` 只保留 frame create + unit run + result merge
+- `graph/patch.ts` 只剩 coordinator
+- `graph/patch.ts` 不再大段维护 target / queue / facts compile
 
-## Phase 3. ui phase 拆成 unit
+## Phase 3. ui 收敛回两件事
 
 目标：
 
-- `ui/patch.ts` 只剩 node/edge/chrome 三个 unit 的调度
+- `ui = patch ui vm + build facts`
 
 实施：
 
-- 新增：
-  - `ui/nodeUnit.ts`
-  - `ui/edgeUnit.ts`
-  - `ui/chromeUnit.ts`
-  - `ui/change.ts`
-- `buildCurrentNodeUiView` / `buildCurrentEdgeUiView` 下沉
-- `writeNodeDelta` / `writeEdgeDelta` 收口成 family patch kernel 的 hook
+- 提取：
+  - `ui/context.ts`
+  - `ui/facts.ts`
+  - `ui/nodes.ts`
+  - `ui/edges.ts`
+  - `ui/chrome.ts`
 
 完成标准：
 
-- `ui/patch.ts` 不再包含具体 build 细节
-- `graph.state.*` 只作为 `ui.*` alias，不再额外 patch
+- `ui/patch.ts` 只剩 coordinator
+- touched scope 只在 `ui/context.ts` 计算一次
 
-## Phase 4. render 引入统一 family patch kernel
+## Phase 4. render 引入唯一公共内核
 
 目标：
 
-- 清掉 node/statics/labels/masks/active 的重复 reset/incremental 模板
+- `render = patch render vm`
+- 统一 family patch 模板
 
 实施：
 
-- 新增：
-  - `render/familyPatch.ts`
-  - `render/nodeUnit.ts`
-  - `render/staticsUnit.ts`
-  - `render/labelsUnit.ts`
-  - `render/masksUnit.ts`
-  - `render/activeUnit.ts`
-  - `render/overlayUnit.ts`
-  - `render/chromeUnit.ts`
-- family unit 统一接入：
-  - `build`
-  - `equal`
-  - `writeDelta`
+- 提取：
+  - `render/context.ts`
+  - `render/family.ts`
+  - `render/nodes.ts`
+  - `render/statics.ts`
+  - `render/labels.ts`
+  - `render/masks.ts`
+  - `render/active.ts`
+  - `render/overlay.ts`
+  - `render/chrome.ts`
 
 完成标准：
 
-- `render/patch.ts` 不再重复出现 5 套相似 diff 模板
-- `render/patch.ts` 明显降到 coordinator 规模
+- `render/patch.ts` 只剩 coordinator
+- reset / incremental family patch 只保留一套模板
 
-## Phase 5. execution facts 重排
-
-目标：
-
-- phase 间不再横切组合 `entity/geometry/content/owner`
-
-实施：
-
-- 改写 `execution.change.graph`
-- 改写 `execution.change.ui`
-- 改写 `execution.change.render`
-- frame 直接按消费方读取 facts
-
-完成标准：
-
-- 下游 phase 不再出现大量
-  - `executionScopeHasAny(change.graph.entity.xxx)`
-  - `executionScopeHasAny(change.graph.geometry.xxx)`
-  - `executionScopeHasAny(change.graph.content.xxx)`
-  的手工组合
-
-## Phase 6. sourceInput / execution 继续变薄
+## Phase 5. sourceInput / execution 继续变薄
 
 目标：
 
-- 上游只产 runtime/source facts
-- phase-specific touched 只在 frame 生成
+- 上游只负责 runtime/source facts
+- phase-specific touched 只在 `context.ts`
 
 实施：
 
 - 收敛 `runtime/sourceInput.ts`
 - 收敛 `runtime/execution.ts`
-- 不再混入 graph/ui/render 具体派生规则
+- 去掉 graph/ui/render 的派生语义泄漏
 
 完成标准：
 
-- `runtime/execution.ts` 只做 execution baseline create
-- phase-specific 推导逻辑只在各 phase frame
+- `runtime/execution.ts` 只负责 execution baseline create
+- graph/ui/render 的 touched 全部在各自 `context.ts`
 
 ## 最终清理标准
 
 不再允许：
 
 - `graph/ui/render` 的 `patch.ts` 同时包含 planner + builder + differ + publisher
-- 一个 patch 文件里重复维护多套 touched scope 拼装
-- reset / incremental 逻辑在每个 store 上手写一遍
-- `graph.state.*` 作为独立 patch 模型长期存在
-- 下游 phase 反复解释 `execution.change.*`
+- `execution.change.*`
+- `execution.render`
+- `xxxUnit.ts`
+- 多套 reset/incremental family patch 模板
+- 下游反复手工组合同一份 facts
 
 最终要求：
 
-- `patch.ts` 变成薄 coordinator。
-- `frame.ts` 统一 phase 输入与 touched scope。
-- `unit.ts` 一 store 一职责。
-- `familyPatch.ts` 统一 reset/incremental family patch 模板。
-- `execution.change.*` 变成直接可消费 facts，不再横切重组。
+- 整条链只保留：
+  - `index build`
+  - `view model build`
+  - `精准 fanout`
+- `patch.ts` 只做 coordinator
+- `context.ts` 只做预计算
+- `facts.ts` 只做下游事实
+- `render/family.ts` 是唯一公共 patch 内核
+- 其它逻辑直接按领域名组织

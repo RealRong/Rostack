@@ -71,6 +71,6 @@ describe('document engine subscribe', () => {
     if (!second.ok) {
       return
     }
-    expect(second.commit.delta.changes.get('node.geometry')?.ids).toContain('node_1')
+    expect(second.commit.delta.changes['node.geometry']?.ids).toContain('node_1')
   })
 })

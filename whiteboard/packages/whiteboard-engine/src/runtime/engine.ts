@@ -1,8 +1,11 @@
 import {
   MutationEngine,
   type MutationResult,
-  type MutationOrigin
-} from '@shared/mutation'
+  type MutationOptions
+} from '@shared/mutation/engine'
+import type {
+  MutationOrigin
+} from '@shared/mutation/write'
 import type {
   WhiteboardCompileIds,
   WhiteboardCompileServices,
@@ -170,7 +173,7 @@ export const createEngine = ({
     },
     execute: <TIntent extends Intent>(
       intent: TIntent,
-      options?: import('@shared/mutation').MutationOptions
+      options?: MutationOptions
     ): ExecuteResult<TIntent['type'] & IntentKind> => mapExecuteFailure(
       core.execute(intent, {
         origin: resolveIntentOrigin(intent, options?.origin)

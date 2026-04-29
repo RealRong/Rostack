@@ -27,9 +27,11 @@ import type {
 } from '@dataview/core/view/typeSpec'
 import type {
   MutationOptions,
-  MutationReplaceCommit,
   MutationResult
-} from '@shared/mutation'
+} from '@shared/mutation/engine'
+import type {
+  MutationReplaceCommit
+} from '@shared/mutation/write'
 import type {
   ActiveViewApi
 } from '@dataview/engine/contracts/view'

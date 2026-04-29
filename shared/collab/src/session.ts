@@ -1,11 +1,13 @@
 import { store } from '@shared/core'
 import {
-  type ApplyCommit,
-  type HistoryPort,
-  type MutationCommitRecord,
-  type MutationReplaceResult,
-  type Origin
+  type HistoryPort
 } from '@shared/mutation'
+import type {
+  ApplyCommit,
+  MutationCommitRecord,
+  MutationReplaceResult,
+  Origin
+} from '@shared/mutation/write'
 import {
   createSyncCursor,
   normalizeSnapshot,

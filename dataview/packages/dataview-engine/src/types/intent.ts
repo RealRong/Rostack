@@ -7,7 +7,7 @@ import type {
   MutationIntentTable,
   MutationOutputOf,
   MutationResult
-} from '@shared/mutation'
+} from '@shared/mutation/engine'
 import type {
   CustomFieldId,
   RecordId,

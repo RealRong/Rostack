@@ -1,4 +1,3 @@
-import { EMPTY_MUTATION_CHANGE_MAP } from '@shared/mutation'
 import {
   createWhiteboardLayout,
   type LayoutNodeCatalog,
@@ -15,6 +14,10 @@ import {
   type WhiteboardMutationDelta
 } from '../mutation/delta'
 import { createEmptyRuntimeInputDelta } from './input'
+
+const EMPTY_MUTATION_CHANGES = Object.freeze(
+  Object.create(null)
+) as Record<string, never>
 
 export type EditorRuntimeDeltaFlags = Partial<{
   graph: boolean
@@ -47,7 +50,7 @@ export const createMutationDelta = (input: {
         reset: true
       }
     : {}),
-  changes: EMPTY_MUTATION_CHANGE_MAP
+  changes: EMPTY_MUTATION_CHANGES
 })
 
 export interface EditorGraphLayoutState {

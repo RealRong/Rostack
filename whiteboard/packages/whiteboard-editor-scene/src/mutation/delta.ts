@@ -213,6 +213,11 @@ const unionTouchedIds = <TId extends string>(
   return result
 }
 
+const hasOwn = (
+  value: object,
+  key: PropertyKey
+): boolean => Object.prototype.hasOwnProperty.call(value, key)
+
 const WHITEBOARD_DELTA_CACHE = new WeakMap<MutationDelta, WhiteboardMutationDelta>()
 
 export const createWhiteboardMutationDelta = (
@@ -230,11 +235,11 @@ export const createWhiteboardMutationDelta = (
     schema: whiteboardMutationSchema,
     build: (context) => {
       const graphOrderChanged = () => {
-        if (context.raw.reset === true || context.raw.changes.has('canvas.order')) {
+        if (context.raw.reset === true || hasOwn(context.raw.changes, 'canvas.order')) {
           return true
         }
 
-        for (const change of context.raw.changes.values()) {
+        for (const change of Object.values(context.raw.changes)) {
           if (change.order === true) {
             return true
           }

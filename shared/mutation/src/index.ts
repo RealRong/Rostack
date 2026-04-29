@@ -1,102 +1,21 @@
 export type {
-  MutationCompileControl,
-  MutationCompileHandler,
-  MutationCompileHandlerInput,
   MutationCompileHandlerTable,
-  MutationApplyResult,
-  MutationCompileInput,
-  MutationCompileIssue,
-  MutationCompileResult,
-  MutationCompileSource,
-  MutationCurrent,
-  MutationCustomFailure,
-  MutationCustomHistoryResult,
-  MutationCustomReduceInput,
-  MutationCustomReduceResult,
-  MutationCustomSpec,
   MutationCustomTable,
-  MutationEngineOptions,
-  MutationEntityPatch,
-  MutationError,
-  MutationExecuteInput,
-  MutationExecuteResult,
-  MutationExecuteResultOfInput,
-  MutationHistoryOptions,
   MutationEntitySpec,
-  MutationFailure,
-  MutationIntentKind,
-  MutationIntentOf,
-  MutationIntentTable,
-  MutationOptions,
-  MutationOutputOf,
-  MutationResult,
 } from './engine'
 export {
-  MutationEngine,
-  mergeMutationDeltas,
-  normalizeMutationDelta,
-  mutationFootprintBatchConflicts,
-  mutationFootprintConflicts
+  MutationEngine
 } from './engine'
 export type {
-  HistoryPolicy,
   HistoryPort,
-  HistoryPortState,
-  HistorySyncPort,
 } from './localHistory'
 export type {
-  MutationChange,
-  MutationChangeInput,
-  MutationChangeMap,
-  ApplyCommit,
-  CommitRecord,
-  CommitStream,
-  MutationCommit,
-  MutationCommitRecord,
   MutationDelta,
   MutationDeltaInput,
   MutationFootprint,
-  MutationFootprintInput,
-  MutationIssue,
-  MutationReplaceResult,
-  MutationReplaceCommit,
-  MutationOrigin,
-  Origin
 } from './write'
 export {
-  createMutationChangeMap,
-  EMPTY_MUTATION_CHANGE_MAP,
-  assertMutationFootprint,
-  assertMutationFootprintList,
-  isMutationFootprint
-} from './write'
-export type {
-  MutationDeltaBuilder,
-  MutationPathCodec,
-  MutationDeltaInputOf,
-  MutationEntityDerivedMutationSchema,
-  MutationEntityMutationSchema,
-  MutationEntitySchemaKey,
-  MutationSchema,
-  MutationSchemaEntry,
-  MutationSchemaId,
-  MutationSchemaPath,
-  MutationSchemaPathRecord,
-  MutationSchemaChangeInput,
-  MutationSignalSchema,
-  TypedMutationDeltaContext
-} from './typed'
-export {
-  collectMutationTouchedIds,
-  coerceMutationDelta,
   createDeltaBuilder,
   createTypedMutationDelta,
   defineEntityMutationSchema,
-  defineMutationSchema,
-  hasAnyMutationChange,
-  hasMutationChange,
-  toMutationDeltaInput,
-  readMutationChangeIds,
-  readMutationChangePaths,
-  readMutationChangePathsOf
 } from './typed'

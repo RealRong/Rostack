@@ -28,9 +28,9 @@ import {
   createDeltaBuilder,
   defineEntityMutationSchema,
   type MutationCustomTable,
-  type MutationFootprint,
-  type MutationPathCodec
+  type MutationFootprint
 } from '@shared/mutation'
+import type { MutationPathCodec } from '@shared/mutation/typed'
 import {
   dataviewEntities
 } from './entities'

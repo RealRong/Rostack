@@ -18,7 +18,7 @@ import {
   uiChange
 } from '../src/contracts/delta'
 import {
-  createEmptyWhiteboardSceneExecution
+  createEmptyWhiteboardExecution
 } from '../src/contracts/execution'
 import { patchRenderState } from '../src/model/render/patch'
 import { createWorking } from '../src/runtime/state'
@@ -133,7 +133,7 @@ const setEdgeItems = (
 const resetPhaseDeltas = (
   working: ReturnType<typeof createWorking>
 ) => {
-  working.execution = createEmptyWhiteboardSceneExecution()
+  working.execution = createEmptyWhiteboardExecution()
   working.delta.items = createItemsDelta()
   working.delta.ui = uiChange.create()
 }
@@ -142,28 +142,28 @@ const markEdgeEntity = (
   working: ReturnType<typeof createWorking>,
   ...edgeIds: readonly EdgeId[]
 ) => {
-  working.execution.change.graph.entity.edge = new Set(edgeIds)
+  working.execution.graph.edge.entity = new Set(edgeIds)
 }
 
 const markEdgeGeometry = (
   working: ReturnType<typeof createWorking>,
   ...edgeIds: readonly EdgeId[]
 ) => {
-  working.execution.change.graph.geometry.edge = new Set(edgeIds)
+  working.execution.graph.edge.geometry = new Set(edgeIds)
 }
 
 const markEdgeContent = (
   working: ReturnType<typeof createWorking>,
   ...edgeIds: readonly EdgeId[]
 ) => {
-  working.execution.change.graph.content.edge = new Set(edgeIds)
+  working.execution.graph.edge.content = new Set(edgeIds)
 }
 
 const markUiEdge = (
   working: ReturnType<typeof createWorking>,
   ...edgeIds: readonly EdgeId[]
 ) => {
-  working.execution.change.ui.edge = new Set(edgeIds)
+  working.execution.ui.edge = new Set(edgeIds)
 }
 
 describe('render delta patching', () => {
@@ -264,7 +264,7 @@ describe('render delta patching', () => {
         `edge:${edgeB}`
       ]
     }
-    working.execution.change.items = new Set(working.items.ids)
+    working.execution.items = new Set(working.items.ids)
 
     patchRenderState({
       working,

@@ -32,6 +32,6 @@ test('engine exposes created mindmap roots through committed document and delta'
   assert.equal(current.doc.nodes[rootId]?.owner?.id, mindmapId)
   assert.equal(current.doc.mindmaps[mindmapId]?.root, rootId)
   assert.ok(Boolean(current.doc.mindmaps[mindmapId]?.members[rootId]))
-  assert.deepEqual(result.commit.delta.changes.get('node.create')?.ids, [rootId])
-  assert.deepEqual(result.commit.delta.changes.get('mindmap.create')?.ids, [mindmapId])
+  assert.deepEqual(result.commit.delta.changes['node.create']?.ids, [rootId])
+  assert.deepEqual(result.commit.delta.changes['mindmap.create']?.ids, [mindmapId])
 })

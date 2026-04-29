@@ -1,5 +1,4 @@
 import {
-  change,
   idDelta,
   type EntityDelta,
   type IdDelta as SharedIdDelta
@@ -56,50 +55,61 @@ export interface ItemsDelta {
   change?: EntityDelta<SceneItemKey>
 }
 
-export const uiChangeSpec = {
-  node: 'ids',
-  edge: 'ids',
-  chrome: 'flag'
+export interface UiDelta {
+  node: IdDelta<NodeId>
+  edge: IdDelta<EdgeId>
+  chrome: boolean
+}
+
+const createUiDelta = (): UiDelta => ({
+  node: idDelta.create<NodeId>(),
+  edge: idDelta.create<EdgeId>(),
+  chrome: false
+})
+
+export const uiChange = {
+  create: createUiDelta
 } as const
 
-export const uiChange = change<typeof uiChangeSpec, {
-  ids: {
-    node: NodeId
-    edge: EdgeId
-  }
-}>(uiChangeSpec)
-
-export type UiDelta = ReturnType<typeof uiChange.create>
-
-export const renderChangeSpec = {
-  node: 'ids',
+export interface RenderDelta {
+  node: IdDelta<NodeId>
   edge: {
-    statics: 'ids',
-    active: 'ids',
-    labels: 'ids',
-    masks: 'ids',
-    staticsIds: 'flag',
-    activeIds: 'flag',
-    labelsIds: 'flag',
-    masksIds: 'flag'
+    statics: IdDelta<EdgeStaticId>
+    active: IdDelta<EdgeId>
+    labels: IdDelta<EdgeLabelKey>
+    masks: IdDelta<EdgeId>
+    staticsIds: boolean
+    activeIds: boolean
+    labelsIds: boolean
+    masksIds: boolean
+  }
+  chrome: {
+    scene: boolean
+    edge: boolean
+  }
+}
+
+const createRenderDelta = (): RenderDelta => ({
+  node: idDelta.create<NodeId>(),
+  edge: {
+    statics: idDelta.create<EdgeStaticId>(),
+    active: idDelta.create<EdgeId>(),
+    labels: idDelta.create<EdgeLabelKey>(),
+    masks: idDelta.create<EdgeId>(),
+    staticsIds: false,
+    activeIds: false,
+    labelsIds: false,
+    masksIds: false
   },
   chrome: {
-    scene: 'flag',
-    edge: 'flag'
+    scene: false,
+    edge: false
   }
+})
+
+export const renderChange = {
+  create: createRenderDelta
 } as const
-
-export const renderChange = change<typeof renderChangeSpec, {
-  ids: {
-    node: NodeId
-    'edge.statics': EdgeStaticId
-    'edge.active': EdgeId
-    'edge.labels': EdgeLabelKey
-    'edge.masks': EdgeId
-  }
-}>(renderChangeSpec)
-
-export type RenderDelta = ReturnType<typeof renderChange.create>
 
 export interface SpatialDelta {
   revision: Revision

@@ -1,6 +1,3 @@
-export {
-  change
-} from './change'
 export type {
   EntityDelta
 } from './entityDelta'
@@ -20,9 +17,3 @@ export {
   isListEqual,
   projectListChange
 } from './listChange'
-export type {
-  WriteEntityChangeInput
-} from './writeEntityChange'
-export {
-  writeEntityChange
-} from './writeEntityChange'

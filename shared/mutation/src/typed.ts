@@ -10,10 +10,25 @@ import type {
   MutationDelta,
   MutationDeltaInput
 } from './write'
-import {
-  createMutationChangeMap,
-  EMPTY_MUTATION_CHANGE_MAP
-} from './write'
+
+const EMPTY_MUTATION_CHANGES = Object.freeze(
+  Object.create(null)
+) as MutationDelta['changes']
+
+const hasOwn = (
+  value: object,
+  key: PropertyKey
+): boolean => Object.prototype.hasOwnProperty.call(value, key)
+
+const hasChange = (
+  changes: MutationDelta['changes'],
+  key: string
+): boolean => hasOwn(changes, key)
+
+const readChange = (
+  changes: MutationDelta['changes'],
+  key: string
+): MutationChange | undefined => changes[key]
 
 export interface MutationPathCodec<TPath> {
   parse(path: string): TPath | undefined
@@ -430,7 +445,7 @@ export const toMutationDeltaInput = (
   const delta = coerceMutationDelta(input)
   const changes: Record<string, MutationChangeInput> = {}
 
-  for (const [key, change] of delta.changes.entries()) {
+  for (const [key, change] of Object.entries(delta.changes)) {
     changes[key] = serializeMutationChange(change)
   }
 
@@ -559,7 +574,7 @@ export const hasMutationChange = (
   delta: MutationDelta,
   key: string
 ): boolean => delta.reset === true
-  || delta.changes.has(key)
+  || hasChange(delta.changes, key)
 
 export const hasAnyMutationChange = (
   delta: MutationDelta,
@@ -576,7 +591,7 @@ export const collectMutationTouchedIds = <TId extends string>(
 
   const result = new Set<TId>()
   for (let index = 0; index < keys.length; index += 1) {
-    const ids = readMutationChangeIds<TId>(delta.changes.get(keys[index]!))
+    const ids = readMutationChangeIds<TId>(readChange(delta.changes, keys[index]!))
     if (ids === 'all') {
       return 'all'
     }
@@ -587,15 +602,6 @@ export const collectMutationTouchedIds = <TId extends string>(
 
   return result
 }
-
-const isMutationChangeMap = (
-  value: unknown
-): value is MutationDelta['changes'] => typeof value === 'object'
-  && value !== null
-  && 'has' in value
-  && typeof (value as { has?: unknown }).has === 'function'
-  && 'get' in value
-  && typeof (value as { get?: unknown }).get === 'function'
 
 const coerceMutationChange = (
   input: MutationChangeInput
@@ -622,12 +628,8 @@ export const coerceMutationDelta = (
 ): MutationDelta => {
   if (!input) {
     return {
-      changes: EMPTY_MUTATION_CHANGE_MAP
+      changes: EMPTY_MUTATION_CHANGES
     }
-  }
-
-  if (isMutationChangeMap(input.changes)) {
-    return input as MutationDelta
   }
 
   const normalized: Record<string, MutationChange> = {}
@@ -642,8 +644,8 @@ export const coerceMutationDelta = (
         }
       : {}),
     changes: Object.keys(normalized).length > 0
-      ? createMutationChangeMap(normalized)
-      : EMPTY_MUTATION_CHANGE_MAP
+      ? normalized
+      : EMPTY_MUTATION_CHANGES
   }
 }
 
@@ -667,19 +669,19 @@ export const createTypedMutationDelta = <
     has: (key) => hasMutationChange(raw, key),
     any: (keys) => hasAnyMutationChange(raw, keys),
     order: (key) => raw.reset === true
-      || raw.changes.get(key)?.order === true,
+      || readChange(raw.changes, key)?.order === true,
     ids: (key) => {
       if (!idsCache.has(key)) {
         idsCache.set(
           key,
-          readMutationChangeIds(raw.changes.get(key))
+          readMutationChangeIds(readChange(raw.changes, key))
         )
       }
       return idsCache.get(key) as readonly MutationSchemaId<TSchema[typeof key]>[] | 'all' | undefined
     },
     paths: (key) => {
       if (!pathsCache.has(key)) {
-        const rawPaths = readMutationChangePaths(raw.changes.get(key))
+        const rawPaths = readMutationChangePaths(readChange(raw.changes, key))
         if (rawPaths === 'all') {
           pathsCache.set(key, 'all')
         } else if (!rawPaths) {
@@ -727,7 +729,7 @@ export const createTypedMutationDelta = <
       }
 
       if (id === undefined) {
-        return raw.changes.has(key)
+        return hasChange(raw.changes, key)
       }
 
       const ids = context.ids(key)

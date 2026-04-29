@@ -52,7 +52,7 @@ test('engine exposes node create footprint through intent results', () => {
     ])
   )
   assert.deepEqual(
-    result.commit.delta.changes.get('node.create')?.ids,
+    result.commit.delta.changes['node.create']?.ids,
     [result.data.nodeId]
   )
 })

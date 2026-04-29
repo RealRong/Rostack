@@ -1,8 +1,10 @@
 import type {
   MutationCompileControl,
-  MutationCompileHandlerInput,
   MutationCompileHandlerTable
-} from '@shared/mutation'
+} from '@shared/mutation/engine'
+import type {
+  MutationCompileHandlerInput
+} from '@shared/mutation/engine'
 import type { WhiteboardLayoutService } from '@whiteboard/core/layout'
 import type {
   CanvasItemRef,

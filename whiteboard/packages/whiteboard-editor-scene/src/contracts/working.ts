@@ -1,5 +1,5 @@
 import type {
-  WhiteboardSceneExecution
+  WhiteboardExecution
 } from './execution'
 import type {
   DocumentDelta,
@@ -30,7 +30,7 @@ export type {
 
 export interface WorkingState extends State {
   layout?: EditorSceneLayout
-  execution: WhiteboardSceneExecution
+  execution: WhiteboardExecution
   draft: {
     node: Map<NodeId, NodeDraftMeasure>
   }

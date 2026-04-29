@@ -7,14 +7,16 @@ import type {
   TraceDeltaSummary
 } from '@dataview/engine/contracts/performance'
 import {
-  collectMutationTouchedIds,
   createTypedMutationDelta,
   defineEntityMutationSchema,
   type MutationDelta,
   type MutationDeltaInput,
+} from '@shared/mutation'
+import {
+  collectMutationTouchedIds,
   type MutationPathCodec,
   type TypedMutationDeltaContext
-} from '@shared/mutation'
+} from '@shared/mutation/typed'
 import {
   entities as dataviewEntities
 } from '@dataview/core/entities'
@@ -405,8 +407,8 @@ export const createDataviewMutationDelta = (
           pushFact('view.layout', countIds(context.ids('view.layout')))
           pushFact('view.calc', countIds(context.ids('view.calc')))
           pushFact('view.remove', countIds(context.ids('view.delete')))
-          pushFact('activeView.set', context.raw.changes.get('document.activeViewId') ? 1 : undefined)
-          pushFact('external.version', context.raw.changes.get('external.version') ? 1 : undefined)
+          pushFact('activeView.set', context.raw.changes['document.activeViewId'] ? 1 : undefined)
+          pushFact('external.version', context.raw.changes['external.version'] ? 1 : undefined)
           pushFact('reset', context.raw.reset === true ? 1 : undefined)
 
           return {

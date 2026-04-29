@@ -23,85 +23,9 @@ export interface MutationChange {
   [payload: string]: unknown
 }
 
-export interface MutationChangeMap {
-  readonly size: number
-  has(key: string): boolean
-  get(key: string): MutationChange | undefined
-  keys(): IterableIterator<string>
-  values(): IterableIterator<MutationChange>
-  entries(): IterableIterator<[string, MutationChange]>
-}
-
-type MutationChangeRecord = Readonly<Record<string, MutationChange>>
-
-const hasOwn = (
-  value: object,
-  key: PropertyKey
-): boolean => Object.prototype.hasOwnProperty.call(value, key)
-
-const EMPTY_MUTATION_CHANGE_RECORD = Object.freeze(
-  Object.create(null)
-) as MutationChangeRecord
-
-export const createMutationChangeMap = (
-  record?: Record<string, MutationChange>
-): MutationChangeMap => {
-  const keys = Object.keys(record ?? {})
-  const normalized: Record<string, MutationChange> = {}
-  for (let index = 0; index < keys.length; index += 1) {
-    const key = keys[index]!
-    normalized[key] = record![key]!
-  }
-
-  const map = normalized as Record<string, MutationChange> & MutationChangeMap
-
-  Object.defineProperties(map, {
-    size: {
-      get: () => keys.length,
-      enumerable: false
-    },
-    has: {
-      value: (key: string) => hasOwn(normalized, key),
-      enumerable: false
-    },
-    get: {
-      value: (key: string) => normalized[key],
-      enumerable: false
-    },
-    keys: {
-      value: function *keysIterator(): IterableIterator<string> {
-        yield* Object.keys(normalized)
-      },
-      enumerable: false
-    },
-    values: {
-      value: function *valuesIterator(): IterableIterator<MutationChange> {
-        for (const key of Object.keys(normalized)) {
-          yield normalized[key]!
-        }
-      },
-      enumerable: false
-    },
-    entries: {
-      value: function *entriesIterator(): IterableIterator<[string, MutationChange]> {
-        for (const key of Object.keys(normalized)) {
-          yield [key, normalized[key]!]
-        }
-      },
-      enumerable: false
-    }
-  })
-
-  return Object.freeze(map)
-}
-
-export const EMPTY_MUTATION_CHANGE_MAP: MutationChangeMap = createMutationChangeMap(
-  EMPTY_MUTATION_CHANGE_RECORD
-)
-
 export interface MutationDelta {
   reset?: true
-  changes: MutationChangeMap
+  changes: Readonly<Record<string, MutationChange>>
 }
 
 export interface MutationDeltaInput {

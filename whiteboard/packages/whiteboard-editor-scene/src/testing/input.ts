@@ -1,5 +1,4 @@
 import { idDelta } from '@shared/delta'
-import { EMPTY_MUTATION_CHANGE_MAP } from '@shared/mutation'
 import type {
   EdgeId,
   MindmapId,
@@ -11,6 +10,10 @@ import {
 } from '../contracts/execution'
 import { createWhiteboardMutationDelta } from '../mutation/delta'
 import { createEmptyDocumentSnapshot } from '../runtime/state'
+
+const EMPTY_MUTATION_CHANGES = Object.freeze(
+  Object.create(null)
+) as Record<string, never>
 
 export const createEmptyRuntimeInputDelta = (): Input['runtime']['delta'] => (
   createEmptyWhiteboardRuntimeDelta()
@@ -74,6 +77,6 @@ export const createEmptyInput = (): Input => ({
     delta: createEmptyRuntimeInputDelta()
   },
   delta: createWhiteboardMutationDelta({
-    changes: EMPTY_MUTATION_CHANGE_MAP
+    changes: EMPTY_MUTATION_CHANGES
   })
 })

@@ -5,7 +5,7 @@ import {
 } from '@shared/collab-yjs'
 import {
   assertMutationFootprintList
-} from '@shared/mutation'
+} from '@shared/mutation/write'
 import {
   isCheckpointOperation
 } from '@whiteboard/core/operations'

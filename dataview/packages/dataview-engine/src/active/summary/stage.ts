@@ -8,9 +8,6 @@ import type {
   IndexDelta,
   IndexState
 } from '@dataview/engine/active/index/contracts'
-import type {
-  MutationDelta
-} from '@shared/mutation'
 import {
   deriveSummaryState,
   resolveSummaryTouchedSections
@@ -25,11 +22,9 @@ import {
   EMPTY_MEMBERSHIP_PHASE_DELTA
 } from '@dataview/engine/active/state'
 import { now } from '@dataview/engine/runtime/clock'
-import {
-  hasActiveViewChange,
-  hasFieldSchemaChange,
-  hasViewCalculationChanges
-} from '../projection/dirty'
+import type {
+  DataviewMutationDelta
+} from '@dataview/engine/mutation/delta'
 import {
   createActiveStageMetrics
 } from '../projection/metrics'
@@ -37,7 +32,7 @@ import {
 const resolveSummaryAction = (input: {
   activeViewId: ViewId
   previousViewId?: ViewId
-  delta: MutationDelta
+  delta: DataviewMutationDelta
   indexDelta?: IndexDelta
   view: View
   calcFields: readonly FieldId[]
@@ -54,7 +49,7 @@ const resolveSummaryAction = (input: {
     !input.previous
     || !input.previousMembership
     || input.previousViewId !== input.activeViewId
-    || hasActiveViewChange(input.delta)
+    || input.delta.document.activeViewChanged()
   ) {
     return {
       action: 'rebuild'
@@ -79,7 +74,7 @@ const resolveSummaryAction = (input: {
   }
 
   const groupField = input.view.group?.fieldId
-  if (hasViewCalculationChanges(input.delta, input.activeViewId)) {
+  if (input.delta.view.calc(input.activeViewId).changed()) {
     return {
       action: 'rebuild'
     }
@@ -92,14 +87,14 @@ const resolveSummaryAction = (input: {
       }
     }
 
-    if (hasFieldSchemaChange(input.delta, fieldId)) {
+    if (input.delta.field.schema.changed(fieldId)) {
       return {
         action: 'rebuild'
       }
     }
   }
 
-  if (groupField && hasFieldSchemaChange(input.delta, groupField)) {
+  if (groupField && input.delta.field.schema.changed(groupField)) {
     return {
       action: 'rebuild'
     }
@@ -134,7 +129,7 @@ const resolveSummaryAction = (input: {
 export const runSummaryStage = (input: {
   activeViewId: ViewId
   previousViewId?: ViewId
-  delta: MutationDelta
+  delta: DataviewMutationDelta
   indexDelta?: IndexDelta
   view: View
   calcFields: readonly FieldId[]

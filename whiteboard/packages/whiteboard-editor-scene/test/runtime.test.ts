@@ -8,6 +8,7 @@ import type {
   Size
 } from '@whiteboard/core/types'
 import { createEngine } from '@whiteboard/engine'
+import type { MutationDelta } from '@shared/mutation'
 import {
   type Result
 } from '../src'
@@ -25,6 +26,7 @@ import { createEmptyInput } from '../src/testing/input'
 import {
   createEditorSceneProjectionRuntime
 } from '../src/runtime/createEditorSceneProjectionRuntime'
+import { createWhiteboardMutationDelta } from '../src/mutation/delta'
 
 type RuntimeInputOptions = {
   edit?: EditorSceneInput['runtime']['session']['edit']
@@ -39,7 +41,7 @@ type RuntimeInputOptions = {
   mindmapPreview?: EditorSceneInput['runtime']['session']['preview']['mindmap']
   now?: number
   delta?: EditorSceneInput['runtime']['delta']
-  documentDelta?: EditorSceneInput['delta']
+  documentDelta?: EditorSceneInput['delta'] | MutationDelta
 }
 
 let currentMeasureState: EditorGraphTextMeasureState = {}
@@ -121,7 +123,9 @@ const createInput = (
   }
   value.runtime.clock.now = options.now ?? 0
   value.runtime.delta = options.delta ?? createEditorRuntimeDelta()
-  value.delta = options.documentDelta ?? createMutationDelta()
+  value.delta = createWhiteboardMutationDelta(
+    options.documentDelta ?? createMutationDelta()
+  )
   return value
 }
 

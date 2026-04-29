@@ -2,6 +2,11 @@ import assert from 'node:assert/strict'
 import { test } from 'vitest'
 import { entityTable } from '@shared/core'
 import {
+  EMPTY_MUTATION_CHANGE_MAP,
+  type MutationDeltaInput
+} from '@shared/mutation'
+import { createDataviewMutationDelta } from '@dataview/engine/mutation/delta'
+import {
   createDataviewProjection
 } from '@dataview/engine/projection'
 
@@ -152,14 +157,19 @@ const createEmptyDocument = () => ({
   meta: {}
 })
 
+const toDelta = (delta: MutationDeltaInput = {}) => createDataviewMutationDelta({
+  changes: EMPTY_MUTATION_CHANGE_MAP,
+  ...delta
+})
+
 test('createDataviewProjection bootstraps a single six-phase runtime', () => {
   const runtime = createDataviewProjection()
 
   const result = runtime.update({
     document: createDocument(),
-    delta: {
+    delta: toDelta({
       reset: true
-    },
+    }),
     runtime: {}
   })
 
@@ -178,9 +188,9 @@ test('layout mutation stays inside the single runtime and only mutates view surf
   const runtime = createDataviewProjection()
   runtime.update({
     document: createDocument(),
-    delta: {
+    delta: toDelta({
       reset: true
-    },
+    }),
     runtime: {}
   })
 
@@ -188,11 +198,11 @@ test('layout mutation stays inside the single runtime and only mutates view surf
     document: createDocument(createView({
       wrap: true
     })),
-    delta: {
+    delta: toDelta({
       changes: {
         'view.layout': [VIEW_ID]
       }
-    },
+    }),
     runtime: {}
   })
 
@@ -228,19 +238,19 @@ test('single runtime clears active snapshot when active view disappears', () => 
   const runtime = createDataviewProjection()
   runtime.update({
     document: createDocument(),
-    delta: {
+    delta: toDelta({
       reset: true
-    },
+    }),
     runtime: {}
   })
 
   const result = runtime.update({
     document: createEmptyDocument(),
-    delta: {
+    delta: toDelta({
       changes: {
         'document.activeViewId': true
       }
-    },
+    }),
     runtime: {}
   })
 

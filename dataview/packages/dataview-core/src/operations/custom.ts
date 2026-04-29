@@ -65,7 +65,9 @@ const appendFlagChange = (
   key: string
 ): void => {
   delta.changes ??= {}
-  delta.changes[key] = true
+  delta.changes[key] = {
+    ids: 'all'
+  }
 }
 
 const collectRecordValueFieldIds = (
@@ -94,7 +96,7 @@ const appendRecordValueChanges = (
         return
       }
 
-      values.push(`values.${fieldId}`)
+      values.push(fieldId)
     })
 
     if (values.length) {

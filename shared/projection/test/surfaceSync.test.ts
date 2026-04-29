@@ -2,6 +2,7 @@ import { expect, it } from 'vitest'
 import {
   createMutationChangeMap,
   EMPTY_MUTATION_CHANGE_MAP,
+  readMutationChangeIds,
   type MutationChange,
   type MutationChangeInput,
   type MutationDelta
@@ -68,6 +69,28 @@ const normalizeChange = (
   return change
 }
 
+const hasDeltaKey = (
+  delta: MutationDelta,
+  key: string
+): boolean => delta.reset === true
+  || delta.changes.has(key)
+
+const readTouchedIds = (
+  delta: MutationDelta,
+  key: string
+): Set<string> | 'all' => {
+  if (delta.reset === true) {
+    return 'all'
+  }
+
+  const ids = readMutationChangeIds<string>(delta.changes.get(key))
+  if (ids === 'all') {
+    return 'all'
+  }
+
+  return new Set(ids ?? [])
+}
+
 const sameOrder = <T,>(
   left: readonly T[],
   right: readonly T[]
@@ -106,9 +129,7 @@ const createRuntime = (hooks: {
     declaredValue: {
       kind: 'value' as const,
       read: (state: State) => state.value,
-      changed: {
-        keys: ['value.changed']
-      }
+      changed: ({ input }) => hasDeltaKey(input.delta, 'value.changed')
     },
     items: {
       kind: 'family' as const,
@@ -117,20 +138,62 @@ const createRuntime = (hooks: {
         return state.items
       },
       idsEqual: sameOrder,
-      patch: {
-        create: ['items.create'],
-        update: ['items.update'],
-        remove: ['items.remove'],
-        order: ['items.order']
+      patch: ({ input }) => {
+        if (input.delta.reset === true) {
+          return 'replace'
+        }
+
+        const created = readTouchedIds(input.delta, 'items.create')
+        const updated = readTouchedIds(input.delta, 'items.update')
+        const removed = readTouchedIds(input.delta, 'items.remove')
+        const order = hasDeltaKey(input.delta, 'items.order')
+        if (
+          created !== 'all'
+          && updated !== 'all'
+          && removed !== 'all'
+          && created.size === 0
+          && updated.size === 0
+          && removed.size === 0
+          && !order
+        ) {
+          return 'skip'
+        }
+        if (created === 'all' || updated === 'all' || removed === 'all') {
+          return 'replace'
+        }
+
+        const set = new Set<string>([
+          ...created,
+          ...updated
+        ])
+        removed.forEach((id) => {
+          set.delete(id)
+        })
+
+        return {
+          ...(order
+            ? {
+                order: true as const
+              }
+            : {}),
+          ...(set.size > 0
+            ? {
+                set: [...set]
+              }
+            : {}),
+          ...(removed.size > 0
+            ? {
+                remove: [...removed]
+              }
+            : {})
+        }
       }
     },
     customItems: {
       kind: 'family' as const,
       read: (state: State) => state.items,
       idsEqual: sameOrder,
-      changed: {
-        keys: ['items.custom']
-      },
+      changed: ({ input }) => hasDeltaKey(input.delta, 'items.custom'),
       patch: ({ state }: { state: State }) => state.customPatch ?? 'replace'
     }
   },

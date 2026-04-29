@@ -7,6 +7,7 @@ import type {
   Size
 } from '@whiteboard/core/types'
 import { createEngine } from '@whiteboard/engine'
+import type { MutationDelta } from '@shared/mutation'
 import type { Input } from '../src/contracts/editor'
 import { createEmptyInput, createEmptyRuntimeInputDelta } from '../src/testing/input'
 import {
@@ -14,6 +15,7 @@ import {
   createEditorGraphTextMeasure,
   type EditorGraphTextMeasureState
 } from '../src/testing/builders'
+import { createWhiteboardMutationDelta } from '../src/mutation/delta'
 import { createEditorSceneProjectionHarness } from '../src/testing/runtime'
 
 const createNode = (input: {
@@ -92,7 +94,7 @@ const createGroup = (input: {
 const createInput = (input: {
   engine: ReturnType<typeof createEngine>
   delta: Input['runtime']['delta']
-  documentDelta?: Input['delta']
+  documentDelta?: Input['delta'] | MutationDelta
   edit?: Input['runtime']['session']['edit']
   nodeMeasures?: ReadonlyMap<NodeId, Size>
 }): Input => {
@@ -114,7 +116,9 @@ const createInput = (input: {
   value.document.doc = input.engine.current().doc
   value.runtime.session.edit = input.edit ?? null
   value.runtime.delta = input.delta
-  value.delta = input.documentDelta ?? createMutationDelta()
+  value.delta = createWhiteboardMutationDelta(
+    input.documentDelta ?? createMutationDelta()
+  )
   return value
 }
 

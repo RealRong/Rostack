@@ -13,18 +13,12 @@ import type {
   IndexDelta,
   IndexState
 } from '@dataview/engine/active/index/contracts'
-import type {
-  MutationDelta
-} from '@shared/mutation'
 import {
   createPartition,
   readPartitionSelections,
   readPartitionKeysById,
   type Partition
 } from '@dataview/engine/active/shared/partition'
-import {
-  readTouchedRecords
-} from '@dataview/engine/active/projection/dirty'
 import {
   createMapDraft as createMapPatchBuilder
 } from '@shared/draft'
@@ -49,6 +43,9 @@ import type {
   QueryPhaseDelta as QueryDelta,
   QueryPhaseState as QueryState
 } from '@dataview/engine/active/state'
+import type {
+  DataviewMutationDelta
+} from '@dataview/engine/mutation/delta'
 import {
   tokenRef
 } from '@shared/i18n'
@@ -350,11 +347,11 @@ const sameSectionIds = (
 ) => equal.sameOrder(left, right)
 
 const resolveChangedRecordIds = (input: {
-  delta: MutationDelta
+  delta: DataviewMutationDelta
   queryDelta: QueryDelta
   bucketDelta?: IndexDelta['bucket']
 }): ReadonlySet<RecordId> | 'all' => {
-  const touchedRecords = readTouchedRecords(input.delta)
+  const touchedRecords = input.delta.touched.records()
   if (touchedRecords === 'all') {
     return 'all'
   }
@@ -452,7 +449,7 @@ export const syncMembershipState = (input: {
   query: QueryState
   queryDelta: QueryDelta
   index: IndexState
-  delta: MutationDelta
+  delta: DataviewMutationDelta
   indexDelta?: IndexDelta
   action: 'reuse' | 'sync' | 'rebuild'
 }): {

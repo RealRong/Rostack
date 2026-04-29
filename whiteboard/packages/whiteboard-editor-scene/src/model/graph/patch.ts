@@ -5,7 +5,6 @@ import type {
   NodeId
 } from '@whiteboard/core/types'
 import { idDelta, type IdDelta } from '@shared/delta'
-import type { MutationChange } from '@shared/mutation'
 import {
   resetGraphDelta,
   resetGraphDirty
@@ -31,36 +30,6 @@ const touchLifecycleIds = <TId extends string>(
     idDelta.remove(target, id)
   })
 }
-
-const readChangeIds = <TId extends string>(
-  change: MutationChange | undefined
-): readonly TId[] | 'all' | undefined => {
-  if (!change) {
-    return undefined
-  }
-
-  if (change.ids !== undefined) {
-    return change.ids === 'all'
-      ? 'all'
-      : change.ids as unknown as readonly TId[]
-  }
-
-  if (change.paths === 'all') {
-    return 'all'
-  }
-
-  if (change.paths) {
-    return Object.keys(change.paths) as unknown as readonly TId[]
-  }
-
-  return undefined
-}
-
-const toConcreteIds = <TId extends string>(
-  ids: readonly TId[] | 'all' | undefined
-): readonly TId[] => ids === 'all' || ids === undefined
-  ? []
-  : ids
 
 type GraphPatchQueue = {
   nodes: Set<NodeId>
@@ -93,22 +62,6 @@ const drainQueue = <TId extends string>(
   return ids
 }
 
-const addChangeIdsToSet = <TId extends string>(
-  target: Set<TId>,
-  change: MutationChange | undefined
-): boolean => {
-  const ids = readChangeIds<TId>(change)
-  if (ids === 'all') {
-    return true
-  }
-  if (!ids) {
-    return false
-  }
-
-  enqueueAll(target, ids)
-  return false
-}
-
 const touchDirtyTarget = <TId extends string>(
   target: IdDelta<TId>,
   ids: Iterable<TId>,
@@ -127,6 +80,17 @@ const touchDirtyTarget = <TId extends string>(
   }
 }
 
+const touchDocumentIds = <TId extends string>(
+  target: IdDelta<TId>,
+  ids: ReadonlySet<TId> | 'all',
+  action: 'add' | 'update' | 'remove'
+) => {
+  if (ids === 'all') {
+    return
+  }
+  touchDirtyTarget(target, ids, action)
+}
+
 const markGeometryDirty = <TId extends string>(
   target: IdDelta<TId>,
   ids: Iterable<TId>
@@ -134,7 +98,7 @@ const markGeometryDirty = <TId extends string>(
   touchDirtyTarget(target, ids, 'update')
 }
 
-const markEdgeGeometryDirty = (
+const fanoutEdgeGeometryDirty = (
   dirty: WorkingState['dirty']['graph'],
   ids: Iterable<EdgeId>
 ) => {
@@ -144,7 +108,7 @@ const markEdgeGeometryDirty = (
   markGeometryDirty(dirty.edge.box, ids)
 }
 
-const markMindmapGeometryDirty = (
+const fanoutMindmapGeometryDirty = (
   dirty: WorkingState['dirty']['graph'],
   ids: Iterable<MindmapId>
 ) => {
@@ -153,7 +117,7 @@ const markMindmapGeometryDirty = (
   markGeometryDirty(dirty.mindmap.membership, ids)
 }
 
-const markGroupGeometryDirty = (
+const fanoutGroupGeometryDirty = (
   dirty: WorkingState['dirty']['graph'],
   ids: Iterable<GroupId>
 ) => {
@@ -161,7 +125,7 @@ const markGroupGeometryDirty = (
   markGeometryDirty(dirty.group.membership, ids)
 }
 
-const readGraphTargets = (
+const readGraphPatchTargets = (
   input: Input
 ): {
   reset: boolean
@@ -183,83 +147,23 @@ const readGraphTargets = (
   }
 
   const runtimeDelta = input.runtime.delta
-  const nodes = new Set<NodeId>()
-  const edges = new Set<EdgeId>()
-  const mindmaps = new Set<MindmapId>()
-  const groups = new Set<GroupId>()
-  let order = false
-
-  for (const [key, change] of input.delta.changes.entries()) {
-    if (key === 'canvas.order' || change.order) {
-      order = true
-    }
-
-    switch (key) {
-      case 'node.create':
-      case 'node.delete':
-      case 'node.geometry':
-      case 'node.owner':
-      case 'node.content':
-        if (addChangeIdsToSet(nodes, change)) {
-          return {
-            reset: true,
-            order: true,
-            nodes: new Set<NodeId>(),
-            edges: new Set<EdgeId>(),
-            mindmaps: new Set<MindmapId>(),
-            groups: new Set<GroupId>()
-          }
-        }
-        break
-      case 'edge.create':
-      case 'edge.delete':
-      case 'edge.endpoints':
-      case 'edge.route':
-      case 'edge.style':
-      case 'edge.labels':
-      case 'edge.data':
-        if (addChangeIdsToSet(edges, change)) {
-          return {
-            reset: true,
-            order: true,
-            nodes: new Set<NodeId>(),
-            edges: new Set<EdgeId>(),
-            mindmaps: new Set<MindmapId>(),
-            groups: new Set<GroupId>()
-          }
-        }
-        break
-      case 'mindmap.create':
-      case 'mindmap.delete':
-      case 'mindmap.structure':
-      case 'mindmap.layout':
-        if (addChangeIdsToSet(mindmaps, change)) {
-          return {
-            reset: true,
-            order: true,
-            nodes: new Set<NodeId>(),
-            edges: new Set<EdgeId>(),
-            mindmaps: new Set<MindmapId>(),
-            groups: new Set<GroupId>()
-          }
-        }
-        break
-      case 'group.create':
-      case 'group.delete':
-      case 'group.value':
-        if (addChangeIdsToSet(groups, change)) {
-          return {
-            reset: true,
-            order: true,
-            nodes: new Set<NodeId>(),
-            edges: new Set<EdgeId>(),
-            mindmaps: new Set<MindmapId>(),
-            groups: new Set<GroupId>()
-          }
-        }
-        break
+  const graphTargets = input.delta.graph.targets()
+  if (graphTargets.reset) {
+    return {
+      reset: true,
+      order: true,
+      nodes: new Set<NodeId>(),
+      edges: new Set<EdgeId>(),
+      mindmaps: new Set<MindmapId>(),
+      groups: new Set<GroupId>()
     }
   }
+
+  const nodes = new Set<NodeId>(graphTargets.nodes as ReadonlySet<NodeId>)
+  const edges = new Set<EdgeId>(graphTargets.edges as ReadonlySet<EdgeId>)
+  const mindmaps = new Set<MindmapId>(graphTargets.mindmaps as ReadonlySet<MindmapId>)
+  const groups = new Set<GroupId>(graphTargets.groups as ReadonlySet<GroupId>)
+  const order = graphTargets.order
 
   enqueueAll(edges, idDelta.touched(runtimeDelta.session.draft.edges))
   enqueueAll(nodes, idDelta.touched(runtimeDelta.session.preview.nodes))
@@ -571,100 +475,115 @@ const seedGraphDirtyFromMutation = (input: {
   dirty: WorkingState['dirty']['graph']
 }) => {
   const { current, dirty } = input
-  dirty.order = current.delta.reset === true || current.delta.changes.has('canvas.order')
+  dirty.order = current.delta.graph.orderChanged()
 
-  touchDirtyTarget(
+  touchDocumentIds(
     dirty.node.lifecycle,
-    toConcreteIds(readChangeIds<NodeId>(current.delta.changes.get('node.create'))),
+    current.delta.node.create.touchedIds(),
     'add'
   )
-  touchDirtyTarget(
+  touchDocumentIds(
     dirty.node.lifecycle,
-    toConcreteIds(readChangeIds<NodeId>(current.delta.changes.get('node.delete'))),
+    current.delta.node.delete.touchedIds(),
     'remove'
   )
-  touchDirtyTarget(
+  touchDocumentIds(
     dirty.node.geometry,
-    toConcreteIds(readChangeIds<NodeId>(current.delta.changes.get('node.geometry'))),
+    current.delta.node.geometry.touchedIds(),
     'update'
   )
-  touchDirtyTarget(
+  touchDocumentIds(
     dirty.node.content,
-    toConcreteIds(readChangeIds<NodeId>(current.delta.changes.get('node.content'))),
+    current.delta.node.content.touchedIds(),
     'update'
   )
-  touchDirtyTarget(
+  touchDocumentIds(
     dirty.node.owner,
-    toConcreteIds(readChangeIds<NodeId>(current.delta.changes.get('node.owner'))),
+    current.delta.node.owner.touchedIds(),
     'update'
   )
 
-  touchDirtyTarget(
+  touchDocumentIds(
     dirty.edge.lifecycle,
-    toConcreteIds(readChangeIds<EdgeId>(current.delta.changes.get('edge.create'))),
+    current.delta.edge.create.touchedIds(),
     'add'
   )
-  touchDirtyTarget(
+  touchDocumentIds(
     dirty.edge.lifecycle,
-    toConcreteIds(readChangeIds<EdgeId>(current.delta.changes.get('edge.delete'))),
+    current.delta.edge.delete.touchedIds(),
     'remove'
   )
-  markEdgeGeometryDirty(
-    dirty,
-    toConcreteIds(readChangeIds<EdgeId>(current.delta.changes.get('edge.endpoints')))
+  touchDocumentIds(
+    dirty.edge.route,
+    current.delta.graph.affects.edgeRouteIds(),
+    'update'
   )
-  markEdgeGeometryDirty(
-    dirty,
-    toConcreteIds(readChangeIds<EdgeId>(current.delta.changes.get('edge.route')))
+  touchDocumentIds(
+    dirty.edge.endpoints,
+    current.delta.graph.affects.edgeEndpointIds(),
+    'update'
   )
-  touchDirtyTarget(
+  touchDocumentIds(
+    dirty.edge.box,
+    current.delta.graph.affects.edgeBoxIds(),
+    'update'
+  )
+  touchDocumentIds(
     dirty.edge.style,
-    toConcreteIds(readChangeIds<EdgeId>(current.delta.changes.get('edge.style'))),
+    current.delta.graph.affects.edgeStyleIds(),
     'update'
   )
-  touchDirtyTarget(
+  touchDocumentIds(
     dirty.edge.labels,
-    toConcreteIds(readChangeIds<EdgeId>(current.delta.changes.get('edge.labels'))),
+    current.delta.graph.affects.edgeLabelIds(),
     'update'
   )
-  const edgeDataIds = toConcreteIds(
-    readChangeIds<EdgeId>(current.delta.changes.get('edge.data'))
-  )
-  touchDirtyTarget(dirty.edge.style, edgeDataIds, 'update')
-  touchDirtyTarget(dirty.edge.labels, edgeDataIds, 'update')
 
-  touchDirtyTarget(
+  touchDocumentIds(
     dirty.mindmap.lifecycle,
-    toConcreteIds(readChangeIds<MindmapId>(current.delta.changes.get('mindmap.create'))),
+    current.delta.mindmap.create.touchedIds(),
     'add'
   )
-  touchDirtyTarget(
+  touchDocumentIds(
     dirty.mindmap.lifecycle,
-    toConcreteIds(readChangeIds<MindmapId>(current.delta.changes.get('mindmap.delete'))),
+    current.delta.mindmap.delete.touchedIds(),
     'remove'
   )
-  markMindmapGeometryDirty(
-    dirty,
-    toConcreteIds(readChangeIds<MindmapId>(current.delta.changes.get('mindmap.structure')))
+  touchDocumentIds(
+    dirty.mindmap.geometry,
+    current.delta.graph.affects.mindmapGeometryIds(),
+    'update'
   )
-  markMindmapGeometryDirty(
-    dirty,
-    toConcreteIds(readChangeIds<MindmapId>(current.delta.changes.get('mindmap.layout')))
+  touchDocumentIds(
+    dirty.mindmap.connectors,
+    current.delta.graph.affects.mindmapConnectorIds(),
+    'update'
+  )
+  touchDocumentIds(
+    dirty.mindmap.membership,
+    current.delta.graph.affects.mindmapMembershipIds(),
+    'update'
   )
 
-  touchDirtyTarget(
+  touchDocumentIds(
     dirty.group.lifecycle,
-    toConcreteIds(readChangeIds<GroupId>(current.delta.changes.get('group.create'))),
+    current.delta.group.create.touchedIds(),
     'add'
   )
-  touchDirtyTarget(
+  touchDocumentIds(
     dirty.group.lifecycle,
-    toConcreteIds(readChangeIds<GroupId>(current.delta.changes.get('group.delete'))),
+    current.delta.group.delete.touchedIds(),
     'remove'
   )
-  markGroupGeometryDirty(
-    dirty,
-    toConcreteIds(readChangeIds<GroupId>(current.delta.changes.get('group.value')))
+  touchDocumentIds(
+    dirty.group.geometry,
+    current.delta.graph.affects.groupGeometryIds(),
+    'update'
+  )
+  touchDocumentIds(
+    dirty.group.membership,
+    current.delta.graph.affects.groupMembershipIds(),
+    'update'
   )
 
   touchDirtyTarget(
@@ -751,7 +670,7 @@ export const patchGraphState = (input: {
         mindmaps: new Set<MindmapId>(),
         groups: new Set<GroupId>()
       }
-    : readGraphTargets(input.current)
+    : readGraphPatchTargets(input.current)
 
   resetGraphDelta(delta)
   resetGraphDirty(graphDirty)
@@ -824,9 +743,9 @@ export const patchGraphState = (input: {
   touchLifecycleIds(graphDirty.mindmap.lifecycle, delta.entities.mindmaps)
   touchLifecycleIds(graphDirty.group.lifecycle, delta.entities.groups)
   markGeometryDirty(graphDirty.node.geometry, delta.geometry.nodes)
-  markEdgeGeometryDirty(graphDirty, delta.geometry.edges)
-  markMindmapGeometryDirty(graphDirty, delta.geometry.mindmaps)
-  markGroupGeometryDirty(graphDirty, delta.geometry.groups)
+  fanoutEdgeGeometryDirty(graphDirty, delta.geometry.edges)
+  fanoutMindmapGeometryDirty(graphDirty, delta.geometry.mindmaps)
+  fanoutGroupGeometryDirty(graphDirty, delta.geometry.groups)
 
   return {
     ran: true,

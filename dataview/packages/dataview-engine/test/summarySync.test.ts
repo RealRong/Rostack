@@ -29,6 +29,8 @@ import type {
   MembershipPhaseDelta as MembershipDelta,
   MembershipPhaseState as MembershipState
 } from '@dataview/engine/active/state'
+import { EMPTY_MUTATION_CHANGE_MAP } from '@shared/mutation'
+import { createDataviewMutationDelta } from '@dataview/engine/mutation/delta'
 
 const FIELD_POINTS = 'points'
 const FIELD_STATUS = 'status'
@@ -123,6 +125,11 @@ const createView = (
   },
   orders: [],
   ...input
+})
+
+const toDelta = (delta = {}) => createDataviewMutationDelta({
+  changes: EMPTY_MUTATION_CHANGE_MAP,
+  ...delta
 })
 
 const EMPTY_MEMBERSHIP_DELTA: MembershipDelta = {
@@ -288,7 +295,7 @@ test('summary stage syncs when membership changes without record transitions', (
   const result = runSummaryStage({
     activeViewId: view.id,
     previousViewId: view.id,
-    delta: {},
+    delta: toDelta(),
     view,
     calcFields: [FIELD_POINTS],
     previous,
@@ -348,7 +355,7 @@ test('summary stage reuses previous state when only section meta changes', () =>
   const result = runSummaryStage({
     activeViewId: view.id,
     previousViewId: view.id,
-    delta: {},
+    delta: toDelta(),
     view,
     calcFields: [FIELD_POINTS],
     previous,

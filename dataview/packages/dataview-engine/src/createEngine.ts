@@ -39,6 +39,9 @@ import {
 import {
   createDataviewProjection
 } from '@dataview/engine/projection'
+import {
+  createDataviewMutationDelta
+} from '@dataview/engine/mutation/delta'
 import { createPerformanceRuntime } from '@dataview/engine/runtime/performance'
 import type {
   DataviewIntentTable,
@@ -87,10 +90,10 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
 
   projection.update({
     document: mutationEngine.current().document,
-    delta: {
+    delta: createDataviewMutationDelta({
       reset: true,
       changes: EMPTY_MUTATION_CHANGE_MAP
-    },
+    }),
     runtime: {}
   })
 
@@ -107,7 +110,7 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
     const nextCommit = commit as EngineCommit
     const projectionResult = projection.update({
       document: nextCommit.document,
-      delta: nextCommit.delta,
+      delta: createDataviewMutationDelta(nextCommit.delta),
       runtime: {}
     })
     const commitTrace = createDataviewCommitTrace({

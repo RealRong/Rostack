@@ -13,7 +13,6 @@ import type {
   ReadStore
 } from '../../core/src/store/types'
 import type {
-  MutationChange,
   MutationDelta
 } from '@shared/mutation'
 import type {
@@ -79,17 +78,6 @@ export interface ProjectionFamilyPatch<TKey extends string | number> {
   remove?: readonly TKey[]
 }
 
-export interface ProjectionChangedKeys {
-  keys: readonly string[]
-}
-
-export interface ProjectionFamilyPatchKeys {
-  create?: readonly string[]
-  update?: readonly string[]
-  remove?: readonly string[]
-  order?: readonly string[]
-}
-
 export interface ProjectionValueField<
   TInput extends {
     delta: MutationDelta
@@ -101,9 +89,7 @@ export interface ProjectionValueField<
   kind: 'value'
   read(state: TState): TValue
   isEqual?: (left: TValue, right: TValue) => boolean
-  changed?:
-    | ProjectionChangedKeys
-    | ((context: ProjectionValueFieldSyncContext<TInput, TState, TPhaseName>) => boolean)
+  changed?: (context: ProjectionValueFieldSyncContext<TInput, TState, TPhaseName>) => boolean
 }
 
 export interface ProjectionFamilyField<
@@ -119,15 +105,11 @@ export interface ProjectionFamilyField<
   read(state: TState): ProjectionFamilySnapshot<TKey, TValue>
   isEqual?: (left: TValue, right: TValue) => boolean
   idsEqual?: (left: readonly TKey[], right: readonly TKey[]) => boolean
-  changed?:
-    | ProjectionChangedKeys
-    | ((context: ProjectionValueFieldSyncContext<TInput, TState, TPhaseName>) => boolean)
-  patch?:
-    | ProjectionFamilyPatchKeys
-    | ((context: ProjectionValueFieldSyncContext<TInput, TState, TPhaseName> & {
-        previous: ProjectionFamilySnapshot<TKey, TValue>
-        next: ProjectionFamilySnapshot<TKey, TValue>
-      }) => ProjectionFamilyPatch<TKey> | 'replace' | 'skip')
+  changed?: (context: ProjectionValueFieldSyncContext<TInput, TState, TPhaseName>) => boolean
+  patch?: (context: ProjectionValueFieldSyncContext<TInput, TState, TPhaseName> & {
+    previous: ProjectionFamilySnapshot<TKey, TValue>
+    next: ProjectionFamilySnapshot<TKey, TValue>
+  }) => ProjectionFamilyPatch<TKey> | 'replace' | 'skip'
 }
 
 export type ProjectionSurfaceField<
@@ -303,34 +285,6 @@ const isField = <
   )
 )
 
-const hasDeltaKey = (
-  delta: MutationDelta,
-  key: string
-): boolean => delta.reset === true
-  || delta.changes.has(key)
-
-const collectChangeIds = (
-  change: MutationChange | undefined
-): readonly string[] | 'all' | undefined => {
-  if (!change) {
-    return undefined
-  }
-
-  if (change.ids !== undefined) {
-    return change.ids
-  }
-
-  if (change.paths === 'all') {
-    return 'all'
-  }
-
-  if (change.paths) {
-    return Object.keys(change.paths)
-  }
-
-  return undefined
-}
-
 const compileChangedMatcher = <
   TInput extends {
     delta: MutationDelta
@@ -338,145 +292,12 @@ const compileChangedMatcher = <
   TState,
   TPhaseName extends string
 >(
-  changed:
-    | ProjectionChangedKeys
-    | ((context: ProjectionValueFieldSyncContext<TInput, TState, TPhaseName>) => boolean)
-    | undefined
+  changed: ((context: ProjectionValueFieldSyncContext<TInput, TState, TPhaseName>) => boolean) | undefined
 ): CompiledChangedMatcher<TInput, TState, TPhaseName> | undefined => {
   if (!changed) {
     return undefined
   }
-
-  if (typeof changed === 'function') {
-    return changed
-  }
-
-  const keys = [...changed.keys]
-  return (context) => keys.some((key) => hasDeltaKey(context.dirty.delta, key))
-}
-
-const collectPatchIds = (
-  delta: MutationDelta,
-  keys: readonly string[] | undefined
-): {
-  hit: boolean
-  ids: Set<string> | 'all'
-} => {
-  let hit = false
-  const ids = new Set<string>()
-  for (const key of keys ?? []) {
-    const change = delta.changes.get(key)
-    if (change === undefined) {
-      continue
-    }
-
-    hit = true
-    const touched = collectChangeIds(change)
-    if (touched === 'all') {
-      return {
-        hit: true,
-        ids: 'all'
-      }
-    }
-
-    touched?.forEach((id) => {
-      ids.add(id)
-    })
-  }
-
-  return {
-    hit,
-    ids
-  }
-}
-
-const compilePatchBuilder = <
-  TInput extends {
-    delta: MutationDelta
-  },
-  TState,
-  TPhaseName extends string,
-  TKey extends string | number,
-  TValue
->(
-  patch:
-    | ProjectionFamilyPatchKeys
-    | ((context: ProjectionValueFieldSyncContext<TInput, TState, TPhaseName> & {
-        previous: ProjectionFamilySnapshot<TKey, TValue>
-        next: ProjectionFamilySnapshot<TKey, TValue>
-      }) => ProjectionFamilyPatch<TKey> | 'replace' | 'skip')
-    | undefined
-): CompiledFamilyPatchBuilder<TInput, TState, TPhaseName, TKey, TValue> | undefined => {
-  if (!patch) {
-    return undefined
-  }
-
-  if (typeof patch === 'function') {
-    return patch
-  }
-
-  const createKeys = [...(patch.create ?? [])]
-  const updateKeys = [...(patch.update ?? [])]
-  const removeKeys = [...(patch.remove ?? [])]
-  const orderKeys = [...(patch.order ?? [])]
-
-  return (context) => {
-    const delta = context.dirty.delta
-    if (delta.reset === true) {
-      return 'replace'
-    }
-
-    const created = collectPatchIds(delta, createKeys)
-    if (created.ids === 'all') {
-      return 'replace'
-    }
-    const updated = collectPatchIds(delta, updateKeys)
-    if (updated.ids === 'all') {
-      return 'replace'
-    }
-    const removed = collectPatchIds(delta, removeKeys)
-    if (removed.ids === 'all') {
-      return 'replace'
-    }
-    const order = orderKeys.some((key) => delta.changes.has(key))
-
-    if (!created.hit && !updated.hit && !removed.hit && !order) {
-      return 'skip'
-    }
-
-    const set = new Set<TKey>()
-    created.ids.forEach((id) => {
-      set.add(id as TKey)
-    })
-    updated.ids.forEach((id) => {
-      set.add(id as TKey)
-    })
-
-    const remove = new Set<TKey>()
-    removed.ids.forEach((id) => {
-      const key = id as TKey
-      remove.add(key)
-      set.delete(key)
-    })
-
-    return {
-      ...(order
-        ? {
-            order: true as const
-          }
-        : {}),
-      ...(set.size > 0
-        ? {
-            set: [...set]
-          }
-        : {}),
-      ...(remove.size > 0
-        ? {
-            remove: [...remove]
-          }
-        : {})
-    }
-  }
+  return changed
 }
 
 const normalizeFamilySnapshot = <TKey extends string | number, TValue>(
@@ -540,11 +361,10 @@ const compileFieldChanged = <
   TPhaseName extends string
 >(input: {
   field: ProjectionSurfaceField<TInput, TState, TPhaseName>
-  patch?: ProjectionFamilyPatchKeys | CompiledFamilyPatchBuilder<TInput, TState, TPhaseName, any, any>
+  patch?: CompiledFamilyPatchBuilder<TInput, TState, TPhaseName, any, any>
 }) => {
   const explicit = compileChangedMatcher(
     input.field.changed as
-      | ProjectionChangedKeys
       | ((context: ProjectionValueFieldSyncContext<TInput, TState, TPhaseName>) => boolean)
       | undefined
   )
@@ -552,19 +372,7 @@ const compileFieldChanged = <
     return explicit
   }
 
-  if (!input.patch || typeof input.patch === 'function') {
-    return undefined
-  }
-
-  const keys = [
-    ...(input.patch.create ?? []),
-    ...(input.patch.update ?? []),
-    ...(input.patch.remove ?? []),
-    ...(input.patch.order ?? [])
-  ]
-  return compileChangedMatcher({
-    keys
-  })
+  return undefined
 }
 
 const createSurfaceStore = <
@@ -630,16 +438,10 @@ const createSurfaceStore = <
           initial,
           isEqual: field.isEqual as ((left: unknown, right: unknown) => boolean) | undefined
         })
-        const patch = typeof field.patch === 'function'
-          ? field.patch as CompiledFamilyPatchBuilder<TInput, TState, TPhaseName, string, unknown>
-          : compilePatchBuilder(
-              field.patch as ProjectionFamilyPatchKeys | undefined
-            ) as CompiledFamilyPatchBuilder<TInput, TState, TPhaseName, string, unknown> | undefined
+        const patch = field.patch as CompiledFamilyPatchBuilder<TInput, TState, TPhaseName, string, unknown> | undefined
         const changed = compileFieldChanged({
           field,
-          patch: typeof field.patch === 'function'
-            ? patch
-            : field.patch
+          patch
         })
         let previous = initial
 

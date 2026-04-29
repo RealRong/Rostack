@@ -6,6 +6,7 @@ import type {
   NodeId
 } from '@whiteboard/core/types'
 import type { Input } from '../contracts/editor'
+import { createWhiteboardMutationDelta } from '../mutation/delta'
 import { createEmptyDocumentSnapshot } from '../runtime/state'
 
 export const createEmptyRuntimeInputDelta = (): Input['runtime']['delta'] => ({
@@ -90,7 +91,7 @@ export const createEmptyInput = (): Input => ({
     },
     delta: createEmptyRuntimeInputDelta()
   },
-  delta: {
+  delta: createWhiteboardMutationDelta({
     changes: EMPTY_MUTATION_CHANGE_MAP
-  }
+  })
 })

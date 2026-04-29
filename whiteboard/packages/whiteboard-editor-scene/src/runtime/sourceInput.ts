@@ -16,6 +16,9 @@ import type {
   MindmapPreview,
   RuntimeInputDelta
 } from '../contracts/editor'
+import {
+  createWhiteboardMutationDelta
+} from '../mutation/delta'
 import type {
   EditorSceneSourceChange,
   EditorSceneSourceSnapshot
@@ -368,7 +371,7 @@ export const createSceneInput = (input: {
     clock: input.source.clock,
     delta: input.runtimeDelta
   },
-  delta: input.delta
+  delta: createWhiteboardMutationDelta(input.delta)
 })
 
 export const readSourceMutationDelta = (

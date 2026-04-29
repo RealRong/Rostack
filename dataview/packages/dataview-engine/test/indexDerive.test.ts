@@ -27,6 +27,7 @@ import {
   EMPTY_MUTATION_CHANGE_MAP,
   type MutationDelta
 } from '@shared/mutation'
+import { createDataviewMutationDelta } from '@dataview/engine/mutation/delta'
 
 const TITLE_FIELD_ID = 'title'
 const FIELD_STATUS = 'status'
@@ -152,7 +153,7 @@ const createDocument = (input = {}) => {
 
 const createDelta = (
   delta: Partial<MutationDelta> = {}
-): MutationDelta => ({
+): MutationDelta => createDataviewMutationDelta({
   changes: EMPTY_MUTATION_CHANGE_MAP,
   ...delta
 })

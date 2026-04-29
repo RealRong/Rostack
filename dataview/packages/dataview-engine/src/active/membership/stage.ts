@@ -1,4 +1,5 @@
 import type {
+  FieldId,
   View,
   ViewId
 } from '@dataview/core/types'
@@ -7,9 +8,6 @@ import type {
   IndexDelta,
   IndexState
 } from '@dataview/engine/active/index/contracts'
-import type {
-  MutationDelta
-} from '@shared/mutation'
 import {
   syncMembershipState
 } from '@dataview/engine/active/membership/derive'
@@ -30,23 +28,34 @@ import type {
 import type {
   SectionId
 } from '@dataview/engine/contracts/shared'
+import type {
+  DataviewMutationDelta
+} from '@dataview/engine/mutation/delta'
 import { now } from '@dataview/engine/runtime/clock'
-import {
-  hasActiveViewChange,
-  hasField,
-  hasFieldSchemaChange,
-  hasQueryDeltaChanges,
-  hasViewQueryChange,
-  readTouchedFields
-} from '../projection/dirty'
 import {
   createActiveStageMetrics
 } from '../projection/metrics'
 
+const hasField = (
+  fields: ReadonlySet<FieldId> | 'all',
+  fieldId: FieldId
+): boolean => fields === 'all'
+  ? true
+  : fields.has(fieldId)
+
+const hasQueryDeltaChanges = (
+  delta: QueryPhaseDelta
+): boolean => Boolean(
+  delta.rebuild
+  || delta.orderChanged
+  || delta.added.length
+  || delta.removed.length
+)
+
 const resolveMembershipAction = (input: {
   activeViewId: ViewId
   previousViewId?: ViewId
-  delta: MutationDelta
+  delta: DataviewMutationDelta
   view: View
   previous?: MembershipPhaseState
   queryDelta: QueryPhaseDelta
@@ -55,7 +64,7 @@ const resolveMembershipAction = (input: {
   if (
     !input.previous
     || input.previousViewId !== input.activeViewId
-    || hasActiveViewChange(input.delta)
+    || input.delta.document.activeViewChanged()
   ) {
     return 'rebuild'
   }
@@ -72,16 +81,14 @@ const resolveMembershipAction = (input: {
   }
 
   if (
-    hasViewQueryChange(input.delta, input.activeViewId, ['group'])
-    || hasFieldSchemaChange(input.delta, groupField)
-    || input.delta.reset === true
-    || input.delta.changes.has('record.create')
-    || input.delta.changes.has('record.delete')
+    input.delta.view.query(input.activeViewId).changed('group')
+    || input.delta.field.schema.changed(groupField)
+    || input.delta.recordSetChanged()
   ) {
     return 'rebuild'
   }
 
-  const touchedFields = readTouchedFields(input.delta)
+  const touchedFields = input.delta.field.touchedIds()
   if (hasField(touchedFields, groupField)) {
     return 'sync'
   }
@@ -151,7 +158,7 @@ const deriveMembershipState = (input: {
   query: QueryPhaseState
   queryDelta: QueryPhaseDelta
   previous?: MembershipPhaseState
-  delta: MutationDelta
+  delta: DataviewMutationDelta
   index: IndexState
   indexDelta?: IndexDelta
 }) => {
@@ -188,7 +195,7 @@ const deriveMembershipState = (input: {
 export const runMembershipStage = (input: {
   activeViewId: ViewId
   previousViewId?: ViewId
-  delta: MutationDelta
+  delta: DataviewMutationDelta
   view: View
   query: QueryPhaseState
   queryDelta: QueryPhaseDelta

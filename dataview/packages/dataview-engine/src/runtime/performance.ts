@@ -1,7 +1,6 @@
 import { metrics } from '@shared/core'
 import type {
   CommitRecord,
-  MutationChange,
   MutationDelta
 } from '@shared/mutation'
 import type {
@@ -15,165 +14,14 @@ import type {
   ViewStageName
 } from '@dataview/engine/contracts/performance'
 import {
-  readTouchedFields,
-  readTouchedRecords,
-  readTouchedViews
-} from '@dataview/engine/active/projection/dirty'
-
-const readIds = (
-  change: MutationChange | undefined
-): readonly string[] | 'all' | undefined => {
-  if (change?.ids !== undefined) {
-    return change.ids
-  }
-
-  if (change?.paths === 'all') {
-    return 'all'
-  }
-
-  return change?.paths
-    ? Object.keys(change.paths)
-    : undefined
-}
-
-const readPaths = (
-  change: MutationChange | undefined
-): Readonly<Record<string, readonly string[] | 'all'>> | 'all' | undefined => (
-  change?.paths
-)
-
-const hasChange = (
-  delta: MutationDelta,
-  key: string
-): boolean => delta.changes.has(key)
+  createDataviewMutationDelta
+} from '@dataview/engine/mutation/delta'
 
 type PendingCommitTrace = Omit<CommitTrace, 'id'>
 
-const countIds = (
-  ids: readonly string[] | 'all' | undefined
-): number | 'all' | undefined => ids === 'all'
-  ? 'all'
-  : ids?.length
-
-const countPaths = (
-  paths: Record<string, readonly string[] | 'all'> | 'all' | undefined
-): number | 'all' | undefined => paths === 'all'
-  ? 'all'
-  : paths
-    ? Object.keys(paths).length
-    : undefined
-
-const toTouchedCount = <T,>(
-  value: ReadonlySet<T> | 'all'
-): number | 'all' => value === 'all'
-  ? 'all'
-  : value.size
-
 export const summarizeDelta = (
   delta: MutationDelta
-): TraceDeltaSummary => {
-  const recordCreate = delta.changes.get('record.create')
-  const recordTitle = delta.changes.get('record.title')
-  const recordType = delta.changes.get('record.type')
-  const recordMeta = delta.changes.get('record.meta')
-  const recordDelete = delta.changes.get('record.delete')
-  const recordValues = delta.changes.get('record.values')
-  const fieldCreate = delta.changes.get('field.create')
-  const fieldDelete = delta.changes.get('field.delete')
-  const fieldSchema = delta.changes.get('field.schema')
-  const fieldMeta = delta.changes.get('field.meta')
-  const viewCreate = delta.changes.get('view.create')
-  const viewQuery = delta.changes.get('view.query')
-  const viewLayout = delta.changes.get('view.layout')
-  const viewCalc = delta.changes.get('view.calc')
-  const viewDelete = delta.changes.get('view.delete')
-  const activeView = delta.changes.get('document.activeViewId')
-  const externalVersion = delta.changes.get('external.version')
-
-  const facts: Array<{
-    kind: string
-    count?: number
-  }> = []
-  const pushFact = (
-    kind: string,
-    count: number | 'all' | undefined
-  ) => {
-    if (count === undefined) {
-      return
-    }
-
-    facts.push({
-      kind,
-      ...(typeof count === 'number'
-        ? { count }
-        : {})
-    })
-  }
-
-  pushFact('record.insert', countIds(readIds(recordCreate)))
-  pushFact('record.title', countIds(readIds(recordTitle)))
-  pushFact('record.type', countIds(readIds(recordType)))
-  pushFact('record.meta', countIds(readIds(recordMeta)))
-  pushFact('record.remove', countIds(readIds(recordDelete)))
-  pushFact('record.value', countPaths(readPaths(recordValues)))
-  pushFact('field.insert', countIds(readIds(fieldCreate)))
-  pushFact('field.remove', countIds(readIds(fieldDelete)))
-  pushFact('field.schema', countIds(readIds(fieldSchema)))
-  pushFact('field.meta', countIds(readIds(fieldMeta)))
-  pushFact('view.insert', countIds(readIds(viewCreate)))
-  pushFact('view.change', countIds(readIds(viewQuery)))
-  pushFact('view.layout', countIds(readIds(viewLayout)))
-  pushFact('view.calc', countIds(readIds(viewCalc)))
-  pushFact('view.remove', countIds(readIds(viewDelete)))
-  pushFact('activeView.set', activeView ? 1 : undefined)
-  pushFact('external.version', externalVersion ? 1 : undefined)
-  pushFact('reset', delta.reset === true ? 1 : undefined)
-
-  return {
-    summary: {
-      records: delta.reset === true
-        || hasChange(delta, 'record.create')
-        || hasChange(delta, 'record.title')
-        || hasChange(delta, 'record.type')
-        || hasChange(delta, 'record.meta')
-        || hasChange(delta, 'record.delete')
-        || hasChange(delta, 'record.values'),
-      fields: delta.reset === true
-        || hasChange(delta, 'field.create')
-        || hasChange(delta, 'field.delete')
-        || hasChange(delta, 'field.schema')
-        || hasChange(delta, 'field.meta'),
-      views: delta.reset === true
-        || hasChange(delta, 'view.create')
-        || hasChange(delta, 'view.query')
-        || hasChange(delta, 'view.layout')
-        || hasChange(delta, 'view.calc')
-        || hasChange(delta, 'view.delete'),
-      activeView: delta.reset === true
-        || hasChange(delta, 'document.activeViewId'),
-      external: hasChange(delta, 'external.version'),
-      indexes: delta.reset === true
-        || hasChange(delta, 'record.create')
-        || hasChange(delta, 'record.title')
-        || hasChange(delta, 'record.type')
-        || hasChange(delta, 'record.meta')
-        || hasChange(delta, 'record.delete')
-        || hasChange(delta, 'record.values')
-        || hasChange(delta, 'field.create')
-        || hasChange(delta, 'field.delete')
-        || hasChange(delta, 'field.schema')
-        || hasChange(delta, 'field.meta')
-        || hasChange(delta, 'view.query')
-        || hasChange(delta, 'view.calc')
-    },
-    facts,
-    entities: {
-      touchedRecordCount: toTouchedCount(readTouchedRecords(delta)),
-      touchedFieldCount: toTouchedCount(readTouchedFields(delta)),
-      touchedViewCount: toTouchedCount(readTouchedViews(delta))
-    }
-  }
-}
+): TraceDeltaSummary => createDataviewMutationDelta(delta).summary()
 
 export const toPerformanceKind = (
   commit: Pick<CommitRecord<any, any, any, any>, 'kind' | 'origin'>

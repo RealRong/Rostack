@@ -1,11 +1,9 @@
 export type {
-  ProjectionChangedKeys,
   ProjectionContext,
   ProjectionCreateOptions,
   ProjectionDirty,
   ProjectionFamilyField,
   ProjectionFamilyPatch,
-  ProjectionFamilyPatchKeys,
   ProjectionFamilySnapshot,
   ProjectionPhase,
   ProjectionPhaseSpec,

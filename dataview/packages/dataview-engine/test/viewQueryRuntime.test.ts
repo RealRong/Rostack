@@ -6,6 +6,8 @@ import { createIndexState } from '@dataview/engine/active/index/runtime'
 import { runQueryStage } from '@dataview/engine/active/query/stage'
 import { createDocumentReadContext } from '@dataview/engine/document/reader'
 import { entityTable } from '@shared/core'
+import { EMPTY_MUTATION_CHANGE_MAP } from '@shared/mutation'
+import { createDataviewMutationDelta } from '@dataview/engine/mutation/delta'
 
 const VIEW_ID = 'view_table'
 const FIELD_STATUS = 'status'
@@ -144,6 +146,11 @@ const createView = (input = {}) => {
   }
 }
 
+const toDelta = (delta = {}) => createDataviewMutationDelta({
+  changes: EMPTY_MUTATION_CHANGE_MAP,
+  ...delta
+})
+
 test('engine.active.query stage reuses previous state when persisted filter change is ineffective', () => {
   const previousView = createView()
   const nextView = createView({
@@ -166,7 +173,7 @@ test('engine.active.query stage reuses previous state when persisted filter chan
     reader: context.reader,
     activeViewId: previousView.id,
     previousViewId: previousView.id,
-    delta: {},
+    delta: toDelta(),
     view: previousView,
     plan: previousPlan,
     index
@@ -176,7 +183,7 @@ test('engine.active.query stage reuses previous state when persisted filter chan
     reader: context.reader,
     activeViewId: nextView.id,
     previousViewId: nextView.id,
-    delta: {
+    delta: toDelta({
       changes: {
         'view.query': {
           ids: [nextView.id],
@@ -185,7 +192,7 @@ test('engine.active.query stage reuses previous state when persisted filter chan
           }
         }
       }
-    },
+    }),
     view: nextView,
     plan: nextPlan,
     previousPlan,
@@ -245,7 +252,7 @@ test('engine.active.query reuses matched and ordered ids on filter-only sync', (
     reader: context.reader,
     activeViewId: previousView.id,
     previousViewId: previousView.id,
-    delta: {},
+    delta: toDelta(),
     view: previousView,
     plan: previousPlan,
     index
@@ -255,7 +262,7 @@ test('engine.active.query reuses matched and ordered ids on filter-only sync', (
     reader: context.reader,
     activeViewId: nextView.id,
     previousViewId: nextView.id,
-    delta: {
+    delta: toDelta({
       changes: {
         'view.query': {
           ids: [nextView.id],
@@ -264,7 +271,7 @@ test('engine.active.query reuses matched and ordered ids on filter-only sync', (
           }
         }
       }
-    },
+    }),
     view: nextView,
     plan: nextPlan,
     previousPlan,

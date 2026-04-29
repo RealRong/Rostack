@@ -1,4 +1,5 @@
 import type {
+  FieldId,
   RecordId,
   View,
   ViewId
@@ -15,9 +16,6 @@ import type {
 import type {
   IndexState
 } from '@dataview/engine/active/index/contracts'
-import type {
-  MutationDelta
-} from '@shared/mutation'
 import {
   readSelectionIdSet
 } from '@dataview/engine/active/shared/selection'
@@ -32,48 +30,111 @@ import {
 import type {
   DocumentReader
 } from '@dataview/engine/document/reader'
+import type {
+  DataviewMutationDelta
+} from '@dataview/engine/mutation/delta'
 import { now } from '@dataview/engine/runtime/clock'
-import {
-  hasActiveViewChange,
-  hasFieldSchemaChange,
-  hasRecordSetChange,
-  hasQueryInputChanges,
-  hasViewQueryChange,
-  readTouchedFields
-} from '../projection/dirty'
 import {
   createActiveStageMetrics
 } from '../projection/metrics'
 
 const EMPTY_RECORD_IDS = [] as readonly RecordId[]
 
+const hasAnyTouchedField = (
+  fields: ReadonlySet<FieldId> | 'all',
+  candidates: readonly FieldId[]
+): boolean => fields === 'all'
+  ? candidates.length > 0
+  : setCore.intersectsValues(candidates, fields)
+
+const hasQuerySchemaChanges = (input: {
+  delta: DataviewMutationDelta
+  plan: QueryPlan
+}): boolean => {
+  const schemaFields = input.delta.field.schema.touchedIds()
+  if (schemaFields === 'all') {
+    return true
+  }
+  if (schemaFields.size === 0) {
+    return false
+  }
+
+  if (
+    hasAnyTouchedField(schemaFields, input.plan.watch.filter)
+    || hasAnyTouchedField(schemaFields, input.plan.watch.sort)
+  ) {
+    return true
+  }
+
+  if (input.plan.watch.search === 'all') {
+    return true
+  }
+
+  return hasAnyTouchedField(schemaFields, input.plan.watch.search)
+}
+
+const hasQueryFieldChanges = (input: {
+  delta: DataviewMutationDelta
+  plan: QueryPlan
+}): boolean => {
+  const touchedFields = input.delta.field.touchedIds()
+  const schemaFields = input.delta.field.schema.touchedIds()
+
+  if (touchedFields === 'all') {
+    return true
+  }
+
+  if (
+    hasAnyTouchedField(touchedFields, input.plan.watch.filter)
+    || hasAnyTouchedField(touchedFields, input.plan.watch.sort)
+  ) {
+    return true
+  }
+
+  if (input.plan.watch.search === 'all') {
+    return touchedFields.size > 0
+      || schemaFields === 'all'
+      || schemaFields.size > 0
+  }
+
+  return hasAnyTouchedField(touchedFields, input.plan.watch.search)
+}
+
+const hasQueryInputChanges = (input: {
+  delta: DataviewMutationDelta
+  plan: QueryPlan
+}): boolean => input.delta.recordSetChanged()
+  || hasQuerySchemaChanges(input)
+  || hasQueryFieldChanges(input)
+
 const hasSortInputChanges = (input: {
   activeViewId: ViewId
-  delta: MutationDelta
+  delta: DataviewMutationDelta
   plan: QueryPlan
 }): boolean => {
   if (
-    hasRecordSetChange(input.delta)
-    || hasViewQueryChange(input.delta, input.activeViewId, ['sort'])
+    input.delta.recordSetChanged()
+    || input.delta.view.query(input.activeViewId).changed('sort')
   ) {
     return true
   }
 
   for (const fieldId of input.plan.watch.sort) {
-    if (hasFieldSchemaChange(input.delta, fieldId)) {
+    if (input.delta.field.schema.changed(fieldId)) {
       return true
     }
   }
 
-  const changedFields = readTouchedFields(input.delta)
-  return changedFields === 'all'
-    || setCore.intersectsValues(input.plan.watch.sort, changedFields)
+  return hasAnyTouchedField(
+    input.delta.field.touchedIds(),
+    input.plan.watch.sort
+  )
 }
 
 const resolveQueryAction = (input: {
   activeViewId: ViewId
   previousViewId?: ViewId
-  delta: MutationDelta
+  delta: DataviewMutationDelta
   previousPlan?: QueryPlan
   plan: QueryPlan
   previous?: QueryPhaseState
@@ -81,7 +142,7 @@ const resolveQueryAction = (input: {
   if (
     !input.previous
     || input.previousViewId !== input.activeViewId
-    || hasActiveViewChange(input.delta)
+    || input.delta.document.activeViewChanged()
   ) {
     return 'rebuild'
   }
@@ -102,7 +163,7 @@ const resolveQueryAction = (input: {
 const resolveQueryReuse = (input: {
   action: PhaseAction
   activeViewId: ViewId
-  delta: MutationDelta
+  delta: DataviewMutationDelta
   view: View
   plan: QueryPlan
   previous?: QueryPhaseState
@@ -125,7 +186,7 @@ const resolveQueryReuse = (input: {
   const canReuseOrdered = canReuseMatched
     && (
       input.view.sort.rules.ids.length > 0
-      || !hasViewQueryChange(input.delta, input.activeViewId, ['order'])
+      || !input.delta.view.query(input.activeViewId).changed('order')
     )
 
   if (!canReuseMatched && !canReuseOrdered) {
@@ -150,7 +211,7 @@ export const runQueryStage = (input: {
   reader: DocumentReader
   activeViewId: ViewId
   previousViewId?: ViewId
-  delta: MutationDelta
+  delta: DataviewMutationDelta
   view: View
   plan: QueryPlan
   index: IndexState

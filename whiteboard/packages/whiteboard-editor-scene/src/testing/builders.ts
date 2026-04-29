@@ -1,4 +1,4 @@
-import { EMPTY_MUTATION_CHANGE_MAP, type MutationDelta } from '@shared/mutation'
+import { EMPTY_MUTATION_CHANGE_MAP } from '@shared/mutation'
 import type {
   EdgeId,
   NodeId,
@@ -9,6 +9,10 @@ import type {
   RuntimeInputDelta,
   TextMeasure
 } from '../contracts/editor'
+import {
+  createWhiteboardMutationDelta,
+  type WhiteboardMutationDelta
+} from '../mutation/delta'
 import { createEmptyRuntimeInputDelta } from './input'
 
 export type EditorRuntimeDeltaFlags = Partial<{
@@ -36,7 +40,7 @@ export const createEditorRuntimeDelta = (
 
 export const createMutationDelta = (input: {
   reset?: boolean
-} = {}): MutationDelta => ({
+} = {}): WhiteboardMutationDelta => createWhiteboardMutationDelta({
   ...(input.reset
     ? {
         reset: true

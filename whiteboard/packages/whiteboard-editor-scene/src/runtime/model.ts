@@ -475,14 +475,7 @@ export const createEditorSceneProjection = (input: {
         if (
           !(
             ctx.revision === 1
-            || ctx.input.delta.reset === true
-            || ctx.input.delta.changes.has('canvas.order')
-            || ctx.input.delta.changes.has('node.create')
-            || ctx.input.delta.changes.has('node.delete')
-            || ctx.input.delta.changes.has('edge.create')
-            || ctx.input.delta.changes.has('edge.delete')
-            || ctx.input.delta.changes.has('mindmap.create')
-            || ctx.input.delta.changes.has('mindmap.delete')
+            || ctx.input.delta.graph.affects.items()
           )
         ) {
           resetItemsPhaseDelta(ctx.state)

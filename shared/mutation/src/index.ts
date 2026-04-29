@@ -68,3 +68,22 @@ export {
   assertMutationFootprintList,
   isMutationFootprint
 } from './write'
+export type {
+  MutationPathCodec,
+  MutationSchema,
+  MutationSchemaEntry,
+  MutationSchemaId,
+  MutationSchemaPath,
+  TypedMutationDeltaContext
+} from './typed'
+export {
+  collectMutationTouchedIds,
+  coerceMutationDelta,
+  createTypedMutationDelta,
+  defineMutationSchema,
+  hasAnyMutationChange,
+  hasMutationChange,
+  readMutationChangeIds,
+  readMutationChangePaths,
+  readMutationChangePathsOf
+} from './typed'

@@ -16,9 +16,6 @@ import {
   type ProjectionPhaseTable,
   type ProjectionSurfaceTree
 } from '@shared/projection'
-import type {
-  MutationDelta
-} from '@shared/mutation'
 import {
   entityDelta,
   type EntityDelta
@@ -43,13 +40,11 @@ import {
 } from '@dataview/engine/active/plan'
 import {
   calculationFieldsChanged,
-  hasRecordSetChange,
-  readSchemaFields,
-  readTouchedFields,
-  readTouchedRecords,
-  readValueFields,
   sectionChanged
 } from '@dataview/engine/active/projection/dirty'
+import type {
+  DataviewMutationDelta
+} from '@dataview/engine/mutation/delta'
 import {
   runQueryStage
 } from '@dataview/engine/active/query/stage'
@@ -114,7 +109,7 @@ export type DataviewProjectionPhaseName =
 
 export interface DataviewProjectionInput {
   document: DataDoc
-  delta: MutationDelta
+  delta: DataviewMutationDelta
   runtime: {}
 }
 
@@ -228,7 +223,7 @@ const sameOrder = <T,>(
 )
 
 const hasDeltaChanges = (
-  delta: MutationDelta
+  delta: DataviewMutationDelta
 ): boolean => delta.reset === true
   || delta.changes.size > 0
 
@@ -619,11 +614,11 @@ export const createDataviewProjection = () => createProjection({
       ctx.state.document.activeViewId = read.activeViewId
       ctx.state.document.view = read.activeView
       ctx.state.document.plan = plan
-      ctx.dirty.touchedRecords = readTouchedRecords(ctx.dirty.delta)
-      ctx.dirty.touchedFields = readTouchedFields(ctx.dirty.delta)
-      ctx.dirty.valueFields = readValueFields(ctx.dirty.delta)
-      ctx.dirty.schemaFields = readSchemaFields(ctx.dirty.delta)
-      ctx.dirty.recordSetChanged = hasRecordSetChange(ctx.dirty.delta)
+      ctx.dirty.touchedRecords = ctx.dirty.delta.touched.records()
+      ctx.dirty.touchedFields = ctx.dirty.delta.touched.fields()
+      ctx.dirty.valueFields = ctx.dirty.delta.record.values.touchedFieldIds()
+      ctx.dirty.schemaFields = ctx.dirty.delta.field.schema.touchedIds()
+      ctx.dirty.recordSetChanged = ctx.dirty.delta.recordSetChanged()
 
       if (initial || planChanged || hasDeltaChanges(ctx.dirty.delta)) {
         ctx.phase.document.changed = true

@@ -5,34 +5,30 @@ import {
   trace
 } from '@shared/trace'
 import type {
-  MutationDelta
-} from '@shared/mutation'
-import type {
   SearchIndex
 } from '@dataview/engine/active/index/contracts'
 import type {
   FieldId,
   RecordId
 } from '@dataview/core/types'
-import {
-  readTouchedFields,
-  readTouchedRecords
-} from '@dataview/engine/active/projection/dirty'
+import type {
+  DataviewMutationDelta
+} from '@dataview/engine/mutation/delta'
 
 export const fullRebuildFrom = (
-  delta: MutationDelta
+  delta: DataviewMutationDelta
 ) => delta.reset === true
 
 export const touchedRecordCountOfDelta = (
-  delta: MutationDelta
+  delta: DataviewMutationDelta
 ): number | 'all' | undefined => trace.count(
-  readTouchedRecords(delta) as ReadonlySet<RecordId> | 'all'
+  delta.touched.records() as ReadonlySet<RecordId> | 'all'
 )
 
 export const touchedFieldCountOfDelta = (
-  delta: MutationDelta
+  delta: DataviewMutationDelta
 ): number | 'all' | undefined => trace.count(
-  readTouchedFields(delta) as ReadonlySet<FieldId> | 'all'
+  delta.touched.fields() as ReadonlySet<FieldId> | 'all'
 )
 
 export const searchEntryCountOf = (

@@ -67,6 +67,47 @@ export const touched = <TKey>(
   ...delta.removed
 ])
 
+export const appendTouched = <TKey>(
+  target: Set<TKey>,
+  delta: IdDelta<TKey>
+): Set<TKey> => {
+  delta.added.forEach((key) => {
+    target.add(key)
+  })
+  delta.updated.forEach((key) => {
+    target.add(key)
+  })
+  delta.removed.forEach((key) => {
+    target.add(key)
+  })
+
+  return target
+}
+
+export const touchedMany = <TKey>(
+  ...deltas: readonly IdDelta<TKey>[]
+): ReadonlySet<TKey> => {
+  const result = new Set<TKey>()
+  deltas.forEach((delta) => {
+    appendTouched(result, delta)
+  })
+  return result
+}
+
+export const hasAnyOf = <TKey>(
+  ...deltas: readonly IdDelta<TKey>[]
+): boolean => deltas.some((delta) => hasAny(delta))
+
+export const union = <TKey>(
+  ...deltas: readonly IdDelta<TKey>[]
+): IdDelta<TKey> => {
+  const result = create<TKey>()
+  deltas.forEach((delta) => {
+    merge(result, delta)
+  })
+  return result
+}
+
 export const clone = <TKey>(
   delta: IdDelta<TKey>
 ): IdDelta<TKey> => ({
@@ -97,6 +138,25 @@ export const assign = <TKey>(
   return target
 }
 
+export const merge = <TKey>(
+  target: IdDelta<TKey>,
+  ...sources: readonly IdDelta<TKey>[]
+): IdDelta<TKey> => {
+  sources.forEach((source) => {
+    source.added.forEach((key) => {
+      add(target, key)
+    })
+    source.updated.forEach((key) => {
+      update(target, key)
+    })
+    source.removed.forEach((key) => {
+      remove(target, key)
+    })
+  })
+
+  return target
+}
+
 export const idDelta = {
   create,
   reset,
@@ -105,6 +165,11 @@ export const idDelta = {
   remove,
   hasAny,
   touched,
+  appendTouched,
+  touchedMany,
+  hasAnyOf,
+  union,
   clone,
-  assign
+  assign,
+  merge
 } as const

@@ -48,21 +48,14 @@ import type {
   NormalizedIndexDemand
 } from '@dataview/engine/active/index/contracts'
 import type {
-  MutationDelta
-} from '@shared/mutation'
+  DataviewMutationDelta
+} from '@dataview/engine/mutation/delta'
 import {
   now
 } from '@dataview/engine/runtime/clock'
 import {
   createDocumentReadContext
 } from '@dataview/engine/document/reader'
-import {
-  hasRecordSetChange,
-  readSchemaFields,
-  readTouchedFields,
-  readTouchedRecords,
-  readValueFields
-} from '@dataview/engine/active/projection/dirty'
 import {
   createCalculationTransition,
   createMembershipTransition
@@ -86,13 +79,16 @@ const createIndexReadContext = (
 
 const createIndexDeriveContext = (
   document: DataDoc,
-  delta: MutationDelta
+  delta: DataviewMutationDelta
 ): IndexDeriveContext => {
-  const touchedRecords = readTouchedRecords(delta)
-  const touchedFields = readTouchedFields(delta)
-  const schemaFields = readSchemaFields(delta)
-  const valueFields = readValueFields(delta)
-  const recordSetChanged = hasRecordSetChange(delta)
+  const touchedRecords = delta.touched.records()
+  const touchedFields = delta.touched.fields()
+  const schemaTouched = delta.field.schema.touchedIds()
+  const schemaFields = schemaTouched === 'all'
+    ? new Set(document.fields.ids)
+    : schemaTouched
+  const valueFields = delta.record.values.touchedFieldIds()
+  const recordSetChanged = delta.recordSetChanged()
 
   return {
     ...createIndexReadContext(document),
@@ -148,7 +144,7 @@ export const deriveIndex = (input: {
   previous: IndexState
   previousDemand: NormalizedIndexDemand
   document: DataDoc
-  delta: MutationDelta
+  delta: DataviewMutationDelta
   demand?: NormalizedIndexDemand
 }): IndexDeriveResult => {
   const previous = input.previous

@@ -193,18 +193,6 @@ const setGroupItems = (
   addSignatureEntry(state, groupId, signature)
 }
 
-const collectTouchedIds = <TId extends string>(
-  delta: {
-    added: ReadonlySet<TId>
-    updated: ReadonlySet<TId>
-    removed: ReadonlySet<TId>
-  }
-): ReadonlySet<TId> => new Set<TId>([
-  ...delta.added,
-  ...delta.updated,
-  ...delta.removed
-])
-
 const collectMindmapNodes = (
   document: Document | undefined,
   mindmapIds: ReadonlySet<MindmapId>

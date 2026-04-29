@@ -56,37 +56,6 @@ const forEachSceneItem = (
   })
 }
 
-const appendTouchedIds = <TId extends string>(
-  target: Set<TId>,
-  delta: {
-    added: ReadonlySet<TId>
-    updated: ReadonlySet<TId>
-    removed: ReadonlySet<TId>
-  }
-) => {
-  delta.added.forEach((id) => {
-    target.add(id)
-  })
-  delta.updated.forEach((id) => {
-    target.add(id)
-  })
-  delta.removed.forEach((id) => {
-    target.add(id)
-  })
-}
-
-const hasAnyIdChanges = <TId,>(
-  ...changes: Array<{
-    added: ReadonlySet<TId>
-    updated: ReadonlySet<TId>
-    removed: ReadonlySet<TId>
-  }>
-): boolean => changes.some((change) => (
-  change.added.size > 0
-  || change.updated.size > 0
-  || change.removed.size > 0
-))
-
 const toEdgeIdFromSceneItemKey = (
   key: SceneItemKey
 ): EdgeId | undefined => {
@@ -803,23 +772,22 @@ const readActiveEdgeIds = (
 
 const collectNodeRenderIds = (
   working: WorkingState
-): ReadonlySet<NodeId> => {
-  const touched = new Set<NodeId>()
-  appendTouchedIds(touched, working.dirty.graph.node.lifecycle)
-  appendTouchedIds(touched, working.dirty.graph.node.geometry)
-  appendTouchedIds(touched, working.dirty.graph.node.content)
-  appendTouchedIds(touched, working.dirty.graph.node.owner)
-  appendTouchedIds(touched, working.delta.ui.node)
-  return touched
-}
+): ReadonlySet<NodeId> => idDelta.touchedMany(
+  working.dirty.graph.node.lifecycle,
+  working.dirty.graph.node.geometry,
+  working.dirty.graph.node.content,
+  working.dirty.graph.node.owner,
+  working.delta.ui.node
+)
 
 const collectStaticsEdgeIds = (
   working: WorkingState
 ): ReadonlySet<EdgeId> => {
-  const edgeIds = new Set<EdgeId>()
-  appendTouchedIds(edgeIds, working.dirty.graph.edge.lifecycle)
-  appendTouchedIds(edgeIds, working.dirty.graph.edge.route)
-  appendTouchedIds(edgeIds, working.dirty.graph.edge.style)
+  const edgeIds = new Set<EdgeId>(idDelta.touchedMany(
+    working.dirty.graph.edge.lifecycle,
+    working.dirty.graph.edge.route,
+    working.dirty.graph.edge.style
+  ))
   working.delta.items.change?.set?.forEach((key) => {
     const edgeId = toEdgeIdFromSceneItemKey(key)
     if (edgeId) {
@@ -838,23 +806,21 @@ const collectStaticsEdgeIds = (
 const collectLabelEdgeIds = (
   working: WorkingState
 ): ReadonlySet<EdgeId> => {
-  const edgeIds = new Set<EdgeId>()
-  appendTouchedIds(edgeIds, working.dirty.graph.edge.lifecycle)
-  appendTouchedIds(edgeIds, working.dirty.graph.edge.route)
-  appendTouchedIds(edgeIds, working.dirty.graph.edge.labels)
-  appendTouchedIds(edgeIds, working.delta.ui.edge)
-  return edgeIds
+  return idDelta.touchedMany(
+    working.dirty.graph.edge.lifecycle,
+    working.dirty.graph.edge.route,
+    working.dirty.graph.edge.labels,
+    working.delta.ui.edge
+  )
 }
 
 const collectMaskEdgeIds = (
   working: WorkingState
-): ReadonlySet<EdgeId> => {
-  const edgeIds = new Set<EdgeId>()
-  appendTouchedIds(edgeIds, working.dirty.graph.edge.lifecycle)
-  appendTouchedIds(edgeIds, working.dirty.graph.edge.route)
-  appendTouchedIds(edgeIds, working.dirty.graph.edge.labels)
-  return edgeIds
-}
+): ReadonlySet<EdgeId> => idDelta.touchedMany(
+  working.dirty.graph.edge.lifecycle,
+  working.dirty.graph.edge.route,
+  working.dirty.graph.edge.labels
+)
 
 const collectActiveEdgeIds = (input: {
   working: WorkingState
@@ -1754,7 +1720,7 @@ export const patchRenderState = (input: {
     reset: input.reset,
     node: (
       input.reset
-      || hasAnyIdChanges(
+      || idDelta.hasAnyOf(
         input.working.dirty.graph.node.lifecycle,
         input.working.dirty.graph.node.geometry,
         input.working.dirty.graph.node.content,
@@ -1765,7 +1731,7 @@ export const patchRenderState = (input: {
     statics: (
       input.reset
       || input.working.delta.items.change !== undefined
-      || hasAnyIdChanges(
+      || idDelta.hasAnyOf(
         input.working.dirty.graph.edge.lifecycle,
         input.working.dirty.graph.edge.route,
         input.working.dirty.graph.edge.style
@@ -1773,7 +1739,7 @@ export const patchRenderState = (input: {
     ),
     active: (
       input.reset
-      || hasAnyIdChanges(
+      || idDelta.hasAnyOf(
         input.working.dirty.graph.edge.lifecycle,
         input.working.dirty.graph.edge.route,
         input.working.dirty.graph.edge.style,
@@ -1788,7 +1754,7 @@ export const patchRenderState = (input: {
     ),
     labels: (
       input.reset
-      || hasAnyIdChanges(
+      || idDelta.hasAnyOf(
         input.working.dirty.graph.edge.lifecycle,
         input.working.dirty.graph.edge.route,
         input.working.dirty.graph.edge.labels,
@@ -1801,7 +1767,7 @@ export const patchRenderState = (input: {
     ),
     masks: (
       input.reset
-      || hasAnyIdChanges(
+      || idDelta.hasAnyOf(
         input.working.dirty.graph.edge.lifecycle,
         input.working.dirty.graph.edge.route,
         input.working.dirty.graph.edge.labels
@@ -1809,7 +1775,7 @@ export const patchRenderState = (input: {
     ),
     overlay: (
       input.reset
-      || hasAnyIdChanges(
+      || idDelta.hasAnyOf(
         input.working.dirty.graph.edge.route,
         input.working.dirty.graph.edge.endpoints,
         input.working.dirty.graph.edge.box

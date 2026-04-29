@@ -53,8 +53,8 @@ import type {
   ProjectionTrace,
   Revision
 } from '@shared/projection'
-import type { MutationDelta } from '@shared/mutation'
 import { store } from '@shared/core'
+import type { WhiteboardMutationDelta } from '../mutation/delta'
 import type { Capture } from './capture'
 import type { IdDelta, SceneItemKey } from './delta'
 import type {
@@ -83,7 +83,7 @@ export interface Input {
     clock: ClockInput
     delta: RuntimeInputDelta
   }
-  delta: MutationDelta
+  delta: WhiteboardMutationDelta
 }
 
 export interface SceneViewSnapshot {

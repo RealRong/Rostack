@@ -35,6 +35,8 @@ import type {
   QueryPhaseState as QueryState
 } from '@dataview/engine/active/state'
 import { entityTable } from '@shared/core'
+import { EMPTY_MUTATION_CHANGE_MAP } from '@shared/mutation'
+import { createDataviewMutationDelta } from '@dataview/engine/mutation/delta'
 
 const FIELD_STATUS = 'status'
 const VIEW_ID = 'view_table'
@@ -171,6 +173,11 @@ const EMPTY_QUERY_DELTA = {
   orderChanged: false
 } as const
 
+const toDelta = (delta = {}) => createDataviewMutationDelta({
+  changes: EMPTY_MUTATION_CHANGE_MAP,
+  ...delta
+})
+
 test('publishSections uses deterministic item ids derived from section and record', () => {
   const view = createView()
   const document = createDocument({
@@ -181,7 +188,7 @@ test('publishSections uses deterministic item ids derived from section and recor
   const membership = runMembershipStage({
     activeViewId: view.id,
     previousViewId: view.id,
-    delta: {},
+    delta: toDelta(),
     view,
     query: createQueryState(
       index.rows,
@@ -220,7 +227,7 @@ test('publishSections changes item id when a record moves to another group', () 
   const previousMembership = runMembershipStage({
     activeViewId: view.id,
     previousViewId: view.id,
-    delta: {},
+    delta: toDelta(),
     view,
     query: createQueryState(
       previousIndex.rows,
@@ -252,7 +259,7 @@ test('publishSections changes item id when a record moves to another group', () 
   const nextMembership = runMembershipStage({
     activeViewId: view.id,
     previousViewId: view.id,
-    delta: {
+    delta: toDelta({
       changes: {
         'record.values': {
           paths: {
@@ -260,7 +267,7 @@ test('publishSections changes item id when a record moves to another group', () 
           }
         }
       }
-    },
+    }),
     view,
     query: createQueryState(
       nextIndex.rows,
@@ -309,7 +316,7 @@ test('publishSections emits section and item deltas from published membership ch
   const previousMembership = runMembershipStage({
     activeViewId: view.id,
     previousViewId: view.id,
-    delta: {},
+    delta: toDelta(),
     view,
     query: createQueryState(
       previousIndex.rows,
@@ -340,7 +347,7 @@ test('publishSections emits section and item deltas from published membership ch
   const nextMembership = runMembershipStage({
     activeViewId: view.id,
     previousViewId: view.id,
-    delta: {
+    delta: toDelta({
       changes: {
         'record.values': {
           paths: {
@@ -348,7 +355,7 @@ test('publishSections emits section and item deltas from published membership ch
           }
         }
       }
-    },
+    }),
     view,
     query: createQueryState(
       nextIndex.rows,

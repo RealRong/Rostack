@@ -10,7 +10,7 @@ import { string } from '@shared/core'
 import {
   createDocumentReader,
   type DocumentReader
-} from './compile-read'
+} from './document/reader'
 import type {
   ValidationCode,
   ValidationIssue,

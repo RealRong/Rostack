@@ -3,7 +3,7 @@ import { selection as selectionApi, type SelectionTarget } from '@whiteboard/cor
 import type {
   GroupId
 } from '@whiteboard/core/types'
-import type { GraphDelta } from '../../contracts/delta'
+import type { GraphPhaseDelta } from '../../contracts/delta'
 import type {
   GroupItemRef,
   EdgeView,
@@ -146,7 +146,7 @@ const buildGroupView = (input: {
 export const patchGroup = (input: {
   input: Input
   working: WorkingState
-  delta: GraphDelta
+  delta: GraphPhaseDelta
   groupId: GroupId
 }): {
   changed: boolean

@@ -1,8 +1,10 @@
-import { resetGraphDelta } from '../../contracts/delta'
+import {
+  compileFamilyChangeFromIdDelta,
+  resetGraphPhaseDelta
+} from '../../contracts/delta'
 import type { WorkingState } from '../../contracts/working'
 import { patchIndexState } from '../index/update'
 import { createGraphContext, hasGraphTargets } from './context'
-import { buildGraphFacts, graphSpatialChanged } from './facts'
 import { patchGraphEdges } from './edges'
 import { patchGraphGroups } from './groups'
 import { patchGraphMindmaps } from './mindmaps'
@@ -12,29 +14,31 @@ import { seedGraphFanout, seedGraphQueue } from './queue'
 export const patchGraphState = (input: {
   revision: number
   current: Parameters<typeof createGraphContext>[0]['current']
-  execution: Parameters<typeof createGraphContext>[0]['execution']
+  plan: Parameters<typeof createGraphContext>[0]['plan']
   working: WorkingState
   reset?: boolean
   previousDocument?: WorkingState['document']['snapshot']
 }): {
   ran: boolean
   count: number
-  spatialChanged: boolean
 } => {
   const context = createGraphContext(input)
+  const graphDelta = context.working.phase.graph
 
-  resetGraphDelta(context.working.delta.graph)
+  resetGraphPhaseDelta(graphDelta)
   if (!hasGraphTargets(context)) {
-    context.execution.graph = buildGraphFacts(context)
+    context.working.delta.graph.node = 'skip'
+    context.working.delta.graph.edge = 'skip'
+    context.working.delta.graph.mindmap = 'skip'
+    context.working.delta.graph.group = 'skip'
     return {
       ran: false,
-      count: 0,
-      spatialChanged: false
+      count: 0
     }
   }
 
-  context.working.delta.graph.revision = context.revision as typeof context.working.delta.graph.revision
-  context.working.delta.graph.order = context.reset || context.target.order
+  graphDelta.revision = context.revision as typeof graphDelta.revision
+  graphDelta.order = context.reset || context.target.order
 
   patchIndexState({
     state: context.working.indexes,
@@ -62,11 +66,28 @@ export const patchGraphState = (input: {
   )
 
   context.working.revision.document = context.current.document.rev
-  context.execution.graph = buildGraphFacts(context)
+  context.working.delta.graph.node = compileFamilyChangeFromIdDelta({
+    snapshot: context.working.graph.nodes,
+    delta: graphDelta.entities.nodes,
+    order: graphDelta.order
+  })
+  context.working.delta.graph.edge = compileFamilyChangeFromIdDelta({
+    snapshot: context.working.graph.edges,
+    delta: graphDelta.entities.edges,
+    order: graphDelta.order
+  })
+  context.working.delta.graph.mindmap = compileFamilyChangeFromIdDelta({
+    snapshot: context.working.graph.owners.mindmaps,
+    delta: graphDelta.entities.mindmaps,
+    order: graphDelta.order
+  })
+  context.working.delta.graph.group = compileFamilyChangeFromIdDelta({
+    snapshot: context.working.graph.owners.groups,
+    delta: graphDelta.entities.groups
+  })
 
   return {
     ran: true,
-    count,
-    spatialChanged: graphSpatialChanged(context)
+    count
   }
 }

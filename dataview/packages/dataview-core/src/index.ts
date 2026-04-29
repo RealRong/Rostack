@@ -1,5 +1,6 @@
 export { compile } from '@dataview/core/compile'
 export { custom } from '@dataview/core/custom'
 export { entities } from '@dataview/core/entities'
+export * from '@dataview/core/mutation'
 export type * from '@dataview/core/intent'
 export type * from '@dataview/core/op'

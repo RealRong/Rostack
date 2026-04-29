@@ -47,15 +47,15 @@ const writeNodeDelta = (input: {
   }
 
   if (input.previous === undefined && input.next !== undefined) {
-    idDelta.add(input.context.working.delta.ui.node, input.nodeId)
+    idDelta.add(input.context.working.phase.ui.node, input.nodeId)
     return
   }
   if (input.previous !== undefined && input.next === undefined) {
-    idDelta.remove(input.context.working.delta.ui.node, input.nodeId)
+    idDelta.remove(input.context.working.phase.ui.node, input.nodeId)
     return
   }
 
-  idDelta.update(input.context.working.delta.ui.node, input.nodeId)
+  idDelta.update(input.context.working.phase.ui.node, input.nodeId)
 }
 
 export const patchUiNodes = (

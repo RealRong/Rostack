@@ -9,7 +9,7 @@ import { createEditorEvents } from '@whiteboard/editor/editor/events'
 import { createEditorState } from '@whiteboard/editor/editor/state'
 import { createEditorInputApi } from '@whiteboard/editor/input/host'
 import { createEditorHost } from '@whiteboard/editor/input/runtime'
-import { createEditorSceneRuntime } from '@whiteboard/editor-scene'
+import { createRuntime as createSceneRuntime } from '@whiteboard/editor-scene'
 import { createEditorSceneApi } from '@whiteboard/editor/scene/api'
 import { createEditorSceneBinding } from '@whiteboard/editor/scene/binding'
 import { createToolService } from '@whiteboard/editor/services/tool'
@@ -61,7 +61,7 @@ export const createEditor = (input: {
     engine: input.engine,
     session
   })
-  const sceneRuntime = createEditorSceneRuntime({
+  const sceneRuntime = createSceneRuntime({
     source: sceneBinding,
     layout,
     nodeCapability: {

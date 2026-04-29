@@ -261,7 +261,7 @@ export const patchRenderOverlay = (
       context.working.render.overlay = next
     },
     writeDelta: (changed) => {
-      context.working.delta.render.chrome.edge = changed
+      context.working.phase.render.chrome.edge = changed
     }
   })
 }

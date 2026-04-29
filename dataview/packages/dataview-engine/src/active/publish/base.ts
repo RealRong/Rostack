@@ -19,7 +19,7 @@ import {
 } from '@dataview/engine/active/publish/reuse'
 import type {
   DocumentReader
-} from '@dataview/engine/document/reader'
+} from '@dataview/core/document/reader'
 import {
   createFieldsProjection
 } from '@dataview/engine/active/publish/fields'

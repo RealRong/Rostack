@@ -14,3 +14,5 @@
   检查一下dataview和whiteboard有没有全吃shared基础设施，还存不存在第二套实现的问题
 
   你觉得 dataview/packages/dataview-engine/src/active/plan.ts  reasons结构如何？算是优化还是退化？
+
+  研究一下 shared/mutation现在对于whiteboard custom还能否优化，这些基础设施对于dataview-core呢，两者之间还有没有共性

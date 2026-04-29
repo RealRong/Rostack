@@ -5,7 +5,7 @@ import type {
 } from '@whiteboard/core/types'
 import type { SceneItemKey } from '../contracts/delta'
 import { sceneItemKey } from '../contracts/delta'
-import type { ExecutionScope } from '../contracts/execution'
+import type { SceneScope } from '../contracts/plan'
 import type { WorkingState } from '../contracts/working'
 
 export const appendIds = <TId extends string>(
@@ -18,7 +18,7 @@ export const appendIds = <TId extends string>(
 }
 
 export const resolveScope = <TId extends string>(
-  scope: ExecutionScope<TId>,
+  scope: SceneScope<TId>,
   readAll: () => Iterable<TId>
 ): ReadonlySet<TId> => scope === 'all'
   ? new Set(readAll())
@@ -26,7 +26,7 @@ export const resolveScope = <TId extends string>(
 
 export const appendScopeIds = <TId extends string>(
   target: Set<TId>,
-  scope: ExecutionScope<TId>,
+  scope: SceneScope<TId>,
   readAll: () => Iterable<TId>
 ) => {
   if (scope === 'all') {
@@ -54,7 +54,7 @@ export const appendMindmapNodeIds = (input: {
 
 export const appendMindmapNodeScope = (input: {
   target: Set<NodeId>
-  scope: ExecutionScope<MindmapId>
+  scope: SceneScope<MindmapId>
   working: WorkingState
 }) => {
   if (input.scope === 'all') {
@@ -71,7 +71,7 @@ export const appendMindmapNodeScope = (input: {
 
 export const appendEdgeItemScope = (input: {
   target: Set<EdgeId>
-  scope: ExecutionScope<SceneItemKey>
+  scope: SceneScope<SceneItemKey>
   working: WorkingState
 }) => {
   if (input.scope === 'all') {

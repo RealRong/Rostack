@@ -59,7 +59,7 @@ import type {
 import { now } from '@dataview/engine/runtime/clock'
 import {
   createDocumentReadContext
-} from '@dataview/engine/document/reader'
+} from '@dataview/core/document/reader'
 import {
   createCalculationTransition,
   createMembershipTransition

@@ -7,7 +7,7 @@ import type {
   NodeId
 } from '@whiteboard/core/types'
 import type {
-  GraphDelta,
+  GraphPhaseDelta,
   IdDelta,
   SpatialDelta
 } from '../../contracts/delta'
@@ -164,7 +164,7 @@ const rebuildSpatialRecords = (input: {
 const patchGraphRecords = (input: {
   graph: GraphState
   readOrder: ReturnType<typeof createSceneOrderRead>
-  graphDelta: GraphDelta
+  graphDelta: GraphPhaseDelta
   state: SpatialIndexState
   delta: IdDelta<SpatialKey>
 }): number => {
@@ -303,7 +303,7 @@ export const patchSpatial = (input: {
     revision: Revision
     document: Document
   }
-  graphDelta: GraphDelta
+  graphDelta: GraphPhaseDelta
   state: SpatialIndexState
   reset: boolean
   delta: SpatialDelta

@@ -12,7 +12,7 @@ export const patchGraphMindmaps = (
     const result = patchMindmap({
       input: context.current,
       working: context.working,
-      delta: context.working.delta.graph,
+      delta: context.working.phase.graph,
       mindmapId
     })
     if (result.changed) {

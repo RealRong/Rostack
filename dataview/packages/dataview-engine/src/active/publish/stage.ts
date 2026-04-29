@@ -25,19 +25,32 @@ import {
   publishSummaries
 } from '@dataview/engine/active/publish/summaries'
 import type {
+  CalculationCollection
+} from '@dataview/core/view'
+import type {
+  Field,
+  FieldId
+} from '@dataview/core/types'
+import type {
   ViewState
 } from '@dataview/engine/contracts/view'
 import type {
+  FieldList,
   ItemId,
+  ItemList,
   ItemPlacement,
   Section,
   SectionId,
+  SectionList,
   ViewRecords,
   ViewSummaries
 } from '@dataview/engine/contracts/shared'
 import type {
   EntityDelta
 } from '@shared/delta'
+import type {
+  ProjectionFamilySnapshot
+} from '@shared/projection'
 import { now } from '@dataview/engine/runtime/clock'
 import {
   createActiveStageMetrics
@@ -80,6 +93,65 @@ const publishViewRecords = (input: {
   }
 }
 
+const buildFieldFamily = (
+  fields?: FieldList
+): ProjectionFamilySnapshot<FieldId, Field> => ({
+  ids: fields?.ids ?? [],
+  byId: fields
+    ? new Map(fields.all.map((field) => [field.id, field] as const))
+    : new Map()
+})
+
+const buildSectionFamily = (
+  sections?: SectionList
+): ProjectionFamilySnapshot<SectionId, Section> => ({
+  ids: sections?.ids ?? [],
+  byId: sections
+    ? new Map(sections.all.map((section) => [section.id, section] as const))
+    : new Map()
+})
+
+const buildItemFamily = (
+  items?: ItemList
+): ProjectionFamilySnapshot<ItemId, ItemPlacement> => ({
+  ids: items?.ids ?? [],
+  byId: items
+    ? new Map(items.ids.flatMap((itemId) => {
+        const placement = items.read.placement(itemId)
+        return placement
+          ? [[itemId, placement] as const]
+          : []
+      }))
+    : new Map()
+})
+
+const buildSummaryFamily = (input: {
+  sections?: SectionList
+  summaries?: ViewSummaries
+}): ProjectionFamilySnapshot<SectionId, CalculationCollection> => {
+  if (!input.sections || !input.summaries) {
+    return {
+      ids: [],
+      byId: new Map()
+    }
+  }
+
+  const byId = new Map<SectionId, CalculationCollection>()
+  input.sections.ids.forEach((sectionId) => {
+    const summary = input.summaries?.get(sectionId)
+    if (summary) {
+      byId.set(sectionId, summary)
+    }
+  })
+
+  return {
+    ids: byId.size
+      ? input.sections.ids.filter((sectionId) => byId.has(sectionId))
+      : [],
+    byId
+  }
+}
+
 export const publishActiveView = (input: {
   frame: DataviewFrame
   active: DataviewActiveSpec
@@ -90,6 +162,10 @@ export const publishActiveView = (input: {
   previous: DataviewActiveState
 }): {
   snapshot?: ViewState
+  fields: ProjectionFamilySnapshot<FieldId, Field>
+  sections: ProjectionFamilySnapshot<SectionId, Section>
+  items: ProjectionFamilySnapshot<ItemId, ItemPlacement>
+  summaries: ProjectionFamilySnapshot<SectionId, CalculationCollection>
   sectionDelta?: EntityDelta<SectionId>
   itemDelta?: EntityDelta<ItemId>
   trace: DataviewStageTrace
@@ -99,6 +175,10 @@ export const publishActiveView = (input: {
   if (action === 'reuse') {
     return {
       snapshot: previous,
+      fields: input.previous.fields,
+      sections: input.previous.sections,
+      items: input.previous.items,
+      summaries: input.previous.summaries,
       trace: {
         action,
         changed: false,
@@ -178,6 +258,13 @@ export const publishActiveView = (input: {
         summaries
       } satisfies ViewState
     : undefined
+  const fields = buildFieldFamily(base.fields)
+  const sectionFamily = buildSectionFamily(sections.sections)
+  const itemFamily = buildItemFamily(sections.items)
+  const summaryFamily = buildSummaryFamily({
+    sections: sections.sections,
+    summaries
+  })
   const published = nextSnapshot
     ? publishStruct({
         previous,
@@ -191,6 +278,10 @@ export const publishActiveView = (input: {
 
   return {
     snapshot,
+    fields,
+    sections: sectionFamily,
+    items: itemFamily,
+    summaries: summaryFamily,
     ...(sections.delta?.sections
       ? {
           sectionDelta: sections.delta.sections

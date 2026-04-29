@@ -24,8 +24,8 @@ import {
 } from '../src/testing/runtime'
 import { createEmptyInput } from '../src/testing/input'
 import {
-  createEditorSceneProjectionRuntime
-} from '../src/runtime/createEditorSceneProjectionRuntime'
+  createProjectionRuntime
+} from '../src/projection/createProjectionRuntime'
 import { createWhiteboardMutationDelta } from '../src/mutation/delta'
 
 type RuntimeInputOptions = {
@@ -87,7 +87,7 @@ const TEST_SCENE_VIEW = () => ({
   }
 })
 
-const createRuntime = () => createEditorSceneProjectionRuntime({
+const createRuntime = () => createProjectionRuntime({
   layout,
   view: TEST_SCENE_VIEW
 })
@@ -691,7 +691,7 @@ describe('editor scene runtime', () => {
         height: 200
       }
     }
-    const runtime = createEditorSceneProjectionRuntime({
+    const runtime = createProjectionRuntime({
       layout,
       view: () => sceneView
     })

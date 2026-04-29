@@ -6,17 +6,17 @@ import type {
 } from '@whiteboard/core/types'
 import type { Input } from '../contracts/editor'
 import {
-  createEmptyWhiteboardRuntimeDelta
-} from '../contracts/execution'
+  createEmptyEditorSceneRuntimeDelta
+} from '../contracts/plan'
 import { createWhiteboardMutationDelta } from '../mutation/delta'
-import { createEmptyDocumentSnapshot } from '../runtime/state'
+import { createEmptyDocumentSnapshot } from '../projection/state'
 
 const EMPTY_MUTATION_CHANGES = Object.freeze(
   Object.create(null)
 ) as Record<string, never>
 
 export const createEmptyRuntimeInputDelta = (): Input['runtime']['delta'] => (
-  createEmptyWhiteboardRuntimeDelta()
+  createEmptyEditorSceneRuntimeDelta()
 )
 
 export const createEmptyInput = (): Input => ({

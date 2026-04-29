@@ -17,7 +17,7 @@ import {
 import { equal, string } from '@shared/core'
 import type {
   DocumentReader
-} from './compile-read'
+} from './document/reader'
 import { validateField } from '@dataview/core/field/validate'
 import {
   createEntityPatch

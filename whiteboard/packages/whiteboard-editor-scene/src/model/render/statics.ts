@@ -213,17 +213,17 @@ const writeStaticDelta = (input: {
   }
 
   if (input.previous === undefined && input.next !== undefined) {
-    idDelta.add(input.context.working.delta.render.edge.statics, input.staticId)
-    input.context.working.delta.render.edge.staticsIds = true
+    idDelta.add(input.context.working.phase.render.edge.statics, input.staticId)
+    input.context.working.phase.render.edge.staticsIds = true
     return
   }
   if (input.previous !== undefined && input.next === undefined) {
-    idDelta.remove(input.context.working.delta.render.edge.statics, input.staticId)
-    input.context.working.delta.render.edge.staticsIds = true
+    idDelta.remove(input.context.working.phase.render.edge.statics, input.staticId)
+    input.context.working.phase.render.edge.staticsIds = true
     return
   }
 
-  idDelta.update(input.context.working.delta.render.edge.statics, input.staticId)
+  idDelta.update(input.context.working.phase.render.edge.statics, input.staticId)
 }
 
 export const patchRenderStatics = (
@@ -275,7 +275,7 @@ export const patchRenderStatics = (
     })
 
     if (!equal.sameOrder(previous.ids, built.ids, (left, right) => left === right)) {
-      context.working.delta.render.edge.staticsIds = true
+      context.working.phase.render.edge.staticsIds = true
     }
 
     context.working.render.statics = {
@@ -380,7 +380,7 @@ export const patchRenderStatics = (
     nextStaticIdsByStyleKey.get(styleKey) ?? []
   ))
   if (!equal.sameOrder(previous.ids, nextIds, (left, right) => left === right)) {
-    context.working.delta.render.edge.staticsIds = true
+    context.working.phase.render.edge.staticsIds = true
   }
 
   context.working.render.statics = {

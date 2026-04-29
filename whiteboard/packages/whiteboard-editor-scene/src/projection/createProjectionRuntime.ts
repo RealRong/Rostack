@@ -7,7 +7,7 @@ import type {
 import type { State } from '../contracts/state'
 import type { WorkingState } from '../contracts/working'
 import { createEditorSceneCaptureReader } from './capture'
-import { createEditorSceneProjection } from './model'
+import { createProjection } from './createProjection'
 
 const createEditorSceneStateReader = (input: {
   state: () => WorkingState
@@ -26,12 +26,12 @@ const createEditorSceneStateReader = (input: {
   }
 }
 
-export const createEditorSceneProjectionRuntime = (input: {
+export const createProjectionRuntime = (input: {
   layout?: EditorSceneLayout
   nodeCapability?: NodeCapabilityInput
   view: SceneViewInput
 }): Runtime => {
-  const runtime = createEditorSceneProjection(input)
+  const runtime = createProjection(input)
   const state = createEditorSceneStateReader({
     state: runtime.state
   })

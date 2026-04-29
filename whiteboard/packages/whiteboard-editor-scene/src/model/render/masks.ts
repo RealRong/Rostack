@@ -94,17 +94,17 @@ const writeMaskDelta = (input: {
   }
 
   if (input.previous === undefined && input.next !== undefined) {
-    idDelta.add(input.context.working.delta.render.edge.masks, input.edgeId)
-    input.context.working.delta.render.edge.masksIds = true
+    idDelta.add(input.context.working.phase.render.edge.masks, input.edgeId)
+    input.context.working.phase.render.edge.masksIds = true
     return
   }
   if (input.previous !== undefined && input.next === undefined) {
-    idDelta.remove(input.context.working.delta.render.edge.masks, input.edgeId)
-    input.context.working.delta.render.edge.masksIds = true
+    idDelta.remove(input.context.working.phase.render.edge.masks, input.edgeId)
+    input.context.working.phase.render.edge.masksIds = true
     return
   }
 
-  idDelta.update(input.context.working.delta.render.edge.masks, input.edgeId)
+  idDelta.update(input.context.working.phase.render.edge.masks, input.edgeId)
 }
 
 export const patchRenderMasks = (
@@ -156,7 +156,7 @@ export const patchRenderMasks = (
     })
 
     if (!equal.sameOrder(previous.ids, built.ids, (left, right) => left === right)) {
-      context.working.delta.render.edge.masksIds = true
+      context.working.phase.render.edge.masksIds = true
     }
 
     context.working.render.masks = {
@@ -200,12 +200,12 @@ export const patchRenderMasks = (
     if (nextView === undefined) {
       masksById.delete(edgeId)
       maskIds = maskIds.filter((id) => id !== edgeId)
-      context.working.delta.render.edge.masksIds = true
+      context.working.phase.render.edge.masksIds = true
     } else {
       masksById.set(edgeId, nextView)
       if (previousView === undefined) {
         maskIds = [...maskIds, edgeId]
-        context.working.delta.render.edge.masksIds = true
+        context.working.phase.render.edge.masksIds = true
       }
     }
 

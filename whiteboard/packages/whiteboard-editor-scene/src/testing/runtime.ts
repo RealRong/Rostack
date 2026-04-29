@@ -7,11 +7,11 @@ import type {
 } from '../contracts/editor'
 import type { Capture } from '../contracts/capture'
 import type { WorkingState } from '../contracts/working'
-import { createEditorSceneCaptureReader } from '../runtime/capture'
-import { createEditorSceneProjection } from '../runtime/model'
+import { createEditorSceneCaptureReader } from '../projection/capture'
+import { createProjection } from '../projection/createProjection'
 import {
-  createEditorSceneProjectionRuntime
-} from '../runtime/createEditorSceneProjectionRuntime'
+  createProjectionRuntime
+} from '../projection/createProjectionRuntime'
 
 const TEST_SCENE_VIEW = () => ({
   zoom: 1,
@@ -45,7 +45,7 @@ export interface EditorSceneProjectionHarness {
 export const createEditorSceneHarness = (input: {
   layout?: EditorSceneLayout
 } = {}): EditorSceneHarness => {
-  const runtime = createEditorSceneProjectionRuntime({
+  const runtime = createProjectionRuntime({
     layout: input.layout,
     view: TEST_SCENE_VIEW
   })
@@ -67,7 +67,7 @@ export const createEditorSceneHarness = (input: {
 export const createEditorSceneProjectionHarness = (input: {
   layout?: EditorSceneLayout
 } = {}): EditorSceneProjectionHarness => {
-  const runtime = createEditorSceneProjection({
+  const runtime = createProjection({
     layout: input.layout,
     view: TEST_SCENE_VIEW
   })

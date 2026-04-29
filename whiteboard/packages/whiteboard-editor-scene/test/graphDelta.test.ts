@@ -193,14 +193,14 @@ describe('graph delta patching', () => {
       }))
 
     expect(live.trace.phases[0]?.name).toBe('document')
-    expect(runtime.working().delta.graph.entities.nodes.updated.has(firstId)).toBe(true)
-    expect(runtime.working().delta.graph.geometry.nodes.has(firstId)).toBe(true)
-    expect(runtime.working().delta.graph.entities.edges.updated.has(edgeId)).toBe(true)
-    expect(runtime.working().delta.graph.geometry.edges.has(edgeId)).toBe(true)
-    expect(runtime.working().delta.spatial.records.updated.has(`node:${firstId}`)).toBe(true)
-    expect(runtime.working().delta.spatial.records.updated.has(`edge:${edgeId}`)).toBe(true)
-    expect(runtime.working().delta.spatial.order).toBe(false)
-    expect(runtime.working().delta.graph.entities.nodes.updated.has(secondId)).toBe(false)
+    expect(runtime.working().phase.graph.entities.nodes.updated.has(firstId)).toBe(true)
+    expect(runtime.working().phase.graph.geometry.nodes.has(firstId)).toBe(true)
+    expect(runtime.working().phase.graph.entities.edges.updated.has(edgeId)).toBe(true)
+    expect(runtime.working().phase.graph.geometry.edges.has(edgeId)).toBe(true)
+    expect(runtime.working().phase.spatial.records.updated.has(`node:${firstId}`)).toBe(true)
+    expect(runtime.working().phase.spatial.records.updated.has(`edge:${edgeId}`)).toBe(true)
+    expect(runtime.working().phase.spatial.order).toBe(false)
+    expect(runtime.working().phase.graph.entities.nodes.updated.has(secondId)).toBe(false)
   })
 
   it('marks spatial order without synthetic record updates on canvas order input', () => {
@@ -269,10 +269,10 @@ describe('graph delta patching', () => {
       'ui',
       'render'
     ])
-    expect(runtime.working().delta.spatial.order).toBe(true)
-    expect(runtime.working().delta.spatial.records.added.size).toBe(0)
-    expect(runtime.working().delta.spatial.records.updated.size).toBe(0)
-    expect(runtime.working().delta.spatial.records.removed.size).toBe(0)
+    expect(runtime.working().phase.spatial.order).toBe(true)
+    expect(runtime.working().phase.spatial.records.added.size).toBe(0)
+    expect(runtime.working().phase.spatial.records.updated.size).toBe(0)
+    expect(runtime.working().phase.spatial.records.removed.size).toBe(0)
   })
 
   it('keeps group frame in graph while excluding group records from spatial state', () => {

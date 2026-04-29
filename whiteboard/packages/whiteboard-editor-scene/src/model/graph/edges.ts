@@ -13,7 +13,7 @@ export const patchGraphEdges = (
     if (patchEdge({
       input: context.current,
       working: context.working,
-      delta: context.working.delta.graph,
+      delta: context.working.phase.graph,
       edgeId,
       nodeSnapshotCache
     }).changed) {

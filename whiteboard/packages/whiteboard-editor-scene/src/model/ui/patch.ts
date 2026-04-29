@@ -1,20 +1,23 @@
-import { uiChange } from '../../contracts/delta'
-import type { WhiteboardExecution } from '../../contracts/execution'
+import {
+  compileFamilyChangeFromIdDelta,
+  compileValueChange,
+  resetUiPhaseDelta
+} from '../../contracts/delta'
 import type { Input } from '../../contracts/editor'
+import type { EditorScenePlan } from '../../contracts/plan'
 import type { WorkingState } from '../../contracts/working'
 import { patchUiChrome } from './chrome'
 import { createUiContext } from './context'
 import { patchUiEdges } from './edges'
-import { buildUiFacts } from './facts'
 import { patchUiNodes } from './nodes'
 
 export const patchUiState = (input: {
   current: Input
-  execution: WhiteboardExecution
+  plan: EditorScenePlan
   working: WorkingState
   reset: boolean
 }): number => {
-  input.working.delta.ui = uiChange.create()
+  resetUiPhaseDelta(input.working.phase.ui)
   const context = createUiContext(input)
 
   const count = (
@@ -23,6 +26,18 @@ export const patchUiState = (input: {
     + patchUiChrome(context)
   )
 
-  input.execution.ui = buildUiFacts(context)
+  input.working.delta.graph.state.node = compileFamilyChangeFromIdDelta({
+    snapshot: input.working.graph.state.node,
+    delta: input.working.phase.ui.node
+  })
+  input.working.delta.graph.state.edge = compileFamilyChangeFromIdDelta({
+    snapshot: input.working.graph.state.edge,
+    delta: input.working.phase.ui.edge
+  })
+  input.working.delta.graph.state.chrome = compileValueChange(
+    input.working.phase.ui.chrome,
+    input.working.graph.state.chrome
+  )
+
   return count
 }

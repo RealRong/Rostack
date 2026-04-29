@@ -45,7 +45,7 @@ import type {
 import type {
   DocumentReadContext,
   DocumentReader
-} from '@dataview/engine/document/reader'
+} from '@dataview/core/document/reader'
 import type {
   DataviewMutationDelta
 } from '@dataview/engine/mutation/delta'

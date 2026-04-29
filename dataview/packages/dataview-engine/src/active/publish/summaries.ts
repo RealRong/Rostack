@@ -12,7 +12,7 @@ import type {
 import type {
   SummaryPhaseState as SummaryState
 } from '@dataview/engine/active/state'
-import type { DocumentReader } from '@dataview/engine/document/reader'
+import type { DocumentReader } from '@dataview/core/document/reader'
 import { equal } from '@shared/core'
 import {
   buildEmptyPublishedSummaries,

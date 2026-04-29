@@ -8,32 +8,19 @@ import type {
 } from '@dataview/engine/contracts/performance'
 import {
   createTypedMutationDelta,
-  defineEntityMutationSchema,
   type MutationDelta,
   type MutationDeltaInput,
 } from '@shared/mutation'
 import {
   collectMutationTouchedIds,
-  type MutationPathCodec,
   type TypedMutationDeltaContext
 } from '@shared/mutation/typed'
 import {
-  entities as dataviewEntities
-} from '@dataview/core/entities'
-
-export type DataviewQueryAspect =
-  | 'search'
-  | 'filter'
-  | 'sort'
-  | 'group'
-  | 'order'
-
-type DataviewViewQueryPath = {
-  aspect: DataviewQueryAspect
-  raw: string
-}
-
-type DataviewMutationSchema = typeof dataviewMutationSchema
+  dataviewMutationSchema,
+  type DataviewMutationSchema,
+  type DataviewQueryAspect,
+  type DataviewViewQueryPath
+} from '@dataview/core/mutation'
 
 export type DataviewMutationDelta = MutationDelta & {
   raw: MutationDelta
@@ -104,58 +91,6 @@ export type DataviewMutationDelta = MutationDelta & {
   recordSetChanged(): boolean
   summary(): TraceDeltaSummary
 }
-
-const VALUE_PATH_CODEC: MutationPathCodec<FieldId> = {
-  parse: (path) => {
-    if (!path) {
-      return undefined
-    }
-
-    return path as FieldId
-  },
-  format: (path) => path
-}
-
-const VIEW_QUERY_PATH_CODEC: MutationPathCodec<DataviewViewQueryPath> = {
-  parse: (path) => {
-    const [head] = path.split('.')
-    switch (head) {
-      case 'search':
-      case 'filter':
-      case 'sort':
-      case 'group':
-        return {
-          aspect: head,
-          raw: path
-        }
-      case 'orders':
-        return {
-          aspect: 'order',
-          raw: path
-        }
-      default:
-        return undefined
-    }
-  },
-  format: (path) => path.raw
-}
-
-const dataviewMutationSchema = defineEntityMutationSchema({
-  entities: dataviewEntities,
-  entries: {
-    'record.values': {
-      ids: true,
-      paths: VALUE_PATH_CODEC
-    },
-    'view.query': {
-      ids: true,
-      paths: VIEW_QUERY_PATH_CODEC
-    }
-  },
-  signals: {
-    'external.version': {}
-  }
-} as const)
 
 const RECORD_TOUCH_KEYS = [
   'record.create',
@@ -359,7 +294,11 @@ export const createDataviewMutationDelta = (
           query: (viewId: ViewId) => ({
             changed: (aspect?: DataviewQueryAspect) => aspect === undefined
               ? context.changed('view.query', viewId)
-              : context.matches('view.query', viewId, path => path.aspect === aspect)
+              : context.matches(
+                  'view.query',
+                  viewId,
+                  (path) => (path as DataviewViewQueryPath).aspect === aspect
+                )
           }),
           calc: (viewId: ViewId) => ({
             changed: () => context.changed('view.calc', viewId)

@@ -9,6 +9,8 @@ export const document = {
 
 export { DEFAULT_SCHEMA_VERSION } from '@dataview/core/document/create'
 export type {
-  AppliedDocumentRecordFieldWrite,
+  AppliedDocumentRecordFieldWrite
+} from '@dataview/core/document/recordFieldWriteKernel'
+export type {
   DocumentRecordFieldWriteResult
 } from '@dataview/core/document/records'

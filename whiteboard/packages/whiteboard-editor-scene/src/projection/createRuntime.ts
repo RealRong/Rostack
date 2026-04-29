@@ -5,22 +5,22 @@ import type {
 } from '../contracts/editor'
 import type { EditorSceneRuntime } from '../contracts/runtime'
 import type { EditorSceneSource } from '../contracts/source'
-import { createEditorSceneProjectionRuntime } from './createEditorSceneProjectionRuntime'
+import { createProjectionRuntime } from './createProjectionRuntime'
 import {
   createBootstrapRuntimeInputDelta,
   createSceneInput,
   createSourceRuntimeInputDelta,
   readBootstrapMutationDelta,
   readSourceMutationDelta
-} from './sourceInput'
+} from './input'
 
-export const createEditorSceneRuntime = (input: {
+export const createRuntime = (input: {
   source: EditorSceneSource
   layout?: EditorSceneLayout
   nodeCapability?: NodeCapabilityInput
 }): EditorSceneRuntime => {
   let currentSource = input.source.get()
-  const runtime = createEditorSceneProjectionRuntime({
+  const runtime = createProjectionRuntime({
     layout: input.layout,
     nodeCapability: input.nodeCapability,
     view: () => currentSource.view

@@ -20,7 +20,7 @@ import type {
 } from '@dataview/runtime/model/shared'
 import {
   EngineSource
-} from '@dataview/runtime/source'
+} from '@dataview/engine'
 
 const EMPTY_CUSTOM_FIELDS = [] as readonly CustomField[]
 

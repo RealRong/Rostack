@@ -20,7 +20,7 @@ export const patchGraphNodes = (
     const result = patchNode({
       input: context.current,
       working: context.working,
-      delta: context.working.delta.graph,
+      delta: context.working.phase.graph,
       nodeId
     })
     if (result.changed) {
@@ -52,7 +52,7 @@ export const patchGraphMindmapNodes = (
     const result = patchNode({
       input: context.current,
       working: context.working,
-      delta: context.working.delta.graph,
+      delta: context.working.phase.graph,
       nodeId
     })
     if (result.changed) {

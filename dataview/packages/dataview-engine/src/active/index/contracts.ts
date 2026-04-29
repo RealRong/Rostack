@@ -11,7 +11,7 @@ import type {
   RecordId,
   ViewGroup
 } from '@dataview/core/types'
-import type { DocumentReader } from '@dataview/engine/document/reader'
+import type { DocumentReader } from '@dataview/core/document/reader'
 import type {
   IndexTrace
 } from '@dataview/engine/contracts/performance'

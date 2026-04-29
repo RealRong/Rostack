@@ -23,6 +23,6 @@ export const patchUiChrome = (
 
   context.working.ui.chrome = next
   context.working.graph.state.chrome = next
-  context.working.delta.ui.chrome = next !== previous
+  context.working.phase.ui.chrome = next !== previous
   return next !== previous ? 1 : 0
 }

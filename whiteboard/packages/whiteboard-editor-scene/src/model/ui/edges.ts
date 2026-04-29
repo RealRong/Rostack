@@ -53,15 +53,15 @@ const writeEdgeDelta = (input: {
   }
 
   if (input.previous === undefined && input.next !== undefined) {
-    idDelta.add(input.context.working.delta.ui.edge, input.edgeId)
+    idDelta.add(input.context.working.phase.ui.edge, input.edgeId)
     return
   }
   if (input.previous !== undefined && input.next === undefined) {
-    idDelta.remove(input.context.working.delta.ui.edge, input.edgeId)
+    idDelta.remove(input.context.working.phase.ui.edge, input.edgeId)
     return
   }
 
-  idDelta.update(input.context.working.delta.ui.edge, input.edgeId)
+  idDelta.update(input.context.working.phase.ui.edge, input.edgeId)
 }
 
 export const patchUiEdges = (

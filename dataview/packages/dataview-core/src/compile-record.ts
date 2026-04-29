@@ -19,7 +19,7 @@ import {
 } from '@shared/core'
 import type {
   DocumentReader
-} from './compile-read'
+} from './document/reader'
 import {
   createEntityPatch
 } from './compile-patch'

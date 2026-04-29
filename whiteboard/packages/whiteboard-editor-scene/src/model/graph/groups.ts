@@ -11,7 +11,7 @@ export const patchGraphGroups = (
     if (patchGroup({
       input: context.current,
       working: context.working,
-      delta: context.working.delta.graph,
+      delta: context.working.phase.graph,
       groupId
     }).changed) {
       count += 1

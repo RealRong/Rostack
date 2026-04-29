@@ -16,7 +16,7 @@ import {
 } from '@dataview/runtime/model/card'
 import type {
   EngineSource
-} from '@dataview/runtime/source'
+} from '@dataview/engine'
 
 const EMPTY_SECTIONS = [] as const
 

@@ -10,7 +10,7 @@ import type {
   ViewCell,
   ViewState
 } from '@dataview/engine/contracts/view'
-import type { DocumentReader } from '@dataview/engine/document/reader'
+import type { DocumentReader } from '@dataview/core/document/reader'
 
 export const createActiveViewReadApi = (input: {
   reader: DocumentReader

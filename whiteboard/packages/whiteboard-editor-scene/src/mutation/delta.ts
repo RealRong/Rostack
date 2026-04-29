@@ -13,15 +13,6 @@ import {
   defineMutationSchema
 } from '@shared/mutation/typed'
 
-export type WhiteboardGraphTargets = {
-  reset: boolean
-  order: boolean
-  nodes: ReadonlySet<NodeId> | 'all'
-  edges: ReadonlySet<EdgeId> | 'all'
-  mindmaps: ReadonlySet<MindmapId> | 'all'
-  groups: ReadonlySet<GroupId> | 'all'
-}
-
 export type WhiteboardMutationDelta = MutationDelta & {
   raw: MutationDelta
   canvas: {
@@ -111,23 +102,6 @@ export type WhiteboardMutationDelta = MutationDelta & {
       changed(groupId?: GroupId): boolean
     }
   }
-  graph: {
-    orderChanged(): boolean
-    targets(): WhiteboardGraphTargets
-    affects: {
-      items(): boolean
-      edgeRouteIds(): ReadonlySet<EdgeId> | 'all'
-      edgeStyleIds(): ReadonlySet<EdgeId> | 'all'
-      edgeLabelIds(): ReadonlySet<EdgeId> | 'all'
-      edgeEndpointIds(): ReadonlySet<EdgeId> | 'all'
-      edgeBoxIds(): ReadonlySet<EdgeId> | 'all'
-      mindmapGeometryIds(): ReadonlySet<MindmapId> | 'all'
-      mindmapConnectorIds(): ReadonlySet<MindmapId> | 'all'
-      mindmapMembershipIds(): ReadonlySet<MindmapId> | 'all'
-      groupGeometryIds(): ReadonlySet<GroupId> | 'all'
-      groupMembershipIds(): ReadonlySet<GroupId> | 'all'
-    }
-  }
 }
 
 const whiteboardMutationSchema = defineMutationSchema({
@@ -199,27 +173,6 @@ const createTouchedIdView = <TId extends string>(
   changed
 })
 
-const unionTouchedIds = <TId extends string>(
-  ...values: readonly (ReadonlySet<TId> | 'all')[]
-): ReadonlySet<TId> | 'all' => {
-  const result = new Set<TId>()
-  for (let index = 0; index < values.length; index += 1) {
-    const current = values[index]
-    if (current === 'all') {
-      return 'all'
-    }
-    current.forEach((id) => {
-      result.add(id)
-    })
-  }
-  return result
-}
-
-const hasOwn = (
-  value: object,
-  key: PropertyKey
-): boolean => Object.prototype.hasOwnProperty.call(value, key)
-
 const WHITEBOARD_DELTA_CACHE = new WeakMap<MutationDelta, WhiteboardMutationDelta>()
 
 export const createWhiteboardMutationDelta = (
@@ -236,96 +189,6 @@ export const createWhiteboardMutationDelta = (
     raw,
     schema: whiteboardMutationSchema,
     build: (context) => {
-      const graphOrderChanged = () => {
-        if (context.raw.reset === true || hasOwn(context.raw.changes, 'canvas.order')) {
-          return true
-        }
-
-        for (const change of Object.values(context.raw.changes)) {
-          if (change.order === true) {
-            return true
-          }
-        }
-
-        return false
-      }
-
-      const createGraphTargets = (): WhiteboardGraphTargets => {
-        if (context.raw.reset === true) {
-          return {
-            reset: true,
-            order: true,
-            nodes: 'all',
-            edges: 'all',
-            mindmaps: 'all',
-            groups: 'all'
-          }
-        }
-
-        const nodes = context.touchedIds([
-          'node.create',
-          'node.delete',
-          'node.geometry',
-          'node.owner',
-          'node.content'
-        ]) as ReadonlySet<NodeId> | 'all'
-        const edges = context.touchedIds([
-          'edge.create',
-          'edge.delete',
-          'edge.endpoints',
-          'edge.route',
-          'edge.style',
-          'edge.labels',
-          'edge.data'
-        ]) as ReadonlySet<EdgeId> | 'all'
-        const mindmaps = context.touchedIds([
-          'mindmap.create',
-          'mindmap.delete',
-          'mindmap.structure',
-          'mindmap.layout'
-        ]) as ReadonlySet<MindmapId> | 'all'
-        const groups = context.touchedIds([
-          'group.create',
-          'group.delete',
-          'group.value'
-        ]) as ReadonlySet<GroupId> | 'all'
-
-        const reset = nodes === 'all'
-          || edges === 'all'
-          || mindmaps === 'all'
-          || groups === 'all'
-
-        return {
-          reset,
-          order: graphOrderChanged(),
-          nodes,
-          edges,
-          mindmaps,
-          groups
-        }
-      }
-
-      const readEdgeRouteIds = () => unionTouchedIds(
-        context.touchedIds(['edge.endpoints']) as ReadonlySet<EdgeId> | 'all',
-        context.touchedIds(['edge.route']) as ReadonlySet<EdgeId> | 'all'
-      )
-      const readEdgeStyleIds = () => unionTouchedIds(
-        context.touchedIds(['edge.style']) as ReadonlySet<EdgeId> | 'all',
-        context.touchedIds(['edge.data']) as ReadonlySet<EdgeId> | 'all'
-      )
-      const readEdgeLabelIds = () => unionTouchedIds(
-        readEdgeRouteIds(),
-        context.touchedIds(['edge.labels']) as ReadonlySet<EdgeId> | 'all',
-        context.touchedIds(['edge.data']) as ReadonlySet<EdgeId> | 'all'
-      )
-      const readMindmapGeometryIds = () => unionTouchedIds(
-        context.touchedIds(['mindmap.structure']) as ReadonlySet<MindmapId> | 'all',
-        context.touchedIds(['mindmap.layout']) as ReadonlySet<MindmapId> | 'all'
-      )
-      const readGroupGeometryIds = () => (
-        context.touchedIds(['group.value']) as ReadonlySet<GroupId> | 'all'
-      )
-
       return {
         canvas: {
           orderChanged: () => context.has('canvas.order')
@@ -413,31 +276,6 @@ export const createWhiteboardMutationDelta = (
             () => context.touchedIds(['group.value']) as ReadonlySet<GroupId> | 'all',
             (groupId) => context.changed('group.value', groupId)
           )
-        },
-        graph: {
-          orderChanged: graphOrderChanged,
-          targets: createGraphTargets,
-          affects: {
-            edgeRouteIds: readEdgeRouteIds,
-            edgeStyleIds: readEdgeStyleIds,
-            edgeLabelIds: readEdgeLabelIds,
-            edgeEndpointIds: readEdgeRouteIds,
-            edgeBoxIds: readEdgeRouteIds,
-            mindmapGeometryIds: readMindmapGeometryIds,
-            mindmapConnectorIds: readMindmapGeometryIds,
-            mindmapMembershipIds: readMindmapGeometryIds,
-            groupGeometryIds: readGroupGeometryIds,
-            groupMembershipIds: readGroupGeometryIds,
-            items: () => context.any([
-              'canvas.order',
-              'node.create',
-              'node.delete',
-              'edge.create',
-              'edge.delete',
-              'mindmap.create',
-              'mindmap.delete'
-            ])
-          }
         }
       }
     }

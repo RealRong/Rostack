@@ -6,8 +6,8 @@ import type {
 } from '@whiteboard/core/types'
 import type { Input } from '../../contracts/editor'
 import type {
-  WhiteboardExecution
-} from '../../contracts/execution'
+  EditorScenePlan
+} from '../../contracts/plan'
 import type { WorkingState } from '../../contracts/working'
 import { resolveScope } from '../scope'
 import { createGraphQueue, type GraphQueue } from './queue'
@@ -16,7 +16,7 @@ export interface GraphContext {
   revision: number
   current: Input
   working: WorkingState
-  execution: WhiteboardExecution
+  plan: EditorScenePlan
   reset: boolean
   previousDocument?: WorkingState['document']['snapshot']
   target: {
@@ -32,7 +32,7 @@ export interface GraphContext {
 export const createGraphContext = (input: {
   revision: number
   current: Input
-  execution: WhiteboardExecution
+  plan: EditorScenePlan
   working: WorkingState
   reset?: boolean
   previousDocument?: WorkingState['document']['snapshot']
@@ -42,7 +42,7 @@ export const createGraphContext = (input: {
     node: resolveScope(
       reset
         ? 'all'
-        : input.execution.target.node,
+        : input.plan.graph.node,
       () => [
         ...(Object.keys(input.working.document.snapshot.nodes) as readonly NodeId[]),
         ...input.working.graph.nodes.keys()
@@ -51,7 +51,7 @@ export const createGraphContext = (input: {
     edge: resolveScope(
       reset
         ? 'all'
-        : input.execution.target.edge,
+        : input.plan.graph.edge,
       () => [
         ...(Object.keys(input.working.document.snapshot.edges) as readonly EdgeId[]),
         ...input.working.graph.edges.keys()
@@ -60,7 +60,7 @@ export const createGraphContext = (input: {
     mindmap: resolveScope(
       reset
         ? 'all'
-        : input.execution.target.mindmap,
+        : input.plan.graph.mindmap,
       () => [
         ...(Object.keys(input.working.document.snapshot.mindmaps) as readonly MindmapId[]),
         ...input.working.graph.owners.mindmaps.keys()
@@ -69,13 +69,13 @@ export const createGraphContext = (input: {
     group: resolveScope(
       reset
         ? 'all'
-        : input.execution.target.group,
+        : input.plan.graph.group,
       () => [
         ...(Object.keys(input.working.document.snapshot.groups) as readonly GroupId[]),
         ...input.working.graph.owners.groups.keys()
       ]
     ),
-    order: reset || input.execution.order
+    order: reset || input.plan.order
   }
   const queue = createGraphQueue()
 
@@ -83,7 +83,7 @@ export const createGraphContext = (input: {
     revision: input.revision,
     current: input.current,
     working: input.working,
-    execution: input.execution,
+    plan: input.plan,
     reset,
     previousDocument: input.previousDocument,
     target,

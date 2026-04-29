@@ -1,5 +1,6 @@
 import type {
-  Engine
+  Engine,
+  EngineSource
 } from '@dataview/engine'
 import type {
   CreateRecordApi
@@ -23,10 +24,6 @@ import type {
 import type {
   ValueEditorController
 } from '@dataview/runtime/session/valueEditor'
-import type {
-  EngineSource
-} from '@dataview/runtime/source'
-
 export interface DataViewWorkflow {
   createRecord: CreateRecordApi
 }

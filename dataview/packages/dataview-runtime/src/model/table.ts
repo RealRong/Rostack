@@ -20,7 +20,7 @@ import type {
 } from '@dataview/engine'
 import type {
   EngineSource
-} from '@dataview/runtime/source'
+} from '@dataview/engine'
 
 const EMPTY_SECTION_IDS = [] as readonly SectionId[]
 const DEFAULT_COLUMN_WIDTH = 160

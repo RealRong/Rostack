@@ -20,7 +20,7 @@ import type {
 import {
   createDocumentReadContext,
   type DocumentReader
-} from '@dataview/engine/document/reader'
+} from '@dataview/core/document/reader'
 import type {
   Revision
 } from '@shared/projection'

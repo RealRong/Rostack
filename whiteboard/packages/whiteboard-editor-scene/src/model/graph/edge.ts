@@ -8,7 +8,7 @@ import type {
   Rect,
   Size
 } from '@whiteboard/core/types'
-import type { GraphDelta } from '../../contracts/delta'
+import type { GraphPhaseDelta } from '../../contracts/delta'
 import type {
   EdgeView,
   Input,
@@ -404,7 +404,7 @@ export const buildEdgeView = (input: {
 export const patchEdge = (input: {
   input: Input
   working: WorkingState
-  delta: GraphDelta
+  delta: GraphPhaseDelta
   edgeId: EdgeId
   nodeSnapshotCache?: Map<NodeId, EdgeNodeSnapshot>
 }): {

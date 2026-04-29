@@ -2,9 +2,10 @@ import type {
   Field,
   FieldId,
   View,
+  ViewId,
   ViewSortRuleId
 } from '@dataview/core/types'
-import { equal, store } from '@shared/core'
+import { equal, store, type collection } from '@shared/core'
 import type {
   PageBody,
   PageHeader,
@@ -17,7 +18,7 @@ import type {
 } from '@dataview/runtime/model/page/types'
 import type {
   EngineSource
-} from '@dataview/runtime/source'
+} from '@dataview/engine'
 import {
   queryFieldOptions
 } from '@dataview/runtime/model/page/queryFieldOptions'
@@ -143,11 +144,11 @@ const sameSortRow = (
 )
 
 const createAvailableFieldsStore = <TField extends Field>(input: {
-  fields: store.ReadStore<readonly TField[]>
+  fields: store.ReadStore<collection.OrderedKeyedCollection<FieldId, TField>>
   usedFieldIds: store.ReadStore<readonly FieldId[]>
 }) => store.createDerivedStore<readonly TField[]>({
   get: () => {
-    const fields = store.read(input.fields)
+    const fields = store.read(input.fields).all
     const usedFieldIds = store.read(input.usedFieldIds)
     if (!usedFieldIds.length) {
       return fields
@@ -163,8 +164,8 @@ interface PageModelContext {
   source: EngineSource
   pageSessionStore: store.ReadStore<PageSessionState>
   valueEditorOpenStore: store.ReadStore<boolean>
-  fields: store.ReadStore<readonly Field[]>
-  views: store.ReadStore<readonly View[]>
+  fields: store.ReadStore<collection.OrderedKeyedCollection<FieldId, Field>>
+  views: store.ReadStore<collection.OrderedKeyedCollection<ViewId, View>>
   view: store.ReadStore<View | undefined>
   queryBar: store.ReadStore<PageToolbar['queryBar']>
   availableFilterFields: store.ReadStore<readonly Field[]>
@@ -207,7 +208,7 @@ export const pageModelSpec = {
   toolbar: {
     kind: 'value',
     read: (context: PageModelContext): PageToolbar => ({
-      views: store.read(context.views),
+      views: store.read(context.views).all,
       view: store.read(context.view),
       viewId: store.read(context.source.active.viewId),
       queryBar: store.read(context.queryBar),
@@ -250,8 +251,8 @@ export const pageModelSpec = {
       return {
         visible: currentSettings.visible,
         route: currentSettings.route,
-        viewsCount: store.read(context.views).length,
-        fields: store.read(context.fields),
+        viewsCount: store.read(context.views).count,
+        fields: store.read(context.fields).all,
         displayFieldIds: store.read(context.displayFieldIds),
         visibleFields: store.read(context.visibleFields),
         hiddenFields: store.read(context.hiddenFields),
@@ -281,7 +282,7 @@ export const pageModelSpec = {
         rule: currentRow.rule,
         field: currentRow.field,
         availableFields: queryFieldOptions.available.sortAt(
-          allFields,
+          allFields.all,
           currentSortRules,
           id
         )
@@ -353,7 +354,7 @@ export const createPageModel = (input: {
     route: PageSettings['route']
   }>({
     get: () => resolvePageSettingsState({
-      fields: store.read(fields),
+      fields: store.read(fields).all,
       activeViewId: store.read(input.source.active.viewId),
       activeViewType: store.read(input.source.active.viewType),
       settings: store.read(input.pageSessionStore).settings
@@ -374,9 +375,9 @@ export const createPageModel = (input: {
         return EMPTY_FIELDS
       }
 
-      const fieldById = new Map(store.read(fields).map(field => [field.id, field] as const))
+      const fieldList = store.read(fields)
       return orderedFieldIds.flatMap(fieldId => {
-        const field = fieldById.get(fieldId)
+        const field = fieldList.get(fieldId)
         return field
           ? [field]
           : []
@@ -386,7 +387,7 @@ export const createPageModel = (input: {
   })
   const hiddenFields = store.createDerivedStore<readonly Field[]>({
     get: () => {
-      const allFields = store.read(fields)
+      const allFields = store.read(fields).all
       const shownFieldIds = store.read(displayFieldIds)
       if (!shownFieldIds.length) {
         return allFields

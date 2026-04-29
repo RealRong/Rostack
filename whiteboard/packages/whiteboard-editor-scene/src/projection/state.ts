@@ -9,15 +9,14 @@ import type {
 import type { Revision } from '@shared/projection'
 import { family } from '@shared/core'
 import {
-  createDocumentDelta,
-  createGraphDelta,
-  createItemsDelta,
-  renderChange,
-  uiChange
+  createDeltaState,
+  createGraphPhaseDelta,
+  createRenderPhaseDeltaState,
+  createUiPhaseDeltaState
 } from '../contracts/delta'
 import {
-  createEmptyWhiteboardExecution
-} from '../contracts/execution'
+  createEmptyEditorScenePlan
+} from '../contracts/plan'
 import type {
   EdgeStateView,
   EdgeUiView,
@@ -74,7 +73,7 @@ export const createWorking = (input: {
 
   return {
     layout: input.layout,
-    execution: createEmptyWhiteboardExecution(),
+    plan: createEmptyEditorScenePlan(),
     draft: {
       node: new Map()
     },
@@ -149,12 +148,13 @@ export const createWorking = (input: {
       byId: new Map()
     },
     delta: {
-      document: createDocumentDelta(),
-      graph: createGraphDelta(),
-      spatial: createSpatialDelta(),
-      items: createItemsDelta(),
-      ui: uiChange.create(),
-      render: renderChange.create()
+      ...createDeltaState()
+    },
+    phase: {
+      graph: createGraphPhaseDelta(),
+      ui: createUiPhaseDeltaState(),
+      render: createRenderPhaseDeltaState(),
+      spatial: createSpatialDelta()
     }
   }
 }

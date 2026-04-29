@@ -5,7 +5,7 @@ import type {
 import { field as fieldApi } from '@dataview/core/field'
 import { applyRecordOrder } from '@dataview/core/view/order'
 import type { IndexState } from '@dataview/engine/active/index/contracts'
-import type { DocumentReader } from '@dataview/engine/document/reader'
+import type { DocumentReader } from '@dataview/core/document/reader'
 
 export interface QueryReuseState {
   matched?: readonly RecordId[]

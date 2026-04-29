@@ -2,13 +2,13 @@ import { entityDelta } from '@shared/delta'
 import type { Document } from '@whiteboard/core/types'
 import type { Revision } from '@shared/projection'
 import type {
-  ItemsDelta,
-  SceneItemEntry,
   SceneItemKey
 } from '../../contracts/delta'
 import {
+  compileFamilyChangeFromEntityDelta,
   sceneItemKey
 } from '../../contracts/delta'
+import type { SceneItem } from '../../contracts/editor'
 import type { WorkingState } from '../../contracts/working'
 
 type DocumentSnapshot = {
@@ -18,8 +18,7 @@ type DocumentSnapshot = {
 
 const toSceneItem = (
   ref: Document['canvas']['order'][number]
-): SceneItemEntry => ({
-  key: sceneItemKey.write(ref),
+): SceneItem => ({
   kind: ref.kind,
   id: ref.id
 })
@@ -27,11 +26,12 @@ const toSceneItem = (
 const buildItemsSnapshot = (
   snapshot: DocumentSnapshot
 ): WorkingState['items'] => {
-  const byId = new Map<SceneItemKey, SceneItemEntry>()
+  const byId = new Map<SceneItemKey, SceneItem>()
   const ids = snapshot.document.canvas.order.map((ref) => {
+    const key = sceneItemKey.write(ref)
     const item = toSceneItem(ref)
-    byId.set(item.key, item)
-    return item.key
+    byId.set(key, item)
+    return key
   })
 
   return {
@@ -58,10 +58,10 @@ export const patchItemsState = (input: {
     nextGet: (key) => next.byId.get(key)
   })
 
-  input.working.delta.items = {
-    revision: input.revision,
-    change
-  }
+  input.working.delta.items = compileFamilyChangeFromEntityDelta({
+    snapshot: next,
+    delta: change
+  })
 
   if (input.reset || change) {
     input.working.items = next

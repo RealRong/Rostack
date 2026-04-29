@@ -55,7 +55,7 @@ import {
   requireValue,
   type DataviewCompileInput
 } from './compile-base'
-import type { DocumentReader } from './compile-read'
+import type { DocumentReader } from './document/reader'
 
 const sameRecordOrder = equal.sameOrder<string>
 

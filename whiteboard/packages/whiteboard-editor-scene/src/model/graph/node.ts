@@ -7,7 +7,7 @@ import type {
   Rect,
   Size
 } from '@whiteboard/core/types'
-import type { GraphDelta } from '../../contracts/delta'
+import type { GraphPhaseDelta } from '../../contracts/delta'
 import type {
   Input,
   NodeDraftMeasure,
@@ -293,7 +293,7 @@ export const buildNodeView = (input: {
 export const patchNode = (input: {
   input: Input
   working: WorkingState
-  delta: GraphDelta
+  delta: GraphPhaseDelta
   nodeId: NodeId
 }): {
   changed: boolean

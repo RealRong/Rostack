@@ -43,6 +43,9 @@ import type {
   DataviewCurrent
 } from '@dataview/engine/contracts/result'
 import type {
+  EngineSource
+} from '@dataview/engine/contracts/source'
+import type {
   PerformanceApi,
   PerformanceOptions
 } from '@dataview/engine/contracts/performance'
@@ -174,6 +177,7 @@ export interface Engine {
   readonly spec: DataviewSpec
   readonly commits: EngineCommits
   readonly history: DataviewHistory
+  readonly source: EngineSource
   readonly active: ActiveViewApi
   readonly views: ViewsApi
   readonly fields: FieldsApi

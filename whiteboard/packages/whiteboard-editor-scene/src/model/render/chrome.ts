@@ -41,7 +41,7 @@ export const patchRenderChrome = (
       context.working.render.chrome = next
     },
     writeDelta: (changed) => {
-      context.working.delta.render.chrome.scene = changed
+      context.working.phase.render.chrome.scene = changed
     }
   })
 }

@@ -1,4 +1,4 @@
-export { createEditorSceneRuntime } from './runtime/createEditorSceneRuntime'
+export { createRuntime } from './projection/createRuntime'
 export type {
   EditorSceneRuntime
 } from './contracts/runtime'

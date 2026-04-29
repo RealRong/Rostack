@@ -11,7 +11,7 @@ import type {
   Point,
   Rect
 } from '@whiteboard/core/types'
-import type { GraphDelta } from '../../contracts/delta'
+import type { GraphPhaseDelta } from '../../contracts/delta'
 import type {
   Input,
   MindmapView
@@ -414,7 +414,7 @@ const diffMindmapMemberNodes = (input: {
 export const patchMindmap = (input: {
   input: Input
   working: WorkingState
-  delta: GraphDelta
+  delta: GraphPhaseDelta
   mindmapId: MindmapId
 }): {
   changed: boolean

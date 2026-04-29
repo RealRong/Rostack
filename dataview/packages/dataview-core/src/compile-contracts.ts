@@ -1,7 +1,7 @@
 import type {
   MutationCompileIssue,
   MutationCompileSource
-} from '@shared/mutation/engine'
+} from '@shared/mutation/engine/contracts'
 export type ValidationSeverity =
   | 'error'
   | 'warning'

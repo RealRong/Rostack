@@ -25,51 +25,28 @@ import {
   entityTable
 } from '@shared/core'
 import {
-  createDeltaBuilder,
-  defineEntityMutationSchema,
+  type MutationDelta,
   type MutationCustomTable,
   type MutationFootprint
 } from '@shared/mutation'
-import type { MutationPathCodec } from '@shared/mutation/typed'
 import {
-  dataviewEntities
-} from './entities'
-
-const FIELD_PATH_CODEC: MutationPathCodec<string> = {
-  parse: (path) => path || undefined,
-  format: (path) => path
-}
-
-const dataviewMutationSchema = defineEntityMutationSchema({
-  entities: dataviewEntities,
-  entries: {
-    'record.title': {
-      ids: true,
-      paths: FIELD_PATH_CODEC
-    },
-    'record.values': {
-      ids: true,
-      paths: FIELD_PATH_CODEC
-    }
-  },
-  signals: {
-    'external.version': {}
-  }
-} as const)
-
-type DataviewMutationSchema = typeof dataviewMutationSchema
+  dataviewMutationBuilder,
+  type DataviewMutationSchema
+} from '@dataview/core/mutation'
 type DataviewMutationIdsKey = Extract<
   keyof DataviewMutationSchema & string,
   'record.delete' | 'field.delete' | 'view.delete'
 >
 
-const dataviewMutationDelta = createDeltaBuilder(dataviewMutationSchema)
+const toMutationDelta = (
+  delta: MutationDelta | undefined
+): MutationDelta | undefined => delta
 
 const createIdsDelta = (
   key: DataviewMutationIdsKey,
   ids: readonly string[]
 ) => ids.length
-  ? dataviewMutationDelta.ids(key, ids)
+  ? toMutationDelta(dataviewMutationBuilder.ids(key, ids) as MutationDelta)
   : undefined
 
 const collectRecordValueFieldIds = (
@@ -105,14 +82,14 @@ const createRecordValueDelta = (
     }
   })
 
-  return dataviewMutationDelta.merge(
+  return toMutationDelta(dataviewMutationBuilder.merge(
     Object.keys(titlePaths).length
-      ? dataviewMutationDelta.paths('record.title', titlePaths)
+      ? dataviewMutationBuilder.paths('record.title', titlePaths)
       : undefined,
     Object.keys(valuePaths).length
-      ? dataviewMutationDelta.paths('record.values', valuePaths)
+      ? dataviewMutationBuilder.paths('record.values', valuePaths)
       : undefined
-  )
+  ) as MutationDelta)
 }
 
 const createRecordValueFootprint = (
@@ -159,13 +136,13 @@ const createRecordRemoveResult = (
 
   return {
     document: nextDocument,
-    delta: dataviewMutationDelta.merge(
+    delta: toMutationDelta(dataviewMutationBuilder.merge(
       createIdsDelta('record.delete', removedEntries.map((entry) => entry.record.id)),
       createRecordValueDelta(removedEntries.map((entry) => ({
         recordId: entry.record.id,
         changedFields: collectRecordValueFieldIds(entry.record)
       })))
-    ),
+    ) as MutationDelta),
     footprint: [
       {
         kind: 'global' as const,
@@ -273,10 +250,10 @@ const createFieldRemoveResult = (
 
   return {
     document: nextDocument,
-    delta: dataviewMutationDelta.merge(
+    delta: toMutationDelta(dataviewMutationBuilder.merge(
       createIdsDelta('field.delete', [operation.id]),
       createRecordValueDelta(affectedRecords)
-    ),
+    ) as MutationDelta),
     footprint: [
       {
         kind: 'global' as const,
@@ -312,7 +289,7 @@ const createViewOpenResult = (
 
   return {
     document: nextDocument,
-    delta: dataviewMutationDelta.flag('document.activeViewId'),
+    delta: toMutationDelta(dataviewMutationBuilder.flag('document.activeViewId') as MutationDelta),
     footprint: [{
       kind: 'global' as const,
       family: 'document'
@@ -346,7 +323,7 @@ const createViewRemoveResult = (
   const deltaInputs = [
     createIdsDelta('view.delete', [operation.id]),
     beforeActiveViewId !== nextDocument.activeViewId
-      ? dataviewMutationDelta.flag('document.activeViewId')
+      ? toMutationDelta(dataviewMutationBuilder.flag('document.activeViewId') as MutationDelta)
       : undefined
   ] as const
 
@@ -361,7 +338,7 @@ const createViewRemoveResult = (
 
   return {
     document: nextDocument,
-    delta: dataviewMutationDelta.merge(...deltaInputs),
+    delta: toMutationDelta(dataviewMutationBuilder.merge(...deltaInputs) as MutationDelta),
     footprint: [
       {
         kind: 'global' as const,
@@ -382,7 +359,7 @@ const createViewRemoveResult = (
 const createExternalVersionResult = (
   operation: Extract<DocumentOperation, { type: 'external.version.bump' }>
 ) => ({
-  delta: dataviewMutationDelta.flag('external.version'),
+  delta: toMutationDelta(dataviewMutationBuilder.flag('external.version') as MutationDelta),
   footprint: [] as const,
   history: false as const,
   outputs: [operation.source]

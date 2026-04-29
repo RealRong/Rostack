@@ -31,7 +31,7 @@ import {
 } from '@dataview/engine/active/shared/selection'
 import {
   type DocumentReader
-} from '@dataview/engine/document/reader'
+} from '@dataview/core/document/reader'
 
 const createPublishedSelection = (input: {
   previous?: QueryState['matched']

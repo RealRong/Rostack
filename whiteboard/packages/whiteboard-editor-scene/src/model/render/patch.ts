@@ -1,6 +1,10 @@
-import { renderChange } from '../../contracts/delta'
+import {
+  compileFamilyChangeFromIdDelta,
+  compileValueChange,
+  resetRenderPhaseDelta
+} from '../../contracts/delta'
 import type { Input } from '../../contracts/editor'
-import type { WhiteboardExecution } from '../../contracts/execution'
+import type { EditorScenePlan } from '../../contracts/plan'
 import type { WorkingState } from '../../contracts/working'
 import { patchRenderActive } from './active'
 import { patchRenderChrome } from './chrome'
@@ -13,11 +17,11 @@ import { patchRenderStatics } from './statics'
 
 export const patchRenderState = (input: {
   current: Input
-  execution: WhiteboardExecution
+  plan: EditorScenePlan
   working: WorkingState
   reset: boolean
 }): number => {
-  input.working.delta.render = renderChange.create()
+  resetRenderPhaseDelta(input.working.phase.render)
   const context = createRenderContext(input)
 
   if (
@@ -33,7 +37,7 @@ export const patchRenderState = (input: {
     return 0
   }
 
-  return (
+  const count = (
     patchRenderNodes(context)
     + patchRenderStatics(context)
     + patchRenderLabels(context)
@@ -42,4 +46,39 @@ export const patchRenderState = (input: {
     + patchRenderOverlay(context)
     + patchRenderChrome(context)
   )
+
+  input.working.delta.render.node = compileFamilyChangeFromIdDelta({
+    snapshot: input.working.render.node,
+    delta: input.working.phase.render.node
+  })
+  input.working.delta.render.edge.statics = compileFamilyChangeFromIdDelta({
+    snapshot: input.working.render.statics,
+    delta: input.working.phase.render.edge.statics,
+    order: input.working.phase.render.edge.staticsIds
+  })
+  input.working.delta.render.edge.active = compileFamilyChangeFromIdDelta({
+    snapshot: input.working.render.active,
+    delta: input.working.phase.render.edge.active,
+    order: input.working.phase.render.edge.activeIds
+  })
+  input.working.delta.render.edge.labels = compileFamilyChangeFromIdDelta({
+    snapshot: input.working.render.labels,
+    delta: input.working.phase.render.edge.labels,
+    order: input.working.phase.render.edge.labelsIds
+  })
+  input.working.delta.render.edge.masks = compileFamilyChangeFromIdDelta({
+    snapshot: input.working.render.masks,
+    delta: input.working.phase.render.edge.masks,
+    order: input.working.phase.render.edge.masksIds
+  })
+  input.working.delta.render.chrome.scene = compileValueChange(
+    input.working.phase.render.chrome.scene,
+    input.working.render.chrome
+  )
+  input.working.delta.render.chrome.edge = compileValueChange(
+    input.working.phase.render.chrome.edge,
+    input.working.render.overlay
+  )
+
+  return count
 }

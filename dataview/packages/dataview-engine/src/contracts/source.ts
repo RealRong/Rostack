@@ -11,32 +11,31 @@ import type {
   View,
   ViewId
 } from '@dataview/core/types'
-import { store } from '@shared/core'
+import { type collection, store } from '@shared/core'
 import type {
   ActiveViewGallery,
   ActiveViewKanban,
   ActiveViewQuery,
   ActiveViewTable,
-  Engine,
-  FieldList,
+} from '@dataview/engine/contracts/view'
+import type {
   ItemId,
   ItemList,
   ItemPlacement,
   Section,
   SectionId,
   SectionList
-} from '@dataview/engine'
+} from '@dataview/engine/contracts/shared'
 
 export interface EntitySource<Key, Value> extends store.KeyedReadStore<Key, Value | undefined> {
   ids: store.ReadStore<readonly Key[]>
 }
 
 export interface ListedEntitySource<Key, Value> extends EntitySource<Key, Value> {
-  list: store.ReadStore<readonly Value[]>
+  list: store.ReadStore<collection.OrderedKeyedCollection<Key, Value>>
 }
 
-export interface SectionSource extends store.KeyedReadStore<SectionId, Section | undefined> {
-  ids: store.ReadStore<readonly SectionId[]>
+export interface SectionSource extends ListedEntitySource<SectionId, Section> {
   list: store.ReadStore<SectionList>
 }
 
@@ -77,21 +76,10 @@ export interface ActiveSource {
   items: ItemSource
   sections: SectionSource
   summaries: store.KeyedReadStore<SectionId, CalculationCollection | undefined>
-  fields: EntitySource<FieldId, Field> & {
-    list: store.ReadStore<FieldList>
-  }
+  fields: ListedEntitySource<FieldId, Field>
 }
 
 export interface EngineSource {
   document: DocumentSource
   active: ActiveSource
-}
-
-export interface EngineSourceRuntime {
-  source: EngineSource
-  dispose: () => void
-}
-
-export interface CreateEngineSourceInput {
-  engine: Pick<Engine, 'current' | 'subscribe'>
 }

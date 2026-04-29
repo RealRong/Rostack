@@ -4,16 +4,11 @@ import type {
 } from '@whiteboard/core/types'
 import type { Input } from '../../contracts/editor'
 import type {
-  WhiteboardExecution
-} from '../../contracts/execution'
-import {
-  executionScopeHasAny
-} from '../../contracts/execution'
+  EditorScenePlan
+} from '../../contracts/plan'
 import type { WorkingState } from '../../contracts/working'
 import {
-  appendEdgeItemScope,
-  appendMindmapNodeScope,
-  appendScopeIds
+  resolveScope
 } from '../scope'
 
 const readActiveEdgeIds = (
@@ -34,7 +29,7 @@ const readActiveEdgeIds = (
 
 export interface RenderContext {
   current: Input
-  execution: WhiteboardExecution
+  plan: EditorScenePlan
   reset: boolean
   working: WorkingState
   active: ReadonlySet<EdgeId>
@@ -53,88 +48,38 @@ export interface RenderContext {
 
 export const createRenderContext = (input: {
   current: Input
-  execution: WhiteboardExecution
+  plan: EditorScenePlan
   working: WorkingState
   reset: boolean
 }): RenderContext => {
-  const active = readActiveEdgeIds(input.current)
-  const node = new Set<NodeId>()
-  const statics = new Set<EdgeId>()
-  const labels = new Set<EdgeId>()
-  const masks = new Set<EdgeId>()
-  const activeEdge = new Set<EdgeId>([
-    ...active,
-    ...input.working.render.active.keys()
-  ])
-
-  appendScopeIds(node, input.execution.graph.node.entity, () => input.working.graph.nodes.keys())
-  appendScopeIds(node, input.execution.graph.node.geometry, () => input.working.graph.nodes.keys())
-  appendScopeIds(node, input.execution.graph.node.content, () => input.working.graph.nodes.keys())
-  appendScopeIds(node, input.execution.graph.node.owner, () => input.working.graph.nodes.keys())
-  appendScopeIds(node, input.execution.ui.node, () => input.working.graph.nodes.keys())
-  appendMindmapNodeScope({
-    target: node,
-    scope: input.execution.graph.mindmap.entity,
-    working: input.working
-  })
-  appendMindmapNodeScope({
-    target: node,
-    scope: input.execution.graph.mindmap.geometry,
-    working: input.working
-  })
-  appendMindmapNodeScope({
-    target: node,
-    scope: input.execution.graph.mindmap.owner,
-    working: input.working
-  })
-
-  appendScopeIds(statics, input.execution.graph.edge.entity, () => input.working.graph.edges.keys())
-  appendScopeIds(statics, input.execution.graph.edge.geometry, () => input.working.graph.edges.keys())
-  appendScopeIds(statics, input.execution.graph.edge.content, () => input.working.graph.edges.keys())
-  appendEdgeItemScope({
-    target: statics,
-    scope: input.execution.items,
-    working: input.working
-  })
-
-  appendScopeIds(labels, input.execution.graph.edge.entity, () => input.working.graph.edges.keys())
-  appendScopeIds(labels, input.execution.graph.edge.geometry, () => input.working.graph.edges.keys())
-  appendScopeIds(labels, input.execution.graph.edge.content, () => input.working.graph.edges.keys())
-  appendScopeIds(labels, input.execution.ui.edge, () => input.working.graph.edges.keys())
-
-  appendScopeIds(masks, input.execution.graph.edge.entity, () => input.working.graph.edges.keys())
-  appendScopeIds(masks, input.execution.graph.edge.geometry, () => input.working.graph.edges.keys())
-  appendScopeIds(masks, input.execution.graph.edge.content, () => input.working.graph.edges.keys())
-
-  appendScopeIds(activeEdge, input.execution.graph.edge.entity, () => input.working.graph.edges.keys())
-  appendScopeIds(activeEdge, input.execution.graph.edge.geometry, () => input.working.graph.edges.keys())
-  appendScopeIds(activeEdge, input.execution.graph.edge.content, () => input.working.graph.edges.keys())
-  appendScopeIds(activeEdge, input.execution.ui.edge, () => input.working.graph.edges.keys())
-
   return {
     current: input.current,
-    execution: input.execution,
+    plan: input.plan,
     reset: input.reset,
     working: input.working,
-    active,
+    active: readActiveEdgeIds(input.current),
     touched: {
-      node,
+      node: resolveScope(input.plan.render.node, () => input.working.graph.nodes.keys()) as ReadonlySet<NodeId>,
       edge: {
-        statics,
-        active: activeEdge,
-        labels,
-        masks
+        statics: resolveScope(
+          input.plan.render.edgeStatics,
+          () => input.working.graph.edges.keys()
+        ) as ReadonlySet<EdgeId>,
+        active: resolveScope(
+          input.plan.render.edgeActive,
+          () => input.working.graph.edges.keys()
+        ) as ReadonlySet<EdgeId>,
+        labels: resolveScope(
+          input.plan.render.edgeLabels,
+          () => input.working.graph.edges.keys()
+        ) as ReadonlySet<EdgeId>,
+        masks: resolveScope(
+          input.plan.render.edgeMasks,
+          () => input.working.graph.edges.keys()
+        ) as ReadonlySet<EdgeId>
       },
-      overlay: (
-        input.reset
-        || input.execution.runtime.ui
-        || input.execution.ui.chrome
-        || executionScopeHasAny(input.execution.ui.edge)
-        || executionScopeHasAny(input.execution.graph.edge.entity)
-        || executionScopeHasAny(input.execution.graph.edge.geometry)
-        || executionScopeHasAny(input.execution.graph.edge.content)
-      ),
-      chrome: input.reset || input.execution.ui.chrome
+      overlay: input.plan.render.chromeEdge,
+      chrome: input.plan.render.chromeScene
     }
   }
 }

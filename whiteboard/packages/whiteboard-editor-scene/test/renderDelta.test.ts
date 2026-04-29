@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest'
-import { idDelta } from '@shared/delta'
 import type {
   Edge,
   EdgeId,
@@ -13,15 +12,13 @@ import type {
   Input
 } from '../src/contracts/editor'
 import {
-  createItemsDelta,
-  sceneItemKey,
-  uiChange
+  sceneItemKey
 } from '../src/contracts/delta'
 import {
-  createEmptyWhiteboardExecution
-} from '../src/contracts/execution'
+  createEmptyEditorScenePlan
+} from '../src/contracts/plan'
 import { patchRenderState } from '../src/model/render/patch'
-import { createWorking } from '../src/runtime/state'
+import { createWorking } from '../src/projection/state'
 import { createEmptyInput } from '../src/testing/input'
 
 const POINT: Point = {
@@ -133,37 +130,34 @@ const setEdgeItems = (
 const resetPhaseDeltas = (
   working: ReturnType<typeof createWorking>
 ) => {
-  working.execution = createEmptyWhiteboardExecution()
-  working.delta.items = createItemsDelta()
-  working.delta.ui = uiChange.create()
+  working.plan = createEmptyEditorScenePlan()
+  working.delta.items = 'skip'
 }
 
-const markEdgeEntity = (
+const markRenderEdges = (
   working: ReturnType<typeof createWorking>,
   ...edgeIds: readonly EdgeId[]
 ) => {
-  working.execution.graph.edge.entity = new Set(edgeIds)
-}
-
-const markEdgeGeometry = (
-  working: ReturnType<typeof createWorking>,
-  ...edgeIds: readonly EdgeId[]
-) => {
-  working.execution.graph.edge.geometry = new Set(edgeIds)
-}
-
-const markEdgeContent = (
-  working: ReturnType<typeof createWorking>,
-  ...edgeIds: readonly EdgeId[]
-) => {
-  working.execution.graph.edge.content = new Set(edgeIds)
+  const touched = new Set(edgeIds)
+  working.plan.render.edgeStatics = new Set(touched)
+  working.plan.render.edgeActive = new Set(touched)
+  working.plan.render.edgeLabels = new Set(touched)
+  working.plan.render.edgeMasks = new Set(touched)
 }
 
 const markUiEdge = (
   working: ReturnType<typeof createWorking>,
   ...edgeIds: readonly EdgeId[]
 ) => {
-  working.execution.ui.edge = new Set(edgeIds)
+  const touched = new Set(edgeIds)
+  working.plan.render.edgeLabels = new Set([
+    ...working.plan.render.edgeLabels as ReadonlySet<EdgeId>,
+    ...touched
+  ])
+  working.plan.render.edgeActive = new Set([
+    ...working.plan.render.edgeActive as ReadonlySet<EdgeId>,
+    ...touched
+  ])
 }
 
 describe('render delta patching', () => {
@@ -190,12 +184,12 @@ describe('render delta patching', () => {
     }))
     working.items = setEdgeItems([edgeA, edgeB, edgeC])
 
-    markEdgeEntity(working, edgeA, edgeB, edgeC)
+    markRenderEdges(working, edgeA, edgeB, edgeC)
 
     patchRenderState({
       working,
       current: createCurrentInput(),
-      execution: working.execution,
+      plan: working.plan,
       reset: false
     })
 
@@ -209,21 +203,18 @@ describe('render delta patching', () => {
       color: 'red',
       svgPath: 'M0 0L11 0'
     }))
-    markEdgeGeometry(working, edgeA)
+    markRenderEdges(working, edgeA)
 
     patchRenderState({
       working,
       current: createCurrentInput(),
-      execution: working.execution,
+      plan: working.plan,
       reset: false
     })
 
-    expect(working.delta.render.edge.statics.updated).toEqual(new Set([
-      redStaticId
-    ]))
-    expect(working.delta.render.edge.statics.added.size).toBe(0)
-    expect(working.delta.render.edge.statics.removed.size).toBe(0)
-    expect(working.delta.render.edge.staticsIds).toBe(false)
+    expect(working.delta.render.edge.statics).toEqual({
+      set: [[redStaticId, working.render.statics.byId.get(redStaticId)!]]
+    })
     expect(working.render.statics.byId.get(blueStaticId)).toBe(previousBlueBucket)
   })
 
@@ -244,12 +235,12 @@ describe('render delta patching', () => {
     }))
     working.items = setEdgeItems([edgeA, edgeB])
 
-    markEdgeEntity(working, edgeA, edgeB)
+    markRenderEdges(working, edgeA, edgeB)
 
     patchRenderState({
       working,
       current: createCurrentInput(),
-      execution: working.execution,
+      plan: working.plan,
       reset: false
     })
 
@@ -257,26 +248,21 @@ describe('render delta patching', () => {
 
     resetPhaseDeltas(working)
     working.items = setEdgeItems([edgeB, edgeA])
-    working.delta.items.change = {
-      order: true,
-      set: [
-        `edge:${edgeA}`,
-        `edge:${edgeB}`
-      ]
+    working.delta.items = {
+      ids: working.items.ids
     }
-    working.execution.items = new Set(working.items.ids)
+    working.plan.render.edgeStatics = new Set([edgeA, edgeB])
 
     patchRenderState({
       working,
       current: createCurrentInput(),
-      execution: working.execution,
+      plan: working.plan,
       reset: false
     })
 
-    expect(working.delta.render.edge.staticsIds).toBe(true)
-    expect(working.delta.render.edge.statics.added.size).toBe(0)
-    expect(working.delta.render.edge.statics.updated.size).toBe(0)
-    expect(working.delta.render.edge.statics.removed.size).toBe(0)
+    expect(working.delta.render.edge.statics).toEqual({
+      ids: working.render.statics.ids
+    })
     expect(working.render.statics.ids).not.toEqual(previousIds)
   })
 
@@ -319,12 +305,12 @@ describe('render delta patching', () => {
       labels: new Map()
     })
 
-    markEdgeEntity(working, edgeA, edgeB)
+    markRenderEdges(working, edgeA, edgeB)
 
     patchRenderState({
       working,
       current: createCurrentInput(),
-      execution: working.execution,
+      plan: working.plan,
       reset: false
     })
 
@@ -338,22 +324,18 @@ describe('render delta patching', () => {
       patched: false,
       labels: new Map()
     })
-    idDelta.update(working.delta.ui.edge, edgeA)
     markUiEdge(working, edgeA)
 
     patchRenderState({
       working,
       current: createCurrentInput(),
-      execution: working.execution,
+      plan: working.plan,
       reset: false
     })
 
-    expect(working.delta.render.edge.labels.updated).toEqual(new Set([
-      labelKeyA
-    ]))
-    expect(working.delta.render.edge.labels.added.size).toBe(0)
-    expect(working.delta.render.edge.labels.removed.size).toBe(0)
-    expect(working.delta.render.edge.labelsIds).toBe(false)
+    expect(working.delta.render.edge.labels).toEqual({
+      set: [[labelKeyA, working.render.labels.byId.get(labelKeyA)!]]
+    })
     expect(working.render.labels.byId.get(labelKeyB)).toBe(previousLabelB)
   })
 
@@ -386,12 +368,12 @@ describe('render delta patching', () => {
     }))
     working.items = setEdgeItems([edgeA, edgeB])
 
-    markEdgeEntity(working, edgeA, edgeB)
+    markRenderEdges(working, edgeA, edgeB)
 
     patchRenderState({
       working,
       current: createCurrentInput(),
-      execution: working.execution,
+      plan: working.plan,
       reset: false
     })
 
@@ -412,21 +394,18 @@ describe('render delta patching', () => {
         })
       ]
     }))
-    markEdgeContent(working, edgeA)
+    markRenderEdges(working, edgeA)
 
     patchRenderState({
       working,
       current: createCurrentInput(),
-      execution: working.execution,
+      plan: working.plan,
       reset: false
     })
 
-    expect(working.delta.render.edge.masks.updated).toEqual(new Set([
-      edgeA
-    ]))
-    expect(working.delta.render.edge.masks.added.size).toBe(0)
-    expect(working.delta.render.edge.masks.removed.size).toBe(0)
-    expect(working.delta.render.edge.masksIds).toBe(false)
+    expect(working.delta.render.edge.masks).toEqual({
+      set: [[edgeA, working.render.masks.byId.get(edgeA)!]]
+    })
     expect(working.render.masks.byId.get(edgeB)).toBe(previousMaskB)
   })
 })

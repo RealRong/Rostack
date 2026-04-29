@@ -20,7 +20,7 @@ import type {
   ViewSearchProjection,
   ViewSortProjection
 } from '@dataview/engine/contracts/view'
-import type { DocumentReader } from '@dataview/engine/document/reader'
+import type { DocumentReader } from '@dataview/core/document/reader'
 import {
   sameList,
   sameOptionalList,

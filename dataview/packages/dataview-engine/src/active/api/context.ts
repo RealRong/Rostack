@@ -13,7 +13,7 @@ import type {
 import {
   createDocumentReader,
   type DocumentReader
-} from '@dataview/engine/document/reader'
+} from '@dataview/core/document/reader'
 
 export interface ActiveViewContext {
   id: ActiveViewApi['id']

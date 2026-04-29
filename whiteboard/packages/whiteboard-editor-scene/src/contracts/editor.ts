@@ -60,7 +60,7 @@ import { store } from '@shared/core'
 import type { WhiteboardMutationDelta } from '../mutation/delta'
 import type { Capture } from './capture'
 import type { IdDelta, SceneItemKey } from './delta'
-import type { WhiteboardRuntimeDelta } from './execution'
+import type { EditorSceneRuntimeDelta } from './plan'
 import type {
   EdgeActiveView,
   ChromeRenderView,
@@ -87,7 +87,7 @@ export interface Input {
     interaction: InteractionInput
     view: SceneViewSnapshot
     clock: ClockInput
-    delta: WhiteboardRuntimeDelta
+    delta: EditorSceneRuntimeDelta
   }
   delta: WhiteboardMutationDelta
 }

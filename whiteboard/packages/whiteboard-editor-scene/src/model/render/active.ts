@@ -66,17 +66,17 @@ const writeActiveDelta = (input: {
   }
 
   if (input.previous === undefined && input.next !== undefined) {
-    idDelta.add(input.context.working.delta.render.edge.active, input.edgeId)
-    input.context.working.delta.render.edge.activeIds = true
+    idDelta.add(input.context.working.phase.render.edge.active, input.edgeId)
+    input.context.working.phase.render.edge.activeIds = true
     return
   }
   if (input.previous !== undefined && input.next === undefined) {
-    idDelta.remove(input.context.working.delta.render.edge.active, input.edgeId)
-    input.context.working.delta.render.edge.activeIds = true
+    idDelta.remove(input.context.working.phase.render.edge.active, input.edgeId)
+    input.context.working.phase.render.edge.activeIds = true
     return
   }
 
-  idDelta.update(input.context.working.delta.render.edge.active, input.edgeId)
+  idDelta.update(input.context.working.phase.render.edge.active, input.edgeId)
 }
 
 export const patchRenderActive = (

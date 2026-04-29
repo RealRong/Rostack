@@ -164,17 +164,17 @@ const writeLabelDelta = (input: {
   }
 
   if (input.previous === undefined && input.next !== undefined) {
-    idDelta.add(input.context.working.delta.render.edge.labels, input.key)
-    input.context.working.delta.render.edge.labelsIds = true
+    idDelta.add(input.context.working.phase.render.edge.labels, input.key)
+    input.context.working.phase.render.edge.labelsIds = true
     return
   }
   if (input.previous !== undefined && input.next === undefined) {
-    idDelta.remove(input.context.working.delta.render.edge.labels, input.key)
-    input.context.working.delta.render.edge.labelsIds = true
+    idDelta.remove(input.context.working.phase.render.edge.labels, input.key)
+    input.context.working.phase.render.edge.labelsIds = true
     return
   }
 
-  idDelta.update(input.context.working.delta.render.edge.labels, input.key)
+  idDelta.update(input.context.working.phase.render.edge.labels, input.key)
 }
 
 export const patchRenderLabels = (
@@ -226,7 +226,7 @@ export const patchRenderLabels = (
     })
 
     if (!equal.sameOrder(previous.ids, built.ids, (left, right) => left === right)) {
-      context.working.delta.render.edge.labelsIds = true
+      context.working.phase.render.edge.labelsIds = true
     }
 
     context.working.render.labels = {
@@ -317,7 +317,7 @@ export const patchRenderLabels = (
       || nextLabels.ids.some((key) => !previousKeySet.has(key))
     if (membershipChanged) {
       labelIds = replaceIdSegment(labelIds, previousKeys, nextLabels.ids)
-      context.working.delta.render.edge.labelsIds = true
+      context.working.phase.render.edge.labelsIds = true
     }
 
     changedKeys.forEach(({ key, previous: previousView, next }) => {

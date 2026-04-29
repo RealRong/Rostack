@@ -21,9 +21,6 @@ import {
   createMarqueeController
 } from '@dataview/runtime/session/marquee'
 import {
-  createEngineSource
-} from '@dataview/runtime/source'
-import {
   createTableModel
 } from '@dataview/runtime/model/table'
 import {
@@ -123,18 +120,16 @@ const bindMarqueeToView = (input: {
 export const createDataViewRuntime = (
   input: CreateDataViewRuntimeInput
 ): DataViewRuntime => {
-  const sourceRuntime = createEngineSource({
-    engine: input.engine
-  })
+  const source = input.engine.source
   const page = createPageSessionController(input.page)
   const inline = createInlineSessionApi()
   const createRecord = createRecordWorkflow({
-    view: sourceRuntime.source.active.view
+    view: source.active.view
   })
-  const table = createTableModel(sourceRuntime.source)
+  const table = createTableModel(source)
   const valueEditor = createValueEditorApi()
-  const activeItems = sourceRuntime.source.active.items.list
-  const view = sourceRuntime.source.active.view
+  const activeItems = source.active.items.list
+  const view = source.active.view
   const activeSelectionDomain = createItemSelectionDomainSource({
     store: activeItems
   })
@@ -148,20 +143,20 @@ export const createDataViewRuntime = (
   })
   const model = {
     page: createPageModel({
-      source: sourceRuntime.source,
+      source,
       pageSessionStore: page.store,
       valueEditorOpenStore: valueEditor.openStore
     }),
     table,
     gallery: createGalleryModel({
-      source: sourceRuntime.source,
+      source,
       selectionMembershipStore: selection.store.membership,
       previewSelectionMembershipStore: marquee.preview.membership,
       inlineEditingStore: inline.editing,
       inlineKey: inline.key
     }),
     kanban: createKanbanModel({
-      source: sourceRuntime.source,
+      source,
       selectionMembershipStore: selection.store.membership,
       previewSelectionMembershipStore: marquee.preview.membership,
       inlineEditingStore: inline.editing,
@@ -180,7 +175,7 @@ export const createDataViewRuntime = (
     }),
     bindInlineSessionToView({
       view,
-      items: sourceRuntime.source.active.items,
+      items: source.active.items,
       inlineSession: inline
     })
   ])
@@ -188,7 +183,7 @@ export const createDataViewRuntime = (
   return {
     engine: input.engine,
     history: input.engine.history,
-    source: sourceRuntime.source,
+    source,
     session: {
       page,
       selection,
@@ -203,7 +198,6 @@ export const createDataViewRuntime = (
     dispose: () => {
       selectionRuntime.dispose()
       disposeBindings()
-      sourceRuntime.dispose()
     }
   }
 }

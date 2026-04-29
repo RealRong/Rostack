@@ -9,9 +9,11 @@
     "./intent": "./src/intent.ts",
     "./op": "./src/op.ts",
     "./entities": "./src/entities.ts",
+    "./mutation": "./src/mutation/index.ts",
     "./custom": "./src/custom.ts",
     "./compile": "./src/compile.ts",
     "./document": "./src/document/index.ts",
+    "./document/reader": "./src/document/reader.ts",
     "./field": "./src/field/index.ts",
     "./view": "./src/view/index.ts"
   },

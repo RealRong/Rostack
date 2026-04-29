@@ -43,10 +43,13 @@ import {
 import {
   createDataviewMutationDelta
 } from '@dataview/engine/mutation/delta'
+import {
+  createEngineSource
+} from '@dataview/engine/source/createEngineSource'
 import { createPerformanceRuntime } from '@dataview/engine/runtime/performance'
 import {
   createDocumentReadContext
-} from '@dataview/engine/document/reader'
+} from '@dataview/core/document/reader'
 import type {
   DataviewIntentTable,
   DataviewErrorCode
@@ -102,6 +105,13 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
       reset: true,
       changes: EMPTY_MUTATION_CHANGES
     })
+  })
+  const source = createEngineSource({
+    readDocument: () => mutationEngine.document(),
+    subscribeDocument: (listener) => mutationEngine.subscribe((commit) => {
+      listener(commit as EngineCommit)
+    }),
+    projection
   })
 
   const readCurrent = (): DataviewCurrent => {
@@ -185,6 +195,7 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
   return {
     spec: options.spec,
     ...engineWithInfra,
+    source,
     fields: createFieldsApi(engineBase),
     records: createRecordsApi(engineBase),
     views: createViewsApi(engineBase),

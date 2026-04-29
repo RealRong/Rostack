@@ -101,71 +101,6 @@ const toFamilyChange = <TKey extends string | number, TValue>(input: {
   }
 }
 
-const readFieldFamily = (
-  view?: ViewState
-): ProjectionFamilySnapshot<FieldId, Field> => ({
-  ids: view?.fields.ids ?? [],
-  byId: view?.fields.ids.length
-    ? new Map(view.fields.ids.flatMap((fieldId) => {
-      const field = view.fields.get(fieldId)
-      return field
-        ? [[fieldId, field] as const]
-        : []
-    }))
-    : new Map()
-})
-
-const readSectionFamily = (
-  view?: ViewState
-): ProjectionFamilySnapshot<SectionId, Section> => ({
-  ids: view?.sections.ids ?? [],
-  byId: view?.sections.ids.length
-    ? new Map(view.sections.ids.flatMap((sectionId) => {
-      const section = view.sections.get(sectionId)
-      return section
-        ? [[sectionId, section] as const]
-        : []
-    }))
-    : new Map()
-})
-
-const readItemFamily = (
-  view?: ViewState
-): ProjectionFamilySnapshot<ItemId, ItemPlacement> => ({
-  ids: view?.items.ids ?? [],
-  byId: view?.items.ids.length
-    ? new Map(view.items.ids.flatMap((itemId) => {
-      const placement = view.items.read.placement(itemId)
-      return placement
-        ? [[itemId, placement] as const]
-        : []
-    }))
-    : new Map()
-})
-
-const readSummaryFamily = (
-  view?: ViewState
-): ProjectionFamilySnapshot<SectionId, CalculationCollection> => {
-  if (!view) {
-    return EMPTY_SUMMARY_FAMILY
-  }
-
-  const byId = new Map<SectionId, CalculationCollection>()
-  view.sections.ids.forEach((sectionId) => {
-    const summary = view.summaries.get(sectionId)
-    if (summary) {
-      byId.set(sectionId, summary)
-    }
-  })
-
-  return {
-    ids: byId.size
-      ? view.sections.ids.filter((sectionId) => byId.has(sectionId))
-      : [],
-    byId
-  }
-}
-
 const buildFieldChange = (input: {
   previous: ProjectionFamilySnapshot<FieldId, Field>
   next: ProjectionFamilySnapshot<FieldId, Field>
@@ -236,14 +171,22 @@ const buildStoreChanges = (input: {
       previous: input.previousFields,
       next: input.nextFields
     }),
-    sections: toFamilyChange({
-      snapshot: input.nextSections,
-      delta: input.sectionDelta
-    }),
-    items: toFamilyChange({
-      snapshot: input.nextItems,
-      delta: input.itemDelta
-    }),
+    sections: input.sectionDelta
+      ? toFamilyChange({
+          snapshot: input.nextSections,
+          delta: input.sectionDelta
+        })
+      : input.previousSections !== input.nextSections
+        ? 'replace'
+        : 'skip',
+    items: input.itemDelta
+      ? toFamilyChange({
+          snapshot: input.nextItems,
+          delta: input.itemDelta
+        })
+      : input.previousItems !== input.nextItems
+        ? 'replace'
+        : 'skip',
     summaries: buildSummaryChange({
       previous: input.previousSummaries,
       next: input.nextSummaries
@@ -340,10 +283,6 @@ export const runDataviewActive = (input: {
     input.previous.snapshot,
     publish.snapshot
   )
-  const fields = readFieldFamily(publish.snapshot)
-  const sections = readSectionFamily(publish.snapshot)
-  const items = readItemFamily(publish.snapshot)
-  const summaries = readSummaryFamily(publish.snapshot)
 
   return {
     spec: active,
@@ -352,22 +291,22 @@ export const runDataviewActive = (input: {
     membership: membership.state,
     summary: summary.state,
     snapshot: publish.snapshot,
-    fields,
-    sections,
-    items,
-    summaries,
+    fields: publish.fields,
+    sections: publish.sections,
+    items: publish.items,
+    summaries: publish.summaries,
     itemIds: input.previous.itemIds,
     changes: buildStoreChanges({
       previous: input.previous.snapshot,
       next: publish.snapshot,
       previousFields: input.previous.fields,
-      nextFields: fields,
+      nextFields: publish.fields,
       previousSections: input.previous.sections,
-      nextSections: sections,
+      nextSections: publish.sections,
       previousItems: input.previous.items,
-      nextItems: items,
+      nextItems: publish.items,
       previousSummaries: input.previous.summaries,
-      nextSummaries: summaries,
+      nextSummaries: publish.summaries,
       sectionDelta: publish.sectionDelta,
       itemDelta: publish.itemDelta
     }),

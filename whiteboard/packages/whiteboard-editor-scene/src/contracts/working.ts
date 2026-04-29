@@ -1,13 +1,15 @@
 import type {
-  WhiteboardExecution
-} from './execution'
+  EditorScenePlan
+} from './plan'
 import type {
+  DeltaState,
   DocumentDelta,
   GraphDelta,
-  ItemsDelta,
+  GraphPhaseDelta,
   RenderDelta,
   SpatialDelta,
-  UiDelta
+  RenderPhaseDelta,
+  UiPhaseDelta
 } from './delta'
 import type { NodeId } from '@whiteboard/core/types'
 import type {
@@ -30,16 +32,15 @@ export type {
 
 export interface WorkingState extends State {
   layout?: EditorSceneLayout
-  execution: WhiteboardExecution
+  plan: EditorScenePlan
   draft: {
     node: Map<NodeId, NodeDraftMeasure>
   }
-  delta: {
-    document: DocumentDelta
-    graph: GraphDelta
+  delta: DeltaState
+  phase: {
+    graph: GraphPhaseDelta
+    ui: UiPhaseDelta
+    render: RenderPhaseDelta
     spatial: SpatialDelta
-    items: ItemsDelta
-    ui: UiDelta
-    render: RenderDelta
   }
 }

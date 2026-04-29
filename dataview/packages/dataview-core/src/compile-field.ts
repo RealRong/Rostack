@@ -17,17 +17,17 @@ import {
 import { equal, string } from '@shared/core'
 import type {
   DocumentReader
-} from '@dataview/core/operations/internal/read'
-import { validateField } from '@dataview/core/operations/internal/validateField'
+} from './compile-read'
+import { validateField } from '@dataview/core/field/validate'
 import {
   createEntityPatch
-} from './patch'
+} from './compile-patch'
 import {
   emitMany,
   issue,
   reportIssues,
   type DataviewCompileInput
-} from './base'
+} from './compile-base'
 
 const DEFAULT_OPTION_NAME = 'Option'
 
@@ -173,7 +173,7 @@ const requireOptionField = (
 const applyFieldPatch = (
   field: CustomField,
   patch: Partial<Omit<CustomField, 'id'>>
-) => {
+): CustomField => {
   const base = patch.kind && patch.kind !== field.kind
     ? fieldApi.kind.convert(field, patch.kind)
     : structuredClone(field)
@@ -182,7 +182,7 @@ const applyFieldPatch = (
     ...base,
     ...patch,
     id: field.id
-  } satisfies CustomField
+  } as CustomField
 }
 
 const lowerFieldCreate = (
@@ -419,7 +419,7 @@ const lowerFieldOptionCreate = (
     [...context.options, nextOption]
   )
 
-  return emitData(input, { id: nextOption.id }, toFieldPatch(intent.field, patch))
+  return emitData(input, { id: nextOption.id }, toFieldPatch(intent.field, patch as Partial<Omit<CustomField, 'id'>>))
 }
 
 const lowerFieldOptionSetOrder = (
@@ -455,7 +455,7 @@ const lowerFieldOptionSetOrder = (
   input.emit(
     toFieldPatch(
       intent.field,
-      fieldApi.option.write.replace(context.field, nextOptions)
+      fieldApi.option.write.replace(context.field, nextOptions) as Partial<Omit<CustomField, 'id'>>
     )
   )
 }
@@ -544,7 +544,7 @@ const lowerFieldOptionPatch = (
     context.options.map((option) => option.id === optionId ? nextOption : option)
   )
 
-  input.emit(toFieldPatch(intent.field, patch))
+  input.emit(toFieldPatch(intent.field, patch as Partial<Omit<CustomField, 'id'>>))
 }
 
 const lowerFieldOptionRemove = (

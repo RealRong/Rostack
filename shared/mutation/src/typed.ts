@@ -39,6 +39,13 @@ export type MutationSchemaPath<TEntry> = TEntry extends MutationSchemaEntry<any,
   ? TPath
   : string
 
+type MutationSchemaIdsEntry<
+  TId extends string = string,
+  TPath = string
+> = MutationSchemaEntry<TId, TPath> & {
+  ids: true
+}
+
 type SchemaKey<TSchema extends MutationSchema> = keyof TSchema & string
 
 type SchemaIdKey<TSchema extends MutationSchema> = {
@@ -110,7 +117,7 @@ type MutationEntityChangeSchemaRecord<
       [K in keyof TSpec['change'] & string as `${TFamily}.${K}`]:
         TSpec['kind'] extends 'singleton'
           ? MutationSchemaEntry
-          : MutationSchemaEntry<string>
+          : MutationSchemaIdsEntry<string>
     }
   : {}
 
@@ -118,7 +125,7 @@ type MutationEntityDerivedSchema<
   TEntities extends Readonly<Record<string, MutationEntitySpec>>
 > = Simplify<
   {
-    [K in MutationEntityLifecycleKey<TEntities>]: MutationSchemaEntry<string>
+    [K in MutationEntityLifecycleKey<TEntities>]: MutationSchemaIdsEntry<string>
   } & UnionToIntersection<{
     [K in keyof TEntities & string]:
       MutationEntityChangeSchemaRecord<K, TEntities[K]>

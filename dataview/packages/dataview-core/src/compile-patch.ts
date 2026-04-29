@@ -56,11 +56,13 @@ export const createEntityPatch = <T extends {
 
   keys.delete('id')
   keys.forEach((key) => {
-    const change = diffValue(current[key], next[key])
+    const currentRecord = current as Record<string, unknown>
+    const nextRecord = next as Record<string, unknown>
+    const change = diffValue(currentRecord[key], nextRecord[key])
     if (change !== NO_CHANGE) {
       patch[key] = change
     }
   })
 
-  return patch
+  return patch as Partial<Omit<T, 'id'>>
 }

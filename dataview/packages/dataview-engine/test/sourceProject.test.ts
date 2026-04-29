@@ -125,7 +125,6 @@ test('engine commit exposes normalized MutationDelta for non-structural value wr
   assert.deepEqual(writes[0]?.delta, {
     changes: {
       'record.values': {
-        ids: ['rec_1'],
         paths: {
           rec_1: [FIELD_STATUS]
         }

@@ -22,7 +22,7 @@ const createEmptyDocument = (): DataDoc => ({
   meta: {}
 })
 
-test('MutationEngine.compile surfaces internal apply failures', () => {
+test('MutationEngine.compile lowers field.create into executable operations', () => {
   const mutation = new MutationEngine({
     document: createEmptyDocument(),
     normalize: document => document,
@@ -36,11 +36,13 @@ test('MutationEngine.compile surfaces internal apply failures', () => {
     }
   } satisfies Intent])
 
-  assert.equal(result.ok, false)
-  if (result.ok) {
+  assert.equal(result.ok, true)
+  if (!result.ok) {
     return
   }
 
-  assert.equal(result.error.code, 'mutation_engine.compile.apply_failed')
-  assert.match(result.error.message, /Unknown mutation operation/)
+  assert.ok(result.commit.document.fields.ids.length === 1)
+  const fieldId = result.commit.document.fields.ids[0]
+  assert.ok(fieldId)
+  assert.equal(result.commit.document.fields.byId[fieldId!]?.name, 'Notes')
 })

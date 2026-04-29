@@ -44,18 +44,18 @@ import { entityTable, equal, string } from '@shared/core'
 import {
   type IssueSource,
   type ValidationIssue
-} from '@dataview/core/operations/contracts'
+} from './compile-contracts'
 import {
   createEntityPatch
-} from './patch'
+} from './compile-patch'
 import {
   emitMany,
   issue as compileIssue,
   reportIssues,
   requireValue,
   type DataviewCompileInput
-} from './base'
-import type { DocumentReader } from '@dataview/core/operations/internal/read'
+} from './compile-base'
+import type { DocumentReader } from './compile-read'
 
 const sameRecordOrder = equal.sameOrder<string>
 

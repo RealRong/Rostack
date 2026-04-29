@@ -10,12 +10,12 @@ import { string } from '@shared/core'
 import {
   createDocumentReader,
   type DocumentReader
-} from '@dataview/core/operations/internal/read'
+} from './compile-read'
 import type {
   ValidationCode,
   ValidationIssue,
   ValidationSeverity
-} from '@dataview/core/operations/contracts'
+} from './compile-contracts'
 
 export type DataviewCompileInput<
   TIntent extends Intent = Intent,

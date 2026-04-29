@@ -9,7 +9,7 @@ import {
 import {
   type IssueSource,
   type ValidationIssue
-} from '@dataview/core/operations/contracts'
+} from '@dataview/core/compile-contracts'
 
 export const validateField = (
   _document: DataDoc,

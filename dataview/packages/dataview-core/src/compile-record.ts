@@ -19,16 +19,16 @@ import {
 } from '@shared/core'
 import type {
   DocumentReader
-} from '@dataview/core/operations/internal/read'
+} from './compile-read'
 import {
   createEntityPatch
-} from './patch'
+} from './compile-patch'
 import {
   emitMany,
   issue,
   resolveTarget,
   type DataviewCompileInput
-} from './base'
+} from './compile-base'
 
 const emitData = <T>(
   input: DataviewCompileInput,

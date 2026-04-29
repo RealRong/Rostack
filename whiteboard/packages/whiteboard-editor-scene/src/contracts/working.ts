@@ -1,6 +1,6 @@
 import type {
   GraphDelta,
-  GraphChanges,
+  GraphDirty,
   ItemsDelta,
   RenderDelta,
   SpatialDelta,
@@ -30,9 +30,11 @@ export interface WorkingState extends State {
   draft: {
     node: Map<NodeId, NodeDraftMeasure>
   }
+  dirty: {
+    graph: GraphDirty
+  }
   delta: {
     graph: GraphDelta
-    graphChanges: GraphChanges
     spatial: SpatialDelta
     items: ItemsDelta
     ui: UiDelta

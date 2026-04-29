@@ -11,7 +11,7 @@ import {
 import type {
   DocumentRecordFieldRestoreEntry,
   RecordFieldWriteManyOperationInput
-} from '@dataview/core/types/operations'
+} from '@dataview/core/op'
 import { entityTable as sharedEntityTable, equal } from '@shared/core'
 
 const replaceTable = <TKey extends 'fields' | 'records' | 'views'>(

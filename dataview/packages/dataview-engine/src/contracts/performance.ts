@@ -18,7 +18,7 @@ export type ViewStageName =
   | 'summary'
   | 'publish'
 
-export interface TraceImpactSummary {
+export interface TraceDeltaSummary {
   summary: {
     records: boolean
     fields: boolean
@@ -117,7 +117,7 @@ export interface CommitTrace {
     outputMs?: number
     snapshotMs?: number
   }
-  impact: TraceImpactSummary
+  delta: TraceDeltaSummary
   index: IndexTrace
   view: ViewTrace
   snapshot: SnapshotTrace

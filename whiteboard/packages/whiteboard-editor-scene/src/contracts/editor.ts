@@ -53,6 +53,7 @@ import type {
   ProjectionTrace,
   Revision
 } from '@shared/projection'
+import type { MutationDelta } from '@shared/mutation'
 import { store } from '@shared/core'
 import type { Capture } from './capture'
 import type { IdDelta, SceneItemKey } from './delta'
@@ -71,32 +72,18 @@ import type { SpatialRead } from './spatial'
 import type { State } from './state'
 
 export interface Input {
-  document: DocumentInput
-  session: SessionInput
-  interaction: InteractionInput
-  clock: ClockInput
-  delta: InputDelta
-}
-
-export interface DocumentInput {
-  previous: EngineSnapshot | null
-  snapshot: EngineSnapshot
-  delta: EngineDelta
-}
-
-export interface EngineSnapshot {
-  revision: Revision
-  document: WhiteboardDocument
-}
-
-export interface EngineDelta {
-  reset: boolean
-  background: boolean
-  order: boolean
-  nodes: IdDelta<NodeId>
-  edges: IdDelta<EdgeId>
-  groups: IdDelta<GroupId>
-  mindmaps: IdDelta<MindmapId>
+  document: {
+    rev: Revision
+    doc: WhiteboardDocument
+  }
+  runtime: {
+    session: SessionInput
+    interaction: InteractionInput
+    view: SceneViewSnapshot
+    clock: ClockInput
+    delta: RuntimeInputDelta
+  }
+  delta: MutationDelta
 }
 
 export interface SceneViewSnapshot {
@@ -460,19 +447,9 @@ export interface ClockInput {
   now: number
 }
 
-export interface InputDelta {
-  document: DocumentDelta
+export interface RuntimeInputDelta {
   session: SessionInputDelta
   clock: ClockInputDelta
-}
-
-export interface DocumentDelta {
-  reset: boolean
-  order: boolean
-  nodes: IdDelta<NodeId>
-  edges: IdDelta<EdgeId>
-  mindmaps: IdDelta<MindmapId>
-  groups: IdDelta<GroupId>
 }
 
 export interface SessionInputDelta {

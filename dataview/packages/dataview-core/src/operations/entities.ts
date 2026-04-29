@@ -12,7 +12,7 @@ export const dataviewEntities = {
     },
     change: {
       schemaVersion: ['schemaVersion'],
-      activeView: ['activeViewId'],
+      activeViewId: ['activeViewId'],
       meta: ['meta.**']
     }
   },
@@ -26,7 +26,7 @@ export const dataviewEntities = {
     },
     change: {
       title: ['title'],
-      kind: ['type'],
+      type: ['type'],
       values: ['values.**'],
       meta: ['meta.**']
     }
@@ -89,10 +89,9 @@ export const dataviewEntities = {
       options: 'record'
     },
     change: {
-      query: ['name', 'type', 'search.**', 'filter.**', 'sort.**'],
-      calc: ['calc.**'],
-      layout: ['display.**', 'orders', 'group.**', 'options.**']
+      query: ['search.**', 'filter.**', 'sort.**', 'group.**', 'orders'],
+      layout: ['name', 'type', 'display.**', 'options.**'],
+      calc: ['calc.**']
     }
   }
 } as const satisfies Readonly<Record<string, MutationEntitySpec>>
-

@@ -12,7 +12,7 @@ import type {
 import type { HistoryPort } from '@shared/mutation'
 import type { MutationFootprint } from '@shared/mutation'
 import type { DataDoc } from '@dataview/core/types'
-import type { DocumentOperation } from '@dataview/core/types/operations'
+import type { DocumentOperation } from '@dataview/core/op'
 import type { Engine } from '@dataview/engine'
 import type { EngineApplyCommit } from '@dataview/engine/contracts/write'
 

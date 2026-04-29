@@ -11,7 +11,7 @@ import type {
   PerformanceOptions,
   PerformanceStats,
   StagePerformanceStats,
-  TraceImpactSummary,
+  TraceDeltaSummary,
   ViewStageName
 } from '@dataview/engine/contracts/performance'
 import {
@@ -71,21 +71,24 @@ const toTouchedCount = <T,>(
 
 export const summarizeDelta = (
   delta: MutationDelta
-): TraceImpactSummary => {
+): TraceDeltaSummary => {
   const recordCreate = delta.changes.get('record.create')
-  const recordPatch = delta.changes.get('record.patch')
+  const recordTitle = delta.changes.get('record.title')
+  const recordType = delta.changes.get('record.type')
+  const recordMeta = delta.changes.get('record.meta')
   const recordDelete = delta.changes.get('record.delete')
   const recordValues = delta.changes.get('record.values')
   const fieldCreate = delta.changes.get('field.create')
   const fieldDelete = delta.changes.get('field.delete')
   const fieldSchema = delta.changes.get('field.schema')
+  const fieldMeta = delta.changes.get('field.meta')
   const viewCreate = delta.changes.get('view.create')
   const viewQuery = delta.changes.get('view.query')
   const viewLayout = delta.changes.get('view.layout')
   const viewCalc = delta.changes.get('view.calc')
   const viewDelete = delta.changes.get('view.delete')
-  const activeView = delta.changes.get('document.activeView')
-  const externalVersion = delta.changes.get('external.version.bump')
+  const activeView = delta.changes.get('document.activeViewId')
+  const externalVersion = delta.changes.get('external.version')
 
   const facts: Array<{
     kind: string
@@ -108,32 +111,38 @@ export const summarizeDelta = (
   }
 
   pushFact('record.insert', countIds(readIds(recordCreate)))
-  pushFact('record.patch', countIds(readIds(recordPatch)))
+  pushFact('record.title', countIds(readIds(recordTitle)))
+  pushFact('record.type', countIds(readIds(recordType)))
+  pushFact('record.meta', countIds(readIds(recordMeta)))
   pushFact('record.remove', countIds(readIds(recordDelete)))
   pushFact('record.value', countPaths(readPaths(recordValues)))
   pushFact('field.insert', countIds(readIds(fieldCreate)))
   pushFact('field.remove', countIds(readIds(fieldDelete)))
   pushFact('field.schema', countIds(readIds(fieldSchema)))
+  pushFact('field.meta', countIds(readIds(fieldMeta)))
   pushFact('view.insert', countIds(readIds(viewCreate)))
   pushFact('view.change', countIds(readIds(viewQuery)))
   pushFact('view.layout', countIds(readIds(viewLayout)))
   pushFact('view.calc', countIds(readIds(viewCalc)))
   pushFact('view.remove', countIds(readIds(viewDelete)))
   pushFact('activeView.set', activeView ? 1 : undefined)
-  pushFact('external.version.bump', externalVersion ? 1 : undefined)
+  pushFact('external.version', externalVersion ? 1 : undefined)
   pushFact('reset', delta.reset === true ? 1 : undefined)
 
   return {
     summary: {
       records: delta.reset === true
         || hasChange(delta, 'record.create')
-        || hasChange(delta, 'record.patch')
+        || hasChange(delta, 'record.title')
+        || hasChange(delta, 'record.type')
+        || hasChange(delta, 'record.meta')
         || hasChange(delta, 'record.delete')
         || hasChange(delta, 'record.values'),
       fields: delta.reset === true
         || hasChange(delta, 'field.create')
         || hasChange(delta, 'field.delete')
-        || hasChange(delta, 'field.schema'),
+        || hasChange(delta, 'field.schema')
+        || hasChange(delta, 'field.meta'),
       views: delta.reset === true
         || hasChange(delta, 'view.create')
         || hasChange(delta, 'view.query')
@@ -141,16 +150,19 @@ export const summarizeDelta = (
         || hasChange(delta, 'view.calc')
         || hasChange(delta, 'view.delete'),
       activeView: delta.reset === true
-        || hasChange(delta, 'document.activeView'),
-      external: hasChange(delta, 'external.version.bump'),
+        || hasChange(delta, 'document.activeViewId'),
+      external: hasChange(delta, 'external.version'),
       indexes: delta.reset === true
         || hasChange(delta, 'record.create')
-        || hasChange(delta, 'record.patch')
+        || hasChange(delta, 'record.title')
+        || hasChange(delta, 'record.type')
+        || hasChange(delta, 'record.meta')
         || hasChange(delta, 'record.delete')
         || hasChange(delta, 'record.values')
         || hasChange(delta, 'field.create')
         || hasChange(delta, 'field.delete')
         || hasChange(delta, 'field.schema')
+        || hasChange(delta, 'field.meta')
         || hasChange(delta, 'view.query')
         || hasChange(delta, 'view.calc')
     },
@@ -262,13 +274,13 @@ const cloneTrace = (
   timings: {
     ...trace.timings
   },
-  impact: {
+  delta: {
     summary: {
-      ...trace.impact.summary
+      ...trace.delta.summary
     },
-    facts: trace.impact.facts.map(item => ({ ...item })),
+    facts: trace.delta.facts.map(item => ({ ...item })),
     entities: {
-      ...trace.impact.entities
+      ...trace.delta.entities
     }
   },
   index: {

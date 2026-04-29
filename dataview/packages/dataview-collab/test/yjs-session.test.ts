@@ -203,8 +203,8 @@ test('session records duplicate shared changes deterministically', () => {
     id: 'change_duplicate',
     actorId: 'actor_remote',
     ops: [{
-      type: 'document.record.patch' as const,
-      recordId: 'rec_1',
+      type: 'record.patch' as const,
+      id: 'rec_1',
       patch: {
         title: 'Remote title'
       }

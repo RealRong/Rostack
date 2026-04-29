@@ -13,7 +13,8 @@ import {
 } from '../src'
 import type { Input as EditorSceneInput } from '../src/contracts/editor'
 import {
-  createEditorGraphDelta,
+  createEditorRuntimeDelta,
+  createMutationDelta,
   createEditorGraphTextMeasure,
   type EditorGraphTextMeasureState
 } from '../src/testing/builders'
@@ -26,18 +27,19 @@ import {
 } from '../src/runtime/createEditorSceneProjectionRuntime'
 
 type RuntimeInputOptions = {
-  edit?: EditorSceneInput['session']['edit']
+  edit?: EditorSceneInput['runtime']['session']['edit']
   nodeMeasures?: ReadonlyMap<NodeId, Size>
   edgeLabelMeasures?: ReadonlyMap<EdgeId, ReadonlyMap<string, Size>>
-  selection?: EditorSceneInput['interaction']['selection']
-  hover?: EditorSceneInput['interaction']['hover']
-  draw?: EditorSceneInput['session']['preview']['draw']
-  edgeGuide?: EditorSceneInput['session']['preview']['edgeGuide']
-  marquee?: EditorSceneInput['session']['preview']['selection']['marquee']
+  selection?: EditorSceneInput['runtime']['interaction']['selection']
+  hover?: EditorSceneInput['runtime']['interaction']['hover']
+  draw?: EditorSceneInput['runtime']['session']['preview']['draw']
+  edgeGuide?: EditorSceneInput['runtime']['session']['preview']['edgeGuide']
+  marquee?: EditorSceneInput['runtime']['session']['preview']['selection']['marquee']
   guides?: readonly Guide[]
-  mindmapPreview?: EditorSceneInput['session']['preview']['mindmap']
+  mindmapPreview?: EditorSceneInput['runtime']['session']['preview']['mindmap']
   now?: number
-  delta?: EditorSceneInput['delta']
+  delta?: EditorSceneInput['runtime']['delta']
+  documentDelta?: EditorSceneInput['delta']
 }
 
 let currentMeasureState: EditorGraphTextMeasureState = {}
@@ -102,38 +104,38 @@ const createInput = (
   })
 
   const value = createEmptyInput()
-  value.document.snapshot = engine.current().snapshot
-  value.document.delta = engine.current().delta
-  value.session.edit = options.edit ?? null
-  value.session.preview.draw = options.draw ?? null
-  value.session.preview.edgeGuide = options.edgeGuide
-  value.session.preview.selection.marquee = options.marquee
-  value.session.preview.selection.guides = options.guides ?? []
-  value.session.preview.mindmap = options.mindmapPreview ?? null
-  value.interaction.selection = options.selection ?? {
+  value.document.rev = engine.current().rev
+  value.document.doc = engine.current().doc
+  value.runtime.session.edit = options.edit ?? null
+  value.runtime.session.preview.draw = options.draw ?? null
+  value.runtime.session.preview.edgeGuide = options.edgeGuide
+  value.runtime.session.preview.selection.marquee = options.marquee
+  value.runtime.session.preview.selection.guides = options.guides ?? []
+  value.runtime.session.preview.mindmap = options.mindmapPreview ?? null
+  value.runtime.interaction.selection = options.selection ?? {
     nodeIds: [],
     edgeIds: []
   }
-  value.interaction.hover = options.hover ?? {
+  value.runtime.interaction.hover = options.hover ?? {
     kind: 'none'
   }
-  value.clock.now = options.now ?? 0
-  value.delta = options.delta ?? createEditorGraphDelta()
+  value.runtime.clock.now = options.now ?? 0
+  value.runtime.delta = options.delta ?? createEditorRuntimeDelta()
+  value.delta = options.documentDelta ?? createMutationDelta()
   return value
 }
 
-const DOCUMENT_DELTA = createEditorGraphDelta({
-  document: true
+const DOCUMENT_DELTA = createMutationDelta({
+  reset: true
 })
 
-const GRAPH_DELTA = createEditorGraphDelta({
+const GRAPH_DELTA = createEditorRuntimeDelta({
   graph: true
 })
 
-const IDLE_DELTA = createEditorGraphDelta()
+const IDLE_DELTA = createEditorRuntimeDelta()
 
-const FULL_INPUT_DELTA = createEditorGraphDelta({
-  document: true,
+const FULL_INPUT_DELTA = createEditorRuntimeDelta({
   graph: true,
   ui: true
 })
@@ -281,7 +283,7 @@ describe('editor scene runtime', () => {
     })
 
     const result = runtime.update(createInput(engine, {
-      delta: DOCUMENT_DELTA
+      documentDelta: DOCUMENT_DELTA
     }))
     const capture = runtime.capture()
 
@@ -293,6 +295,7 @@ describe('editor scene runtime', () => {
     expect(runtime.query.node.get(nodeId)).toBe(capture.graph.nodes.byId.get(nodeId))
     expect(capture.render.edge.statics.ids).toBeDefined()
     expect(result.trace?.phases.map((phase) => phase.name)).toEqual([
+      'document',
       'graph',
       'spatial',
       'items',
@@ -309,7 +312,7 @@ describe('editor scene runtime', () => {
     const runtime = createRuntime()
 
     runtime.update(createInput(engine, {
-      delta: DOCUMENT_DELTA
+      documentDelta: DOCUMENT_DELTA
     }))
     const baselineCapture = runtime.capture()
     const baselineRevision = runtime.revision()
@@ -319,7 +322,15 @@ describe('editor scene runtime', () => {
     }))
     const idleCapture = runtime.capture()
 
-    expect(idle.trace?.phases).toHaveLength(0)
+    expect(idle.trace?.phases.map((phase) => phase.name)).toEqual([
+      'document',
+      'graph',
+      'spatial',
+      'items',
+      'ui',
+      'render'
+    ])
+    expect(idle.trace?.phases.every((phase) => phase.changed === false)).toBe(true)
     expect(idleCapture.documentRevision).toBe(baselineCapture.documentRevision)
     expect(idleCapture.graph.nodes.ids).toEqual(baselineCapture.graph.nodes.ids)
     expect(idleCapture.graph.edges.ids).toEqual(baselineCapture.graph.edges.ids)
@@ -339,7 +350,7 @@ describe('editor scene runtime', () => {
     })
     const harness = createHarness()
     const result = harness.update(createInput(engine, {
-      delta: DOCUMENT_DELTA
+      documentDelta: DOCUMENT_DELTA
     }))
     const capture = harness.capture()
     const query = harness.query
@@ -386,7 +397,7 @@ describe('editor scene runtime', () => {
 
     runtime.update(
       createInput(engine, {
-        delta: DOCUMENT_DELTA,
+        documentDelta: DOCUMENT_DELTA,
         nodeMeasures: new Map([
           [created.rootId, { width: 160, height: 44 }],
           [childId, { width: 120, height: 44 }]
@@ -464,6 +475,7 @@ describe('editor scene runtime', () => {
     runtime.update(
       createInput(engine, {
         delta: FULL_INPUT_DELTA,
+        documentDelta: DOCUMENT_DELTA,
         edit: {
           kind: 'edge-label',
           edgeId,
@@ -675,7 +687,7 @@ describe('editor scene runtime', () => {
     })
 
     runtime.update(createInput(engine, {
-      delta: DOCUMENT_DELTA
+      documentDelta: DOCUMENT_DELTA
     }))
 
     expect(runtime.query.view.screenPoint({

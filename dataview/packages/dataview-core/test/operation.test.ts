@@ -4,12 +4,17 @@ import { entityTable } from '@shared/core'
 import { MutationEngine } from '@shared/mutation'
 import type { DataDoc } from '@dataview/core/types'
 import {
-  dataviewOperationTable,
-  dataviewReduceSpec
-} from '@dataview/core/operations'
+  custom
+} from '@dataview/core/custom'
 import {
-  DATAVIEW_OPERATION_DEFINITIONS
-} from '@dataview/core/operations/definitions'
+  entities
+} from '@dataview/core/entities'
+import {
+  document as documentApi
+} from '@dataview/core/document'
+import type {
+  DocumentOperation
+} from '@dataview/core/op'
 
 const createEmptyDocument = (): DataDoc => ({
   schemaVersion: 1,
@@ -20,54 +25,57 @@ const createEmptyDocument = (): DataDoc => ({
   meta: {}
 })
 
-const operationsRuntime = {
-  table: dataviewOperationTable,
-  ...(dataviewReduceSpec.createContext
-    ? {
-        createContext: dataviewReduceSpec.createContext
+const createMutation = () => new MutationEngine<
+  DataDoc,
+  {
+    noop: {
+      intent: {
+        type: 'noop'
       }
-    : {}),
-  ...(dataviewReduceSpec.validate
-    ? {
-        validate: dataviewReduceSpec.validate
-      }
-    : {}),
-  ...(dataviewReduceSpec.settle
-    ? {
-        settle: dataviewReduceSpec.settle
-      }
-    : {}),
-  done: dataviewReduceSpec.done
-} as const
+      output: void
+    }
+  },
+  DocumentOperation
+>({
+  document: createEmptyDocument(),
+  normalize: documentApi.normalize,
+  entities,
+  custom
+})
 
-test('MutationEngine.reduce returns shared mutation shape', () => {
-  const result = MutationEngine.reduce({
-    document: createEmptyDocument(),
-    ops: [{
-      type: 'document.field.put',
-      field: {
-        id: 'field_notes',
-        name: 'Notes',
-        kind: 'text'
-      }
-    }],
-    operations: operationsRuntime
-  })
+test('MutationEngine applies canonical field.create with shared inverse', () => {
+  const mutation = createMutation()
+  const result = mutation.apply([{
+    type: 'field.create',
+    value: {
+      id: 'field_notes',
+      name: 'Notes',
+      kind: 'text'
+    }
+  }])
 
   assert.equal(result.ok, true)
   if (!result.ok) {
     return
   }
 
-  assert.ok(result.doc.fields.byId.field_notes)
-  assert.equal(result.inverse.length, 1)
-  assert.equal(result.inverse[0]?.type, 'document.field.remove')
-  assert.ok(result.extra.trace.fields?.inserted?.has('field_notes'))
+  assert.ok(result.commit.document.fields.byId.field_notes)
+  assert.equal(result.commit.inverse[0]?.type, 'field.delete')
+  assert.ok(result.commit.delta.changes.has('field.create'))
 })
 
-test('operation spec marks external bump as non-history', () => {
-  assert.equal(
-    DATAVIEW_OPERATION_DEFINITIONS['external.version.bump'].history,
-    false
-  )
+test('custom external.version.bump skips history and emits delta', () => {
+  const mutation = createMutation()
+  const result = mutation.apply([{
+    type: 'external.version.bump',
+    source: 'remote'
+  }])
+
+  assert.equal(result.ok, true)
+  if (!result.ok) {
+    return
+  }
+
+  assert.equal(result.commit.inverse.length, 0)
+  assert.ok(result.commit.delta.changes.has('external.version'))
 })

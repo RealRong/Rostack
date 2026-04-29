@@ -5,12 +5,7 @@ import {
   type IdDelta as SharedIdDelta
 } from '@shared/delta'
 import { key } from '@shared/spec'
-import type {
-  Revision,
-  ScopeInputValue,
-  ScopeSchema,
-  ScopeValue
-} from '@shared/projection'
+import type { Revision } from '@shared/projection'
 import type {
   EdgeId,
   GroupId,
@@ -40,58 +35,34 @@ export interface GraphDelta {
   }
 }
 
-export const graphChangeSpec = {
-  order: 'flag',
+export interface GraphDirty {
+  order: boolean
   node: {
-    lifecycle: 'ids',
-    geometry: 'ids',
-    content: 'ids',
-    owner: 'ids'
-  },
+    lifecycle: IdDelta<NodeId>
+    geometry: IdDelta<NodeId>
+    content: IdDelta<NodeId>
+    owner: IdDelta<NodeId>
+  }
   edge: {
-    lifecycle: 'ids',
-    route: 'ids',
-    style: 'ids',
-    labels: 'ids',
-    endpoints: 'ids',
-    box: 'ids'
-  },
+    lifecycle: IdDelta<EdgeId>
+    route: IdDelta<EdgeId>
+    style: IdDelta<EdgeId>
+    labels: IdDelta<EdgeId>
+    endpoints: IdDelta<EdgeId>
+    box: IdDelta<EdgeId>
+  }
   mindmap: {
-    lifecycle: 'ids',
-    geometry: 'ids',
-    connectors: 'ids',
-    membership: 'ids'
-  },
+    lifecycle: IdDelta<MindmapId>
+    geometry: IdDelta<MindmapId>
+    connectors: IdDelta<MindmapId>
+    membership: IdDelta<MindmapId>
+  }
   group: {
-    lifecycle: 'ids',
-    geometry: 'ids',
-    membership: 'ids'
+    lifecycle: IdDelta<GroupId>
+    geometry: IdDelta<GroupId>
+    membership: IdDelta<GroupId>
   }
-} as const
-
-export const graphChange = change<typeof graphChangeSpec, {
-  ids: {
-    'node.lifecycle': NodeId
-    'node.geometry': NodeId
-    'node.content': NodeId
-    'node.owner': NodeId
-    'edge.lifecycle': EdgeId
-    'edge.route': EdgeId
-    'edge.style': EdgeId
-    'edge.labels': EdgeId
-    'edge.endpoints': EdgeId
-    'edge.box': EdgeId
-    'mindmap.lifecycle': MindmapId
-    'mindmap.geometry': MindmapId
-    'mindmap.connectors': MindmapId
-    'mindmap.membership': MindmapId
-    'group.lifecycle': GroupId
-    'group.geometry': GroupId
-    'group.membership': GroupId
-  }
-}>(graphChangeSpec)
-
-export type GraphChanges = ReturnType<typeof graphChange.create>
+}
 
 export type SceneItemKey =
   | `mindmap:${MindmapId}`
@@ -160,93 +131,6 @@ export interface SpatialDelta {
   records: IdDelta<SpatialKey>
 }
 
-export interface GraphPatchScope {
-  reset: boolean
-  order: boolean
-  nodes: ReadonlySet<NodeId>
-  edges: ReadonlySet<EdgeId>
-  mindmaps: ReadonlySet<MindmapId>
-  groups: ReadonlySet<GroupId>
-}
-
-export interface SpatialPatchScope {
-  reset: boolean
-  graph: boolean
-}
-
-export interface ItemsPatchScope {
-  reset: boolean
-  graph: boolean
-}
-
-export interface UiPatchScope {
-  reset: boolean
-  nodes: ReadonlySet<NodeId>
-  edges: ReadonlySet<EdgeId>
-  chrome: boolean
-}
-
-export interface RenderPatchScope {
-  reset: boolean
-  node: boolean
-  statics: boolean
-  active: boolean
-  labels: boolean
-  masks: boolean
-  overlay: boolean
-  chrome: boolean
-}
-
-export const graphPhaseScope = {
-  reset: 'flag',
-  order: 'flag',
-  nodes: 'set',
-  edges: 'set',
-  mindmaps: 'set',
-  groups: 'set'
-} satisfies ScopeSchema<GraphPatchScope>
-
-export const spatialPhaseScope = {
-  reset: 'flag',
-  graph: 'flag'
-} satisfies ScopeSchema<SpatialPatchScope>
-
-export const itemsPhaseScope = {
-  reset: 'flag',
-  graph: 'flag'
-} satisfies ScopeSchema<ItemsPatchScope>
-
-export const uiPhaseScope = {
-  reset: 'flag',
-  nodes: 'set',
-  edges: 'set',
-  chrome: 'flag'
-} satisfies ScopeSchema<UiPatchScope>
-
-export const renderPhaseScope = {
-  reset: 'flag',
-  node: 'flag',
-  statics: 'flag',
-  active: 'flag',
-  labels: 'flag',
-  masks: 'flag',
-  overlay: 'flag',
-  chrome: 'flag'
-} satisfies ScopeSchema<RenderPatchScope>
-
-export type EditorPhaseScopeMap = {
-  graph: GraphPatchScope
-  spatial: SpatialPatchScope
-  items: ItemsPatchScope
-  ui: UiPatchScope
-  render: RenderPatchScope
-}
-
-export type {
-  ScopeInputValue,
-  ScopeValue
-}
-
 export const createGraphDelta = (): GraphDelta => ({
   revision: 0,
   order: false,
@@ -264,6 +148,35 @@ export const createGraphDelta = (): GraphDelta => ({
   }
 })
 
+export const createGraphDirty = (): GraphDirty => ({
+  order: false,
+  node: {
+    lifecycle: idDelta.create<NodeId>(),
+    geometry: idDelta.create<NodeId>(),
+    content: idDelta.create<NodeId>(),
+    owner: idDelta.create<NodeId>()
+  },
+  edge: {
+    lifecycle: idDelta.create<EdgeId>(),
+    route: idDelta.create<EdgeId>(),
+    style: idDelta.create<EdgeId>(),
+    labels: idDelta.create<EdgeId>(),
+    endpoints: idDelta.create<EdgeId>(),
+    box: idDelta.create<EdgeId>()
+  },
+  mindmap: {
+    lifecycle: idDelta.create<MindmapId>(),
+    geometry: idDelta.create<MindmapId>(),
+    connectors: idDelta.create<MindmapId>(),
+    membership: idDelta.create<MindmapId>()
+  },
+  group: {
+    lifecycle: idDelta.create<GroupId>(),
+    geometry: idDelta.create<GroupId>(),
+    membership: idDelta.create<GroupId>()
+  }
+})
+
 export const resetGraphDelta = (
   delta: GraphDelta
 ) => {
@@ -277,6 +190,29 @@ export const resetGraphDelta = (
   delta.geometry.edges.clear()
   delta.geometry.mindmaps.clear()
   delta.geometry.groups.clear()
+}
+
+export const resetGraphDirty = (
+  dirty: GraphDirty
+) => {
+  dirty.order = false
+  idDelta.reset(dirty.node.lifecycle)
+  idDelta.reset(dirty.node.geometry)
+  idDelta.reset(dirty.node.content)
+  idDelta.reset(dirty.node.owner)
+  idDelta.reset(dirty.edge.lifecycle)
+  idDelta.reset(dirty.edge.route)
+  idDelta.reset(dirty.edge.style)
+  idDelta.reset(dirty.edge.labels)
+  idDelta.reset(dirty.edge.endpoints)
+  idDelta.reset(dirty.edge.box)
+  idDelta.reset(dirty.mindmap.lifecycle)
+  idDelta.reset(dirty.mindmap.geometry)
+  idDelta.reset(dirty.mindmap.connectors)
+  idDelta.reset(dirty.mindmap.membership)
+  idDelta.reset(dirty.group.lifecycle)
+  idDelta.reset(dirty.group.geometry)
+  idDelta.reset(dirty.group.membership)
 }
 
 export const createItemsDelta = (): ItemsDelta => ({

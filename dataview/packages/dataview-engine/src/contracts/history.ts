@@ -3,9 +3,7 @@ import type {
   MutationFootprint,
   MutationResult
 } from '@shared/mutation'
-import type {
-  DocumentOperation
-} from '@dataview/core/types/operations'
+import type { DocumentOperation } from '@dataview/core/op'
 import type {
   EngineApplyCommit
 } from './write'

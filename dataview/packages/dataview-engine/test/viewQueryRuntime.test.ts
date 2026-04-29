@@ -180,7 +180,7 @@ test('engine.active.query stage reuses previous state when persisted filter chan
       changes: {
         'view.query': {
           ids: [nextView.id],
-          viewQueryAspects: {
+          paths: {
             [nextView.id]: ['filter']
           }
         }
@@ -259,7 +259,7 @@ test('engine.active.query reuses matched and ordered ids on filter-only sync', (
       changes: {
         'view.query': {
           ids: [nextView.id],
-          viewQueryAspects: {
+          paths: {
             [nextView.id]: ['filter']
           }
         }

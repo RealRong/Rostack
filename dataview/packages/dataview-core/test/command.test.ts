@@ -7,7 +7,7 @@ import type {
 } from '@dataview/core/types'
 import {
   buildRecordCreateIntents
-} from '@dataview/core/operations'
+} from '../src/operations/plan'
 
 const textField: TextField = {
   id: 'notes',

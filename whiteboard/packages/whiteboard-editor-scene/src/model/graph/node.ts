@@ -145,7 +145,7 @@ export const readNodeEntry = (
       node,
       owner: ownerByNode.get(nodeId)
     },
-    preview: input.session.preview.nodes.get(nodeId)
+    preview: input.runtime.session.preview.nodes.get(nodeId)
   }
 }
 
@@ -323,7 +323,7 @@ export const patchNode = (input: {
         entry,
         nodeId: input.nodeId,
         treeRect,
-        edit: input.input.session.edit
+        edit: input.input.runtime.session.edit
       })
     : undefined
   const next = entry
@@ -331,7 +331,7 @@ export const patchNode = (input: {
         entry,
         draftMeasure,
         treeRect,
-        edit: input.input.session.edit
+        edit: input.input.runtime.session.edit
       })
     : undefined
 

@@ -143,7 +143,7 @@ const patchNodeIdOrder = (
 const applySubtreeMovePreview = (input: {
   layout: MindmapLayout
   tree: ReturnType<typeof mindmapApi.tree.fromRecord>
-  preview: NonNullable<NonNullable<Input['session']['preview']['mindmap']>['subtreeMove']>
+  preview: NonNullable<NonNullable<Input['runtime']['session']['preview']['mindmap']>['subtreeMove']>
 }) => {
   const sourceRect = input.layout.node[input.preview.nodeId]
   if (!sourceRect) {
@@ -178,7 +178,7 @@ const applySubtreeMovePreview = (input: {
 
 const applyEnterPreview = (input: {
   layout: MindmapLayout
-  enter: readonly NonNullable<NonNullable<Input['session']['preview']['mindmap']>['enter']>[number][]
+  enter: readonly NonNullable<NonNullable<Input['runtime']['session']['preview']['mindmap']>['enter']>[number][]
   now: number
 }) => {
   if (!input.enter.length) {
@@ -232,7 +232,7 @@ const buildMindmapEntry = (
     return undefined
   }
 
-  const preview = input.session.preview.mindmap
+  const preview = input.runtime.session.preview.mindmap
   const rootEntry = readNodeEntry(
     input,
     working,
@@ -259,7 +259,7 @@ const buildMindmapEntry = (
     working,
     entry: rootEntry,
     nodeId: tree.rootNodeId,
-    edit: input.session.edit
+    edit: input.runtime.session.edit
   })
   const rootRect = readProjectedNodeRect({
     entry: rootEntry,
@@ -284,7 +284,7 @@ const buildMindmapEntry = (
                 working,
                 entry: nodeEntry,
                 nodeId,
-                edit: input.session.edit
+                edit: input.runtime.session.edit
               })
             })
           : {
@@ -317,7 +317,7 @@ const buildMindmapEntry = (
     layout = applyEnterPreview({
       layout,
       enter,
-      now: input.clock.now
+      now: input.runtime.clock.now
     })
   }
 

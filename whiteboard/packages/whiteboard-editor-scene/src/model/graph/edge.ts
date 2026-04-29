@@ -257,8 +257,8 @@ export const readEdgeEntry = (
       edge,
       nodes: indexes.edgeNodesByEdge.get(edgeId) ?? {}
     },
-    draft: input.session.draft.edges.get(edgeId),
-    preview: input.session.preview.edges.get(edgeId)
+    draft: input.runtime.session.draft.edges.get(edgeId),
+    preview: input.runtime.session.preview.edges.get(edgeId)
   }
 }
 
@@ -422,7 +422,7 @@ export const patchEdge = (input: {
         nodes: input.working.graph.nodes,
         nodeSnapshotCache: input.nodeSnapshotCache,
         measure: input.working.measure,
-        edit: input.input.session.edit
+        edit: input.input.runtime.session.edit
       })
     : undefined
 

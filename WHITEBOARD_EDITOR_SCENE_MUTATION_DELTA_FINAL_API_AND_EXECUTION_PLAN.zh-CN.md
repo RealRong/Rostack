@@ -357,8 +357,15 @@ document
 - phase 通过 `context.dirty.*` 传播内部脏信息
 - phase 通过 `context.phase.*.changed` 标记 surface sync
 - 不再返回 `emit`
-- 不再维护 `scope`
+- 不再维护对外的 `scope` 协议
 - 不再维护旧 `EditorPhaseScopeMap`
+
+这里要明确区分两个概念：
+
+- 被删除的是旧 projection protocol 里的 `scope/emit/plan` 协议
+- 最终实现里也不再保留显式 `workset` 层
+- 各 phase 直接根据 `input.delta`、`state.delta.*`、`state.dirty.graph` 和当前 state 判定自己是否需要执行
+- `context.dirty` 最终只保留极少数真正需要跨 phase 传递的事实，例如 previous document snapshot
 
 这和当前 dataview 最终态一致，也符合“不能并存两套 runtime 协议”的要求。
 
@@ -470,6 +477,7 @@ items phase 的正式 document 判脏来源只有：
 - `mindmap.delete`
 
 它不应该再间接依赖 `EngineDelta.order`。
+它也不应该再依赖“graph phase 变了，所以 items 跟着重跑”这类兼容链路；items 是否需要运行，应直接由 document semantic key 判定。
 
 ## 5. `ui` phase
 
@@ -597,6 +605,35 @@ interface EditorSceneProjectionInput {
 
 ## 实施顺序
 
+## 当前状态（2026-04-29）
+
+截至 2026-04-29，本文档定义的最终态已经在 `whiteboard-editor-scene` 主链路上完成，关键事实如下：
+
+- `whiteboard-engine` 对 scene 的 document 变更输入已经收敛到 raw commit `MutationDelta`
+- `whiteboard-editor-scene` 输入已经是：
+  - `document: { rev, doc }`
+  - `runtime: { session, interaction, view, clock, delta: RuntimeInputDelta }`
+  - 顶层 `delta: MutationDelta`
+- `createProjectionRuntime / ProjectionSpec / ScopeSchema / ScopeInputValue / ScopeValue` 已全部移除
+- `document -> graph -> spatial -> items -> ui -> render` 已切到单一 `createProjection({...})` runtime
+- `graphChanges` 已被删除，render 等 hot-path 的细粒度 invalidation 已统一收敛到 `state.dirty.graph`
+- graph/document/items/ui/render 已直接基于 `delta.changes.has/get(...)`、`state.delta.*` 和 `state.dirty.graph` 运行
+- package 内测试夹具也已完成迁移，不再写 `working.delta.graphChanges`
+
+本次收口后，runtime 内部实际保留的边界是：
+
+- `MutationDelta`：唯一正式 document delta 输入
+- `state.delta.graph / spatial / items / ui / render`：runtime 内部 phase 结果 delta
+- `state.dirty.graph`：graph phase 直接产出的细粒度 render invalidation facts
+
+对应验证结果：
+
+- `pnpm --filter @whiteboard/editor-scene run typecheck` 通过
+- `pnpm --filter @whiteboard/editor run typecheck` 通过
+- `pnpm --filter @whiteboard/editor-scene exec vitest run test/runtime.test.ts test/graphDelta.test.ts test/renderDelta.test.ts --config vitest.config.ts` 通过
+- `rg "graphChanges|graphChange\\b|EngineDelta|delta\\.document\\.|createDocumentInputDelta|readTouchedNodes|readTouchedEdges|readTouchedMindmaps|readTouchedGroups|hasCanvasOrderChange|hasBackgroundChange|hasNodeGeometryChanges|hasEdgeRouteChanges|readGraphPlanScope|createGraphScope|readUiPatchScope|readRenderScopeFromGraph|readRenderScopeFromUi" whiteboard/packages/whiteboard-editor-scene -g '*.ts'` 无结果
+- `rg "current\\(\\)\\.delta|publish\\.delta|EngineDelta|graphChanges" whiteboard/packages -g '*.ts'` 无结果
+
 ## Phase 1. 先收敛 `shared/mutation` 的最终读模型
 
 必须完成：
@@ -693,6 +730,13 @@ interface EditorSceneProjectionInput {
 - `rg "readTouchedNodes|readTouchedEdges|readTouchedMindmaps|readTouchedGroups|hasCanvasOrderChange|hasBackgroundChange|hasNodeGeometryChanges|hasEdgeRouteChanges" whiteboard/packages/whiteboard-editor-scene -g '*.ts'` 无结果
 - `rg "graphChanges" whiteboard/packages/whiteboard-editor-scene -g '*.ts'` 无结果
 
+当前实现补充说明：
+
+- graph phase 直接内联读取 `node.create / node.delete / node.geometry / node.owner / node.content / edge.create / edge.delete / edge.endpoints / edge.route / edge.style / edge.labels / edge.data / group.create / group.delete / group.value / mindmap.create / mindmap.delete / mindmap.structure / mindmap.layout / canvas.order`
+- graph phase 会直接产出 `state.dirty.graph`
+- render phase 直接消费 `state.dirty.graph`
+- items phase 的运行触发已经直接收敛到 document semantic key，不再借道 graph phase compatibility signal
+
 ## Phase 8. 收口测试和内部 delta 边界
 
 必须完成：
@@ -706,6 +750,14 @@ interface EditorSceneProjectionInput {
 验收：
 
 - `rg "current\\(\\)\\.delta|publish\\.delta|EngineDelta|graphChanges" whiteboard/packages -g '*.ts'` 无结果
+
+当前实现补充说明：
+
+- `test/runtime.test.ts`
+- `test/graphDelta.test.ts`
+- `test/renderDelta.test.ts`
+
+都已经跑通，并且 `renderDelta` 测试已从 `working.delta.graphChanges` 迁移到 `working.dirty.graph`。
 
 ## 最终验收标准
 

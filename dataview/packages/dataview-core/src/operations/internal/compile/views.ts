@@ -10,7 +10,7 @@ import type {
   ViewDisplay,
   ViewGroup
 } from '@dataview/core/types'
-import type { DocumentOperation } from '@dataview/core/types/operations'
+import type { DocumentOperation } from '@dataview/core/op'
 import type { GalleryOptions } from '@dataview/core/types/state'
 import {
   KANBAN_CARDS_PER_COLUMN_OPTIONS,
@@ -46,34 +46,46 @@ import {
   type ValidationIssue
 } from '@dataview/core/operations/contracts'
 import {
-  type CompileScope
-} from './scope'
+  createEntityPatch
+} from './patch'
+import {
+  emitMany,
+  issue as compileIssue,
+  reportIssues,
+  requireValue,
+  type DataviewCompileInput
+} from './base'
 import type { DocumentReader } from '@dataview/core/operations/internal/read'
 
 const sameRecordOrder = equal.sameOrder<string>
 
 const emitOps = (
-  scope: CompileScope,
+  input: DataviewCompileInput,
   ...operations: readonly DocumentOperation[]
 ) => {
-  scope.emitMany(...operations)
+  emitMany(input, ...operations)
 }
 
 const emitData = <T>(
-  scope: CompileScope,
+  input: DataviewCompileInput,
   data: T,
   ...operations: readonly DocumentOperation[]
 ): T => {
-  emitOps(scope, ...operations)
+  emitOps(input, ...operations)
   return data
 }
 
-const toViewPut = (
-  view: View
-): DocumentOperation => ({
-  type: 'document.view.put',
-  view
-})
+const toViewPatch = (
+  current: View,
+  next: View
+): DocumentOperation => {
+  const patch = createEntityPatch(current, next)
+  return {
+    type: 'view.patch',
+    id: current.id,
+    patch
+  }
+}
 
 const issue = (
   source: IssueSource,
@@ -599,43 +611,61 @@ const ensureKanbanGroup = (
     : view
 }
 
+const requireView = (
+  input: DataviewCompileInput,
+  reader: DocumentReader,
+  viewId: string
+) => requireValue(
+  input,
+  reader.views.get(viewId),
+  {
+    code: 'view.notFound',
+    message: `Unknown view: ${viewId}`,
+    path: 'id'
+  }
+)
+
 const lowerViewCreate = (
-  scope: CompileScope,
-  intent: Extract<Intent, { type: 'view.create' }>
+  intent: Extract<Intent, { type: 'view.create' }>,
+  input: DataviewCompileInput,
+  reader: DocumentReader
 ) => {
   const explicitViewId = string.trimToUndefined(intent.input.id)
   const preferredName = string.trimToUndefined(intent.input.name) ?? ''
 
   if (intent.input.id !== undefined && !explicitViewId) {
-    scope.issue(
+    compileIssue(
+      input,
       'view.invalid',
       'View id must be a non-empty string',
       'input.id'
     )
   }
-  if (explicitViewId && scope.reader.views.has(explicitViewId)) {
-    scope.issue(
+  if (explicitViewId && reader.views.has(explicitViewId)) {
+    compileIssue(
+      input,
       'view.invalid',
       `View already exists: ${explicitViewId}`,
       'input.id'
     )
   }
   if (!preferredName) {
-    scope.issue(
+    compileIssue(
+      input,
       'view.invalid',
       'View name must be a non-empty string',
       'input.name'
     )
   }
-  if (!preferredName || (intent.input.id !== undefined && !explicitViewId) || (explicitViewId && scope.reader.views.has(explicitViewId))) {
+  if (!preferredName || (intent.input.id !== undefined && !explicitViewId) || (explicitViewId && reader.views.has(explicitViewId))) {
     return
   }
 
-  const fields = scope.reader.fields.list()
+  const fields = reader.fields.list()
   const base = {
     id: explicitViewId || createId('view'),
     name: viewApi.name.unique({
-      views: scope.reader.views.list(),
+      views: reader.views.list(),
       preferredName
     }),
     search: intent.input.search ?? { query: '' },
@@ -675,9 +705,10 @@ const lowerViewCreate = (
       }
       break
     case 'kanban': {
-      const resolvedGroup = intent.input.group ?? resolveDefaultKanbanGroup(scope.reader)
+      const resolvedGroup = intent.input.group ?? resolveDefaultKanbanGroup(reader)
       if (!resolvedGroup) {
-        scope.issue(
+        compileIssue(
+          input,
           'view.invalidProjection',
           'Kanban view requires a groupable field',
           'input.group'
@@ -696,98 +727,96 @@ const lowerViewCreate = (
       break
     }
   }
-  const view = ensureKanbanGroup(scope.reader, normalizeView(scope.reader, created))
+  const view = ensureKanbanGroup(reader, normalizeView(reader, created))
 
-  scope.report(...validateView(scope.reader, scope.source, view))
-  return emitData(scope, { id: view.id }, toViewPut(view))
+  reportIssues(input, ...validateView(reader, input.source, view))
+  return emitData(
+    input,
+    { id: view.id },
+    {
+      type: 'view.create',
+      value: view
+    },
+    ...(reader.document().activeViewId === undefined
+      ? [{
+          type: 'document.patch',
+          patch: {
+            activeViewId: view.id
+          }
+        } satisfies DocumentOperation]
+      : [])
+  )
 }
 
 const lowerViewPatch = (
-  scope: CompileScope,
-  intent: Extract<Intent, { type: 'view.patch' }>
+  intent: Extract<Intent, { type: 'view.patch' }>,
+  input: DataviewCompileInput,
+  reader: DocumentReader
 ) => {
-  const view = scope.require(
-    scope.reader.views.get(intent.id),
-    {
-      code: 'view.notFound',
-      message: `Unknown view: ${intent.id}`,
-      path: 'id'
-    }
-  )
+  const view = requireView(input, reader, intent.id)
   if (!view) {
     return
   }
 
   const nextView = (
     intent.patch.type === 'kanban'
-      ? ensureKanbanGroup(scope.reader, normalizeView(scope.reader, applyViewPatch(scope.reader, view, intent.patch)))
-      : normalizeView(scope.reader, applyViewPatch(scope.reader, view, intent.patch))
+      ? ensureKanbanGroup(reader, normalizeView(reader, applyViewPatch(reader, view, intent.patch)))
+      : normalizeView(reader, applyViewPatch(reader, view, intent.patch))
   )
   if (equal.sameJsonValue(nextView, view)) {
     return
   }
 
-  scope.report(...validateView(scope.reader, scope.source, nextView))
-  scope.emit(toViewPut(nextView))
+  reportIssues(input, ...validateView(reader, input.source, nextView))
+  input.emit(toViewPatch(view, nextView))
 }
 
 const lowerViewOpen = (
-  scope: CompileScope,
-  intent: Extract<Intent, { type: 'view.open' }>
+  intent: Extract<Intent, { type: 'view.open' }>,
+  input: DataviewCompileInput,
+  reader: DocumentReader
 ) => {
-  const view = scope.require(
-    scope.reader.views.get(intent.id),
-    {
-      code: 'view.notFound',
-      message: `Unknown view: ${intent.id}`,
-      path: 'id'
-    }
-  )
+  const view = requireView(input, reader, intent.id)
   if (!view) {
     return
   }
 
-  scope.emit({
-    type: 'document.activeView.set',
+  input.emit({
+    type: 'view.open',
     id: view.id
   })
 }
 
 const lowerViewRemove = (
-  scope: CompileScope,
-  intent: Extract<Intent, { type: 'view.remove' }>
+  intent: Extract<Intent, { type: 'view.remove' }>,
+  input: DataviewCompileInput,
+  reader: DocumentReader
 ) => {
-  const view = scope.require(
-    scope.reader.views.get(intent.id),
-    {
-      code: 'view.notFound',
-      message: `Unknown view: ${intent.id}`,
-      path: 'id'
-    }
-  )
+  const view = requireView(input, reader, intent.id)
   if (!view) {
     return
   }
 
-  scope.emit({
-    type: 'document.view.remove',
+  input.emit({
+    type: 'view.remove',
     id: view.id
   })
 }
 
 export const compileViewIntent = (
   intent: Intent,
-  scope: CompileScope
+  input: DataviewCompileInput,
+  reader: DocumentReader
 ) => {
   switch (intent.type) {
     case 'view.create':
-      return lowerViewCreate(scope, intent)
+      return lowerViewCreate(intent, input, reader)
     case 'view.patch':
-      return lowerViewPatch(scope, intent)
+      return lowerViewPatch(intent, input, reader)
     case 'view.open':
-      return lowerViewOpen(scope, intent)
+      return lowerViewOpen(intent, input, reader)
     case 'view.remove':
-      return lowerViewRemove(scope, intent)
+      return lowerViewRemove(intent, input, reader)
     default:
       throw new Error(`Unsupported view intent: ${intent.type}`)
   }

@@ -8,8 +8,9 @@ import type {
 } from '@whiteboard/core/types'
 import { createEngine } from '@whiteboard/engine'
 import type { Input } from '../src/contracts/editor'
-import { createEmptyInput, createEmptyInputDelta } from '../src/testing/input'
+import { createEmptyInput, createEmptyRuntimeInputDelta } from '../src/testing/input'
 import {
+  createMutationDelta,
   createEditorGraphTextMeasure,
   type EditorGraphTextMeasureState
 } from '../src/testing/builders'
@@ -90,8 +91,9 @@ const createGroup = (input: {
 
 const createInput = (input: {
   engine: ReturnType<typeof createEngine>
-  delta: Input['delta']
-  edit?: Input['session']['edit']
+  delta: Input['runtime']['delta']
+  documentDelta?: Input['delta']
+  edit?: Input['runtime']['session']['edit']
   nodeMeasures?: ReadonlyMap<NodeId, Size>
 }): Input => {
   currentMeasureState = {
@@ -108,10 +110,11 @@ const createInput = (input: {
       : undefined
   }
   const value = createEmptyInput()
-  value.document.snapshot = input.engine.current().snapshot
-  value.document.delta = input.engine.current().delta
-  value.session.edit = input.edit ?? null
-  value.delta = input.delta
+  value.document.rev = input.engine.current().rev
+  value.document.doc = input.engine.current().doc
+  value.runtime.session.edit = input.edit ?? null
+  value.runtime.delta = input.delta
+  value.delta = input.documentDelta ?? createMutationDelta()
   return value
 }
 
@@ -148,19 +151,21 @@ describe('graph delta patching', () => {
 
     const runtime = createProjectionHarness()
 
-    const bootstrapDelta = createEmptyInputDelta()
-    bootstrapDelta.document.reset = true
+    const bootstrapDelta = createEmptyRuntimeInputDelta()
 
     runtime.update(createInput({
         engine,
         delta: bootstrapDelta,
+        documentDelta: createMutationDelta({
+          reset: true
+        }),
         nodeMeasures: new Map([
           [firstId, { width: 120, height: 44 }],
           [secondId, { width: 120, height: 44 }]
         ])
       }))
 
-    const liveDelta = createEmptyInputDelta()
+    const liveDelta = createEmptyRuntimeInputDelta()
     liveDelta.session.edit = true
 
     const live = runtime.update(createInput({
@@ -182,7 +187,7 @@ describe('graph delta patching', () => {
         ])
       }))
 
-    expect(live.trace.phases[0]?.name).toBe('graph')
+    expect(live.trace.phases[0]?.name).toBe('document')
     expect(runtime.working().delta.graph.entities.nodes.updated.has(firstId)).toBe(true)
     expect(runtime.working().delta.graph.geometry.nodes.has(firstId)).toBe(true)
     expect(runtime.working().delta.graph.entities.edges.updated.has(edgeId)).toBe(true)
@@ -212,12 +217,14 @@ describe('graph delta patching', () => {
 
     const runtime = createProjectionHarness()
 
-    const bootstrapDelta = createEmptyInputDelta()
-    bootstrapDelta.document.reset = true
+    const bootstrapDelta = createEmptyRuntimeInputDelta()
 
     runtime.update(createInput({
         engine,
         delta: bootstrapDelta,
+        documentDelta: createMutationDelta({
+          reset: true
+        }),
         nodeMeasures: new Map([
           [firstId, { width: 120, height: 44 }],
           [secondId, { width: 120, height: 44 }]
@@ -234,12 +241,14 @@ describe('graph delta patching', () => {
     })
     expect(reorder.ok).toBe(true)
 
-    const orderDelta = createEmptyInputDelta()
-    orderDelta.document.order = true
+    const orderDelta = createEmptyRuntimeInputDelta()
 
     const result = runtime.update(createInput({
         engine,
         delta: orderDelta,
+        documentDelta: reorder.ok
+          ? reorder.commit.delta
+          : createMutationDelta(),
         nodeMeasures: new Map([
           [firstId, { width: 120, height: 44 }],
           [secondId, { width: 120, height: 44 }]
@@ -247,6 +256,7 @@ describe('graph delta patching', () => {
       }))
 
     expect(result.trace.phases.map((phase) => phase.name)).toEqual([
+      'document',
       'graph',
       'spatial',
       'items',
@@ -282,12 +292,14 @@ describe('graph delta patching', () => {
 
     const runtime = createProjectionHarness()
 
-    const bootstrapDelta = createEmptyInputDelta()
-    bootstrapDelta.document.reset = true
+    const bootstrapDelta = createEmptyRuntimeInputDelta()
 
     runtime.update(createInput({
         engine,
         delta: bootstrapDelta,
+        documentDelta: createMutationDelta({
+          reset: true
+        }),
         nodeMeasures: new Map([
           [firstId, { width: 120, height: 44 }],
           [secondId, { width: 120, height: 44 }]

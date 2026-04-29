@@ -10,13 +10,11 @@ import type {
 import type {
   EdgeView,
   EdgeLabelView as GraphEdgeLabelView,
-  Input,
-  SceneItem
+  Input
 } from '../src/contracts/editor'
-import type { RenderPatchScope } from '../src/contracts/delta'
 import {
+  createGraphDirty,
   createItemsDelta,
-  graphChange,
   sceneItemKey,
   uiChange
 } from '../src/contracts/delta'
@@ -40,20 +38,6 @@ const SIZE: Size = {
   width: 40,
   height: 20
 }
-
-const createRenderScope = (
-  overrides: Partial<RenderPatchScope>
-): RenderPatchScope => ({
-  reset: false,
-  node: false,
-  statics: false,
-  active: false,
-  labels: false,
-  masks: false,
-  overlay: false,
-  chrome: false,
-  ...overrides
-})
 
 const createCurrentInput = (): Input => createEmptyInput()
 
@@ -147,7 +131,7 @@ const setEdgeItems = (
 const resetPhaseDeltas = (
   working: ReturnType<typeof createWorking>
 ) => {
-  working.delta.graphChanges = graphChange.create()
+  working.dirty.graph = createGraphDirty()
   working.delta.items = createItemsDelta()
   working.delta.ui = uiChange.create()
 }
@@ -176,16 +160,14 @@ describe('render delta patching', () => {
     }))
     working.items = setEdgeItems([edgeA, edgeB, edgeC])
 
-    idDelta.add(working.delta.graphChanges.edge.lifecycle, edgeA)
-    idDelta.add(working.delta.graphChanges.edge.lifecycle, edgeB)
-    idDelta.add(working.delta.graphChanges.edge.lifecycle, edgeC)
+    idDelta.add(working.dirty.graph.edge.lifecycle, edgeA)
+    idDelta.add(working.dirty.graph.edge.lifecycle, edgeB)
+    idDelta.add(working.dirty.graph.edge.lifecycle, edgeC)
 
     patchRenderState({
       working,
       current: createCurrentInput(),
-      scope: createRenderScope({
-        statics: true
-      })
+      reset: false
     })
 
     const redStaticId = working.render.statics.staticIdByEdge.get(edgeA)!
@@ -198,14 +180,12 @@ describe('render delta patching', () => {
       color: 'red',
       svgPath: 'M0 0L11 0'
     }))
-    idDelta.update(working.delta.graphChanges.edge.route, edgeA)
+    idDelta.update(working.dirty.graph.edge.route, edgeA)
 
     patchRenderState({
       working,
       current: createCurrentInput(),
-      scope: createRenderScope({
-        statics: true
-      })
+      reset: false
     })
 
     expect(working.delta.render.edge.statics.updated).toEqual(new Set([
@@ -234,15 +214,13 @@ describe('render delta patching', () => {
     }))
     working.items = setEdgeItems([edgeA, edgeB])
 
-    idDelta.add(working.delta.graphChanges.edge.lifecycle, edgeA)
-    idDelta.add(working.delta.graphChanges.edge.lifecycle, edgeB)
+    idDelta.add(working.dirty.graph.edge.lifecycle, edgeA)
+    idDelta.add(working.dirty.graph.edge.lifecycle, edgeB)
 
     patchRenderState({
       working,
       current: createCurrentInput(),
-      scope: createRenderScope({
-        statics: true
-      })
+      reset: false
     })
 
     const previousIds = working.render.statics.ids
@@ -260,9 +238,7 @@ describe('render delta patching', () => {
     patchRenderState({
       working,
       current: createCurrentInput(),
-      scope: createRenderScope({
-        statics: true
-      })
+      reset: false
     })
 
     expect(working.delta.render.edge.staticsIds).toBe(true)
@@ -311,15 +287,13 @@ describe('render delta patching', () => {
       labels: new Map()
     })
 
-    idDelta.add(working.delta.graphChanges.edge.lifecycle, edgeA)
-    idDelta.add(working.delta.graphChanges.edge.lifecycle, edgeB)
+    idDelta.add(working.dirty.graph.edge.lifecycle, edgeA)
+    idDelta.add(working.dirty.graph.edge.lifecycle, edgeB)
 
     patchRenderState({
       working,
       current: createCurrentInput(),
-      scope: createRenderScope({
-        labels: true
-      })
+      reset: false
     })
 
     const labelKeyA = `${edgeA}:label_a` as const
@@ -337,9 +311,7 @@ describe('render delta patching', () => {
     patchRenderState({
       working,
       current: createCurrentInput(),
-      scope: createRenderScope({
-        labels: true
-      })
+      reset: false
     })
 
     expect(working.delta.render.edge.labels.updated).toEqual(new Set([
@@ -380,15 +352,13 @@ describe('render delta patching', () => {
     }))
     working.items = setEdgeItems([edgeA, edgeB])
 
-    idDelta.add(working.delta.graphChanges.edge.lifecycle, edgeA)
-    idDelta.add(working.delta.graphChanges.edge.lifecycle, edgeB)
+    idDelta.add(working.dirty.graph.edge.lifecycle, edgeA)
+    idDelta.add(working.dirty.graph.edge.lifecycle, edgeB)
 
     patchRenderState({
       working,
       current: createCurrentInput(),
-      scope: createRenderScope({
-        masks: true
-      })
+      reset: false
     })
 
     const previousMaskB = working.render.masks.byId.get(edgeB)
@@ -408,14 +378,12 @@ describe('render delta patching', () => {
         })
       ]
     }))
-    idDelta.update(working.delta.graphChanges.edge.labels, edgeA)
+    idDelta.update(working.dirty.graph.edge.labels, edgeA)
 
     patchRenderState({
       working,
       current: createCurrentInput(),
-      scope: createRenderScope({
-        masks: true
-      })
+      reset: false
     })
 
     expect(working.delta.render.edge.masks.updated).toEqual(new Set([

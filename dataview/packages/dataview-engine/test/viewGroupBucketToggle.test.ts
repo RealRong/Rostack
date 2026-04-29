@@ -1390,8 +1390,8 @@ test('engine.performance traces active view derive and snapshot behavior for inc
 
   assert.ok(trace)
   assert.equal(trace.kind, 'dispatch')
-  assert.equal(trace.impact.summary.records, true)
-  assert.equal(trace.impact.summary.indexes, true)
+  assert.equal(trace.delta.summary.records, true)
+  assert.equal(trace.delta.summary.indexes, true)
   assert.equal(trace.view.plan.query, 'reuse')
   assert.equal(trace.view.plan.membership, 'sync')
   assert.equal(trace.view.plan.summary, 'sync')
@@ -1502,19 +1502,7 @@ test('engine commits stream emits shared apply commits for execute', () => {
   assert.equal(writes[0]?.origin, 'user')
   assert.deepEqual(writes[0]?.delta, {
     changes: {
-      'document.activeView': createdViewId
-        ? {
-            activeView: {
-              before: undefined,
-              after: createdViewId
-            }
-          }
-        : {
-            activeView: {
-              before: undefined,
-              after: undefined
-            }
-          },
+      'document.activeViewId': true,
       'view.create': createdViewId
         ? [createdViewId]
         : []
@@ -1561,9 +1549,7 @@ test('engine apply emits shared apply commits', () => {
   assert.equal(writes[0]?.forward.length, 1)
   assert.deepEqual(writes[0]?.delta, {
     changes: {
-      'external.version': {
-        sources: ['test']
-      }
+      'external.version': true
     }
   })
 })

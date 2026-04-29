@@ -6,8 +6,12 @@
   "exports": {
     ".": "./src/index.ts",
     "./types": "./src/types/index.ts",
+    "./intent": "./src/intent.ts",
+    "./op": "./src/op.ts",
+    "./entities": "./src/entities.ts",
+    "./custom": "./src/custom.ts",
+    "./compile": "./src/compile.ts",
     "./document": "./src/document/index.ts",
-    "./operations": "./src/operations/index.ts",
     "./field": "./src/field/index.ts",
     "./view": "./src/view/index.ts"
   },
@@ -20,9 +24,7 @@
     "@date-fns/tz": "^1.4.1",
     "@shared/core": "workspace:*",
     "@shared/draft": "workspace:*",
-    "@shared/reducer": "workspace:*",
     "@shared/mutation": "workspace:*",
-    "@shared/trace": "workspace:*",
     "@shared/i18n": "workspace:*",
     "date-fns": "^4.1.0"
   },

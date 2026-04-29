@@ -238,7 +238,7 @@ test('single runtime clears active snapshot when active view disappears', () => 
     document: createEmptyDocument(),
     delta: {
       changes: {
-        'document.activeView': true
+        'document.activeViewId': true
       }
     },
     runtime: {}

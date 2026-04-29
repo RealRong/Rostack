@@ -609,7 +609,7 @@ test('engine.active.index sync rebuilds only touched field semantics on schema c
     changes: {
       'field.schema': {
         ids: [FIELD_STATUS],
-        fieldAspects: {
+        paths: {
           [FIELD_STATUS]: ['options']
         }
       }

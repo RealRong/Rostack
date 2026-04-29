@@ -1,5 +1,6 @@
 import { idDelta } from '@shared/delta'
-import type * as document from '@whiteboard/engine/contracts/document'
+import type { Document } from '@whiteboard/core/types'
+import type { Revision } from '@shared/projection'
 import type {
   EdgeId,
   MindmapId,
@@ -31,7 +32,6 @@ import {
 } from './contracts'
 import type { SpatialIndexState } from './state'
 import { resetSpatialState } from './state'
-import type { SpatialPatchScope } from '../../contracts/delta'
 
 const isSpatialRecordEqual = (
   left: SpatialRecord,
@@ -299,10 +299,13 @@ export const patchSpatialOrder = (input: {
 export const patchSpatial = (input: {
   revision: number
   graph: GraphState
-  snapshot: document.Snapshot
+  snapshot: {
+    revision: Revision
+    document: Document
+  }
   graphDelta: GraphDelta
   state: SpatialIndexState
-  scope: SpatialPatchScope
+  reset: boolean
   delta: SpatialDelta
 }): {
   changed: boolean
@@ -313,13 +316,33 @@ export const patchSpatial = (input: {
   resetSpatialDelta(input.delta)
   input.delta.revision = input.revision
 
-  if (input.scope.reset || input.graphDelta.order) {
+  const graphChanged = (
+    input.graphDelta.order
+    || input.graphDelta.entities.nodes.added.size > 0
+    || input.graphDelta.entities.nodes.removed.size > 0
+    || input.graphDelta.entities.edges.added.size > 0
+    || input.graphDelta.entities.edges.removed.size > 0
+    || input.graphDelta.entities.mindmaps.added.size > 0
+    || input.graphDelta.entities.mindmaps.removed.size > 0
+    || input.graphDelta.geometry.nodes.size > 0
+    || input.graphDelta.geometry.edges.size > 0
+    || input.graphDelta.geometry.mindmaps.size > 0
+  )
+
+  if (!input.reset && !graphChanged) {
+    return {
+      changed: false,
+      count: 0
+    }
+  }
+
+  if (input.reset || input.graphDelta.order) {
     syncSceneOrderState(input.state, input.snapshot)
   }
 
   const readOrder = createSceneOrderRead(input.state)
 
-  if (input.scope.reset) {
+  if (input.reset) {
     resetSpatialState(input.state)
     syncSceneOrderState(input.state, input.snapshot)
     count += rebuildSpatialRecords({
@@ -328,7 +351,7 @@ export const patchSpatial = (input: {
       state: input.state,
       delta: input.delta.records
     })
-  } else if (input.scope.graph) {
+  } else {
     count += patchGraphRecords({
       graph: input.graph,
       readOrder,
@@ -338,7 +361,7 @@ export const patchSpatial = (input: {
     })
   }
 
-  if ((input.scope.reset || input.scope.graph) && input.graphDelta.order) {
+  if (input.graphDelta.order) {
     patchSpatialOrder({
       state: input.state,
       delta: input.delta

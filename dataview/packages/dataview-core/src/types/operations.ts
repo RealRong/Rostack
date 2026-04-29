@@ -8,10 +8,6 @@ import type {
   ViewId
 } from './state'
 
-export interface RecordInsertTarget {
-  index?: number
-}
-
 export interface RecordFieldWriteManyOperationInput {
   recordIds: readonly RecordId[]
   set?: Partial<Record<FieldId, unknown>>
@@ -26,52 +22,76 @@ export interface DocumentRecordFieldRestoreEntry {
 
 export type DocumentOperation =
   | {
-      type: 'document.record.insert'
-      records: DataRecord[]
-      target?: RecordInsertTarget
+      type: 'document.patch'
+      patch: Partial<{
+        schemaVersion: number
+        activeViewId: ViewId | undefined
+        meta: Record<string, unknown>
+      }>
     }
   | {
-      type: 'document.record.patch'
-      recordId: RecordId
+      type: 'record.create'
+      value: DataRecord
+    }
+  | {
+      type: 'record.patch'
+      id: RecordId
       patch: Partial<Omit<DataRecord, 'id' | 'values'>>
     }
   | {
-      type: 'document.record.remove'
+      type: 'record.delete'
+      id: RecordId
+    }
+  | {
+      type: 'record.remove'
       recordIds: RecordId[]
     }
   | {
-      type: 'document.record.fields.writeMany'
+      type: 'record.values.writeMany'
       recordIds: readonly RecordId[]
       set?: Partial<Record<FieldId, unknown>>
       clear?: readonly FieldId[]
     }
   | {
-      type: 'document.record.fields.restoreMany'
+      type: 'record.values.restoreMany'
       entries: readonly DocumentRecordFieldRestoreEntry[]
     }
   | {
-      type: 'document.view.put'
-      view: View
+      type: 'view.create'
+      value: View
     }
   | {
-      type: 'document.activeView.set'
-      id?: ViewId
+      type: 'view.patch'
+      id: ViewId
+      patch: Partial<Omit<View, 'id'>>
     }
   | {
-      type: 'document.view.remove'
+      type: 'view.delete'
       id: ViewId
     }
   | {
-      type: 'document.field.put'
-      field: CustomField
+      type: 'view.open'
+      id: ViewId
     }
   | {
-      type: 'document.field.patch'
+      type: 'view.remove'
+      id: ViewId
+    }
+  | {
+      type: 'field.create'
+      value: CustomField
+    }
+  | {
+      type: 'field.patch'
       id: CustomFieldId
       patch: Partial<Omit<CustomField, 'id'>>
     }
   | {
-      type: 'document.field.remove'
+      type: 'field.delete'
+      id: CustomFieldId
+    }
+  | {
+      type: 'field.remove'
       id: CustomFieldId
     }
   | {

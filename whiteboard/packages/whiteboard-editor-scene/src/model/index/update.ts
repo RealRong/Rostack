@@ -10,7 +10,6 @@ import type {
 } from '@whiteboard/core/types'
 import type {
   EdgeNodes,
-  EngineDelta,
   GroupItemRef,
   OwnerRef
 } from '../../contracts/editor'
@@ -314,9 +313,16 @@ export const patchIndexState = (input: {
   state: IndexState
   previous: Document | undefined
   next: Document
-  delta: EngineDelta
+  scope: {
+    reset: boolean
+    order: boolean
+    nodes: ReadonlySet<NodeId>
+    edges: ReadonlySet<EdgeId>
+    mindmaps: ReadonlySet<MindmapId>
+    groups: ReadonlySet<GroupId>
+  }
 }) => {
-  if (!input.previous || input.delta.reset) {
+  if (!input.previous || input.scope.reset) {
     rebuildIndexState({
       state: input.state,
       document: input.next
@@ -325,13 +331,13 @@ export const patchIndexState = (input: {
   }
 
   const previous = input.previous
-  const touchedMindmaps = collectTouchedIds(input.delta.mindmaps)
+  const touchedMindmaps = input.scope.mindmaps
   const touchedNodes = new Set<NodeId>([
-    ...collectTouchedIds(input.delta.nodes),
+    ...input.scope.nodes,
     ...collectMindmapNodes(previous, touchedMindmaps),
     ...collectMindmapNodes(input.next, touchedMindmaps)
   ])
-  const touchedEdges = collectTouchedIds(input.delta.edges)
+  const touchedEdges = input.scope.edges
 
   touchedNodes.forEach((nodeId) => {
     const nextNode = input.next.nodes[nodeId]
@@ -376,9 +382,9 @@ export const patchIndexState = (input: {
   })
 
   const affectedGroupIds = new Set<GroupId>([
-    ...collectTouchedIds(input.delta.groups)
+    ...input.scope.groups
   ])
-  collectTouchedIds(input.delta.nodes).forEach((nodeId) => {
+  input.scope.nodes.forEach((nodeId) => {
     const previousGroupId = previous.nodes[nodeId]?.groupId
     const nextGroupId = input.next.nodes[nodeId]?.groupId
     if (previousGroupId) {
@@ -388,7 +394,7 @@ export const patchIndexState = (input: {
       affectedGroupIds.add(nextGroupId)
     }
   })
-  collectTouchedIds(input.delta.edges).forEach((edgeId) => {
+  input.scope.edges.forEach((edgeId) => {
     const previousGroupId = previous.edges[edgeId]?.groupId
     const nextGroupId = input.next.edges[edgeId]?.groupId
     if (previousGroupId) {
@@ -399,7 +405,7 @@ export const patchIndexState = (input: {
     }
   })
 
-  if (input.delta.order) {
+  if (input.scope.order) {
     Object.keys(previous.groups).forEach((groupId) => {
       affectedGroupIds.add(groupId as GroupId)
     })

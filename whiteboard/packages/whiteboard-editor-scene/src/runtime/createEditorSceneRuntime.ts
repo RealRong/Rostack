@@ -7,9 +7,11 @@ import type { EditorSceneRuntime } from '../contracts/runtime'
 import type { EditorSceneSource } from '../contracts/source'
 import { createEditorSceneProjectionRuntime } from './createEditorSceneProjectionRuntime'
 import {
-  createBootstrapInputDelta,
+  createBootstrapRuntimeInputDelta,
   createSceneInput,
-  createSourceInputDelta
+  createSourceRuntimeInputDelta,
+  readBootstrapMutationDelta,
+  readSourceMutationDelta
 } from './sourceInput'
 
 export const createEditorSceneRuntime = (input: {
@@ -30,24 +32,22 @@ export const createEditorSceneRuntime = (input: {
     ? TValue
     : never, previousSource = currentSource) => {
     currentSource = input.source.get()
-    const delta = createSourceInputDelta({
+    const runtimeDelta = createSourceRuntimeInputDelta({
       previous: previousSource,
       next: currentSource,
       change
     })
     lastResult = runtime.update(createSceneInput({
-      previous: change.document
-        ? previousSource.document.publish.snapshot
-        : null,
       source: currentSource,
-      delta
+      delta: readSourceMutationDelta(change),
+      runtimeDelta
     }))
   }
 
   lastResult = runtime.update(createSceneInput({
-    previous: null,
     source: currentSource,
-    delta: createBootstrapInputDelta(currentSource)
+    delta: readBootstrapMutationDelta(),
+    runtimeDelta: createBootstrapRuntimeInputDelta(currentSource)
   }))
 
   const unsubscribe = input.source.subscribe((change) => {

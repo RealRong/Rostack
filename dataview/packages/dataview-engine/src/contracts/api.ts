@@ -6,7 +6,6 @@ import type {
   DataRecord,
   FieldId,
   FieldOption,
-  RecordFieldWriteManyInput,
   RecordId,
   StatusCategory,
   View,
@@ -14,8 +13,9 @@ import type {
   ViewType
 } from '@dataview/core/types'
 import type {
-  DocumentOperation
-} from '@dataview/core/types/operations'
+  RecordFieldWriteManyInput
+} from '@dataview/core/intent'
+import type { DocumentOperation } from '@dataview/core/op'
 import type {
   fieldKindSpec
 } from '@dataview/core/field/kind/spec'
@@ -56,7 +56,7 @@ import type {
   IntentKind
 } from '@dataview/engine/types/intent'
 
-export type { RecordFieldWriteManyInput } from '@dataview/core/types'
+export type { RecordFieldWriteManyInput } from '@dataview/core/intent'
 export type {
   DataviewErrorCode,
   ExecuteInput,

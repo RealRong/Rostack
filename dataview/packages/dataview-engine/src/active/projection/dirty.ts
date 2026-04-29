@@ -4,10 +4,6 @@ import type {
   ViewId
 } from '@dataview/core/types'
 import type {
-  FieldSchemaAspect,
-  ViewQueryAspect
-} from '@dataview/core/types/commit'
-import type {
   QueryPlan,
   ViewPlan
 } from '@dataview/engine/active/plan'
@@ -42,11 +38,6 @@ const readPaths = (
 ): Readonly<Record<string, readonly string[] | 'all'>> | 'all' | undefined => (
   change?.paths
 )
-
-const readPayload = <T,>(
-  change: MutationChange | undefined,
-  key: string
-): T | undefined => change?.[key] as T | undefined
 
 const hasChange = (
   delta: MutationDelta,
@@ -90,7 +81,12 @@ const collectPathFieldIds = (
     }
 
     value.forEach((path) => {
-      const [fieldId] = path.split('.')
+      if (path === 'title') {
+        fields.add('title')
+        return
+      }
+
+      const [, fieldId] = path.split('.')
       if (fieldId) {
         fields.add(fieldId as FieldId)
       }
@@ -100,13 +96,40 @@ const collectPathFieldIds = (
   return fields
 }
 
-const collectFieldAspectIds = (
-  input: Record<string, readonly FieldSchemaAspect[]> | undefined
-): ReadonlySet<FieldId> => new Set(
-  input
-    ? Object.keys(input) as FieldId[]
-    : []
-)
+const collectRecordIdsFromPaths = <TId extends string>(
+  paths: Record<string, readonly string[] | 'all'> | 'all' | undefined
+): readonly TId[] | 'all' | undefined => paths === 'all'
+  ? 'all'
+  : paths
+    ? Object.keys(paths) as TId[]
+    : undefined
+
+const readEntityPaths = <TId extends string>(
+  delta: MutationDelta,
+  key: string,
+  id: TId
+): readonly string[] | 'all' | undefined => {
+  const paths = readPaths(delta.changes.get(key))
+  if (paths === 'all') {
+    return 'all'
+  }
+
+  return paths?.[id]
+}
+
+const pathsMatch = (
+  paths: readonly string[] | 'all' | undefined,
+  patterns: readonly string[]
+): boolean => {
+  if (paths === 'all') {
+    return true
+  }
+  if (!paths?.length) {
+    return false
+  }
+
+  return patterns.some(pattern => paths.some(path => path === pattern || path.startsWith(`${pattern}.`)))
+}
 
 const hasAnyField = (
   fields: ReadonlySet<FieldId> | 'all',
@@ -119,24 +142,23 @@ export const readTouchedRecords = (
   delta: MutationDelta
 ): ReadonlySet<RecordId> | 'all' => collectIds<RecordId>(
   readIds<RecordId>(delta.changes.get('record.create')),
-  readIds<RecordId>(delta.changes.get('record.patch')),
+  readIds<RecordId>(delta.changes.get('record.title')),
+  readIds<RecordId>(delta.changes.get('record.type')),
+  readIds<RecordId>(delta.changes.get('record.meta')),
   readIds<RecordId>(delta.changes.get('record.delete')),
-  (() => {
-    const paths = readPaths(delta.changes.get('record.values'))
-    return paths === 'all'
-      ? 'all'
-      : paths
-        ? Object.keys(paths) as RecordId[]
-        : undefined
-  })()
+  collectRecordIdsFromPaths<RecordId>(readPaths(delta.changes.get('record.values')))
 )
 
 export const readTouchedFields = (
   delta: MutationDelta
 ): ReadonlySet<FieldId> | 'all' => collectIds<FieldId>(
+  hasChange(delta, 'record.title')
+    ? ['title']
+    : undefined,
   readIds<FieldId>(delta.changes.get('field.create')),
   readIds<FieldId>(delta.changes.get('field.delete')),
   readIds<FieldId>(delta.changes.get('field.schema')),
+  readIds<FieldId>(delta.changes.get('field.meta')),
   (() => {
     const valueFields = readValueFields(delta)
     return valueFields === 'all'
@@ -153,11 +175,13 @@ export const readValueFields = (
 
 export const readSchemaFields = (
   delta: MutationDelta
-): ReadonlySet<FieldId> => collectFieldAspectIds(
-  readPayload<Record<string, readonly FieldSchemaAspect[]>>(
-    delta.changes.get('field.schema'),
-    'fieldAspects'
-  )
+): ReadonlySet<FieldId> => new Set(
+  (() => {
+    const ids = readIds<FieldId>(delta.changes.get('field.schema'))
+    return ids === 'all' || ids === undefined
+      ? []
+      : ids
+  })()
 )
 
 export const readTouchedViews = (
@@ -178,7 +202,7 @@ export const hasRecordSetChange = (
 export const hasActiveViewChange = (
   delta: MutationDelta
 ): boolean => delta.reset === true
-  || hasChange(delta, 'document.activeView')
+  || hasChange(delta, 'document.activeViewId')
 
 export const hasField = (
   fields: ReadonlySet<FieldId> | 'all',
@@ -196,7 +220,7 @@ export const hasFieldSchemaChange = (
 export const hasViewQueryChange = (
   delta: MutationDelta,
   viewId: ViewId,
-  aspects?: readonly ViewQueryAspect[]
+  aspects?: readonly Array<'search' | 'filter' | 'sort' | 'group' | 'order'>
 ): boolean => {
   if (delta.reset === true) {
     return true
@@ -207,23 +231,28 @@ export const hasViewQueryChange = (
   if (ids !== 'all' && ids && !ids.includes(viewId)) {
     return false
   }
-  if (!ids && !readPayload(change, 'viewQueryAspects')) {
+  const paths = readEntityPaths(delta, 'view.query', viewId)
+  if (!ids && !paths) {
     return false
   }
   if (!aspects?.length) {
     return true
   }
 
-  const byView = readPayload<Record<string, readonly ViewQueryAspect[]>>(
-    change,
-    'viewQueryAspects'
-  )
-  const current = byView?.[viewId]
-  if (!current?.length) {
-    return false
-  }
-
-  return aspects.some((aspect) => current.includes(aspect))
+  return aspects.some((aspect) => {
+    switch (aspect) {
+      case 'search':
+        return pathsMatch(paths, ['search'])
+      case 'filter':
+        return pathsMatch(paths, ['filter'])
+      case 'sort':
+        return pathsMatch(paths, ['sort'])
+      case 'group':
+        return pathsMatch(paths, ['group'])
+      case 'order':
+        return pathsMatch(paths, ['orders'])
+    }
+  })
 }
 
 export const hasViewCalculationChanges = (
@@ -234,12 +263,7 @@ export const hasViewCalculationChanges = (
     return true
   }
 
-  const change = delta.changes.get('view.calc')
-  const payload = readPayload<Record<string, readonly FieldId[] | 'all'>>(
-    change,
-    'viewCalculationFields'
-  )
-  const changed = payload?.[viewId]
+  const changed = readEntityPaths(delta, 'view.calc', viewId)
   return changed === 'all'
     || (Array.isArray(changed) && changed.length > 0)
 }

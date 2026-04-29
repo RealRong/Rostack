@@ -4,12 +4,16 @@ import type {
 import {
   document as documentApi
 } from '@dataview/core/document'
-import type {
-  DocumentOperation
-} from '@dataview/core/types/operations'
+import type { DocumentOperation } from '@dataview/core/op'
 import {
-  operations as dataviewOperations
-} from '@dataview/core/operations'
+  compile
+} from '@dataview/core/compile'
+import {
+  custom
+} from '@dataview/core/custom'
+import {
+  entities
+} from '@dataview/core/entities'
 import {
   EMPTY_MUTATION_CHANGE_MAP,
   MutationEngine,
@@ -64,9 +68,9 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
   >({
     document: options.document,
     normalize: documentApi.normalize,
-    entities: dataviewOperations.entities,
-    custom: dataviewOperations.custom,
-    compile: dataviewOperations.compile.handlers,
+    entities,
+    custom,
+    compile: compile.handlers,
     history: historyConfig.enabled
       ? {
           capacity: historyConfig.capacity,

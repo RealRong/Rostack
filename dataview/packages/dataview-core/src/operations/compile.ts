@@ -2,14 +2,14 @@ import type { Intent } from '@dataview/core/types'
 import type { DataDoc } from '@dataview/core/types'
 import { string } from '@shared/core'
 import type {
-  MutationCompileHandlerInput,
   MutationCompileHandlerTable
 } from '@shared/mutation'
-import type { DocumentOperation } from '@dataview/core/types/operations'
+import type { DocumentOperation } from '@dataview/core/op'
 import {
-  createCompileScope,
-  type CompileScope
-} from './internal/compile/scope'
+  createCompileReader,
+  type DataviewCompileInput,
+  issue
+} from './internal/compile/base'
 import { compileFieldIntent } from './internal/compile/fields'
 import { compileRecordIntent } from './internal/compile/records'
 import { compileViewIntent } from './internal/compile/views'
@@ -24,42 +24,26 @@ type DataviewCompileTable = {
   }
 }
 
-type MutationCompileInput = MutationCompileHandlerInput<
-  DataDoc,
-  Intent,
-  DocumentOperation,
-  unknown,
-  void,
-  ValidationCode
->
-
 const runCompileIntent = (
-  input: MutationCompileInput,
+  input: DataviewCompileInput,
   compile: (
     intent: Intent,
-    scope: CompileScope
+    input: DataviewCompileInput,
+    reader: ReturnType<typeof createCompileReader>
   ) => unknown
 ) => {
-  const result = compile(input.intent, createCompileScope({
-    controls: input
-  }))
+  const result = compile(input.intent, input, createCompileReader(input))
   if (result !== undefined) {
     input.output(result)
   }
 }
 
 const compileExternalBump = (
-  input: MutationCompileHandlerInput<
-    DataDoc,
+  input: DataviewCompileInput<
     Extract<Intent, { type: 'external.version.bump' }>,
-    DocumentOperation,
-    void,
-    void,
-    ValidationCode
+    void
   >
-) => lowerExternalBump(input.intent, createCompileScope({
-  controls: input
-}))
+) => lowerExternalBump(input.intent, input)
 
 export const dataviewIntentHandlers: MutationCompileHandlerTable<
   DataviewCompileTable,
@@ -91,17 +75,18 @@ export const dataviewIntentHandlers: MutationCompileHandlerTable<
 
 function lowerExternalBump(
   intent: Extract<Intent, { type: 'external.version.bump' }>,
-  scope: CompileScope
+  input: DataviewCompileInput
 ) {
   if (!string.isNonEmptyString(intent.source)) {
-    scope.issue(
+    issue(
+      input,
       'external.invalidSource',
       'external.version.bump requires a non-empty source',
       'source'
     )
   }
 
-  scope.emit({
+  input.emit({
     type: 'external.version.bump',
     source: intent.source
   })

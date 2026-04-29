@@ -1,37 +1,36 @@
 import { scheduler } from '@shared/core'
 import { idDelta } from '@shared/delta'
-import { edge as edgeApi } from '@whiteboard/core/edge'
+import {
+  EMPTY_MUTATION_CHANGE_MAP,
+  type MutationDelta
+} from '@shared/mutation'
 import type {
   EdgeId,
   MindmapId,
   NodeId
 } from '@whiteboard/core/types'
 import type {
-  Snapshot as EngineDocumentSnapshot
-} from '@whiteboard/engine'
-import type {
   EditSession,
-  EdgePreview,
   HoverState,
   Input,
-  InputDelta,
   MindmapPreview,
-  NodePreview
+  RuntimeInputDelta
 } from '../contracts/editor'
 import type {
   EditorSceneSourceChange,
   EditorSceneSourceSnapshot
 } from '../contracts/source'
 
-const createEmptyInputDelta = (): InputDelta => ({
-  document: {
-    reset: false,
-    order: false,
-    nodes: idDelta.create<NodeId>(),
-    edges: idDelta.create<EdgeId>(),
-    mindmaps: idDelta.create<MindmapId>(),
-    groups: idDelta.create()
-  },
+const BOOTSTRAP_DOCUMENT_DELTA: MutationDelta = {
+  reset: true,
+  changes: EMPTY_MUTATION_CHANGE_MAP
+}
+
+const EMPTY_DOCUMENT_DELTA: MutationDelta = {
+  changes: EMPTY_MUTATION_CHANGE_MAP
+}
+
+const createEmptyRuntimeInputDelta = (): RuntimeInputDelta => ({
   session: {
     tool: false,
     selection: false,
@@ -56,36 +55,9 @@ const createEmptyInputDelta = (): InputDelta => ({
   }
 })
 
-export const createDocumentInputDelta = (
-  delta: EditorSceneSourceSnapshot['document']['publish']['delta']
-): InputDelta['document'] => ({
-  reset: delta.reset,
-  order: delta.order,
-  nodes: {
-    added: new Set(delta.nodes.added),
-    updated: new Set(delta.nodes.updated),
-    removed: new Set(delta.nodes.removed)
-  },
-  edges: {
-    added: new Set(delta.edges.added),
-    updated: new Set(delta.edges.updated),
-    removed: new Set(delta.edges.removed)
-  },
-  mindmaps: {
-    added: new Set(delta.mindmaps.added),
-    updated: new Set(delta.mindmaps.updated),
-    removed: new Set(delta.mindmaps.removed)
-  },
-  groups: {
-    added: new Set(delta.groups.added),
-    updated: new Set(delta.groups.updated),
-    removed: new Set(delta.groups.removed)
-  }
-})
-
 const createTouchedIdDelta = <TId extends string>(
   ids: Iterable<TId>
-): InputDelta['document']['nodes'] => ({
+): RuntimeInputDelta['session']['draft']['edges'] => ({
   added: new Set(),
   updated: new Set(ids),
   removed: new Set()
@@ -231,8 +203,8 @@ const isInteractionStateEqual = (
 const createPreviewDelta = (input: {
   previous: EditorSceneSourceSnapshot['session']['preview']
   next: EditorSceneSourceSnapshot['session']['preview']
-}): InputDelta => {
-  const delta = createEmptyInputDelta()
+}): RuntimeInputDelta => {
+  const delta = createEmptyRuntimeInputDelta()
   const touchedNodeIds = unionIds(
     readPreviewNodeIds(input.previous),
     readPreviewNodeIds(input.next)
@@ -265,12 +237,11 @@ const createPreviewDelta = (input: {
   return delta
 }
 
-export const createBootstrapInputDelta = (
+export const createBootstrapRuntimeInputDelta = (
   source: EditorSceneSourceSnapshot
-): InputDelta => {
-  const delta = createEmptyInputDelta()
+): RuntimeInputDelta => {
+  const delta = createEmptyRuntimeInputDelta()
 
-  delta.document = createDocumentInputDelta(source.document.publish.delta)
   delta.session.tool = true
   delta.session.selection = true
   delta.session.hover = true
@@ -309,16 +280,13 @@ export const createBootstrapInputDelta = (
   return delta
 }
 
-export const createSourceInputDelta = (input: {
+export const createSourceRuntimeInputDelta = (input: {
   previous: EditorSceneSourceSnapshot
   next: EditorSceneSourceSnapshot
   change: EditorSceneSourceChange
-}): InputDelta => {
-  const delta = createEmptyInputDelta()
+}): RuntimeInputDelta => {
+  const delta = createEmptyRuntimeInputDelta()
 
-  if (input.change.document) {
-    delta.document = createDocumentInputDelta(input.next.document.publish.delta)
-  }
   if (input.change.session?.tool) {
     delta.session.tool = true
   }
@@ -374,28 +342,37 @@ export const createSourceInputDelta = (input: {
 }
 
 export const createSceneInput = (input: {
-  previous: EngineDocumentSnapshot | null
   source: EditorSceneSourceSnapshot
-  delta: InputDelta
+  delta: MutationDelta
+  runtimeDelta: RuntimeInputDelta
 }): Input => ({
   document: {
-    previous: input.previous,
-    snapshot: input.source.document.publish.snapshot,
-    delta: input.source.document.publish.delta
+    rev: input.source.document.rev,
+    doc: input.source.document.doc
   },
-  session: {
-    edit: input.source.session.edit,
-    draft: input.source.session.draft,
-    preview: input.source.session.preview,
-    tool: input.source.session.tool
+  runtime: {
+    session: {
+      edit: input.source.session.edit,
+      draft: input.source.session.draft,
+      preview: input.source.session.preview,
+      tool: input.source.session.tool
+    },
+    interaction: {
+      selection: input.source.session.selection,
+      hover: input.source.interaction.hover,
+      drag: input.source.interaction.drag,
+      chrome: input.source.interaction.chrome,
+      editingEdge: input.source.interaction.editingEdge
+    },
+    view: input.source.view,
+    clock: input.source.clock,
+    delta: input.runtimeDelta
   },
-  interaction: {
-    selection: input.source.session.selection,
-    hover: input.source.interaction.hover,
-    drag: input.source.interaction.drag,
-    chrome: input.source.interaction.chrome,
-    editingEdge: input.source.interaction.editingEdge
-  },
-  clock: input.source.clock,
   delta: input.delta
 })
+
+export const readSourceMutationDelta = (
+  change: EditorSceneSourceChange
+): MutationDelta => change.document?.delta ?? EMPTY_DOCUMENT_DELTA
+
+export const readBootstrapMutationDelta = (): MutationDelta => BOOTSTRAP_DOCUMENT_DELTA

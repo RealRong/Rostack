@@ -4,7 +4,7 @@ import {
   encodeJsonBytes
 } from '@shared/collab-yjs'
 import type { DataDoc } from '@dataview/core/types'
-import type { DocumentOperation } from '@dataview/core/types/operations'
+import type { DocumentOperation } from '@dataview/core/op'
 import type {
   SharedChange,
   SharedCheckpoint,

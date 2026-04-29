@@ -11,7 +11,6 @@ import type {
   NodeId
 } from '@whiteboard/core/types'
 import type {
-  RenderPatchScope,
   SceneItemKey
 } from '../../contracts/delta'
 import {
@@ -76,6 +75,18 @@ const appendTouchedIds = <TId extends string>(
   })
 }
 
+const hasAnyIdChanges = <TId,>(
+  ...changes: Array<{
+    added: ReadonlySet<TId>
+    updated: ReadonlySet<TId>
+    removed: ReadonlySet<TId>
+  }>
+): boolean => changes.some((change) => (
+  change.added.size > 0
+  || change.updated.size > 0
+  || change.removed.size > 0
+))
+
 const toEdgeIdFromSceneItemKey = (
   key: SceneItemKey
 ): EdgeId | undefined => {
@@ -113,7 +124,7 @@ const readEdgeLabelKey = (
 ): EdgeLabelKey => `${edgeId}:${labelId}`
 
 const readHoveredEdgeId = (
-  hover: Input['interaction']['hover']
+  hover: Input['runtime']['interaction']['hover']
 ): EdgeId | undefined => hover.kind === 'edge'
   ? hover.edgeId
   : undefined
@@ -125,7 +136,7 @@ const readEditingEdgeId = (
   : undefined
 
 const readSelectedEdgeId = (
-  selection: Input['interaction']['selection']
+  selection: Input['runtime']['interaction']['selection']
 ): EdgeId | undefined => (
   selection.nodeIds.length === 0
   && selection.edgeIds.length === 1
@@ -365,7 +376,7 @@ const resolveRenderEdgeCapability = (input: {
 
 const buildActiveView = (input: {
   working: WorkingState
-  interaction: Input['interaction']
+  interaction: Input['runtime']['interaction']
   edgeId: EdgeId
 }): EdgeActiveView | undefined => {
   const edge = input.working.graph.edges.get(input.edgeId)
@@ -422,15 +433,15 @@ const buildOverlayView = (input: {
   working: WorkingState
   current: Input
 }): EdgeOverlayView => {
-  const previewPath = input.current.session.preview.edgeGuide?.path
+  const previewPath = input.current.runtime.session.preview.edgeGuide?.path
     ? {
-        svgPath: input.current.session.preview.edgeGuide.path.svgPath,
+        svgPath: input.current.runtime.session.preview.edgeGuide.path.svgPath,
         style: edgeApi.render.staticStyle(
-          input.current.session.preview.edgeGuide.path.style
+          input.current.runtime.session.preview.edgeGuide.path.style
         )
       }
     : undefined
-  const connect = input.current.session.preview.edgeGuide?.connect
+  const connect = input.current.runtime.session.preview.edgeGuide?.connect
   const snapPoint = connect
     && (
       connect.resolution.mode === 'outline'
@@ -439,7 +450,7 @@ const buildOverlayView = (input: {
     ? connect.resolution.pointWorld
     : undefined
 
-  const selectedEdgeId = readSelectedEdgeId(input.current.interaction.selection)
+  const selectedEdgeId = readSelectedEdgeId(input.current.runtime.interaction.selection)
   if (!selectedEdgeId) {
     return {
       previewPath,
@@ -466,12 +477,12 @@ const buildOverlayView = (input: {
     readNodeLocked: (nodeId) => readNodeLocked(input.working, nodeId)
   })
   const editingThisSelectedEdge =
-    input.current.session.edit?.kind === 'edge-label'
-    && input.current.session.edit.edgeId === selectedEdgeId
+    input.current.runtime.session.edit?.kind === 'edge-label'
+    && input.current.runtime.session.edit.edgeId === selectedEdgeId
   const showEditHandles =
-    input.current.session.tool.type === 'select'
-    && input.current.interaction.chrome
-    && !input.current.interaction.editingEdge
+    input.current.runtime.session.tool.type === 'select'
+    && input.current.runtime.interaction.chrome
+    && !input.current.runtime.interaction.editingEdge
     && !editingThisSelectedEdge
 
   return {
@@ -781,12 +792,12 @@ const buildLabelsAndMasksState = (
 const readActiveEdgeIds = (
   current: Input
 ): ReadonlySet<EdgeId> => new Set<EdgeId>([
-  ...current.interaction.selection.edgeIds,
-  ...(current.interaction.hover.kind === 'edge'
-    ? [current.interaction.hover.edgeId]
+  ...current.runtime.interaction.selection.edgeIds,
+  ...(current.runtime.interaction.hover.kind === 'edge'
+    ? [current.runtime.interaction.hover.edgeId]
     : []),
-  ...(current.session.edit?.kind === 'edge-label'
-    ? [current.session.edit.edgeId]
+  ...(current.runtime.session.edit?.kind === 'edge-label'
+    ? [current.runtime.session.edit.edgeId]
     : [])
 ])
 
@@ -794,10 +805,10 @@ const collectNodeRenderIds = (
   working: WorkingState
 ): ReadonlySet<NodeId> => {
   const touched = new Set<NodeId>()
-  appendTouchedIds(touched, working.delta.graphChanges.node.lifecycle)
-  appendTouchedIds(touched, working.delta.graphChanges.node.geometry)
-  appendTouchedIds(touched, working.delta.graphChanges.node.content)
-  appendTouchedIds(touched, working.delta.graphChanges.node.owner)
+  appendTouchedIds(touched, working.dirty.graph.node.lifecycle)
+  appendTouchedIds(touched, working.dirty.graph.node.geometry)
+  appendTouchedIds(touched, working.dirty.graph.node.content)
+  appendTouchedIds(touched, working.dirty.graph.node.owner)
   appendTouchedIds(touched, working.delta.ui.node)
   return touched
 }
@@ -806,9 +817,9 @@ const collectStaticsEdgeIds = (
   working: WorkingState
 ): ReadonlySet<EdgeId> => {
   const edgeIds = new Set<EdgeId>()
-  appendTouchedIds(edgeIds, working.delta.graphChanges.edge.lifecycle)
-  appendTouchedIds(edgeIds, working.delta.graphChanges.edge.route)
-  appendTouchedIds(edgeIds, working.delta.graphChanges.edge.style)
+  appendTouchedIds(edgeIds, working.dirty.graph.edge.lifecycle)
+  appendTouchedIds(edgeIds, working.dirty.graph.edge.route)
+  appendTouchedIds(edgeIds, working.dirty.graph.edge.style)
   working.delta.items.change?.set?.forEach((key) => {
     const edgeId = toEdgeIdFromSceneItemKey(key)
     if (edgeId) {
@@ -828,9 +839,9 @@ const collectLabelEdgeIds = (
   working: WorkingState
 ): ReadonlySet<EdgeId> => {
   const edgeIds = new Set<EdgeId>()
-  appendTouchedIds(edgeIds, working.delta.graphChanges.edge.lifecycle)
-  appendTouchedIds(edgeIds, working.delta.graphChanges.edge.route)
-  appendTouchedIds(edgeIds, working.delta.graphChanges.edge.labels)
+  appendTouchedIds(edgeIds, working.dirty.graph.edge.lifecycle)
+  appendTouchedIds(edgeIds, working.dirty.graph.edge.route)
+  appendTouchedIds(edgeIds, working.dirty.graph.edge.labels)
   appendTouchedIds(edgeIds, working.delta.ui.edge)
   return edgeIds
 }
@@ -839,9 +850,9 @@ const collectMaskEdgeIds = (
   working: WorkingState
 ): ReadonlySet<EdgeId> => {
   const edgeIds = new Set<EdgeId>()
-  appendTouchedIds(edgeIds, working.delta.graphChanges.edge.lifecycle)
-  appendTouchedIds(edgeIds, working.delta.graphChanges.edge.route)
-  appendTouchedIds(edgeIds, working.delta.graphChanges.edge.labels)
+  appendTouchedIds(edgeIds, working.dirty.graph.edge.lifecycle)
+  appendTouchedIds(edgeIds, working.dirty.graph.edge.route)
+  appendTouchedIds(edgeIds, working.dirty.graph.edge.labels)
   return edgeIds
 }
 
@@ -851,18 +862,18 @@ const collectActiveEdgeIds = (input: {
 }): ReadonlySet<EdgeId> => new Set<EdgeId>([
   ...readActiveEdgeIds(input.current),
   ...input.working.render.active.keys(),
-  ...input.working.delta.graphChanges.edge.lifecycle.added,
-  ...input.working.delta.graphChanges.edge.lifecycle.updated,
-  ...input.working.delta.graphChanges.edge.lifecycle.removed,
-  ...input.working.delta.graphChanges.edge.route.added,
-  ...input.working.delta.graphChanges.edge.route.updated,
-  ...input.working.delta.graphChanges.edge.route.removed,
-  ...input.working.delta.graphChanges.edge.style.added,
-  ...input.working.delta.graphChanges.edge.style.updated,
-  ...input.working.delta.graphChanges.edge.style.removed,
-  ...input.working.delta.graphChanges.edge.box.added,
-  ...input.working.delta.graphChanges.edge.box.updated,
-  ...input.working.delta.graphChanges.edge.box.removed,
+  ...input.working.dirty.graph.edge.lifecycle.added,
+  ...input.working.dirty.graph.edge.lifecycle.updated,
+  ...input.working.dirty.graph.edge.lifecycle.removed,
+  ...input.working.dirty.graph.edge.route.added,
+  ...input.working.dirty.graph.edge.route.updated,
+  ...input.working.dirty.graph.edge.route.removed,
+  ...input.working.dirty.graph.edge.style.added,
+  ...input.working.dirty.graph.edge.style.updated,
+  ...input.working.dirty.graph.edge.style.removed,
+  ...input.working.dirty.graph.edge.box.added,
+  ...input.working.dirty.graph.edge.box.updated,
+  ...input.working.dirty.graph.edge.box.removed,
   ...input.working.delta.ui.edge.added,
   ...input.working.delta.ui.edge.updated,
   ...input.working.delta.ui.edge.removed
@@ -1015,14 +1026,15 @@ const replaceIdSegment = <TId extends string>(
 
 const patchStatics = (input: {
   working: WorkingState
-  scope: RenderPatchScope
+  reset: boolean
+  statics: boolean
 }): number => {
-  if (!input.scope.reset && !input.scope.statics) {
+  if (!input.reset && !input.statics) {
     return 0
   }
 
   const previous = input.working.render.statics
-  if (input.scope.reset) {
+  if (input.reset) {
     const built = buildStaticState(input.working)
     const nextById = new Map<EdgeStaticId, EdgeStaticView>()
     let count = 0
@@ -1190,12 +1202,13 @@ const patchStatics = (input: {
 
 const patchNodeRender = (input: {
   working: WorkingState
-  scope: RenderPatchScope
+  reset: boolean
+  node: boolean
 }): number => {
   const previous = input.working.render.node
   let count = 0
 
-  if (input.scope.reset) {
+  if (input.reset) {
     const next = new Map<NodeId, NodeRenderView>()
 
     input.working.graph.nodes.forEach((_view, nodeId) => {
@@ -1243,7 +1256,7 @@ const patchNodeRender = (input: {
     return count
   }
 
-  if (!input.scope.node) {
+  if (!input.node) {
     return 0
   }
 
@@ -1287,19 +1300,21 @@ const patchNodeRender = (input: {
 
 const patchLabelsAndMasks = (input: {
   working: WorkingState
-  scope: RenderPatchScope
+  reset: boolean
+  labels: boolean
+  masks: boolean
 }): number => {
   if (
-    !input.scope.reset
-    && !input.scope.labels
-    && !input.scope.masks
+    !input.reset
+    && !input.labels
+    && !input.masks
   ) {
     return 0
   }
 
   const previousLabels = input.working.render.labels
   const previousMasks = input.working.render.masks
-  if (input.scope.reset) {
+  if (input.reset) {
     const built = buildLabelsAndMasksState(input.working)
     const nextLabelById = new Map<EdgeLabelKey, EdgeLabelView>()
     const nextMaskById = new Map<EdgeId, EdgeMaskView>()
@@ -1386,10 +1401,10 @@ const patchLabelsAndMasks = (input: {
     return count
   }
 
-  const touchedLabelEdgeIds = input.scope.labels
+  const touchedLabelEdgeIds = input.labels
     ? collectLabelEdgeIds(input.working)
     : new Set<EdgeId>()
-  const touchedMaskEdgeIds = input.scope.masks
+  const touchedMaskEdgeIds = input.masks
     ? collectMaskEdgeIds(input.working)
     : new Set<EdgeId>()
 
@@ -1581,19 +1596,20 @@ const patchLabelsAndMasks = (input: {
 const patchActive = (input: {
   working: WorkingState
   current: Input
-  scope: RenderPatchScope
+  reset: boolean
+  active: boolean
 }): number => {
   const activeIds = readActiveEdgeIds(input.current)
   const previous = input.working.render.active
   let count = 0
 
-  if (input.scope.reset) {
+  if (input.reset) {
     const next = new Map<EdgeId, EdgeActiveView>()
 
     activeIds.forEach((edgeId) => {
       const view = buildActiveView({
         working: input.working,
-        interaction: input.current.interaction,
+        interaction: input.current.runtime.interaction,
         edgeId
       })
       if (!view) {
@@ -1632,7 +1648,7 @@ const patchActive = (input: {
     return count
   }
 
-  if (!input.scope.active) {
+  if (!input.active) {
     return 0
   }
 
@@ -1644,7 +1660,7 @@ const patchActive = (input: {
     const nextCandidate = activeIds.has(edgeId)
       ? buildActiveView({
           working: input.working,
-          interaction: input.current.interaction,
+          interaction: input.current.runtime.interaction,
           edgeId
         })
       : undefined
@@ -1683,9 +1699,10 @@ const patchActive = (input: {
 const patchOverlay = (input: {
   working: WorkingState
   current: Input
-  scope: RenderPatchScope
+  reset: boolean
+  overlay: boolean
 }): number => {
-  if (!input.scope.reset && !input.scope.overlay) {
+  if (!input.reset && !input.overlay) {
     return 0
   }
 
@@ -1705,9 +1722,11 @@ const patchOverlay = (input: {
 
 const patchChromeRender = (input: {
   working: WorkingState
-  scope: RenderPatchScope
+  reset: boolean
+  chrome: boolean
+  overlay: boolean
 }): number => {
-  if (!input.scope.reset && !input.scope.chrome && !input.scope.overlay) {
+  if (!input.reset && !input.chrome && !input.overlay) {
     return 0
   }
 
@@ -1727,16 +1746,133 @@ const patchChromeRender = (input: {
 export const patchRenderState = (input: {
   working: WorkingState
   current: Input
-  scope: RenderPatchScope
+  reset: boolean
 }): number => {
   input.working.delta.render = renderChange.create()
 
+  const scope = {
+    reset: input.reset,
+    node: (
+      input.reset
+      || hasAnyIdChanges(
+        input.working.dirty.graph.node.lifecycle,
+        input.working.dirty.graph.node.geometry,
+        input.working.dirty.graph.node.content,
+        input.working.dirty.graph.node.owner,
+        input.working.delta.ui.node
+      )
+    ),
+    statics: (
+      input.reset
+      || input.working.delta.items.change !== undefined
+      || hasAnyIdChanges(
+        input.working.dirty.graph.edge.lifecycle,
+        input.working.dirty.graph.edge.route,
+        input.working.dirty.graph.edge.style
+      )
+    ),
+    active: (
+      input.reset
+      || hasAnyIdChanges(
+        input.working.dirty.graph.edge.lifecycle,
+        input.working.dirty.graph.edge.route,
+        input.working.dirty.graph.edge.style,
+        input.working.dirty.graph.edge.box,
+        input.working.delta.ui.edge
+      )
+      || Boolean(
+        input.current.runtime.delta.session.hover
+        || input.current.runtime.delta.session.selection
+        || input.current.runtime.delta.session.edit
+      )
+    ),
+    labels: (
+      input.reset
+      || hasAnyIdChanges(
+        input.working.dirty.graph.edge.lifecycle,
+        input.working.dirty.graph.edge.route,
+        input.working.dirty.graph.edge.labels,
+        input.working.delta.ui.edge
+      )
+      || Boolean(
+        input.current.runtime.delta.session.selection
+        || input.current.runtime.delta.session.edit
+      )
+    ),
+    masks: (
+      input.reset
+      || hasAnyIdChanges(
+        input.working.dirty.graph.edge.lifecycle,
+        input.working.dirty.graph.edge.route,
+        input.working.dirty.graph.edge.labels
+      )
+    ),
+    overlay: (
+      input.reset
+      || hasAnyIdChanges(
+        input.working.dirty.graph.edge.route,
+        input.working.dirty.graph.edge.endpoints,
+        input.working.dirty.graph.edge.box
+      )
+      || Boolean(
+        input.current.runtime.delta.session.tool
+        || input.current.runtime.delta.session.interaction
+        || input.current.runtime.delta.session.preview.edgeGuide
+        || input.current.runtime.delta.session.selection
+        || input.current.runtime.delta.session.hover
+        || input.current.runtime.delta.session.edit
+      )
+    ),
+    chrome: input.reset || input.working.delta.ui.chrome
+  }
+
+  if (
+    !scope.reset
+    && !scope.node
+    && !scope.statics
+    && !scope.active
+    && !scope.labels
+    && !scope.masks
+    && !scope.overlay
+    && !scope.chrome
+  ) {
+    return 0
+  }
+
   return (
-    patchNodeRender(input)
-    + patchStatics(input)
-    + patchLabelsAndMasks(input)
-    + patchActive(input)
-    + patchOverlay(input)
-    + patchChromeRender(input)
+    patchNodeRender({
+      working: input.working,
+      reset: scope.reset,
+      node: scope.node
+    })
+    + patchStatics({
+      working: input.working,
+      reset: scope.reset,
+      statics: scope.statics
+    })
+    + patchLabelsAndMasks({
+      working: input.working,
+      reset: scope.reset,
+      labels: scope.labels,
+      masks: scope.masks
+    })
+    + patchActive({
+      working: input.working,
+      current: input.current,
+      reset: scope.reset,
+      active: scope.active
+    })
+    + patchOverlay({
+      working: input.working,
+      current: input.current,
+      reset: scope.reset,
+      overlay: scope.overlay
+    })
+    + patchChromeRender({
+      working: input.working,
+      reset: scope.reset,
+      chrome: scope.chrome,
+      overlay: scope.overlay
+    })
   )
 }

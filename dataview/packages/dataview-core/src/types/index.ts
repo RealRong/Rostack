@@ -1,5 +1,4 @@
 export type * from './intents'
-export type * from './commit'
 export type * from './operations'
 export type * from './presentation'
 export type * from './state'

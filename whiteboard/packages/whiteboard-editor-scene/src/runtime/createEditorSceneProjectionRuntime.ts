@@ -1,4 +1,3 @@
-import { createProjectionRuntime } from '@shared/projection'
 import type {
   NodeCapabilityInput,
   Runtime,
@@ -7,7 +6,8 @@ import type {
 } from '../contracts/editor'
 import type { State } from '../contracts/state'
 import type { WorkingState } from '../contracts/working'
-import { createEditorSceneProjectionSpec } from './model'
+import { createEditorSceneCaptureReader } from './capture'
+import { createEditorSceneProjection } from './model'
 
 const createEditorSceneStateReader = (input: {
   state: () => WorkingState
@@ -31,11 +31,13 @@ export const createEditorSceneProjectionRuntime = (input: {
   nodeCapability?: NodeCapabilityInput
   view: SceneViewInput
 }): Runtime => {
-  const runtime = createProjectionRuntime(
-    createEditorSceneProjectionSpec(input)
-  )
+  const runtime = createEditorSceneProjection(input)
   const state = createEditorSceneStateReader({
     state: runtime.state
+  })
+  const capture = createEditorSceneCaptureReader({
+    state: runtime.state,
+    revision: runtime.revision
   })
 
   return {
@@ -43,8 +45,19 @@ export const createEditorSceneProjectionRuntime = (input: {
     query: runtime.read,
     revision: runtime.revision,
     state,
-    capture: runtime.capture,
-    update: runtime.update,
-    subscribe: runtime.subscribe
+    capture,
+    update: (value) => {
+      const result = runtime.update(value)
+      return {
+        revision: result.revision,
+        trace: result.trace
+      }
+    },
+    subscribe: (listener) => runtime.subscribe((result) => {
+      listener({
+        revision: result.revision,
+        trace: result.trace
+      })
+    })
   }
 }

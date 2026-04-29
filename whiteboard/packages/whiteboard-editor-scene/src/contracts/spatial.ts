@@ -15,5 +15,3 @@ export type {
   SpatialGridConfig,
   SpatialIndexState
 } from '../model/spatial/state'
-
-export type { SpatialPatchScope } from './delta'

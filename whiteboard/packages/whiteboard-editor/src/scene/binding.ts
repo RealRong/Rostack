@@ -17,9 +17,6 @@ import type {
 } from '@whiteboard/editor/input/hover/store'
 import { isEdgeInteractionMode } from '@whiteboard/editor/input/interaction/mode'
 import type {
-  EditSession as EditorEditSession
-} from '@whiteboard/editor/session/edit'
-import type {
   EditorInputPreviewState
 } from '@whiteboard/editor/session/preview/types'
 import type { EditorSession } from '@whiteboard/editor/session/runtime'
@@ -155,10 +152,10 @@ const readMindmapPreview = (
   }
 
   const rootMoveMindmapId = preview.rootMove
-    ? mindmapApi.tree.resolveId(engine.snapshot.document, preview.rootMove.treeId)
+    ? mindmapApi.tree.resolveId(engine.doc, preview.rootMove.treeId)
     : undefined
   const subtreeMoveMindmapId = preview.subtreeMove
-    ? mindmapApi.tree.resolveId(engine.snapshot.document, preview.subtreeMove.treeId)
+    ? mindmapApi.tree.resolveId(engine.doc, preview.subtreeMove.treeId)
     : undefined
 
   return {
@@ -177,7 +174,7 @@ const readMindmapPreview = (
         }
       : undefined,
     enter: preview.enter?.flatMap((entry) => {
-      const mindmapId = mindmapApi.tree.resolveId(engine.snapshot.document, entry.treeId)
+      const mindmapId = mindmapApi.tree.resolveId(engine.doc, entry.treeId)
       return mindmapId
         ? [{
             mindmapId,
@@ -249,7 +246,7 @@ const readDragState = (
       }
 
       const mindmapId = mindmapApi.tree.resolveId(
-        engine.snapshot.document,
+        engine.doc,
         subtreeMove.treeId
       )
 
@@ -278,14 +275,14 @@ export const readActiveMindmapTickIds = (input: {
 }): ReadonlySet<string> => {
   const ids = new Set<string>()
   const now = input.now ?? scheduler.readMonotonicNow()
-  const snapshot = input.engine.current().snapshot
+  const document = input.engine.current().doc
 
   input.preview?.enter?.forEach((entry) => {
     if (entry.startedAt + entry.durationMs <= now) {
       return
     }
 
-    const mindmapId = mindmapApi.tree.resolveId(snapshot.document, entry.treeId)
+    const mindmapId = mindmapApi.tree.resolveId(document, entry.treeId)
     if (mindmapId) {
       ids.add(mindmapId)
     }
@@ -298,7 +295,7 @@ export const createEditorSceneBinding = ({
   engine,
   session
 }: {
-  engine: Pick<Engine, 'current' | 'subscribe'>
+  engine: Pick<Engine, 'current' | 'commits'>
   session: Pick<EditorSession, 'state' | 'interaction' | 'preview' | 'viewport'>
 }): EditorSceneBinding => {
   const listeners = new Set<(change: EditorSceneSourceChange) => void>()
@@ -321,7 +318,8 @@ export const createEditorSceneBinding = ({
 
     return {
       document: {
-        publish
+        rev: publish.rev,
+        doc: publish.doc
       },
       session: {
         selection: store.read(session.state.selection),
@@ -379,9 +377,13 @@ export const createEditorSceneBinding = ({
   }
 
   const unsubscribes = [
-    engine.subscribe(() => {
+    engine.commits.subscribe((commit) => {
       notify({
-        document: true,
+        document: {
+          rev: commit.rev,
+          delta: commit.delta,
+          reset: commit.kind === 'replace' || commit.delta.reset === true
+        },
         interaction: {
           drag: true
         }

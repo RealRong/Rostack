@@ -3,7 +3,7 @@ import type { DraftEntityTable } from '@shared/draft'
 import type {
   DocumentRecordFieldRestoreEntry,
   RecordFieldWriteManyOperationInput
-} from '@dataview/core/types/operations'
+} from '@dataview/core/op'
 import type {
   DataRecord,
   FieldId,

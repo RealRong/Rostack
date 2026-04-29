@@ -7,9 +7,11 @@ import type {
   Intent
 } from '@dataview/core/types'
 import {
-  createDataviewCompileScope,
-  dataviewIntentHandlers
-} from '@dataview/core/operations'
+  compile
+} from '@dataview/core/compile'
+import {
+  entities
+} from '@dataview/core/entities'
 
 const createEmptyDocument = (): DataDoc => ({
   schemaVersion: 1,
@@ -21,32 +23,24 @@ const createEmptyDocument = (): DataDoc => ({
 })
 
 test('MutationEngine.compile surfaces internal apply failures', () => {
-  const result = MutationEngine.compile({
-    doc: createEmptyDocument(),
-    intents: [{
-      type: 'field.create',
-      input: {
-        name: 'Notes'
-      }
-    } satisfies Intent],
-    handlers: dataviewIntentHandlers,
-    createContext: createDataviewCompileScope,
-    apply: () => ({
-      ok: false as const,
-      issue: {
-        code: 'compile.applyFailed' as const,
-        message: 'apply failed',
-        severity: 'error' as const,
-        source: {
-          index: 0,
-          type: 'field.create' as const
-        }
-      }
-    })
+  const mutation = new MutationEngine({
+    document: createEmptyDocument(),
+    normalize: document => document,
+    entities,
+    compile: compile.handlers
   })
+  const result = mutation.execute([{
+    type: 'field.create',
+    input: {
+      name: 'Notes'
+    }
+  } satisfies Intent])
 
-  assert.equal(result.issues?.length, 1)
-  assert.equal(result.issues?.[0]?.code, 'compile.applyFailed')
-  assert.equal(result.issues?.[0]?.message, 'apply failed')
-  assert.equal(result.issues?.[0]?.source?.type, 'field.create')
+  assert.equal(result.ok, false)
+  if (result.ok) {
+    return
+  }
+
+  assert.equal(result.error.code, 'mutation_engine.compile.apply_failed')
+  assert.match(result.error.message, /Unknown mutation operation/)
 })

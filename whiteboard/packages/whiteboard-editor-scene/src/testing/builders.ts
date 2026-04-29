@@ -1,29 +1,26 @@
+import { EMPTY_MUTATION_CHANGE_MAP, type MutationDelta } from '@shared/mutation'
 import type {
   EdgeId,
   NodeId,
   Size
 } from '@whiteboard/core/types'
 import type {
-  InputDelta,
   NodeDraftMeasure,
+  RuntimeInputDelta,
   TextMeasure
 } from '../contracts/editor'
-import { createEmptyInputDelta } from './input'
+import { createEmptyRuntimeInputDelta } from './input'
 
-export type EditorGraphDeltaFlags = Partial<{
-  document: boolean
+export type EditorRuntimeDeltaFlags = Partial<{
   graph: boolean
   ui: boolean
 }>
 
-export const createEditorGraphDelta = (
-  input: EditorGraphDeltaFlags = {}
-): InputDelta => {
-  const delta = createEmptyInputDelta()
+export const createEditorRuntimeDelta = (
+  input: EditorRuntimeDeltaFlags = {}
+): RuntimeInputDelta => {
+  const delta = createEmptyRuntimeInputDelta()
 
-  if (input.document) {
-    delta.document.reset = true
-  }
   if (input.graph) {
     delta.session.preview.nodes = {
       added: new Set(),
@@ -36,6 +33,17 @@ export const createEditorGraphDelta = (
   }
   return delta
 }
+
+export const createMutationDelta = (input: {
+  reset?: boolean
+} = {}): MutationDelta => ({
+  ...(input.reset
+    ? {
+        reset: true
+      }
+    : {}),
+  changes: EMPTY_MUTATION_CHANGE_MAP
+})
 
 export interface EditorGraphTextMeasureState {
   nodeMeasures?: ReadonlyMap<NodeId, NodeDraftMeasure>

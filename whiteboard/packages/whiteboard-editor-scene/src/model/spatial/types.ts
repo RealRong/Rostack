@@ -15,4 +15,3 @@ export type {
   SpatialGridConfig,
   SpatialIndexState
 } from './state'
-export type { SpatialPatchScope } from '../../contracts/delta'

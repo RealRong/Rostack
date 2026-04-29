@@ -1,9 +1,10 @@
-import type * as document from '@whiteboard/engine/contracts/document'
 import type {
+  Document,
   EdgeId,
   MindmapId,
   NodeId
 } from '@whiteboard/core/types'
+import type { Revision } from '@shared/projection'
 import type { GraphState } from '../../contracts/working'
 import type {
   SpatialItemRef,
@@ -21,9 +22,14 @@ export const toSpatialKey = (
 
 export type SceneOrderRead = (item: SpatialItemRef) => number
 
+type DocumentSnapshot = {
+  revision: Revision
+  document: Document
+}
+
 export const syncSceneOrderState = (
   state: Pick<SpatialIndexState, 'orderByKey'>,
-  snapshot: document.Snapshot
+  snapshot: DocumentSnapshot
 ) => {
   state.orderByKey.clear()
   snapshot.document.canvas.order.forEach((item, index) => {

@@ -1,5 +1,7 @@
 import type { SelectionTarget } from '@whiteboard/core/selection'
-import type { EnginePublish } from '@whiteboard/engine'
+import type { Document as WhiteboardDocument } from '@whiteboard/core/types'
+import type { MutationDelta } from '@shared/mutation'
+import type { Revision } from '@shared/projection'
 import type {
   ClockInput,
   DragState,
@@ -13,7 +15,8 @@ import type {
 
 export interface EditorSceneSourceSnapshot {
   document: {
-    publish: EnginePublish
+    rev: Revision
+    doc: WhiteboardDocument
   }
   session: {
     selection: SelectionTarget
@@ -33,7 +36,11 @@ export interface EditorSceneSourceSnapshot {
 }
 
 export interface EditorSceneSourceChange {
-  document?: true
+  document?: {
+    rev: Revision
+    delta: MutationDelta
+    reset: boolean
+  }
   session?: {
     tool?: true
     selection?: true

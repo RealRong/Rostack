@@ -1,9 +1,9 @@
 import { document as documentApi } from '@whiteboard/core/document'
-import type * as document from '@whiteboard/engine/contracts/document'
+import type { Document } from '@whiteboard/core/types'
 import type { Revision } from '@shared/projection'
 import {
-  graphChange,
   createGraphDelta,
+  createGraphDirty,
   createItemsDelta,
   renderChange,
   uiChange
@@ -15,7 +15,10 @@ import type { WorkingState } from '../contracts/working'
 import { createSpatialState } from '../model/spatial/state'
 import { createSpatialDelta } from '../model/spatial/update'
 
-export const createEmptyDocumentSnapshot = (): document.Snapshot => ({
+export const createEmptyDocumentSnapshot = (): {
+  revision: Revision
+  document: Document
+} => ({
   revision: 0,
   document: documentApi.create('__editor_scene_runtime__')
 })
@@ -47,6 +50,9 @@ export const createWorking = (input: {
     measure: input.measure,
     draft: {
       node: new Map()
+    },
+    dirty: {
+      graph: createGraphDirty()
     },
     revision: {
       document: snapshot.revision as Revision
@@ -120,7 +126,6 @@ export const createWorking = (input: {
     },
     delta: {
       graph: createGraphDelta(),
-      graphChanges: graphChange.create(),
       spatial: createSpatialDelta(),
       items: createItemsDelta(),
       ui: uiChange.create(),

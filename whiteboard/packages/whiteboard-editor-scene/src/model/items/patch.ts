@@ -1,5 +1,6 @@
 import { entityDelta } from '@shared/delta'
-import type * as document from '@whiteboard/engine/contracts/document'
+import type { Document } from '@whiteboard/core/types'
+import type { Revision } from '@shared/projection'
 import type {
   ItemsDelta,
   SceneItemEntry,
@@ -10,8 +11,13 @@ import {
 } from '../../contracts/delta'
 import type { WorkingState } from '../../contracts/working'
 
+type DocumentSnapshot = {
+  revision: Revision
+  document: Document
+}
+
 const toSceneItem = (
-  ref: document.Snapshot['document']['canvas']['order'][number]
+  ref: Document['canvas']['order'][number]
 ): SceneItemEntry => ({
   key: sceneItemKey.write(ref),
   kind: ref.kind,
@@ -19,7 +25,7 @@ const toSceneItem = (
 })
 
 const buildItemsSnapshot = (
-  snapshot: document.Snapshot
+  snapshot: DocumentSnapshot
 ): WorkingState['items'] => {
   const byId = new Map<SceneItemKey, SceneItemEntry>()
   const ids = snapshot.document.canvas.order.map((ref) => {
@@ -36,7 +42,7 @@ const buildItemsSnapshot = (
 
 export const patchItemsState = (input: {
   revision: number
-  snapshot: document.Snapshot
+  snapshot: DocumentSnapshot
   working: WorkingState
   reset: boolean
 }): {

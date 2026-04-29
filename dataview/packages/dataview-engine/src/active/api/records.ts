@@ -1,11 +1,10 @@
 import type {
-  FieldId,
-  Intent as CoreIntent,
-  RecordId
+  RecordId,
+  SectionId
 } from '@dataview/core/types'
-import {
-  recordCreate
-} from '@dataview/core/operations'
+import type {
+  Intent as CoreIntent
+} from '@dataview/core/intent'
 import {
   view as viewApi
 } from '@dataview/core/view'
@@ -20,6 +19,9 @@ import type {
 import type {
   ActiveViewContext
 } from '@dataview/engine/active/api/context'
+import {
+  buildRecordCreateIntents
+} from '@dataview/engine/active/api/recordCreate'
 
 const createMoveOrderAction = (
   base: ActiveViewContext,
@@ -53,7 +55,7 @@ const createMoveOrderAction = (
 
 const resolveCreateContext = (input: {
   state: ViewState
-  section?: string
+  section?: SectionId
   before?: ItemId
 }) => {
   const beforePlacement = input.before === undefined
@@ -110,10 +112,10 @@ export const createActiveRecordsApi = (input: {
       return undefined
     }
 
-    const recordId = createId('record') as RecordId
-    const created = recordCreate({
+    const recordId: RecordId = createId('record')
+    const created = buildRecordCreateIntents({
       recordId,
-      values: createInput?.values as Partial<Record<FieldId, unknown>> | undefined,
+      values: createInput?.values,
       hasField: fieldId => input.base.reader.fields.has(fieldId),
       filter: {
         mode: state.view.filter.mode,

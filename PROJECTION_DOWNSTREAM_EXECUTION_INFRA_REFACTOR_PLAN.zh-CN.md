@@ -535,6 +535,281 @@ runPublishStage({
 - projection 外层一份 dirty 传播
 - stage 内层再一份 action 推理
 
+## 4.1 dataview 最终 API 草案
+
+这里把建议的最终接口再写具体一点，避免后续又退回成“projection 外层一点点判断，stage 里再一点点判断”。
+
+### `createDataviewProjection` 最终骨架
+
+最终 projection 应该是下面这个结构：
+
+1. `document` phase:
+   - 创建 `DocumentReadContext`
+   - 解析 active view / resolved view plan
+   - 编译 `DataviewProjectionPlan`
+   - 写入 `state.document`
+   - 写入 `state.plan`
+2. `index/query/membership/summary/view` phase:
+   - 读取 `state.plan.<phase>`
+   - `action === 'reuse'` 时直接复位本 phase delta
+   - 否则调用对应 stage executor
+3. surface:
+   - 只消费 phase 产出的 state / patch
+   - 不再参与 action 决策
+
+可以长成近似下面这样：
+
+```ts
+interface DataviewProjectionRuntimeState {
+  document: DataviewDocumentState
+  plan?: DataviewProjectionPlan
+  index: DataviewIndexPhaseState
+  query: DataviewQueryPhaseState
+  membership: DataviewMembershipPhaseState
+  summary: DataviewSummaryPhaseState
+  view: DataviewViewPhaseState
+}
+
+createProjection({
+  phases: {
+    document: (ctx) => {
+      const document = buildDataviewDocumentState(ctx.input)
+      const plan = compileDataviewProjectionPlan({
+        document,
+        previous: ctx.state
+      })
+
+      ctx.state.document = document
+      ctx.state.plan = plan
+
+      if (plan.document.changed) {
+        ctx.phase.document.changed = true
+      }
+    },
+    index: {
+      after: ['document'],
+      run: (ctx) => {
+        runIndexPhase({
+          action: ctx.state.plan?.index.action ?? 'reuse',
+          ...
+        })
+      }
+    },
+    query: {
+      after: ['index'],
+      run: (ctx) => {
+        runQueryStage({
+          plan: ctx.state.plan?.query ?? REUSE_QUERY_PLAN,
+          ...
+        })
+      }
+    },
+    membership: {
+      after: ['query'],
+      run: (ctx) => {
+        runMembershipStage({
+          plan: ctx.state.plan?.membership ?? REUSE_MEMBERSHIP_PLAN,
+          ...
+        })
+      }
+    },
+    summary: {
+      after: ['membership'],
+      run: (ctx) => {
+        runSummaryStage({
+          plan: ctx.state.plan?.summary ?? REUSE_SUMMARY_PLAN,
+          ...
+        })
+      }
+    },
+    view: {
+      after: ['summary'],
+      run: (ctx) => {
+        runPublishStage({
+          plan: ctx.state.plan?.view ?? REUSE_VIEW_PLAN,
+          ...
+        })
+      }
+    }
+  }
+})
+```
+
+核心原则只有一条：
+
+- projection phase 不再手工传播 dirty
+- projection phase 只消费 plan
+
+### `compileDataviewProjectionPlan(...)`
+
+建议把所有 action 归口到单独文件，例如：
+
+- `projection/plan.ts`
+
+它应该一次性消费：
+
+- 当前 document / delta / active view / resolved view plan
+- previous state
+- previous phase outputs
+
+然后只产出“执行决策”，不产出真正业务结果。
+
+建议签名：
+
+```ts
+interface CompileDataviewProjectionPlanInput {
+  document: DataviewDocumentState
+  previous: DataviewProjectionRuntimeState
+  delta: DataviewMutationDelta
+}
+
+declare function compileDataviewProjectionPlan(
+  input: CompileDataviewProjectionPlanInput
+): DataviewProjectionPlan
+```
+
+这里最重要的是边界：
+
+- 它负责判定 action
+- 它负责判定少量复用 hint
+- 它不负责构建 query/membership/summary/view state
+
+### `runQueryStage(...)`
+
+最终不要再允许内部 `resolveQueryAction(...)`。
+
+建议：
+
+```ts
+interface DataviewQueryStagePlan {
+  action: 'reuse' | 'sync' | 'rebuild'
+  reuse?: {
+    matched: boolean
+    ordered: boolean
+  }
+}
+
+declare function runQueryStage(input: {
+  plan: DataviewQueryStagePlan
+  reader: DocumentReader
+  activeViewId: ViewId
+  view: View
+  queryPlan: QueryPlan
+  index: IndexState
+  previous?: QueryPhaseState
+}): QueryStageResult
+```
+
+这样 query stage 就只做两件事：
+
+- 根据 `plan.action` 决定是否复用
+- 构建 `QueryPhaseState / QueryPhaseDelta / metrics`
+
+### `runMembershipStage(...)`
+
+同理，不再内部决定是 `reuse / sync / rebuild`。
+
+```ts
+interface DataviewMembershipStagePlan {
+  action: 'reuse' | 'sync' | 'rebuild'
+}
+
+declare function runMembershipStage(input: {
+  plan: DataviewMembershipStagePlan
+  activeViewId: ViewId
+  view: View
+  delta: DataviewMutationDelta
+  query: QueryPhaseState
+  queryDelta: QueryPhaseDelta
+  previous?: MembershipPhaseState
+  index: IndexState
+  indexDelta?: IndexDelta
+}): MembershipStageResult
+```
+
+### `runSummaryStage(...)`
+
+summary 是最应该吃 plan hint 的一个 stage，因为 `touchedSections` 一旦在外层统一判定，内部逻辑会明显变短。
+
+```ts
+interface DataviewSummaryStagePlan {
+  action: 'reuse' | 'sync' | 'rebuild'
+  touchedSections?: ReadonlySet<SectionId> | 'all'
+}
+
+declare function runSummaryStage(input: {
+  plan: DataviewSummaryStagePlan
+  activeViewId: ViewId
+  view: View
+  calcFields: readonly FieldId[]
+  previous?: SummaryPhaseState
+  previousMembership?: MembershipPhaseState
+  membership: MembershipPhaseState
+  membershipDelta: MembershipPhaseDelta
+  index: IndexState
+  indexDelta?: IndexDelta
+}): SummaryStageResult
+```
+
+### `runPublishStage(...)`
+
+publish 也不应该再反推出 `action`。
+
+最终 `action` 已经是上游 plan 的决策，publish 只负责：
+
+- 组装 snapshot
+- 计算 patch
+- 根据结果返回 metrics
+
+```ts
+interface DataviewViewStagePlan {
+  action: 'reuse' | 'sync' | 'rebuild'
+}
+
+declare function runPublishStage(input: {
+  plan: DataviewViewStagePlan
+  reader: DocumentReader
+  activeViewId: ViewId
+  previous?: ViewState
+  view: View
+  queryState: QueryPhaseState
+  membershipState: MembershipPhaseState
+  summaryState: SummaryPhaseState
+  itemIds: ItemIdPool
+}): PublishStageResult
+```
+
+如果最后 snapshot 和 previous 恰好相等，这只影响：
+
+- phase changed 是否置 true
+- metrics 怎么记录
+
+但不应该回头改写“本轮 action 是什么”。
+
+也就是说：
+
+- `action` 是执行前决策
+- `changed` 是执行后事实
+
+这两个概念必须分开，不能再混在一起。
+
+## 4.2 dataview 最终简化点
+
+如果按上面收口，dataview 会同时少掉四类复杂度：
+
+1. projection 里的 `ctx.dirty.index/query/membership/summary/view` 手工传播
+2. stage 内部的 `resolve*Action(...)`
+3. publish 阶段根据结果反推 action
+4. “这一轮到底是谁决定跑哪些 phase”的跨文件追踪成本
+
+最后留下来的结构会更稳定：
+
+- `document` phase 只编译 plan
+- stage 只执行
+- surface 只同步
+
+这就是 dataview 这边最简单、最清晰、也最不容易再次长回 helper debt 的最终形态。
+
 ## 5. dataview 为什么不需要再造一套 shared infra
 
 因为 dataview 的问题不是 phase shell 不够通用，而是：

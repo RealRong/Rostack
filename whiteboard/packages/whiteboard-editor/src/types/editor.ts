@@ -19,7 +19,7 @@ import type {
   DocumentQuery,
   DrawPreview,
   EdgeGuidePreview,
-  Query as EditorSceneQueryRuntime,
+  Query,
   RuntimeStores,
   SpatialKind,
   SpatialQueryStats,
@@ -138,13 +138,13 @@ export type EditorSelectionEdgeRead = {
 }
 
 export type EditorMarqueePreview =
-  NonNullable<ReturnType<EditorSceneQueryRuntime['chrome']['marquee']>>
+  NonNullable<ReturnType<Query['chrome']['marquee']>>
 
 export type SelectedEdgeChrome =
-  NonNullable<ReturnType<EditorSceneQueryRuntime['edge']['chrome']>>
+  NonNullable<ReturnType<Query['edge']['chrome']>>
 
 export type MindmapChrome = {
-  addChildTargets: ReturnType<EditorSceneQueryRuntime['mindmap']['addChildTargets']>
+  addChildTargets: ReturnType<Query['mindmap']['addChildTargets']>
 }
 
 export type ScenePickKind = Extract<
@@ -210,13 +210,13 @@ export type ScenePickRuntime = {
 
 export type EditorSceneApi = {
   revision: () => number
-  query: EditorSceneQueryRuntime
+  query: Query
   stores: RuntimeStores
   host: {
     pick: ScenePickRuntime
     visible: (
-      options?: Parameters<EditorSceneQueryRuntime['spatial']['rect']>[1]
-    ) => ReturnType<EditorSceneQueryRuntime['spatial']['rect']>
+      options?: Parameters<Query['spatial']['rect']>[1]
+    ) => ReturnType<Query['spatial']['rect']>
   }
 }
 

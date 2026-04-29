@@ -765,41 +765,9 @@ const reconcileMindmap = (
     position: root.position
   })
 
-  const nodeEntries = Object.entries(anchored.node)
-  if (!nodeEntries.length) {
-    return {
-      document,
-      nodeIds: []
-    }
-  }
-
-  const nextNodes = {
-    ...document.nodes
-  }
-  nodeEntries.forEach(([nodeId, rect]) => {
-    const current = nextNodes[nodeId]
-    if (!current) {
-      return
-    }
-    nextNodes[nodeId] = {
-      ...current,
-      position: {
-        x: rect.x,
-        y: rect.y
-      },
-      size: {
-        width: rect.width,
-        height: rect.height
-      }
-    }
-  })
-
   return {
-    document: {
-      ...document,
-      nodes: nextNodes
-    },
-    nodeIds: nodeEntries.map(([nodeId]) => nodeId)
+    document,
+    nodeIds: Object.keys(anchored.node) as readonly NodeId[]
   }
 }
 

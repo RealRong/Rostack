@@ -9,8 +9,7 @@ import type { InteractionBinding, InteractionSession } from '@whiteboard/editor/
 import { FINISH } from '@whiteboard/editor/input/session/result'
 import { createGesture } from '@whiteboard/editor/input/core/gesture'
 import {
-  patchNodePreviewByTextMeasure,
-  readDocumentNodeRect
+  patchNodePreviewByTextMeasure
 } from '@whiteboard/editor/layout/textLayout'
 import type { PointerDownInput } from '@whiteboard/editor/types/input'
 import type { TransformPickHandle } from '@whiteboard/editor/types/pick'
@@ -203,9 +202,7 @@ export const createTransformSession = (
     const nextPatches = patchNodePreviewByTextMeasure({
       patches: result.state.patches,
       readNode: ctx.projection.query.document.node,
-      readNodeRect: (nodeId) => readDocumentNodeRect(
-        ctx.projection.query.document.nodeGeometry(nodeId)
-      ),
+      readRect: (nodeId) => ctx.projection.query.node.get(nodeId)?.geometry.rect,
       nodes: ctx.nodes,
       measure: ctx.measure
     })

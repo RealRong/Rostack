@@ -72,7 +72,6 @@ export type {
   TextMeasureTarget,
   ToolState
 } from './contracts/editor'
-export type { DocumentNodeGeometry } from '@whiteboard/core/node'
 export type {
   EdgeActiveView,
   EdgeLabelKey,

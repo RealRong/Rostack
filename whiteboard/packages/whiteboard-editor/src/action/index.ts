@@ -710,8 +710,15 @@ export const createEditorActionsApi = ({
           side: input.drop.side
         })),
       moveRoot: atomic((input) => {
-        const directNode = document.node(input.nodeId)
+        const directNode = graph.query.node.get(input.nodeId)?.base.node
         const structure = graph.query.mindmap.structure(input.nodeId)
+        const rootView = directNode
+          ? graph.query.node.get(input.nodeId)
+          : (
+            structure
+              ? graph.query.node.get(structure.rootId)
+              : undefined
+          )
         const node = directNode ?? (
           structure
             ? document.node(structure.rootId)
@@ -731,8 +738,8 @@ export const createEditorActionsApi = ({
               y: input.position.y - input.origin.y
             }
           : {
-              x: input.position.x - node.position.x,
-              y: input.position.y - node.position.y
+              x: input.position.x - (rootView?.geometry.rect.x ?? input.position.x),
+              y: input.position.y - (rootView?.geometry.rect.y ?? input.position.y)
             }
         if (Math.abs(delta.x) < threshold && Math.abs(delta.y) < threshold) {
           return undefined

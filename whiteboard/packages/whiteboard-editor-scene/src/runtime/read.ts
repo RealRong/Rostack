@@ -819,6 +819,30 @@ const createChromeRead = (input: {
   edgeGuide: () => input.state().graph.state.chrome.preview.edgeGuide
 })
 
+const createBoundsRead = (input: {
+  state: () => WorkingState
+}): Query['bounds'] => () => {
+  const state = input.state()
+  return geometryApi.rect.boundingRect([
+    ...[...state.graph.nodes.values()].map((node) => node.geometry.bounds),
+    ...[...state.graph.edges.values()].flatMap((edge) => (
+      edge.route.bounds
+        ? [edge.route.bounds]
+        : []
+    )),
+    ...[...state.graph.owners.mindmaps.values()].flatMap((mindmap) => (
+      mindmap.tree.bbox
+        ? [mindmap.tree.bbox]
+        : []
+    )),
+    ...[...state.graph.owners.groups.values()].flatMap((group) => (
+      group.frame.bounds
+        ? [group.frame.bounds]
+        : []
+    ))
+  ])
+}
+
 export const createEditorSceneRead = (runtime: {
   revision: () => Revision
   state: () => WorkingState
@@ -856,9 +880,13 @@ export const createEditorSceneRead = (runtime: {
     state: runtime.state,
     view
   })
+  const bounds = createBoundsRead({
+    state: runtime.state
+  })
 
   return {
     revision: runtime.revision,
+    bounds,
     document: {
       get: () => runtime.state().document.snapshot,
       background: () => runtime.state().document.background,
@@ -866,8 +894,6 @@ export const createEditorSceneRead = (runtime: {
       edge: document.edge,
       nodeIds: document.nodeIds,
       edgeIds: document.edgeIds,
-      nodeGeometry: document.nodeGeometry,
-      bounds: document.bounds,
       slice: document.slice
     },
     node: {

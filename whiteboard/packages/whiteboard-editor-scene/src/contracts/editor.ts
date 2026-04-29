@@ -10,7 +10,6 @@ import type {
   EdgePathSegment
 } from '@whiteboard/core/types/edge'
 import type {
-  DocumentNodeGeometry,
   Guide,
   NodeRectHitOptions,
   TransformPreviewPatch
@@ -708,8 +707,6 @@ export interface DocumentQuery {
   edge(id: EdgeId): Edge | undefined
   nodeIds(): readonly NodeId[]
   edgeIds(): readonly EdgeId[]
-  nodeGeometry(id: NodeId): DocumentNodeGeometry | undefined
-  bounds(): Rect
   slice(input: {
     nodeIds?: readonly NodeId[]
     edgeIds?: readonly EdgeId[]
@@ -718,6 +715,7 @@ export interface DocumentQuery {
 
 export interface Query {
   revision(): Revision
+  bounds(): Rect | undefined
   document: DocumentQuery
   node: {
     get(id: NodeId): NodeView | undefined

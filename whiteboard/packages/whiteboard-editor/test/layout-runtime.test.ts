@@ -80,7 +80,7 @@ describe('text layout preview patching', () => {
         rotation: 45
       }],
       readNode: () => node,
-      readNodeRect: () => ({
+      readRect: () => ({
         x: 0,
         y: 0,
         width: 180,
@@ -117,7 +117,7 @@ describe('text layout preview patching', () => {
         }
       }],
       readNode: () => node,
-      readNodeRect: () => ({
+      readRect: () => ({
         x: 0,
         y: 0,
         width: 180,

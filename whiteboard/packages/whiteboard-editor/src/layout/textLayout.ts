@@ -17,7 +17,6 @@ import type {
   Origin
 } from '@whiteboard/core/types'
 import type {
-  DocumentNodeGeometry,
   TextMeasureResult,
   TextMeasureTarget
 } from '@whiteboard/editor-scene'
@@ -622,12 +621,12 @@ export const patchNodeUpdateByTextMeasure = (input: {
 export const patchNodePreviewByTextMeasure = (input: {
   patches: readonly TransformPreviewPatch[]
   readNode(nodeId: NodeId): Node | undefined
-  readNodeRect(nodeId: NodeId): Rect | undefined
+  readRect(nodeId: NodeId): Rect | undefined
   nodes: NodeSpecReader
   measure: TextLayoutMeasure
 }): readonly TransformPreviewPatch[] => input.patches.map((patch) => {
   const node = input.readNode(patch.id)
-  const rect = input.readNodeRect(patch.id)
+  const rect = input.readRect(patch.id)
   if (!node || !rect) {
     return patch
   }
@@ -698,7 +697,3 @@ export const patchNodePreviewByTextMeasure = (input: {
       }
     : patch
 })
-
-export const readDocumentNodeRect = (
-  geometry: DocumentNodeGeometry | undefined
-): Rect | undefined => geometry?.rect

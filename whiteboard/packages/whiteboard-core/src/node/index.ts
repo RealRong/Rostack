@@ -319,14 +319,6 @@ export const node = {
 export {
   toSpatialNode
 } from '@whiteboard/core/node/patch'
-export {
-  resolveDocumentNodeGeometry
-} from '@whiteboard/core/node/geometry'
-
-export type {
-  DocumentNodeGeometry,
-  ResolvedDocumentNodeGeometry
-} from '@whiteboard/core/node/geometry'
 export type { NodeOutlineAnchorOptions } from '@whiteboard/core/node/outline'
 export type { ResolvedDrawStroke } from '@whiteboard/core/node/draw'
 export type { NodeRectHitOptions } from '@whiteboard/core/node/hitTest'

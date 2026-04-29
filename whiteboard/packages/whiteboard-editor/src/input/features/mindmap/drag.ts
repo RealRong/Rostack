@@ -13,7 +13,7 @@ import type { PointerDownInput } from '@whiteboard/editor/types/input'
 import type { Tool } from '@whiteboard/editor/types/tool'
 import type { MindmapPreviewState } from '@whiteboard/editor/session/preview/types'
 import type { EditorHostDeps } from '@whiteboard/editor/input/runtime'
-import type { Query as EditorSceneQuery } from '@whiteboard/editor-scene'
+import type { Query } from '@whiteboard/editor-scene'
 import type { Node } from '@whiteboard/core/types'
 
 export type MindmapDragState = CoreMindmapDragState
@@ -40,6 +40,8 @@ export type MindmapDragCommit =
       }
       layout: MindmapLayoutSpec
     }
+
+type MindmapQuery = Pick<Query['mindmap'], 'resolve' | 'structure' | 'get'>
 
 const previewMindmapDrag = (
   state: MindmapDragState
@@ -68,9 +70,9 @@ const previewMindmapDrag = (
 
 const readMindmapTreeView = (
   mindmap: {
-    id: EditorSceneQuery['mindmap']['resolve']
-    structure: EditorSceneQuery['mindmap']['structure']
-    layout: EditorSceneQuery['mindmap']['get']
+    id: MindmapQuery['resolve']
+    structure: MindmapQuery['structure']
+    layout: MindmapQuery['get']
   },
   treeId: NodeId
 ) => {
@@ -94,9 +96,9 @@ export const tryStartMindmapDrag = (input: {
   tool: Tool
   pointer: PointerDownInput
   mindmap: {
-    id: EditorSceneQuery['mindmap']['resolve']
-    structure: EditorSceneQuery['mindmap']['structure']
-    layout: EditorSceneQuery['mindmap']['get']
+    id: MindmapQuery['resolve']
+    structure: MindmapQuery['structure']
+    layout: MindmapQuery['get']
   }
   node: (nodeId: NodeId) => Node | undefined
   selection: Pick<store.ReadStore<SelectionSummary>, 'get'>
@@ -175,9 +177,9 @@ export const tryStartMindmapDragForNode = (input: {
   pointerId: number
   world: Point
   mindmap: {
-    id: EditorSceneQuery['mindmap']['resolve']
-    structure: EditorSceneQuery['mindmap']['structure']
-    layout: EditorSceneQuery['mindmap']['get']
+    id: MindmapQuery['resolve']
+    structure: MindmapQuery['structure']
+    layout: MindmapQuery['get']
   }
   node: (nodeId: NodeId) => Node | undefined
 }): MindmapDragState | undefined => {
@@ -233,9 +235,9 @@ const stepMindmapDrag = (input: {
   state: MindmapDragState
   world: Point
   mindmap: {
-    id: EditorSceneQuery['mindmap']['resolve']
-    structure: EditorSceneQuery['mindmap']['structure']
-    layout: EditorSceneQuery['mindmap']['get']
+    id: MindmapQuery['resolve']
+    structure: MindmapQuery['structure']
+    layout: MindmapQuery['get']
   }
 }): MindmapDragState => mindmapApi.drop.projectDrag({
   active: input.state,

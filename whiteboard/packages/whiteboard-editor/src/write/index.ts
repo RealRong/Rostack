@@ -51,7 +51,8 @@ export const createEditorWrite = ({
   const node = createNodeWrite({
     engine,
     read: {
-      document
+      document,
+      projection: projection.query
     },
     nodes,
     measure

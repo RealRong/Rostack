@@ -3,7 +3,7 @@ import {
 } from '@shared/draft'
 import type { Node, NodeId } from '@whiteboard/core/types'
 import type { Engine } from '@whiteboard/engine'
-import type { DocumentQuery } from '@whiteboard/editor-scene'
+import type { DocumentQuery, Query } from '@whiteboard/editor-scene'
 import type {
   NodeLockWrite,
   NodeShapeWrite,
@@ -52,17 +52,19 @@ const createNodeUpdateWrite = (
   engine: Engine,
   {
     document,
+    projection,
     nodes,
     measure
   }: {
-    document: Pick<DocumentQuery, 'node' | 'nodeGeometry'>
+    document: Pick<DocumentQuery, 'node'>
+    projection: Pick<Query, 'node'>
     nodes: NodeSpecReader
     measure: TextLayoutMeasure
   }
 ): NodeUpdateWrite => ({
   update: (id, input) => {
     const node = document.node(id)
-    const rect = document.nodeGeometry(id)?.rect
+    const rect = projection.node.get(id)?.geometry.rect
     return engine.execute({
       type: 'node.update',
       updates: [{
@@ -86,7 +88,7 @@ const createNodeUpdateWrite = (
       id: entry.id,
       input: (() => {
         const node = document.node(entry.id)
-        const rect = document.nodeGeometry(entry.id)?.rect
+        const rect = projection.node.get(entry.id)?.geometry.rect
         return node && rect
           ? patchNodeUpdateByTextMeasure({
               nodeId: entry.id,
@@ -110,7 +112,7 @@ const createNodeContext = ({
   textCommit
 }: {
   read: {
-    document: Pick<DocumentQuery, 'node' | 'nodeGeometry'>
+    document: Pick<DocumentQuery, 'node'>
   }
   update: NodeUpdateWrite
   textCommit: (input: NodeTextCommitInput) => ReturnType<NodeTextWrite['commit']>
@@ -253,13 +255,15 @@ export const createNodeWrite = ({
 }: {
   engine: Engine
   read: {
-    document: Pick<DocumentQuery, 'node' | 'nodeGeometry'>
+    document: Pick<DocumentQuery, 'node'>
+    projection: Pick<Query, 'node'>
   }
   nodes: NodeSpecReader
   measure: TextLayoutMeasure
 }): NodeWrite => {
   const update = createNodeUpdateWrite(engine, {
     document: read.document,
+    projection: read.projection,
     nodes,
     measure
   })

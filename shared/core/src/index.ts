@@ -1,8 +1,14 @@
 export * as compare from './compare'
 export * as collection from './collection'
+export * as family from './family'
 export { createId } from './id'
 export * as equal from './equality'
 export type { EntityTable } from './entityTable'
+export type {
+  FamilySnapshot,
+  MutableState as MutableFamilyState,
+  ReadState as FamilyState
+} from './family'
 export { entityTable } from './entityTable'
 export * as json from './json'
 export * as metrics from './metrics'

@@ -131,22 +131,22 @@ stores: {
   },
   fields: {
     kind: 'family',
-    read: state => state.active.fieldsView,
+    read: state => state.active.fields,
     change: state => state.active.changes.fields
   },
   sections: {
     kind: 'family',
-    read: state => state.active.sectionsView,
+    read: state => state.active.sections,
     change: state => state.active.changes.sections
   },
   items: {
     kind: 'family',
-    read: state => state.active.itemsView,
+    read: state => state.active.items,
     change: state => state.active.changes.items
   },
   summaries: {
     kind: 'family',
-    read: state => state.active.summariesView,
+    read: state => state.active.summaries,
     change: state => state.active.changes.summaries
   }
 }
@@ -260,12 +260,12 @@ stores: {
   graph: {
     node: {
       kind: 'family',
-      read: state => state.graph.nodeView,
+      read: state => state.graph.nodes,
       change: state => state.delta.graph.node
     },
     edge: {
       kind: 'family',
-      read: state => state.graph.edgeView,
+      read: state => state.graph.edges,
       change: state => state.delta.graph.edge
     }
   }
@@ -280,20 +280,32 @@ stores: {
 
 ### 3.5 stable reader
 
-whiteboard 的 stable family reader 必须 hoist 成常量并复用：
+`createStableMapFamilyRead(...)` / `createStableFamilyRead(...)` 不作为最终模型保留。
+
+它们只是在 state 还没有直接暴露 store-ready family view 时，用来补 `{ ids, byId }` 读取形状。
+
+长期最优要求是：
 
 ```ts
-const readGraphNodes = createStableMapFamilyRead(...)
-
-read: readGraphNodes
-change: state => ...
+state.graph.nodes = {
+  ids,
+  byId
+}
 ```
 
-不允许在 `change(...)` 里临时调用：
+然后 spec 直接读取：
 
 ```ts
-createStableMapFamilyRead(...)(state)
+read: state => state.graph.nodes
+change: state => state.delta.graph.node
 ```
+
+因此最终不允许保留：
+
+- `createStableMapFamilyRead(...)`
+- `createStableFamilyRead(...)`
+
+如果短期内仍存在这些 helper，也只允许作为迁移中的临时补形状工具，不能进入最终 API 设计。
 
 ## 第二部分：实施方案
 
@@ -328,10 +340,10 @@ createStableMapFamilyRead(...)(state)
 
 - 让 `DataviewStoreChanges` 与 `snapshot` 配套输出
 - 直接在 active runtime state 中引入只读 family view：
-  - `fieldsView`
-  - `sectionsView`
-  - `itemsView`
-  - `summariesView`
+  - `fields`
+  - `sections`
+  - `items`
+  - `summaries`
 - projection 不再自己从 `ViewState` 临时重建 map
 
 完成标准：
@@ -349,6 +361,8 @@ createStableMapFamilyRead(...)(state)
 - 让 working state 直接暴露 store-ready read 结构
 - 让 `delta.*` 直接对齐这些 read 结构
 - stores spec 直接从 state 映射，不经过 whiteboard projection-local builder
+- 把当前 `Map -> { ids, byId }` 的稳定化逻辑下沉到 runtime/state 内部
+- 删除 projection 层的 stable reader helper
 
 完成标准：
 
@@ -360,16 +374,31 @@ createStableMapFamilyRead(...)(state)
 
 目标：
 
-- 去掉无意义的动态 closure 创建
+- 彻底删除 projection 层的 stable reader helper
 
 实施内容：
 
-- 所有 stable family read 都 hoist 成模块级或 projection 内部常量
-- `read` 和 `change` 共用同一个 stable reader
+- 在 working state 中直接持有：
+  - `graph.nodes`
+  - `graph.edges`
+  - `graph.mindmaps`
+  - `graph.groups`
+  - `graph.state.nodes`
+  - `graph.state.edges`
+  - `render.nodes`
+  - `render.edge.statics`
+  - `render.edge.active`
+  - `render.edge.labels`
+  - `render.edge.masks`
+  - `items`
+- projection spec 只从这些 view 直接读取
+- 删除 `createStableMapFamilyRead(...)`
+- 删除 `createStableFamilyRead(...)`
 
 完成标准：
 
-- 不再出现 `createStableMapFamilyRead(...)(state)` 这种临时调用
+- projection 层不再承担 `Map -> family snapshot` 结构协调
+- projection 层不再有 stable reader helper
 
 ## Phase 5. 清理 projection wrapper 的冗余适配
 
@@ -402,7 +431,7 @@ dataview 不应再有：
 whiteboard 不应再有：
 
 - 大段重复 store spec 样板
-- stable reader 临时构造
+- stable reader helper
 - projection 层重复 graph/render/ui 语义判断
 - whiteboard projection-local helper 层
 

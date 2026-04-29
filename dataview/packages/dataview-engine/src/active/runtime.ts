@@ -37,8 +37,12 @@ import type {
 import {
   createEmptyDataviewActiveState,
   createEmptyDataviewStoreChanges,
+  EMPTY_FIELD_FAMILY,
+  EMPTY_ITEM_FAMILY,
   EMPTY_SNAPSHOT_TRACE,
+  EMPTY_SECTION_FAMILY,
   EMPTY_STAGE_TRACE,
+  EMPTY_SUMMARY_FAMILY,
   emptyMembershipPhaseState,
   emptyQueryPhaseState,
   emptySummaryPhaseState
@@ -97,7 +101,7 @@ const toFamilyChange = <TKey extends string | number, TValue>(input: {
   }
 }
 
-const readFieldSnapshot = (
+const readFieldFamily = (
   view?: ViewState
 ): ProjectionFamilySnapshot<FieldId, Field> => ({
   ids: view?.fields.ids ?? [],
@@ -111,7 +115,7 @@ const readFieldSnapshot = (
     : new Map()
 })
 
-const readSectionSnapshot = (
+const readSectionFamily = (
   view?: ViewState
 ): ProjectionFamilySnapshot<SectionId, Section> => ({
   ids: view?.sections.ids ?? [],
@@ -125,7 +129,7 @@ const readSectionSnapshot = (
     : new Map()
 })
 
-const readItemSnapshot = (
+const readItemFamily = (
   view?: ViewState
 ): ProjectionFamilySnapshot<ItemId, ItemPlacement> => ({
   ids: view?.items.ids ?? [],
@@ -139,14 +143,11 @@ const readItemSnapshot = (
     : new Map()
 })
 
-const readSummarySnapshot = (
+const readSummaryFamily = (
   view?: ViewState
 ): ProjectionFamilySnapshot<SectionId, CalculationCollection> => {
   if (!view) {
-    return {
-      ids: [],
-      byId: new Map()
-    }
+    return EMPTY_SUMMARY_FAMILY
   }
 
   const byId = new Map<SectionId, CalculationCollection>()
@@ -166,42 +167,31 @@ const readSummarySnapshot = (
 }
 
 const buildFieldChange = (input: {
-  previous?: ViewState
-  next?: ViewState
+  previous: ProjectionFamilySnapshot<FieldId, Field>
+  next: ProjectionFamilySnapshot<FieldId, Field>
 }): ProjectionFamilyChange<FieldId, Field> => {
-  if (!input.previous || !input.next) {
-    return 'replace'
-  }
-
   return toFamilyChange({
-    snapshot: readFieldSnapshot(input.next),
+    snapshot: input.next,
     delta: entityDelta.fromSnapshots({
-      previousIds: input.previous.fields.ids,
-      nextIds: input.next.fields.ids,
-      previousGet: (fieldId) => input.previous?.fields.get(fieldId),
-      nextGet: (fieldId) => input.next?.fields.get(fieldId)
+      previousIds: input.previous.ids,
+      nextIds: input.next.ids,
+      previousGet: (fieldId) => input.previous.byId.get(fieldId),
+      nextGet: (fieldId) => input.next.byId.get(fieldId)
     })
   })
 }
 
 const buildSummaryChange = (input: {
-  previous?: ViewState
-  next?: ViewState
+  previous: ProjectionFamilySnapshot<SectionId, CalculationCollection>
+  next: ProjectionFamilySnapshot<SectionId, CalculationCollection>
 }): ProjectionFamilyChange<SectionId, CalculationCollection> => {
-  if (!input.previous || !input.next) {
-    return 'replace'
-  }
-
-  const previousSummaries = input.previous.summaries
-  const nextSummaries = input.next.summaries
-
   return toFamilyChange({
-    snapshot: readSummarySnapshot(input.next),
+    snapshot: input.next,
     delta: entityDelta.fromSnapshots({
-      previousIds: input.previous.sections.ids.filter((sectionId) => previousSummaries.has(sectionId)),
-      nextIds: input.next.sections.ids.filter((sectionId) => nextSummaries.has(sectionId)),
-      previousGet: (sectionId) => previousSummaries.get(sectionId),
-      nextGet: (sectionId) => nextSummaries.get(sectionId)
+      previousIds: input.previous.ids,
+      nextIds: input.next.ids,
+      previousGet: (sectionId) => input.previous.byId.get(sectionId),
+      nextGet: (sectionId) => input.next.byId.get(sectionId)
     })
   })
 }
@@ -209,6 +199,14 @@ const buildSummaryChange = (input: {
 const buildStoreChanges = (input: {
   previous?: ViewState
   next?: ViewState
+  previousFields: ProjectionFamilySnapshot<FieldId, Field>
+  nextFields: ProjectionFamilySnapshot<FieldId, Field>
+  previousSections: ProjectionFamilySnapshot<SectionId, Section>
+  nextSections: ProjectionFamilySnapshot<SectionId, Section>
+  previousItems: ProjectionFamilySnapshot<ItemId, ItemPlacement>
+  nextItems: ProjectionFamilySnapshot<ItemId, ItemPlacement>
+  previousSummaries: ProjectionFamilySnapshot<SectionId, CalculationCollection>
+  nextSummaries: ProjectionFamilySnapshot<SectionId, CalculationCollection>
   sectionDelta?: EntityDelta<SectionId>
   itemDelta?: EntityDelta<ItemId>
 }): DataviewStoreChanges => {
@@ -234,16 +232,22 @@ const buildStoreChanges = (input: {
           value: input.next
         }
       : 'skip',
-    fields: buildFieldChange(input),
+    fields: buildFieldChange({
+      previous: input.previousFields,
+      next: input.nextFields
+    }),
     sections: toFamilyChange({
-      snapshot: readSectionSnapshot(input.next),
+      snapshot: input.nextSections,
       delta: input.sectionDelta
     }),
     items: toFamilyChange({
-      snapshot: readItemSnapshot(input.next),
+      snapshot: input.nextItems,
       delta: input.itemDelta
     }),
-    summaries: buildSummaryChange(input)
+    summaries: buildSummaryChange({
+      previous: input.previousSummaries,
+      next: input.nextSummaries
+    })
   }
 }
 
@@ -254,6 +258,10 @@ const clearActiveState = (
   membership: emptyMembershipPhaseState(),
   summary: emptySummaryPhaseState(),
   snapshot: undefined,
+  fields: EMPTY_FIELD_FAMILY,
+  sections: EMPTY_SECTION_FAMILY,
+  items: EMPTY_ITEM_FAMILY,
+  summaries: EMPTY_SUMMARY_FAMILY,
   itemIds: previous.itemIds,
   changes: previous.snapshot
     ? {
@@ -332,6 +340,10 @@ export const runDataviewActive = (input: {
     input.previous.snapshot,
     publish.snapshot
   )
+  const fields = readFieldFamily(publish.snapshot)
+  const sections = readSectionFamily(publish.snapshot)
+  const items = readItemFamily(publish.snapshot)
+  const summaries = readSummaryFamily(publish.snapshot)
 
   return {
     spec: active,
@@ -340,10 +352,22 @@ export const runDataviewActive = (input: {
     membership: membership.state,
     summary: summary.state,
     snapshot: publish.snapshot,
+    fields,
+    sections,
+    items,
+    summaries,
     itemIds: input.previous.itemIds,
     changes: buildStoreChanges({
       previous: input.previous.snapshot,
       next: publish.snapshot,
+      previousFields: input.previous.fields,
+      nextFields: fields,
+      previousSections: input.previous.sections,
+      nextSections: sections,
+      previousItems: input.previous.items,
+      nextItems: items,
+      previousSummaries: input.previous.summaries,
+      nextSummaries: summaries,
       sectionDelta: publish.sectionDelta,
       itemDelta: publish.itemDelta
     }),

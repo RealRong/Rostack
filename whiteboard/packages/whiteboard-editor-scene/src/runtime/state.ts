@@ -1,6 +1,7 @@
 import { document as documentApi } from '@whiteboard/core/document'
 import type { Document } from '@whiteboard/core/types'
 import type { Revision } from '@shared/projection'
+import { family } from '@shared/core'
 import {
   createDocumentDelta,
   createGraphDelta,
@@ -30,8 +31,12 @@ export const createWorking = (input: {
   layout?: EditorSceneLayout
 } = {}): WorkingState => {
   const snapshot = createEmptyDocumentSnapshot()
-  const nodeState = new Map()
-  const edgeState = new Map()
+  const graphNodes = family.createMutableState()
+  const graphEdges = family.createMutableState()
+  const graphMindmaps = family.createMutableState()
+  const graphGroups = family.createMutableState()
+  const nodeState = family.createMutableState()
+  const edgeState = family.createMutableState()
   const chromeState = {
     overlays: [],
     hover: {
@@ -63,11 +68,11 @@ export const createWorking = (input: {
       background: snapshot.document.background
     },
     graph: {
-      nodes: new Map(),
-      edges: new Map(),
+      nodes: graphNodes,
+      edges: graphEdges,
       owners: {
-        mindmaps: new Map(),
-        groups: new Map()
+        mindmaps: graphMindmaps,
+        groups: graphGroups
       },
       state: {
         node: nodeState,
@@ -94,7 +99,7 @@ export const createWorking = (input: {
       edges: edgeState
     },
     render: {
-      node: new Map(),
+      node: family.createMutableState(),
       statics: {
         ids: [],
         byId: new Map(),
@@ -112,7 +117,7 @@ export const createWorking = (input: {
         ids: [],
         byId: new Map()
       },
-      active: new Map(),
+      active: family.createMutableState(),
       overlay: renderEdgeOverlay,
       chrome: {
         guides: [],

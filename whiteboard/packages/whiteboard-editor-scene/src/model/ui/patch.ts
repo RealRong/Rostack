@@ -1,3 +1,4 @@
+import { family } from '@shared/core'
 import { idDelta } from '@shared/delta'
 import type {
   EdgeId,
@@ -249,7 +250,7 @@ const rebuildNodeUi = (input: {
   working: WorkingState
 }): number => {
   const previous = input.working.ui.nodes
-  const next = new Map<NodeId, NodeUiView>()
+  const next = family.createMutableState<NodeId, NodeUiView>()
   let count = 0
 
   input.working.graph.nodes.forEach((_view, nodeId) => {
@@ -291,6 +292,7 @@ const rebuildNodeUi = (input: {
   })
 
   input.working.ui.nodes = next
+  input.working.graph.state.node = next
   return count
 }
 
@@ -299,7 +301,7 @@ const rebuildEdgeUi = (input: {
   working: WorkingState
 }): number => {
   const previous = input.working.ui.edges
-  const next = new Map<EdgeId, EdgeUiView>()
+  const next = family.createMutableState<EdgeId, EdgeUiView>()
   let count = 0
 
   input.working.graph.edges.forEach((_view, edgeId) => {
@@ -341,6 +343,7 @@ const rebuildEdgeUi = (input: {
   })
 
   input.working.ui.edges = next
+  input.working.graph.state.edge = next
   return count
 }
 
@@ -456,6 +459,7 @@ const patchChrome = (input: {
     : nextCandidate
 
   input.working.ui.chrome = next
+  input.working.graph.state.chrome = next
   input.working.delta.ui.chrome = next !== previous
   return next !== previous ? 1 : 0
 }

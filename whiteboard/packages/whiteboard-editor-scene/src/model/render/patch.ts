@@ -1,4 +1,4 @@
-import { equal } from '@shared/core'
+import { equal, family } from '@shared/core'
 import { idDelta } from '@shared/delta'
 import { edge as edgeApi } from '@whiteboard/core/edge'
 import { geometry as geometryApi } from '@whiteboard/core/geometry'
@@ -1338,7 +1338,7 @@ const patchNodeRender = (input: {
   let count = 0
 
   if (input.reset) {
-    const next = new Map<NodeId, NodeRenderView>()
+    const next = family.createMutableState<NodeId, NodeRenderView>()
 
     input.working.graph.nodes.forEach((_view, nodeId) => {
       const current = buildNodeRenderView({
@@ -1744,7 +1744,7 @@ const patchActive = (input: {
   let count = 0
 
   if (input.reset) {
-    const next = new Map<EdgeId, EdgeActiveView>()
+    const next = family.createMutableState<EdgeId, EdgeActiveView>()
 
     activeIds.forEach((edgeId) => {
       const view = buildActiveView({

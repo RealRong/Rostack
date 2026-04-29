@@ -6,23 +6,11 @@ import type { WorkingState } from '../contracts/working'
 export const buildGraphCapture = (
   state: WorkingState
 ): GraphCapture => ({
-  nodes: {
-    ids: [...state.graph.nodes.keys()],
-    byId: state.graph.nodes
-  },
-  edges: {
-    ids: [...state.graph.edges.keys()],
-    byId: state.graph.edges
-  },
+  nodes: state.graph.nodes,
+  edges: state.graph.edges,
   owners: {
-    mindmaps: {
-      ids: [...state.graph.owners.mindmaps.keys()],
-      byId: state.graph.owners.mindmaps
-    },
-    groups: {
-      ids: [...state.graph.owners.groups.keys()],
-      byId: state.graph.owners.groups
-    }
+    mindmaps: state.graph.owners.mindmaps,
+    groups: state.graph.owners.groups
   }
 })
 
@@ -34,10 +22,7 @@ export const buildRenderCapture = (
       ids: state.render.statics.ids,
       byId: state.render.statics.byId
     },
-    active: {
-      ids: [...state.render.active.keys()],
-      byId: state.render.active
-    },
+    active: state.render.active,
     labels: {
       ids: state.render.labels.ids,
       byId: state.render.labels.byId
@@ -54,14 +39,8 @@ export const buildUiCapture = (
   state: WorkingState
 ): UiCapture => ({
   chrome: state.ui.chrome,
-  nodes: {
-    ids: [...state.ui.nodes.keys()],
-    byId: state.ui.nodes
-  },
-  edges: {
-    ids: [...state.ui.edges.keys()],
-    byId: state.ui.edges
-  }
+  nodes: state.ui.nodes,
+  edges: state.ui.edges
 })
 
 export const buildEditorSceneCapture = (

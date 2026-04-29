@@ -1,15 +1,9 @@
 import type {
-  CalculationCollection
-} from '@dataview/core/view'
-import type {
   DataDoc,
-  Field,
-  FieldId,
   ViewId
 } from '@dataview/core/types'
 import {
   createProjection,
-  type ProjectionFamilySnapshot,
   type ProjectionPhaseTable,
   type ProjectionStoreTree
 } from '@shared/projection'
@@ -37,12 +31,6 @@ import type {
   ViewTrace
 } from '@dataview/engine/contracts/performance'
 import type {
-  ItemId,
-  ItemPlacement,
-  Section,
-  SectionId
-} from '@dataview/engine/contracts/shared'
-import type {
   ViewState
 } from '@dataview/engine/contracts/view'
 
@@ -58,120 +46,9 @@ export interface DataviewProjectionOutput {
   active?: ViewState
 }
 
-const EMPTY_SECTION_IDS = [] as readonly SectionId[]
-const EMPTY_FIELD_IDS = [] as readonly FieldId[]
-const EMPTY_ITEM_IDS = [] as readonly ItemId[]
-const EMPTY_FIELDS = new Map<FieldId, Field>()
-const EMPTY_SECTIONS = new Map<SectionId, Section>()
-const EMPTY_ITEMS = new Map<ItemId, ItemPlacement>()
-const EMPTY_SUMMARIES = new Map<SectionId, CalculationCollection>()
-
-const EMPTY_FIELD_SNAPSHOT: ProjectionFamilySnapshot<FieldId, Field> = {
-  ids: EMPTY_FIELD_IDS,
-  byId: EMPTY_FIELDS
-}
-
-const EMPTY_SECTION_SNAPSHOT: ProjectionFamilySnapshot<SectionId, Section> = {
-  ids: EMPTY_SECTION_IDS,
-  byId: EMPTY_SECTIONS
-}
-
-const EMPTY_ITEM_SNAPSHOT: ProjectionFamilySnapshot<ItemId, ItemPlacement> = {
-  ids: EMPTY_ITEM_IDS,
-  byId: EMPTY_ITEMS
-}
-
-const EMPTY_SUMMARY_SNAPSHOT: ProjectionFamilySnapshot<SectionId, CalculationCollection> = {
-  ids: EMPTY_SECTION_IDS,
-  byId: EMPTY_SUMMARIES
-}
-
 const EMPTY_SNAPSHOT_TRACE: SnapshotTrace = {
   storeCount: 0,
   changedStores: []
-}
-
-const readFieldSnapshot = (
-  state: DataviewState
-): ProjectionFamilySnapshot<FieldId, Field> => {
-  const fields = state.active.snapshot?.fields
-  if (!fields) {
-    return EMPTY_FIELD_SNAPSHOT
-  }
-
-  return {
-    ids: fields.ids,
-    byId: new Map(fields.ids.flatMap((fieldId) => {
-      const field = fields.get(fieldId)
-      return field
-        ? [[fieldId, field] as const]
-        : []
-    }))
-  }
-}
-
-const readSectionSnapshot = (
-  state: DataviewState
-): ProjectionFamilySnapshot<SectionId, Section> => {
-  const sections = state.active.snapshot?.sections
-  if (!sections) {
-    return EMPTY_SECTION_SNAPSHOT
-  }
-
-  return {
-    ids: sections.ids,
-    byId: new Map(sections.ids.flatMap((sectionId) => {
-      const section = sections.get(sectionId)
-      return section
-        ? [[sectionId, section] as const]
-        : []
-    }))
-  }
-}
-
-const readItemSnapshot = (
-  state: DataviewState
-): ProjectionFamilySnapshot<ItemId, ItemPlacement> => {
-  const items = state.active.snapshot?.items
-  if (!items) {
-    return EMPTY_ITEM_SNAPSHOT
-  }
-
-  return {
-    ids: items.ids,
-    byId: new Map(items.ids.flatMap((itemId) => {
-      const placement = items.read.placement(itemId)
-      return placement
-        ? [[itemId, placement] as const]
-        : []
-    }))
-  }
-}
-
-const readSummarySnapshot = (
-  state: DataviewState
-): ProjectionFamilySnapshot<SectionId, CalculationCollection> => {
-  const snapshot = state.active.snapshot
-  if (!snapshot) {
-    return EMPTY_SUMMARY_SNAPSHOT
-  }
-
-  const byId = new Map<SectionId, CalculationCollection>()
-  snapshot.sections.ids.forEach((sectionId) => {
-    const summary = snapshot.summaries.get(sectionId)
-    if (summary) {
-      byId.set(sectionId, summary)
-    }
-  })
-
-  return {
-    ids: byId.size
-      ? snapshot.sections.ids.filter((sectionId) => byId.has(sectionId))
-      : EMPTY_SECTION_IDS,
-    byId: byId.size
-      ? byId
-      : EMPTY_SUMMARIES
-  }
 }
 
 const buildViewTrace = (input: {
@@ -283,22 +160,22 @@ export const createDataviewProjection = () => createProjection({
     },
     fields: {
       kind: 'family' as const,
-      read: readFieldSnapshot,
+      read: (state: DataviewState) => state.active.fields,
       change: (state: DataviewState) => state.active.changes.fields
     },
     sections: {
       kind: 'family' as const,
-      read: readSectionSnapshot,
+      read: (state: DataviewState) => state.active.sections,
       change: (state: DataviewState) => state.active.changes.sections
     },
     items: {
       kind: 'family' as const,
-      read: readItemSnapshot,
+      read: (state: DataviewState) => state.active.items,
       change: (state: DataviewState) => state.active.changes.items
     },
     summaries: {
       kind: 'family' as const,
-      read: readSummarySnapshot,
+      read: (state: DataviewState) => state.active.summaries,
       change: (state: DataviewState) => state.active.changes.summaries
     }
   } satisfies ProjectionStoreTree<DataviewState>,

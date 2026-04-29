@@ -1,3 +1,4 @@
+import type { MutableFamilyState } from '@shared/core'
 import type {
   MindmapRenderConnector,
   MindmapLayout,
@@ -69,15 +70,15 @@ export interface DocumentState {
 }
 
 export interface GraphState {
-  nodes: Map<NodeId, NodeView>
-  edges: Map<EdgeId, EdgeView>
+  nodes: MutableFamilyState<NodeId, NodeView>
+  edges: MutableFamilyState<EdgeId, EdgeView>
   owners: {
-    mindmaps: Map<MindmapId, MindmapView>
-    groups: Map<GroupId, GroupView>
+    mindmaps: MutableFamilyState<MindmapId, MindmapView>
+    groups: MutableFamilyState<GroupId, GroupView>
   }
   state: {
-    node: Map<NodeId, NodeStateView>
-    edge: Map<EdgeId, EdgeStateView>
+    node: MutableFamilyState<NodeId, NodeStateView>
+    edge: MutableFamilyState<EdgeId, EdgeStateView>
     chrome: ChromeStateView
   }
 }
@@ -97,12 +98,12 @@ export interface IndexState {
 
 export interface UiState {
   chrome: ChromeView
-  nodes: Map<NodeId, NodeUiView>
-  edges: Map<EdgeId, EdgeUiView>
+  nodes: MutableFamilyState<NodeId, NodeUiView>
+  edges: MutableFamilyState<EdgeId, EdgeUiView>
 }
 
 export interface RenderState {
-  node: Map<NodeId, NodeRenderView>
+  node: MutableFamilyState<NodeId, NodeRenderView>
   statics: {
     ids: readonly EdgeStaticId[]
     byId: Map<EdgeStaticId, EdgeStaticView>
@@ -120,7 +121,7 @@ export interface RenderState {
     ids: readonly EdgeId[]
     byId: Map<EdgeId, EdgeMaskView>
   }
-  active: Map<EdgeId, EdgeActiveView>
+  active: MutableFamilyState<EdgeId, EdgeActiveView>
   overlay: EdgeOverlayView
   chrome: ChromeRenderView
 }

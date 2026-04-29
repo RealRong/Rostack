@@ -48,6 +48,7 @@ import {
   type ItemIdPool
 } from '@dataview/engine/active/publish/itemIdPool'
 import type {
+  ProjectionFamilySnapshot,
   ProjectionFamilyChange,
   ProjectionValueChange,
   Revision
@@ -137,6 +138,10 @@ export interface DataviewActiveState {
   membership: MembershipPhaseState
   summary: SummaryPhaseState
   snapshot?: ViewState
+  fields: ProjectionFamilySnapshot<FieldId, Field>
+  sections: ProjectionFamilySnapshot<SectionId, Section>
+  items: ProjectionFamilySnapshot<ItemId, ItemPlacement>
+  summaries: ProjectionFamilySnapshot<SectionId, CalculationCollection>
   itemIds: ItemIdPool
   changes: DataviewStoreChanges
   trace: {
@@ -155,6 +160,12 @@ export interface DataviewState {
 
 const EMPTY_RECORD_IDS = [] as readonly RecordId[]
 const EMPTY_SECTION_IDS = [] as readonly SectionId[]
+const EMPTY_FIELD_IDS = [] as readonly FieldId[]
+const EMPTY_ITEM_IDS = [] as readonly ItemId[]
+const EMPTY_FIELDS = new Map<FieldId, Field>()
+const EMPTY_SECTIONS = new Map<SectionId, Section>()
+const EMPTY_ITEMS = new Map<ItemId, ItemPlacement>()
+const EMPTY_SUMMARIES = new Map<SectionId, CalculationCollection>()
 
 export const EMPTY_QUERY_PHASE_DELTA: QueryPhaseDelta = {
   rebuild: false,
@@ -180,6 +191,26 @@ export const EMPTY_SUMMARY_PHASE_DELTA: SummaryPhaseDelta = {
 export const EMPTY_SNAPSHOT_TRACE: SnapshotTrace = {
   storeCount: 0,
   changedStores: []
+}
+
+export const EMPTY_FIELD_FAMILY: ProjectionFamilySnapshot<FieldId, Field> = {
+  ids: EMPTY_FIELD_IDS,
+  byId: EMPTY_FIELDS
+}
+
+export const EMPTY_SECTION_FAMILY: ProjectionFamilySnapshot<SectionId, Section> = {
+  ids: EMPTY_SECTION_IDS,
+  byId: EMPTY_SECTIONS
+}
+
+export const EMPTY_ITEM_FAMILY: ProjectionFamilySnapshot<ItemId, ItemPlacement> = {
+  ids: EMPTY_ITEM_IDS,
+  byId: EMPTY_ITEMS
+}
+
+export const EMPTY_SUMMARY_FAMILY: ProjectionFamilySnapshot<SectionId, CalculationCollection> = {
+  ids: EMPTY_SECTION_IDS,
+  byId: EMPTY_SUMMARIES
 }
 
 export const EMPTY_STAGE_TRACE: DataviewStageTrace = {
@@ -214,6 +245,10 @@ export const createEmptyDataviewActiveState = (): DataviewActiveState => ({
   query: emptyQueryPhaseState(),
   membership: emptyMembershipPhaseState(),
   summary: emptySummaryPhaseState(),
+  fields: EMPTY_FIELD_FAMILY,
+  sections: EMPTY_SECTION_FAMILY,
+  items: EMPTY_ITEM_FAMILY,
+  summaries: EMPTY_SUMMARY_FAMILY,
   itemIds: createItemIdPool(),
   changes: createEmptyDataviewStoreChanges(),
   trace: {

@@ -104,13 +104,13 @@ const WhiteboardInner = forwardRef<Editor | null, WhiteboardProps>(function Whit
   }
 
   const scheduleDispose = (
-    currentEditor: Editor
+    currentServices: WhiteboardServices
   ) => {
     pendingDisposeRef.current = globalThis.setTimeout(() => {
-      if (servicesRef.current?.editor === currentEditor) {
+      if (servicesRef.current === currentServices) {
         servicesRef.current = null
       }
-      currentEditor.dispose()
+      currentServices.dispose()
       pendingDisposeRef.current = null
     }, 0)
   }
@@ -121,9 +121,9 @@ const WhiteboardInner = forwardRef<Editor | null, WhiteboardProps>(function Whit
     return () => {
       // Delay disposal so StrictMode effect replay does not tear down
       // the live editor instance during the initial development-only pass.
-      scheduleDispose(editor)
+      scheduleDispose(services)
     }
-  }, [editor])
+  }, [editor, services])
 
   useEffect(() => {
     editor.write.viewport.setLimits(viewportLimits)

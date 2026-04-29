@@ -3,8 +3,18 @@ import type {
 } from '@dataview/core/view'
 import type {
   FieldId,
-  RecordId
+  RecordId,
+  ViewId
 } from '@dataview/core/types'
+import type {
+  DataviewActiveFrame
+} from '@dataview/engine/active/frame'
+import type {
+  DataviewFrame
+} from '@dataview/engine/active/frame'
+import type {
+  DataviewIndexBank
+} from '@dataview/engine/active/index/runtime'
 import type {
   Partition
 } from '@dataview/engine/active/shared/partition'
@@ -21,9 +31,25 @@ import {
   EMPTY_SUMMARY_STATE
 } from '@dataview/engine/active/summary/empty'
 import type {
+  SnapshotTrace,
+  ViewStageAction,
+  ViewStageMetrics
+} from '@dataview/engine/contracts/performance'
+import type {
+  ItemId,
   SectionBucket,
   SectionId
 } from '@dataview/engine/contracts/shared'
+import type {
+  ViewState
+} from '@dataview/engine/contracts/view'
+import {
+  createItemIdPool,
+  type ItemIdPool
+} from '@dataview/engine/active/publish/itemIdPool'
+import type {
+  EntityDelta
+} from '@shared/delta'
 import type {
   Token
 } from '@shared/i18n'
@@ -86,8 +112,53 @@ export interface SummaryPhaseDelta {
   removed: readonly SectionId[]
 }
 
+export interface DataviewStageTrace {
+  action: ViewStageAction
+  changed: boolean
+  deriveMs: number
+  publishMs: number
+  metrics?: ViewStageMetrics
+}
+
+export interface DataviewPatches {
+  fields?: EntityDelta<FieldId>
+  sections?: EntityDelta<SectionId>
+  items?: EntityDelta<ItemId>
+  summaries?: EntityDelta<SectionId>
+}
+
+export interface DataviewLastActive {
+  id: ViewId
+  queryKey: string
+  section?: DataviewActiveFrame['section']
+  calcFields: readonly FieldId[]
+}
+
+export interface DataviewActiveState {
+  query: QueryPhaseState
+  membership: MembershipPhaseState
+  summary: SummaryPhaseState
+  snapshot?: ViewState
+  itemIds: ItemIdPool
+  patches: DataviewPatches
+  trace: {
+    query: DataviewStageTrace
+    membership: DataviewStageTrace
+    summary: DataviewStageTrace
+    publish: DataviewStageTrace
+    snapshot: SnapshotTrace
+  }
+}
+
+export interface DataviewState {
+  frame?: DataviewFrame
+  lastActive?: DataviewLastActive
+  index: DataviewIndexBank
+  active: DataviewActiveState
+}
+
 const EMPTY_RECORD_IDS = [] as readonly RecordId[]
-const EMPTY_SECTION_KEYS = [] as readonly SectionId[]
+const EMPTY_SECTION_IDS = [] as readonly SectionId[]
 
 export const EMPTY_QUERY_PHASE_DELTA: QueryPhaseDelta = {
   rebuild: false,
@@ -99,15 +170,27 @@ export const EMPTY_QUERY_PHASE_DELTA: QueryPhaseDelta = {
 export const EMPTY_MEMBERSHIP_PHASE_DELTA: MembershipPhaseDelta = {
   rebuild: false,
   orderChanged: false,
-  removed: EMPTY_SECTION_KEYS,
-  changed: EMPTY_SECTION_KEYS,
+  removed: EMPTY_SECTION_IDS,
+  changed: EMPTY_SECTION_IDS,
   records: new Map()
 }
 
 export const EMPTY_SUMMARY_PHASE_DELTA: SummaryPhaseDelta = {
   rebuild: false,
-  changed: EMPTY_SECTION_KEYS,
-  removed: EMPTY_SECTION_KEYS
+  changed: EMPTY_SECTION_IDS,
+  removed: EMPTY_SECTION_IDS
+}
+
+export const EMPTY_SNAPSHOT_TRACE: SnapshotTrace = {
+  storeCount: 0,
+  changedStores: []
+}
+
+export const EMPTY_STAGE_TRACE: DataviewStageTrace = {
+  action: 'reuse',
+  changed: false,
+  deriveMs: 0,
+  publishMs: 0
 }
 
 export const emptyQueryPhaseState = (): QueryPhaseState => ({
@@ -122,3 +205,34 @@ export const emptyMembershipPhaseState = (): MembershipPhaseState => ({
 })
 
 export const emptySummaryPhaseState = (): SummaryPhaseState => EMPTY_SUMMARY_STATE
+
+export const createEmptyDataviewActiveState = (): DataviewActiveState => ({
+  query: emptyQueryPhaseState(),
+  membership: emptyMembershipPhaseState(),
+  summary: emptySummaryPhaseState(),
+  itemIds: createItemIdPool(),
+  patches: {},
+  trace: {
+    query: EMPTY_STAGE_TRACE,
+    membership: EMPTY_STAGE_TRACE,
+    summary: EMPTY_STAGE_TRACE,
+    publish: EMPTY_STAGE_TRACE,
+    snapshot: EMPTY_SNAPSHOT_TRACE
+  }
+})
+
+export const isQueryPhaseStateEmpty = (
+  state: QueryPhaseState
+): boolean => state.visible.read.count() === 0
+  && state.matched.read.count() === 0
+  && state.ordered.read.count() === 0
+  && state.search === undefined
+
+export const isMembershipPhaseStateEmpty = (
+  state: MembershipPhaseState
+): boolean => state.sections.order.length === 0
+  && state.meta.size === 0
+
+export const isSummaryPhaseStateEmpty = (
+  state: SummaryPhaseState
+): boolean => state.bySection.size === 0

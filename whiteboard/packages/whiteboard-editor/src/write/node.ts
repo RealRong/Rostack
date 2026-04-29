@@ -1,7 +1,6 @@
 import {
   type Path
 } from '@shared/draft'
-import type { WhiteboardLayoutService } from '@whiteboard/core/layout'
 import type { Node, NodeId } from '@whiteboard/core/types'
 import type { Engine } from '@whiteboard/engine'
 import type { DocumentQuery } from '@whiteboard/editor-scene'
@@ -44,49 +43,18 @@ type NodeContext = {
 }
 
 const createNodeUpdateWrite = (
-  engine: Engine,
-  {
-    document,
-    layout
-  }: {
-    document: Pick<DocumentQuery, 'node'>
-    layout: WhiteboardLayoutService
-  }
+  engine: Engine
 ): NodeUpdateWrite => ({
-  update: (id, input) => {
-    const node = document.node(id)
-    return engine.execute({
-      type: 'node.update',
-      updates: [{
-        id,
-        input: node
-          ? layout.commit({
-              kind: 'node.update',
-              nodeId: id,
-              node,
-              update: input
-            }).update
-          : input
-      }]
-    })
-  },
+  update: (id, input) => engine.execute({
+    type: 'node.update',
+    updates: [{
+      id,
+      input
+    }]
+  }),
   updateMany: (updates, options) => engine.execute({
     type: 'node.update',
-    updates: updates.map((entry) => ({
-      id: entry.id,
-      input: (() => {
-        const node = document.node(entry.id)
-        return node
-          ? layout.commit({
-              kind: 'node.update',
-              nodeId: entry.id,
-              node,
-              update: entry.input,
-              origin: options?.origin
-            }).update
-          : entry.input
-      })()
-    })),
+    updates,
     origin: options?.origin
   })
 })
@@ -220,21 +188,14 @@ const createNodeStyleWrite = (
 
 export const createNodeWrite = ({
   engine,
-  read,
-  layout
+  read
 }: {
   engine: Engine
   read: {
     document: Pick<DocumentQuery, 'node'>
-    projection: Pick<Query, 'node'>
   }
-  layout: WhiteboardLayoutService
 }): NodeWrite => {
-  const update = createNodeUpdateWrite(engine, {
-    document: read.document,
-    projection: read.projection,
-    layout
-  })
+  const update = createNodeUpdateWrite(engine)
   const ctx = createNodeContext({
     read,
     update,
@@ -247,17 +208,13 @@ export const createNodeWrite = ({
   return {
     create: (input) => engine.execute({
       type: 'node.create',
-      input: layout.commit({
-        kind: 'node.create',
-        node: {
-          ...input.template,
-          position: {
-            x: input.position.x,
-            y: input.position.y
-          }
-        },
-        position: input.position
-      }).node
+      input: {
+        ...input.template,
+        position: {
+          x: input.position.x,
+          y: input.position.y
+        }
+      }
     }),
     update: ctx.write.update,
     updateMany: ctx.write.updateMany,

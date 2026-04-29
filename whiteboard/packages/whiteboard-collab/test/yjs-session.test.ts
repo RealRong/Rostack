@@ -5,10 +5,12 @@ import { path as mutationPath } from '@shared/draft'
 import { document as documentApi } from '@whiteboard/core/document'
 import { engine as engineApi } from '@whiteboard/engine'
 import { collab as collabApi } from '@whiteboard/collab'
+import { createTestLayout } from '@whiteboard/engine/test/support'
 
 const createTestEngine = (id = 'doc_test') =>
   engineApi.create({
-    document: documentApi.create(id)
+    document: documentApi.create(id),
+    layout: createTestLayout()
   })
 
 const readDocument = (

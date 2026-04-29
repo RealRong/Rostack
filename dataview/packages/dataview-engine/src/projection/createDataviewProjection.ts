@@ -6,7 +6,6 @@ import type {
   Field,
   FieldId,
   RecordId,
-  View,
   ViewId
 } from '@dataview/core/types'
 import {
@@ -16,56 +15,35 @@ import {
   type ProjectionPhaseTable,
   type ProjectionSurfaceTree
 } from '@shared/projection'
-import {
-  entityDelta,
-  type EntityDelta
-} from '@shared/delta'
 import type {
-  IndexDelta,
-  IndexState,
-  NormalizedIndexDemand
-} from '@dataview/engine/active/index/contracts'
+  DataviewFrame
+} from '@dataview/engine/active/frame'
 import {
-  createIndexState,
-  deriveIndex
+  createDataviewFrame
+} from '@dataview/engine/active/frame'
+import {
+  createDataviewActivePlan,
+  type DataviewActivePlan,
+  createDataviewLastActive
+} from '@dataview/engine/active/plan'
+import {
+  createDataviewActiveState
+} from '@dataview/engine/active/runtime'
+import {
+  runDataviewActive
+} from '@dataview/engine/active/runtime'
+import type {
+  DataviewState
+} from '@dataview/engine/active/state'
+import {
+  emptyDataviewIndexBank,
+  ensureDataviewIndex
 } from '@dataview/engine/active/index/runtime'
-import {
-  emptyNormalizedIndexDemand
-} from '@dataview/engine/active/index/demand'
-import type {
-  ViewPlan
-} from '@dataview/engine/active/plan'
-import {
-  resolveViewPlan
-} from '@dataview/engine/active/plan'
-import {
-  calculationFieldsChanged,
-  sectionChanged
-} from '@dataview/engine/active/projection/dirty'
 import type {
   DataviewMutationDelta
 } from '@dataview/engine/mutation/delta'
-import {
-  runQueryStage
-} from '@dataview/engine/active/query/stage'
-import {
-  runMembershipStage
-} from '@dataview/engine/active/membership/stage'
-import {
-  runSummaryStage
-} from '@dataview/engine/active/summary/stage'
-import {
-  runPublishStage
-} from '@dataview/engine/active/publish/stage'
-import {
-  createItemIdPool
-} from '@dataview/engine/active/publish/itemIdPool'
 import type {
-  IndexTrace,
   SnapshotTrace,
-  ViewStageAction,
-  ViewStageMetrics,
-  ViewStageTrace,
   ViewTrace
 } from '@dataview/engine/contracts/performance'
 import type {
@@ -77,98 +55,19 @@ import type {
 import type {
   ViewState
 } from '@dataview/engine/contracts/view'
-import {
-  createDocumentReadContext,
-  type DocumentReadContext
-} from '@dataview/engine/document/reader'
-import {
-  EMPTY_MEMBERSHIP_PHASE_DELTA,
-  EMPTY_QUERY_PHASE_DELTA,
-  EMPTY_SUMMARY_PHASE_DELTA,
-  emptyMembershipPhaseState,
-  emptyQueryPhaseState,
-  emptySummaryPhaseState,
-  type MembershipPhaseDelta,
-  type MembershipPhaseState,
-  type QueryPhaseDelta,
-  type QueryPhaseState,
-  type SummaryPhaseDelta,
-  type SummaryPhaseState
-} from '@dataview/engine/active/state'
-import {
-  createSnapshotTrace
-} from '@dataview/engine/active/projection/trace'
 
 export type DataviewProjectionPhaseName =
-  | 'document'
-  | 'index'
-  | 'query'
-  | 'membership'
-  | 'summary'
-  | 'view'
+  | 'frame'
+  | 'active'
 
 export interface DataviewProjectionInput {
   document: DataDoc
   delta: DataviewMutationDelta
-  runtime: {}
 }
 
 export interface DataviewProjectionOutput {
-  activeViewId?: ViewId
+  activeId?: ViewId
   active?: ViewState
-}
-
-type DataviewProjectionStage = {
-  action: ViewStageAction
-  deriveMs: number
-  publishMs: number
-  metrics?: ViewStageMetrics
-}
-
-interface DataviewProjectionState {
-  document: {
-    read?: DocumentReadContext
-    activeViewId?: ViewId
-    view?: View
-    plan?: ViewPlan
-    previousActiveViewId?: ViewId
-    previousPlan?: ViewPlan
-  }
-  index: {
-    current?: IndexState
-    demand: NormalizedIndexDemand
-    delta?: IndexDelta
-    trace?: IndexTrace
-    action: ViewStageAction
-  }
-  query: {
-    state: QueryPhaseState
-    delta: QueryPhaseDelta
-    stage: DataviewProjectionStage
-  }
-  membership: {
-    state: MembershipPhaseState
-    previous?: MembershipPhaseState
-    delta: MembershipPhaseDelta
-    stage: DataviewProjectionStage
-  }
-  summary: {
-    state: SummaryPhaseState
-    previous?: SummaryPhaseState
-    delta: SummaryPhaseDelta
-    stage: DataviewProjectionStage
-  }
-  view: {
-    itemIds: ReturnType<typeof createItemIdPool>
-    previous?: ViewState
-    snapshot?: ViewState
-    fieldPatch?: EntityDelta<FieldId>
-    sectionPatch?: EntityDelta<SectionId>
-    itemPatch?: EntityDelta<ItemId>
-    summaryPatch?: EntityDelta<SectionId>
-    stage: DataviewProjectionStage
-    snapshotTrace: SnapshotTrace
-  }
 }
 
 const EMPTY_SECTION_IDS = [] as readonly SectionId[]
@@ -208,12 +107,6 @@ const EMPTY_SNAPSHOT_TRACE: SnapshotTrace = {
   changedStores: []
 }
 
-const EMPTY_STAGE: DataviewProjectionStage = {
-  action: 'reuse',
-  deriveMs: 0,
-  publishMs: 0
-}
-
 const sameOrder = <T,>(
   left: readonly T[],
   right: readonly T[]
@@ -222,60 +115,10 @@ const sameOrder = <T,>(
   && left.every((value, index) => Object.is(value, right[index]))
 )
 
-const hasDeltaChanges = (
-  delta: DataviewMutationDelta
-): boolean => delta.reset === true
-  || delta.changes.size > 0
-
-const isQueryStateEmpty = (
-  state: QueryPhaseState
-): boolean => state.visible.read.count() === 0
-  && state.matched.read.count() === 0
-  && state.ordered.read.count() === 0
-  && state.search === undefined
-
-const isMembershipStateEmpty = (
-  state: MembershipPhaseState
-): boolean => state.sections.order.length === 0
-  && state.meta.size === 0
-
-const isSummaryStateEmpty = (
-  state: SummaryPhaseState
-): boolean => state.bySection.size === 0
-
-const createState = (): DataviewProjectionState => ({
-  document: {
-  },
-  index: {
-    demand: emptyNormalizedIndexDemand(),
-    action: 'reuse'
-  },
-  query: {
-    state: emptyQueryPhaseState(),
-    delta: EMPTY_QUERY_PHASE_DELTA,
-    stage: EMPTY_STAGE
-  },
-  membership: {
-    state: emptyMembershipPhaseState(),
-    delta: EMPTY_MEMBERSHIP_PHASE_DELTA,
-    stage: EMPTY_STAGE
-  },
-  summary: {
-    state: emptySummaryPhaseState(),
-    delta: EMPTY_SUMMARY_PHASE_DELTA,
-    stage: EMPTY_STAGE
-  },
-  view: {
-    itemIds: createItemIdPool(),
-    stage: EMPTY_STAGE,
-    snapshotTrace: EMPTY_SNAPSHOT_TRACE
-  }
-})
-
 const readFieldSnapshot = (
-  state: DataviewProjectionState
+  state: DataviewState
 ): ProjectionFamilySnapshot<FieldId, Field> => {
-  const fields = state.view.snapshot?.fields
+  const fields = state.active.snapshot?.fields
   if (!fields) {
     return EMPTY_FIELD_SNAPSHOT
   }
@@ -299,9 +142,9 @@ const readFieldSnapshot = (
 }
 
 const readSectionSnapshot = (
-  state: DataviewProjectionState
+  state: DataviewState
 ): ProjectionFamilySnapshot<SectionId, Section> => {
-  const sections = state.view.snapshot?.sections
+  const sections = state.active.snapshot?.sections
   if (!sections) {
     return EMPTY_SECTION_SNAPSHOT
   }
@@ -325,9 +168,9 @@ const readSectionSnapshot = (
 }
 
 const readItemSnapshot = (
-  state: DataviewProjectionState
+  state: DataviewState
 ): ProjectionFamilySnapshot<ItemId, ItemPlacement> => {
-  const items = state.view.snapshot?.items
+  const items = state.active.snapshot?.items
   if (!items) {
     return EMPTY_ITEM_SNAPSHOT
   }
@@ -351,9 +194,9 @@ const readItemSnapshot = (
 }
 
 const readSummarySnapshot = (
-  state: DataviewProjectionState
+  state: DataviewState
 ): ProjectionFamilySnapshot<SectionId, CalculationCollection> => {
-  const snapshot = state.view.snapshot
+  const snapshot = state.active.snapshot
   if (!snapshot) {
     return EMPTY_SUMMARY_SNAPSHOT
   }
@@ -377,117 +220,73 @@ const readSummarySnapshot = (
 }
 
 const buildViewTrace = (input: {
-  state: DataviewProjectionState
+  state: DataviewState
   totalMs: number
 }): ViewTrace => {
-  const stages: ViewStageTrace[] = [{
-    stage: 'query',
-    action: input.state.query.stage.action,
-    executed: true,
-    changed: input.state.query.stage.action !== 'reuse',
-    durationMs: input.state.query.stage.deriveMs + input.state.query.stage.publishMs,
-    deriveMs: input.state.query.stage.deriveMs,
-    publishMs: input.state.query.stage.publishMs,
-    ...(input.state.query.stage.metrics
-      ? {
-          metrics: input.state.query.stage.metrics
-        }
-      : {})
-  }, {
-    stage: 'membership',
-    action: input.state.membership.stage.action,
-    executed: true,
-    changed: input.state.membership.stage.action !== 'reuse',
-    durationMs: input.state.membership.stage.deriveMs + input.state.membership.stage.publishMs,
-    deriveMs: input.state.membership.stage.deriveMs,
-    publishMs: input.state.membership.stage.publishMs,
-    ...(input.state.membership.stage.metrics
-      ? {
-          metrics: input.state.membership.stage.metrics
-        }
-      : {})
-  }, {
-    stage: 'summary',
-    action: input.state.summary.stage.action,
-    executed: true,
-    changed: input.state.summary.stage.action !== 'reuse',
-    durationMs: input.state.summary.stage.deriveMs + input.state.summary.stage.publishMs,
-    deriveMs: input.state.summary.stage.deriveMs,
-    publishMs: input.state.summary.stage.publishMs,
-    ...(input.state.summary.stage.metrics
-      ? {
-          metrics: input.state.summary.stage.metrics
-        }
-      : {})
-  }, {
-    stage: 'publish',
-    action: input.state.view.stage.action,
-    executed: true,
-    changed: input.state.view.stage.action !== 'reuse',
-    durationMs: input.state.view.stage.deriveMs + input.state.view.stage.publishMs,
-    deriveMs: input.state.view.stage.deriveMs,
-    publishMs: input.state.view.stage.publishMs,
-    ...(input.state.view.stage.metrics
-      ? {
-          metrics: input.state.view.stage.metrics
-        }
-      : {})
-  }]
-
+  const trace = input.state.active.trace
   return {
     plan: {
-      query: input.state.query.stage.action,
-      membership: input.state.membership.stage.action,
-      summary: input.state.summary.stage.action,
-      publish: input.state.view.stage.action
+      query: trace.query.action,
+      membership: trace.membership.action,
+      summary: trace.summary.action,
+      publish: trace.publish.action
     },
     timings: {
       totalMs: input.totalMs
     },
-    stages
+    stages: [{
+      stage: 'query',
+      action: trace.query.action,
+      executed: true,
+      changed: trace.query.changed,
+      durationMs: trace.query.deriveMs + trace.query.publishMs,
+      deriveMs: trace.query.deriveMs,
+      publishMs: trace.query.publishMs,
+      ...(trace.query.metrics
+        ? { metrics: trace.query.metrics }
+        : {})
+    }, {
+      stage: 'membership',
+      action: trace.membership.action,
+      executed: true,
+      changed: trace.membership.changed,
+      durationMs: trace.membership.deriveMs + trace.membership.publishMs,
+      deriveMs: trace.membership.deriveMs,
+      publishMs: trace.membership.publishMs,
+      ...(trace.membership.metrics
+        ? { metrics: trace.membership.metrics }
+        : {})
+    }, {
+      stage: 'summary',
+      action: trace.summary.action,
+      executed: true,
+      changed: trace.summary.changed,
+      durationMs: trace.summary.deriveMs + trace.summary.publishMs,
+      deriveMs: trace.summary.deriveMs,
+      publishMs: trace.summary.publishMs,
+      ...(trace.summary.metrics
+        ? { metrics: trace.summary.metrics }
+        : {})
+    }, {
+      stage: 'publish',
+      action: trace.publish.action,
+      executed: true,
+      changed: trace.publish.changed,
+      durationMs: trace.publish.deriveMs + trace.publish.publishMs,
+      deriveMs: trace.publish.deriveMs,
+      publishMs: trace.publish.publishMs,
+      ...(trace.publish.metrics
+        ? { metrics: trace.publish.metrics }
+        : {})
+    }]
   }
-}
-
-const buildFieldPatch = (input: {
-  previous?: ViewState
-  next?: ViewState
-}): EntityDelta<FieldId> | undefined => {
-  if (!input.previous || !input.next) {
-    return undefined
-  }
-
-  return entityDelta.fromSnapshots({
-    previousIds: input.previous.fields.ids,
-    nextIds: input.next.fields.ids,
-    previousGet: (fieldId) => input.previous?.fields.get(fieldId),
-    nextGet: (fieldId) => input.next?.fields.get(fieldId)
-  })
-}
-
-const buildSummaryPatch = (input: {
-  previous?: ViewState
-  next?: ViewState
-}): EntityDelta<SectionId> | undefined => {
-  if (!input.previous || !input.next) {
-    return undefined
-  }
-
-  const previousSummaries = input.previous.summaries
-  const nextSummaries = input.next.summaries
-
-  return entityDelta.fromSnapshots({
-    previousIds: input.previous.sections.ids.filter((sectionId) => previousSummaries.has(sectionId)),
-    nextIds: input.next.sections.ids.filter((sectionId) => nextSummaries.has(sectionId)),
-    previousGet: (sectionId) => previousSummaries.get(sectionId),
-    nextGet: (sectionId) => nextSummaries.get(sectionId)
-  })
 }
 
 const readFamilyPatch = <TKey extends string | number>(input: {
   changed: boolean
   previous?: unknown
   next?: unknown
-  patch?: EntityDelta<TKey>
+  patch?: ProjectionFamilyPatch<TKey>
 }): ProjectionFamilyPatch<TKey> | 'replace' | 'skip' => {
   if (!input.changed) {
     return 'skip'
@@ -500,15 +299,80 @@ const readFamilyPatch = <TKey extends string | number>(input: {
   return input.patch ?? 'skip'
 }
 
+const createState = (): DataviewState => ({
+  index: emptyDataviewIndexBank(),
+  active: createDataviewActiveState()
+})
+
+const EMPTY_INACTIVE_PLAN: DataviewActivePlan = {
+  reset: false,
+  reasons: {
+    lifecycle: {
+      phaseRebuild: false,
+      reset: false
+    },
+    query: {
+      sync: false,
+      reuse: {
+        matched: false,
+        ordered: false
+      }
+    },
+    membership: {
+      grouped: false,
+      rebuild: false,
+      sync: false
+    },
+    summary: {
+      enabled: false,
+      rebuild: false,
+      sync: false,
+      sectionChanged: false
+    },
+    index: {
+      rebuilt: false,
+      switched: false,
+      bucketRebuild: false,
+      bucketChanged: false
+    },
+    publish: {
+      snapshotRebuild: false,
+      layoutChanged: false
+    }
+  },
+  query: {
+    action: 'reuse'
+  },
+  membership: {
+    action: 'reuse'
+  },
+  summary: {
+    action: 'reuse'
+  },
+  publish: {
+    action: 'reuse'
+  }
+}
+
 export const createDataviewProjection = () => createProjection({
   createState,
   createRead: (runtime) => ({
-    activeViewId: () => runtime.state().document.activeViewId,
-    active: () => runtime.state().view.snapshot,
-    plan: () => runtime.state().document.plan,
-    indexState: () => runtime.state().index.current,
-    indexTrace: () => runtime.state().index.trace,
-    snapshotTrace: () => runtime.state().view.snapshotTrace,
+    activeId: () => runtime.state().frame?.active?.id,
+    active: () => runtime.state().active.snapshot,
+    frame: () => runtime.state().frame,
+    indexState: () => {
+      const key = runtime.state().index.currentKey
+      return key
+        ? runtime.state().index.entries.get(key)?.state
+        : undefined
+    },
+    indexTrace: () => {
+      const key = runtime.state().index.currentKey
+      return key
+        ? runtime.state().index.entries.get(key)?.trace
+        : undefined
+    },
+    snapshotTrace: () => runtime.state().active.trace.snapshot,
     viewTrace: (totalMs = 0) => buildViewTrace({
       state: runtime.state(),
       totalMs
@@ -518,433 +382,128 @@ export const createDataviewProjection = () => createProjection({
         state: runtime.state(),
         totalMs
       }),
-      snapshot: runtime.state().view.snapshotTrace,
-      snapshotMs: runtime.state().view.stage.publishMs
+      snapshot: runtime.state().active.trace.snapshot,
+      snapshotMs: runtime.state().active.trace.publish.publishMs
     }),
-    record: (recordId: RecordId) => runtime.state().document.read?.reader.records.get(recordId),
-    field: (fieldId: FieldId) => runtime.state().document.read?.reader.fields.get(fieldId),
-    section: (sectionId: SectionId) => runtime.state().view.snapshot?.sections.get(sectionId),
-    item: (itemId: ItemId) => runtime.state().view.snapshot?.items.read.placement(itemId),
-    summary: (sectionId: SectionId) => runtime.state().view.snapshot?.summaries.get(sectionId)
+    record: (recordId: RecordId) => runtime.state().frame?.reader.records.get(recordId),
+    field: (fieldId: FieldId) => runtime.state().frame?.reader.fields.get(fieldId),
+    section: (sectionId: SectionId) => runtime.state().active.snapshot?.sections.get(sectionId),
+    item: (itemId: ItemId) => runtime.state().active.snapshot?.items.read.placement(itemId),
+    summary: (sectionId: SectionId) => runtime.state().active.snapshot?.summaries.get(sectionId)
   }),
   output: ({ state }) => ({
-    activeViewId: state.document.activeViewId,
-    active: state.view.snapshot
+    activeId: state.frame?.active?.id,
+    active: state.active.snapshot
   }),
   surface: ({
     active: {
       kind: 'value' as const,
-      read: (state: DataviewProjectionState) => state.view.snapshot,
-      changed: (ctx) => ctx.phase.view.changed
+      read: (state: DataviewState) => state.active.snapshot,
+      changed: (ctx) => ctx.phase.active.changed
     },
     fields: {
       kind: 'family' as const,
       read: readFieldSnapshot,
       idsEqual: sameOrder,
-      changed: (ctx) => ctx.phase.view.changed,
+      changed: (ctx) => ctx.phase.active.changed,
       patch: (ctx) => readFamilyPatch({
-        changed: ctx.phase.view.changed,
-        previous: ctx.state.view.previous,
-        next: ctx.state.view.snapshot,
-        patch: ctx.state.view.fieldPatch
+        changed: ctx.phase.active.changed,
+        previous: ctx.previous,
+        next: ctx.next,
+        patch: ctx.state.active.patches.fields
       })
     },
     sections: {
       kind: 'family' as const,
       read: readSectionSnapshot,
       idsEqual: sameOrder,
-      changed: (ctx) => ctx.phase.view.changed,
+      changed: (ctx) => ctx.phase.active.changed,
       patch: (ctx) => readFamilyPatch({
-        changed: ctx.phase.view.changed,
-        previous: ctx.state.view.previous,
-        next: ctx.state.view.snapshot,
-        patch: ctx.state.view.sectionPatch
+        changed: ctx.phase.active.changed,
+        previous: ctx.previous,
+        next: ctx.next,
+        patch: ctx.state.active.patches.sections
       })
     },
     items: {
       kind: 'family' as const,
       read: readItemSnapshot,
       idsEqual: sameOrder,
-      changed: (ctx) => ctx.phase.view.changed,
+      changed: (ctx) => ctx.phase.active.changed,
       patch: (ctx) => readFamilyPatch({
-        changed: ctx.phase.view.changed,
-        previous: ctx.state.view.previous,
-        next: ctx.state.view.snapshot,
-        patch: ctx.state.view.itemPatch
+        changed: ctx.phase.active.changed,
+        previous: ctx.previous,
+        next: ctx.next,
+        patch: ctx.state.active.patches.items
       })
     },
     summaries: {
       kind: 'family' as const,
       read: readSummarySnapshot,
       idsEqual: sameOrder,
-      changed: (ctx) => ctx.phase.view.changed,
+      changed: (ctx) => ctx.phase.active.changed,
       patch: (ctx) => readFamilyPatch({
-        changed: ctx.phase.view.changed,
-        previous: ctx.state.view.previous,
-        next: ctx.state.view.snapshot,
-        patch: ctx.state.view.summaryPatch
+        changed: ctx.phase.active.changed,
+        previous: ctx.previous,
+        next: ctx.next,
+        patch: ctx.state.active.patches.summaries
       })
     }
   }) satisfies ProjectionSurfaceTree<
     DataviewProjectionInput,
-    DataviewProjectionState,
+    DataviewState,
     DataviewProjectionPhaseName
   >,
   phases: ({
-    document: (ctx) => {
-      const previousActiveViewId = ctx.state.document.activeViewId
-      const previousPlan = ctx.state.document.plan
-      const read = createDocumentReadContext(ctx.input.document)
-      const plan = resolveViewPlan(read, read.activeViewId)
-      const initial = ctx.state.document.read === undefined
-      const planChanged = previousActiveViewId !== read.activeViewId
-        || previousPlan?.query.executionKey !== plan?.query.executionKey
-        || sectionChanged({
-          previousPlan,
-          plan
-        })
-        || calculationFieldsChanged({
-          previousPlan,
-          plan
-        })
-
-      ctx.state.document.previousActiveViewId = previousActiveViewId
-      ctx.state.document.previousPlan = previousPlan
-      ctx.state.document.read = read
-      ctx.state.document.activeViewId = read.activeViewId
-      ctx.state.document.view = read.activeView
-      ctx.state.document.plan = plan
-      ctx.dirty.touchedRecords = ctx.dirty.delta.touched.records()
-      ctx.dirty.touchedFields = ctx.dirty.delta.touched.fields()
-      ctx.dirty.valueFields = ctx.dirty.delta.record.values.touchedFieldIds()
-      ctx.dirty.schemaFields = ctx.dirty.delta.field.schema.touchedIds()
-      ctx.dirty.recordSetChanged = ctx.dirty.delta.recordSetChanged()
-
-      if (initial || planChanged || hasDeltaChanges(ctx.dirty.delta)) {
-        ctx.phase.document.changed = true
-        ctx.dirty.index = true
-        ctx.dirty.query = true
-        ctx.dirty.membership = true
-        ctx.dirty.summary = true
-        ctx.dirty.view = true
+    frame: (ctx) => {
+      ctx.state.frame = createDataviewFrame({
+        revision: ctx.revision,
+        document: ctx.input.document,
+        delta: ctx.input.delta
+      })
+      if (ctx.input.delta.reset === true || ctx.input.delta.changes.size > 0) {
+        ctx.phase.frame.changed = true
       }
     },
-    index: {
-      after: ['document'],
+    active: {
+      after: ['frame'],
       run: (ctx) => {
-        if (ctx.dirty.index !== true) {
-          ctx.state.index.action = 'reuse'
-          return
-        }
+        const previousSnapshot = ctx.state.active.snapshot
+        const ensured = ctx.state.frame
+          ? ensureDataviewIndex({
+              frame: ctx.state.frame,
+              previous: ctx.state.index
+            })
+          : {
+              bank: ctx.state.index
+            }
+        const plan = ctx.state.frame
+          ? createDataviewActivePlan({
+              frame: ctx.state.frame,
+              state: ctx.state,
+              index: ensured.current
+            })
+          : EMPTY_INACTIVE_PLAN
+        const nextActive = ctx.state.frame
+          ? runDataviewActive({
+              frame: ctx.state.frame,
+              plan,
+              index: ensured.current,
+              previous: ctx.state.active
+            })
+          : ctx.state.active
 
-        const demand = ctx.state.document.plan?.index ?? emptyNormalizedIndexDemand()
-        if (!ctx.state.index.current) {
-          ctx.state.index.current = createIndexState(
-            ctx.input.document,
-            demand
-          )
-          ctx.state.index.demand = demand
-          ctx.state.index.delta = undefined
-          ctx.state.index.trace = undefined
-          ctx.state.index.action = 'rebuild'
-          ctx.phase.index.changed = true
-          ctx.dirty.query = true
-          ctx.dirty.membership = true
-          ctx.dirty.summary = true
-          ctx.dirty.view = true
-          return
-        }
-
-        const next = deriveIndex({
-          previous: ctx.state.index.current,
-          previousDemand: ctx.state.index.demand,
-          document: ctx.input.document,
-          delta: ctx.dirty.delta,
-          demand
-        })
-
-        ctx.state.index.current = next.state
-        ctx.state.index.demand = demand
-        ctx.state.index.delta = next.delta
-        ctx.state.index.trace = next.trace
-        ctx.state.index.action = next.trace?.changed
-          ? 'sync'
-          : 'reuse'
-
-        if (next.trace?.changed) {
-          ctx.phase.index.changed = true
-          ctx.dirty.query = true
-          ctx.dirty.membership = true
-          ctx.dirty.summary = true
-          ctx.dirty.view = true
-        }
-      }
-    },
-    query: {
-      after: ['index'],
-      run: (ctx) => {
-        const view = ctx.state.document.view
-        const plan = ctx.state.document.plan
-        const reader = ctx.state.document.read?.reader
-        const activeViewId = ctx.state.document.activeViewId
-
-        if (!view || !plan || !reader || !activeViewId || !ctx.state.index.current) {
-          const changed = !isQueryStateEmpty(ctx.state.query.state)
-          ctx.state.query.state = emptyQueryPhaseState()
-          ctx.state.query.delta = EMPTY_QUERY_PHASE_DELTA
-          ctx.state.query.stage = EMPTY_STAGE
-          if (changed) {
-            ctx.phase.query.changed = true
-            ctx.dirty.membership = true
-            ctx.dirty.summary = true
-            ctx.dirty.view = true
-          }
-          return
-        }
-
-        if (ctx.dirty.query !== true) {
-          ctx.state.query.delta = EMPTY_QUERY_PHASE_DELTA
-          ctx.state.query.stage = EMPTY_STAGE
-          return
-        }
-
-        const result = runQueryStage({
-          reader,
-          activeViewId,
-          previousViewId: ctx.state.document.previousActiveViewId,
-          delta: ctx.dirty.delta,
-          view,
-          plan: plan.query,
-          previousPlan: ctx.state.document.previousPlan?.query,
-          index: ctx.state.index.current,
-          previous: ctx.state.query.state
-        })
-
-        ctx.state.query.state = result.state
-        ctx.state.query.delta = result.delta
-        ctx.state.query.stage = {
-          action: result.action,
-          deriveMs: result.deriveMs,
-          publishMs: result.publishMs,
-          metrics: result.metrics
-        }
-
-        if (result.action !== 'reuse') {
-          ctx.phase.query.changed = true
-          ctx.dirty.membership = true
-          ctx.dirty.summary = true
-          ctx.dirty.view = true
-        }
-      }
-    },
-    membership: {
-      after: ['query'],
-      run: (ctx) => {
-        const view = ctx.state.document.view
-        const activeViewId = ctx.state.document.activeViewId
-        const index = ctx.state.index.current
-
-        if (!view || !activeViewId || !index) {
-          const previous = ctx.state.membership.state
-          const next = emptyMembershipPhaseState()
-          const changed = !isMembershipStateEmpty(previous)
-          ctx.state.membership.previous = previous
-          ctx.state.membership.state = next
-          ctx.state.membership.delta = EMPTY_MEMBERSHIP_PHASE_DELTA
-          ctx.state.membership.stage = EMPTY_STAGE
-          if (changed) {
-            ctx.phase.membership.changed = true
-            ctx.dirty.summary = true
-            ctx.dirty.view = true
-          }
-          return
-        }
-
-        if (ctx.dirty.membership !== true) {
-          ctx.state.membership.delta = EMPTY_MEMBERSHIP_PHASE_DELTA
-          ctx.state.membership.stage = EMPTY_STAGE
-          return
-        }
-
-        const previous = ctx.state.membership.state
-        const result = runMembershipStage({
-          activeViewId,
-          previousViewId: ctx.state.document.previousActiveViewId,
-          delta: ctx.dirty.delta,
-          view,
-          query: ctx.state.query.state,
-          queryDelta: ctx.state.query.delta,
-          previous,
-          index,
-          indexDelta: ctx.state.index.delta
-        })
-
-        ctx.state.membership.previous = previous
-        ctx.state.membership.state = result.state
-        ctx.state.membership.delta = result.delta
-        ctx.state.membership.stage = {
-          action: result.action,
-          deriveMs: result.deriveMs,
-          publishMs: result.publishMs,
-          metrics: result.metrics
-        }
-
-        if (result.action !== 'reuse') {
-          ctx.phase.membership.changed = true
-          ctx.dirty.summary = true
-          ctx.dirty.view = true
-        }
-      }
-    },
-    summary: {
-      after: ['membership'],
-      run: (ctx) => {
-        const view = ctx.state.document.view
-        const plan = ctx.state.document.plan
-        const activeViewId = ctx.state.document.activeViewId
-        const index = ctx.state.index.current
-
-        if (!view || !plan || !activeViewId || !index) {
-          const previous = ctx.state.summary.state
-          const next = emptySummaryPhaseState()
-          const changed = !isSummaryStateEmpty(previous)
-          ctx.state.summary.previous = previous
-          ctx.state.summary.state = next
-          ctx.state.summary.delta = EMPTY_SUMMARY_PHASE_DELTA
-          ctx.state.summary.stage = EMPTY_STAGE
-          if (changed) {
-            ctx.phase.summary.changed = true
-            ctx.dirty.view = true
-          }
-          return
-        }
-
-        if (ctx.dirty.summary !== true) {
-          ctx.state.summary.delta = EMPTY_SUMMARY_PHASE_DELTA
-          ctx.state.summary.stage = EMPTY_STAGE
-          return
-        }
-
-        const previous = ctx.state.summary.state
-        const result = runSummaryStage({
-          activeViewId,
-          previousViewId: ctx.state.document.previousActiveViewId,
-          delta: ctx.dirty.delta,
-          indexDelta: ctx.state.index.delta,
-          view,
-          calcFields: plan.calcFields,
-          previous,
-          previousMembership: ctx.state.membership.previous ?? ctx.state.membership.state,
-          membership: ctx.state.membership.state,
-          membershipAction: ctx.state.membership.stage.action,
-          membershipDelta: ctx.state.membership.delta,
-          index
-        })
-
-        ctx.state.summary.previous = previous
-        ctx.state.summary.state = result.state
-        ctx.state.summary.delta = result.delta
-        ctx.state.summary.stage = {
-          action: result.action,
-          deriveMs: result.deriveMs,
-          publishMs: result.publishMs,
-          metrics: result.metrics
-        }
-
-        if (result.action !== 'reuse') {
-          ctx.phase.summary.changed = true
-          ctx.dirty.view = true
-        }
-      }
-    },
-    view: {
-      after: ['summary'],
-      run: (ctx) => {
-        const previous = ctx.state.view.snapshot
-        const view = ctx.state.document.view
-        const activeViewId = ctx.state.document.activeViewId
-        const reader = ctx.state.document.read?.reader
-
-        ctx.state.view.previous = previous
-
-        if (!view || !activeViewId || !reader) {
-          const next = undefined
-          ctx.state.view.snapshot = next
-          ctx.state.view.fieldPatch = undefined
-          ctx.state.view.sectionPatch = undefined
-          ctx.state.view.itemPatch = undefined
-          ctx.state.view.summaryPatch = undefined
-          ctx.state.view.stage = previous
-            ? {
-                action: 'sync',
-                deriveMs: 0,
-                publishMs: 0
-              }
-            : EMPTY_STAGE
-          ctx.state.view.snapshotTrace = createSnapshotTrace(previous, next)
-          if (previous) {
-            ctx.phase.view.changed = true
-          }
-          return
-        }
-
-        if (ctx.dirty.view !== true && previous) {
-          ctx.state.view.fieldPatch = undefined
-          ctx.state.view.sectionPatch = undefined
-          ctx.state.view.itemPatch = undefined
-          ctx.state.view.summaryPatch = undefined
-          ctx.state.view.stage = EMPTY_STAGE
-          ctx.state.view.snapshotTrace = EMPTY_SNAPSHOT_TRACE
-          return
-        }
-
-        const result = runPublishStage({
-          reader,
-          activeViewId,
-          previous,
-          view,
-          queryState: ctx.state.query.state,
-          previousRecords: previous?.records,
-          membershipState: ctx.state.membership.state,
-          previousMembershipState: ctx.state.membership.previous ?? ctx.state.membership.state,
-          previousSections: previous?.sections,
-          previousItems: previous?.items,
-          summaryState: ctx.state.summary.state,
-          previousSummaryState: ctx.state.summary.previous ?? ctx.state.summary.state,
-          previousSummaries: previous?.summaries,
-          itemIds: ctx.state.view.itemIds
-        })
-
-        ctx.state.view.snapshot = result.snapshot
-        ctx.state.view.fieldPatch = buildFieldPatch({
-          previous,
-          next: result.snapshot
-        })
-        ctx.state.view.sectionPatch = result.sectionPatch
-        ctx.state.view.itemPatch = result.itemPatch
-        ctx.state.view.summaryPatch = buildSummaryPatch({
-          previous,
-          next: result.snapshot
-        })
-        ctx.state.view.stage = {
-          action: result.action,
-          deriveMs: result.deriveMs,
-          publishMs: result.publishMs,
-          metrics: result.metrics
-        }
-        ctx.state.view.snapshotTrace = createSnapshotTrace(
-          previous,
-          result.snapshot
-        )
-
-        if (result.action !== 'reuse') {
-          ctx.phase.view.changed = true
+        ctx.state.index = ensured.bank
+        ctx.state.active = nextActive
+        ctx.state.lastActive = createDataviewLastActive(ctx.state.frame?.active)
+        if (previousSnapshot !== nextActive.snapshot) {
+          ctx.phase.active.changed = true
         }
       }
     }
   }) satisfies ProjectionPhaseTable<
     DataviewProjectionInput,
-    DataviewProjectionState,
+    DataviewState,
     DataviewProjectionPhaseName
   >
 })

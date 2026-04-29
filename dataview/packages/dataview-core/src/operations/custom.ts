@@ -398,9 +398,7 @@ const createExternalVersionResult = (
     }
   },
   footprint: [] as const,
-  history: {
-    inverse: [] as const
-  },
+  history: false as const,
   outputs: [operation.source],
   historyMode: 'skip' as const
 })

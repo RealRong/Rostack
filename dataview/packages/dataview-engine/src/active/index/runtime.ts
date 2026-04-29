@@ -3,6 +3,9 @@ import type {
   RecordId
 } from '@dataview/core/types'
 import type {
+  DataviewFrame
+} from '@dataview/engine/active/frame'
+import type {
   IndexTrace
 } from '@dataview/engine/contracts/performance'
 import {
@@ -12,6 +15,9 @@ import {
 } from '@dataview/engine/active/index/calculations'
 import {
   emptyNormalizedIndexDemand
+} from '@dataview/engine/active/index/demand'
+import {
+  writeNormalizedIndexDemandKey
 } from '@dataview/engine/active/index/demand'
 import {
   buildBucketIndex,
@@ -50,9 +56,7 @@ import type {
 import type {
   DataviewMutationDelta
 } from '@dataview/engine/mutation/delta'
-import {
-  now
-} from '@dataview/engine/runtime/clock'
+import { now } from '@dataview/engine/runtime/clock'
 import {
   createDocumentReadContext
 } from '@dataview/engine/document/reader'
@@ -63,6 +67,25 @@ import {
 import {
   createRows
 } from '@dataview/engine/active/shared/rows'
+
+export interface DataviewIndexEntry {
+  key: string
+  demand: NormalizedIndexDemand
+  state: IndexState
+  revision: number
+  delta?: import('@dataview/engine/active/index/contracts').IndexDelta
+  trace?: IndexTrace
+}
+
+export interface DataviewIndexBank {
+  currentKey?: string
+  entries: ReadonlyMap<string, DataviewIndexEntry>
+}
+
+export interface DataviewIndexResult {
+  action: 'reuse' | 'switch' | 'sync' | 'rebuild'
+  entry: DataviewIndexEntry
+}
 
 const createIndexReadContext = (
   document: DataDoc
@@ -336,6 +359,176 @@ export const deriveIndex = (input: {
         touchedRecordCount,
         touchedFieldCount
       })
+    }
+  }
+}
+
+const createEntry = (input: {
+  revision: number
+  demand: NormalizedIndexDemand
+  state: IndexState
+  delta?: import('@dataview/engine/active/index/contracts').IndexDelta
+  trace?: IndexTrace
+}): DataviewIndexEntry => ({
+  key: writeNormalizedIndexDemandKey(input.demand),
+  demand: input.demand,
+  state: input.state,
+  revision: input.revision,
+  ...(input.delta
+    ? {
+        delta: input.delta
+      }
+    : {}),
+  ...(input.trace
+    ? {
+        trace: input.trace
+      }
+    : {})
+})
+
+export const emptyDataviewIndexBank = (): DataviewIndexBank => ({
+  entries: new Map()
+})
+
+export const ensureDataviewIndex = (input: {
+  frame: DataviewFrame
+  previous: DataviewIndexBank
+}): {
+  bank: DataviewIndexBank
+  current?: DataviewIndexResult
+} => {
+  const active = input.frame.active
+  if (!active) {
+    return {
+      bank: {
+        currentKey: undefined,
+        entries: input.previous.entries
+      }
+    }
+  }
+
+  const key = writeNormalizedIndexDemandKey(active.demand)
+  const current = input.previous.currentKey
+    ? input.previous.entries.get(input.previous.currentKey)
+    : undefined
+  const target = input.previous.entries.get(key)
+  const entries = new Map(input.previous.entries)
+  const document = input.frame.reader.document()
+  const context = createIndexDeriveContext(document, input.frame.delta)
+
+  if (
+    target
+    && key === input.previous.currentKey
+    && !context.changed
+  ) {
+    return {
+      bank: {
+        currentKey: key,
+        entries
+      },
+      current: {
+        action: 'reuse',
+        entry: target
+      }
+    }
+  }
+
+  if (
+    target
+    && key !== input.previous.currentKey
+    && target.revision === input.frame.revision
+  ) {
+    return {
+      bank: {
+        currentKey: key,
+        entries
+      },
+      current: {
+        action: 'switch',
+        entry: target
+      }
+    }
+  }
+
+  if (
+    target
+    && key !== input.previous.currentKey
+  ) {
+    const next = deriveIndex({
+      previous: target.state,
+      previousDemand: target.demand,
+      document,
+      delta: input.frame.delta,
+      demand: active.demand
+    })
+    const entry = createEntry({
+      revision: input.frame.revision,
+      demand: active.demand,
+      state: next.state,
+      delta: next.delta,
+      trace: next.trace
+    })
+    entries.set(key, entry)
+    return {
+      bank: {
+        currentKey: key,
+        entries
+      },
+      current: {
+        action: 'switch',
+        entry
+      }
+    }
+  }
+
+  if (target && key === input.previous.currentKey) {
+    const next = deriveIndex({
+      previous: target.state,
+      previousDemand: target.demand,
+      document,
+      delta: input.frame.delta,
+      demand: active.demand
+    })
+    const entry = createEntry({
+      revision: input.frame.revision,
+      demand: active.demand,
+      state: next.state,
+      delta: next.delta,
+      trace: next.trace
+    })
+    entries.set(key, entry)
+    return {
+      bank: {
+        currentKey: key,
+        entries
+      },
+      current: {
+        action: next.trace?.changed
+          ? 'sync'
+          : 'reuse',
+        entry
+      }
+    }
+  }
+
+  const nextState = createIndexState(document, active.demand)
+  const entry = createEntry({
+    revision: input.frame.revision,
+    demand: active.demand,
+    state: nextState
+  })
+  entries.set(key, entry)
+
+  return {
+    bank: {
+      currentKey: key,
+      entries
+    },
+    current: {
+      action: current
+        ? 'rebuild'
+        : 'rebuild',
+      entry
     }
   }
 }

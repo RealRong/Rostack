@@ -6,6 +6,7 @@ import type {
   LayoutBackend,
   NodeSpec
 } from '../src'
+import { createEditorTestLayout } from './support'
 
 const createNodes = (): NodeSpec => ({
   text: {
@@ -17,9 +18,6 @@ const createNodes = (): NodeSpec => ({
       controls: []
     },
     behavior: {
-      layout: {
-        kind: 'size'
-      },
       role: 'content',
       resize: true,
       rotate: true,
@@ -43,9 +41,6 @@ const createNodes = (): NodeSpec => ({
       controls: []
     },
     behavior: {
-      layout: {
-        kind: 'fit'
-      },
       role: 'content',
       resize: true,
       rotate: true,
@@ -182,8 +177,10 @@ const createStickyDocument = () => {
 }
 
 const createTextEditor = () => {
+  const layoutService = createEditorTestLayout(createLayoutBackend())
   const engine = engineApi.create({
-    document: createTextDocument()
+    document: createTextDocument(),
+    layout: layoutService
   })
 
   return trackEditor(editorApi.create({
@@ -201,14 +198,16 @@ const createTextEditor = () => {
     },
     nodes: createNodes(),
     services: {
-      layout: createLayoutBackend()
+      layout: layoutService
     }
   }))
 }
 
 const createAutoWidthTextEditor = () => {
+  const layoutService = createEditorTestLayout(createAutoWidthLayoutBackend())
   const engine = engineApi.create({
-    document: createTextDocument()
+    document: createTextDocument(),
+    layout: layoutService
   })
 
   return trackEditor(editorApi.create({
@@ -226,14 +225,16 @@ const createAutoWidthTextEditor = () => {
     },
     nodes: createNodes(),
     services: {
-      layout: createAutoWidthLayoutBackend()
+      layout: layoutService
     }
   }))
 }
 
 const createStickyEditor = () => {
+  const layoutService = createEditorTestLayout(createLayoutBackend())
   const engine = engineApi.create({
-    document: createStickyDocument()
+    document: createStickyDocument(),
+    layout: layoutService
   })
 
   return trackEditor(editorApi.create({
@@ -251,7 +252,7 @@ const createStickyEditor = () => {
     },
     nodes: createNodes(),
     services: {
-      layout: createLayoutBackend()
+      layout: layoutService
     }
   }))
 }

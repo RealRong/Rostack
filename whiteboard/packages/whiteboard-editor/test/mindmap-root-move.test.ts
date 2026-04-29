@@ -5,6 +5,7 @@ import { product } from '@whiteboard/product'
 import { createMindmapDragSession } from '../src/input/features/mindmap/drag'
 import { editor as editorApi } from '../src'
 import type { NodeSpec } from '../src'
+import { createEditorTestLayout } from './support'
 
 const nodes: NodeSpec = {
   text: {
@@ -20,9 +21,6 @@ const nodes: NodeSpec = {
       connect: true,
       resize: true,
       rotate: true,
-      layout: {
-        kind: 'size'
-      },
       enter: true,
       edit: {
         fields: {
@@ -71,8 +69,10 @@ afterEach(() => {
 
 describe('mindmap root move', () => {
   it('moves the root topic together with the tree container', () => {
+    const layoutService = createEditorTestLayout()
     const engine = engineApi.create({
-      document: documentApi.create('doc_mindmap_root_move')
+      document: documentApi.create('doc_mindmap_root_move'),
+      layout: layoutService
     })
     const editor = trackEditor(editorApi.create({
       engine,
@@ -84,7 +84,10 @@ describe('mindmap root move', () => {
         center: { x: 0, y: 0 },
         zoom: 1
       },
-      nodes
+      nodes,
+      services: {
+        layout: layoutService
+      }
     }))
 
     const created = editor.write.mindmap.create({

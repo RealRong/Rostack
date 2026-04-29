@@ -5,6 +5,7 @@ import { editor as editorApi, type LayoutBackend } from '@whiteboard/editor'
 import type { NodeSpec } from '@whiteboard/editor'
 import { product } from '@whiteboard/product'
 import { createInsertBridge } from '../src/runtime/bridge/insert'
+import { createReactTestLayout } from './support'
 
 const nodes: NodeSpec = {
   text: {
@@ -20,9 +21,6 @@ const nodes: NodeSpec = {
       connect: true,
       resize: true,
       rotate: true,
-      layout: {
-        kind: 'size'
-      },
       enter: true,
       edit: {
         fields: {
@@ -74,8 +72,10 @@ const layout: LayoutBackend = {
 
 describe('mindmap insert position', () => {
   it('centers the inserted blank mindmap on the requested point', () => {
+    const layoutService = createReactTestLayout(layout)
     const engine = engineApi.create({
-      document: documentApi.create('doc_mindmap_insert_position')
+      document: documentApi.create('doc_mindmap_insert_position'),
+      layout: layoutService
     })
     const editor = editorApi.create({
       engine,
@@ -87,10 +87,10 @@ describe('mindmap insert position', () => {
         center: { x: 0, y: 0 },
         zoom: 1
       },
-      nodes,
-      services: {
-        layout
-      }
+    nodes,
+    services: {
+      layout: layoutService
+    }
     })
     const insert = createInsertBridge({
       editor,
@@ -115,8 +115,10 @@ describe('mindmap insert position', () => {
   })
 
   it('keeps the root anchor stable when the root width grows', () => {
+    const layoutService = createReactTestLayout(layout)
     const engine = engineApi.create({
-      document: documentApi.create('doc_mindmap_root_anchor')
+      document: documentApi.create('doc_mindmap_root_anchor'),
+      layout: layoutService
     })
     const editor = editorApi.create({
       engine,
@@ -128,10 +130,10 @@ describe('mindmap insert position', () => {
         center: { x: 0, y: 0 },
         zoom: 1
       },
-      nodes,
-      services: {
-        layout
-      }
+    nodes,
+    services: {
+      layout: layoutService
+    }
     })
 
     const created = editor.write.mindmap.create({

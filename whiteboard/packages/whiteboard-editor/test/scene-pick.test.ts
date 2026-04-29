@@ -3,6 +3,7 @@ import { document as documentApi } from '@whiteboard/core/document'
 import { engine as engineApi } from '@whiteboard/engine'
 import { editor as editorApi } from '../src'
 import type { NodeSpec } from '../src'
+import { createEditorTestLayout } from './support'
 
 const nodes: NodeSpec = {
   shape: {
@@ -97,8 +98,10 @@ const createPickDocument = () => {
 }
 
 const createPickEditor = () => {
+  const layoutService = createEditorTestLayout()
   const engine = engineApi.create({
-    document: createPickDocument()
+    document: createPickDocument(),
+    layout: layoutService
   })
 
   return trackEditor(editorApi.create({
@@ -114,7 +117,10 @@ const createPickEditor = () => {
       },
       zoom: 1
     },
-    nodes
+    nodes,
+    services: {
+      layout: layoutService
+    }
   }))
 }
 

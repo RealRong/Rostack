@@ -52,7 +52,7 @@ export const createMutationDelta = (input: {
   changes: EMPTY_MUTATION_CHANGE_MAP
 })
 
-export interface EditorGraphTextMeasureState {
+export interface EditorGraphLayoutState {
   nodeMeasures?: ReadonlyMap<NodeId, NodeDraftMeasure>
   edgeLabelMeasures?: ReadonlyMap<EdgeId, ReadonlyMap<string, Size>>
 }
@@ -66,7 +66,7 @@ const DEFAULT_LAYOUT_CATALOG: LayoutNodeCatalog = {
 }
 
 export const createEditorGraphLayout = (
-  read: () => EditorGraphTextMeasureState
+  read: () => EditorGraphLayoutState
  ) => createWhiteboardLayout({
   nodes: DEFAULT_LAYOUT_CATALOG,
   backend: {

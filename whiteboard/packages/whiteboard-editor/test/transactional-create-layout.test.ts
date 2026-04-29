@@ -3,6 +3,7 @@ import { document as documentApi } from '@whiteboard/core/document'
 import { engine as engineApi } from '@whiteboard/engine'
 import { product } from '@whiteboard/product'
 import { editor as editorApi, type LayoutBackend, type NodeSpec } from '../src'
+import { createEditorTestLayout } from './support'
 
 const nodes: NodeSpec = {
   text: {
@@ -18,9 +19,6 @@ const nodes: NodeSpec = {
       connect: true,
       resize: true,
       rotate: true,
-      layout: {
-        kind: 'size'
-      },
       enter: true,
       edit: {
         fields: {
@@ -45,9 +43,6 @@ const nodes: NodeSpec = {
       connect: true,
       resize: true,
       rotate: true,
-      layout: {
-        kind: 'fit'
-      },
       enter: true,
       edit: {
         fields: {
@@ -116,8 +111,10 @@ afterEach(() => {
 })
 
 const createTestEditor = () => {
+  const layoutService = createEditorTestLayout(layout)
   const engine = engineApi.create({
-    document: documentApi.create('doc_transactional_create_layout')
+    document: documentApi.create('doc_transactional_create_layout'),
+    layout: layoutService
   })
 
   return trackEditor(editorApi.create({
@@ -132,7 +129,7 @@ const createTestEditor = () => {
     },
     nodes,
     services: {
-      layout
+      layout: layoutService
     }
   }))
 }

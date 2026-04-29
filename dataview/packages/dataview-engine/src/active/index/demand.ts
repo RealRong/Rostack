@@ -26,6 +26,16 @@ const EMPTY_NORMALIZED_INDEX_DEMAND: NormalizedIndexDemand = {
 
 export const emptyNormalizedIndexDemand = (): NormalizedIndexDemand => EMPTY_NORMALIZED_INDEX_DEMAND
 
+export const writeNormalizedIndexDemandKey = (
+  demand: NormalizedIndexDemand
+): string => JSON.stringify({
+  recordFields: demand.recordFields,
+  search: demand.search,
+  buckets: demand.buckets.map(spec => bucket.key.write(spec)),
+  sortFields: demand.sortFields,
+  calculations: calculation.demand.normalize(demand.calculations)
+})
+
 const uniqueBucketSpecs = (
   specs: readonly BucketSpec[] = []
 ): readonly BucketSpec[] => {

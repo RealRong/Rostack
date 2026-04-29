@@ -5,6 +5,7 @@ import { editor as editorApi, type LayoutBackend } from '@whiteboard/editor'
 import type { NodeSpec } from '@whiteboard/editor'
 import { product } from '@whiteboard/product'
 import { createInsertBridge } from '../src/runtime/bridge/insert'
+import { createReactTestLayout } from './support'
 
 const nodes: NodeSpec = {
   text: {
@@ -20,9 +21,6 @@ const nodes: NodeSpec = {
       connect: true,
       resize: true,
       rotate: true,
-      layout: {
-        kind: 'size'
-      },
       enter: true,
       edit: {
         fields: {
@@ -47,9 +45,6 @@ const nodes: NodeSpec = {
       connect: true,
       resize: true,
       rotate: true,
-      layout: {
-        kind: 'fit'
-      },
       enter: true,
       edit: {
         fields: {
@@ -100,8 +95,10 @@ const layout: LayoutBackend = {
 }
 
 const createEditor = () => {
+  const layoutService = createReactTestLayout(layout)
   const engine = engineApi.create({
-    document: documentApi.create('doc_insert_focus')
+    document: documentApi.create('doc_insert_focus'),
+    layout: layoutService
   })
 
   return editorApi.create({
@@ -116,7 +113,7 @@ const createEditor = () => {
     },
     nodes,
     services: {
-      layout
+      layout: layoutService
     }
   })
 }

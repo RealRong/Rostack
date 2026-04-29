@@ -1,189 +1,105 @@
 import type {
-  FieldId,
-  View,
-  ViewId
-} from '@dataview/core/types'
-import { equal } from '@shared/core'
+  DataviewActiveFrame
+} from '@dataview/engine/active/frame'
 import type {
-  IndexDelta,
-  IndexState
-} from '@dataview/engine/active/index/contracts'
+  DataviewIndexResult
+} from '@dataview/engine/active/index/runtime'
+import type {
+  DataviewActivePlan
+} from '@dataview/engine/active/plan'
 import {
   deriveSummaryState,
   resolveSummaryTouchedSections
 } from '@dataview/engine/active/summary/derive'
 import type {
+  DataviewActiveState,
+  DataviewStageTrace,
   MembershipPhaseDelta,
   MembershipPhaseState,
-  PhaseAction,
   SummaryPhaseState
 } from '@dataview/engine/active/state'
 import {
-  EMPTY_MEMBERSHIP_PHASE_DELTA
+  EMPTY_SUMMARY_PHASE_DELTA
 } from '@dataview/engine/active/state'
 import { now } from '@dataview/engine/runtime/clock'
-import type {
-  DataviewMutationDelta
-} from '@dataview/engine/mutation/delta'
 import {
   createActiveStageMetrics
-} from '../projection/metrics'
+} from '@dataview/engine/active/projection/metrics'
 
-const resolveSummaryAction = (input: {
-  activeViewId: ViewId
-  previousViewId?: ViewId
-  delta: DataviewMutationDelta
-  indexDelta?: IndexDelta
-  view: View
-  calcFields: readonly FieldId[]
-  previous?: SummaryPhaseState
-  previousMembership?: MembershipPhaseState
+export const runSummaryStep = (input: {
+  active: DataviewActiveFrame
   membership: MembershipPhaseState
-  membershipAction: PhaseAction
   membershipDelta: MembershipPhaseDelta
+  index: DataviewIndexResult
+  plan: DataviewActivePlan
+  previous: DataviewActiveState
 }): {
-  action: PhaseAction
-  touchedSections?: ReadonlySet<string> | 'all'
+  state: SummaryPhaseState
+  delta: import('@dataview/engine/active/state').SummaryPhaseDelta
+  trace: DataviewStageTrace
 } => {
-  if (
-    !input.previous
-    || !input.previousMembership
-    || input.previousViewId !== input.activeViewId
-    || input.delta.document.activeViewChanged()
-  ) {
+  const action = input.plan.summary.action
+  if (action === 'reuse') {
     return {
-      action: 'rebuild'
-    }
-  }
-
-  if (!input.calcFields.length) {
-    return {
-      action: equal.sameOrder(
-        input.previousMembership.sections.order,
-        input.membership.sections.order
-      )
-        ? 'reuse'
-        : 'sync'
-    }
-  }
-
-  if (input.membershipAction === 'rebuild' || input.membershipDelta.rebuild) {
-    return {
-      action: 'rebuild'
-    }
-  }
-
-  const groupField = input.view.group?.fieldId
-  if (input.delta.view.calc(input.activeViewId).changed()) {
-    return {
-      action: 'rebuild'
-    }
-  }
-
-  for (const fieldId of input.calcFields) {
-    if (input.indexDelta?.calculation?.fields.get(fieldId)?.rebuild) {
-      return {
-        action: 'rebuild'
+      state: input.previous.summary,
+      delta: EMPTY_SUMMARY_PHASE_DELTA,
+      trace: {
+        action,
+        changed: false,
+        deriveMs: 0,
+        publishMs: 0,
+        metrics: createActiveStageMetrics({
+          inputCount: input.previous.summary.bySection.size,
+          outputCount: input.previous.summary.bySection.size,
+          reusedNodeCount: input.previous.summary.bySection.size,
+          rebuiltNodeCount: 0,
+          changedSectionCount: 0
+        })
       }
-    }
-
-    if (input.delta.field.schema.changed(fieldId)) {
-      return {
-        action: 'rebuild'
-      }
-    }
-  }
-
-  if (groupField && input.delta.field.schema.changed(groupField)) {
-    return {
-      action: 'rebuild'
     }
   }
 
   const touchedSections = resolveSummaryTouchedSections({
-    previousMembership: input.previousMembership,
+    previousMembership: input.previous.membership,
     membership: input.membership,
     membershipDelta: input.membershipDelta,
-    calcFields: input.calcFields,
-    calculationDelta: input.indexDelta?.calculation
-  })
-
-  if (
-    !equal.sameOrder(input.previousMembership.sections.order, input.membership.sections.order)
-    || input.membershipDelta.removed.length > 0
-    || touchedSections === 'all'
-    || touchedSections.size > 0
-  ) {
-    return {
-      action: 'sync',
-      touchedSections
-    }
-  }
-
-  return {
-    action: 'reuse',
-    touchedSections
-  }
-}
-
-export const runSummaryStage = (input: {
-  activeViewId: ViewId
-  previousViewId?: ViewId
-  delta: DataviewMutationDelta
-  indexDelta?: IndexDelta
-  view: View
-  calcFields: readonly FieldId[]
-  previous?: SummaryPhaseState
-  previousMembership?: MembershipPhaseState
-  membership: MembershipPhaseState
-  membershipAction: PhaseAction
-  membershipDelta: MembershipPhaseDelta
-  index: IndexState
-}) => {
-  const resolved = resolveSummaryAction({
-    activeViewId: input.activeViewId,
-    previousViewId: input.previousViewId,
-    delta: input.delta,
-    indexDelta: input.indexDelta,
-    view: input.view,
-    calcFields: input.calcFields,
-    previous: input.previous,
-    previousMembership: input.previousMembership,
-    membership: input.membership,
-    membershipAction: input.membershipAction,
-    membershipDelta: input.membershipDelta
+    calcFields: input.active.calc.fields,
+    calculationDelta: input.index.entry.delta?.calculation
   })
   const deriveStart = now()
   const derived = deriveSummaryState({
-    previous: input.previous,
-    previousMembership: input.previousMembership,
+    previous: input.previous.summary,
+    previousMembership: input.previous.membership,
     membership: input.membership,
     membershipDelta: input.membershipDelta,
-    calcFields: input.calcFields,
-    index: input.index,
-    calculationDelta: input.indexDelta?.calculation,
-    touchedSections: resolved.touchedSections,
-    action: resolved.action
+    calcFields: input.active.calc.fields,
+    index: input.index.entry.state,
+    calculationDelta: input.index.entry.delta?.calculation,
+    touchedSections,
+    action
   })
   const deriveMs = now() - deriveStart
   const outputCount = derived.state.bySection.size
-  const changedSectionCount = resolved.action === 'reuse'
-    ? 0
-    : derived.delta.rebuild
-      ? outputCount
-      : Math.min(outputCount, derived.delta.changed.length + derived.delta.removed.length)
+  const changedSectionCount = derived.delta.rebuild
+    ? outputCount
+    : Math.min(outputCount, derived.delta.changed.length + derived.delta.removed.length)
 
   return {
-    action: resolved.action,
     state: derived.state,
     delta: derived.delta,
-    deriveMs,
-    publishMs: 0,
-    metrics: createActiveStageMetrics({
-      inputCount: input.previous?.bySection.size,
-      outputCount,
-      changedNodeCount: changedSectionCount,
-      changedSectionCount
-    })
+    trace: {
+      action,
+      changed: derived.delta.rebuild
+        || derived.delta.changed.length > 0
+        || derived.delta.removed.length > 0,
+      deriveMs,
+      publishMs: 0,
+      metrics: createActiveStageMetrics({
+        inputCount: input.previous.summary.bySection.size,
+        outputCount,
+        changedNodeCount: changedSectionCount,
+        changedSectionCount
+      })
+    }
   }
 }

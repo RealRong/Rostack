@@ -4,6 +4,7 @@ import { engine as engineApi } from '@whiteboard/engine'
 import { product } from '@whiteboard/product'
 import { editor as editorApi } from '../src'
 import type { NodeSpec, PointerInput } from '../src'
+import { createEditorTestLayout } from './support'
 
 const nodes: NodeSpec = {
   text: {
@@ -19,9 +20,6 @@ const nodes: NodeSpec = {
       connect: true,
       resize: true,
       rotate: true,
-      layout: {
-        kind: 'size'
-      },
       enter: true,
       edit: {
         fields: {
@@ -82,8 +80,10 @@ const createPointerInput = (
 
 describe('mindmap layout preview runtime', () => {
   it('moves the whole live tree during root drag preview', () => {
+    const layoutService = createEditorTestLayout()
     const engine = engineApi.create({
-      document: documentApi.create('doc_mindmap_layout_preview_runtime')
+      document: documentApi.create('doc_mindmap_layout_preview_runtime'),
+      layout: layoutService
     })
     const editor = editorApi.create({
       engine,
@@ -95,7 +95,10 @@ describe('mindmap layout preview runtime', () => {
         center: { x: 0, y: 0 },
         zoom: 1
       },
-      nodes
+      nodes,
+      services: {
+        layout: layoutService
+      }
     })
 
     try {

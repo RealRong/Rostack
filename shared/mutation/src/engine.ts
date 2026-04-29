@@ -237,7 +237,7 @@ export interface MutationOptions {
 export type MutationEntityPatch = Readonly<Record<string, unknown>>
 
 export interface MutationEntitySpec {
-  kind: 'table' | 'singleton'
+  kind: 'table' | 'map' | 'singleton'
   members: Readonly<Record<string, 'field' | 'record'>>
   change?: Readonly<Record<string, readonly string[]>>
     | ((input: {
@@ -346,7 +346,7 @@ export interface MutationEngineOptions<
   document: Doc
   normalize(doc: Doc): Doc
   services?: Services
-  entities: Readonly<Record<string, MutationEntitySpec>>
+  entities?: Readonly<Record<string, MutationEntitySpec>>
   custom?: MutationCustomTable<Doc, Op, Services, Code>
   compile?: MutationCompileHandlerTable<Table, Doc, Op, Services, Code>
   history?: MutationHistoryOptions | false
@@ -386,7 +386,7 @@ type CompiledChangeRule = {
 
 type CompiledEntitySpec = {
   family: string
-  kind: 'table' | 'singleton'
+  kind: 'table' | 'map' | 'singleton'
   rootKey: string
   members: ReadonlyMap<string, CompiledMemberSpec>
   changeRules: readonly CompiledChangeRule[]
@@ -741,14 +741,16 @@ const compileEntitySpec = (
     }
   }
 
+  const rootKey = spec.kind === 'table' || spec.kind === 'map'
+    ? pluralizeFamily(family)
+    : family === DOCUMENT_FAMILY
+      ? ''
+      : family
+
   return {
     family,
     kind: spec.kind,
-    rootKey: spec.kind === 'table'
-      ? pluralizeFamily(family)
-      : family === DOCUMENT_FAMILY
-        ? ''
-        : family,
+    rootKey,
     members,
     changeRules,
     changeFn: typeof spec.change === 'function'
@@ -761,10 +763,10 @@ const compileEntitySpec = (
 }
 
 const compileEntities = (
-  entities: Readonly<Record<string, MutationEntitySpec>>
+  entities: Readonly<Record<string, MutationEntitySpec>> | undefined
 ): ReadonlyMap<string, CompiledEntitySpec> => {
   const compiled = new Map<string, CompiledEntitySpec>()
-  const entries = Object.entries(entities)
+  const entries = Object.entries(entities ?? {})
 
   for (let index = 0; index < entries.length; index += 1) {
     const [family, spec] = entries[index]!
@@ -1605,10 +1607,22 @@ const readSingletonPath = (
   spec: CompiledEntitySpec
 ): string => spec.rootKey
 
+const readTableByIdPath = (
+  spec: CompiledEntitySpec
+): string => spec.kind === 'table'
+  ? appendPath(spec.rootKey, 'byId')
+  : spec.rootKey
+
 const readTableEntityPath = (
   spec: CompiledEntitySpec,
   id: string
-): string => appendPath(spec.rootKey, id)
+): string => appendPath(readTableByIdPath(spec), id)
+
+const readTableIdsPath = (
+  spec: CompiledEntitySpec
+): string | undefined => spec.kind === 'table'
+  ? appendPath(spec.rootKey, 'ids')
+  : undefined
 
 const readEntityAtPath = (
   document: object,
@@ -1623,6 +1637,56 @@ const applyRootWrites = <Doc extends object>(
 ): Doc => Object.keys(writes).length === 0
   ? document
   : draft.record.apply(document, writes)
+
+const readTableIds = (
+  document: object,
+  spec: CompiledEntitySpec
+): readonly string[] | undefined => {
+  const path = readTableIdsPath(spec)
+  if (!path) {
+    return undefined
+  }
+  const ids = readEntityAtPath(document, path)
+  return Array.isArray(ids)
+    ? ids.filter((value): value is string => typeof value === 'string')
+    : undefined
+}
+
+const appendTableCreateWrites = (
+  writes: RecordWrite,
+  document: object,
+  spec: CompiledEntitySpec,
+  id: string
+) => {
+  const idsPath = readTableIdsPath(spec)
+  if (!idsPath) {
+    return
+  }
+  const currentIds = readTableIds(document, spec) ?? []
+  if (currentIds.includes(id)) {
+    writes[idsPath] = currentIds
+    return
+  }
+  writes[idsPath] = [...currentIds, id]
+}
+
+const appendTableDeleteWrites = (
+  writes: RecordWrite,
+  document: object,
+  spec: CompiledEntitySpec,
+  id: string
+) => {
+  const idsPath = readTableIdsPath(spec)
+  if (!idsPath) {
+    return
+  }
+  const currentIds = readTableIds(document, spec) ?? []
+  if (!currentIds.includes(id)) {
+    writes[idsPath] = currentIds
+    return
+  }
+  writes[idsPath] = currentIds.filter((currentId) => currentId !== id)
+}
 
 const createCanonicalCreateOperation = <Op extends { type: string }>(
   type: string,
@@ -1838,7 +1902,7 @@ const readCanonicalOperationResult = <
   const spec = input.spec
 
   try {
-    if (spec.kind === 'table') {
+    if (spec.kind !== 'singleton') {
       if (input.kind === 'create') {
         const value = readRequiredValue(spec.family, 'create', operation)
         const id = readEntityIdFromValue(spec.family, value)
@@ -1846,9 +1910,10 @@ const readCanonicalOperationResult = <
         if (readEntityAtPath(input.document, entityPath) !== undefined) {
           throw new Error(`Mutation operation "${spec.family}.create" found an existing entity "${id}".`)
         }
-        const writes = Object.freeze({
+        const writes: RecordWrite = {
           [entityPath]: cloneValue(value)
-        })
+        }
+        appendTableCreateWrites(writes, input.document, spec, id)
         const nextDocument = applyRootWrites(input.document, writes)
         const changedPaths = readEntitySnapshotPaths(spec, value)
 
@@ -1893,9 +1958,10 @@ const readCanonicalOperationResult = <
         if (current === undefined) {
           throw new Error(`Mutation operation "${spec.family}.delete" cannot find entity "${id}".`)
         }
-        const writes = Object.freeze({
+        const writes: RecordWrite = {
           [entityPath]: undefined
-        })
+        }
+        appendTableDeleteWrites(writes, input.document, spec, id)
         const nextDocument = applyRootWrites(input.document, writes)
         const changedPaths = readEntitySnapshotPaths(spec, current)
 

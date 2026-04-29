@@ -15,7 +15,7 @@ import type {
   TransformPreviewPatch
 } from '@whiteboard/core/node'
 import type {
-  NodeDraftMeasure,
+  NodeDraftMeasure as CoreNodeDraftMeasure,
   WhiteboardLayoutService
 } from '@whiteboard/core/layout'
 import type {
@@ -71,6 +71,8 @@ import type {
   EdgeStaticId,
   EdgeStaticView
 } from './render'
+
+export type NodeDraftMeasure = CoreNodeDraftMeasure
 import type { SpatialRead } from './spatial'
 import type { State } from './state'
 

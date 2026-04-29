@@ -1,10 +1,14 @@
 import type { DataDoc } from '@dataview/core/types'
-import type { IndexState } from '@dataview/engine/active/index/contracts'
-import type { ViewPlan } from '@dataview/engine/active/plan'
+import type {
+  DataviewIndexBank
+} from '@dataview/engine/active/index/runtime'
+import type {
+  DataviewLastActive
+} from '@dataview/engine/active/state'
 
 export interface ActiveProjectionState {
-  plan?: ViewPlan
-  index: IndexState
+  lastActive?: DataviewLastActive
+  index: DataviewIndexBank
 }
 
 export interface EngineState {

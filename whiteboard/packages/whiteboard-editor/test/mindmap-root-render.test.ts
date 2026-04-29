@@ -4,6 +4,7 @@ import { engine as engineApi } from '@whiteboard/engine'
 import { product } from '@whiteboard/product'
 import { editor as editorApi, type LayoutBackend, type NodeSpec } from '../src'
 import { createNodeTypeSupport, resolveNodeEditorCapability } from '../src/types/node'
+import { createEditorTestLayout } from './support'
 
 const nodes: NodeSpec = {
   text: {
@@ -19,9 +20,6 @@ const nodes: NodeSpec = {
       connect: true,
       resize: true,
       rotate: true,
-      layout: {
-        kind: 'size'
-      },
       enter: true,
       edit: {
         fields: {
@@ -90,8 +88,10 @@ afterEach(() => {
 })
 
 const createEditor = () => {
+  const layoutService = createEditorTestLayout(layout)
   const engine = engineApi.create({
-    document: documentApi.create('doc_mindmap_root_render')
+    document: documentApi.create('doc_mindmap_root_render'),
+    layout: layoutService
   })
 
   return trackEditor(editorApi.create({
@@ -106,7 +106,7 @@ const createEditor = () => {
     },
     nodes,
     services: {
-      layout
+      layout: layoutService
     }
   }))
 }

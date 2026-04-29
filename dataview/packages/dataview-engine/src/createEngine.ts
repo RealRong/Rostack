@@ -93,8 +93,7 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
     delta: createDataviewMutationDelta({
       reset: true,
       changes: EMPTY_MUTATION_CHANGE_MAP
-    }),
-    runtime: {}
+    })
   })
 
   const readCurrent = (): DataviewCurrent => {
@@ -110,8 +109,7 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
     const nextCommit = commit as EngineCommit
     const projectionResult = projection.update({
       document: nextCommit.document,
-      delta: createDataviewMutationDelta(nextCommit.delta),
-      runtime: {}
+      delta: createDataviewMutationDelta(nextCommit.delta)
     })
     const commitTrace = createDataviewCommitTrace({
       performance,

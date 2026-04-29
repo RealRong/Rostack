@@ -13,7 +13,7 @@ import { createEmptyInput, createEmptyRuntimeInputDelta } from '../src/testing/i
 import {
   createMutationDelta,
   createEditorGraphLayout,
-  type EditorGraphTextMeasureState
+  type EditorGraphLayoutState
 } from '../src/testing/builders'
 import { createWhiteboardMutationDelta } from '../src/mutation/delta'
 import { createEditorSceneProjectionHarness } from '../src/testing/runtime'
@@ -122,7 +122,7 @@ const createInput = (input: {
   return value
 }
 
-let currentMeasureState: EditorGraphTextMeasureState = {}
+let currentMeasureState: EditorGraphLayoutState = {}
 
 const createProjectionHarness = () => createEditorSceneProjectionHarness({
   layout: createEditorGraphLayout(

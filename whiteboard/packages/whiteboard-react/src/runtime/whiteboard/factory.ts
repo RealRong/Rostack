@@ -62,11 +62,12 @@ export const createEditor = (input: {
 }): Editor => {
   const document = normalizeDocument(input.document)
   const textSources = createTextSourceStore()
+  const backend = createLayoutBackend({
+    textSources
+  })
   const layout = createWhiteboardLayout({
     nodes: input.spec.layout,
-    backend: createLayoutBackend({
-      textSources
-    })
+    backend
   })
   const engine = engineApi.create({
     document,
@@ -116,6 +117,11 @@ export const createEditor = (input: {
       }
     }
   })
+  const disposeEditor = editor.dispose
+  editor.dispose = () => {
+    disposeEditor()
+    backend.dispose?.()
+  }
 
   editorState.set(editor, {
     spec: input.spec,

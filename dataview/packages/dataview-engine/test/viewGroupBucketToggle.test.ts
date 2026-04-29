@@ -1502,10 +1502,68 @@ test('engine commits stream emits shared apply commits for execute', () => {
   assert.equal(writes[0]?.origin, 'user')
   assert.deepEqual(writes[0]?.delta, {
     changes: {
-      'document.activeViewId': true,
-      'view.create': createdViewId
-        ? [createdViewId]
-        : []
+      'document.activeViewId': {
+        ids: 'all'
+      },
+      'view.create': {
+        ids: createdViewId
+          ? [createdViewId]
+          : []
+      },
+      'view.layout': {
+        ids: createdViewId
+          ? [createdViewId]
+          : [],
+        paths: createdViewId
+          ? {
+              [createdViewId]: [
+                'display',
+                'display.fields',
+                'name',
+                'options',
+                'options.showVerticalLines',
+                'options.widths',
+                'options.wrap',
+                'type'
+              ]
+            }
+          : {}
+      },
+      'view.query': {
+        ids: createdViewId
+          ? [createdViewId]
+          : [],
+        paths: createdViewId
+          ? {
+              [createdViewId]: [
+                'filter',
+                'filter.mode',
+                'filter.rules',
+                'filter.rules.byId',
+                'filter.rules.ids',
+                'orders',
+                'search',
+                'search.query',
+                'sort',
+                'sort.rules',
+                'sort.rules.byId',
+                'sort.rules.ids'
+              ]
+            }
+          : {}
+      },
+      'view.calc': {
+        ids: createdViewId
+          ? [createdViewId]
+          : [],
+        paths: createdViewId
+          ? {
+              [createdViewId]: [
+                'calc'
+              ]
+            }
+          : {}
+      }
     }
   })
 })
@@ -1549,7 +1607,9 @@ test('engine apply emits shared apply commits', () => {
   assert.equal(writes[0]?.forward.length, 1)
   assert.deepEqual(writes[0]?.delta, {
     changes: {
-      'external.version': true
+      'external.version': {
+        ids: 'all'
+      }
     }
   })
 })

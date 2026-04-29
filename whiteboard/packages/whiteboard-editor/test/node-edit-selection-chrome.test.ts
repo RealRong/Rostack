@@ -3,6 +3,7 @@ import { document as documentApi } from '@whiteboard/core/document'
 import { engine as engineApi } from '@whiteboard/engine'
 import { editor as editorApi } from '../src'
 import type { NodeSpec, PointerInput } from '../src'
+import { createEditorTestLayout } from './support'
 
 const nodes: NodeSpec = {
   text: {
@@ -18,9 +19,6 @@ const nodes: NodeSpec = {
       connect: true,
       resize: true,
       rotate: true,
-      layout: {
-        kind: 'size'
-      },
       enter: true,
       edit: {
         fields: {
@@ -83,6 +81,7 @@ afterEach(() => {
 })
 
 const createTextEditor = () => {
+  const layout = createEditorTestLayout()
   const document = documentApi.create('doc_node_edit_selection_chrome')
   document.nodes['text-1'] = {
     id: 'text-1',
@@ -99,7 +98,8 @@ const createTextEditor = () => {
   }]
 
   const engine = engineApi.create({
-    document
+    document,
+    layout
   })
 
   return trackEditor(editorApi.create({
@@ -112,11 +112,15 @@ const createTextEditor = () => {
       center: { x: 0, y: 0 },
       zoom: 1
     },
-    nodes
+    nodes,
+    services: {
+      layout
+    }
   }))
 }
 
 const createShapeEditor = () => {
+  const layout = createEditorTestLayout()
   const document = documentApi.create('doc_shape_selection_toolbar_write')
   document.nodes['shape-1'] = {
     id: 'shape-1',
@@ -138,7 +142,8 @@ const createShapeEditor = () => {
   }]
 
   const engine = engineApi.create({
-    document
+    document,
+    layout
   })
 
   return trackEditor(editorApi.create({
@@ -151,7 +156,10 @@ const createShapeEditor = () => {
       center: { x: 0, y: 0 },
       zoom: 1
     },
-    nodes
+    nodes,
+    services: {
+      layout
+    }
   }))
 }
 
@@ -187,6 +195,7 @@ const createPointerInput = (
 })
 
 const createMindmapEditor = () => {
+  const layout = createEditorTestLayout()
   const document = documentApi.create('doc_mindmap_root_edit_selection_chrome')
   document.nodes['root-1'] = {
     id: 'root-1',
@@ -230,7 +239,8 @@ const createMindmapEditor = () => {
   }]
 
   const engine = engineApi.create({
-    document
+    document,
+    layout
   })
 
   return trackEditor(editorApi.create({
@@ -243,11 +253,15 @@ const createMindmapEditor = () => {
       center: { x: 0, y: 0 },
       zoom: 1
     },
-    nodes
+    nodes,
+    services: {
+      layout
+    }
   }))
 }
 
 const createEdgeEditor = () => {
+  const layout = createEditorTestLayout()
   const document = documentApi.create('doc_edge_label_toolbar_hidden')
   document.nodes['node-1'] = {
     id: 'node-1',
@@ -293,7 +307,8 @@ const createEdgeEditor = () => {
   ]
 
   const engine = engineApi.create({
-    document
+    document,
+    layout
   })
 
   return trackEditor(editorApi.create({
@@ -306,7 +321,10 @@ const createEdgeEditor = () => {
       center: { x: 0, y: 0 },
       zoom: 1
     },
-    nodes
+    nodes,
+    services: {
+      layout
+    }
   }))
 }
 

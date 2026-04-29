@@ -1,6 +1,5 @@
 import type {
-  RecordId,
-  SectionId
+  RecordId
 } from '@dataview/core/types'
 import type {
   Intent as CoreIntent
@@ -10,7 +9,8 @@ import {
 } from '@dataview/core/view'
 import { createId } from '@shared/core'
 import type {
-  ItemId
+  ItemId,
+  SectionId
 } from '@dataview/engine/contracts/shared'
 import type {
   ActiveRecordsApi,

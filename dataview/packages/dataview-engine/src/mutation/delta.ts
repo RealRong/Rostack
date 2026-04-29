@@ -81,6 +81,9 @@ export type DataviewMutationDelta = MutationDelta & {
   }
   view: {
     touchedIds(): ReadonlySet<ViewId> | 'all'
+    layout(viewId: ViewId): {
+      changed(): boolean
+    }
     query(viewId: ViewId): {
       changed(aspect?: DataviewQueryAspect): boolean
     }
@@ -380,6 +383,9 @@ export const createDataviewMutationDelta = (
         },
         view: {
           touchedIds: readViewTouchedIds,
+          layout: (viewId: ViewId) => ({
+            changed: () => context.changed('view.layout', viewId)
+          }),
           query: (viewId: ViewId) => ({
             changed: (aspect?: DataviewQueryAspect) => aspect === undefined
               ? context.changed('view.query', viewId)
@@ -431,9 +437,9 @@ export const createDataviewMutationDelta = (
           pushFact('view.layout', countIds(context.ids('view.layout')))
           pushFact('view.calc', countIds(context.ids('view.calc')))
           pushFact('view.remove', countIds(context.ids('view.delete')))
-          pushFact('activeView.set', raw.changes.get('document.activeViewId') ? 1 : undefined)
-          pushFact('external.version', raw.changes.get('external.version') ? 1 : undefined)
-          pushFact('reset', raw.reset === true ? 1 : undefined)
+          pushFact('activeView.set', context.raw.changes.get('document.activeViewId') ? 1 : undefined)
+          pushFact('external.version', context.raw.changes.get('external.version') ? 1 : undefined)
+          pushFact('reset', context.raw.reset === true ? 1 : undefined)
 
           return {
             summary: {

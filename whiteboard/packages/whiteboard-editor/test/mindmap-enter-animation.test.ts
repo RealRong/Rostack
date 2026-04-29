@@ -3,6 +3,7 @@ import { document as documentApi } from '@whiteboard/core/document'
 import { engine as engineApi } from '@whiteboard/engine'
 import { product } from '@whiteboard/product'
 import { editor as editorApi, type LayoutBackend, type NodeSpec } from '../src'
+import { createEditorTestLayout } from './support'
 
 const nodes: NodeSpec = {
   text: {
@@ -18,9 +19,6 @@ const nodes: NodeSpec = {
       connect: true,
       resize: true,
       rotate: true,
-      layout: {
-        kind: 'size'
-      },
       enter: true,
       edit: {
         fields: {
@@ -71,8 +69,10 @@ const layout: LayoutBackend = {
 }
 
 const createEditor = () => {
+  const layoutService = createEditorTestLayout(layout)
   const engine = engineApi.create({
-    document: documentApi.create('doc_mindmap_enter_animation')
+    document: documentApi.create('doc_mindmap_enter_animation'),
+    layout: layoutService
   })
 
   return editorApi.create({
@@ -87,7 +87,7 @@ const createEditor = () => {
     },
     nodes,
     services: {
-      layout
+      layout: layoutService
     }
   })
 }

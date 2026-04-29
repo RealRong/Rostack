@@ -4,6 +4,7 @@ import { engine as engineApi } from '@whiteboard/engine'
 import { product } from '@whiteboard/product'
 import { editor as editorApi } from '../src'
 import type { LayoutBackend, NodeSpec } from '../src'
+import { createEditorTestLayout } from './support'
 
 const nodes: NodeSpec = {
   text: {
@@ -19,9 +20,6 @@ const nodes: NodeSpec = {
       connect: true,
       resize: true,
       rotate: true,
-      layout: {
-        kind: 'size'
-      },
       enter: true,
       edit: {
         fields: {
@@ -91,8 +89,10 @@ afterEach(() => {
 
 describe('mindmap edit relayout preview', () => {
   it('relayouts child nodes while the root text edit size changes', () => {
+    const layoutService = createEditorTestLayout(layout)
     const engine = engineApi.create({
-      document: documentApi.create('doc_mindmap_edit_relayout_preview')
+      document: documentApi.create('doc_mindmap_edit_relayout_preview'),
+      layout: layoutService
     })
     const editor = trackEditor(editorApi.create({
       engine,
@@ -106,7 +106,7 @@ describe('mindmap edit relayout preview', () => {
       },
       nodes,
       services: {
-        layout
+        layout: layoutService
       }
     }))
 
@@ -157,8 +157,10 @@ describe('mindmap edit relayout preview', () => {
   })
 
   it('updates topic width through actual edit input while editing', () => {
+    const layoutService = createEditorTestLayout(layout)
     const engine = engineApi.create({
-      document: documentApi.create('doc_mindmap_topic_edit_width_preview')
+      document: documentApi.create('doc_mindmap_topic_edit_width_preview'),
+      layout: layoutService
     })
     const editor = trackEditor(editorApi.create({
       engine,
@@ -172,7 +174,7 @@ describe('mindmap edit relayout preview', () => {
       },
       nodes,
       services: {
-        layout
+        layout: layoutService
       }
     }))
 
@@ -246,8 +248,10 @@ describe('mindmap edit relayout preview', () => {
       }
     }
 
+    const layoutService = createEditorTestLayout(heightAwareLayout)
     const engine = engineApi.create({
-      document: documentApi.create('doc_mindmap_edit_relayout_preview_height')
+      document: documentApi.create('doc_mindmap_edit_relayout_preview_height'),
+      layout: layoutService
     })
     const editor = trackEditor(editorApi.create({
       engine,
@@ -261,7 +265,7 @@ describe('mindmap edit relayout preview', () => {
       },
       nodes,
       services: {
-        layout: heightAwareLayout
+        layout: layoutService
       }
     }))
 
@@ -348,8 +352,10 @@ describe('mindmap edit relayout preview', () => {
       }
     }
 
+    const layoutService = createEditorTestLayout(heightAwareLayout)
     const engine = engineApi.create({
-      document: documentApi.create('doc_mindmap_edit_relayout_preview_subscription')
+      document: documentApi.create('doc_mindmap_edit_relayout_preview_subscription'),
+      layout: layoutService
     })
     const editor = trackEditor(editorApi.create({
       engine,
@@ -363,7 +369,7 @@ describe('mindmap edit relayout preview', () => {
       },
       nodes,
       services: {
-        layout: heightAwareLayout
+        layout: layoutService
       }
     }))
 

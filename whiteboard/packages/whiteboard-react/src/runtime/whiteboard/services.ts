@@ -62,6 +62,7 @@ export const isMirroredDocumentFromEngine = (
 
 export type WhiteboardRuntimeServices = WhiteboardServicesContextValue & {
   history: HistoryPort<IntentResult>
+  dispose(): void
   setHistorySource(next: HistoryPort<IntentResult>): void
   resetHistorySource(): void
 }
@@ -125,11 +126,12 @@ export const createWhiteboardServices = ({
   const initialDrawState: DrawState = product.draw.defaults
   const nodes = compileNodeSpec(spec.nodes)
   const textSources = createTextSourceStore()
+  const backend = createLayoutBackend({
+    textSources
+  })
   const layout = createWhiteboardLayout({
     nodes: spec.layout,
-    backend: createLayoutBackend({
-      textSources
-    })
+    backend
   })
   const engine = engineApi.create({
     registries: coreRegistries,
@@ -223,6 +225,10 @@ export const createWhiteboardServices = ({
     editor,
     engine,
     history: history.port,
+    dispose: () => {
+      editor.dispose()
+      backend.dispose?.()
+    },
     setHistorySource: history.set,
     resetHistorySource: history.reset,
     spec,

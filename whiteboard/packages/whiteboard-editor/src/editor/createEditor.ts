@@ -81,8 +81,7 @@ export const createEditor = (input: {
     engine: input.engine,
     history: input.history,
     document,
-    projection: scene,
-    layout
+    projection: scene
   })
   const tool = createToolService({
     session

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { Node } from '@whiteboard/core/types'
 import { createTransformSession } from '../src/input/features/transform'
+import { createEditorTestLayout } from './support'
 
 const createTextNode = (
   overrides: Partial<Node> = {}
@@ -63,13 +64,6 @@ const createTransformContext = ({
   node,
   projectedRect,
   updates,
-  measure = () => ({
-    kind: 'size' as const,
-    size: {
-      width: projectedRect.width,
-      height: projectedRect.height
-    }
-  })
 }: {
   node: Node
   projectedRect: {
@@ -99,13 +93,6 @@ const createTransformContext = ({
       }[]
     }
   }[]
-  measure?: () => {
-    kind: 'size'
-    size: {
-      width: number
-      height: number
-    }
-  }
 }) => ({
   projection: {
     query: {
@@ -142,18 +129,15 @@ const createTransformContext = ({
       })
     }
   },
-  measure,
-  nodes: {
-    get: (type: string) => type === 'text'
-      ? {
-          behavior: {
-            layout: {
-              kind: 'size' as const
-            }
-          }
-        }
-      : undefined
-  },
+  layout: createEditorTestLayout({
+    measure: () => ({
+      kind: 'size',
+      size: {
+        width: projectedRect.width,
+        height: projectedRect.height
+      }
+    })
+  }),
   write: {
     node: {
       updateMany: (nextUpdates: typeof updates) => {

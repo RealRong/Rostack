@@ -1,15 +1,13 @@
 import type {
-  ViewState
-} from '@dataview/engine/contracts/view'
+  DataviewActiveFrame,
+  DataviewFrame
+} from '@dataview/engine/active/frame'
 import type {
-  ItemId,
-  ItemList,
-  SectionId,
-  SectionList,
-  ViewRecords,
-  ViewSummaries
-} from '@dataview/engine/contracts/shared'
+  DataviewActivePlan
+} from '@dataview/engine/active/plan'
 import type {
+  DataviewActiveState,
+  DataviewStageTrace,
   MembershipPhaseState,
   QueryPhaseState,
   SummaryPhaseState
@@ -27,18 +25,23 @@ import {
   publishSummaries
 } from '@dataview/engine/active/publish/summaries'
 import type {
-  DocumentReader
-} from '@dataview/engine/document/reader'
-import { now } from '@dataview/engine/runtime/clock'
+  ViewState
+} from '@dataview/engine/contracts/view'
 import type {
-  View,
-  ViewId
-} from '@dataview/core/types'
-import type { ItemIdPool } from './itemIdPool'
-import type { EntityDelta } from '@shared/delta'
+  ItemId,
+  ItemPlacement,
+  Section,
+  SectionId,
+  ViewRecords,
+  ViewSummaries
+} from '@dataview/engine/contracts/shared'
+import type {
+  EntityDelta
+} from '@shared/delta'
+import { now } from '@dataview/engine/runtime/clock'
 import {
   createActiveStageMetrics
-} from '../projection/metrics'
+} from '@dataview/engine/active/projection/metrics'
 
 const SNAPSHOT_KEYS = [
   'view',
@@ -77,77 +80,87 @@ const publishViewRecords = (input: {
   }
 }
 
-export const runPublishStage = (input: {
-  reader: DocumentReader
-  activeViewId: ViewId
-  previous?: ViewState
-  view: View
-  queryState: QueryPhaseState
-  previousRecords?: ViewRecords
-  membershipState: MembershipPhaseState
-  previousMembershipState?: MembershipPhaseState
-  previousSections?: SectionList
-  previousItems?: ItemList
-  summaryState: SummaryPhaseState
-  previousSummaryState?: SummaryPhaseState
-  previousSummaries?: ViewSummaries
-  itemIds: ItemIdPool
+export const publishActiveView = (input: {
+  frame: DataviewFrame
+  active: DataviewActiveFrame
+  plan: DataviewActivePlan
+  query: QueryPhaseState
+  membership: MembershipPhaseState
+  summary: SummaryPhaseState
+  previous: DataviewActiveState
 }): {
-  action: 'reuse' | 'sync' | 'rebuild'
   snapshot?: ViewState
   sectionPatch?: EntityDelta<SectionId>
   itemPatch?: EntityDelta<ItemId>
-  deriveMs: number
-  publishMs: number
-  metrics: ReturnType<typeof createActiveStageMetrics>
+  trace: DataviewStageTrace
 } => {
+  const action = input.plan.publish.action
+  const previous = input.previous.snapshot
+  if (action === 'reuse') {
+    return {
+      snapshot: previous,
+      trace: {
+        action,
+        changed: false,
+        deriveMs: 0,
+        publishMs: 0,
+        metrics: createActiveStageMetrics({
+          inputCount: previous ? SNAPSHOT_KEYS.length : 0,
+          outputCount: previous ? SNAPSHOT_KEYS.length : 0,
+          reusedNodeCount: previous ? SNAPSHOT_KEYS.length : 0,
+          rebuiltNodeCount: 0
+        })
+      }
+    }
+  }
+
   const publishStart = now()
-  const canReusePublished = input.previous?.view.id === input.activeViewId
+  const canReusePublished = previous?.view.id === input.active.id
   if (!canReusePublished) {
-    input.itemIds.gc.clear()
+    input.previous.itemIds.gc.clear()
   }
   const records = publishViewRecords({
-    state: input.queryState,
+    state: input.query,
     previous: canReusePublished
-      ? input.previousRecords
+      ? previous?.records
       : undefined
   })
   const sections = publishSections({
-    view: input.view,
-    sections: input.membershipState,
+    view: input.active.view,
+    sections: input.membership,
     previousSections: canReusePublished
-      ? input.previousMembershipState
+      ? input.previous.membership
       : undefined,
-    itemIds: input.itemIds,
-    previous: canReusePublished && input.previousSections && input.previousItems
+    itemIds: input.previous.itemIds,
+    previous: canReusePublished && previous?.sections && previous?.items
       ? {
-          sections: input.previousSections,
-          items: input.previousItems
+          sections: previous.sections,
+          items: previous.items
         }
       : undefined
   })
   const summaries = publishSummaries({
-    summary: input.summaryState,
+    summary: input.summary,
     previousSummary: canReusePublished
-      ? input.previousSummaryState
+      ? input.previous.summary
       : undefined,
     previous: canReusePublished
-      ? input.previousSummaries
+      ? previous?.summaries
       : undefined,
-    reader: input.reader,
-    view: input.view
+    reader: input.frame.reader,
+    view: input.active.view
   })
   const base = publishViewBase({
-    reader: input.reader,
-    viewId: input.activeViewId,
-    previous: canReusePublished && input.previous
+    reader: input.frame.reader,
+    viewId: input.active.id,
+    previous: canReusePublished && previous
       ? {
-          view: input.previous.view,
-          query: input.previous.query,
-          fields: input.previous.fields,
-          table: input.previous.table,
-          gallery: input.previous.gallery,
-          kanban: input.previous.kanban
+          view: previous.view,
+          query: previous.query,
+          fields: previous.fields,
+          table: previous.table,
+          gallery: previous.gallery,
+          kanban: previous.kanban
         }
       : undefined
   })
@@ -167,7 +180,7 @@ export const runPublishStage = (input: {
     : undefined
   const published = nextSnapshot
     ? publishStruct({
-        previous: input.previous,
+        previous,
         next: nextSnapshot,
         keys: SNAPSHOT_KEYS
       })
@@ -177,14 +190,6 @@ export const runPublishStage = (input: {
   const outputCount = SNAPSHOT_KEYS.length
 
   return {
-    action: !input.previous
-      ? 'rebuild'
-      : snapshot === input.previous
-        ? 'reuse'
-        : input.previous.view.id !== snapshot?.view.id
-            || input.previous.view.type !== snapshot?.view.type
-          ? 'rebuild'
-          : 'sync',
     snapshot,
     ...(sections.delta?.sections
       ? {
@@ -196,15 +201,19 @@ export const runPublishStage = (input: {
           itemPatch: sections.delta.items
         }
       : {}),
-    deriveMs: 0,
-    publishMs,
-    metrics: createActiveStageMetrics({
-      inputCount: input.previous
-        ? outputCount
-        : 0,
-      outputCount,
-      reusedNodeCount: published?.reusedNodeCount ?? 0,
-      rebuiltNodeCount: published?.rebuiltNodeCount ?? outputCount
-    })
+    trace: {
+      action,
+      changed: snapshot !== previous,
+      deriveMs: 0,
+      publishMs,
+      metrics: createActiveStageMetrics({
+        inputCount: previous
+          ? outputCount
+          : 0,
+        outputCount,
+        reusedNodeCount: published?.reusedNodeCount ?? 0,
+        rebuiltNodeCount: published?.rebuiltNodeCount ?? outputCount
+      })
+    }
   }
 }

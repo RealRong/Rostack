@@ -19,7 +19,7 @@ export const whiteboardEntities = {
     }
   },
   node: {
-    kind: 'table',
+    kind: 'map',
     members: {
       type: 'field',
       position: 'field',
@@ -38,7 +38,7 @@ export const whiteboardEntities = {
     }
   },
   edge: {
-    kind: 'table',
+    kind: 'map',
     members: {
       source: 'field',
       target: 'field',
@@ -60,7 +60,7 @@ export const whiteboardEntities = {
     }
   },
   group: {
-    kind: 'table',
+    kind: 'map',
     members: {
       locked: 'field',
       name: 'field'
@@ -70,7 +70,7 @@ export const whiteboardEntities = {
     }
   },
   mindmap: {
-    kind: 'table',
+    kind: 'map',
     members: {
       root: 'field',
       members: 'record',

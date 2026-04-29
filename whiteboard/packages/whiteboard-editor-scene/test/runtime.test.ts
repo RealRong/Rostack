@@ -17,7 +17,7 @@ import {
   createEditorRuntimeDelta,
   createMutationDelta,
   createEditorGraphLayout,
-  type EditorGraphTextMeasureState
+  type EditorGraphLayoutState
 } from '../src/testing/builders'
 import {
   createEditorSceneHarness
@@ -44,11 +44,11 @@ type RuntimeInputOptions = {
   documentDelta?: EditorSceneInput['delta'] | MutationDelta
 }
 
-let currentMeasureState: EditorGraphTextMeasureState = {}
+let currentMeasureState: EditorGraphLayoutState = {}
 
 const toNodeMeasureMap = (
   input?: ReadonlyMap<NodeId, Size>
-): ReadonlyMap<NodeId, EditorGraphTextMeasureState['nodeMeasures'] extends ReadonlyMap<NodeId, infer TValue> ? TValue : never> | undefined => input
+): ReadonlyMap<NodeId, EditorGraphLayoutState['nodeMeasures'] extends ReadonlyMap<NodeId, infer TValue> ? TValue : never> | undefined => input
   ? new Map(
       [...input].map(([nodeId, size]) => [
         nodeId,

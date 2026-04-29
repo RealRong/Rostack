@@ -12,3 +12,5 @@
   `runtime/performance.ts`还需要自己去造一套performance收集器吗，能沉到底层吗，既然我们的delta都是统一的了
 
   检查一下dataview和whiteboard有没有全吃shared基础设施，还存不存在第二套实现的问题
+
+  你觉得 dataview/packages/dataview-engine/src/active/plan.ts  reasons结构如何？算是优化还是退化？

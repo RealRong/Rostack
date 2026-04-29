@@ -1,441 +1,209 @@
 import { describe, expect, test } from 'vitest'
 import {
   MutationEngine,
+  type MutationEntitySpec,
   type MutationIntentTable,
-  type MutationKeySpec,
-  type MutationReduceSpec
+  type MutationCurrent
 } from '@shared/mutation'
 
+type ItemId = `item_${number}`
+
+type Item = {
+  id: ItemId
+  title: string
+}
+
 type TestDoc = {
-  count: number
+  items: {
+    ids: ItemId[]
+    byId: Partial<Record<ItemId, Item>>
+  }
+  activeItemId?: ItemId
 }
 
 type TestOp =
   | {
-      type: 'count.add'
-      value: number
+      type: 'item.create'
+      value: Item
     }
   | {
-      type: 'count.reset'
-      value: number
+      type: 'item.patch'
+      id: ItemId
+      patch: Partial<Pick<Item, 'title'>>
     }
-
-type TestKey = 'count'
-
-type TestPublish = {
-  count: number
-}
-
-type TestCache = {
-  previousCount: number
-}
-
-type TestExtra = {
-  total: number
-}
-
-type TestReduce = MutationReduceSpec<
-  TestDoc,
-  TestOp,
-  TestKey,
-  TestExtra,
-  import('@shared/reducer').ReducerContext<TestDoc, TestOp, TestKey> & {
-    total: number
-  }
->
-
-const testKey: MutationKeySpec<TestKey> = {
-  serialize: (key) => key,
-  conflicts: (left, right) => left === right
-}
+  | {
+      type: 'document.patch'
+      patch: Partial<Pick<TestDoc, 'activeItemId'>>
+    }
 
 interface TestIntentTable extends MutationIntentTable {
-  'count.add': {
+  'item.add': {
     intent: {
-      type: 'count.add'
-      value: number
+      type: 'item.add'
+      id: ItemId
+      title: string
     }
-    output: number
+    output: ItemId
+  }
+  'item.open': {
+    intent: {
+      type: 'item.open'
+      id: ItemId
+    }
+    output: ItemId
   }
 }
 
-const createEngineInput = () => ({
-  normalize: (doc) => doc,
-  key: testKey,
-  operations: {
-    'count.add': {
-      family: 'count',
-      footprint: (ctx: import('@shared/reducer').ReducerContext<TestDoc, TestOp, TestKey>, _op: TestOp) => {
-        ctx.footprint('count')
-      },
-      apply: (ctx: import('@shared/reducer').ReducerContext<TestDoc, TestOp, TestKey> & { total: number }, op: Extract<TestOp, { type: 'count.add' }>) => {
-        ctx.total += op.value
-        ctx.inverseMany([{
-          type: 'count.add',
-          value: -op.value
-        }])
-        ctx.replace({
-          count: ctx.doc().count + op.value
-        })
-      }
+const entities = {
+  item: {
+    kind: 'table',
+    members: {
+      title: 'field'
     },
-    'count.reset': {
-      family: 'count',
-      sync: 'checkpoint',
-      footprint: (ctx: import('@shared/reducer').ReducerContext<TestDoc, TestOp, TestKey>) => {
-        ctx.footprint('count')
-      },
-      apply: (ctx: import('@shared/reducer').ReducerContext<TestDoc, TestOp, TestKey> & { total: number }, op: Extract<TestOp, { type: 'count.reset' }>) => {
-        const previous = ctx.doc().count
-        ctx.total = op.value
-        ctx.inverseMany([{
-          type: 'count.reset',
-          value: previous
-        }])
-        ctx.replace({
-          count: op.value
-        })
-      }
+    change: {
+      title: ['title']
     }
   },
-  reduce: {
-    createContext: (ctx) => ({
-      ...ctx,
-      total: 0
-    }),
-    validate: ({
-      ops
-    }) => {
-      if (ops.some((op) => op.type === 'count.add' && op.value === 13)) {
-        return {
-          code: 'invalid',
-          message: 'Cannot apply.'
-        }
-      }
-      return undefined
+  document: {
+    kind: 'singleton',
+    members: {
+      activeItemId: 'field'
     },
-    done: (ctx) => ({
-      total: ctx.doc().count
-    })
-  } satisfies TestReduce,
-  compile: ({
-    intents
-  }) => ({
-    ops: intents.map((intent) => ({
-      type: 'count.add' as const,
-      value: intent.value
-    })),
-    outputs: intents.map((intent) => intent.value)
-  }),
-  publish: {
-    init: (doc) => ({
-      publish: {
-        count: doc.count
-      },
-      cache: {
-        previousCount: doc.count
-      }
-    }),
-    reduce: ({
-      prev,
-      doc
-    }) => ({
-      publish: {
-        count: doc.count
-      },
-      cache: {
-        previousCount: prev.doc.count
-      }
-    })
+    change: {
+      activeItemId: ['activeItemId']
+    }
+  }
+} as const satisfies Readonly<Record<string, MutationEntitySpec>>
+
+const createDocument = (): TestDoc => ({
+  items: {
+    ids: [],
+    byId: {}
   },
-  history: {
-    capacity: 10
+  activeItemId: undefined
+})
+
+const createEngine = () => new MutationEngine<
+  TestDoc,
+  TestIntentTable,
+  TestOp
+>({
+  document: createDocument(),
+  normalize: (document) => document,
+  entities,
+  compile: {
+    'item.add': ({ intent, emit, output }) => {
+      emit({
+        type: 'item.create',
+        value: {
+          id: intent.id,
+          title: intent.title
+        }
+      })
+      output(intent.id)
+    },
+    'item.open': ({ intent, emit, output }) => {
+      emit({
+        type: 'document.patch',
+        patch: {
+          activeItemId: intent.id
+        }
+      })
+      output(intent.id)
+    }
   }
 })
 
-describe('MutationEngine', () => {
-  test('executes a typed intent and publishes commits/history', () => {
-    const engine = new MutationEngine({
-      document: {
-        count: 1
-      },
-      ...createEngineInput()
-    })
-    const states: number[] = []
-    const commits: number[] = []
+describe('MutationEngine current API', () => {
+  test('applies canonical entity operations and emits watch/commit updates', () => {
+    const engine = createEngine()
+    const commits: string[] = []
+    const snapshots: MutationCurrent<TestDoc>[] = []
 
-    engine.subscribe((current) => {
-      states.push(current.doc.count)
+    engine.subscribe((commit) => {
+      commits.push(commit.kind)
     })
-    engine.commits.subscribe((commit) => {
-      if (commit.kind === 'apply') {
-        commits.push(commit.doc.count)
+    engine.watch((current) => {
+      snapshots.push(current)
+    })
+
+    const result = engine.apply({
+      type: 'item.create',
+      value: {
+        id: 'item_1',
+        title: 'First'
       }
-    })
-
-    const result = engine.execute({
-      type: 'count.add',
-      value: 2
     })
 
     expect(result.ok).toBe(true)
     if (!result.ok) {
       return
     }
-    expect(result.data).toBe(2)
-    expect(result.commit.doc).toEqual({
-      count: 3
+
+    expect(result.commit.document.items.ids).toEqual(['item_1'])
+    expect(result.commit.document.items.byId.item_1).toEqual({
+      id: 'item_1',
+      title: 'First'
     })
     expect(result.commit.inverse).toEqual([{
-      type: 'count.add',
-      value: -2
+      type: 'item.delete',
+      id: 'item_1'
     }])
-    expect(result.commit.footprint).toEqual(['count'])
-    expect(result.commit.extra).toEqual({
-      total: 3
-    })
-    expect(engine.current()).toEqual({
+    expect(result.commit.delta.changes.has('item.create')).toBe(true)
+    expect(commits).toEqual(['apply'])
+    expect(snapshots).toEqual([{
       rev: 1,
-      doc: {
-        count: 3
-      },
-      publish: {
-        count: 3
-      }
-    })
-    expect(engine.current()).not.toHaveProperty('cache')
-    expect(states).toEqual([3])
-    expect(commits).toEqual([3])
+      document: result.commit.document
+    }])
     expect(engine.history.get().undoDepth).toBe(1)
   })
 
-  test('supports batched execute with output array', () => {
-    const engine = new MutationEngine({
-      document: {
-        count: 0
-      },
-      ...createEngineInput()
-    })
-
+  test('executes typed intents through compile handlers and returns outputs', () => {
+    const engine = createEngine()
     const result = engine.execute([{
-      type: 'count.add',
-      value: 2
+      type: 'item.add',
+      id: 'item_1',
+      title: 'First'
     }, {
-      type: 'count.add',
-      value: 3
+      type: 'item.open',
+      id: 'item_1'
     }])
 
     expect(result.ok).toBe(true)
     if (!result.ok) {
       return
     }
-    expect(result.data).toEqual([2, 3])
-    expect(result.commit.doc).toEqual({
-      count: 5
+
+    expect(result.data).toEqual(['item_1', 'item_1'])
+    expect(result.commit.document.items.byId.item_1).toEqual({
+      id: 'item_1',
+      title: 'First'
     })
-    expect(result.commit.forward).toEqual([{
-      type: 'count.add',
-      value: 2
-    }, {
-      type: 'count.add',
-      value: 3
-    }])
+    expect(result.commit.document.activeItemId).toBe('item_1')
+    expect(result.commit.delta.changes.has('item.create')).toBe(true)
+    expect(result.commit.delta.changes.has('document.activeItemId')).toBe(true)
   })
 
-  test('supports direct apply and does not capture remote writes into history', () => {
-    const engine = new MutationEngine({
-      document: {
-        count: 0
-      },
-      ...createEngineInput()
+  test('replace publishes a reset delta and clears local history', () => {
+    const engine = createEngine()
+    engine.apply({
+      type: 'item.create',
+      value: {
+        id: 'item_1',
+        title: 'First'
+      }
     })
 
-    const result = engine.apply([{
-      type: 'count.add',
-      value: 5
-    }], {
-      origin: 'remote'
-    })
-
-    expect(result.ok).toBe(true)
-    expect(engine.current().doc).toEqual({
-      count: 5
-    })
-    expect(engine.history.get().undoDepth).toBe(0)
-  })
-
-  test('checkpoint operations clear local history by default', () => {
-    const engine = new MutationEngine({
-      document: {
-        count: 0
-      },
-      ...createEngineInput()
-    })
-
-    engine.execute({
-      type: 'count.add',
-      value: 1
-    })
-    engine.apply([{
-      type: 'count.reset',
-      value: 99
-    }])
-
-    expect(engine.current().doc).toEqual({
-      count: 99
-    })
-    expect(engine.history.get().undoDepth).toBe(0)
-  })
-
-  test('replace(system origin) resets current state without emitting an apply commit and clears history', () => {
-    const engine = new MutationEngine({
-      document: {
-        count: 0
-      },
-      ...createEngineInput()
-    })
-    const commitKinds: Array<'apply' | 'replace'> = []
-    const revisions: number[] = []
-
-    engine.commits.subscribe((commit) => {
-      commitKinds.push(commit.kind)
-    })
-    engine.subscribe((current) => {
-      revisions.push(current.rev)
-    })
-
-    engine.execute({
-      type: 'count.add',
-      value: 1
-    })
-    engine.replace({
-      count: 9
-    }, {
+    const commit = engine.replace(createDocument(), {
       origin: 'system'
     })
 
-    expect(commitKinds).toEqual(['apply', 'replace'])
-    expect(revisions).toEqual([1, 2])
+    expect(commit.kind).toBe('replace')
+    expect(commit.delta.reset).toBe(true)
     expect(engine.current()).toEqual({
       rev: 2,
-      doc: {
-        count: 9
-      },
-      publish: {
-        count: 9
-      }
+      document: createDocument()
     })
     expect(engine.history.get().undoDepth).toBe(0)
-  })
-
-  test('replace resets runtime without emitting an apply commit and returns true', () => {
-    const engine = new MutationEngine({
-      document: {
-        count: 0
-      },
-      ...createEngineInput()
-    })
-    const commits: Array<'apply' | 'replace'> = []
-
-    engine.commits.subscribe((commit) => {
-      commits.push(commit.kind)
-    })
-
-    engine.execute({
-      type: 'count.add',
-      value: 1
-    })
-    const replaced = engine.replace({
-      count: 7
-    })
-
-    expect(replaced).toBe(true)
-    expect(commits).toEqual(['apply', 'replace'])
-    expect(engine.current()).toEqual({
-      rev: 2,
-      doc: {
-        count: 7
-      },
-      publish: {
-        count: 7
-      }
-    })
-    expect(engine.history.get().undoDepth).toBe(0)
-  })
-
-  test('operation runtime exposes apply without compile', () => {
-    const engine = new MutationEngine({
-      document: {
-        count: 0
-      },
-      ...(() => {
-        const input = createEngineInput()
-        return {
-          normalize: input.normalize,
-          key: input.key,
-          operations: input.operations,
-          reduce: input.reduce,
-          publish: input.publish,
-          history: input.history
-        }
-      })()
-    })
-
-    const result = engine.apply([{
-      type: 'count.add',
-      value: 1
-    }])
-
-    expect(result.ok).toBe(true)
-    if (!result.ok) {
-      return
-    }
-    expect(result.commit.doc.count).toBe(1)
-  })
-
-  test('returns the live current doc snapshot', () => {
-    const engine = new MutationEngine({
-      document: {
-        count: 2
-      },
-      ...createEngineInput()
-    })
-
-    const snapshot = engine.current()
-    snapshot.doc.count = 100
-
-    expect(engine.current().doc).toEqual({
-      count: 100
-    })
-  })
-
-  test('returns a failure when operations validation fails', () => {
-    const engine = new MutationEngine({
-      document: {
-        count: 0
-      },
-      ...(() => {
-        const input = createEngineInput()
-        return {
-          normalize: input.normalize,
-          key: input.key,
-          operations: input.operations,
-          reduce: input.reduce
-        }
-      })()
-    })
-
-    const result = engine.apply([{
-      type: 'count.add',
-      value: 13
-    }])
-
-    expect(result).toEqual({
-      ok: false,
-      error: {
-        code: 'invalid',
-        message: 'Cannot apply.'
-      }
-    })
   })
 })

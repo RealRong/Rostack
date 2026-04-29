@@ -33,6 +33,8 @@ import {
   EMPTY_MUTATION_CHANGE_MAP
 } from './write'
 
+type MutableRecordWrite = Record<string, unknown>
+
 export interface MutationCompileIssue<
   Code extends string = string,
   TType extends string = string
@@ -852,7 +854,7 @@ const compileEntityPatchWrites = (
   spec: CompiledEntitySpec,
   patch: MutationEntityPatch
 ): RecordWrite => {
-  const writes: Record<string, unknown> = {}
+  const writes: MutableRecordWrite = {}
   const entries = Object.entries(patch)
 
   for (let index = 0; index < entries.length; index += 1) {
@@ -926,7 +928,7 @@ const prefixRecordWrites = (
     return writes
   }
 
-  const prefixed: Record<string, unknown> = {}
+  const prefixed: MutableRecordWrite = {}
   const entries = Object.entries(writes)
 
   for (let index = 0; index < entries.length; index += 1) {
@@ -1168,7 +1170,7 @@ const finalizeMutationChange = (
   return change as MutationChange
 }
 
-const normalizeMutationDelta = (
+export const normalizeMutationDelta = (
   input?: MutationDeltaInput | MutationDelta
 ): MutationDelta => {
   if (!input) {
@@ -1223,7 +1225,7 @@ const readChangeEntries = (
   return Object.entries(source.changes) as readonly (readonly [string, MutationChangeInput])[]
 }
 
-const mergeMutationDeltas = (
+export const mergeMutationDeltas = (
   left: MutationDeltaInput | MutationDelta | undefined,
   right: MutationDeltaInput | MutationDelta | undefined
 ): MutationDelta => {
@@ -1633,7 +1635,7 @@ const readEntityAtPath = (
 
 const applyRootWrites = <Doc extends object>(
   document: Doc,
-  writes: RecordWrite
+  writes: RecordWrite | MutableRecordWrite
 ): Doc => Object.keys(writes).length === 0
   ? document
   : draft.record.apply(document, writes)
@@ -1653,7 +1655,7 @@ const readTableIds = (
 }
 
 const appendTableCreateWrites = (
-  writes: RecordWrite,
+  writes: MutableRecordWrite,
   document: object,
   spec: CompiledEntitySpec,
   id: string
@@ -1671,7 +1673,7 @@ const appendTableCreateWrites = (
 }
 
 const appendTableDeleteWrites = (
-  writes: RecordWrite,
+  writes: MutableRecordWrite,
   document: object,
   spec: CompiledEntitySpec,
   id: string
@@ -1910,7 +1912,7 @@ const readCanonicalOperationResult = <
         if (readEntityAtPath(input.document, entityPath) !== undefined) {
           throw new Error(`Mutation operation "${spec.family}.create" found an existing entity "${id}".`)
         }
-        const writes: RecordWrite = {
+        const writes: MutableRecordWrite = {
           [entityPath]: cloneValue(value)
         }
         appendTableCreateWrites(writes, input.document, spec, id)
@@ -1958,7 +1960,7 @@ const readCanonicalOperationResult = <
         if (current === undefined) {
           throw new Error(`Mutation operation "${spec.family}.delete" cannot find entity "${id}".`)
         }
-        const writes: RecordWrite = {
+        const writes: MutableRecordWrite = {
           [entityPath]: undefined
         }
         appendTableDeleteWrites(writes, input.document, spec, id)
@@ -2563,7 +2565,7 @@ class MutationRuntime<
   constructor(input: {
     document: Doc
     normalize(doc: Doc): Doc
-    entities: Readonly<Record<string, MutationEntitySpec>>
+    entities?: Readonly<Record<string, MutationEntitySpec>>
     custom?: MutationCustomTable<Doc, Op, Services, Code>
     services?: Services
     compile?: MutationCompileHandlerTable<any, Doc, Op, Services, Code>

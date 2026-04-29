@@ -1,243 +1,250 @@
-# Dataview 端到端如何变薄
+# Projection 变薄最终 API 与实施方案
 
-## 目标
+## 结论
 
-- 目标不是继续补局部性能点，而是把 dataview 从 `MutationDelta` 到 projection/store 的整条链压薄。
 - 不保留兼容层。
-- 不保留两套 runtime、delta、impact、plan。
-- 不在现有厚中间层上继续叠加 helper、adapter、facts、surface DSL。
+- 不保留两套 runtime、delta、impact、store sync 语义。
+- `shared/projection` 不需要整体推倒重写。
+- 真正要削掉的是它当前偏厚的 `surface -> snapshot -> patch -> store` 出口协议。
+- `phase graph / planner / dirty propagation / trace / store runtime` 可以保留。
+- dataview 和 whiteboard 都改成：domain runtime 直接产出精确 store 增量，`shared/projection` 只负责编排和写入 store。
 
-这里说的“变薄”，不是把 phase、planner、dirty propagation 全删掉，而是把它们收缩成基础编排设施，不再承担 domain 语义翻译。
+这份文档只分两部分：
 
-## 什么叫“薄”
+1. `shared/projection`、dataview、whiteboard 的最终 API 设计
+2. 各阶段实施方案
 
-一条链是否薄，核心看三件事：
+## 第一部分：最终 API 设计
 
-1. 同一份语义是否只解释一次。
-2. 中间层是否只负责编排，不再发明第二套领域语言。
-3. 下游是否能直接消费上游结果，而不是再套一层 patch/surface/helper 才能运行。
+## 1. shared/projection
 
-所以复杂度的根因，不是“有 phase graph”或者“有 planner”，而是这条链里同一件事被重复解释：
+### 1.1 最终职责
+
+`shared/projection` 最终只保留五类职责：
+
+- phase graph
+- planner 执行顺序
+- dirty propagation
+- store runtime
+- trace / capture
+
+它不再负责：
+
+- 逼 domain 先构造 `surface`
+- 逼 domain 先产出 `ProjectionFamilySnapshot`
+- 逼 domain 再从 `previous/next snapshot` 反推 `patch`
+- 代替 domain 定义语义层
+
+结论一句话：
+
+**`shared/projection` 保留骨架，不保留厚 surface 协议。**
+
+### 1.2 最终 store 协议
+
+当前最该改的不是 phase，而是 store 出口。
+
+最终 store 协议应直接表达“要写什么”，而不是“先读完整 snapshot，再算 patch”。
+
+```ts
+export interface ProjectionValueSnapshot<TValue> {
+  value: TValue
+}
+
+export interface ProjectionFamilySnapshot<TKey extends string | number, TValue> {
+  ids: readonly TKey[]
+  byId: ReadonlyMap<TKey, TValue>
+}
+
+export type ProjectionValueChange<TValue> =
+  | 'skip'
+  | {
+      value: TValue
+    }
+
+export type ProjectionFamilyChange<TKey extends string | number, TValue> =
+  | 'skip'
+  | 'replace'
+  | {
+      ids?: readonly TKey[]
+      set?: readonly (readonly [TKey, TValue])[]
+      remove?: readonly TKey[]
+    }
+```
+
+约束很明确：
+
+- `change` 必须已经是 domain/runtime 知道的精确增量
+- `shared/projection` 不再给 domain 一个 `previous/next` 回调让它再算 patch
+- `read` 只用于初始化或 `replace`
+
+### 1.3 最终 store spec
+
+把当前 `surface` 改名为 `stores`，语义更直接。
+
+```ts
+export interface ProjectionValueStoreSpec<TState, TValue> {
+  kind: 'value'
+  read(state: TState): TValue
+  change(state: TState): ProjectionValueChange<TValue>
+  isEqual?: (left: TValue, right: TValue) => boolean
+}
+
+export interface ProjectionFamilyStoreSpec<
+  TState,
+  TKey extends string | number,
+  TValue
+> {
+  kind: 'family'
+  read(state: TState): ProjectionFamilySnapshot<TKey, TValue>
+  change(state: TState): ProjectionFamilyChange<TKey, TValue>
+  isEqual?: (left: TValue, right: TValue) => boolean
+  idsEqual?: (left: readonly TKey[], right: readonly TKey[]) => boolean
+}
+
+export type ProjectionStoreSpec<TState> =
+  | ProjectionValueStoreSpec<TState, any>
+  | ProjectionFamilyStoreSpec<TState, any, any>
+
+export type ProjectionStoreTree<TState> = {
+  [key: string]: ProjectionStoreSpec<TState> | ProjectionStoreTree<TState>
+}
+```
+
+这个协议比当前版本薄在三点：
+
+- 没有 `changed(context)` 和 `patch(context)` 两层分裂
+- 没有 `previous/next snapshot` 回调
+- 没有 domain 为了 store sync 维护 snapshot cache 的必要
+
+### 1.4 最终 projection API
+
+planner 和 phase graph 保留，但 API 要收紧。
+
+```ts
+export interface ProjectionPlan<TPhaseName extends string> {
+  phases?: readonly TPhaseName[]
+}
+
+export interface ProjectionPhaseContext<TInput, TState> {
+  input: TInput
+  state: TState
+  revision: Revision
+}
+
+export type ProjectionPhase<TInput, TState, TPhaseName extends string> = (
+  context: ProjectionPhaseContext<TInput, TState>
+) => void
+
+export interface ProjectionSpec<
+  TInput,
+  TState,
+  TRead,
+  TCapture,
+  TPhaseName extends string,
+  TStores extends ProjectionStoreTree<TState>
+> {
+  createState(): TState
+  createRead(runtime: {
+    state: () => TState
+    revision: () => Revision
+    capture: () => TCapture
+  }): TRead
+  capture(input: {
+    state: TState
+    read: TRead
+    revision: Revision
+  }): TCapture
+  stores: TStores
+  plan(input: {
+    input: TInput
+    state: TState
+    read: TRead
+    revision: Revision
+  }): ProjectionPlan<TPhaseName>
+  phases: Record<TPhaseName, ProjectionPhase<TInput, TState, TPhaseName>>
+}
+```
+
+最终 runtime：
+
+```ts
+export interface ProjectionRuntime<
+  TInput,
+  TState,
+  TRead,
+  TCapture,
+  TStoresRead,
+  TPhaseName extends string
+> {
+  revision(): Revision
+  state(): TState
+  read: TRead
+  stores: TStoresRead
+  capture(): TCapture
+  update(input: TInput): {
+    revision: Revision
+    trace: ProjectionTrace<TPhaseName>
+  }
+}
+```
+
+这里保留的复杂度只有：
+
+- 哪些 phase 要跑
+- phase 顺序
+- 执行 trace
+- 如何把 domain 已经知道的增量写进 stores
+
+不再保留的复杂度是：
+
+- generic surface DSL
+- generic family patch builder
+- previous/next snapshot 反推 patch
+
+## 2. Dataview
+
+### 2.1 最终边界
+
+dataview 最终结构应收口到：
 
 ```ts
 MutationDelta
   -> DataviewMutationDelta
-  -> frame
-  -> reasons
-  -> action
-  -> publish patch
-  -> projection surface
-  -> stores
-```
-
-真正要做的是把这条链裁成：
-
-```ts
-MutationDelta
-  -> domain change/view
   -> active runtime
-  -> published ViewState
-  -> thin incremental store sync
+  -> ViewState
+  -> exact store changes
 ```
 
-## 最终薄链路
-
-最终推荐保留的主链：
-
-```ts
-commit
-  -> document + MutationDelta
-  -> dataview change view
-  -> resolve active spec
-  -> run active phases
-  -> produce ViewState
-  -> sync stores
-```
-
-每一层只做一件事：
-
-- `shared/mutation`：把 document 改对，并产出 canonical `MutationDelta`
-- `dataview change view`：把通用 delta 投影成 dataview 可直接读取的领域变化视图
-- `active runtime`：基于 document + change 计算 active view
-- `publish`：直接产出最终 `ViewState`
-- `shared/projection`：只负责薄编排和 store 出口
-
-## 哪些层该保留，哪些职责必须变薄
-
-### 1. shared/mutation 继续保留，但只保留 canonical 写入职责
-
-`shared/mutation` 的定位应该很明确：
-
-- apply/commit
-- history
-- canonical `MutationDelta`
-- typed path / entity change 查询能力
-
-它不应该继续长成 projection 语义层。
-
-最终判断标准：
-
-- 上游只承诺 “document 变了什么”
-- 不承诺 “dataview / whiteboard 应该怎么跑”
-
-也就是说，`shared/mutation` 不该负责 domain planner，也不该逼 domain 在下游再包很多 helper 才能使用。
-
-### 2. Dataview 入口只保留一次 domain 解释
-
-dataview 需要一个很薄的 domain delta 视图，但这层必须满足两个条件：
-
-- 它只是 `MutationDelta` 的 dataview 读取视图
-- 它不再派生第二套长期持久化 facts/runtime 模型
-
-也就是说，可以有：
-
-```ts
-delta.change('view.query')
-delta.select(dataviewSelectors.viewQuery('sort'))
-```
-
-但不应该继续发展成：
+不再保留：
 
 - `DataviewDeltaFacts`
-- `DataviewMutationDelta -> frame -> reasons`
-- planner/stage/index 各自再包一层 helper
+- `frame -> reasons -> action` 厚中间层
+- `DataviewIndexBank`
+- `entries/currentKey/switch`
+- `active.patches.*`
+- family snapshot cache
 
-入口层的目标只有一个：让 dataview runtime 直接读取变化，而不是先把变化翻译成更多中间对象。
-
-### 3. Dataview runtime 保留 phase，但 phase 必须薄
-
-phase 本身不是问题。
-
-可以保留：
-
-- `index`
-- `query`
-- `membership`
-- `summary`
-- `publish`
-
-但 phase 只应该表达执行顺序和阶段边界，不应该再各自维护一套“半语义事实系统”。
-
-最终 phase 设计应满足：
-
-- phase 输入直接吃 `document + change + previous active state`
-- phase 输出直接给下一个 phase
-- 是否 `reuse / sync / rebuild` 只是一层薄 action
-- 不再维护厚 `reasons`
-
-也就是说，允许有 planner，但 planner 只能薄到这个级别：
+### 2.2 最终输入
 
 ```ts
-plan = {
-  index: 'sync',
-  query: 'sync',
-  membership: 'reuse',
-  summary: 'reuse',
-  publish: 'sync'
+export interface DataviewProjectionInput {
+  document: DataDoc
+  delta: DataviewMutationDelta
 }
 ```
 
-而不应该再有这种额外 DSL：
+`DataviewMutationDelta` 是唯一 dataview mutation 读取模型。
+
+它的定位只是一层薄 domain view：
+
+- 基于 canonical `MutationDelta`
+- 提供 dataview 可直接消费的 typed change/select 能力
+- 不再派生独立 facts 模型
+
+### 2.3 最终 active spec
 
 ```ts
-reasons = {
-  query: { sync: true, reuse: { matched: true, ordered: false } },
-  summary: { rebuild: false, sync: true, sectionChanged: false },
-  index: { switched: false, bucketChanged: true }
-}
-```
-
-结论：
-
-- `planner` 可以保留
-- `reasons` 应该删掉
-
-### 4. index 可以保留，但必须降级为 active runtime 的内部设施
-
-复杂度不在 “index 存在”，而在于 index 被抬成了一套顶层 runtime 语义。
-
-最终应收缩为：
-
-- index 是 active runtime 的内部阶段
-- index 是否复用、同步、重建，只服务于 active 计算
-- index 结果不再外泄成下游 planner 的厚语义来源
-
-这里不再保留两种路线，直接定最终方案：
-
-- 不保留 bank
-- 不保留 `entries/currentKey/switch`
-- 只保留当前 active index
-- `active spec` 变了就 rebuild 当前 index
-
-同时保留一条约束：
-
-- index 是 active runtime 的内部执行设施
-- 不是 projection 顶层公共模型
-
-### 5. publish 保留，但必须从“结构协调层”变成“最终视图产出层”
-
-现在 publish 太厚，是因为前面 runtime state 和后面 `ViewState` 不是一个方向。
-
-最终 publish 应只负责：
-
-- 从 active runtime state 直接产出 `ViewState`
-- 做少量引用复用
-
-它不应该继续负责：
-
-- 维护另一套持久 patch state
-- 生产一套 projection family patch 语言
-- 为 shared/projection 的厚 surface 适配结构
-
-判断标准很简单：
-
-- 如果 publish 之后还要再翻译一层，说明它还不够薄
-
-### 6. shared/projection 可以保留，但必须变成薄编排 + store adapter
-
-这里不应该简单写成“删掉 shared/projection”。
-
-`shared/projection` 本身可以很有价值，前提是它够薄。它适合保留这些职责：
-
-- phase graph
-- phase changed 状态
-- planner 执行顺序
-- dirty 传播
-- store sync
-- store trace
-
-但它不该继续承担这些职责：
-
-- 抽象 dataview/whiteboard 自己的 domain 语义
-- 发明通用 `surface.changed / surface.patch` 语义让下游适配
-- 逼各 domain 维护一套 family snapshot/family patch 中间层
-
-所以最终目标不是“没有 shared/projection”，而是：
-
-```ts
-domain runtime result
-  -> thin projection adapter
-  -> stores
-```
-
-而不是：
-
-```ts
-domain runtime result
-  -> publish patch
-  -> generic surface DSL
-  -> family snapshot cache
-  -> stores
-```
-
-## Dataview 最终应收缩成什么
-
-## 一份 active spec
-
-只保留“当前 active view 需要什么”，不要混 previous、binding、helper methods：
-
-```ts
-interface DataviewActiveSpec {
+export interface DataviewActiveSpec {
   id: ViewId
   view: View
   query: QueryPlan
@@ -253,109 +260,96 @@ interface DataviewActiveSpec {
 }
 ```
 
-## 一份 active state
+### 2.4 最终 state
 
-只保留当前 active runtime 真正要复用的状态：
+dataview 最终只保留一个 active runtime 主状态。
 
 ```ts
-interface DataviewRuntimeState {
-  revision: number
+export interface DataviewActiveIndex {
+  demand: NormalizedIndexDemand
+  state: IndexState
+}
+
+export interface DataviewStoreChanges {
+  active: ProjectionValueChange<ViewState | undefined>
+  fields: ProjectionFamilyChange<FieldId, Field>
+  sections: ProjectionFamilyChange<SectionId, Section>
+  items: ProjectionFamilyChange<ItemId, ItemPlacement>
+  summaries: ProjectionFamilyChange<SectionId, CalculationCollection>
+}
+
+export interface DataviewRuntimeState {
+  revision: Revision
   document: DataDoc
   active?: {
     spec: DataviewActiveSpec
-    index: IndexState
+    index: DataviewActiveIndex
     query: QueryPhaseState
     membership: MembershipPhaseState
     summary: SummaryPhaseState
     view: ViewState
   }
+  changes: DataviewStoreChanges
 }
 ```
 
-不再保留：
+明确约束：
 
-- `frame`
-- `lastActive`
-- 厚 `reasons`
-- 独立 `patches.*` 持久状态
-- dataview 自己的 family snapshot cache
+- 不保留 `entries/currentKey/switch`
+- 只保留当前 active index
+- `active spec` 变化就 rebuild 当前 index
 
-index 也同步收口为单实例：
+### 2.5 最终 projection phases
+
+dataview 顶层 projection phase 只保留一个：
 
 ```ts
-interface DataviewActiveIndex {
-  demand: NormalizedIndexDemand
-  state: IndexState
-}
+export type DataviewProjectionPhaseName = 'active'
 ```
 
-不会再有：
+`index / query / membership / summary / publish` 都下沉为 dataview active runtime 内部阶段，不再暴露成 shared/projection 顶层 phase。
 
-- `entries`
-- `currentKey`
-- `switch`
-- bank 式多 view index 缓存
-
-## 一套 update loop
-
-最终主循环应该直接表达业务，而不是表达中间解释层：
+也就是说，顶层只有：
 
 ```ts
-function updateDataviewRuntime(
-  previous: DataviewRuntimeState,
-  document: DataDoc,
-  delta: MutationDelta
-): DataviewRuntimeState {
-  const change = createDataviewChange(document, delta)
-  const spec = resolveActiveSpec(document)
-
-  if (!spec) {
-    return {
-      revision: previous.revision + 1,
-      document
+createProjection({
+  stores,
+  plan: () => ({ phases: ['active'] }),
+  phases: {
+    active(ctx) {
+      ctx.state = updateDataviewRuntime(ctx.state, ctx.input.document, ctx.input.delta)
     }
   }
+})
+```
 
-  const index = runIndexPhase(previous.active?.index, spec, change)
-  const query = runQueryPhase(previous.active?.query, spec, change, index)
-  const membership = runMembershipPhase(previous.active?.membership, spec, change, index, query)
-  const summary = runSummaryPhase(previous.active?.summary, spec, change, index, membership)
-  const view = publishView(previous.active?.view, spec, query, membership, summary)
+### 2.6 最终 stores
 
-  return {
-    revision: previous.revision + 1,
-    document,
-    active: {
-      spec,
-      index,
-      query,
-      membership,
-      summary,
-      view
-    }
-  }
+dataview 最终公开这些 stores：
+
+```ts
+type DataviewStores = {
+  active: value<ViewState | undefined>
+  fields: family<FieldId, Field>
+  sections: family<SectionId, Section>
+  items: family<ItemId, ItemPlacement>
+  summaries: family<SectionId, CalculationCollection>
 }
 ```
 
-这条链的关键点：
+关键点：
 
-- 只有一份变化入口：`change`
-- 只有一份业务主状态：`active`
-- phase 是运行步骤，不是语义解释层
-- publish 之后直接得到最终 `ViewState`
+- `read(state)` 直接读当前 runtime state
+- `change(state)` 直接读 `state.changes.*`
+- 不再构造 `ProjectionFamilySnapshot` cache
+- 不再保留 `active.patches.fields/sections/items/summaries`
 
-## active API 也要一起变薄
+### 2.7 最终 active API
 
-当前最别扭的点之一，是写路径很多地方依赖：
-
-```ts
-engine.current().active?.view
-```
-
-长期最优不是让写路径继续依赖 projection snapshot，而是把读模型分开：
+读写边界也一起收口：
 
 ```ts
-interface DataviewCurrent {
+export interface DataviewCurrent {
   rev: number
   doc: DataDoc
   active?: ViewState
@@ -364,115 +358,333 @@ interface DataviewCurrent {
 }
 ```
 
-规则应当明确：
+规则：
 
-- `current.active`：published projection `ViewState`
-- `current.docActiveViewId/current.docActiveView`：当前 document 里的 active view
+- `current.active` 是 published projection `ViewState`
+- `current.docActiveViewId/current.docActiveView` 是当前 document active view
 
-这样：
+写路径从 `docActiveView` 读。
 
-- 写路径读 document active view
-- 读路径读 published `ViewState`
-- 两边不再通过一个半业务半展示对象耦合
+读路径从 `active` 读。
 
-## 哪些东西说明系统还不够薄
+不再通过 `engine.current().active?.view` 同时承担写入和展示语义。
 
-如果还出现下面这些现象，说明链路还没压薄：
+## 3. Whiteboard
 
-- 同一类变化要先进 `delta`，再进 `facts`，再进 `frame`，再进 `reasons`
-- 下游阶段需要大量专用 helper 才能知道“到底哪里变了”
-- publish 之后还要再翻译成另一套 generic surface 结构
-- store sync 的精确通知依赖厚 family snapshot cache，而不是直接消费 domain/runtime 已经知道的增量结果
-- index 的执行细节暴露成下游 planner 的决策语义
+### 3.1 最终边界
 
-换句话说，helper 多，不一定代表 API 一定错误；但如果 helper 的职责是“替主模型补语义”，那通常就说明底层模型还不够直。
+whiteboard 的方向和 dataview 一样，但它当前已经更接近目标。
 
-## 最终裁剪原则
+因为它已经有：
 
-可以保留的：
-
-- canonical `MutationDelta`
-- 薄 domain delta view
 - phase graph
-- 薄 planner
-- dirty propagation
-- 单 active index
-- publish 引用复用
-- thin incremental store adapter
+- domain-owned runtime state
+- `state.delta.graph/items/ui/render/...`
 
-必须裁掉的：
+所以 whiteboard 不需要重写执行模型，主要是把 `shared/projection` 出口从 `surface/snapshot/patch` 换成直接消费这些 domain delta。
 
-- 并列的 facts/runtime/delta 模型
-- 厚 `reasons`
-- bank 式顶层 index 语义
-- generic surface 领域语义层
-- family snapshot/family patch 适配缓存
-- 写路径对 projection snapshot 的依赖
+### 3.2 最终输入
 
-## 实施顺序
+```ts
+export interface WhiteboardProjectionInput {
+  document: Input['document']
+  delta: WhiteboardMutationDelta
+}
+```
 
-### Phase 1. 先定义“薄”的边界
+`WhiteboardMutationDelta` 同样只是一层薄 domain delta view：
 
-- 明确 `shared/mutation` 只输出 canonical delta
-- 明确 dataview 入口只有一层 domain change view
-- 明确 `shared/projection` 只保留编排和 store 出口
+- 基于 canonical `MutationDelta`
+- 提供 whiteboard 的 typed select/change 能力
+- 不再派生另一套 helper-heavy runtime 语义层
+
+### 3.3 最终 phases
+
+whiteboard 顶层 phases 可以保留现有结构：
+
+```ts
+export type WhiteboardProjectionPhaseName =
+  | 'document'
+  | 'graph'
+  | 'spatial'
+  | 'items'
+  | 'ui'
+  | 'render'
+```
+
+这是合理的，因为 whiteboard 本来就是多阶段、多子系统 runtime。
+
+复杂度不在 phase 数量，而在 store 出口协议。
+
+### 3.4 最终 state
+
+whiteboard 最终继续保留它自己的 working state：
+
+```ts
+export interface WhiteboardWorkingState {
+  document: ...
+  graph: ...
+  spatial: ...
+  items: ...
+  ui: ...
+  render: ...
+  delta: {
+    document: WhiteboardDocumentStoreChanges
+    graph: WhiteboardGraphStoreChanges
+    spatial: WhiteboardSpatialStoreChanges
+    items: WhiteboardItemsStoreChanges
+    ui: WhiteboardUiStoreChanges
+    render: WhiteboardRenderStoreChanges
+  }
+}
+```
+
+这里的重点不是字段名字，而是职责：
+
+- phase 更新 runtime state
+- phase 同时更新对应的 store changes
+- store changes 直接就是 projection store 的输入
+
+也就是说：
+
+- `state.delta.*` 继续保留
+- 但它的目标明确变成“domain-owned exact store changes”
+- 不再只是为了再转换成 `ProjectionFamilyPatch`
+
+### 3.5 最终 stores
+
+whiteboard 最终 stores 仍然覆盖这些公开面：
+
+```ts
+type WhiteboardStores = {
+  document: {
+    revision: value<Revision>
+    background: value<Background>
+  }
+  graph: {
+    node: family<NodeId, GraphNodeView>
+    edge: family<EdgeId, GraphEdgeView>
+    mindmap: family<MindmapId, MindmapView>
+    group: family<GroupId, GroupView>
+    state: {
+      node: family<NodeId, NodeUiState>
+      edge: family<EdgeId, EdgeUiState>
+      chrome: value<GraphChromeState>
+    }
+  }
+  render: {
+    node: family<NodeId, NodeRenderView>
+    edge: {
+      statics: family<EdgeStaticId, EdgeStaticView>
+      active: family<EdgeId, EdgeActiveView>
+      labels: family<EdgeLabelKey, EdgeLabelView>
+      masks: family<EdgeId, EdgeMaskView>
+    }
+    chrome: {
+      scene: value<SceneChromeRender>
+      edge: value<EdgeOverlayRender>
+    }
+  }
+  items: family<SceneItemKey, SceneItemView>
+}
+```
+
+但 stores 的实现方式改成：
+
+- `read(state)` 直接读 working state
+- `change(state)` 直接读 `state.delta.*`
+- 不再先 `entityDelta -> ProjectionFamilyPatch -> surface.patch`
+
+### 3.6 Whiteboard 的关键判断
+
+whiteboard 这条链已经证明一件事：
+
+- phase graph/planner 不是主要复杂度来源
+- 主要复杂度来自 domain delta 还要被转换成 projection patch 协议
+
+所以 whiteboard 的核心工作不是重写 phase，而是删掉这层重复翻译。
+
+## 第二部分：实施方案
+
+## Phase 1. shared/projection 先削出口，不动骨架
+
+目标：
+
+- 保留 phase graph
+- 保留 planner
+- 保留 dirty propagation
+- 保留 trace
+- 把 `surface` 重写为 `stores`
+
+实施内容：
+
+- 删除 `changed(context)` + `patch(context)` 双层协议
+- 删除 `previous/next snapshot -> patch` 这层 API
+- 新增 `change(state)` 直接返回精确 store change
+- `read(state)` 只保留给初始化和 `replace`
 
 完成标准：
 
-- 文档和代码边界上，不再把 `shared/projection` 当 domain 语义容器
+- `shared/projection` 仍然负责 orchestration
+- 但不再要求 domain 提供厚 `surface/snapshot/patch` 语义
 
-### Phase 2. 把 dataview runtime 压成单 active 主状态
+## Phase 2. Dataview 收口到单 active runtime
 
-- 合并 current active 相关持久状态
-- 删除 `frame / lastActive / 厚 reasons` 这类中间长期模型
-- phase 直接围绕 `active` 运行
+目标：
 
-完成标准：
+- 删除 dataview 顶层厚中间层
+- 删除多 view index bank
+- 删除厚 reasons
 
-- runtime 主链收口到 `change -> spec -> active phases -> view`
+实施内容：
 
-### Phase 3. 把 planner 压成薄 action 编排
-
-- planner 只决定 phase action
-- phase 自己消费输入并产出结果
-- 不再维护厚 facts/reasons 树
-
-完成标准：
-
-- 不再存在 “事实模型 -> reasons DSL -> action” 的三级翻译
-
-### Phase 4. 把 publish/store sync 压薄
-
-- publish 直接产出 `ViewState`
-- store sync 继续做精确增量通知
-- 这些增量由 domain/runtime 直接产出，不再先翻译成厚 `surface/patch/family snapshot` 语义
-- 如复用 `shared/projection`，只复用薄 incremental adapter 能力
+- 删掉 `DataviewDeltaFacts`
+- 删掉 `DataviewIndexBank`
+- 删掉 `entries/currentKey/switch`
+- 删掉 `active.patches.*`
+- 删掉 family snapshot cache
+- 把 state 收口为单 `active` + `changes`
 
 完成标准：
 
-- dataview 下游不再依赖厚 `surface/patch/family snapshot` 语义
+- dataview runtime 主链收口到：
 
-### Phase 5. 把 active API 与 projection snapshot 解耦
+```ts
+document + DataviewMutationDelta
+  -> resolve active spec
+  -> run active runtime
+  -> write exact store changes
+```
 
-- `engine.current()` 同时提供 projection active 和 document active view
+## Phase 3. Dataview 顶层 projection 只保留 active
+
+目标：
+
+- shared/projection 顶层不再理解 dataview 内部 index/query/membership/summary
+
+实施内容：
+
+- 顶层 phase 收口成 `active`
+- `index/query/membership/summary/publish` 全部下沉到 dataview runtime 内部
+- `plan()` 只决定是否执行 `active`
+
+完成标准：
+
+- dataview 的 projection 壳只剩 orchestration
+- dataview 语义完全由 dataview runtime 自己负责
+
+## Phase 4. Dataview stores 改为直接消费 `state.changes`
+
+目标：
+
+- store sync 继续保持精确增量通知
+- 但不再通过 snapshot cache 和 patch builder 实现
+
+实施内容：
+
+- `active` store 直接消费 `changes.active`
+- `fields/sections/items/summaries` 直接消费 `changes.*`
+- 删除 `readFieldSnapshot/readSectionSnapshot/readItemSnapshot/readSummarySnapshot`
+- 删除 `readFamilyPatch(...)`
+
+完成标准：
+
+- dataview store sync 只依赖 runtime 已知变化
+- 不再依赖 “先构造 snapshot，再反推 patch”
+
+## Phase 5. Whiteboard 保留 phases，改 store 出口
+
+目标：
+
+- 不重写 whiteboard phases
+- 不重写 whiteboard working state
+- 只删掉出口重复翻译
+
+实施内容：
+
+- 保留 `document/graph/spatial/items/ui/render`
+- 保留 `state.delta.*`
+- 让 `state.delta.*` 直接成为 `stores.change(state)` 的输入
+- 删除 `toFamilyPatchOrSkip(...)`
+- 删除 `entityDelta.fromIdDelta(...) -> ProjectionFamilyPatch` 这一层 projection 适配
+
+完成标准：
+
+- whiteboard phases 继续跑
+- store sync 直接消费 whiteboard runtime 自己的 exact deltas
+
+## Phase 6. Whiteboard 和 Dataview 同步统一到一套 shared/projection 出口
+
+目标：
+
+- 不是让两个 domain 长得一样
+- 而是让它们都通过同一套薄 store 协议接 shared/projection
+
+实施内容：
+
+- dataview 输出 `DataviewStoreChanges`
+- whiteboard 输出 `Whiteboard...StoreChanges`
+- `shared/projection` 统一消费 `value change / family change / replace / skip`
+
+完成标准：
+
+- 两个 domain 都不再维护自己的 projection surface adapter
+- 两个 domain 只保留 domain runtime + exact store changes
+
+## Phase 7. 删除旧 projection surface 语义
+
+目标：
+
+- 文档和代码都不再保留“新旧两套 projection 协议并存”
+
+实施内容：
+
+- 删除 `ProjectionSurfaceTree`
+- 删除 `ProjectionValueField.changed`
+- 删除 `ProjectionFamilyField.patch(previous, next)`
+- 删除 projection 内部 family patch builder
+- 删除 domain 侧为适配 surface 维护的缓存和 helper
+
+完成标准：
+
+- 仓库里只剩一套 projection 出口协议
+- 不再有 compatibility runtime
+
+## Phase 8. 收口读写边界
+
+目标：
+
+- 把 projection published state 和 document state 的职责分清
+
+实施内容：
+
+- dataview `engine.current()` 增加 `docActiveViewId/docActiveView`
 - 写路径切到 document active view
-- 读路径继续使用 published active view
+- 读路径继续使用 published projection view
+- whiteboard 继续保持 read/capture 与 working/document 的清晰分层
 
 完成标准：
 
-- active 写入不再被 projection snapshot 结构绑住
+- 写路径不再依赖 projection snapshot 结构
+- projection 只承担发布态和订阅态职责
 
-## 最终结论
+## 最终判断
 
-这条链真正该做的，不是继续争论“要不要 phase graph / planner / dirty propagation”，而是把它们都变薄：
+最终最重要的不是“phase 多不多”，而是“语义解释了几次”。
 
-- `shared/mutation` 薄成 canonical 写入层
-- dataview 入口薄成一次 domain change 解释
-- runtime 薄成单 active state + phase 执行
-- planner 薄成 action 编排
-- publish 薄成最终 `ViewState` 产出
-- `shared/projection` 薄成 store adapter 与执行编排
+这次重构后的最终模型应该是：
 
-最终复杂度最低的方向，不是“没有基础设施”，而是：
+- `shared/mutation` 负责 canonical document delta
+- dataview / whiteboard 各自负责 domain runtime
+- domain runtime 直接产出 exact store changes
+- `shared/projection` 负责 phase orchestration + store apply
 
-**基础设施继续存在，但只做基础设施；domain 语义只在 domain 内解释一次，并直接流到最终结果。**
+如果按这个方向收口：
+
+- `shared/projection` 不需要大改骨架
+- dataview 复杂度会明显下降，因为它当前最厚
+- whiteboard 改动会更集中，因为它当前 runtime 结构本来就相对合理
+
+最终一句话：
+
+**保留 projection 骨架，删除 projection 语义层；保留 domain runtime，删除 domain 为 projection 出口做的重复翻译。**

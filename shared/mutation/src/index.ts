@@ -33,6 +33,8 @@ export type {
 } from './engine'
 export {
   MutationEngine,
+  mergeMutationDeltas,
+  normalizeMutationDelta,
   mutationFootprintBatchConflicts,
   mutationFootprintConflicts
 } from './engine'
@@ -69,20 +71,31 @@ export {
   isMutationFootprint
 } from './write'
 export type {
+  MutationDeltaBuilder,
   MutationPathCodec,
+  MutationDeltaInputOf,
+  MutationEntityDerivedMutationSchema,
+  MutationEntityMutationSchema,
+  MutationEntitySchemaKey,
   MutationSchema,
   MutationSchemaEntry,
   MutationSchemaId,
   MutationSchemaPath,
+  MutationSchemaPathRecord,
+  MutationSchemaChangeInput,
+  MutationSignalSchema,
   TypedMutationDeltaContext
 } from './typed'
 export {
   collectMutationTouchedIds,
   coerceMutationDelta,
+  createDeltaBuilder,
   createTypedMutationDelta,
+  defineEntityMutationSchema,
   defineMutationSchema,
   hasAnyMutationChange,
   hasMutationChange,
+  toMutationDeltaInput,
   readMutationChangeIds,
   readMutationChangePaths,
   readMutationChangePathsOf

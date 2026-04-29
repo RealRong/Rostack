@@ -11,7 +11,7 @@ import {
   readPx,
   readTypographyStyle
 } from '@whiteboard/react/features/node/dom/textTypography'
-import type { TextTypographyProfile } from '@whiteboard/editor'
+import type { LayoutTypography } from '@whiteboard/core/layout'
 
 type TextMeasureElements = {
   line: HTMLDivElement
@@ -91,7 +91,7 @@ const measureTextContent = ({
   content: string
   placeholder: string
   source?: HTMLElement
-  typography: TextTypographyProfile
+  typography: LayoutTypography
   minWidth: number
   maxWidth: number
   fontSize?: number
@@ -169,7 +169,7 @@ export const measureTextOuterSize = ({
   content: string
   placeholder: string
   source?: HTMLElement
-  typography: TextTypographyProfile
+  typography: LayoutTypography
   fontSize?: number
   fontStyle?: string
   fontWeight?: string | number

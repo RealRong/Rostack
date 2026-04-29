@@ -1,9 +1,9 @@
-import type { TextTypographyProfile } from '@whiteboard/editor'
+import type { LayoutTypography } from '@whiteboard/core/layout'
 
 const TEXT_DEFAULT_LINE_HEIGHT_RATIO = 1.4
 const EMPTY_LINE = '\u00A0'
 
-const TYPOGRAPHY_PROFILE_CLASSNAME: Record<TextTypographyProfile, string> = {
+const TYPOGRAPHY_PROFILE_CLASSNAME: Record<LayoutTypography, string> = {
   'default-text': 'wb-default-text-host',
   'sticky-text': 'wb-sticky-node-text wb-default-text-host',
   'edge-label': 'wb-edge-label-content wb-default-text-editor',
@@ -55,10 +55,10 @@ export const normalizeMeasureContent = (
     : value
 }
 
-const fallbackTypographySources = new Map<TextTypographyProfile, HTMLElement>()
+const fallbackTypographySources = new Map<LayoutTypography, HTMLElement>()
 
 const ensureFallbackTypographySource = (
-  profile: TextTypographyProfile
+  profile: LayoutTypography
 ) => {
   if (typeof document === 'undefined') {
     return null
@@ -86,7 +86,7 @@ const ensureFallbackTypographySource = (
 
 export const resolveTypographySource = (
   source: HTMLElement | undefined,
-  profile: TextTypographyProfile
+  profile: LayoutTypography
 ) => {
   if (source?.isConnected) {
     return source
@@ -97,7 +97,7 @@ export const resolveTypographySource = (
 
 export const readTypographyStyle = (
   source: HTMLElement | undefined,
-  profile: TextTypographyProfile
+  profile: LayoutTypography
 ) => {
   const element = resolveTypographySource(source, profile)
   return element

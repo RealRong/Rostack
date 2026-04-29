@@ -1,4 +1,3 @@
-import { geometry as geometryApi } from '@whiteboard/core/geometry'
 import {
   emitMindmapTopicUpdateOps,
   getNodeMindmapId,
@@ -155,44 +154,15 @@ const compileNodeTextCommit = (
     )
   }
 
-  const currentValue = typeof node.data?.[intent.field] === 'string'
-    ? node.data[intent.field] as string
-    : ''
-  const currentFontSize = typeof node.style?.fontSize === 'number'
-    ? node.style.fontSize
-    : undefined
-  const input = nodeApi.update.merge(
-    intent.value === currentValue
-      ? undefined
-      : {
-          record: {
-            [`data.${intent.field}`]: intent.value
-          }
-        },
-    intent.size && !geometryApi.equal.size(intent.size, node.size)
-      ? {
-          fields: {
-            size: intent.size
-          }
-        }
-      : undefined,
-    intent.fontSize !== undefined && currentFontSize !== intent.fontSize
-      ? {
-          record: {
-            'style.fontSize': intent.fontSize
-          }
-        }
-      : undefined,
-    node.type === 'text' && node.data?.wrapWidth !== intent.wrapWidth
-      ? {
-          record: {
-            'data.wrapWidth': intent.wrapWidth
-          }
-        }
-      : undefined
-  )
+  const input = readCompileServices(ctx).layout.commit({
+    kind: 'node.text.commit',
+    nodeId: intent.nodeId,
+    node,
+    field: intent.field,
+    value: intent.value
+  }).update
 
-  if (nodeApi.update.isEmpty(input)) {
+  if (!input || nodeApi.update.isEmpty(input)) {
     return
   }
 
@@ -220,8 +190,13 @@ type NodeIntentHandlers = Pick<
 export const nodeIntentHandlers: NodeIntentHandlers = {
   'node.create': (ctx) => {
     const document = ctx.document
+    const input = readCompileServices(ctx).layout.commit({
+      kind: 'node.create',
+      node: ctx.intent.input,
+      position: ctx.intent.input.position
+    }).node
     const built = nodeApi.op.create({
-      payload: ctx.intent.input,
+      payload: input,
       doc: document,
       registries: readCompileRegistries(ctx),
       createNodeId: readCompileServices(ctx).ids.node
@@ -256,7 +231,17 @@ export const nodeIntentHandlers: NodeIntentHandlers = {
     }
 
     for (const entry of ctx.intent.updates) {
-      const planned = compileMindmapTopicUpdate(document, entry.id, entry.input)
+      const current = document.nodes[entry.id]
+      const update = current
+        ? readCompileServices(ctx).layout.commit({
+            kind: 'node.update',
+            nodeId: entry.id,
+            node: current,
+            update: entry.input,
+            origin: ctx.intent.origin
+          }).update
+        : entry.input
+      const planned = compileMindmapTopicUpdate(document, entry.id, update)
       if (!planned.ok) {
         return failInvalid(ctx, planned.error.message, readErrorDetails(planned.error))
       }

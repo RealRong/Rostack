@@ -1,7 +1,7 @@
 import type {
   NodeCapabilityInput,
   Result,
-  TextMeasure
+  EditorSceneLayout
 } from '../contracts/editor'
 import type { EditorSceneRuntime } from '../contracts/runtime'
 import type { EditorSceneSource } from '../contracts/source'
@@ -16,12 +16,12 @@ import {
 
 export const createEditorSceneRuntime = (input: {
   source: EditorSceneSource
-  measure?: TextMeasure
+  layout?: EditorSceneLayout
   nodeCapability?: NodeCapabilityInput
 }): EditorSceneRuntime => {
   let currentSource = input.source.get()
   const runtime = createEditorSceneProjectionRuntime({
-    measure: input.measure,
+    layout: input.layout,
     nodeCapability: input.nodeCapability,
     view: () => currentSource.view
   })

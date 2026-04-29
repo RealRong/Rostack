@@ -66,9 +66,11 @@ export type {
 } from '@whiteboard/editor/types/node'
 export type {
   LayoutBackend,
-  LayoutRequest,
-  TextTypographyProfile
-} from '@whiteboard/editor/types/layout'
+  LayoutBackendRequest,
+  LayoutTypography,
+  WhiteboardLayoutService,
+  LayoutNodeCatalog
+} from '@whiteboard/core/layout'
 export type {
   SelectionOverlay,
   SelectionToolbarContext,

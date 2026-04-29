@@ -67,9 +67,7 @@ export type {
   SelectionPreview,
   SelectionState,
   SessionInput,
-  TextMeasure,
-  TextMeasureResult,
-  TextMeasureTarget,
+  EditorSceneLayout,
   ToolState
 } from './contracts/editor'
 export type {

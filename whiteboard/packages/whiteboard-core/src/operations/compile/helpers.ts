@@ -3,6 +3,7 @@ import type {
   MutationCompileHandlerInput,
   MutationCompileHandlerTable
 } from '@shared/mutation'
+import type { WhiteboardLayoutService } from '@whiteboard/core/layout'
 import type {
   CanvasItemRef,
   CoreRegistries,
@@ -40,6 +41,7 @@ export type WhiteboardCompileIds = {
 export type WhiteboardCompileServices = {
   ids: WhiteboardCompileIds
   registries: CoreRegistries
+  layout: WhiteboardLayoutService
 }
 
 export type WhiteboardCompileContext<

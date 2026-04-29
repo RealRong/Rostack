@@ -1,9 +1,10 @@
 import {
   type Path
 } from '@shared/draft'
+import type { WhiteboardLayoutService } from '@whiteboard/core/layout'
 import type { Node, NodeId } from '@whiteboard/core/types'
 import type { Engine } from '@whiteboard/engine'
-import type { DocumentQuery, Query } from '@whiteboard/editor-scene'
+import type { DocumentQuery } from '@whiteboard/editor-scene'
 import type {
   NodeLockWrite,
   NodeShapeWrite,
@@ -12,12 +13,6 @@ import type {
   NodeUpdateWrite,
   NodeWrite
 } from '@whiteboard/editor/write/types'
-import {
-  patchNodeCreateByTextMeasure,
-  patchNodeUpdateByTextMeasure,
-  type TextLayoutMeasure
-} from '@whiteboard/editor/layout/textLayout'
-import type { NodeSpecReader } from '@whiteboard/editor/types/node'
 
 type NodeTextCommitInput = Parameters<NodeTextWrite['commit']>[0]
 
@@ -52,32 +47,25 @@ const createNodeUpdateWrite = (
   engine: Engine,
   {
     document,
-    projection,
-    nodes,
-    measure
+    layout
   }: {
     document: Pick<DocumentQuery, 'node'>
-    projection: Pick<Query, 'node'>
-    nodes: NodeSpecReader
-    measure: TextLayoutMeasure
+    layout: WhiteboardLayoutService
   }
 ): NodeUpdateWrite => ({
   update: (id, input) => {
     const node = document.node(id)
-    const rect = projection.node.get(id)?.geometry.rect
     return engine.execute({
       type: 'node.update',
       updates: [{
         id,
-        input: node && rect
-          ? patchNodeUpdateByTextMeasure({
+        input: node
+          ? layout.commit({
+              kind: 'node.update',
               nodeId: id,
               node,
-              rect,
-              update: input,
-              nodes,
-              measure
-            })
+              update: input
+            }).update
           : input
       }]
     })
@@ -88,17 +76,14 @@ const createNodeUpdateWrite = (
       id: entry.id,
       input: (() => {
         const node = document.node(entry.id)
-        const rect = projection.node.get(entry.id)?.geometry.rect
-        return node && rect
-          ? patchNodeUpdateByTextMeasure({
+        return node
+          ? layout.commit({
+              kind: 'node.update',
               nodeId: entry.id,
               node,
-              rect,
               update: entry.input,
-              nodes,
-              measure,
               origin: options?.origin
-            })
+            }).update
           : entry.input
       })()
     })),
@@ -139,21 +124,7 @@ const toNodeStyleBatchUpdates = (
 export const createNodeTextWrite = (
   ctx: NodeContext
 ): NodeTextWrite => ({
-  commit: ({
-    nodeId,
-    field,
-    value,
-    size,
-    fontSize,
-    wrapWidth
-  }) => ctx.write.textCommit({
-    nodeId,
-    field,
-    value,
-    size,
-    fontSize,
-    wrapWidth
-  }),
+  commit: (input) => ctx.write.textCommit(input),
   color: (nodeIds, color) => ctx.write.updateMany(
     toNodeStyleBatchUpdates(nodeIds, 'color', color)
   ),
@@ -250,22 +221,19 @@ const createNodeStyleWrite = (
 export const createNodeWrite = ({
   engine,
   read,
-  nodes,
-  measure
+  layout
 }: {
   engine: Engine
   read: {
     document: Pick<DocumentQuery, 'node'>
     projection: Pick<Query, 'node'>
   }
-  nodes: NodeSpecReader
-  measure: TextLayoutMeasure
+  layout: WhiteboardLayoutService
 }): NodeWrite => {
   const update = createNodeUpdateWrite(engine, {
     document: read.document,
     projection: read.projection,
-    nodes,
-    measure
+    layout
   })
   const ctx = createNodeContext({
     read,
@@ -279,17 +247,17 @@ export const createNodeWrite = ({
   return {
     create: (input) => engine.execute({
       type: 'node.create',
-      input: patchNodeCreateByTextMeasure({
-        payload: {
+      input: layout.commit({
+        kind: 'node.create',
+        node: {
           ...input.template,
           position: {
             x: input.position.x,
             y: input.position.y
           }
         },
-        nodes,
-        measure
-      })
+        position: input.position
+      }).node
     }),
     update: ctx.write.update,
     updateMany: ctx.write.updateMany,

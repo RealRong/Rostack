@@ -26,8 +26,7 @@ import type {
   NodeUpdateInput,
   OrderMode,
   Origin,
-  Point,
-  Size
+  Point
 } from '@whiteboard/core/types'
 import type {
   Slice,
@@ -117,9 +116,6 @@ export type NodeIntent =
       nodeId: NodeId
       field: 'text' | 'title'
       value: string
-      size?: Size
-      fontSize?: number
-      wrapWidth?: number
     }
   | {
       type: 'node.align'

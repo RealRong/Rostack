@@ -5,7 +5,7 @@ import {
   readPx,
   readTypographyStyle
 } from '@whiteboard/react/features/node/dom/textTypography'
-import type { TextTypographyProfile } from '@whiteboard/editor'
+import type { LayoutTypography } from '@whiteboard/core/layout'
 
 type TextFitElements = {
   frame: HTMLDivElement
@@ -108,7 +108,7 @@ export const measureFitFontSize = ({
   text: string
   box: Size
   source?: HTMLElement
-  typography: TextTypographyProfile
+  typography: LayoutTypography
   minFontSize?: number
   maxFontSize?: number
   textAlign?: 'left' | 'center' | 'right'

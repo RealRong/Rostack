@@ -1,9 +1,5 @@
 import type { Engine } from '@whiteboard/engine'
-import {
-  patchMindmapTemplateByTextMeasure,
-  type TextLayoutMeasure
-} from '@whiteboard/editor/layout/textLayout'
-import type { NodeSpecReader } from '@whiteboard/editor/types/node'
+import type { WhiteboardLayoutService } from '@whiteboard/core/layout'
 import type { MindmapWrite } from '@whiteboard/editor/write/types'
 import {
   createMindmapMoveWrite
@@ -17,24 +13,18 @@ import {
 
 export const createMindmapWrite = ({
   engine,
-  nodes,
-  measure
+  layout
 }: {
   engine: Engine
-  nodes: NodeSpecReader
-  measure: TextLayoutMeasure
+  layout: WhiteboardLayoutService
 }): MindmapWrite => ({
   create: (input) => engine.execute({
     type: 'mindmap.create',
-    input: {
-      ...input,
-      template: patchMindmapTemplateByTextMeasure({
-        template: input.template,
-        position: input.position,
-        nodes,
-        measure
-      })
-    }
+    input: layout.commit({
+      kind: 'mindmap.create',
+      input,
+      position: input.position
+    }).input
   }),
   delete: (ids) => engine.execute({
     type: 'mindmap.delete',
@@ -50,8 +40,7 @@ export const createMindmapWrite = ({
   move: createMindmapMoveWrite(engine),
   topic: createMindmapTopicWrite({
     engine,
-    nodes,
-    measure
+    layout
   }),
   branch: createMindmapBranchWrite(engine)
 })

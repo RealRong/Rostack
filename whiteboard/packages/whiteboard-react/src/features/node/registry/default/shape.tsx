@@ -260,9 +260,6 @@ export const ShapeNodeSpec: NodeSpecEntry = {
     },
     role: 'content',
     geometry: 'shape',
-    layout: {
-      kind: 'none'
-    },
     enter: true,
     edit: {
       fields: {

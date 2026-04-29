@@ -1,9 +1,9 @@
 import type {
   Input,
+  EditorSceneLayout,
   Query,
   Result,
-  Runtime,
-  TextMeasure
+  Runtime
 } from '../contracts/editor'
 import type { Capture } from '../contracts/capture'
 import type { WorkingState } from '../contracts/working'
@@ -43,10 +43,10 @@ export interface EditorSceneProjectionHarness {
 }
 
 export const createEditorSceneHarness = (input: {
-  measure?: TextMeasure
+  layout?: EditorSceneLayout
 } = {}): EditorSceneHarness => {
   const runtime = createEditorSceneProjectionRuntime({
-    measure: input.measure,
+    layout: input.layout,
     view: TEST_SCENE_VIEW
   })
   let trace: Result['trace']
@@ -65,10 +65,10 @@ export const createEditorSceneHarness = (input: {
 }
 
 export const createEditorSceneProjectionHarness = (input: {
-  measure?: TextMeasure
+  layout?: EditorSceneLayout
 } = {}): EditorSceneProjectionHarness => {
   const runtime = createEditorSceneProjection({
-    measure: input.measure,
+    layout: input.layout,
     view: TEST_SCENE_VIEW
   })
   const capture = createEditorSceneCaptureReader({

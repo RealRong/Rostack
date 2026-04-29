@@ -15,6 +15,10 @@ import type {
   TransformPreviewPatch
 } from '@whiteboard/core/node'
 import type {
+  NodeDraftMeasure,
+  WhiteboardLayoutService
+} from '@whiteboard/core/layout'
+import type {
   MindmapRenderConnector,
   MindmapStructure,
   MindmapTree
@@ -173,16 +177,6 @@ export interface DraftInput {
   edges: ReadonlyMap<EdgeId, EdgeDraft>
 }
 
-export type NodeDraftMeasure =
-  | {
-      kind: 'size'
-      size: Size
-    }
-  | {
-      kind: 'fit'
-      fontSize: number
-    }
-
 export interface EdgeDraft {
   patch?: EdgePatch
   activeRouteIndex?: number
@@ -305,33 +299,7 @@ export type InsertTemplate =
       focus?: 'edit-root' | 'select-root'
     }
 
-export type TextMeasureTarget =
-  | {
-      kind: 'node'
-      nodeId: NodeId
-      node: Node
-      rect: Rect
-    }
-  | {
-      kind: 'edge-label'
-      edgeId: EdgeId
-      labelId: string
-      label: EdgeLabel
-    }
-
-export type TextMeasureResult =
-  | {
-      kind: 'size'
-      size: Size
-    }
-  | {
-      kind: 'fit'
-      fontSize: number
-    }
-
-export type TextMeasure = (
-  input: TextMeasureTarget
-) => TextMeasureResult | undefined
+export type EditorSceneLayout = WhiteboardLayoutService
 
 export interface NodeCapabilityInput {
   meta(type: string): {

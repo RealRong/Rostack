@@ -16,7 +16,7 @@ import type { Input as EditorSceneInput } from '../src/contracts/editor'
 import {
   createEditorRuntimeDelta,
   createMutationDelta,
-  createEditorGraphTextMeasure,
+  createEditorGraphLayout,
   type EditorGraphTextMeasureState
 } from '../src/testing/builders'
 import {
@@ -69,7 +69,7 @@ const setCurrentMeasureState = (
   }
 }
 
-const measure = createEditorGraphTextMeasure(
+const layout = createEditorGraphLayout(
   () => currentMeasureState
 )
 
@@ -88,12 +88,12 @@ const TEST_SCENE_VIEW = () => ({
 })
 
 const createRuntime = () => createEditorSceneProjectionRuntime({
-  measure,
+  layout,
   view: TEST_SCENE_VIEW
 })
 
 const createHarness = () => createEditorSceneHarness({
-  measure
+  layout
 })
 
 const createInput = (
@@ -272,7 +272,8 @@ const insertTopic = (input: {
 describe('editor scene runtime', () => {
   it('projects committed document state into canonical scene state and notifies subscribers once', () => {
     const engine = createEngine({
-      document: documentApi.create('doc_editor_scene_runtime')
+      document: documentApi.create('doc_editor_scene_runtime'),
+      layout
     })
     const nodeId = createNode({
       engine,
@@ -311,7 +312,8 @@ describe('editor scene runtime', () => {
 
   it('reuses canonical state when the input delta is idle', () => {
     const engine = createEngine({
-      document: documentApi.create('doc_editor_scene_runtime_idle')
+      document: documentApi.create('doc_editor_scene_runtime_idle'),
+      layout
     })
     const runtime = createRuntime()
 
@@ -345,7 +347,8 @@ describe('editor scene runtime', () => {
 
   it('exposes canonical read and harness surfaces for host adapters', () => {
     const engine = createEngine({
-      document: documentApi.create('doc_editor_scene_runtime_public_api')
+      document: documentApi.create('doc_editor_scene_runtime_public_api'),
+      layout
     })
     const nodeId = createNode({
       engine,
@@ -387,7 +390,8 @@ describe('editor scene runtime', () => {
 
   it('relayouts mindmap members while live text measurement changes', () => {
     const engine = createEngine({
-      document: documentApi.create('doc_editor_scene_runtime_mindmap_root_width')
+      document: documentApi.create('doc_editor_scene_runtime_mindmap_root_width'),
+      layout
     })
     const created = createMindmap(engine)
     const childId = insertTopic({
@@ -443,7 +447,8 @@ describe('editor scene runtime', () => {
 
   it('builds renderer-ready edge, chrome, and spatial state in the render pipeline', () => {
     const engine = createEngine({
-      document: documentApi.create('doc_editor_scene_runtime_render')
+      document: documentApi.create('doc_editor_scene_runtime_render'),
+      layout
     })
     const firstId = createNode({
       engine,
@@ -670,7 +675,8 @@ describe('editor scene runtime', () => {
       color: '#123456'
     }
     const engine = createEngine({
-      document
+      document,
+      layout
     })
     let sceneView = {
       zoom: 2,
@@ -686,7 +692,7 @@ describe('editor scene runtime', () => {
       }
     }
     const runtime = createEditorSceneProjectionRuntime({
-      measure,
+      layout,
       view: () => sceneView
     })
 

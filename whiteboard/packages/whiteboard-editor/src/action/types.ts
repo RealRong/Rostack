@@ -244,9 +244,6 @@ export type NodeActions = {
       nodeId: NodeId
       field: 'text' | 'title'
       value: string
-      size?: import('@whiteboard/core/types').Size
-      fontSize?: number
-      wrapWidth?: number
     }) => IntentResult | undefined
     color: (nodeIds: readonly NodeId[], color: string) => IntentResult
     size: (input: {

@@ -1,644 +1,1112 @@
-# Whiteboard Text Layout / Write 职责收口与最终架构方案
+# Whiteboard Text Layout / Write 最终 API 设计与实施方案
 
 ## 目标
 
-本文档只解决以下问题：
+本文档只定义 whiteboard 文本布局相关的最终架构，不讨论兼容过渡，不保留中间层。
 
-- 为什么 `whiteboard/packages/whiteboard-editor/src/layout/textLayout.ts` 里还需要 `patchNodeCreateByTextMeasure`
-- 这类“文本测量驱动的持久化 patch”职责到底应该归谁
-- 为什么 `editor` 层现在会出现大量 `readXxx` helper，以及哪些属于合理 helper，哪些属于架构残留
-- `editor`、`editor-scene`、`mutation/core`、`layout backend` 的长期最优职责边界是什么
-- 后续如果重构，这一块应该如何一步到位收口
+本文档解决以下问题：
 
-本文档不讨论 projection phase、render patch 粒度、delta to projection 接缝，只聚焦：
+- `whiteboard/packages/whiteboard-editor/src/layout/textLayout.ts` 为什么还在做 `patchNodeCreateByTextMeasure`
+- 文本测量驱动的 committed patch 最终应该归谁
+- `layout service` 应该定义在哪一层，谁实现，谁持有，谁注入
+- `editor-scene` 的 measure/query 能力最终如何与 mutation/core 分工
+- preview/runtime 是否需要收窄入口，避免到处拼 request、到处写 helper
+- 哪些现有 API、类型、helper、导出必须删除
 
-- text layout
-- write/commit
-- editor helper 职责
-- runtime measure/query 职责
+本文档只给最终态：
+
+- 长期最优 API
+- 长期最优模块边界
+- 明确的落地阶段
 
 ---
 
-## 一、当前现状
+## 一、研究结论
 
-### 1. 当前存在两条同时消费 layout measure 的链路
+### 1. 当前的根问题不是“缺少测量能力”，而是“测量后的职责放错层”
 
-`createEditor(...)` 当前会先构造：
+当前系统已经具备文本测量能力，但这项能力被错误地分裂成两条消费链路：
 
-- `createEditorTextLayout({ nodes, backend })`
+- `editor` 先创建 `createEditorTextLayout(...)`
+- 同一个 `measure` 再同时传给：
+  - `editor write`
+  - `editor input`
+  - `editor-scene`
 
-并得到一个 `textLayout.measure`，然后同时传给：
+结果是：
 
-- `editor-scene runtime`
-- `editor write`
-- `editor input host`
+- `editor` 在提交前自己补 committed patch
+- `editor-scene` 在 runtime 里自己测 draft / label / live relayout
+- `mutation/core` 反而不知道这些布局规则
 
-也就是：
+这不是能力缺失，而是 committed normalize 没有下沉。
 
-1. `editor-scene` 使用 measure 参与 projection/runtime 读取
-2. `editor` 的 write/input 也直接使用 measure 做持久化前 patch 与 preview patch
+### 2. 现在真正错误的不是 `measure` 在 scene，而是 committed normalize 在 editor
 
-这说明当前 measure 已经是一个共享服务，但“谁负责基于 measure 决定 document 最终写入字段”并没有下沉，仍然留在 editor 层。
+`editor-scene` 拿 measure 本身并不奇怪，因为 scene 需要做：
 
-### 2. `textLayout.ts` 当前混合了三类职责
+- edge label runtime size
+- node edit draft measure
+- mindmap live relayout
+- transform preview 的最终可视 geometry
 
-`whiteboard/packages/whiteboard-editor/src/layout/textLayout.ts` 现在同时做了三件事：
+这些都属于 projection/runtime 读模型职责。
 
-1. 布局策略翻译
-   - 例如 `readLayoutKind`
-   - 例如 `buildLayoutRequest`
-   - 例如根据 node spec、node data/style 把语义对象翻译成 layout backend request
-
-2. 持久化前 patch 生成
-   - `patchNodeCreateByTextMeasure`
-   - `patchNodeUpdateByTextMeasure`
-   - `patchMindmapTemplateByTextMeasure`
-
-3. 交互期 preview patch 生成
-   - `patchNodePreviewByTextMeasure`
-
-这三类职责属于不同层级，长期不应该继续揉在一个文件里。
-
-### 3. `editor write` 当前在替底层做 commit normalize
-
-当前以下 write 路径会在 `engine.execute(...)` 之前主动做文本测量 patch：
+真正错误的是以下 committed 路径还在 editor 层自己 patch：
 
 - `node.create`
 - `node.update`
 - `mindmap.create`
 - `mindmap.topic.insert`
+- `node.text.commit`
 
-也就是说：
+也就是 editor 现在还在替 mutation/core 做“写前布局归一化”。
 
-- 用户表达的是语义 intent
-- editor write 把 intent 扩写成包含 `size` / `fontSize` 的最终 document patch
-- engine/mutation 只接收已经被 editor 预处理过的结果
+### 3. `textLayout.ts` 当前混合了三层职责
 
-这本质上是 editor 在替 mutation/core 做“提交前归一化”。
+`whiteboard/packages/whiteboard-editor/src/layout/textLayout.ts` 现在同时承担：
 
-### 4. 当前行为被测试明确锁定
+1. backend request 构造
+2. committed normalize
+3. preview/runtime patch
 
-现有测试已经把以下行为定成 contract：
+这是长期最差形态。
 
-- 文本 node 在 create commit 前完成测量并写入 `size`
-- sticky auto font 在 create commit 前完成测量并写入 `style.fontSize`
-- mindmap root / inserted child 在提交前完成文本布局补全
+这三类职责必须拆开：
 
-所以 `patchNodeCreateByTextMeasure` 现在不是偶然残留，而是当前系统必需逻辑，只是职责放错了层。
+- backend request 是 host-core 边界
+- committed normalize 是 mutation/core 领域职责
+- preview/runtime patch 是 editor/scene 读模型职责
 
----
+### 4. 当前布局策略还错误地挂在 editor `NodeSpec` 上
 
-## 二、为什么现在还需要 `patchNodeCreateByTextMeasure`
+现在 `layout kind` 通过：
 
-### 1. 根因不是 editor 需要它，而是底层还没接管这件事
+- `NodeSpec.behavior.layout.kind`
 
-`patchNodeCreateByTextMeasure` 现在存在，只是因为：
+在 `editor` 层定义，然后 `textLayout.ts` 用 `NodeSpecReader` 去读。
 
-- 某些 node 的持久化字段并不是用户显式输入
-- 它们需要由文本测量结果派生
-- 但 mutation/core 当前不会自动完成这一步
-- document 又要求 commit 后立刻拿到最终可用的 `size` / `fontSize`
+这意味着：
 
-因此 editor 只能在调用 `engine.execute(...)` 之前先补一层 patch。
+- committed document 的布局规则由 editor spec 决定
+- core/mutation 如果想接管 normalize，还得反向依赖 editor spec
 
-### 2. 当前被补出来的是“持久化字段”，不是“纯渲染字段”
+这是边界倒挂。
 
-`patchNodeCreateByTextMeasure` 处理的不是 projection-only 字段，而是 document 里会真实落盘、参与：
+结论：
 
-- history
-- inverse
-- delta
-- sync
-- selection / layout 依赖
-- 后续 op 读取
+- `layout kind` 不能继续留在 editor `NodeSpec`
+- 它必须成为 core layout 配置的一部分
 
-的 committed data。
+### 5. `node.text.commit` 现在泄露了不该由上层承担的字段
 
-所以这不是 UI 小技巧，而是 mutation 语义的一部分。
+当前 `node.text.commit` intent / write API 还暴露：
 
-### 3. 因此它不应长期留在 editor 层
+- `size`
+- `fontSize`
+- `wrapWidth`
 
-凡是决定 committed document 最终长什么样的逻辑，都不应该长期挂在 editor facade 上。
+这说明：
 
-`editor.write.node.create(...)` 的长期最优职责应该只是：
+- editor 在把 draft layout 结果直接作为 committed intent 输入传给 engine
+- mutation/core 并没有真正拥有文本 commit 的最终语义
 
-- 接收用户 intent
-- 发给 engine
+长期最优必须收缩为纯语义输入：
 
-而不是：
+- `nodeId`
+- `field`
+- `value`
 
-- 读 document
-- 读 projection rect
-- 读 node spec
-- 调 text measure
-- 生成最终 patch
-- 再提交
+其他 committed layout 字段全部由 core normalize 内部决定。
 
----
+### 6. preview/runtime 的确也需要收窄入口
 
-## 三、最终职责归属
+现在 preview/runtime 相关布局逻辑至少分散在以下方向：
 
-## 1. layout backend / measure service
+- transform preview patch
+- node edit draft measure
+- mindmap live relayout
+- edge label size
 
-### 最终职责
+它们目前都在不同模块手工拼：
 
-- 提供纯测量能力
-- 不拥有 document 写入职责
-- 不拥有 projection patch 职责
-- 不拥有 op 归一化职责
+- node
+- rect
+- patch
+- text
+- style
+- request
 
-### 最终形态
+这会继续制造 `readXxx` / `buildXxx` / `patchXxx` helper 扩散。
 
-它只是一个 service，例如：
+结论：
 
-- `measure(layoutRequest) -> layoutResult`
-
-或者更上层一点：
-
-- `layout.measureNode(...)`
-- `layout.measureEdgeLabel(...)`
-
-但它本身不决定“测量结果写回 document 的哪个字段”。
-
-### 结论
-
-measure 是基础设施，不属于 editor，也不属于 scene，本质上是被多个层复用的服务。
+- preview/runtime 必须也收口成正式布局入口
+- 不能继续让 editor feature 和 scene model 到处自己构造 layout request
 
 ---
 
-## 2. mutation / core
+## 二、最终架构决策
 
-### 最终职责
+## 决策 1：layout contract 定义在 `@whiteboard/core/layout`
 
-mutation/core 必须拥有以下职责：
+最终 owner 是：
 
-- 定义哪些 op 会触发布局归一化
-- 定义布局归一化前需要读取哪些 committed input
-- 调用 layout service
-- 生成最终 committed patch/op
-- 生成对应 inverse / history / delta
+- `@whiteboard/core/layout`
 
-### 这层应该接管的内容
+不是：
 
-以下逻辑都应该从 editor 下沉到 mutation/core：
+- `@whiteboard/editor`
+- `@whiteboard/editor-scene`
+- `@shared`
 
-- `patchNodeCreateByTextMeasure`
-- `patchNodeUpdateByTextMeasure`
-- `patchMindmapTemplateByTextMeasure`
-- `patchMindmapInsertInput`
-- sticky auto font 的 `fontMode -> fixed` 归一化
-- layout-affecting 字段判定
-- “create/update 前需要测量哪些 node”的规则
+原因：
 
-### 为什么必须下沉到这里
-
-因为它们影响的是 committed document，而 committed document 的唯一权威层必须是 mutation/core。
-
-如果继续放在 editor 层，会带来以下长期问题：
-
-1. 语义漂移
-   - 同一个 op 从不同入口进入时，可能被不同上层 patch
-
-2. history / inverse 不透明
-   - 底层看不到补出的字段来自什么规则
-
-3. dataview / whiteboard / future runtime 不统一
-   - 每个上层都可能重写一遍“提交前 normalize”
-
-4. 远端/脚本/批量导入接口不一致
-   - 不经过 editor facade 的写入路径可能丢失 layout normalize
+- 这套能力直接决定 whiteboard committed document 语义
+- 它依赖 whiteboard node/text/mindmap 领域规则
+- 它不是通用 shared 基建
+- 它也不是 editor UI 专属逻辑
 
 ### 最终结论
 
-所有“测量驱动的 committed patch”都必须归 mutation/core。
+- layout contract 下沉到 `whiteboard-core`
+- `editor` 和 `editor-scene` 都只消费它
 
----
+## 决策 2：React 不实现 `LayoutService`，React 只实现 `LayoutBackend`
 
-## 3. editor-scene
+最终分层必须是：
 
-### 最终职责
-
-editor-scene 只负责：
-
-- query
-- projection
-- runtime geometry
-- render/hit/spatial/read model
-- transient preview 相关的最终视图计算
-
-### 它可以继续持有 measure，但仅限读模型用途
-
-例如：
-
-- edge label runtime size
-- edit session 文本显示尺寸
-- preview geometry
-- live scene relayout
-
-这些都属于 projection/runtime 问题，可以留在 scene。
-
-### 它不该负责什么
-
-- 不负责 committed document patch 生成
-- 不负责 create/update op normalize
-- 不负责把测量结果写回 document
-- 不负责 history/inverse 语义
-
-### 结论
-
-`editor-scene` 拿到 measure 并不怪，怪的是当前 mutation 没接管 committed normalize，导致 editor 也要拿 measure 做写前 patch。
-
----
-
-## 4. editor
-
-### 最终职责
-
-editor 层应只负责：
-
-- 用户交互
-- tool/session/selection state
-- action/input orchestration
-- 调用 engine / scene query
-- preview state 组织
-
-### editor 中允许保留的 layout 逻辑
-
-仅允许保留 transient / interaction 相关布局逻辑，例如：
-
-- transform preview 时根据临时 rect 重新计算 text preview
-- edit session 中的局部临时视觉反馈
+1. `core` 定义高层 `LayoutService`
+2. `react` 或其他宿主实现底层 `LayoutBackend`
+3. `core` 用 backend 创建 `LayoutService`
 
 也就是：
 
-- 不写 committed document
-- 不定义持久化 patch 规则
-- 只为交互中间态服务
+- React 不负责编排 committed normalize
+- React 不负责组织 node type 语义
+- React 只负责“给定 backend request，返回测量结果”
 
-### editor 中不应再保留的 layout 逻辑
+### 这点必须明确
 
-- create/update 前补 committed size/fontSize
-- mindmap create/topic insert 的文本布局 patch
-- sticky auto font 的提交归一化
-- layout-affecting 字段解析规则
+错误形态：
 
-这些都必须迁到 mutation/core。
+- React 直接实现一整套 whiteboard 语义 layout service
 
----
+正确形态：
 
-## 四、`readXxx` helper 为什么会显得很怪
+- React 实现 backend
+- core 基于 backend + layout config 生成 whiteboard 领域 service
 
-## 1. 不是所有 `readXxx` helper 都是问题
+## 决策 3：`LayoutService` 的持有者是 composition root，不是 editor
 
-需要分三类看。
+最终不能让 editor 成为 layout service 的 owner。
 
-### A. 合理 helper
+原因：
 
-这类 helper 只是本地纯函数或 selector，长期可以保留：
+- engine 和 scene 都需要它
+- editor 本身只是其中一个消费者
+- engine 生命周期独立于 editor
+- backend 可能持有缓存、DOM/canvas 资源与 dispose 生命周期，不能挂在 editor 内部私有创建
 
-- 从 session/state 中读当前值
-- 小型结构转换
-- 与模块局部实现强绑定的纯算法
+### 最终 ownership
+
+持有者：
+
+- whiteboard 组合根
+
+消费者：
+
+- engine
+- editor-scene
+- editor input / action / write
+
+### 结论
+
+最终模式不是“editor 创建 layout 再传给 engine”，而是：
+
+- 组合根创建一个共享 `layout`
+- 同一个实例分别注入给 engine 和 editor
+- editor 再把它传给 scene/runtime 子系统
+
+如果未来存在一层上层 convenience wrapper 同时创建 engine 和 editor，这个 wrapper 可以代替组合根转发，但 canonical ownership 仍然在组合根，而不是在 editor 包内部。
+
+## 决策 4：committed 布局归一化归 mutation/core
+
+以下能力必须全部下沉到 mutation/core：
+
+- node create 前布局补全
+- node update 前布局补全
+- node text commit 的 size/fontSize/wrapWidth 归一化
+- sticky auto font -> fixed 归一化
+- mindmap create template 的文本布局补全
+- mindmap topic insert seed 的文本布局补全
+
+这类能力的统一名称定为：
+
+- `layout normalize`
+
+### 注意
+
+这里的 `normalize` 不是：
+
+- 整份 document 的全局 normalize
+- shared/mutation 泛化层的通用 normalize
+
+它是 whiteboard compile/custom 内部的领域 normalize stage。
+
+也就是：
+
+- intent 进入 compile
+- 在 emit canonical/custom op 之前
+- 调用 layout normalize
+- 再产出最终 op
+
+## 决策 5：preview/runtime 走收窄入口，不走散落 helper
+
+最终 preview/runtime 不再对外暴露一套“谁都可以随便构 request”的 `TextMeasureTarget` 协议。
+
+最终做法：
+
+- 低层 backend 仍然吃 request
+- 但 editor / scene 只调用窄入口
+
+至少收成三类：
+
+- node draft measure
+- node transform preview patch
+- edge label size
+
+必要时未来可再扩展：
+
+- node create ghost
+- text edit overlay
+- frame title / shape label 等其他 runtime 测量场景
+
+## 决策 6：`layout kind` 从 editor `NodeSpec` 删除
+
+`NodeSpec.behavior.layout` 不是 editor 专属能力。
+
+它最终必须从 editor spec 中拿掉，避免：
+
+- core normalize 反向依赖 editor spec
+- layout policy 与 committed 语义错层
+- editor spec 同时承担 UI 能力与 committed layout 规则
+
+### 最终位置
+
+`layout kind` 成为 `LayoutService` 创建配置的一部分。
 
 例如：
 
-- pointer/session 内部的轻量读取器
-- selection/policy 层的局部 selector
-- scene 内部 spatial/query 辅助函数
+- `text: 'size'`
+- `sticky: 'fit'`
+- 其他 node type 默认 `'none'`
 
-这类问题不大。
-
-### B. 架构残留型 helper
-
-这类 helper 名义上是 `read`，实质上是在上层重建领域语义，长期不该留在 editor：
-
-- `readMindmapTreeView`
-- 各种 `readEditableEdgeView`
-- `textLayout.ts` 里的 `readLayoutKind + buildLayoutRequest`
-- editor 层围绕 committed data / projection / spec / measure 手动拼装的语义计算
-
-这类 helper 暴露的是一个信号：
-
-- 下层本应提供正式能力
-- 但现在没提供
-- 于是 editor 只能自己拼
-
-### C. 命名误导型 helper
-
-有些 `readXxx` 并不是简单 getter，而是在做：
-
-- normalization
-- selection policy derivation
-- preview assembly
-- domain-specific view construction
-
-这类 helper 不一定全错，但命名会掩盖它们真实复杂度，造成边界继续模糊。
+这份配置归 `@whiteboard/core/layout` 管。
 
 ---
 
-## 2. 当前 editor 层 helper 怪的真正原因
+## 三、最终模块职责
 
-不是因为名字叫 `read`。
-
-真正的问题是：
-
-- editor 不应该同时知道 committed document、projection rect、node spec、layout backend 这些底层细节
-- 但现在它为了完成 write 前 normalize 与某些交互决策，不得不自己拼这些依赖
-
-所以“helper 很多”只是表象。
-
-本质问题是：
-
-- 下层职责没有收口
-- 上层被迫补语义
-
----
-
-## 五、最终架构决策
-
-## 决策 1：持久化布局归一化归 mutation/core
-
-明确规定：
-
-- 所有 create/update/insert 过程中由文本测量驱动的 committed 字段补全，都归 mutation/core
-
-包括但不限于：
-
-- text node `size`
-- sticky auto font `style.fontSize`
-- sticky manual size / font mode 归一化
-- mindmap root/topic create 的文本布局补全
-
-## 决策 2：preview layout 归 editor / scene
-
-明确规定：
-
-- 只影响 transient preview 的布局 patch 仍然留在 editor 或 scene
-- 但不得写 committed document
-
-例如：
-
-- transform preview
-- edit overlay preview
-- drag/resize 过程中的临时文本重排
-
-## 决策 3：measure 是 service，不是 editor-scene 专属能力
-
-明确规定：
-
-- measure 是共享基础服务
-- scene 可以消费它
-- mutation/core 也必须可以消费它
-- editor 不应该再自行组织 committed normalize
-
-## 决策 4：editor write 只发 intent，不做语义扩写
-
-最终 `editor.write.*` 应该收缩成：
-
-- 参数整理
-- 调用 `engine.execute(...)`
-
-不再负责：
-
-- patch committed input
-- 读取 projection geometry 决定 document 最终字段
-- 依据 node spec 生成布局 patch
-
-## 决策 5：editor 中的领域 helper 要么下沉，要么升格为正式 query/service
-
-规则如下：
-
-- 若 helper 影响 committed write，必须下沉到 mutation/core
-- 若 helper 影响 runtime read model，必须下沉到 scene/query/projection
-- 若 helper 只是 editor 本地交互细节，可保留
-- 若 helper 被多个 feature 重复依赖，应升格为正式 API，而不是继续堆在 editor 下的 `readXxx`
-
----
-
-## 六、`textLayout.ts` 的最终拆分方向
-
-当前 `textLayout.ts` 不应继续作为长期最终模块存在。
-
-### 应拆成三块
-
-### 1. layout service adapter
+## 1. `@whiteboard/core/layout`
 
 职责：
 
-- node spec -> layout request
-- edge label -> layout request
-- 调 layout backend
-- 返回 layout result
+- 定义 backend contract
+- 定义 layout kind 配置
+- 创建 whiteboard 领域 `LayoutService`
+- 封装 layout request 构造
+- 封装 committed normalize
+- 封装 preview/runtime 窄入口
 
-这一层是纯布局服务适配层。
+不负责：
 
-### 2. mutation layout normalize
+- DOM / Canvas 实测实现
+- projection graph state
+- editor session 状态
 
-职责：
-
-- create/update/insert 的 committed normalize
-- layout-affecting change 判定
-- sticky font mode normalize
-- inverse/history/delta 视角下的最终 patch 生成
-
-这一层属于 mutation/core。
-
-### 3. preview layout patch
+## 2. `@whiteboard/react` 或宿主实现层
 
 职责：
 
-- transient transform preview
-- runtime draft/preview patch
+- 实现 `LayoutBackend`
+- 内部处理 DOM/canvas/text metrics fallback/cache
 
-这一层属于 editor 或 scene。
+不负责：
 
-### 最终原则
+- committed normalize 规则
+- node type layout 语义
+- mindmap / node / edge 领域 patch 规则
 
-同一个文件里不能再同时混放：
+## 3. `@whiteboard/engine`
 
-- backend request build
-- committed patch build
-- preview patch build
+职责：
+
+- 持有 `layout` service
+- 在 compile/custom 阶段调用 `layout.commit(...)`
+- 产出最终 op / inverse / delta / history
+
+不负责：
+
+- UI preview
+- render geometry
+
+## 4. `@whiteboard/editor-scene`
+
+职责：
+
+- 使用 `layout.runtime(...)` 做 node draft measure / edge label size / live relayout
+- 通过 projection 产出 runtime view
+
+不负责：
+
+- committed write normalize
+- intent patch 生成
+- 文本 commit 最终字段写回
+
+## 5. `@whiteboard/editor`
+
+职责：
+
+- orchestration
+- session / interaction / tool / action
+- 调用 engine 与 scene query
+- transient preview state 组织
+
+不负责：
+
+- 写前 committed layout patch
+- 手工构建 layout request
+- 解释 draft layout 并塞进 committed intent
 
 ---
 
-## 七、最终 API 方向
+## 四、最终 API 设计
 
-本文档不要求立刻确定完整代码签名，但职责上必须明确到以下程度。
+## 1. `@whiteboard/core/layout` 最终公开 API
 
-## 1. mutation/core 对 layout 的依赖方式
-
-最终不应由 editor 先 patch 再发 op，而应由 mutation/core 在处理 op 时内部调用 layout service。
-
-最终方向应类似：
+### 1.1 Layout Kind 与 node 布局配置
 
 ```ts
-new MutationEngine({
+export type LayoutKind = 'none' | 'size' | 'fit'
+
+export type LayoutNodeCatalog = Readonly<Record<string, LayoutKind>>
+```
+
+说明：
+
+- `LayoutNodeCatalog` 是 committed 语义配置
+- 不是 editor `NodeSpec`
+- 不是 scene contract
+
+### 1.2 Backend request/result
+
+```ts
+export type LayoutTypography =
+  | 'default-text'
+  | 'sticky-text'
+  | 'edge-label'
+  | 'frame-title'
+  | 'shape-label'
+
+export type LayoutBackendRequest =
+  | {
+      kind: 'size'
+      typography: LayoutTypography
+      text: string
+      placeholder: string
+      widthMode: 'auto' | 'wrap'
+      wrapWidth?: number
+      frame: TextFrameInsets
+      minWidth?: number
+      maxWidth?: number
+      fontSize: number
+      fontWeight?: number | string
+      fontStyle?: string
+    }
+  | {
+      kind: 'fit'
+      typography: LayoutTypography
+      text: string
+      box: Size
+      minFontSize?: number
+      maxFontSize?: number
+      fontWeight?: number | string
+      fontStyle?: string
+      textAlign?: 'left' | 'center' | 'right'
+    }
+
+export type LayoutBackendResult =
+  | {
+      kind: 'size'
+      size: Size
+    }
+  | {
+      kind: 'fit'
+      fontSize: number
+    }
+
+export type LayoutBackend = {
+  measure: (request: LayoutBackendRequest) => LayoutBackendResult
+  dispose?: () => void
+}
+```
+
+最终约束：
+
+- backend 对它接到的 request 必须给出结果
+- edge label fallback / text metrics cache 属于 backend 自己的内部实现
+- 不再由 editor `textLayout.ts` 做 fallback
+
+### 1.3 高层领域 service
+
+`WhiteboardLayoutService` 的公开面最终只保留两个入口：
+
+- `commit(...)`
+- `runtime(...)`
+
+原因：
+
+- 这两个职责边界长期稳定
+- `nodeCreate/nodeUpdate/nodeDraft/...` 只是当前内部场景，不应固化成公共方法数量
+- 保持 plain object + 字符串 kind 的装配方式
+- 内部仍可保留私有 helper，但不污染公共 surface
+
+```ts
+export type WhiteboardLayoutCommitInput =
+  | {
+      kind: 'node.create'
+      node: NodeInput
+      position?: Point
+    }
+  | {
+      kind: 'node.update'
+      nodeId: NodeId
+      node: Node
+      update: NodeUpdateInput
+      origin?: Origin
+    }
+  | {
+      kind: 'node.text.commit'
+      nodeId: NodeId
+      node: Node
+      field: 'text' | 'title'
+      value: string
+    }
+  | {
+      kind: 'mindmap.create'
+      input: MindmapCreateInput
+      position?: Point
+    }
+  | {
+      kind: 'mindmap.topic.insert'
+      mindmapId: MindmapId
+      input: MindmapInsertInput
+    }
+
+export type WhiteboardLayoutCommitOutput =
+  | {
+      kind: 'node.create'
+      node: NodeInput
+    }
+  | {
+      kind: 'node.update'
+      update: NodeUpdateInput
+    }
+  | {
+      kind: 'node.text.commit'
+      update?: NodeUpdateInput
+    }
+  | {
+      kind: 'mindmap.create'
+      input: MindmapCreateInput
+    }
+  | {
+      kind: 'mindmap.topic.insert'
+      input: MindmapInsertInput
+    }
+
+export type WhiteboardLayoutRuntimeInput =
+  | {
+      kind: 'node.draft'
+      nodeId: NodeId
+      node: Node
+      rect: Rect
+      preview?: NodePreviewPatch
+      draft: {
+        field: 'text' | 'title'
+        value: string
+      }
+    }
+  | {
+      kind: 'node.transform'
+      patches: readonly TransformPreviewPatch[]
+      readNode: (id: NodeId) => Node | undefined
+      readRect: (id: NodeId) => Rect | undefined
+    }
+  | {
+      kind: 'edge.label'
+      edgeId: EdgeId
+      labelId: string
+      label: EdgeLabel
+    }
+
+export type WhiteboardLayoutRuntimeOutput =
+  | {
+      kind: 'node.draft'
+      measure?: NodeDraftMeasure
+    }
+  | {
+      kind: 'node.transform'
+      patches: readonly TransformPreviewPatch[]
+    }
+  | {
+      kind: 'edge.label'
+      size?: Size
+    }
+
+export type WhiteboardLayoutService = {
+  commit: (
+    input: WhiteboardLayoutCommitInput
+  ) => WhiteboardLayoutCommitOutput
+  runtime: (
+    input: WhiteboardLayoutRuntimeInput
+  ) => WhiteboardLayoutRuntimeOutput
+}
+```
+
+### 1.4 Service 创建入口
+
+```ts
+export const createWhiteboardLayout: (input: {
+  nodes: LayoutNodeCatalog
+  backend: LayoutBackend
+}) => WhiteboardLayoutService
+```
+
+最终原则：
+
+- editor/scene 不再自己构造 backend request
+- 所有 `readLayoutKind` / `buildLayoutRequest` 逻辑收进 `createWhiteboardLayout(...)`
+- 外界只拿到 `layout.commit(...)` 与 `layout.runtime(...)`
+
+## 2. `@whiteboard/engine` 最终 API
+
+最终 engine 必须正式接 layout service：
+
+```ts
+const layout = createWhiteboardLayout({
+  nodes: {
+    text: 'size',
+    sticky: 'fit'
+  },
+  backend: createReactLayoutBackend()
+})
+
+const engine = createEngine({
   document,
   services: {
-    layout
+    layout,
+    registries,
+    ids
   },
-  operations,
-  compile
+  config
+})
+```
+
+### 最终要求
+
+- `WhiteboardCompileServices` 增加 `layout`
+- compile/custom 全部通过 `ctx.services.layout.commit(...)` 访问 committed normalize 能力
+- engine 不依赖 editor 包，不读取 editor `NodeSpec`
+
+## 3. `@whiteboard/editor` 最终 API
+
+editor 只消费现成 `layout`：
+
+```ts
+const editor = createEditor({
+  engine,
+  history: engine.history,
+  initialTool,
+  initialViewport,
+  nodes,
+  services: {
+    layout,
+    defaults
+  }
+})
+```
+
+这里的 `layout` 类型已经不是 `LayoutBackend`，而是：
+
+- `WhiteboardLayoutService`
+
+### 最终约束
+
+- editor 不再创建 `createEditorTextLayout`
+- editor 不再自己持有 backend request/result contract
+- editor 不再把 `measure` 拆成独立函数传来传去
+
+## 4. `@whiteboard/editor-scene` 最终 API
+
+`editor-scene` 最终只消费 `layout.runtime(...)`。
+
+最终内部 runtime 形态：
+
+```ts
+createEditorSceneRuntime({
+  source,
+  layout,
+  nodeCapability
 })
 ```
 
 其中：
 
-- `layout` 是共享 service
-- `operations/compile` 内部决定何时测量、如何写回 committed patch
+- `layout.runtime({ kind: 'node.draft', ... })`
+- `layout.runtime({ kind: 'edge.label', ... })`
 
-## 2. editor write 的最终接口
+用于 scene graph / render / draft 计算。
 
-最终应类似：
+### 必删公开导出
+
+以下内容从 `editor-scene` 删除：
+
+- `TextMeasure`
+- `TextMeasureTarget`
+- `TextMeasureResult`
+
+原因：
+
+- 这些是 host-core backend contract，不是 scene public contract
+
+## 5. `editor.write` / `intent` 最终 API 收缩
+
+### 5.1 `node.text.commit`
+
+最终 intent：
 
 ```ts
-editor.write.node.create({
-  position,
-  template
-})
+type NodeTextCommitIntent = {
+  type: 'node.text.commit'
+  nodeId: NodeId
+  field: 'text' | 'title'
+  value: string
+}
 ```
 
-它只表达 intent，不再自行 patch `size/fontSize`。
+最终 `editor.write.node.text.commit(...)`：
 
-## 3. scene 的最终接口
+```ts
+commit: (input: {
+  nodeId: NodeId
+  field: 'text' | 'title'
+  value: string
+}) => IntentResult | undefined
+```
 
-scene 可以继续暴露：
+必须删除：
 
-- query
-- bounds
-- node/edge/mindmap runtime view
-- preview / spatial / selection 相关 read model
+- `size`
+- `fontSize`
+- `wrapWidth`
 
-但不需要承担 committed write normalize 的任何 API。
+### 5.2 `node.create`
+
+保留纯语义输入：
+
+```ts
+create: (input: {
+  position: Point
+  template: NodeTemplate
+}) => IntentResult<{ nodeId: NodeId }>
+```
+
+但 committed size/fontSize 的补全转入：
+
+- `layout.commit({ kind: 'node.create', ... })`
+
+### 5.3 `node.update`
+
+保留纯 patch intent：
+
+```ts
+update: (id: NodeId, input: NodeUpdateInput) => IntentResult
+```
+
+layout-affecting patch 的补全转入：
+
+- `layout.commit({ kind: 'node.update', ... })`
+
+### 5.4 `mindmap.create`
+
+保持：
+
+```ts
+create: (input: MindmapCreateInput) => IntentResult<...>
+```
+
+template 里的 text/sticky 布局补全转入：
+
+- `layout.commit({ kind: 'mindmap.create', ... })`
+
+### 5.5 `mindmap.topic.insert`
+
+保持：
+
+```ts
+insert: (id: MindmapId, input: MindmapInsertInput) => IntentResult<{ nodeId: MindmapNodeId }>
+```
+
+topic seed 的文本布局补全转入：
+
+- `layout.commit({ kind: 'mindmap.topic.insert', ... })`
 
 ---
 
-## 八、需要下沉的具体内容
+## 五、最终执行流
 
-以下内容应明确纳入下一轮下沉范围。
+## 1. committed create/update 流
 
-### A. 必须从 editor/write 移走
+### `node.create`
 
+最终执行流：
+
+1. editor write 只发 `node.create`
+2. engine compile 收到 intent
+3. `layout.commit({ kind: 'node.create', ... })` 生成最终 committed input
+4. compile 基于 normalized input 产出 canonical op
+5. mutation apply / history / inverse / delta 正常运行
+
+### `node.update`
+
+最终执行流：
+
+1. editor write 只发 `node.update`
+2. compile 逐条读取 committed node
+3. `layout.commit({ kind: 'node.update', ... })` 判断是否触发布局归一化
+4. 若需要，则合并 size/fontSize/fontMode/wrapWidth 等 committed patch
+5. 再走 `compileMindmapTopicUpdate(...)` / emit canonical op
+
+### `node.text.commit`
+
+最终执行流：
+
+1. editor action commit 只提交 `{ nodeId, field, value }`
+2. compile 读取 committed node
+3. `layout.commit({ kind: 'node.text.commit', ... })` 生成最终 `NodeUpdateInput`
+4. 再走 node/mindmap topic update 编排
+
+### `mindmap.create`
+
+最终执行流：
+
+1. editor write 只发 `mindmap.create`
+2. compile 先调用 `layout.commit({ kind: 'mindmap.create', ... })`
+3. 然后 instantiate template / materialize nodes
+4. emit `mindmap.create`
+
+### `mindmap.topic.insert`
+
+最终执行流：
+
+1. editor write 只发 `mindmap.topic.insert`
+2. compile 先调用 `layout.commit({ kind: 'mindmap.topic.insert', ... })`
+3. 然后 `createMindmapTopicNode(...)`
+4. emit `mindmap.topic.insert`
+
+## 2. runtime / preview 流
+
+### node edit draft
+
+最终执行流：
+
+1. scene 读取 committed node + preview rect
+2. scene 调 `layout.runtime({ kind: 'node.draft', ... })`
+3. 返回 `NodeDraftMeasure`
+4. node view / mindmap layout 统一消费这个 measure
+
+### transform preview
+
+最终执行流：
+
+1. input feature 生成 transform patches
+2. 调 `layout.runtime({ kind: 'node.transform', ... })`
+3. 返回收敛后的 preview patches
+4. session preview / scene graph 继续消费
+
+### edge label runtime size
+
+最终执行流：
+
+1. scene graph 构造 label runtime input
+2. 调 `layout.runtime({ kind: 'edge.label', ... })`
+3. 返回最终 size
+4. 再做 label placement
+
+---
+
+## 六、必须删除的旧 API / 类型 / helper
+
+## 1. 删除 `editor` 的 layout 组合器
+
+必须删除：
+
+- `createEditorTextLayout`
+- `TextLayoutMeasure`
 - `patchNodeCreateByTextMeasure`
 - `patchNodeUpdateByTextMeasure`
 - `patchMindmapTemplateByTextMeasure`
 - `patchMindmapInsertInput`
-- `normalizeStickyFontModeUpdate`
-- `isLayoutAffectingUpdate`
 
-### B. 允许暂留在 editor，但只限 preview
+允许保留但必须迁移：
 
 - `patchNodePreviewByTextMeasure`
 
-前提是它只处理 transient preview，不写 committed document。
+迁移目标：
 
-### C. 应拆出共享布局适配层
+- `layout.runtime({ kind: 'node.transform', ... })`
+
+## 2. 删除 `editor-scene` 的 backend contract 暴露
+
+必须删除：
+
+- `TextMeasure`
+- `TextMeasureTarget`
+- `TextMeasureResult`
+
+## 3. 删除 write/action 中的 committed layout 输入泄露
+
+必须删除：
+
+- `NodeTextWrite.commit.size`
+- `NodeTextWrite.commit.fontSize`
+- `NodeTextWrite.commit.wrapWidth`
+- `NodeIntent['node.text.commit'].size`
+- `NodeIntent['node.text.commit'].fontSize`
+- `NodeIntent['node.text.commit'].wrapWidth`
+
+## 4. 删除 editor `NodeSpec` 上的 `behavior.layout`
+
+必须删除：
+
+- `NodeLayoutSpec`
+- `NodeSpec.behavior.layout`
+- 所有依赖 `NodeSpecReader -> readLayoutKind(...)` 的 committed 规则读取
+
+## 5. 删除 layout request 在上层的散落构造
+
+必须删除以下分散逻辑的外露存在：
 
 - `readLayoutKind`
 - `buildLayoutRequest`
-- edge label fallback measure
+- `normalizeStickyFontModeUpdate`
+- edge label fallback 逻辑放在 editor 层
 
-这类逻辑不应该散落在 editor write 与 scene 各自调用链中。
+这些逻辑最终都要被吸收到：
 
----
-
-## 九、对 `readXxx` helper 的最终收口规则
-
-后续审计 editor 层 helper 时，按下表处理。
-
-| helper 类型 | 是否允许保留 | 最终归属 |
-| --- | --- | --- |
-| 纯本地 selector / 小算法 | 允许 | 原模块内部 |
-| committed write normalize | 不允许 | mutation/core |
-| runtime view 组装 | 不应留在 editor | editor-scene/query |
-| 多 feature 复用的领域能力 | 不应继续是零散 helper | 正式 query/service |
-| 命名为 `read` 但实为复杂 derive/normalize | 允许重构保留逻辑，但必须更正层级或命名 | 视职责而定 |
+- `createWhiteboardLayout(...)`
 
 ---
 
-## 十、一步到位实施方案
+## 七、实施方案
 
-## Phase 1. 拆清 layout service 与 committed normalize
+以下阶段只描述最终执行顺序。
 
-必须完成：
+明确规定：
 
-- 把 `textLayout.ts` 中的 committed normalize 逻辑与 preview 逻辑分离
-- 明确 layout request builder / layout measure adapter 的独立边界
-- editor 层不再拥有 committed patch 构造入口
+- 各阶段之间不要求保留兼容
+- 不要求中间态可运行
+- 全部阶段完成后一次性跑通
 
-阶段完成标准：
-
-- `textLayout.ts` 不再同时承担 committed write 与 preview 两类职责
-
-## Phase 2. 下沉 committed normalize 到 mutation/core
+## Phase 1. 建立 core layout contract 与 service
 
 必须完成：
 
-- `node.create`
-- `node.update`
-- `mindmap.create`
-- `mindmap.topic.insert`
+- 在 `@whiteboard/core/layout` 新建最终 contract
+- 新增 `LayoutNodeCatalog`
+- 新增 `LayoutBackendRequest/Result`
+- 新增 `WhiteboardLayoutService`
+- 新增 `createWhiteboardLayout(...)`
+- 把 `LayoutBackend` / `LayoutRequest` / `TextTypographyProfile` 从 `editor` 迁出
+- 删除 `editor-scene` 对 `TextMeasure*` 的 owner 身份
 
-全部改为在 mutation/core 内部做 layout normalize。
+必须修改：
 
-阶段完成标准：
+- `whiteboard/packages/whiteboard-editor/src/types/layout.ts`
+- `whiteboard/packages/whiteboard-editor-scene/src/contracts/editor.ts`
+- `whiteboard/packages/whiteboard-editor-scene/src/index.ts`
+- `whiteboard/packages/whiteboard-editor/src/index.ts`
 
-- `editor.write.*` 不再调用任何 `patch*ByTextMeasure`
+阶段结果：
 
-## Phase 3. 收口 editor write
+- layout contract 的唯一 owner 变成 `@whiteboard/core/layout`
 
-必须完成：
-
-- `createNodeWrite`
-- `createMindmapWrite`
-- `createMindmapTopicWrite`
-
-去掉对：
-
-- `measure`
-- `nodes`
-- projection geometry 依赖
-
-阶段完成标准：
-
-- editor write 只表达 intent，不再持有布局语义
-
-## Phase 4. 审计 editor 层 `readXxx` helper
+## Phase 2. 把 layout policy 从 editor NodeSpec 拆出
 
 必须完成：
 
-- 列出所有影响 committed write 的 helper，并全部下沉
-- 列出所有其实应归 scene/query 的 runtime helper，并迁移或升格
-- 剩余 helper 限定为 editor 本地交互细节
+- 删除 `NodeSpec.behavior.layout`
+- 删除 `NodeLayoutSpec`
+- 在 composition root 侧提供 `LayoutNodeCatalog`
+- `createWhiteboardLayout(...)` 只吃 plain object layout catalog
 
-阶段完成标准：
+必须修改：
 
-- editor 层不再承担下层领域语义拼装
+- `whiteboard/packages/whiteboard-editor/src/types/node/spec.ts`
+- 所有测试里的 `nodes` 定义
+- `createEditor(...)` / host 组合代码
 
-## Phase 5. 最终收尾
+阶段结果：
+
+- committed layout policy 不再依赖 editor spec
+
+## Phase 3. engine 接入 `layout.commit`
 
 必须完成：
 
-- 删除 editor 层围绕 text measure 的 write-time adapter
-- 删除与 committed normalize 相关的过渡 helper
-- 更新测试，使 contract 明确绑定到 mutation/core 而不是 editor write
+- `WhiteboardCompileServices` 增加 `layout`
+- `createEngine(...)` 支持注入 `layout`
+- `node.create` compile 路径调用 `layout.commit({ kind: 'node.create', ... })`
+- `node.update` compile 路径调用 `layout.commit({ kind: 'node.update', ... })`
+- `node.text.commit` compile 路径调用 `layout.commit({ kind: 'node.text.commit', ... })`
+- `mindmap.create` compile 路径调用 `layout.commit({ kind: 'mindmap.create', ... })`
+- `mindmap.topic.insert` compile 路径调用 `layout.commit({ kind: 'mindmap.topic.insert', ... })`
 
-阶段完成标准：
+必须修改：
 
-- text layout / write / scene / mutation 四层职责单轨清晰
+- `whiteboard/packages/whiteboard-engine/src/runtime/engine.ts`
+- `whiteboard/packages/whiteboard-core/src/operations/compile/helpers.ts`
+- `whiteboard/packages/whiteboard-core/src/operations/compile/node.ts`
+- `whiteboard/packages/whiteboard-core/src/operations/compile/mindmap.ts`
+
+阶段结果：
+
+- committed normalize 完全下沉到 mutation/core
+
+## Phase 4. editor write / action 收缩成纯 intent
+
+必须完成：
+
+- 删除 `createEditorTextLayout`
+- 删除 `write/node.ts` 里 create/update 的 layout patch 逻辑
+- 删除 `write/mindmap/index.ts` 的 template patch
+- 删除 `write/mindmap/topic.ts` 的 insert patch
+- `action/index.ts` 在 text commit 时只传 `{ nodeId, field, value }`
+- `NodeTextWrite.commit(...)` 签名收缩
+- `NodeIntent['node.text.commit']` 签名收缩
+
+必须修改：
+
+- `whiteboard/packages/whiteboard-editor/src/editor/createEditor.ts`
+- `whiteboard/packages/whiteboard-editor/src/write/index.ts`
+- `whiteboard/packages/whiteboard-editor/src/write/node.ts`
+- `whiteboard/packages/whiteboard-editor/src/write/mindmap/index.ts`
+- `whiteboard/packages/whiteboard-editor/src/write/mindmap/topic.ts`
+- `whiteboard/packages/whiteboard-editor/src/write/types.ts`
+- `whiteboard/packages/whiteboard-editor/src/action/index.ts`
+- `whiteboard/packages/whiteboard-core/src/operations/intents.ts`
+
+阶段结果：
+
+- editor 不再持有 committed layout patch 责任
+
+## Phase 5. scene/runtime 收口为窄入口
+
+必须完成：
+
+- `createEditorSceneRuntime(...)` 改为接收 `layout`
+- graph/node draft 测量改走 `layout.runtime({ kind: 'node.draft', ... })`
+- graph/mindmap live relayout 改走 `layout.runtime({ kind: 'node.draft', ... })`
+- graph/edge label 测量改走 `layout.runtime({ kind: 'edge.label', ... })`
+- transform preview 改走 `layout.runtime({ kind: 'node.transform', ... })`
+
+必须修改：
+
+- `whiteboard/packages/whiteboard-editor-scene/src/runtime/createEditorSceneRuntime.ts`
+- `whiteboard/packages/whiteboard-editor-scene/src/runtime/model.ts`
+- `whiteboard/packages/whiteboard-editor-scene/src/contracts/working.ts`
+- `whiteboard/packages/whiteboard-editor-scene/src/model/graph/node.ts`
+- `whiteboard/packages/whiteboard-editor-scene/src/model/graph/mindmap.ts`
+- `whiteboard/packages/whiteboard-editor-scene/src/model/graph/edge.ts`
+- `whiteboard/packages/whiteboard-editor/src/input/features/transform.ts`
+
+阶段结果：
+
+- editor/scene 不再拼 backend request
+- preview/runtime 正式收口
+
+## Phase 6. 清理旧 helper、导出、测试装配
+
+必须完成：
+
+- 删除 `textLayout.ts` 旧模块，或仅保留 host backend adapter 中必要实现
+- 删除所有对 `patchNodeCreateByTextMeasure` / `patchNodeUpdateByTextMeasure` / `TextMeasure*` 的引用
+- 测试统一改为通过 shared `layout` service 装配
+- `editor.dispose()` 不再清理内部 text metrics 资源
+- backend `dispose()` 由组合根负责
+
+必须修改：
+
+- 所有 editor / scene / tests 中 layout 装配逻辑
+- 所有相关导出入口
+
+阶段结果：
+
+- layout ownership、lifetime、API 边界全部统一
 
 ---
 
-## 十一、最终验收标准
+## 八、最终导出矩阵
+
+## 1. `@whiteboard/core/layout` 保留公开
+
+- `LayoutKind`
+- `LayoutNodeCatalog`
+- `LayoutBackendRequest`
+- `LayoutBackendResult`
+- `LayoutBackend`
+- `WhiteboardLayoutService`
+- `createWhiteboardLayout`
+
+## 2. `@whiteboard/editor` 保留公开
+
+- `createEditor(...)`
+- editor action/write/query 相关 API
+
+允许引用 core layout 类型，但不再自有定义：
+
+- `WhiteboardLayoutService`
+
+## 3. `@whiteboard/editor-scene` 不再公开
+
+- `TextMeasure`
+- `TextMeasureTarget`
+- `TextMeasureResult`
+
+## 4. React / host 层保留公开
+
+- host backend 工厂，例如 `createReactLayoutBackend()`
+
+它只返回：
+
+- `LayoutBackend`
+
+---
+
+## 九、最终验收标准
 
 以下条件必须同时成立：
 
-- `editor.write.*` 只负责发 intent，不再做 layout-driven committed patch
-- 所有文本测量驱动的 committed 字段归一化都在 mutation/core 完成
-- `editor-scene` 只负责 projection/runtime read model，不负责 write normalize
-- preview layout 与 committed layout 彻底分层
-- `textLayout.ts` 不再是三种职责混合的总集散地
-- editor 层 `readXxx` helper 只保留本地交互细节，不再承担下层领域语义拼装
+- `patchNodeCreateByTextMeasure`、`patchNodeUpdateByTextMeasure`、`patchMindmapTemplateByTextMeasure`、`patchMindmapInsertInput` 全部消失
+- `createEditorTextLayout` 消失
+- `TextMeasure` / `TextMeasureTarget` / `TextMeasureResult` 不再由 `editor-scene` 对外导出
+- `NodeSpec.behavior.layout` 消失
+- `node.text.commit` 不再接受 `size/fontSize/wrapWidth`
+- engine compile/custom 通过 `services.layout.commit(...)` 接管 committed layout normalize
+- scene/runtime 通过 `layout.runtime(...)` 接管 node draft / transform preview / edge label 测量
+- editor write 只发 semantic intent，不再做 committed patch 扩写
+- layout service 生命周期归组合根，不归 editor
 
-这就是这块架构的长期最优终态。
+这就是 whiteboard text layout / write 职责的长期最优终态。

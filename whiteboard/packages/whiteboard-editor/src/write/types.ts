@@ -37,8 +37,7 @@ import type {
   NodeUpdateInput,
   OrderMode,
   Origin,
-  Point,
-  Size
+  Point
 } from '@whiteboard/core/types'
 import type {
   MindmapBranchLineKind,
@@ -105,9 +104,6 @@ export type NodeTextWrite = {
     nodeId: NodeId
     field: 'text' | 'title'
     value: string
-    size?: Size
-    fontSize?: number
-    wrapWidth?: number
   }) => IntentResult | undefined
   color: (nodeIds: readonly NodeId[], color: string) => IntentResult
   size: (input: {

@@ -24,7 +24,7 @@ import type {
   Input,
   NodeCapabilityInput,
   SceneViewInput,
-  TextMeasure
+  EditorSceneLayout
 } from '../contracts/editor'
 import type {
   GraphDelta
@@ -208,12 +208,12 @@ const toDocumentSnapshot = (
 })
 
 export const createEditorSceneProjection = (input: {
-  measure?: TextMeasure
+  layout?: EditorSceneLayout
   nodeCapability?: NodeCapabilityInput
   view: SceneViewInput
 }) => createProjection({
   createState: () => createWorking({
-    measure: input.measure
+    layout: input.layout
   }),
   createRead: (runtime) => createEditorSceneRead({
     revision: runtime.revision,

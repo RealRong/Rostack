@@ -1,4 +1,5 @@
 import type { HistoryPort } from '@shared/mutation'
+import type { WhiteboardLayoutService } from '@whiteboard/core/layout'
 import type { Engine } from '@whiteboard/engine'
 import type { IntentResult } from '@whiteboard/engine'
 import {
@@ -22,11 +23,9 @@ import {
 import {
   createNodeWrite
 } from '@whiteboard/editor/write/node'
-import type { TextLayoutMeasure } from '@whiteboard/editor/layout/textLayout'
 import type { DocumentQuery } from '@whiteboard/editor-scene'
 import type { EditorSceneApi } from '@whiteboard/editor/types/editor'
 import type { EditorWrite } from '@whiteboard/editor/write/types'
-import type { NodeSpecReader } from '@whiteboard/editor/types/node'
 
 export type { EditorWrite } from '@whiteboard/editor/write/types'
 
@@ -35,15 +34,13 @@ export const createEditorWrite = ({
   history,
   document,
   projection,
-  nodes,
-  measure
+  layout
 }: {
   engine: Engine
   history: HistoryPort<IntentResult>
   document: DocumentQuery
   projection: EditorSceneApi
-  nodes: NodeSpecReader
-  measure: TextLayoutMeasure
+  layout: WhiteboardLayoutService
 }): EditorWrite => {
   const historyWrite = createHistoryWrite(history)
   const documentWrite = createDocumentWrite(engine)
@@ -54,8 +51,7 @@ export const createEditorWrite = ({
       document,
       projection: projection.query
     },
-    nodes,
-    measure
+    layout
   })
   const group = createGroupWrite(engine)
   const edge = createEdgeWrite({
@@ -67,8 +63,7 @@ export const createEditorWrite = ({
   })
   const mindmap = createMindmapWrite({
     engine,
-    nodes,
-    measure
+    layout
   })
 
   return {

@@ -1,8 +1,10 @@
 import assert from 'node:assert/strict'
 import { test } from 'vitest'
 import { document as documentApi } from '@whiteboard/core/document'
+import type { LayoutBackend } from '@whiteboard/core/layout'
 import { createEngine } from '@whiteboard/engine'
 import { product } from '@whiteboard/product'
+import { createTestLayout } from './support'
 
 const createTextNode = ({
   id,
@@ -29,6 +31,24 @@ const createTextNode = ({
     text
   }
 })
+
+const createSizedTextLayout = (
+  sizes: Readonly<Record<string, { width: number; height: number }>>
+) => createTestLayout({
+  measure: (request) => {
+    if (request.kind !== 'size' || request.source?.kind !== 'node') {
+      return undefined
+    }
+
+    const size = sizes[request.source.nodeId]
+    return size
+      ? {
+          kind: 'size',
+          size
+        }
+      : undefined
+  }
+} satisfies LayoutBackend)
 
 test('node.text.commit deletes empty text nodes through engine semantics', () => {
   const document = documentApi.create('doc_write_closure_text_delete')
@@ -66,7 +86,8 @@ test('node.text.commit deletes empty text nodes through engine semantics', () =>
   ]
 
   const engine = createEngine({
-    document
+    document,
+    layout: createTestLayout()
   })
 
   const result = engine.execute({
@@ -90,7 +111,7 @@ test('node.text.commit deletes empty text nodes through engine semantics', () =>
   )
 })
 
-test('node.text.commit merges text, size, fontSize, and wrapWidth for generic text nodes', () => {
+test('node.text.commit merges text and measured size for generic text nodes', () => {
   const document = documentApi.create('doc_write_closure_text_merge')
   document.nodes.text_1 = {
     ...createTextNode({
@@ -112,20 +133,20 @@ test('node.text.commit merges text, size, fontSize, and wrapWidth for generic te
   ]
 
   const engine = createEngine({
-    document
+    document,
+    layout: createSizedTextLayout({
+      text_1: {
+        width: 180,
+        height: 48
+      }
+    })
   })
 
   const result = engine.execute({
     type: 'node.text.commit',
     nodeId: 'text_1',
     field: 'text',
-    value: 'updated',
-    size: {
-      width: 180,
-      height: 48
-    },
-    fontSize: 20,
-    wrapWidth: 180
+    value: 'updated'
   })
 
   assert.equal(result.ok, true)
@@ -135,20 +156,21 @@ test('node.text.commit merges text, size, fontSize, and wrapWidth for generic te
 
   assert.deepEqual(result.commit.document.nodes.text_1?.data, {
     text: 'updated',
-    wrapWidth: 180
+    wrapWidth: 120
   })
   assert.deepEqual(result.commit.document.nodes.text_1?.size, {
     width: 180,
     height: 48
   })
   assert.deepEqual(result.commit.document.nodes.text_1?.style, {
-    fontSize: 20
+    fontSize: 14
   })
 })
 
 test('node.text.commit routes mindmap topic text and size through mindmap operations', () => {
   const engine = createEngine({
-    document: documentApi.create('doc_write_closure_mindmap_text_commit')
+    document: documentApi.create('doc_write_closure_mindmap_text_commit'),
+    layout: createTestLayout()
   })
 
   const createResult = engine.execute({
@@ -165,16 +187,23 @@ test('node.text.commit routes mindmap topic text and size through mindmap operat
     return
   }
 
-  const result = engine.execute({
-    type: 'node.text.commit',
-    nodeId: createResult.data.rootId,
-    field: 'text',
-    value: 'Updated topic',
-    size: {
+  const rootId = createResult.data.rootId
+  const layout = createSizedTextLayout({
+    [rootId]: {
       width: 220,
       height: 64
-    },
-    fontSize: 22
+    }
+  })
+  const engineWithLayout = createEngine({
+    document: engine.current().doc,
+    layout
+  })
+
+  const result = engineWithLayout.execute({
+    type: 'node.text.commit',
+    nodeId: rootId,
+    field: 'text',
+    value: 'Updated topic'
   })
 
   assert.equal(result.ok, true)
@@ -183,19 +212,15 @@ test('node.text.commit routes mindmap topic text and size through mindmap operat
   }
 
   assert.equal(
-    result.commit.document.nodes[createResult.data.rootId]?.data?.text,
+    result.commit.document.nodes[rootId]?.data?.text,
     'Updated topic'
   )
   assert.deepEqual(
-    result.commit.document.nodes[createResult.data.rootId]?.size,
+    result.commit.document.nodes[rootId]?.size,
     {
       width: 220,
       height: 64
     }
-  )
-  assert.equal(
-    result.commit.document.nodes[createResult.data.rootId]?.style?.fontSize,
-    22
   )
   assert.deepEqual(
     result.commit.forward.map((op) => op.type),

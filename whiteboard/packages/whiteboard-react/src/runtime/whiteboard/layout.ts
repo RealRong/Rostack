@@ -1,17 +1,18 @@
-import type { LayoutBackend, LayoutRequest } from '@whiteboard/editor'
+import type {
+  LayoutBackend,
+  LayoutSourceRef
+} from '@whiteboard/core/layout'
 import { measureFitFontSize } from '@whiteboard/react/features/node/dom/textFit'
 import { measureTextOuterSize } from '@whiteboard/react/features/node/dom/textMeasure'
 import type { TextSourceStore } from '@whiteboard/react/features/node/dom/textSourceStore'
 
 const readSource = (
   textSources: TextSourceStore,
-  source: LayoutRequest['source']
+  source: LayoutSourceRef | undefined
 ) => {
-  if (!source) {
-    return undefined
-  }
-
-  const element = textSources.get(source)
+  const element = source
+    ? textSources.get(source)
+    : undefined
   return element?.isConnected
     ? element
     : undefined

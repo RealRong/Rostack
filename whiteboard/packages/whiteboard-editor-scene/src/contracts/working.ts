@@ -8,7 +8,7 @@ import type {
 } from './delta'
 import type { NodeId } from '@whiteboard/core/types'
 import type {
-  TextMeasure,
+  EditorSceneLayout,
   NodeDraftMeasure,
 } from './editor'
 import type { State } from './state'
@@ -26,7 +26,7 @@ export type {
 } from './state'
 
 export interface WorkingState extends State {
-  measure?: TextMeasure
+  layout?: EditorSceneLayout
   draft: {
     node: Map<NodeId, NodeDraftMeasure>
   }

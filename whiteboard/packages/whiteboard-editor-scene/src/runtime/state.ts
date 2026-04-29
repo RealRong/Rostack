@@ -9,7 +9,7 @@ import {
   uiChange
 } from '../contracts/delta'
 import type {
-  TextMeasure
+  EditorSceneLayout
 } from '../contracts/editor'
 import type { WorkingState } from '../contracts/working'
 import { createSpatialState } from '../model/spatial/state'
@@ -24,7 +24,7 @@ export const createEmptyDocumentSnapshot = (): {
 })
 
 export const createWorking = (input: {
-  measure?: TextMeasure
+  layout?: EditorSceneLayout
 } = {}): WorkingState => {
   const snapshot = createEmptyDocumentSnapshot()
   const nodeState = new Map()
@@ -47,7 +47,7 @@ export const createWorking = (input: {
   }
 
   return {
-    measure: input.measure,
+    layout: input.layout,
     draft: {
       node: new Map()
     },

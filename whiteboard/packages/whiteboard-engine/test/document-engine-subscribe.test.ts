@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import { document as documentApi } from '@whiteboard/core/document'
 import { createEngine } from '@whiteboard/engine'
+import { createTestLayout } from './support'
 
 describe('document engine subscribe', () => {
   it('publishes exactly once after a successful commit', () => {
     const engine = createEngine({
-      document: documentApi.create('doc_document_engine_subscribe')
+      document: documentApi.create('doc_document_engine_subscribe'),
+      layout: createTestLayout()
     })
 
     let count = 0
@@ -36,7 +38,8 @@ describe('document engine subscribe', () => {
 
   it('increments revision monotonically across execute and apply', () => {
     const engine = createEngine({
-      document: documentApi.create('doc_document_engine_revision')
+      document: documentApi.create('doc_document_engine_revision'),
+      layout: createTestLayout()
     })
 
     const first = engine.execute({

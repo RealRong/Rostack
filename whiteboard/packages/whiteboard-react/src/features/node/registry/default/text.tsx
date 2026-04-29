@@ -370,9 +370,6 @@ export const TextNodeSpec: NodeSpecEntry = {
   behavior: {
     role: 'content',
     geometry: 'rect',
-    layout: {
-      kind: 'size'
-    },
     defaultData: {
       text: ''
     },
@@ -403,9 +400,6 @@ export const StickyNodeSpec: NodeSpecEntry = {
   behavior: {
     role: 'content',
     geometry: 'rect',
-    layout: {
-      kind: 'fit'
-    },
     defaultData: {
       text: '',
       fontMode: 'auto'

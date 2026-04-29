@@ -7,7 +7,6 @@ import type {
   EditCapability,
   EditField
 } from '@whiteboard/editor/session/edit'
-import type { NodeLayoutSpec } from '@whiteboard/editor/types/layout'
 
 export type NodeHit = 'box' | 'path' | 'none'
 export type NodeFamily = 'text' | 'shape' | 'frame' | 'draw'
@@ -52,7 +51,6 @@ export type NodeBehaviorSpec = {
   connect?: boolean
   rotate?: boolean
   resize?: boolean
-  layout?: NodeLayoutSpec
   enter?: boolean
   edit?: {
     fields?: Partial<Record<EditField, EditCapability>>

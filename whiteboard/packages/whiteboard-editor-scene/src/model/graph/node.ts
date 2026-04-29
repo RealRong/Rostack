@@ -217,10 +217,9 @@ export const readNodeDraftMeasure = (input: {
   edit: SessionInput['edit']
 }): NodeDraftMeasure | undefined => {
   if (
-    !input.working.measure
+    !input.working.layout
     || input.edit?.kind !== 'node'
     || input.edit.nodeId !== input.nodeId
-    || input.edit.field !== 'text'
   ) {
     return undefined
   }
@@ -236,21 +235,17 @@ export const readNodeDraftMeasure = (input: {
       height: size.height
     }
   })()
-  const previewItem = nodeApi.patch.applyTextPreview({
-    node: input.entry.base.node,
-    rect: fallbackRect
-  }, input.entry.preview?.patch)
-  const contentItem = nodeApi.patch.applyTextDraft(previewItem, {
-    field: input.edit.field,
-    value: input.edit.text
-  })
-
-  return input.working.measure({
-    kind: 'node',
+  return input.working.layout.runtime({
+    kind: 'node.draft',
     nodeId: input.nodeId,
-    node: contentItem.node,
-    rect: contentItem.rect
-  })
+    node: input.entry.base.node,
+    rect: fallbackRect,
+    preview: input.entry.preview?.patch,
+    draft: {
+      field: input.edit.field,
+      value: input.edit.text
+    }
+  }).measure
 }
 
 export const buildNodeView = (input: {

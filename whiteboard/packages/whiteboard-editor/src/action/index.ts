@@ -461,7 +461,6 @@ export const createEditorActionsApi = ({
             return
           }
 
-          const draftLayout = graph.query.node.draft(currentEdit.nodeId)
           session.mutate.edit.clear()
           write.node.text.commit({
             nodeId: currentEdit.nodeId,
@@ -470,13 +469,7 @@ export const createEditorActionsApi = ({
               text: currentEdit.text,
               empty: capability.empty,
               defaultText: capability.defaultText
-            }),
-            size: draftLayout?.kind === 'size'
-              ? draftLayout.size
-              : undefined,
-            fontSize: draftLayout?.kind === 'fit'
-              ? draftLayout.fontSize
-              : undefined
+            })
           })
           return
         }

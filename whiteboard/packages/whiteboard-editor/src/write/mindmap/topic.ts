@@ -2,12 +2,8 @@ import type {
   MindmapInsertInput,
   NodeInput
 } from '@whiteboard/core/types'
+import type { WhiteboardLayoutService } from '@whiteboard/core/layout'
 import type { Engine } from '@whiteboard/engine'
-import {
-  patchNodeCreateByTextMeasure,
-  type TextLayoutMeasure
-} from '@whiteboard/editor/layout/textLayout'
-import type { NodeSpecReader } from '@whiteboard/editor/types/node'
 import type { MindmapWrite } from '@whiteboard/editor/write/types'
 
 const createTopicNodeSeed = (
@@ -70,45 +66,24 @@ const createTopicNodeSeed = (
   }
 }
 
-export const patchMindmapInsertInput = (
-  nodes: NodeSpecReader,
-  measure: TextLayoutMeasure,
-  input: MindmapInsertInput
-): MindmapInsertInput => {
-  const patched = patchNodeCreateByTextMeasure({
-    payload: createTopicNodeSeed(input.payload),
-    nodes,
-    measure
-  })
-
-  return {
-    ...input,
-    node: {
-      type: patched.type === 'frame'
-        ? undefined
-        : patched.type,
-      data: patched.data,
-      style: patched.style,
-      size: patched.size,
-      rotation: patched.rotation,
-      locked: patched.locked
-    }
-  }
-}
-
 export const createMindmapTopicWrite = ({
   engine,
-  nodes,
-  measure
+  layout
 }: {
   engine: Engine
-  nodes: NodeSpecReader
-  measure: TextLayoutMeasure
+  layout: WhiteboardLayoutService
 }): MindmapWrite['topic'] => ({
   insert: (id, input) => engine.execute({
     type: 'mindmap.topic.insert',
     id,
-    input: patchMindmapInsertInput(nodes, measure, input)
+    input: layout.commit({
+      kind: 'mindmap.topic.insert',
+      mindmapId: id,
+      input: {
+        ...input,
+        node: input.node ?? createTopicNodeSeed(input.payload)
+      }
+    }).input
   }),
   move: (id, input) => engine.execute({
     type: 'mindmap.topic.move',

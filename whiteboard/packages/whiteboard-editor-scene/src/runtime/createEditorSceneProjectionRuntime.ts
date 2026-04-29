@@ -2,7 +2,7 @@ import type {
   NodeCapabilityInput,
   Runtime,
   SceneViewInput,
-  TextMeasure
+  EditorSceneLayout
 } from '../contracts/editor'
 import type { State } from '../contracts/state'
 import type { WorkingState } from '../contracts/working'
@@ -27,7 +27,7 @@ const createEditorSceneStateReader = (input: {
 }
 
 export const createEditorSceneProjectionRuntime = (input: {
-  measure?: TextMeasure
+  layout?: EditorSceneLayout
   nodeCapability?: NodeCapabilityInput
   view: SceneViewInput
 }): Runtime => {

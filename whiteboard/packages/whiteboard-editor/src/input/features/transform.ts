@@ -8,9 +8,6 @@ import type { Node, NodeId } from '@whiteboard/core/types'
 import type { InteractionBinding, InteractionSession } from '@whiteboard/editor/input/core/types'
 import { FINISH } from '@whiteboard/editor/input/session/result'
 import { createGesture } from '@whiteboard/editor/input/core/gesture'
-import {
-  patchNodePreviewByTextMeasure
-} from '@whiteboard/editor/layout/textLayout'
 import type { PointerDownInput } from '@whiteboard/editor/types/input'
 import type { TransformPickHandle } from '@whiteboard/editor/types/pick'
 import type { EditorHostDeps } from '@whiteboard/editor/input/runtime'
@@ -169,7 +166,7 @@ const resolveTransformSpec = (
 }
 
 export const createTransformSession = (
-  ctx: Pick<EditorHostDeps, 'projection' | 'sessionRead' | 'measure' | 'nodes' | 'snap' | 'write'>,
+  ctx: Pick<EditorHostDeps, 'projection' | 'sessionRead' | 'layout' | 'snap' | 'write'>,
   spec: TransformSpec<Node>,
   start: Pick<PointerDownInput, 'modifiers'>
 ): InteractionSession => {
@@ -199,13 +196,12 @@ export const createTransformSession = (
         }
       }
     })
-    const nextPatches = patchNodePreviewByTextMeasure({
+    const nextPatches = ctx.layout.runtime({
+      kind: 'node.transform',
       patches: result.state.patches,
       readNode: ctx.projection.query.document.node,
-      readRect: (nodeId) => ctx.projection.query.node.get(nodeId)?.geometry.rect,
-      nodes: ctx.nodes,
-      measure: ctx.measure
-    })
+      readRect: (nodeId) => ctx.projection.query.node.get(nodeId)?.geometry.rect
+    }).patches
     state = {
       ...result.state,
       patches: nextPatches
@@ -266,7 +262,7 @@ export const createTransformSession = (
 }
 
 export const createTransformBinding = (
-  ctx: Pick<EditorHostDeps, 'projection' | 'sessionRead' | 'measure' | 'nodes' | 'snap' | 'write' | 'nodeType' | 'sceneDerived'>
+  ctx: Pick<EditorHostDeps, 'projection' | 'sessionRead' | 'layout' | 'snap' | 'write' | 'nodeType' | 'sceneDerived'>
 ): InteractionBinding => ({
   key: 'transform',
   start: (input) => {

@@ -50,9 +50,6 @@ export const DrawNodeSpec: NodeSpecEntry = {
     connect: false,
     resize: false,
     rotate: false,
-    layout: {
-      kind: 'none'
-    },
     render: ({ node, rect, rotation, selected }) => {
       const spatial = toSpatialNode({
         node,

@@ -12,7 +12,7 @@ import type { Input } from '../src/contracts/editor'
 import { createEmptyInput, createEmptyRuntimeInputDelta } from '../src/testing/input'
 import {
   createMutationDelta,
-  createEditorGraphTextMeasure,
+  createEditorGraphLayout,
   type EditorGraphTextMeasureState
 } from '../src/testing/builders'
 import { createWhiteboardMutationDelta } from '../src/mutation/delta'
@@ -125,7 +125,7 @@ const createInput = (input: {
 let currentMeasureState: EditorGraphTextMeasureState = {}
 
 const createProjectionHarness = () => createEditorSceneProjectionHarness({
-  measure: createEditorGraphTextMeasure(
+  layout: createEditorGraphLayout(
     () => currentMeasureState
   )
 })
@@ -133,7 +133,8 @@ const createProjectionHarness = () => createEditorSceneProjectionHarness({
 describe('graph delta patching', () => {
   it('records touched node and related edge geometry in working delta', () => {
     const engine = createEngine({
-      document: documentApi.create('doc_editor_graph_runtime_graph_delta')
+      document: documentApi.create('doc_editor_graph_runtime_graph_delta'),
+      layout: createEditorGraphLayout(() => currentMeasureState)
     })
     const firstId = createNode({
       engine,
@@ -204,7 +205,8 @@ describe('graph delta patching', () => {
 
   it('marks spatial order without synthetic record updates on canvas order input', () => {
     const engine = createEngine({
-      document: documentApi.create('doc_editor_graph_runtime_spatial_order')
+      document: documentApi.create('doc_editor_graph_runtime_spatial_order'),
+      layout: createEditorGraphLayout(() => currentMeasureState)
     })
     const firstId = createNode({
       engine,
@@ -275,7 +277,8 @@ describe('graph delta patching', () => {
 
   it('keeps group frame in graph while excluding group records from spatial state', () => {
     const engine = createEngine({
-      document: documentApi.create('doc_editor_graph_runtime_spatial_group_boundary')
+      document: documentApi.create('doc_editor_graph_runtime_spatial_group_boundary'),
+      layout: createEditorGraphLayout(() => currentMeasureState)
     })
     const firstId = createNode({
       engine,

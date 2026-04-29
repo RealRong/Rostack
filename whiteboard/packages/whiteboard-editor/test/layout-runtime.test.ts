@@ -1,43 +1,9 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { Node } from '@whiteboard/core/types'
 import {
-  createEditorTextLayout,
-  patchNodePreviewByTextMeasure
-} from '../src/layout/textLayout'
-import type { LayoutBackend, NodeSpec, NodeSpecReader } from '../src'
-
-const nodes: NodeSpec = {
-  sticky: {
-    meta: {
-      type: 'sticky',
-      name: 'Sticky',
-      family: 'text',
-      icon: 'sticky',
-      controls: []
-    },
-    behavior: {
-      layout: {
-        kind: 'fit'
-      },
-      role: 'content',
-      resize: true,
-      rotate: true,
-      enter: true,
-      edit: {
-        fields: {
-          text: {
-            multiline: true,
-            empty: 'keep'
-          }
-        }
-      }
-    }
-  }
-}
-
-const nodeReader: NodeSpecReader = {
-  get: (type) => nodes[type]
-}
+  createWhiteboardLayout,
+  type LayoutBackend
+} from '@whiteboard/core/layout'
 
 const createStickyNode = (): Node => ({
   id: 'sticky-1',
@@ -67,14 +33,15 @@ describe('text layout preview patching', () => {
       fontSize: 18
     }))
     const node = createStickyNode()
-    const layout = createEditorTextLayout({
-      nodes: nodeReader,
-      backend: {
-        measure
-      }
+    const layout = createWhiteboardLayout({
+      nodes: {
+        sticky: 'fit'
+      },
+      backend: { measure }
     })
 
-    expect(patchNodePreviewByTextMeasure({
+    expect(layout.runtime({
+      kind: 'node.transform',
       patches: [{
         id: node.id,
         rotation: 45
@@ -85,10 +52,8 @@ describe('text layout preview patching', () => {
         y: 0,
         width: 180,
         height: 140
-      }),
-      nodes: nodeReader,
-      measure: layout.measure
-    })).toEqual([{
+      })
+    }).patches).toEqual([{
       id: node.id,
       rotation: 45
     }])
@@ -101,14 +66,15 @@ describe('text layout preview patching', () => {
       fontSize: 18
     }))
     const node = createStickyNode()
-    const layout = createEditorTextLayout({
-      nodes: nodeReader,
-      backend: {
-        measure
-      }
+    const layout = createWhiteboardLayout({
+      nodes: {
+        sticky: 'fit'
+      },
+      backend: { measure }
     })
 
-    expect(patchNodePreviewByTextMeasure({
+    expect(layout.runtime({
+      kind: 'node.transform',
       patches: [{
         id: node.id,
         size: {
@@ -122,10 +88,8 @@ describe('text layout preview patching', () => {
         y: 0,
         width: 180,
         height: 140
-      }),
-      nodes: nodeReader,
-      measure: layout.measure
-    })).toEqual([{
+      })
+    }).patches).toEqual([{
       id: node.id,
       size: {
         width: 100,

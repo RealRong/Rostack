@@ -1,13 +1,16 @@
 import { EMPTY_MUTATION_CHANGE_MAP } from '@shared/mutation'
+import {
+  createWhiteboardLayout,
+  type LayoutNodeCatalog,
+  type NodeDraftMeasure
+} from '@whiteboard/core/layout'
 import type {
   EdgeId,
   NodeId,
   Size
 } from '@whiteboard/core/types'
 import type {
-  NodeDraftMeasure,
-  RuntimeInputDelta,
-  TextMeasure
+  RuntimeInputDelta
 } from '../contracts/editor'
 import {
   createWhiteboardMutationDelta,
@@ -54,24 +57,39 @@ export interface EditorGraphTextMeasureState {
   edgeLabelMeasures?: ReadonlyMap<EdgeId, ReadonlyMap<string, Size>>
 }
 
-export const createEditorGraphTextMeasure = (
-  read: () => EditorGraphTextMeasureState
-): TextMeasure => (target) => {
-  const current = read()
+const DEFAULT_LAYOUT_CATALOG: LayoutNodeCatalog = {
+  text: 'size',
+  sticky: 'fit',
+  frame: 'none',
+  shape: 'none',
+  draw: 'none'
+}
 
-  switch (target.kind) {
-    case 'node':
-      return current.nodeMeasures?.get(target.nodeId)
-    case 'edge-label': {
-      const size = current.edgeLabelMeasures
-        ?.get(target.edgeId)
-        ?.get(target.labelId)
-      return size
-        ? {
-            kind: 'size',
-            size
-          }
-        : undefined
+export const createEditorGraphLayout = (
+  read: () => EditorGraphTextMeasureState
+ ) => createWhiteboardLayout({
+  nodes: DEFAULT_LAYOUT_CATALOG,
+  backend: {
+    measure: (request) => {
+      const current = read()
+
+      if (request.kind === 'size' && request.source?.kind === 'edge-label') {
+        const size = current.edgeLabelMeasures
+          ?.get(request.source.edgeId)
+          ?.get(request.source.labelId)
+        return size
+          ? {
+              kind: 'size',
+              size
+            }
+          : undefined
+      }
+
+      if (request.source?.kind === 'node') {
+        return current.nodeMeasures?.get(request.source.nodeId)
+      }
+
+      return undefined
     }
   }
-}
+})

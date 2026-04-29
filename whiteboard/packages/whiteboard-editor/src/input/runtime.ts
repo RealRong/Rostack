@@ -1,4 +1,5 @@
 import type { Engine } from '@whiteboard/engine'
+import type { WhiteboardLayoutService } from '@whiteboard/core/layout'
 import type { DocumentQuery } from '@whiteboard/editor-scene'
 import { createInteractionRuntime } from '@whiteboard/editor/input/core/runtime'
 import { createSnapRuntime, type SnapRuntime } from '@whiteboard/editor/input/core/snap'
@@ -9,7 +10,6 @@ import { createTransformBinding } from '@whiteboard/editor/input/features/transf
 import { createViewportBinding } from '@whiteboard/editor/input/features/viewport'
 import { createEditorInputHost } from '@whiteboard/editor/input/host'
 import { createEdgeHoverService } from '@whiteboard/editor/input/hover/edge'
-import type { TextLayoutMeasure } from '@whiteboard/editor/layout/textLayout'
 import type { EditorSession } from '@whiteboard/editor/session/runtime'
 import type { ToolService } from '@whiteboard/editor/services/tool'
 import type {
@@ -18,7 +18,7 @@ import type {
   EditorSceneDerived,
   EditorState
 } from '@whiteboard/editor/types/editor'
-import type { NodeSpecReader, NodeTypeSupport } from '@whiteboard/editor/types/node'
+import type { NodeTypeSupport } from '@whiteboard/editor/types/node'
 import type { EditorWrite } from '@whiteboard/editor/write/types'
 
 type SessionRead = {
@@ -49,8 +49,7 @@ export type EditorHostDeps = {
   sessionRead: SessionRead
   session: EditorSession
   sceneDerived: EditorSceneDerived
-  measure: TextLayoutMeasure
-  nodes: NodeSpecReader
+  layout: WhiteboardLayoutService
   write: EditorWrite
   tool: ToolService
   nodeType: NodeTypeSupport
@@ -80,8 +79,7 @@ export const createEditorHost = (input: {
   state: EditorState
   session: EditorSession
   sceneDerived: EditorSceneDerived
-  measure: TextLayoutMeasure
-  nodes: NodeSpecReader
+  layout: WhiteboardLayoutService
   write: EditorWrite
   tool: ToolService
   nodeType: NodeTypeSupport
@@ -100,8 +98,7 @@ export const createEditorHost = (input: {
     sessionRead,
     session: input.session,
     sceneDerived: input.sceneDerived,
-    measure: input.measure,
-    nodes: input.nodes,
+    layout: input.layout,
     write: input.write,
     tool: input.tool,
     nodeType: input.nodeType,

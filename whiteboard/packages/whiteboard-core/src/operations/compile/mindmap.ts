@@ -104,7 +104,14 @@ type MindmapIntentHandlers = Pick<
 >
 
 export const mindmapIntentHandlers: MindmapIntentHandlers = {
-  'mindmap.create': (ctx) => compileMindmapCreate(ctx.intent.input, ctx),
+  'mindmap.create': (ctx) => compileMindmapCreate(
+    readCompileServices(ctx).layout.commit({
+      kind: 'mindmap.create',
+      input: ctx.intent.input,
+      position: ctx.intent.input.position
+    }).input,
+    ctx
+  ),
   'mindmap.delete': (ctx) => {
     ctx.intent.ids.forEach((id) => {
       ctx.emit({
@@ -128,9 +135,14 @@ export const mindmapIntentHandlers: MindmapIntentHandlers = {
     })
   },
   'mindmap.topic.insert': (ctx) => {
+    const input = readCompileServices(ctx).layout.commit({
+      kind: 'mindmap.topic.insert',
+      mindmapId: ctx.intent.id,
+      input: ctx.intent.input
+    }).input
     const nodeId = readCompileServices(ctx).ids.node()
     const materialized = nodeApi.materialize.committed({
-      node: createMindmapTopicNode(nodeId, ctx.intent.id, ctx.intent.input),
+      node: createMindmapTopicNode(nodeId, ctx.intent.id, input),
       registries: readCompileRegistries(ctx)
     })
     if (!materialized.ok) {
@@ -139,7 +151,7 @@ export const mindmapIntentHandlers: MindmapIntentHandlers = {
     ctx.emit({
       type: 'mindmap.topic.insert',
       id: ctx.intent.id,
-      input: ctx.intent.input,
+      input,
       node: materialized.data
     })
     ctx.output({

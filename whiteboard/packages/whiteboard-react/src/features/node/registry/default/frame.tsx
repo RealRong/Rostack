@@ -163,9 +163,6 @@ export const FrameNodeSpec: NodeSpecEntry = {
     role: 'frame',
     geometry: 'rect',
     hit: 'none',
-    layout: {
-      kind: 'none'
-    },
     defaultData: {
       title: FRAME_DEFAULT_TITLE
     },

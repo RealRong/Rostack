@@ -2,6 +2,7 @@ import type { HistoryPort } from '@shared/mutation'
 import type { IntentResult } from '@whiteboard/engine'
 import { engine as engineApi, normalizeDocument } from '@whiteboard/engine'
 import { editor as editorApi } from '@whiteboard/editor'
+import { createWhiteboardLayout } from '@whiteboard/core/layout'
 import { compileNodeSpec } from '@whiteboard/editor/types/node'
 import type { Editor } from '@whiteboard/editor'
 import type { Engine } from '@whiteboard/engine'
@@ -61,8 +62,15 @@ export const createEditor = (input: {
 }): Editor => {
   const document = normalizeDocument(input.document)
   const textSources = createTextSourceStore()
+  const layout = createWhiteboardLayout({
+    nodes: input.spec.layout,
+    backend: createLayoutBackend({
+      textSources
+    })
+  })
   const engine = engineApi.create({
-    document
+    document,
+    layout
   })
   const editor = editorApi.create({
     engine,
@@ -80,9 +88,7 @@ export const createEditor = (input: {
     },
     nodes: input.spec.nodes,
     services: {
-      layout: createLayoutBackend({
-        textSources
-      }),
+      layout,
       defaults: {
         selection: {
           node: {

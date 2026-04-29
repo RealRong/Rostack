@@ -6,6 +6,7 @@ import { document as documentApi } from '@whiteboard/core/document'
 import type { IntentResult } from '@whiteboard/engine'
 import { createEngine } from '@whiteboard/engine'
 import { product } from '@whiteboard/product'
+import { createTestLayout } from './support'
 
 const serializeFootprint = (
   value: unknown
@@ -19,7 +20,8 @@ const readSerializedFootprint = (
 
 test('engine exposes node create footprint through intent results', () => {
   const engine = createEngine({
-    document: documentApi.create('doc_engine_write_create')
+    document: documentApi.create('doc_engine_write_create'),
+    layout: createTestLayout()
   })
 
   const result = engine.execute({
@@ -57,7 +59,8 @@ test('engine exposes node create footprint through intent results', () => {
 
 test('engine maps mindmap topic updates to node + mindmap history keys', () => {
   const engine = createEngine({
-    document: documentApi.create('doc_engine_write_mindmap')
+    document: documentApi.create('doc_engine_write_mindmap'),
+    layout: createTestLayout()
   })
 
   const createResult = engine.execute({

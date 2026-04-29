@@ -90,6 +90,7 @@ const mapExecuteFailure = <T>(
 export const createEngine = ({
   registries,
   document,
+  layout,
   onDocumentChange,
   config: overrides
 }: CreateEngineOptions): Engine => {
@@ -105,7 +106,8 @@ export const createEngine = ({
   }
   const services: WhiteboardCompileServices = {
     ids,
-    registries: resolvedRegistries
+    registries: resolvedRegistries,
+    layout
   }
 
   const core = new MutationEngine<

@@ -1,5 +1,6 @@
 import type { HistoryPort } from '@shared/mutation'
 import type { Viewport } from '@whiteboard/core/types'
+import type { WhiteboardLayoutService } from '@whiteboard/core/layout'
 import { createEditorActionsApi } from '@whiteboard/editor/action'
 import { createEditorBoundaryRuntime } from '@whiteboard/editor/boundary/runtime'
 import { createEditorBoundaryTaskRuntime } from '@whiteboard/editor/boundary/task'
@@ -8,7 +9,6 @@ import { createEditorEvents } from '@whiteboard/editor/editor/events'
 import { createEditorState } from '@whiteboard/editor/editor/state'
 import { createEditorInputApi } from '@whiteboard/editor/input/host'
 import { createEditorHost } from '@whiteboard/editor/input/runtime'
-import { createEditorTextLayout } from '@whiteboard/editor/layout/textLayout'
 import { createEditorSceneRuntime } from '@whiteboard/editor-scene'
 import { createEditorSceneApi } from '@whiteboard/editor/scene/api'
 import { createEditorSceneBinding } from '@whiteboard/editor/scene/binding'
@@ -23,13 +23,10 @@ import {
   DEFAULT_EDITOR_DEFAULTS,
   type EditorDefaults
 } from '@whiteboard/editor/types/defaults'
-import type { LayoutBackend } from '@whiteboard/editor/types/layout'
 import {
   createNodeTypeSupport,
-  type NodeSpec,
-  type NodeSpecReader
+  type NodeSpec
 } from '@whiteboard/editor/types/node'
-import { compileNodeSpec } from '@whiteboard/editor/types/node/compile'
 import { resolveNodeEditorCapability } from '@whiteboard/editor/types/node'
 import type { Tool } from '@whiteboard/editor/types/tool'
 import { createEditorWrite } from '@whiteboard/editor/write'
@@ -44,7 +41,7 @@ export const createEditor = (input: {
   initialViewport: Viewport
   nodes: NodeSpec
   services?: {
-    layout?: LayoutBackend
+    layout: WhiteboardLayoutService
     defaults?: EditorDefaults
   }
 }): Editor => {
@@ -53,14 +50,10 @@ export const createEditor = (input: {
     initialDrawState: input.initialDrawState ?? DEFAULT_DRAW_STATE,
     initialViewport: input.initialViewport
   })
-  const compiledNodes = compileNodeSpec(input.nodes)
-  const nodeReader: NodeSpecReader = {
-    get: (type) => compiledNodes.entryByType.resolve(type)
+  const layout = input.services?.layout
+  if (!layout) {
+    throw new Error('Whiteboard layout service is required.')
   }
-  const textLayout = createEditorTextLayout({
-    nodes: nodeReader,
-    backend: input.services?.layout
-  })
   const defaults = input.services?.defaults ?? DEFAULT_EDITOR_DEFAULTS
   const nodeType = createNodeTypeSupport(input.nodes)
 
@@ -70,7 +63,7 @@ export const createEditor = (input: {
   })
   const sceneRuntime = createEditorSceneRuntime({
     source: sceneBinding,
-    measure: textLayout.measure,
+    layout,
     nodeCapability: {
       meta: nodeType.meta,
       edit: nodeType.edit,
@@ -89,8 +82,7 @@ export const createEditor = (input: {
     history: input.history,
     document,
     projection: scene,
-    nodes: nodeReader,
-    measure: textLayout.measure
+    layout
   })
   const tool = createToolService({
     session
@@ -146,8 +138,7 @@ export const createEditor = (input: {
     state,
     session,
     sceneDerived: derived.scene,
-    measure: textLayout.measure,
-    nodes: nodeReader,
+    layout,
     write: writeRuntime,
     tool,
     nodeType
@@ -180,7 +171,6 @@ export const createEditor = (input: {
       sceneRuntime.dispose()
       sceneBinding.dispose()
       session.reset()
-      textLayout.text.clear()
     }
   }
 }

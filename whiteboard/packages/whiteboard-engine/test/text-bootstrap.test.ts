@@ -5,6 +5,7 @@ import {
   createEngine,
   normalizeDocument
 } from '@whiteboard/engine'
+import { createTestLayout } from './support'
 
 test('normalizeDocument 为缺失 size 的 text 节点补齐系统尺寸', () => {
   const doc = documentApi.create('doc_text_bootstrap')
@@ -35,7 +36,8 @@ test('normalizeDocument 为缺失 size 的 text 节点补齐系统尺寸', () =>
 
 test('engine apply publishes normalized committed documents after reducer output', () => {
   const engine = createEngine({
-    document: documentApi.create('doc_text_create')
+    document: documentApi.create('doc_text_create'),
+    layout: createTestLayout()
   })
 
   const result = engine.apply([

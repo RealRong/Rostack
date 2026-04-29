@@ -3,10 +3,12 @@ import { test } from 'vitest'
 import { document as documentApi } from '@whiteboard/core/document'
 import { createEngine } from '@whiteboard/engine'
 import { product } from '@whiteboard/product'
+import { createTestLayout } from './support'
 
 test('engine exposes created mindmap roots through committed document and delta', () => {
   const engine = createEngine({
-    document: documentApi.create('doc_mindmap_insert')
+    document: documentApi.create('doc_mindmap_insert'),
+    layout: createTestLayout()
   })
 
   const result = engine.execute({

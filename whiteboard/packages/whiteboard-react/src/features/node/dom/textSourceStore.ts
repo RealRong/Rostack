@@ -1,7 +1,7 @@
-import type { TextSourceRef } from '@whiteboard/editor/types/layout'
+import type { LayoutSourceRef } from '@whiteboard/core/layout'
 
 const readTextSourceStoreKey = (
-  source: TextSourceRef
+  source: LayoutSourceRef
 ) => {
   switch (source.kind) {
     case 'node':
@@ -12,12 +12,12 @@ const readTextSourceStoreKey = (
 }
 
 export type TextSourceStore = {
-  set: (
-    source: TextSourceRef,
+    set: (
+    source: LayoutSourceRef,
     element: HTMLElement | null
   ) => void
   get: (
-    source: TextSourceRef
+    source: LayoutSourceRef
   ) => HTMLElement | undefined
 }
 

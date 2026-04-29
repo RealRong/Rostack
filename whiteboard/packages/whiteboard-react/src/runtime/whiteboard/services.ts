@@ -4,6 +4,7 @@ import type {
   Document,
   Point
 } from '@whiteboard/core/types'
+import { createWhiteboardLayout } from '@whiteboard/core/layout'
 import {
   store
 } from '@shared/core'
@@ -123,14 +124,21 @@ export const createWhiteboardServices = ({
 }): WhiteboardRuntimeServices => {
   const initialDrawState: DrawState = product.draw.defaults
   const nodes = compileNodeSpec(spec.nodes)
+  const textSources = createTextSourceStore()
+  const layout = createWhiteboardLayout({
+    nodes: spec.layout,
+    backend: createLayoutBackend({
+      textSources
+    })
+  })
   const engine = engineApi.create({
     registries: coreRegistries,
     document,
+    layout,
     onDocumentChange,
     config: boardConfig
   })
   const history = createSwitchableHistoryPort(engine.history)
-  const textSources = createTextSourceStore()
   const editor = editorApi.create({
     engine,
     history: history.port,
@@ -139,9 +147,7 @@ export const createWhiteboardServices = ({
     initialViewport: resolvedConfig.viewport.initial,
     nodes: spec.nodes,
     services: {
-      layout: createLayoutBackend({
-        textSources
-      }),
+      layout,
       defaults: {
         selection: {
           node: {

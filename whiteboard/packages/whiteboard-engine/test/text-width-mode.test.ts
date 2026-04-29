@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { test } from 'vitest'
 import { document as documentApi } from '@whiteboard/core/document'
 import { createEngine } from '@whiteboard/engine'
+import { createTestLayout } from './support'
 
 const createTextDocument = () => {
   const document = documentApi.create('doc_text_width_mode')
@@ -29,7 +30,8 @@ const createTextDocument = () => {
 
 test('engine preserves wrap width mode when a text node size changes', () => {
   const engine = createEngine({
-    document: createTextDocument()
+    document: createTextDocument(),
+    layout: createTestLayout()
   })
 
   const result = engine.execute({

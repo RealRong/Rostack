@@ -1,5 +1,11 @@
 import { document as documentApi } from '@whiteboard/core/document'
-import type { Document } from '@whiteboard/core/types'
+import type {
+  Document,
+  EdgeId,
+  GroupId,
+  MindmapId,
+  NodeId
+} from '@whiteboard/core/types'
 import type { Revision } from '@shared/projection'
 import { family } from '@shared/core'
 import {
@@ -13,8 +19,20 @@ import {
   createEmptyWhiteboardExecution
 } from '../contracts/execution'
 import type {
-  EditorSceneLayout
+  EdgeStateView,
+  EdgeUiView,
+  EdgeView,
+  EditorSceneLayout,
+  GroupView,
+  MindmapView,
+  NodeStateView,
+  NodeUiView,
+  NodeView
 } from '../contracts/editor'
+import type {
+  EdgeActiveView,
+  NodeRenderView
+} from '../contracts/render'
 import type { WorkingState } from '../contracts/working'
 import { createSpatialState } from '../model/spatial/state'
 import { createSpatialDelta } from '../model/spatial/update'
@@ -31,12 +49,12 @@ export const createWorking = (input: {
   layout?: EditorSceneLayout
 } = {}): WorkingState => {
   const snapshot = createEmptyDocumentSnapshot()
-  const graphNodes = family.createMutableState()
-  const graphEdges = family.createMutableState()
-  const graphMindmaps = family.createMutableState()
-  const graphGroups = family.createMutableState()
-  const nodeState = family.createMutableState()
-  const edgeState = family.createMutableState()
+  const graphNodes = family.createMutableState<NodeId, NodeView>()
+  const graphEdges = family.createMutableState<EdgeId, EdgeView>()
+  const graphMindmaps = family.createMutableState<MindmapId, MindmapView>()
+  const graphGroups = family.createMutableState<GroupId, GroupView>()
+  const nodeState = family.createMutableState<NodeId, NodeStateView>()
+  const edgeState = family.createMutableState<EdgeId, EdgeStateView>()
   const chromeState = {
     overlays: [],
     hover: {
@@ -99,7 +117,7 @@ export const createWorking = (input: {
       edges: edgeState
     },
     render: {
-      node: family.createMutableState(),
+      node: family.createMutableState<NodeId, NodeRenderView>(),
       statics: {
         ids: [],
         byId: new Map(),
@@ -117,7 +135,7 @@ export const createWorking = (input: {
         ids: [],
         byId: new Map()
       },
-      active: family.createMutableState(),
+      active: family.createMutableState<EdgeId, EdgeActiveView>(),
       overlay: renderEdgeOverlay,
       chrome: {
         guides: [],

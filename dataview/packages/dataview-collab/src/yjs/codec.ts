@@ -3,6 +3,9 @@ import {
   decodeJsonBytes,
   encodeJsonBytes
 } from '@shared/collab-yjs'
+import {
+  assertMutationFootprintList
+} from '@shared/mutation/write'
 import type { DataDoc } from '@dataview/core/types'
 import type { DocumentOperation } from '@dataview/core/op'
 import type {
@@ -36,22 +39,6 @@ const assertSharedOperations = (
   return value as readonly DocumentOperation[]
 }
 
-const assertSharedFootprint = (
-  value: unknown
-): SharedChange['footprint'] => {
-  if (!Array.isArray(value)) {
-    throw new Error('Shared change footprint must be an array.')
-  }
-
-  value.forEach((entry) => {
-    if (!Array.isArray(entry)) {
-      throw new Error('Shared change footprint entry must be a path.')
-    }
-  })
-
-  return value as SharedChange['footprint']
-}
-
 const assertSharedChange = (
   value: unknown
 ): SharedChange => {
@@ -69,7 +56,7 @@ const assertSharedChange = (
     id: value.id,
     actorId: value.actorId,
     ops: assertSharedOperations(value.ops),
-    footprint: assertSharedFootprint(value.footprint)
+    footprint: assertMutationFootprintList(value.footprint)
   }
 }
 

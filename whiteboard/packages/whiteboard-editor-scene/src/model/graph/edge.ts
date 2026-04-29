@@ -1,5 +1,4 @@
 import { equal } from '@shared/core'
-import { idDelta } from '@shared/delta'
 import { edge as edgeApi } from '@whiteboard/core/edge'
 import type {
   Edge,
@@ -21,6 +20,7 @@ import type {
   WorkingState
 } from '../../contracts/working'
 import { geometry as geometryApi } from '@whiteboard/core/geometry'
+import { patchGraphEntity } from './entity'
 
 const readEdgePatch = (
   entry: GraphEdgeEntry
@@ -65,7 +65,7 @@ export type EdgeNodeSnapshot = ReturnType<typeof toEdgeNodeSnapshot>
 
 const readEdgeNodeSnapshot = (input: {
   nodeId: NodeId | undefined
-  nodes: ReadonlyMap<string, NodeView>
+  nodes: Pick<WorkingState['graph']['nodes'], 'get'>
   cache?: Map<NodeId, EdgeNodeSnapshot>
 }): EdgeNodeSnapshot => {
   if (!input.nodeId) {
@@ -265,7 +265,7 @@ export const readEdgeEntry = (
 export const buildEdgeView = (input: {
   edgeId: EdgeId
   entry: GraphEdgeEntry
-  nodes: ReadonlyMap<string, NodeView>
+  nodes: Pick<WorkingState['graph']['nodes'], 'get'>
   nodeSnapshotCache?: Map<NodeId, EdgeNodeSnapshot>
   layout?: WorkingState['layout']
   edit: SessionInput['edit']
@@ -414,7 +414,7 @@ export const patchEdge = (input: {
   const previous = input.working.graph.edges.get(input.edgeId)
   const entry = readEdgeEntry(input.input, input.working, input.working.indexes, input.edgeId)
   const next = entry
-      ? buildEdgeView({
+    ? buildEdgeView({
         edgeId: input.edgeId,
         entry,
         nodes: input.working.graph.nodes,
@@ -424,50 +424,21 @@ export const patchEdge = (input: {
       })
     : undefined
 
-  if (next === undefined) {
-    if (previous === undefined) {
-      return {
-        changed: false,
-        geometryChanged: false
+  return patchGraphEntity({
+    id: input.edgeId,
+    previous,
+    next,
+    equal: isEdgeViewEqual,
+    geometryChanged: isEdgeGeometryChanged,
+    write: (value) => {
+      if (value === undefined) {
+        input.working.graph.edges.delete(input.edgeId)
+        return
       }
-    }
 
-    input.working.graph.edges.delete(input.edgeId)
-    idDelta.remove(input.delta.entities.edges, input.edgeId)
-    input.delta.geometry.edges.add(input.edgeId)
-    return {
-      changed: true,
-      geometryChanged: true
-    }
-  }
-
-  if (previous === undefined) {
-    input.working.graph.edges.set(input.edgeId, next)
-    idDelta.add(input.delta.entities.edges, input.edgeId)
-    input.delta.geometry.edges.add(input.edgeId)
-    return {
-      changed: true,
-      geometryChanged: true
-    }
-  }
-
-  if (isEdgeViewEqual(previous, next)) {
-    return {
-      changed: false,
-      geometryChanged: false
-    }
-  }
-
-  input.working.graph.edges.set(input.edgeId, next)
-  idDelta.update(input.delta.entities.edges, input.edgeId)
-
-  const geometryChanged = isEdgeGeometryChanged(previous, next)
-  if (geometryChanged) {
-    input.delta.geometry.edges.add(input.edgeId)
-  }
-
-  return {
-    changed: true,
-    geometryChanged
-  }
+      input.working.graph.edges.set(input.edgeId, value)
+    },
+    entityDelta: input.delta.entities.edges,
+    geometryDelta: input.delta.geometry.edges
+  })
 }

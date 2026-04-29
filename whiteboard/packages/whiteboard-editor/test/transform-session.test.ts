@@ -93,78 +93,91 @@ const createTransformContext = ({
       }[]
     }
   }[]
-}) => ({
-  projection: {
-    query: {
-      document: {
-        node: () => node,
-        nodeGeometry: () => ({
-          rect: {
-            x: 0,
-            y: 0,
-            width: 100,
-            height: 24
+}) => {
+  const geometryRect = {
+    x: 0,
+    y: 0,
+    width: 100,
+    height: 24
+  }
+
+  return {
+    projection: {
+      query: {
+        document: {
+          node: () => node,
+          nodeGeometry: () => ({
+            rect: geometryRect
+          })
+        },
+        node: {
+          get: (nodeId: string) => nodeId === node.id
+            ? {
+                geometry: {
+                  rect: geometryRect
+                }
+              }
+            : undefined
+        }
+      }
+    },
+    sessionRead: {
+      viewport: {
+        get: () => ({
+          zoom: 1
+        }),
+        screenPoint: (screenX: number, screenY: number) => ({
+          x: screenX,
+          y: screenY
+        }),
+        pointer: (pointer: {
+          clientX: number
+          clientY: number
+        }) => ({
+          world: {
+            x: pointer.clientX,
+            y: pointer.clientY
           }
         })
       }
-    }
-  },
-  sessionRead: {
-    viewport: {
-      get: () => ({
-        zoom: 1
-      }),
-      screenPoint: (screenX: number, screenY: number) => ({
-        x: screenX,
-        y: screenY
-      }),
-      pointer: (pointer: {
-        clientX: number
-        clientY: number
-      }) => ({
-        world: {
-          x: pointer.clientX,
-          y: pointer.clientY
+    },
+    layout: createEditorTestLayout({
+      measure: () => ({
+        kind: 'size',
+        size: {
+          width: projectedRect.width,
+          height: projectedRect.height
         }
       })
-    }
-  },
-  layout: createEditorTestLayout({
-    measure: () => ({
-      kind: 'size',
-      size: {
-        width: projectedRect.width,
-        height: projectedRect.height
+    }),
+    write: {
+      node: {
+        updateMany: (nextUpdates: typeof updates) => {
+          updates.push(...nextUpdates)
+        }
       }
-    })
-  }),
-  write: {
-    node: {
-      updateMany: (nextUpdates: typeof updates) => {
-        updates.push(...nextUpdates)
-      }
-    }
-  },
-  snap: {
-    node: {
-      resize: (input: {
-        rect: typeof projectedRect
-      }) => ({
-        update: {
-          position: {
-            x: input.rect.x,
-            y: input.rect.y
+    },
+    snap: {
+      node: {
+        resize: (input: {
+          rect: typeof projectedRect
+        }) => ({
+          update: {
+            position: {
+              x: input.rect.x,
+              y: input.rect.y
+            },
+            size: {
+              width: input.rect.width,
+              height: input.rect.height
+            }
           },
-          size: {
-            width: input.rect.width,
-            height: input.rect.height
-          }
-        },
-        guides: []
-      })
+          guides: []
+        })
+      }
     }
-  }
-}) as any
+  } as any
+}
 
 describe('createTransformSession', () => {
   it('commits text geometry from the resolved layout preview rect', () => {

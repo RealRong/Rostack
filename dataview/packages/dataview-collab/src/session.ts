@@ -53,15 +53,15 @@ export const createYjsSession = ({
         activeViewId: undefined,
         fields: {
           byId: {},
-          order: []
+          ids: []
         },
         views: {
           byId: {},
-          order: []
+          ids: []
         },
         records: {
           byId: {},
-          order: []
+          ids: []
         },
         meta: {}
       }),

@@ -6,10 +6,12 @@ import type {
 } from '@whiteboard/core/types'
 import {
   createTypedMutationDelta,
-  defineMutationSchema,
   type MutationDelta,
   type MutationDeltaInput
 } from '@shared/mutation'
+import {
+  defineMutationSchema
+} from '@shared/mutation/typed'
 
 export type WhiteboardGraphTargets = {
   reset: boolean

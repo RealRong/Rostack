@@ -23,13 +23,13 @@ export const fieldValueSpec = {
   multiSelect: multiSelectFieldValueSpec,
   boolean: checkboxFieldValueSpec,
   date: dateFieldValueSpec
-} as const satisfies Record<FieldKind, FieldValueSpec>
+} as const satisfies Record<FieldKind, FieldValueSpec<any>>
 
 const fieldValueSpecIndex = spec.table(fieldValueSpec)
 
 export const readFieldValueSpec = (
   field?: Field
-): FieldValueSpec => (
+): FieldValueSpec<any> => (
   field
     ? fieldValueSpecIndex.get(field.kind)
     : fieldValueSpec.text

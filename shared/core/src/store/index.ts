@@ -22,6 +22,7 @@ import {
   createProjectedStore
 } from './projected'
 import {
+  peek,
   read
 } from './read'
 import {
@@ -57,6 +58,7 @@ export {
   createTableStore,
   createValueStore,
   joinUnsubscribes,
+  peek,
   read
 }
 
@@ -155,6 +157,7 @@ export const object = <TFields extends Record<string, unknown>>(
 })
 
 export const store = {
+  peek,
   read,
   batch,
   value,

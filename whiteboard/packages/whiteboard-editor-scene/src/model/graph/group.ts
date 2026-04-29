@@ -1,5 +1,4 @@
 import { equal } from '@shared/core'
-import { idDelta } from '@shared/delta'
 import { selection as selectionApi, type SelectionTarget } from '@whiteboard/core/selection'
 import type {
   GroupId
@@ -17,6 +16,7 @@ import type {
   WorkingState
 } from '../../contracts/working'
 import { geometry as geometryApi } from '@whiteboard/core/geometry'
+import { patchGraphEntity } from './entity'
 
 const SIGNATURE_SEPARATOR = '\u0001'
 const SIGNATURE_SECTION = '\u0002'
@@ -113,8 +113,8 @@ const buildGroupView = (input: {
   previous?: GroupView
   group: GroupView['base']['group']
   items: readonly GroupItemRef[]
-  nodes: ReadonlyMap<string, NodeView>
-  edges: ReadonlyMap<string, EdgeView>
+  nodes: Pick<WorkingState['graph']['nodes'], 'get'>
+  edges: Pick<WorkingState['graph']['edges'], 'get'>
 }): GroupView => {
   const rects = input.items.flatMap((item) => {
     if (item.kind === 'node') {
@@ -165,50 +165,21 @@ export const patchGroup = (input: {
       })
     : undefined
 
-  if (next === undefined) {
-    if (previous === undefined) {
-      return {
-        changed: false,
-        geometryChanged: false
+  return patchGraphEntity({
+    id: input.groupId,
+    previous,
+    next,
+    equal: isGroupViewEqual,
+    geometryChanged: isGroupGeometryChanged,
+    write: (value) => {
+      if (value === undefined) {
+        input.working.graph.owners.groups.delete(input.groupId)
+        return
       }
-    }
 
-    input.working.graph.owners.groups.delete(input.groupId)
-    idDelta.remove(input.delta.entities.groups, input.groupId)
-    input.delta.geometry.groups.add(input.groupId)
-    return {
-      changed: true,
-      geometryChanged: true
-    }
-  }
-
-  if (previous === undefined) {
-    input.working.graph.owners.groups.set(input.groupId, next)
-    idDelta.add(input.delta.entities.groups, input.groupId)
-    input.delta.geometry.groups.add(input.groupId)
-    return {
-      changed: true,
-      geometryChanged: true
-    }
-  }
-
-  if (isGroupViewEqual(previous, next)) {
-    return {
-      changed: false,
-      geometryChanged: false
-    }
-  }
-
-  input.working.graph.owners.groups.set(input.groupId, next)
-  idDelta.update(input.delta.entities.groups, input.groupId)
-
-  const geometryChanged = isGroupGeometryChanged(previous, next)
-  if (geometryChanged) {
-    input.delta.geometry.groups.add(input.groupId)
-  }
-
-  return {
-    changed: true,
-    geometryChanged
-  }
+      input.working.graph.owners.groups.set(input.groupId, value)
+    },
+    entityDelta: input.delta.entities.groups,
+    geometryDelta: input.delta.geometry.groups
+  })
 }

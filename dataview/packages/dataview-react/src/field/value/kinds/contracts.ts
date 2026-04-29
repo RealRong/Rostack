@@ -17,7 +17,7 @@ export interface RenderProps {
 
 export type FieldValueEditorPanelWidth = 'default' | 'picker' | 'calendar'
 
-export interface FieldValueSpec<TDraft = unknown> {
+export interface FieldValueSpec<TDraft = any> {
   capability: {
     quickToggle?: boolean
   }

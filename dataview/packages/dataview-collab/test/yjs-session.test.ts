@@ -56,7 +56,7 @@ const createDocument = (): DataDoc => {
           orders: []
         }
       },
-      order: [VIEW_ID]
+      ids: [VIEW_ID]
     },
     records: {
       byId: {
@@ -69,7 +69,7 @@ const createDocument = (): DataDoc => {
           }
         }
       },
-      order: ['rec_1']
+      ids: ['rec_1']
     },
     meta: {}
   }
@@ -172,7 +172,7 @@ test('local engine.replace rewrites checkpoint and clears tail changes', async (
     ...createDocument(),
     records: {
       byId: {},
-      order: []
+      ids: []
     }
   }
   engine.replace(nextDocument)
@@ -181,7 +181,7 @@ test('local engine.replace rewrites checkpoint and clears tail changes', async (
   const store = createStore(sharedDoc)
   const checkpoint = store.readCheckpoint()
   assert.ok(checkpoint)
-  assert.deepEqual(checkpoint?.doc.records.order, [])
+  assert.deepEqual(checkpoint?.doc.records.ids, [])
   assert.equal(store.readChanges().length, 0)
 
   session.destroy()
@@ -209,7 +209,12 @@ test('session records duplicate shared changes deterministically', () => {
         title: 'Remote title'
       }
     }],
-    footprint: [['records', 'rec_1']]
+    footprint: [{
+      kind: 'field' as const,
+      family: 'record',
+      id: 'rec_1',
+      field: 'title'
+    }]
   }
 
   sharedDoc.transact(() => {

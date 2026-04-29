@@ -1,5 +1,4 @@
 import { equal } from '@shared/core'
-import { idDelta } from '@shared/delta'
 import { node as nodeApi } from '@whiteboard/core/node'
 import type {
   Node,
@@ -21,6 +20,7 @@ import type {
   GraphNodeEntry,
   WorkingState
 } from '../../contracts/working'
+import { patchGraphEntity } from './entity'
 
 const EMPTY_SIZE: Size = {
   width: 0,
@@ -330,27 +330,6 @@ export const patchNode = (input: {
       })
     : undefined
 
-  if (next === undefined) {
-    input.working.draft.node.delete(input.nodeId)
-
-    if (previous === undefined) {
-      return {
-        changed: false,
-        geometryChanged: false,
-        owner
-      }
-    }
-
-    input.working.graph.nodes.delete(input.nodeId)
-    idDelta.remove(input.delta.entities.nodes, input.nodeId)
-    input.delta.geometry.nodes.add(input.nodeId)
-    return {
-      changed: true,
-      geometryChanged: true,
-      owner
-    }
-  }
-
   if (draftMeasure) {
     input.working.draft.node.set(input.nodeId, draftMeasure)
   } else {
@@ -358,7 +337,8 @@ export const patchNode = (input: {
   }
 
   if (
-    previous !== undefined
+    next !== undefined
+    && previous !== undefined
     && isNodeViewEqual(previous, next)
     && isNodeDraftMeasureEqual(previousDraft, draftMeasure)
   ) {
@@ -369,28 +349,26 @@ export const patchNode = (input: {
     }
   }
 
-  input.working.graph.nodes.set(input.nodeId, next)
+  const result = patchGraphEntity({
+    id: input.nodeId,
+    previous,
+    next,
+    equal: isNodeViewEqual,
+    geometryChanged: isNodeGeometryChanged,
+    write: (value) => {
+      if (value === undefined) {
+        input.working.graph.nodes.delete(input.nodeId)
+        return
+      }
 
-  if (previous === undefined) {
-    idDelta.add(input.delta.entities.nodes, input.nodeId)
-    input.delta.geometry.nodes.add(input.nodeId)
-    return {
-      changed: true,
-      geometryChanged: true,
-      owner: next.base.owner
-    }
-  }
-
-  idDelta.update(input.delta.entities.nodes, input.nodeId)
-
-  const geometryChanged = isNodeGeometryChanged(previous, next)
-  if (geometryChanged) {
-    input.delta.geometry.nodes.add(input.nodeId)
-  }
+      input.working.graph.nodes.set(input.nodeId, value)
+    },
+    entityDelta: input.delta.entities.nodes,
+    geometryDelta: input.delta.geometry.nodes
+  })
 
   return {
-    changed: true,
-    geometryChanged,
-    owner: next.base.owner
+    ...result,
+    owner: next?.base.owner ?? owner
   }
 }

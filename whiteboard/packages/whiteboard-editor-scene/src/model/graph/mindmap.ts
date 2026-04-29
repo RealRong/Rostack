@@ -1,5 +1,4 @@
 import { equal } from '@shared/core'
-import { idDelta } from '@shared/delta'
 import {
   mindmap as mindmapApi,
   type MindmapLayout
@@ -27,6 +26,7 @@ import {
   readProjectedNodeRect,
   readProjectedNodeSize
 } from './node'
+import { patchGraphEntity } from './entity'
 
 const translateRect = (
   rect: Rect,
@@ -440,55 +440,26 @@ export const patchMindmap = (input: {
     next
   })
 
-  if (next === undefined) {
-    if (previous === undefined) {
-      return {
-        changed: false,
-        geometryChanged: false,
-        changedNodeIds
+  const result = patchGraphEntity({
+    id: input.mindmapId,
+    previous,
+    next,
+    equal: isMindmapViewEqual,
+    geometryChanged: isMindmapGeometryChanged,
+    write: (value) => {
+      if (value === undefined) {
+        input.working.graph.owners.mindmaps.delete(input.mindmapId)
+        return
       }
-    }
 
-    input.working.graph.owners.mindmaps.delete(input.mindmapId)
-    idDelta.remove(input.delta.entities.mindmaps, input.mindmapId)
-    input.delta.geometry.mindmaps.add(input.mindmapId)
-    return {
-      changed: true,
-      geometryChanged: true,
-      changedNodeIds
-    }
-  }
-
-  if (previous === undefined) {
-    input.working.graph.owners.mindmaps.set(input.mindmapId, next)
-    idDelta.add(input.delta.entities.mindmaps, input.mindmapId)
-    input.delta.geometry.mindmaps.add(input.mindmapId)
-    return {
-      changed: true,
-      geometryChanged: true,
-      changedNodeIds
-    }
-  }
-
-  if (isMindmapViewEqual(previous, next)) {
-    return {
-      changed: false,
-      geometryChanged: false,
-      changedNodeIds
-    }
-  }
-
-  input.working.graph.owners.mindmaps.set(input.mindmapId, next)
-  idDelta.update(input.delta.entities.mindmaps, input.mindmapId)
-
-  const geometryChanged = isMindmapGeometryChanged(previous, next)
-  if (geometryChanged) {
-    input.delta.geometry.mindmaps.add(input.mindmapId)
-  }
+      input.working.graph.owners.mindmaps.set(input.mindmapId, value)
+    },
+    entityDelta: input.delta.entities.mindmaps,
+    geometryDelta: input.delta.geometry.mindmaps
+  })
 
   return {
-    changed: true,
-    geometryChanged,
+    ...result,
     changedNodeIds
   }
 }

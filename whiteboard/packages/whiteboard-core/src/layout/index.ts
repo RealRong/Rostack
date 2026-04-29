@@ -861,7 +861,7 @@ const measureEdgeLabelSize = (input: {
       : undefined
   })
 
-  return result.kind === 'size'
+  return result?.kind === 'size'
     ? result.size
     : undefined
 }
@@ -952,7 +952,9 @@ export const createWhiteboardLayout = (input: {
   nodes: LayoutNodeCatalog
   backend: LayoutBackend
 }): WhiteboardLayoutService => {
-  const commit: WhiteboardLayoutService['commit'] = (value) => {
+  const commit = (
+    value: WhiteboardLayoutCommitInput
+  ): WhiteboardLayoutCommitOutput => {
     switch (value.kind) {
       case 'node.create':
         return {
@@ -1010,7 +1012,9 @@ export const createWhiteboardLayout = (input: {
     }
   }
 
-  const runtime: WhiteboardLayoutService['runtime'] = (value) => {
+  const runtime = (
+    value: WhiteboardLayoutRuntimeInput
+  ): WhiteboardLayoutRuntimeOutput => {
     switch (value.kind) {
       case 'node.draft':
         return {
@@ -1050,7 +1054,7 @@ export const createWhiteboardLayout = (input: {
   }
 
   return {
-    commit,
-    runtime
+    commit: commit as WhiteboardLayoutService['commit'],
+    runtime: runtime as WhiteboardLayoutService['runtime']
   }
 }

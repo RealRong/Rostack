@@ -43,6 +43,9 @@ import {
   createDataviewMutationDelta
 } from '@dataview/engine/mutation/delta'
 import { createPerformanceRuntime } from '@dataview/engine/runtime/performance'
+import {
+  createDocumentReadContext
+} from '@dataview/engine/document/reader'
 import type {
   DataviewIntentTable,
   DataviewErrorCode
@@ -98,10 +101,13 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
 
   const readCurrent = (): DataviewCurrent => {
     const current = mutationEngine.current()
+    const context = createDocumentReadContext(current.document)
     return {
       rev: current.rev,
       doc: current.document,
-      active: projection.read.active()
+      active: projection.read.active(),
+      docActiveViewId: context.activeViewId,
+      docActiveView: context.activeView
     }
   }
 

@@ -53,96 +53,65 @@ export interface ProjectionContext<
   phase: Record<TPhaseName, ProjectionPhaseStatus>
 }
 
-export interface ProjectionValueFieldSyncContext<
-  TInput extends {
-    delta: MutationDelta
-  },
-  TState,
-  TPhaseName extends string = string
-> {
-  input: TInput
-  state: TState
-  revision: Revision
-  dirty: ProjectionDirty
-  phase: Record<TPhaseName, ProjectionPhaseStatus>
-}
-
 export interface ProjectionFamilySnapshot<TKey extends string | number, TValue> {
   ids: readonly TKey[]
   byId: ReadonlyMap<TKey, TValue>
 }
 
-export interface ProjectionFamilyPatch<TKey extends string | number> {
-  order?: true
-  set?: readonly TKey[]
-  remove?: readonly TKey[]
-}
+export type ProjectionValueChange<TValue> =
+  | 'skip'
+  | {
+      value: TValue
+    }
 
-export interface ProjectionValueField<
-  TInput extends {
-    delta: MutationDelta
-  },
+export type ProjectionFamilyChange<TKey extends string | number, TValue> =
+  | 'skip'
+  | 'replace'
+  | {
+      ids?: readonly TKey[]
+      set?: readonly (readonly [TKey, TValue])[]
+      remove?: readonly TKey[]
+    }
+
+export interface ProjectionValueStoreSpec<
   TState,
-  TPhaseName extends string,
   TValue
 > {
   kind: 'value'
   read(state: TState): TValue
+  change(state: TState): ProjectionValueChange<TValue>
   isEqual?: (left: TValue, right: TValue) => boolean
-  changed?: (context: ProjectionValueFieldSyncContext<TInput, TState, TPhaseName>) => boolean
 }
 
-export interface ProjectionFamilyField<
-  TInput extends {
-    delta: MutationDelta
-  },
+export interface ProjectionFamilyStoreSpec<
   TState,
-  TPhaseName extends string,
   TKey extends string | number,
   TValue
 > {
   kind: 'family'
   read(state: TState): ProjectionFamilySnapshot<TKey, TValue>
+  change(state: TState): ProjectionFamilyChange<TKey, TValue>
   isEqual?: (left: TValue, right: TValue) => boolean
   idsEqual?: (left: readonly TKey[], right: readonly TKey[]) => boolean
-  changed?: (context: ProjectionValueFieldSyncContext<TInput, TState, TPhaseName>) => boolean
-  patch?: (context: ProjectionValueFieldSyncContext<TInput, TState, TPhaseName> & {
-    previous: ProjectionFamilySnapshot<TKey, TValue>
-    next: ProjectionFamilySnapshot<TKey, TValue>
-  }) => ProjectionFamilyPatch<TKey> | 'replace' | 'skip'
 }
 
-export type ProjectionSurfaceField<
-  TInput extends {
-    delta: MutationDelta
-  },
-  TState,
-  TPhaseName extends string
-> =
-  | ProjectionValueField<TInput, TState, TPhaseName, any>
-  | ProjectionFamilyField<TInput, TState, TPhaseName, any, any>
+export type ProjectionStoreSpec<TState> =
+  | ProjectionValueStoreSpec<TState, any>
+  | ProjectionFamilyStoreSpec<TState, any, any>
 
-export type ProjectionSurfaceTree<
-  TInput extends {
-    delta: MutationDelta
-  },
-  TState,
-  TPhaseName extends string
-> = {
-  [key: string]:
-    | ProjectionSurfaceField<TInput, TState, TPhaseName>
-    | ProjectionSurfaceTree<TInput, TState, TPhaseName>
+export type ProjectionStoreTree<TState> = {
+  [key: string]: ProjectionStoreSpec<TState> | ProjectionStoreTree<TState>
 }
 
 export type ProjectionStoreRead<TField> =
-  TField extends ProjectionValueField<any, any, any, infer TValue>
+  TField extends ProjectionValueStoreSpec<any, infer TValue>
     ? ReadStore<TValue>
-    : TField extends ProjectionFamilyField<any, any, any, infer TKey, infer TValue>
+    : TField extends ProjectionFamilyStoreSpec<any, infer TKey, infer TValue>
       ? {
           ids: ReadStore<readonly TKey[]>
           byId: KeyedReadStore<TKey, TValue | undefined>
         }
-      : TField extends ProjectionSurfaceTree<any, any, any>
+      : TField extends ProjectionStoreTree<any>
         ? {
             [TKey in keyof TField]: ProjectionStoreRead<TField[TKey]>
           }
@@ -179,28 +148,38 @@ export type ProjectionPhaseTable<
   TPhaseName extends string
 > = Record<TPhaseName, ProjectionPhaseSpec<TInput, TState, TPhaseName>>
 
+export interface ProjectionPlan<TPhaseName extends string> {
+  phases?: readonly TPhaseName[]
+}
+
 export interface ProjectionCreateOptions<
   TInput extends {
     delta: MutationDelta
   },
   TState,
   TRead,
-  TOutput,
-  TSurface extends ProjectionSurfaceTree<TInput, TState, TPhaseName>,
+  TCapture,
+  TStores extends ProjectionStoreTree<TState>,
   TPhaseName extends string
 > {
   createState(): TState
   createRead(runtime: {
     state: () => TState
     revision: () => Revision
-    current: () => TOutput
+    capture: () => TCapture
   }): TRead
-  output(input: {
+  capture(input: {
     state: TState
     read: TRead
     revision: Revision
-  }): TOutput
-  surface: TSurface
+  }): TCapture
+  stores: TStores
+  plan?: (input: {
+    input: TInput
+    state: TState
+    read: TRead
+    revision: Revision
+  }) => ProjectionPlan<TPhaseName>
   phases: ProjectionPhaseTable<TInput, TState, TPhaseName>
 }
 
@@ -210,72 +189,34 @@ export interface ProjectionRuntime<
   },
   TState,
   TRead,
-  TOutput,
-  TSurfaceRead,
+  TCapture,
+  TStoresRead,
   TPhaseName extends string
 > {
   revision(): Revision
   state(): TState
-  current(): TOutput
+  capture(): TCapture
   read: TRead
-  stores: TSurfaceRead
+  stores: TStoresRead
   update(input: TInput): {
     revision: Revision
-    output: TOutput
+    capture: TCapture
     trace: ProjectionTrace<TPhaseName>
   }
   subscribe(
     listener: (result: {
       revision: Revision
-      output: TOutput
+      capture: TCapture
       trace: ProjectionTrace<TPhaseName>
     }) => void
   ): () => void
 }
 
-type CompiledChangedMatcher<
-  TInput extends {
-    delta: MutationDelta
-  },
-  TState,
-  TPhaseName extends string
-> = (
-  context: ProjectionValueFieldSyncContext<TInput, TState, TPhaseName>
-) => boolean
-
-type CompiledFamilyPatchBuilder<
-  TInput extends {
-    delta: MutationDelta
-  },
-  TState,
-  TPhaseName extends string,
-  TKey extends string | number,
-  TValue
-> = (
-  context: ProjectionValueFieldSyncContext<TInput, TState, TPhaseName> & {
-    previous: ProjectionFamilySnapshot<TKey, TValue>
-    next: ProjectionFamilySnapshot<TKey, TValue>
-  }
-) => ProjectionFamilyPatch<TKey> | 'replace' | 'skip'
-
 type SurfaceSync = () => void
 
-const sameValue = <T,>(
-  left: T,
-  right: T
-) => Object.is(left, right)
-
-const isField = <
-  TInput extends {
-    delta: MutationDelta
-  },
-  TState,
-  TPhaseName extends string
->(
-  value:
-    | ProjectionSurfaceField<TInput, TState, TPhaseName>
-    | ProjectionSurfaceTree<TInput, TState, TPhaseName>
-): value is ProjectionSurfaceField<TInput, TState, TPhaseName> => (
+const isField = <TState,>(
+  value: ProjectionStoreSpec<TState> | ProjectionStoreTree<TState>
+): value is ProjectionStoreSpec<TState> => (
   typeof value === 'object'
   && value !== null
   && 'kind' in value
@@ -285,201 +226,69 @@ const isField = <
   )
 )
 
-const compileChangedMatcher = <
-  TInput extends {
-    delta: MutationDelta
-  },
+const createStoreRuntime = <
   TState,
-  TPhaseName extends string
+  TStores extends ProjectionStoreTree<TState>
 >(
-  changed: ((context: ProjectionValueFieldSyncContext<TInput, TState, TPhaseName>) => boolean) | undefined
-): CompiledChangedMatcher<TInput, TState, TPhaseName> | undefined => {
-  if (!changed) {
-    return undefined
-  }
-  return changed
-}
-
-const normalizeFamilySnapshot = <TKey extends string | number, TValue>(
-  snapshot: ProjectionFamilySnapshot<TKey, TValue>,
-  previous: ProjectionFamilySnapshot<TKey, TValue> | undefined,
-  idsEqual: (left: readonly TKey[], right: readonly TKey[]) => boolean
-): ProjectionFamilySnapshot<TKey, TValue> => {
-  if (previous && idsEqual(previous.ids, snapshot.ids)) {
-    return {
-      ids: previous.ids,
-      byId: snapshot.byId
-    }
-  }
-
-  return snapshot
-}
-
-const toFamilyPatch = <TKey extends string | number, TValue>(input: {
-  previous: ProjectionFamilySnapshot<TKey, TValue>
-  next: ProjectionFamilySnapshot<TKey, TValue>
-  patch: ProjectionFamilyPatch<TKey>
-}): {
-  ids?: readonly TKey[]
-  set?: readonly (readonly [TKey, TValue])[]
-  remove?: readonly TKey[]
-} => {
-  const result: {
-    ids?: readonly TKey[]
-    set?: readonly (readonly [TKey, TValue])[]
-    remove?: readonly TKey[]
-  } = {}
-
-  if (input.patch.order && input.previous.ids !== input.next.ids) {
-    result.ids = input.next.ids
-  }
-
-  if (input.patch.set?.length) {
-    result.set = input.patch.set.map((key) => {
-      const value = input.next.byId.get(key)
-      if (value === undefined) {
-        throw new Error(
-          `Projection family patch set key ${key} is missing from next snapshot.`
-        )
-      }
-      return [key, value] as const
-    })
-  }
-
-  if (input.patch.remove?.length) {
-    result.remove = input.patch.remove
-  }
-
-  return result
-}
-
-const compileFieldChanged = <
-  TInput extends {
-    delta: MutationDelta
-  },
-  TState,
-  TPhaseName extends string
->(input: {
-  field: ProjectionSurfaceField<TInput, TState, TPhaseName>
-  patch?: CompiledFamilyPatchBuilder<TInput, TState, TPhaseName, any, any>
-}) => {
-  const explicit = compileChangedMatcher(
-    input.field.changed as
-      | ((context: ProjectionValueFieldSyncContext<TInput, TState, TPhaseName>) => boolean)
-      | undefined
-  )
-  if (explicit) {
-    return explicit
-  }
-
-  return undefined
-}
-
-const createSurfaceStore = <
-  TInput extends {
-    delta: MutationDelta
-  },
-  TState,
-  TPhaseName extends string,
-  TSurface extends ProjectionSurfaceTree<TInput, TState, TPhaseName>
->(
-  surface: TSurface,
-  state: TState,
-  readContext: () => ProjectionValueFieldSyncContext<TInput, TState, TPhaseName>
+  stores: TStores,
+  state: TState
 ): {
-  read: ProjectionStoreRead<TSurface>
+  read: ProjectionStoreRead<TStores>
   sync: () => void
 } => {
   const syncers: SurfaceSync[] = []
 
   const build = (
-    currentSurface: ProjectionSurfaceTree<TInput, TState, TPhaseName>,
+    currentStores: ProjectionStoreTree<TState>,
     currentState: TState
   ): unknown => {
     const next: Record<string, unknown> = {}
 
-    Object.entries(currentSurface).forEach(([key, field]) => {
-      if (isField(field)) {
-        if (field.kind === 'value') {
-          const initial = field.read(currentState)
-          const source = createValueStore(initial)
-          const isEqual = field.isEqual ?? sameValue
-          const changed = compileFieldChanged({
-            field
+    Object.entries(currentStores).forEach(([key, spec]) => {
+      if (isField(spec)) {
+        if (spec.kind === 'value') {
+          const source = createValueStore(spec.read(currentState), {
+            ...(spec.isEqual
+              ? {
+                  isEqual: spec.isEqual
+                }
+              : {})
           })
-          let previous = initial
 
           syncers.push(() => {
-            const context = readContext()
-            if (changed?.(context) === false) {
+            const change = spec.change(state)
+            if (change === 'skip') {
               return
             }
 
-            const current = field.read(state)
-            if (isEqual(previous, current)) {
-              return
-            }
-
-            previous = current
-            source.set(current)
+            source.set(change.value)
           })
 
           next[key] = source
           return
         }
 
-        const idsEqual = field.idsEqual ?? sameValue
-        const initial = normalizeFamilySnapshot(
-          field.read(currentState),
-          undefined,
-          idsEqual
-        )
         const source = createFamilyStore({
-          initial,
-          isEqual: field.isEqual as ((left: unknown, right: unknown) => boolean) | undefined
+          initial: spec.read(currentState),
+          ...(spec.isEqual
+            ? {
+                isEqual: spec.isEqual as (left: unknown, right: unknown) => boolean
+              }
+            : {})
         })
-        const patch = field.patch as CompiledFamilyPatchBuilder<TInput, TState, TPhaseName, string, unknown> | undefined
-        const changed = compileFieldChanged({
-          field,
-          patch
-        })
-        let previous = initial
 
         syncers.push(() => {
-          const context = readContext()
-          if (changed?.(context) === false) {
+          const change = spec.change(state)
+          if (change === 'skip') {
             return
           }
 
-          const currentPrevious = previous
-          const current = normalizeFamilySnapshot(
-            field.read(state),
-            currentPrevious,
-            idsEqual as (left: readonly string[], right: readonly string[]) => boolean
-          ) as ProjectionFamilySnapshot<string, unknown>
-          const nextPatch = patch?.({
-            ...context,
-            previous: currentPrevious as ProjectionFamilySnapshot<string, unknown>,
-            next: current
-          }) ?? 'replace'
-
-          if (nextPatch === 'skip') {
-            previous = current
+          if (change === 'replace') {
+            source.write.replace(spec.read(state))
             return
           }
 
-          if (nextPatch === 'replace') {
-            previous = current
-            source.write.replace(current)
-            return
-          }
-
-          source.write.apply(toFamilyPatch({
-            previous: currentPrevious,
-            next: current,
-            patch: nextPatch
-          }))
-          previous = current
+          source.write.apply(change)
         })
 
         next[key] = {
@@ -487,9 +296,9 @@ const createSurfaceStore = <
           byId: createKeyedReadStore({
             get: source.byId.read.get,
             subscribe: source.byId.subscribe.key,
-            ...(field.isEqual
+            ...(spec.isEqual
               ? {
-                  isEqual: field.isEqual as (left: unknown, right: unknown) => boolean
+                  isEqual: spec.isEqual as (left: unknown, right: unknown) => boolean
                 }
               : {})
           })
@@ -498,7 +307,7 @@ const createSurfaceStore = <
       }
 
       next[key] = build(
-        field as ProjectionSurfaceTree<TInput, TState, TPhaseName>,
+        spec as ProjectionStoreTree<TState>,
         currentState
       )
     })
@@ -507,7 +316,7 @@ const createSurfaceStore = <
   }
 
   return {
-    read: build(surface, state) as ProjectionStoreRead<TSurface>,
+    read: build(stores, state) as ProjectionStoreRead<TStores>,
     sync: () => {
       syncers.forEach((sync) => {
         sync()
@@ -545,24 +354,24 @@ export const createProjection = <
   },
   TState,
   TRead,
-  TOutput,
+  TCapture,
   TPhaseName extends string,
-  TSurface extends ProjectionSurfaceTree<TInput, TState, TPhaseName>
+  TStores extends ProjectionStoreTree<TState>
 >(
   model: ProjectionCreateOptions<
     TInput,
     TState,
     TRead,
-    TOutput,
-    TSurface,
+    TCapture,
+    TStores,
     TPhaseName
   >
 ): ProjectionRuntime<
   TInput,
   TState,
   TRead,
-  TOutput,
-  ProjectionStoreRead<TSurface>,
+  TCapture,
+  ProjectionStoreRead<TStores>,
   TPhaseName
 > => {
   const compiledPhases = Object.fromEntries(
@@ -580,33 +389,24 @@ export const createProjection = <
   const graph = createPhaseGraph(compiledPhases)
   const state = model.createState()
   let currentRevision = 0 as Revision
-  let currentOutput!: TOutput
-  let currentContext:
-    | ProjectionValueFieldSyncContext<TInput, TState, TPhaseName>
-    | undefined
+  let currentCapture!: TCapture
   const listeners = new Set<(result: {
     revision: Revision
-    output: TOutput
+    capture: TCapture
     trace: ProjectionTrace<TPhaseName>
   }) => void>()
 
   const read = model.createRead({
     state: () => state,
     revision: () => currentRevision,
-    current: () => currentOutput
+    capture: () => currentCapture
   })
-  const surface = createSurfaceStore(
-    model.surface,
-    state,
-    () => {
-      if (!currentContext) {
-        throw new Error('Projection surface sync context is unavailable.')
-      }
-      return currentContext
-    }
+  const stores = createStoreRuntime(
+    model.stores,
+    state
   )
 
-  currentOutput = model.output({
+  currentCapture = model.capture({
     state,
     read,
     revision: currentRevision
@@ -615,9 +415,9 @@ export const createProjection = <
   return {
     revision: () => currentRevision,
     state: () => state,
-    current: () => currentOutput,
+    capture: () => currentCapture,
     read,
-    stores: surface.read,
+    stores: stores.read,
     update: (input) => {
       const revision = (currentRevision + 1) as Revision
       const phaseState = Object.fromEntries(
@@ -640,12 +440,29 @@ export const createProjection = <
         },
         phase: phaseState
       }
+      const plan = model.plan?.({
+        input,
+        state,
+        read,
+        revision
+      })
+      const enabled = new Set<TPhaseName>(plan?.phases ?? graph.order)
       const tracePhases: ProjectionTracePhase<TPhaseName>[] = []
       const totalStartAt = scheduler.readMonotonicNow()
 
       graph.order.forEach((phaseName) => {
-        const spec = graph.specs.get(phaseName)!
         const status = context.phase[phaseName]
+        if (!enabled.has(phaseName)) {
+          tracePhases.push({
+            name: phaseName,
+            action: 'reuse',
+            changed: false,
+            durationMs: 0
+          })
+          return
+        }
+
+        const spec = graph.specs.get(phaseName)!
         status.startedAt = scheduler.readMonotonicNow()
         spec.run(context)
         status.endedAt = scheduler.readMonotonicNow()
@@ -658,12 +475,9 @@ export const createProjection = <
         })
       })
 
-      currentContext = context
       currentRevision = revision
-      surface.sync()
-      currentContext = undefined
-
-      currentOutput = model.output({
+      stores.sync()
+      currentCapture = model.capture({
         state,
         read,
         revision
@@ -671,7 +485,7 @@ export const createProjection = <
 
       const result = {
         revision,
-        output: currentOutput,
+        capture: currentCapture,
         trace: {
           revision,
           phases: tracePhases,

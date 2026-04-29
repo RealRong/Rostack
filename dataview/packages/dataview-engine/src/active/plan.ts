@@ -19,7 +19,7 @@ import {
   view as viewApi
 } from '@dataview/core/view'
 import type {
-  DataviewActiveFrame,
+  DataviewActiveSpec,
   DataviewFrame
 } from '@dataview/engine/active/frame'
 import type {
@@ -39,8 +39,7 @@ import {
   writeQueryExecutionKey
 } from '@dataview/engine/active/query/key'
 import type {
-  DataviewLastActive,
-  DataviewState,
+  DataviewActiveState,
   PhaseAction
 } from '@dataview/engine/active/state'
 import type {
@@ -72,24 +71,8 @@ export interface QueryPlan {
   executionKey: string
 }
 
-export interface DataviewResolvedActive {
-  id: ViewId
-  view: View
-  demand: NormalizedIndexDemand
-  query: QueryPlan
-  section?: {
-    fieldId: FieldId
-    mode?: ViewGroup['mode']
-    sort?: ViewGroup['bucketSort']
-    interval?: ViewGroup['bucketInterval']
-    showEmpty: boolean
-  }
-  calcFields: readonly FieldId[]
-}
-
 export interface DataviewActivePlan {
   reset: boolean
-  reasons: DataviewActivePlanReasons
   query: {
     action: PhaseAction
     reuse?: {
@@ -246,7 +229,7 @@ const readCalculationDemands = (
 export const compileDataviewResolvedActive = (
   reader: DocumentReader,
   view: View
-): DataviewResolvedActive => {
+): DataviewActiveSpec => {
   const query = createQueryPlan(reader, view)
   const indexedFilters = resolveIndexedFilterRules(reader, view)
   const displayFields = view.display.fields?.length
@@ -315,7 +298,7 @@ export const compileDataviewResolvedActive = (
 export const resolveDataviewActive = (
   context: DocumentReadContext,
   activeViewId?: ViewId
-): DataviewResolvedActive | undefined => {
+): DataviewActiveSpec | undefined => {
   const view = activeViewId === context.activeViewId
     ? context.activeView
     : activeViewId
@@ -328,8 +311,8 @@ export const resolveDataviewActive = (
 }
 
 const sameSection = (
-  previous?: DataviewLastActive['section'],
-  next?: DataviewActiveFrame['section']
+  previous?: DataviewActiveSpec['section'],
+  next?: DataviewActiveSpec['section']
 ): boolean => {
   if (!previous || !next) {
     return previous === next
@@ -457,7 +440,7 @@ const hasVisibleInputChanges = (input: {
 }
 
 const hasSortInputChanges = (input: {
-  active: DataviewActiveFrame
+  active: DataviewActiveSpec
   delta: DataviewMutationDelta
 }): boolean => {
   if (
@@ -467,7 +450,7 @@ const hasSortInputChanges = (input: {
     return true
   }
 
-  for (const fieldId of input.active.query.plan.watch.sort) {
+  for (const fieldId of input.active.query.watch.sort) {
     if (input.delta.field.schema.changed(fieldId)) {
       return true
     }
@@ -475,169 +458,31 @@ const hasSortInputChanges = (input: {
 
   return hasAnyTouchedField(
     input.delta.field.touchedIds(),
-    input.active.query.plan.watch.sort
+    input.active.query.watch.sort
   )
 }
 
-export interface DataviewActivePlanReasons {
-  lifecycle: {
-    phaseRebuild: boolean
-    reset: boolean
-  }
-  query: {
-    sync: boolean
-    reuse: {
-      matched: boolean
-      ordered: boolean
-    }
-  }
-  membership: {
-    grouped: boolean
-    rebuild: boolean
-    sync: boolean
-  }
-  summary: {
-    enabled: boolean
-    rebuild: boolean
-    sync: boolean
-    sectionChanged: boolean
-  }
-  index: {
-    rebuilt: boolean
-    switched: boolean
-    bucketRebuild: boolean
-    bucketChanged: boolean
-  }
-  publish: {
-    snapshotRebuild: boolean
-    layoutChanged: boolean
-  }
-}
-
-const createDataviewActivePlanReasons = (input: {
-  frame: DataviewFrame
-  active: DataviewActiveFrame
-  state: DataviewState
-  index?: DataviewIndexResult
-}): DataviewActivePlanReasons => {
-  const { frame, active, state, index } = input
-  const previous = state.lastActive
-  const previousSnapshot = state.active.snapshot
-  const activeViewChanged = frame.delta.document.activeViewChanged()
-  const sectionChanged = !sameSection(previous?.section, active.section)
-  const calcFieldsChanged = !sameCalcFields(previous?.calcFields, active.calc.fields)
-  const phaseRebuild = (
-    !previousSnapshot
-    || !previous
-    || previous.id !== active.id
-    || activeViewChanged
-  )
-  const queryDefinitionChanged = previous?.queryKey !== active.query.plan.executionKey
-  const queryInputChanged = hasQueryInputChanges({
-    delta: frame.delta,
-    plan: active.query.plan
-  })
-  const visibleInputChanged = hasVisibleInputChanges({
-    delta: frame.delta,
-    plan: active.query.plan
-  })
-  const sortInputChanged = hasSortInputChanges({
-    active,
-    delta: frame.delta
-  })
-  const groupField = active.view.group?.fieldId
-  const touchedFields = frame.delta.field.touchedIds()
-  const indexDelta = index?.entry.delta
-  const groupSchemaChanged = groupField
-    ? frame.delta.field.schema.changed(groupField)
-    : false
-  const groupValueChanged = groupField
-    ? touchedFields === 'all' || touchedFields.has(groupField)
-    : false
-
-  let calcSchemaChanged = false
-  for (const fieldId of active.calc.fields) {
-    if (frame.delta.field.schema.changed(fieldId)) {
-      calcSchemaChanged = true
-    }
-  }
-
-  return {
-    lifecycle: {
-      phaseRebuild,
-      reset: frame.delta.reset === true
-        || phaseRebuild
-        || sectionChanged
-        || calcFieldsChanged
-    },
-    query: {
-      sync: active.query.changed()
-        || queryDefinitionChanged
-        || queryInputChanged,
-      reuse: {
-        matched: !sortInputChanged,
-        ordered: !sortInputChanged
-          && (
-            active.view.sort.rules.ids.length > 0
-            || !active.query.changed('order')
-          )
-      }
-    },
-    membership: {
-      grouped: Boolean(groupField),
-      rebuild: active.query.changed('group')
-        || groupSchemaChanged
-        || frame.delta.recordSetChanged(),
-      sync: groupValueChanged
-    },
-    summary: {
-      enabled: active.calc.fields.length > 0,
-      rebuild: active.calc.changed()
-        || calcSchemaChanged
-        || groupSchemaChanged,
-      sync: active.query.changed('search')
-        || active.query.changed('filter')
-        || visibleInputChanged
-        || Boolean(indexDelta?.calculation)
-        || (groupField !== undefined && (
-          frame.delta.view.query(active.id).changed('group')
-          || groupValueChanged
-          || Boolean(indexDelta?.bucket)
-        )),
-      sectionChanged
-    },
-    index: {
-      rebuilt: index?.action === 'rebuild',
-      switched: index?.action === 'switch',
-      bucketRebuild: Boolean(indexDelta?.bucket?.rebuild),
-      bucketChanged: Boolean(indexDelta?.bucket),
-    },
-    publish: {
-      snapshotRebuild: (
-        !previousSnapshot
-        || previousSnapshot.view.id !== active.id
-        || previousSnapshot.view.type !== active.view.type
-      ),
-      layoutChanged: frame.delta.view.layout(active.id).changed()
-    }
-  }
-}
-
-const resolveQueryAction = (
-  reasons: DataviewActivePlanReasons
-): DataviewActivePlan['query'] => {
-  if (reasons.lifecycle.phaseRebuild) {
+const resolveQueryAction = (input: {
+  phaseRebuild: boolean
+  querySync: boolean
+  reuseMatched: boolean
+  reuseOrdered: boolean
+}): DataviewActivePlan['query'] => {
+  if (input.phaseRebuild) {
     return {
       action: 'rebuild'
     }
   }
 
-  if (reasons.query.sync) {
+  if (input.querySync) {
     return {
       action: 'sync',
-      ...(reasons.query.reuse.matched || reasons.query.reuse.ordered
+      ...((input.reuseMatched || input.reuseOrdered)
         ? {
-            reuse: reasons.query.reuse
+            reuse: {
+              matched: input.reuseMatched,
+              ordered: input.reuseOrdered
+            }
           }
         : {})
     }
@@ -649,72 +494,75 @@ const resolveQueryAction = (
 }
 
 const resolveMembershipAction = (input: {
-  reasons: DataviewActivePlanReasons
+  phaseRebuild: boolean
+  grouped: boolean
+  rebuild: boolean
+  sync: boolean
+  bucketRebuild: boolean
+  bucketChanged: boolean
   queryAction: PhaseAction
 }): PhaseAction => {
-  if (input.reasons.lifecycle.phaseRebuild) {
+  if (input.phaseRebuild) {
     return 'rebuild'
   }
 
-  if (
-    input.queryAction === 'rebuild'
-    || input.reasons.index.bucketRebuild
-  ) {
+  if (input.queryAction === 'rebuild' || input.bucketRebuild) {
     return 'rebuild'
   }
 
-  if (!input.reasons.membership.grouped) {
+  if (!input.grouped) {
     return input.queryAction === 'reuse'
       ? 'reuse'
       : 'sync'
   }
 
-  if (input.reasons.membership.rebuild) {
+  if (input.rebuild) {
     return 'rebuild'
   }
 
-  if (input.reasons.membership.sync) {
+  if (input.sync) {
     return 'sync'
   }
 
-  return input.queryAction !== 'reuse'
-    || input.reasons.index.bucketChanged
+  return input.queryAction !== 'reuse' || input.bucketChanged
     ? 'sync'
     : 'reuse'
 }
 
 const resolveSummaryAction = (input: {
-  reasons: DataviewActivePlanReasons
+  phaseRebuild: boolean
+  enabled: boolean
+  rebuild: boolean
+  sync: boolean
+  sectionChanged: boolean
 }): PhaseAction => {
-  if (input.reasons.lifecycle.phaseRebuild) {
+  if (input.phaseRebuild) {
     return 'rebuild'
   }
 
-  if (!input.reasons.summary.enabled) {
-    return input.reasons.summary.sectionChanged
+  if (!input.enabled) {
+    return input.sectionChanged
       ? 'sync'
       : 'reuse'
   }
 
-  if (
-    input.reasons.summary.rebuild
-  ) {
+  if (input.rebuild) {
     return 'rebuild'
   }
 
-  return input.reasons.summary.sync
-    || input.reasons.summary.sectionChanged
+  return input.sync || input.sectionChanged
     ? 'sync'
     : 'reuse'
 }
 
 const resolvePublishAction = (input: {
-  reasons: DataviewActivePlanReasons
+  snapshotRebuild: boolean
+  layoutChanged: boolean
   queryAction: PhaseAction
   membershipAction: PhaseAction
   summaryAction: PhaseAction
 }): PhaseAction => {
-  if (input.reasons.publish.snapshotRebuild) {
+  if (input.snapshotRebuild) {
     return 'rebuild'
   }
 
@@ -722,7 +570,7 @@ const resolvePublishAction = (input: {
     input.queryAction !== 'reuse'
     || input.membershipAction !== 'reuse'
     || input.summaryAction !== 'reuse'
-    || input.reasons.publish.layoutChanged
+    || input.layoutChanged
   ) {
     return 'sync'
   }
@@ -730,66 +578,15 @@ const resolvePublishAction = (input: {
   return 'reuse'
 }
 
-export const createDataviewLastActive = (
-  active?: DataviewActiveFrame
-): DataviewLastActive | undefined => active
-  ? {
-      id: active.id,
-      queryKey: active.query.plan.executionKey,
-      ...(active.section
-        ? {
-            section: active.section
-          }
-        : {}),
-      calcFields: active.calc.fields
-    }
-  : undefined
-
 export const createDataviewActivePlan = (input: {
   frame: DataviewFrame
-  state: DataviewState
+  previous: DataviewActiveState
   index?: DataviewIndexResult
 }): DataviewActivePlan => {
   const active = input.frame.active
   if (!active) {
-    const reasons: DataviewActivePlanReasons = {
-      lifecycle: {
-        phaseRebuild: false,
-        reset: Boolean(input.state.active.snapshot)
-      },
-      query: {
-        sync: false,
-        reuse: {
-          matched: false,
-          ordered: false
-        }
-      },
-      membership: {
-        grouped: false,
-        rebuild: false,
-        sync: false
-      },
-      summary: {
-        enabled: false,
-        rebuild: false,
-        sync: false,
-        sectionChanged: false
-      },
-      index: {
-        rebuilt: false,
-        switched: false,
-        bucketRebuild: false,
-        bucketChanged: false
-      },
-      publish: {
-        snapshotRebuild: false,
-        layoutChanged: false
-      }
-    }
-
     return {
-      reset: Boolean(input.state.active.snapshot),
-      reasons,
+      reset: Boolean(input.previous.snapshot),
       query: {
         action: 'reuse'
       },
@@ -800,31 +597,101 @@ export const createDataviewActivePlan = (input: {
         action: 'reuse'
       },
       publish: {
-        action: input.state.active.snapshot
+        action: input.previous.snapshot
           ? 'sync'
           : 'reuse'
       }
     }
   }
 
-  const reasons = createDataviewActivePlanReasons({
-    frame: input.frame,
-    active,
-    state: input.state,
-    index: input.index
+  const previousSpec = input.previous.spec
+  const previousSnapshot = input.previous.snapshot
+  const activeViewChanged = input.frame.delta.document.activeViewChanged()
+  const sectionChanged = !sameSection(previousSpec?.section, active.section)
+  const calcFieldsChanged = !sameCalcFields(previousSpec?.calcFields, active.calcFields)
+  const phaseRebuild = (
+    !previousSnapshot
+    || !previousSpec
+    || previousSpec.id !== active.id
+    || activeViewChanged
+  )
+  const queryDefinitionChanged = previousSpec?.query.executionKey !== active.query.executionKey
+  const queryInputChanged = hasQueryInputChanges({
+    delta: input.frame.delta,
+    plan: active.query
   })
-  const query = resolveQueryAction(reasons)
+  const visibleInputChanged = hasVisibleInputChanges({
+    delta: input.frame.delta,
+    plan: active.query
+  })
+  const sortInputChanged = hasSortInputChanges({
+    active,
+    delta: input.frame.delta
+  })
+  const groupField = active.view.group?.fieldId
+  const touchedFields = input.frame.delta.field.touchedIds()
+  const indexDelta = input.index?.index.delta
+  const groupSchemaChanged = groupField
+    ? input.frame.delta.field.schema.changed(groupField)
+    : false
+  const groupValueChanged = groupField
+    ? touchedFields === 'all' || touchedFields.has(groupField)
+    : false
+
+  let calcSchemaChanged = false
+  for (const fieldId of active.calcFields) {
+    if (input.frame.delta.field.schema.changed(fieldId)) {
+      calcSchemaChanged = true
+      break
+    }
+  }
+
+  const query = resolveQueryAction({
+    phaseRebuild,
+    querySync: input.frame.delta.view.query(active.id).changed()
+      || queryDefinitionChanged
+      || queryInputChanged,
+    reuseMatched: !sortInputChanged,
+    reuseOrdered: !sortInputChanged
+      && (
+        active.view.sort.rules.ids.length > 0
+        || !input.frame.delta.view.query(active.id).changed('order')
+      )
+  })
   const membershipAction = resolveMembershipAction({
-    reasons,
-    queryAction: query.action,
+    phaseRebuild,
+    grouped: Boolean(groupField),
+    rebuild: input.frame.delta.view.query(active.id).changed('group')
+      || groupSchemaChanged
+      || input.frame.delta.recordSetChanged(),
+    sync: groupValueChanged,
+    bucketRebuild: Boolean(indexDelta?.bucket?.rebuild),
+    bucketChanged: Boolean(indexDelta?.bucket),
+    queryAction: query.action
   })
   const summaryAction = resolveSummaryAction({
-    reasons
+    phaseRebuild,
+    enabled: active.calcFields.length > 0,
+    rebuild: input.frame.delta.view.calc(active.id).changed()
+      || calcSchemaChanged
+      || groupSchemaChanged,
+    sync: input.frame.delta.view.query(active.id).changed('search')
+      || input.frame.delta.view.query(active.id).changed('filter')
+      || visibleInputChanged
+      || Boolean(indexDelta?.calculation)
+      || (groupField !== undefined && (
+        input.frame.delta.view.query(active.id).changed('group')
+        || groupValueChanged
+        || Boolean(indexDelta?.bucket)
+      )),
+    sectionChanged
   })
 
   return {
-    reset: reasons.lifecycle.reset,
-    reasons,
+    reset: input.frame.delta.reset === true
+      || phaseRebuild
+      || sectionChanged
+      || calcFieldsChanged,
     query,
     membership: {
       action: membershipAction
@@ -834,7 +701,12 @@ export const createDataviewActivePlan = (input: {
     },
     publish: {
       action: resolvePublishAction({
-        reasons,
+        snapshotRebuild: (
+          !previousSnapshot
+          || previousSnapshot.view.id !== active.id
+          || previousSnapshot.view.type !== active.view.type
+        ),
+        layoutChanged: input.frame.delta.view.layout(active.id).changed(),
         queryAction: query.action,
         membershipAction,
         summaryAction

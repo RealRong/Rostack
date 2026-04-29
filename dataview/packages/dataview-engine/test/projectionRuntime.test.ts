@@ -8,6 +8,7 @@ import { createDataviewActivePlan } from '@dataview/engine/active/plan'
 import { runDataviewActive, createDataviewActiveState } from '@dataview/engine/active/runtime'
 import { createDataviewProjection } from '@dataview/engine/projection'
 import type { DataviewState } from '@dataview/engine/active/state'
+import { writeNormalizedIndexDemandKey } from '@dataview/engine/active/index/demand'
 
 const VIEW_ID = 'view_table'
 const FIELD_STATUS = 'status'
@@ -167,13 +168,11 @@ const toDelta = (input: {
 })
 
 const createState = (): DataviewState => ({
-  index: {
-    entries: new Map()
-  },
+  revision: 0,
   active: createDataviewActiveState()
 })
 
-test('createDataviewFrame binds active query/calc reads on top of MutationDelta', () => {
+test('createDataviewFrame resolves plain active spec from document', () => {
   const frame = createDataviewFrame({
     revision: 1,
     document: createDocument(),
@@ -193,12 +192,11 @@ test('createDataviewFrame binds active query/calc reads on top of MutationDelta'
   })
 
   assert.equal(frame.active?.id, VIEW_ID)
-  assert.equal(frame.active?.query.changed('sort'), true)
-  assert.equal(frame.active?.query.changed('group'), false)
-  assert.equal(frame.active?.calc.changed(), true)
+  assert.equal(typeof frame.active?.query.executionKey, 'string')
+  assert.deepEqual(frame.active?.calcFields, [FIELD_POINTS])
 })
 
-test('ensureDataviewIndex uses demand-keyed bank and can switch current entry', () => {
+test('ensureDataviewIndex keeps only one active index and rebuilds when active spec changes', () => {
   const firstFrame = createDataviewFrame({
     revision: 1,
     document: createDocument(createView({
@@ -210,11 +208,9 @@ test('ensureDataviewIndex uses demand-keyed bank and can switch current entry', 
   })
   const first = ensureDataviewIndex({
     frame: firstFrame,
-    previous: {
-      entries: new Map()
-    }
+    previous: undefined
   })
-  assert.equal(first.current?.action, 'rebuild')
+  assert.equal(first?.action, 'rebuild')
 
   const secondFrame = createDataviewFrame({
     revision: 2,
@@ -231,20 +227,16 @@ test('ensureDataviewIndex uses demand-keyed bank and can switch current entry', 
   })
   const second = ensureDataviewIndex({
     frame: secondFrame,
-    previous: first.bank
+    previous: first?.index
   })
-  assert.equal(second.current?.entry.key === first.current?.entry.key, false)
-  assert.equal(second.bank.currentKey, second.current?.entry.key)
-
-  const back = ensureDataviewIndex({
-    frame: firstFrame,
-    previous: second.bank
-  })
-  assert.equal(back.current?.action, 'switch')
-  assert.equal(back.bank.currentKey, first.current?.entry.key)
+  assert.equal(second?.action, 'rebuild')
+  assert.equal(
+    writeNormalizedIndexDemandKey(second!.index.demand) === writeNormalizedIndexDemandKey(first!.index.demand),
+    false
+  )
 })
 
-test('createDataviewActivePlan exposes reasons and keeps layout-only change inside publish', () => {
+test('createDataviewActivePlan keeps layout-only change inside publish', () => {
   const previousFrame = createDataviewFrame({
     revision: 1,
     document: createDocument(),
@@ -254,20 +246,17 @@ test('createDataviewActivePlan exposes reasons and keeps layout-only change insi
   })
   const previousIndex = ensureDataviewIndex({
     frame: previousFrame,
-    previous: {
-      entries: new Map()
-    }
+    previous: undefined
   })
   const previousState = createState()
-  previousState.index = previousIndex.bank
   previousState.active = runDataviewActive({
     frame: previousFrame,
     plan: createDataviewActivePlan({
       frame: previousFrame,
-      state: previousState,
-      index: previousIndex.current
+      previous: previousState.active,
+      index: previousIndex
     }),
-    index: previousIndex.current,
+    index: previousIndex,
     previous: previousState.active
   })
 
@@ -282,23 +271,16 @@ test('createDataviewActivePlan exposes reasons and keeps layout-only change insi
       }
     })
   })
-  previousState.lastActive = {
-    id: VIEW_ID,
-    queryKey: previousFrame.active!.query.plan.executionKey,
-    section: previousFrame.active!.section,
-    calcFields: previousFrame.active!.calc.fields
-  }
   const ensured = ensureDataviewIndex({
     frame: nextFrame,
-    previous: previousIndex.bank
+    previous: previousState.active.index
   })
   const plan = createDataviewActivePlan({
     frame: nextFrame,
-    state: previousState,
-    index: ensured.current
+    previous: previousState.active,
+    index: ensured
   })
 
-  assert.equal(plan.reasons.publish.layoutChanged, true)
   assert.equal(plan.query.action, 'reuse')
   assert.equal(plan.membership.action, 'reuse')
   assert.equal(plan.summary.action, 'reuse')
@@ -316,17 +298,17 @@ test('runDataviewActive derives grouped sections and summaries in one active pip
   const state = createState()
   const ensured = ensureDataviewIndex({
     frame,
-    previous: state.index
+    previous: state.active.index
   })
   const plan = createDataviewActivePlan({
     frame,
-    state,
-    index: ensured.current
+    previous: state.active,
+    index: ensured
   })
   const active = runDataviewActive({
     frame,
     plan,
-    index: ensured.current,
+    index: ensured,
     previous: state.active
   })
 
@@ -339,7 +321,7 @@ test('runDataviewActive derives grouped sections and summaries in one active pip
   assert.equal(active.trace.publish.action, 'rebuild')
 })
 
-test('createDataviewProjection now runs frame -> active and clears snapshot when active view disappears', () => {
+test('createDataviewProjection now runs active only and clears snapshot when active view disappears', () => {
   const runtime = createDataviewProjection()
   const first = runtime.update({
     document: createDocument(),
@@ -350,10 +332,10 @@ test('createDataviewProjection now runs frame -> active and clears snapshot when
 
   assert.deepEqual(
     first.trace.phases.map((phase) => phase.name),
-    ['frame', 'active']
+    ['active']
   )
-  assert.equal(first.output.activeId, VIEW_ID)
-  assert.equal(first.output.active?.sections.count, 3)
+  assert.equal(first.capture.activeId, VIEW_ID)
+  assert.equal(first.capture.active?.sections.count, 3)
 
   const cleared = runtime.update({
     document: createEmptyDocument(),
@@ -366,8 +348,8 @@ test('createDataviewProjection now runs frame -> active and clears snapshot when
 
   assert.deepEqual(
     cleared.trace.phases.map((phase) => phase.name),
-    ['frame', 'active']
+    ['active']
   )
-  assert.equal(cleared.output.activeId, undefined)
-  assert.equal(cleared.output.active, undefined)
+  assert.equal(cleared.capture.activeId, undefined)
+  assert.equal(cleared.capture.active, undefined)
 })

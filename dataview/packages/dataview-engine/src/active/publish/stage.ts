@@ -1,5 +1,5 @@
 import type {
-  DataviewActiveFrame,
+  DataviewActiveSpec,
   DataviewFrame
 } from '@dataview/engine/active/frame'
 import type {
@@ -82,7 +82,7 @@ const publishViewRecords = (input: {
 
 export const publishActiveView = (input: {
   frame: DataviewFrame
-  active: DataviewActiveFrame
+  active: DataviewActiveSpec
   plan: DataviewActivePlan
   query: QueryPhaseState
   membership: MembershipPhaseState
@@ -90,8 +90,8 @@ export const publishActiveView = (input: {
   previous: DataviewActiveState
 }): {
   snapshot?: ViewState
-  sectionPatch?: EntityDelta<SectionId>
-  itemPatch?: EntityDelta<ItemId>
+  sectionDelta?: EntityDelta<SectionId>
+  itemDelta?: EntityDelta<ItemId>
   trace: DataviewStageTrace
 } => {
   const action = input.plan.publish.action
@@ -193,12 +193,12 @@ export const publishActiveView = (input: {
     snapshot,
     ...(sections.delta?.sections
       ? {
-          sectionPatch: sections.delta.sections
+          sectionDelta: sections.delta.sections
         }
       : {}),
     ...(sections.delta?.items
       ? {
-          itemPatch: sections.delta.items
+          itemDelta: sections.delta.items
         }
       : {}),
     trace: {

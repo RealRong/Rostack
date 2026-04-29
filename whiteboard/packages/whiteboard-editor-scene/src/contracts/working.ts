@@ -2,6 +2,7 @@ import type {
   WhiteboardSceneExecution
 } from './execution'
 import type {
+  DocumentDelta,
   GraphDelta,
   ItemsDelta,
   RenderDelta,
@@ -34,6 +35,7 @@ export interface WorkingState extends State {
     node: Map<NodeId, NodeDraftMeasure>
   }
   delta: {
+    document: DocumentDelta
     graph: GraphDelta
     spatial: SpatialDelta
     items: ItemsDelta

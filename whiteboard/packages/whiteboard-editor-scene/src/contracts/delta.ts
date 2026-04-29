@@ -35,6 +35,11 @@ export interface GraphDelta {
   }
 }
 
+export interface DocumentDelta {
+  revision: boolean
+  background: boolean
+}
+
 export type SceneItemKey =
   | `mindmap:${MindmapId}`
   | `node:${NodeId}`
@@ -118,6 +123,18 @@ export const createGraphDelta = (): GraphDelta => ({
     groups: new Set()
   }
 })
+
+export const createDocumentDelta = (): DocumentDelta => ({
+  revision: false,
+  background: false
+})
+
+export const resetDocumentDelta = (
+  delta: DocumentDelta
+) => {
+  delta.revision = false
+  delta.background = false
+}
 
 export const resetGraphDelta = (
   delta: GraphDelta

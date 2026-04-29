@@ -1,19 +1,17 @@
 import type {
+  CalculationCollection,
   FieldReducerState
 } from '@dataview/core/view'
 import type {
+  Field,
   FieldId,
-  RecordId,
-  ViewId
+  RecordId
 } from '@dataview/core/types'
 import type {
-  DataviewActiveFrame
+  DataviewActiveSpec
 } from '@dataview/engine/active/frame'
 import type {
-  DataviewFrame
-} from '@dataview/engine/active/frame'
-import type {
-  DataviewIndexBank
+  DataviewActiveIndex
 } from '@dataview/engine/active/index/runtime'
 import type {
   Partition
@@ -37,7 +35,9 @@ import type {
 } from '@dataview/engine/contracts/performance'
 import type {
   ItemId,
+  ItemPlacement,
   SectionBucket,
+  Section,
   SectionId
 } from '@dataview/engine/contracts/shared'
 import type {
@@ -48,8 +48,10 @@ import {
   type ItemIdPool
 } from '@dataview/engine/active/publish/itemIdPool'
 import type {
-  EntityDelta
-} from '@shared/delta'
+  ProjectionFamilyChange,
+  ProjectionValueChange,
+  Revision
+} from '@shared/projection'
 import type {
   Token
 } from '@shared/i18n'
@@ -120,27 +122,23 @@ export interface DataviewStageTrace {
   metrics?: ViewStageMetrics
 }
 
-export interface DataviewPatches {
-  fields?: EntityDelta<FieldId>
-  sections?: EntityDelta<SectionId>
-  items?: EntityDelta<ItemId>
-  summaries?: EntityDelta<SectionId>
-}
-
-export interface DataviewLastActive {
-  id: ViewId
-  queryKey: string
-  section?: DataviewActiveFrame['section']
-  calcFields: readonly FieldId[]
+export interface DataviewStoreChanges {
+  active: ProjectionValueChange<ViewState | undefined>
+  fields: ProjectionFamilyChange<FieldId, Field>
+  sections: ProjectionFamilyChange<SectionId, Section>
+  items: ProjectionFamilyChange<ItemId, ItemPlacement>
+  summaries: ProjectionFamilyChange<SectionId, CalculationCollection>
 }
 
 export interface DataviewActiveState {
+  spec?: DataviewActiveSpec
+  index?: DataviewActiveIndex
   query: QueryPhaseState
   membership: MembershipPhaseState
   summary: SummaryPhaseState
   snapshot?: ViewState
   itemIds: ItemIdPool
-  patches: DataviewPatches
+  changes: DataviewStoreChanges
   trace: {
     query: DataviewStageTrace
     membership: DataviewStageTrace
@@ -151,9 +149,7 @@ export interface DataviewActiveState {
 }
 
 export interface DataviewState {
-  frame?: DataviewFrame
-  lastActive?: DataviewLastActive
-  index: DataviewIndexBank
+  revision: Revision
   active: DataviewActiveState
 }
 
@@ -206,12 +202,20 @@ export const emptyMembershipPhaseState = (): MembershipPhaseState => ({
 
 export const emptySummaryPhaseState = (): SummaryPhaseState => EMPTY_SUMMARY_STATE
 
+export const createEmptyDataviewStoreChanges = (): DataviewStoreChanges => ({
+  active: 'skip',
+  fields: 'skip',
+  sections: 'skip',
+  items: 'skip',
+  summaries: 'skip'
+})
+
 export const createEmptyDataviewActiveState = (): DataviewActiveState => ({
   query: emptyQueryPhaseState(),
   membership: emptyMembershipPhaseState(),
   summary: emptySummaryPhaseState(),
   itemIds: createItemIdPool(),
-  patches: {},
+  changes: createEmptyDataviewStoreChanges(),
   trace: {
     query: EMPTY_STAGE_TRACE,
     membership: EMPTY_STAGE_TRACE,
@@ -220,19 +224,3 @@ export const createEmptyDataviewActiveState = (): DataviewActiveState => ({
     snapshot: EMPTY_SNAPSHOT_TRACE
   }
 })
-
-export const isQueryPhaseStateEmpty = (
-  state: QueryPhaseState
-): boolean => state.visible.read.count() === 0
-  && state.matched.read.count() === 0
-  && state.ordered.read.count() === 0
-  && state.search === undefined
-
-export const isMembershipPhaseStateEmpty = (
-  state: MembershipPhaseState
-): boolean => state.sections.order.length === 0
-  && state.meta.size === 0
-
-export const isSummaryPhaseStateEmpty = (
-  state: SummaryPhaseState
-): boolean => state.bySection.size === 0

@@ -2,19 +2,20 @@ export type {
   ProjectionContext,
   ProjectionCreateOptions,
   ProjectionDirty,
-  ProjectionFamilyField,
-  ProjectionFamilyPatch,
+  ProjectionFamilyChange,
   ProjectionFamilySnapshot,
+  ProjectionFamilyStoreSpec,
+  ProjectionPlan,
   ProjectionPhase,
   ProjectionPhaseSpec,
   ProjectionPhaseStatus,
   ProjectionPhaseTable,
   ProjectionRuntime,
   ProjectionStoreRead,
-  ProjectionSurfaceField,
-  ProjectionSurfaceTree,
-  ProjectionValueField,
-  ProjectionValueFieldSyncContext
+  ProjectionStoreSpec,
+  ProjectionStoreTree,
+  ProjectionValueChange,
+  ProjectionValueStoreSpec
 } from './createProjection'
 export {
   createProjection

@@ -32,12 +32,12 @@ export const createActiveContext = (
 ): ActiveViewContext => {
   const state = (): ViewState | undefined => engine.current().active
   const reader = createDocumentReader(() => engine.doc())
-  const view = () => state()?.view
+  const view = () => engine.current().docActiveView
   const patchView = (
     resolve: (currentView: View, currentReader: DocumentReader) => ViewPatch | undefined
   ): boolean => {
     const currentView = view()
-    const viewId = reader.views.activeId()
+    const viewId = engine.current().docActiveViewId
     if (!currentView || !viewId) {
       return false
     }
@@ -61,7 +61,7 @@ export const createActiveContext = (
   }
 
   return {
-    id: () => state()?.view.id,
+    id: () => engine.current().docActiveViewId,
     state,
     reader,
     execute: engine.execute.bind(engine),

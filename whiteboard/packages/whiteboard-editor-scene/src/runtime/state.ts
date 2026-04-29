@@ -2,6 +2,7 @@ import { document as documentApi } from '@whiteboard/core/document'
 import type { Document } from '@whiteboard/core/types'
 import type { Revision } from '@shared/projection'
 import {
+  createDocumentDelta,
   createGraphDelta,
   createItemsDelta,
   renderChange,
@@ -125,6 +126,7 @@ export const createWorking = (input: {
       byId: new Map()
     },
     delta: {
+      document: createDocumentDelta(),
       graph: createGraphDelta(),
       spatial: createSpatialDelta(),
       items: createItemsDelta(),

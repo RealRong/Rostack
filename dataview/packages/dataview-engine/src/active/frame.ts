@@ -1,4 +1,5 @@
 import type {
+  DataDoc,
   FieldId,
   View,
   ViewGroup,
@@ -14,8 +15,7 @@ import type {
   NormalizedIndexDemand
 } from '@dataview/engine/active/index/contracts'
 import type {
-  DataviewMutationDelta,
-  DataviewQueryAspect
+  DataviewMutationDelta
 } from '@dataview/engine/mutation/delta'
 import {
   createDocumentReadContext,
@@ -25,14 +25,11 @@ import type {
   Revision
 } from '@shared/projection'
 
-export interface DataviewActiveFrame {
+export interface DataviewActiveSpec {
   id: ViewId
   view: View
   demand: NormalizedIndexDemand
-  query: {
-    plan: QueryPlan
-    changed(aspect?: DataviewQueryAspect): boolean
-  }
+  query: QueryPlan
   section?: {
     fieldId: FieldId
     mode?: ViewGroup['mode']
@@ -40,52 +37,27 @@ export interface DataviewActiveFrame {
     interval?: ViewGroup['bucketInterval']
     showEmpty: boolean
   }
-  calc: {
-    fields: readonly FieldId[]
-    changed(): boolean
-  }
+  calcFields: readonly FieldId[]
 }
 
 export interface DataviewFrame {
   revision: Revision
   reader: DocumentReader
   delta: DataviewMutationDelta
-  active?: DataviewActiveFrame
+  active?: DataviewActiveSpec
 }
 
 export const createDataviewFrame = (input: {
   revision: Revision
-  document: import('@dataview/core/types').DataDoc
+  document: DataDoc
   delta: DataviewMutationDelta
 }): DataviewFrame => {
   const context = createDocumentReadContext(input.document)
-  const active = resolveDataviewActive(context, context.activeViewId)
 
   return {
     revision: input.revision,
     reader: context.reader,
     delta: input.delta,
-    ...(active
-      ? {
-          active: {
-            id: active.id,
-            view: active.view,
-            demand: active.demand,
-            query: {
-              plan: active.query,
-              changed: (aspect?: DataviewQueryAspect) => input.delta.view.query(active.id).changed(aspect)
-            },
-            ...(active.section
-              ? {
-                  section: active.section
-                }
-              : {}),
-            calc: {
-              fields: active.calcFields,
-              changed: () => input.delta.view.calc(active.id).changed()
-            }
-          } satisfies DataviewActiveFrame
-        }
-      : {})
+    active: resolveDataviewActive(context, context.activeViewId)
   }
 }

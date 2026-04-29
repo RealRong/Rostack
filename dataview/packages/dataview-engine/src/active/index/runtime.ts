@@ -68,8 +68,7 @@ import {
   createRows
 } from '@dataview/engine/active/shared/rows'
 
-export interface DataviewIndexEntry {
-  key: string
+export interface DataviewActiveIndex {
   demand: NormalizedIndexDemand
   state: IndexState
   revision: number
@@ -77,14 +76,9 @@ export interface DataviewIndexEntry {
   trace?: IndexTrace
 }
 
-export interface DataviewIndexBank {
-  currentKey?: string
-  entries: ReadonlyMap<string, DataviewIndexEntry>
-}
-
 export interface DataviewIndexResult {
-  action: 'reuse' | 'switch' | 'sync' | 'rebuild'
-  entry: DataviewIndexEntry
+  action: 'reuse' | 'sync' | 'rebuild'
+  index: DataviewActiveIndex
 }
 
 const createIndexReadContext = (
@@ -363,14 +357,13 @@ export const deriveIndex = (input: {
   }
 }
 
-const createEntry = (input: {
+const createActiveIndex = (input: {
   revision: number
   demand: NormalizedIndexDemand
   state: IndexState
   delta?: import('@dataview/engine/active/index/contracts').IndexDelta
   trace?: IndexTrace
-}): DataviewIndexEntry => ({
-  key: writeNormalizedIndexDemandKey(input.demand),
+}): DataviewActiveIndex => ({
   demand: input.demand,
   state: input.state,
   revision: input.revision,
@@ -386,149 +379,66 @@ const createEntry = (input: {
     : {})
 })
 
-export const emptyDataviewIndexBank = (): DataviewIndexBank => ({
-  entries: new Map()
-})
-
 export const ensureDataviewIndex = (input: {
   frame: DataviewFrame
-  previous: DataviewIndexBank
-}): {
-  bank: DataviewIndexBank
-  current?: DataviewIndexResult
-} => {
+  previous?: DataviewActiveIndex
+}): DataviewIndexResult | undefined => {
   const active = input.frame.active
   if (!active) {
-    return {
-      bank: {
-        currentKey: undefined,
-        entries: input.previous.entries
-      }
-    }
+    return undefined
   }
 
-  const key = writeNormalizedIndexDemandKey(active.demand)
-  const current = input.previous.currentKey
-    ? input.previous.entries.get(input.previous.currentKey)
-    : undefined
-  const target = input.previous.entries.get(key)
-  const entries = new Map(input.previous.entries)
   const document = input.frame.reader.document()
   const context = createIndexDeriveContext(document, input.frame.delta)
+  const previous = input.previous
 
   if (
-    target
-    && key === input.previous.currentKey
+    previous
+    && writeNormalizedIndexDemandKey(previous.demand) === writeNormalizedIndexDemandKey(active.demand)
     && !context.changed
   ) {
     return {
-      bank: {
-        currentKey: key,
-        entries
-      },
-      current: {
-        action: 'reuse',
-        entry: target
-      }
+      action: 'reuse',
+      index: previous
     }
   }
 
   if (
-    target
-    && key !== input.previous.currentKey
-    && target.revision === input.frame.revision
-  ) {
-    return {
-      bank: {
-        currentKey: key,
-        entries
-      },
-      current: {
-        action: 'switch',
-        entry: target
-      }
-    }
-  }
-
-  if (
-    target
-    && key !== input.previous.currentKey
+    previous
+    && writeNormalizedIndexDemandKey(previous.demand) === writeNormalizedIndexDemandKey(active.demand)
   ) {
     const next = deriveIndex({
-      previous: target.state,
-      previousDemand: target.demand,
+      previous: previous.state,
+      previousDemand: previous.demand,
       document,
       delta: input.frame.delta,
       demand: active.demand
     })
-    const entry = createEntry({
+    const index = createActiveIndex({
       revision: input.frame.revision,
       demand: active.demand,
       state: next.state,
       delta: next.delta,
       trace: next.trace
     })
-    entries.set(key, entry)
-    return {
-      bank: {
-        currentKey: key,
-        entries
-      },
-      current: {
-        action: 'switch',
-        entry
-      }
-    }
-  }
 
-  if (target && key === input.previous.currentKey) {
-    const next = deriveIndex({
-      previous: target.state,
-      previousDemand: target.demand,
-      document,
-      delta: input.frame.delta,
-      demand: active.demand
-    })
-    const entry = createEntry({
-      revision: input.frame.revision,
-      demand: active.demand,
-      state: next.state,
-      delta: next.delta,
-      trace: next.trace
-    })
-    entries.set(key, entry)
     return {
-      bank: {
-        currentKey: key,
-        entries
-      },
-      current: {
-        action: next.trace?.changed
-          ? 'sync'
-          : 'reuse',
-        entry
-      }
+      action: next.trace?.changed
+        ? 'sync'
+        : 'reuse',
+      index
     }
   }
 
   const nextState = createIndexState(document, active.demand)
-  const entry = createEntry({
+  const index = createActiveIndex({
     revision: input.frame.revision,
     demand: active.demand,
     state: nextState
   })
-  entries.set(key, entry)
 
   return {
-    bank: {
-      currentKey: key,
-      entries
-    },
-    current: {
-      action: current
-        ? 'rebuild'
-        : 'rebuild',
-      entry
-    }
+    action: 'rebuild',
+    index
   }
 }

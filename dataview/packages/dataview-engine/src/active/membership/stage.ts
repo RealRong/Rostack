@@ -1,5 +1,5 @@
 import type {
-  DataviewActiveFrame,
+  DataviewActiveSpec,
   DataviewFrame
 } from '@dataview/engine/active/frame'
 import type {
@@ -87,7 +87,7 @@ const buildMembershipDelta = (input: {
 
 export const runMembershipStep = (input: {
   frame: DataviewFrame
-  active: DataviewActiveFrame
+  active: DataviewActiveSpec
   query: QueryPhaseState
   queryDelta: QueryPhaseDelta
   index: DataviewIndexResult
@@ -125,9 +125,9 @@ export const runMembershipStep = (input: {
     view: input.active.view,
     query: input.query,
     queryDelta: input.queryDelta,
-    index: input.index.entry.state,
+    index: input.index.index.state,
     delta: input.frame.delta,
-    indexDelta: input.index.entry.delta,
+    indexDelta: input.index.index.delta,
     action
   })
   const delta = buildMembershipDelta({

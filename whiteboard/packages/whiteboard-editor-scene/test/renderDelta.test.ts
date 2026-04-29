@@ -13,11 +13,13 @@ import type {
   Input
 } from '../src/contracts/editor'
 import {
-  createGraphDirty,
   createItemsDelta,
   sceneItemKey,
   uiChange
 } from '../src/contracts/delta'
+import {
+  createEmptyWhiteboardSceneExecution
+} from '../src/contracts/execution'
 import { patchRenderState } from '../src/model/render/patch'
 import { createWorking } from '../src/runtime/state'
 import { createEmptyInput } from '../src/testing/input'
@@ -131,9 +133,37 @@ const setEdgeItems = (
 const resetPhaseDeltas = (
   working: ReturnType<typeof createWorking>
 ) => {
-  working.dirty.graph = createGraphDirty()
+  working.execution = createEmptyWhiteboardSceneExecution()
   working.delta.items = createItemsDelta()
   working.delta.ui = uiChange.create()
+}
+
+const markEdgeEntity = (
+  working: ReturnType<typeof createWorking>,
+  ...edgeIds: readonly EdgeId[]
+) => {
+  working.execution.change.graph.entity.edge = new Set(edgeIds)
+}
+
+const markEdgeGeometry = (
+  working: ReturnType<typeof createWorking>,
+  ...edgeIds: readonly EdgeId[]
+) => {
+  working.execution.change.graph.geometry.edge = new Set(edgeIds)
+}
+
+const markEdgeContent = (
+  working: ReturnType<typeof createWorking>,
+  ...edgeIds: readonly EdgeId[]
+) => {
+  working.execution.change.graph.content.edge = new Set(edgeIds)
+}
+
+const markUiEdge = (
+  working: ReturnType<typeof createWorking>,
+  ...edgeIds: readonly EdgeId[]
+) => {
+  working.execution.change.ui.edge = new Set(edgeIds)
 }
 
 describe('render delta patching', () => {
@@ -160,13 +190,12 @@ describe('render delta patching', () => {
     }))
     working.items = setEdgeItems([edgeA, edgeB, edgeC])
 
-    idDelta.add(working.dirty.graph.edge.lifecycle, edgeA)
-    idDelta.add(working.dirty.graph.edge.lifecycle, edgeB)
-    idDelta.add(working.dirty.graph.edge.lifecycle, edgeC)
+    markEdgeEntity(working, edgeA, edgeB, edgeC)
 
     patchRenderState({
       working,
       current: createCurrentInput(),
+      execution: working.execution,
       reset: false
     })
 
@@ -180,11 +209,12 @@ describe('render delta patching', () => {
       color: 'red',
       svgPath: 'M0 0L11 0'
     }))
-    idDelta.update(working.dirty.graph.edge.route, edgeA)
+    markEdgeGeometry(working, edgeA)
 
     patchRenderState({
       working,
       current: createCurrentInput(),
+      execution: working.execution,
       reset: false
     })
 
@@ -214,12 +244,12 @@ describe('render delta patching', () => {
     }))
     working.items = setEdgeItems([edgeA, edgeB])
 
-    idDelta.add(working.dirty.graph.edge.lifecycle, edgeA)
-    idDelta.add(working.dirty.graph.edge.lifecycle, edgeB)
+    markEdgeEntity(working, edgeA, edgeB)
 
     patchRenderState({
       working,
       current: createCurrentInput(),
+      execution: working.execution,
       reset: false
     })
 
@@ -234,10 +264,12 @@ describe('render delta patching', () => {
         `edge:${edgeB}`
       ]
     }
+    working.execution.change.items = new Set(working.items.ids)
 
     patchRenderState({
       working,
       current: createCurrentInput(),
+      execution: working.execution,
       reset: false
     })
 
@@ -287,12 +319,12 @@ describe('render delta patching', () => {
       labels: new Map()
     })
 
-    idDelta.add(working.dirty.graph.edge.lifecycle, edgeA)
-    idDelta.add(working.dirty.graph.edge.lifecycle, edgeB)
+    markEdgeEntity(working, edgeA, edgeB)
 
     patchRenderState({
       working,
       current: createCurrentInput(),
+      execution: working.execution,
       reset: false
     })
 
@@ -307,10 +339,12 @@ describe('render delta patching', () => {
       labels: new Map()
     })
     idDelta.update(working.delta.ui.edge, edgeA)
+    markUiEdge(working, edgeA)
 
     patchRenderState({
       working,
       current: createCurrentInput(),
+      execution: working.execution,
       reset: false
     })
 
@@ -352,12 +386,12 @@ describe('render delta patching', () => {
     }))
     working.items = setEdgeItems([edgeA, edgeB])
 
-    idDelta.add(working.dirty.graph.edge.lifecycle, edgeA)
-    idDelta.add(working.dirty.graph.edge.lifecycle, edgeB)
+    markEdgeEntity(working, edgeA, edgeB)
 
     patchRenderState({
       working,
       current: createCurrentInput(),
+      execution: working.execution,
       reset: false
     })
 
@@ -378,11 +412,12 @@ describe('render delta patching', () => {
         })
       ]
     }))
-    idDelta.update(working.dirty.graph.edge.labels, edgeA)
+    markEdgeContent(working, edgeA)
 
     patchRenderState({
       working,
       current: createCurrentInput(),
+      execution: working.execution,
       reset: false
     })
 

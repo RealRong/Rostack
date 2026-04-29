@@ -1,5 +1,5 @@
 import type {
-  DataviewActiveFrame
+  DataviewActiveSpec
 } from '@dataview/engine/active/frame'
 import type {
   DataviewIndexResult
@@ -27,7 +27,7 @@ import {
 } from '@dataview/engine/active/projection/metrics'
 
 export const runSummaryStep = (input: {
-  active: DataviewActiveFrame
+  active: DataviewActiveSpec
   membership: MembershipPhaseState
   membershipDelta: MembershipPhaseDelta
   index: DataviewIndexResult
@@ -63,8 +63,8 @@ export const runSummaryStep = (input: {
     previousMembership: input.previous.membership,
     membership: input.membership,
     membershipDelta: input.membershipDelta,
-    calcFields: input.active.calc.fields,
-    calculationDelta: input.index.entry.delta?.calculation
+    calcFields: input.active.calcFields,
+    calculationDelta: input.index.index.delta?.calculation
   })
   const deriveStart = now()
   const derived = deriveSummaryState({
@@ -72,9 +72,9 @@ export const runSummaryStep = (input: {
     previousMembership: input.previous.membership,
     membership: input.membership,
     membershipDelta: input.membershipDelta,
-    calcFields: input.active.calc.fields,
-    index: input.index.entry.state,
-    calculationDelta: input.index.entry.delta?.calculation,
+    calcFields: input.active.calcFields,
+    index: input.index.index.state,
+    calculationDelta: input.index.index.delta?.calculation,
     touchedSections,
     action
   })

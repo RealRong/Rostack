@@ -5,7 +5,7 @@ import {
   projectListChange
 } from '@shared/delta'
 import type {
-  DataviewActiveFrame,
+  DataviewActiveSpec,
   DataviewFrame
 } from '@dataview/engine/active/frame'
 import type {
@@ -38,7 +38,7 @@ const EMPTY_RECORD_IDS = [] as readonly RecordId[]
 
 export const runQueryStep = (input: {
   frame: DataviewFrame
-  active: DataviewActiveFrame
+  active: DataviewActiveSpec
   index: DataviewIndexResult
   plan: DataviewActivePlan
   previous: DataviewActiveState
@@ -53,11 +53,11 @@ export const runQueryStep = (input: {
   const deriveStart = now()
   const state = action === 'reuse'
     ? previous
-    : buildQueryState({
+      : buildQueryState({
         reader: input.frame.reader,
         view: input.active.view,
-        index: input.index.entry.state,
-        plan: input.active.query.plan,
+        index: input.index.index.state,
+        plan: input.active.query,
         previous,
         reuse: reuse
           ? {

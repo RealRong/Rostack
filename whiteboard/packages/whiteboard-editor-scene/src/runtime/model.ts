@@ -1,17 +1,15 @@
 import {
   createProjection,
   type ProjectionContext,
-  type ProjectionFamilyField,
-  type ProjectionFamilyPatch,
+  type ProjectionFamilyChange,
   type ProjectionFamilySnapshot,
   type ProjectionPhaseTable,
-  type ProjectionSurfaceTree,
   type ProjectionDirty,
-  type ProjectionValueField,
+  type ProjectionStoreTree,
   type Revision,
 } from '@shared/projection'
 import {
-  entityDelta,
+  type EntityDelta,
   idDelta
 } from '@shared/delta'
 import type {
@@ -27,12 +25,14 @@ import type {
   EditorSceneLayout
 } from '../contracts/editor'
 import type {
-  GraphDelta
+  GraphDelta,
+  DocumentDelta
 } from '../contracts/delta'
 import {
   createItemsDelta,
   renderChange,
   uiChange,
+  resetDocumentDelta,
   resetGraphDelta
 } from '../contracts/delta'
 import type {
@@ -72,36 +72,126 @@ type EditorSceneProjectionDirty = ProjectionDirty & {
   previousDocument?: WorkingState['document']['snapshot']
 }
 
-type EditorSceneSurface = {
+type EditorSceneStores = {
   document: {
-    revision: ProjectionValueField<Input, WorkingState, EditorScenePhaseName, Revision>
-    background: ProjectionValueField<Input, WorkingState, EditorScenePhaseName, WorkingState['document']['background']>
+    revision: {
+      kind: 'value'
+      read(state: WorkingState): Revision
+      change(state: WorkingState): {
+        value: Revision
+      } | 'skip'
+    }
+    background: {
+      kind: 'value'
+      read(state: WorkingState): WorkingState['document']['background']
+      change(state: WorkingState): {
+        value: WorkingState['document']['background']
+      } | 'skip'
+    }
   }
   graph: {
-    node: ProjectionFamilyField<Input, WorkingState, EditorScenePhaseName, NodeId, WorkingState['graph']['nodes'] extends Map<NodeId, infer TValue> ? TValue : never>
-    edge: ProjectionFamilyField<Input, WorkingState, EditorScenePhaseName, EdgeId, WorkingState['graph']['edges'] extends Map<EdgeId, infer TValue> ? TValue : never>
-    mindmap: ProjectionFamilyField<Input, WorkingState, EditorScenePhaseName, MindmapId, WorkingState['graph']['owners']['mindmaps'] extends Map<MindmapId, infer TValue> ? TValue : never>
-    group: ProjectionFamilyField<Input, WorkingState, EditorScenePhaseName, GroupId, WorkingState['graph']['owners']['groups'] extends Map<GroupId, infer TValue> ? TValue : never>
+    node: {
+      kind: 'family'
+      read(state: WorkingState): ProjectionFamilySnapshot<NodeId, WorkingState['graph']['nodes'] extends Map<NodeId, infer TValue> ? TValue : never>
+      change(state: WorkingState): ProjectionFamilyChange<NodeId, WorkingState['graph']['nodes'] extends Map<NodeId, infer TValue> ? TValue : never>
+      idsEqual(left: readonly NodeId[], right: readonly NodeId[]): boolean
+    }
+    edge: {
+      kind: 'family'
+      read(state: WorkingState): ProjectionFamilySnapshot<EdgeId, WorkingState['graph']['edges'] extends Map<EdgeId, infer TValue> ? TValue : never>
+      change(state: WorkingState): ProjectionFamilyChange<EdgeId, WorkingState['graph']['edges'] extends Map<EdgeId, infer TValue> ? TValue : never>
+      idsEqual(left: readonly EdgeId[], right: readonly EdgeId[]): boolean
+    }
+    mindmap: {
+      kind: 'family'
+      read(state: WorkingState): ProjectionFamilySnapshot<MindmapId, WorkingState['graph']['owners']['mindmaps'] extends Map<MindmapId, infer TValue> ? TValue : never>
+      change(state: WorkingState): ProjectionFamilyChange<MindmapId, WorkingState['graph']['owners']['mindmaps'] extends Map<MindmapId, infer TValue> ? TValue : never>
+      idsEqual(left: readonly MindmapId[], right: readonly MindmapId[]): boolean
+    }
+    group: {
+      kind: 'family'
+      read(state: WorkingState): ProjectionFamilySnapshot<GroupId, WorkingState['graph']['owners']['groups'] extends Map<GroupId, infer TValue> ? TValue : never>
+      change(state: WorkingState): ProjectionFamilyChange<GroupId, WorkingState['graph']['owners']['groups'] extends Map<GroupId, infer TValue> ? TValue : never>
+      idsEqual(left: readonly GroupId[], right: readonly GroupId[]): boolean
+    }
     state: {
-      node: ProjectionFamilyField<Input, WorkingState, EditorScenePhaseName, NodeId, WorkingState['graph']['state']['node'] extends Map<NodeId, infer TValue> ? TValue : never>
-      edge: ProjectionFamilyField<Input, WorkingState, EditorScenePhaseName, EdgeId, WorkingState['graph']['state']['edge'] extends Map<EdgeId, infer TValue> ? TValue : never>
-      chrome: ProjectionValueField<Input, WorkingState, EditorScenePhaseName, WorkingState['graph']['state']['chrome']>
+      node: {
+        kind: 'family'
+        read(state: WorkingState): ProjectionFamilySnapshot<NodeId, WorkingState['graph']['state']['node'] extends Map<NodeId, infer TValue> ? TValue : never>
+        change(state: WorkingState): ProjectionFamilyChange<NodeId, WorkingState['graph']['state']['node'] extends Map<NodeId, infer TValue> ? TValue : never>
+        idsEqual(left: readonly NodeId[], right: readonly NodeId[]): boolean
+      }
+      edge: {
+        kind: 'family'
+        read(state: WorkingState): ProjectionFamilySnapshot<EdgeId, WorkingState['graph']['state']['edge'] extends Map<EdgeId, infer TValue> ? TValue : never>
+        change(state: WorkingState): ProjectionFamilyChange<EdgeId, WorkingState['graph']['state']['edge'] extends Map<EdgeId, infer TValue> ? TValue : never>
+        idsEqual(left: readonly EdgeId[], right: readonly EdgeId[]): boolean
+      }
+      chrome: {
+        kind: 'value'
+        read(state: WorkingState): WorkingState['graph']['state']['chrome']
+        change(state: WorkingState): {
+          value: WorkingState['graph']['state']['chrome']
+        } | 'skip'
+      }
     }
   }
   render: {
-    node: ProjectionFamilyField<Input, WorkingState, EditorScenePhaseName, NodeId, WorkingState['render']['node'] extends Map<NodeId, infer TValue> ? TValue : never>
+    node: {
+      kind: 'family'
+      read(state: WorkingState): ProjectionFamilySnapshot<NodeId, WorkingState['render']['node'] extends Map<NodeId, infer TValue> ? TValue : never>
+      change(state: WorkingState): ProjectionFamilyChange<NodeId, WorkingState['render']['node'] extends Map<NodeId, infer TValue> ? TValue : never>
+      idsEqual(left: readonly NodeId[], right: readonly NodeId[]): boolean
+    }
     edge: {
-      statics: ProjectionFamilyField<Input, WorkingState, EditorScenePhaseName, EdgeStaticId, EdgeStaticView>
-      active: ProjectionFamilyField<Input, WorkingState, EditorScenePhaseName, EdgeId, EdgeActiveView>
-      labels: ProjectionFamilyField<Input, WorkingState, EditorScenePhaseName, EdgeLabelKey, WorkingState['render']['labels']['byId'] extends Map<EdgeLabelKey, infer TValue> ? TValue : never>
-      masks: ProjectionFamilyField<Input, WorkingState, EditorScenePhaseName, EdgeId, WorkingState['render']['masks']['byId'] extends Map<EdgeId, infer TValue> ? TValue : never>
+      statics: {
+        kind: 'family'
+        read(state: WorkingState): ProjectionFamilySnapshot<EdgeStaticId, EdgeStaticView>
+        change(state: WorkingState): ProjectionFamilyChange<EdgeStaticId, EdgeStaticView>
+        idsEqual(left: readonly EdgeStaticId[], right: readonly EdgeStaticId[]): boolean
+      }
+      active: {
+        kind: 'family'
+        read(state: WorkingState): ProjectionFamilySnapshot<EdgeId, EdgeActiveView>
+        change(state: WorkingState): ProjectionFamilyChange<EdgeId, EdgeActiveView>
+        idsEqual(left: readonly EdgeId[], right: readonly EdgeId[]): boolean
+      }
+      labels: {
+        kind: 'family'
+        read(state: WorkingState): ProjectionFamilySnapshot<EdgeLabelKey, WorkingState['render']['labels']['byId'] extends Map<EdgeLabelKey, infer TValue> ? TValue : never>
+        change(state: WorkingState): ProjectionFamilyChange<EdgeLabelKey, WorkingState['render']['labels']['byId'] extends Map<EdgeLabelKey, infer TValue> ? TValue : never>
+        idsEqual(left: readonly EdgeLabelKey[], right: readonly EdgeLabelKey[]): boolean
+      }
+      masks: {
+        kind: 'family'
+        read(state: WorkingState): ProjectionFamilySnapshot<EdgeId, WorkingState['render']['masks']['byId'] extends Map<EdgeId, infer TValue> ? TValue : never>
+        change(state: WorkingState): ProjectionFamilyChange<EdgeId, WorkingState['render']['masks']['byId'] extends Map<EdgeId, infer TValue> ? TValue : never>
+        idsEqual(left: readonly EdgeId[], right: readonly EdgeId[]): boolean
+      }
     }
     chrome: {
-      scene: ProjectionValueField<Input, WorkingState, EditorScenePhaseName, WorkingState['render']['chrome']>
-      edge: ProjectionValueField<Input, WorkingState, EditorScenePhaseName, WorkingState['render']['overlay']>
+      scene: {
+        kind: 'value'
+        read(state: WorkingState): WorkingState['render']['chrome']
+        change(state: WorkingState): {
+          value: WorkingState['render']['chrome']
+        } | 'skip'
+      }
+      edge: {
+        kind: 'value'
+        read(state: WorkingState): WorkingState['render']['overlay']
+        change(state: WorkingState): {
+          value: WorkingState['render']['overlay']
+        } | 'skip'
+      }
     }
   }
-  items: ProjectionFamilyField<Input, WorkingState, EditorScenePhaseName, SceneItemKey, WorkingState['items']['byId'] extends ReadonlyMap<SceneItemKey, infer TValue> ? TValue : never>
+  items: {
+    kind: 'family'
+    read(state: WorkingState): ProjectionFamilySnapshot<SceneItemKey, WorkingState['items']['byId'] extends ReadonlyMap<SceneItemKey, infer TValue> ? TValue : never>
+    change(state: WorkingState): ProjectionFamilyChange<SceneItemKey, WorkingState['items']['byId'] extends ReadonlyMap<SceneItemKey, infer TValue> ? TValue : never>
+    idsEqual(left: readonly SceneItemKey[], right: readonly SceneItemKey[]): boolean
+  }
 }
 
 const sameOrder = <T,>(
@@ -175,14 +265,64 @@ const readProjectionDirty = (
   context: ProjectionContext<Input, WorkingState, EditorScenePhaseName>
 ): EditorSceneProjectionDirty => context.dirty as EditorSceneProjectionDirty
 
-const toFamilyPatchOrSkip = <TKey extends string | number,>(
-  patch: ProjectionFamilyPatch<TKey> | undefined
-): ProjectionFamilyPatch<TKey> | 'skip' => patch ?? 'skip'
+const toValueChange = <TValue,>(
+  changed: boolean,
+  value: TValue
+): {
+  value: TValue
+} | 'skip' => changed
+  ? {
+      value
+    }
+  : 'skip'
+
+const toFamilyChange = <TKey extends string | number, TValue>(input: {
+  snapshot: ProjectionFamilySnapshot<TKey, TValue>
+  delta?: EntityDelta<TKey>
+}): ProjectionFamilyChange<TKey, TValue> => {
+  const delta = input.delta
+  if (!delta) {
+    return 'skip'
+  }
+
+  const set = delta.set?.map((key) => {
+    const value = input.snapshot.byId.get(key)
+    if (value === undefined) {
+      throw new Error(`Projection family change set key ${String(key)} is missing from snapshot.`)
+    }
+
+    return [key, value] as const
+  })
+
+  return {
+    ...(delta.order
+      ? {
+          ids: input.snapshot.ids
+        }
+      : {}),
+    ...(set?.length
+      ? {
+          set
+        }
+      : {}),
+    ...(delta.remove?.length
+      ? {
+          remove: delta.remove
+        }
+      : {})
+  }
+}
 
 const resetGraphPhaseDelta = (
   state: WorkingState
 ) => {
   resetGraphDelta(state.delta.graph)
+}
+
+const resetDocumentPhaseDelta = (
+  state: WorkingState
+) => {
+  resetDocumentDelta(state.delta.document)
 }
 
 const resetItemsPhaseDelta = (
@@ -240,22 +380,27 @@ export const createEditorSceneProjection = (input: {
     nodeCapability: input.nodeCapability,
     view: input.view
   }),
-  output: ({ state, revision }) => buildEditorSceneCapture(
+  capture: ({ state, revision }) => buildEditorSceneCapture(
     state,
     revision
   ),
-  surface: {
+  stores: {
     document: {
       revision: {
         kind: 'value' as const,
-        read: (state) => state.revision.document
-        ,
-        changed: (ctx) => ctx.phase.document.changed
+        read: (state) => state.revision.document,
+        change: (state) => toValueChange(
+          state.delta.document.revision,
+          state.revision.document
+        )
       },
       background: {
         kind: 'value' as const,
         read: (state) => state.document.background,
-        changed: (ctx) => ctx.phase.document.changed
+        change: (state) => toValueChange(
+          state.delta.document.background,
+          state.document.background
+        )
       }
     },
     graph: {
@@ -263,72 +408,127 @@ export const createEditorSceneProjection = (input: {
         kind: 'family' as const,
         read: createStableMapFamilyRead((state) => state.graph.nodes),
         idsEqual: sameOrder,
-        changed: ({ state }) => (
-          idDelta.hasAny(state.delta.graph.entities.nodes)
-        ),
-        patch: ({ state }) => toFamilyPatchOrSkip(entityDelta.fromIdDelta({
-          changes: state.delta.graph.entities.nodes,
-          order: state.delta.graph.order
-        }))
+        change: (state) => toFamilyChange({
+          snapshot: createStableMapFamilyRead((current) => current.graph.nodes)(state),
+          delta: idDelta.hasAny(state.delta.graph.entities.nodes)
+            ? {
+                ...(state.delta.graph.order
+                  ? {
+                      order: true as const
+                    }
+                  : {}),
+                set: [
+                  ...state.delta.graph.entities.nodes.added,
+                  ...state.delta.graph.entities.nodes.updated
+                ],
+                remove: [...state.delta.graph.entities.nodes.removed]
+              }
+            : undefined
+        })
       },
       edge: {
         kind: 'family' as const,
         read: createStableMapFamilyRead((state) => state.graph.edges),
         idsEqual: sameOrder,
-        changed: ({ state }) => (
-          idDelta.hasAny(state.delta.graph.entities.edges)
-        ),
-        patch: ({ state }) => toFamilyPatchOrSkip(entityDelta.fromIdDelta({
-          changes: state.delta.graph.entities.edges,
-          order: state.delta.graph.order
-        }))
+        change: (state) => toFamilyChange({
+          snapshot: createStableMapFamilyRead((current) => current.graph.edges)(state),
+          delta: idDelta.hasAny(state.delta.graph.entities.edges)
+            ? {
+                ...(state.delta.graph.order
+                  ? {
+                      order: true as const
+                    }
+                  : {}),
+                set: [
+                  ...state.delta.graph.entities.edges.added,
+                  ...state.delta.graph.entities.edges.updated
+                ],
+                remove: [...state.delta.graph.entities.edges.removed]
+              }
+            : undefined
+        })
       },
       mindmap: {
         kind: 'family' as const,
         read: createStableMapFamilyRead((state) => state.graph.owners.mindmaps),
         idsEqual: sameOrder,
-        changed: ({ state }) => (
-          idDelta.hasAny(state.delta.graph.entities.mindmaps)
-        ),
-        patch: ({ state }) => toFamilyPatchOrSkip(entityDelta.fromIdDelta({
-          changes: state.delta.graph.entities.mindmaps,
-          order: state.delta.graph.order
-        }))
+        change: (state) => toFamilyChange({
+          snapshot: createStableMapFamilyRead((current) => current.graph.owners.mindmaps)(state),
+          delta: idDelta.hasAny(state.delta.graph.entities.mindmaps)
+            ? {
+                ...(state.delta.graph.order
+                  ? {
+                      order: true as const
+                    }
+                  : {}),
+                set: [
+                  ...state.delta.graph.entities.mindmaps.added,
+                  ...state.delta.graph.entities.mindmaps.updated
+                ],
+                remove: [...state.delta.graph.entities.mindmaps.removed]
+              }
+            : undefined
+        })
       },
       group: {
         kind: 'family' as const,
         read: createStableMapFamilyRead((state) => state.graph.owners.groups),
         idsEqual: sameOrder,
-        changed: ({ state }) => (
-          idDelta.hasAny(state.delta.graph.entities.groups)
-        ),
-        patch: ({ state }) => toFamilyPatchOrSkip(entityDelta.fromIdDelta({
-          changes: state.delta.graph.entities.groups
-        }))
+        change: (state) => toFamilyChange({
+          snapshot: createStableMapFamilyRead((current) => current.graph.owners.groups)(state),
+          delta: idDelta.hasAny(state.delta.graph.entities.groups)
+            ? {
+                set: [
+                  ...state.delta.graph.entities.groups.added,
+                  ...state.delta.graph.entities.groups.updated
+                ],
+                remove: [...state.delta.graph.entities.groups.removed]
+              }
+            : undefined
+        })
       },
       state: {
         node: {
           kind: 'family' as const,
           read: createStableMapFamilyRead((state) => state.graph.state.node),
           idsEqual: sameOrder,
-          changed: ({ state }) => idDelta.hasAny(state.delta.ui.node),
-          patch: ({ state }) => toFamilyPatchOrSkip(entityDelta.fromIdDelta({
-            changes: state.delta.ui.node
-          }))
+          change: (state) => toFamilyChange({
+            snapshot: createStableMapFamilyRead((current) => current.graph.state.node)(state),
+            delta: idDelta.hasAny(state.delta.ui.node)
+              ? {
+                  set: [
+                    ...state.delta.ui.node.added,
+                    ...state.delta.ui.node.updated
+                  ],
+                  remove: [...state.delta.ui.node.removed]
+                }
+              : undefined
+          })
         },
         edge: {
           kind: 'family' as const,
           read: createStableMapFamilyRead((state) => state.graph.state.edge),
           idsEqual: sameOrder,
-          changed: ({ state }) => idDelta.hasAny(state.delta.ui.edge),
-          patch: ({ state }) => toFamilyPatchOrSkip(entityDelta.fromIdDelta({
-            changes: state.delta.ui.edge
-          }))
+          change: (state) => toFamilyChange({
+            snapshot: createStableMapFamilyRead((current) => current.graph.state.edge)(state),
+            delta: idDelta.hasAny(state.delta.ui.edge)
+              ? {
+                  set: [
+                    ...state.delta.ui.edge.added,
+                    ...state.delta.ui.edge.updated
+                  ],
+                  remove: [...state.delta.ui.edge.removed]
+                }
+              : undefined
+          })
         },
         chrome: {
           kind: 'value' as const,
           read: (state) => state.graph.state.chrome,
-          changed: ({ state }) => state.delta.ui.chrome
+          change: (state) => toValueChange(
+            state.delta.ui.chrome,
+            state.graph.state.chrome
+          )
         }
       }
     },
@@ -337,75 +537,137 @@ export const createEditorSceneProjection = (input: {
         kind: 'family' as const,
         read: createStableMapFamilyRead((state) => state.render.node),
         idsEqual: sameOrder,
-        changed: ({ state }) => idDelta.hasAny(state.delta.render.node),
-        patch: ({ state }) => toFamilyPatchOrSkip(entityDelta.fromIdDelta({
-          changes: state.delta.render.node
-        }))
+        change: (state) => toFamilyChange({
+          snapshot: createStableMapFamilyRead((current) => current.render.node)(state),
+          delta: idDelta.hasAny(state.delta.render.node)
+            ? {
+                set: [
+                  ...state.delta.render.node.added,
+                  ...state.delta.render.node.updated
+                ],
+                remove: [...state.delta.render.node.removed]
+              }
+            : undefined
+        })
       },
       edge: {
         statics: {
           kind: 'family' as const,
           read: createStableFamilyRead((state) => state.render.statics),
           idsEqual: sameOrder,
-          changed: ({ state }) => (
-            idDelta.hasAny(state.delta.render.edge.statics)
-            || state.delta.render.edge.staticsIds
-          ),
-          patch: ({ state }) => toFamilyPatchOrSkip(entityDelta.fromIdDelta({
-            changes: state.delta.render.edge.statics,
-            order: state.delta.render.edge.staticsIds
-          }))
+          change: (state) => toFamilyChange({
+            snapshot: createStableFamilyRead((current) => current.render.statics)(state),
+            delta: (
+              idDelta.hasAny(state.delta.render.edge.statics)
+              || state.delta.render.edge.staticsIds
+            )
+              ? {
+                  ...(state.delta.render.edge.staticsIds
+                    ? {
+                        order: true as const
+                      }
+                    : {}),
+                  set: [
+                    ...state.delta.render.edge.statics.added,
+                    ...state.delta.render.edge.statics.updated
+                  ],
+                  remove: [...state.delta.render.edge.statics.removed]
+                }
+              : undefined
+          })
         },
         active: {
           kind: 'family' as const,
           read: createStableMapFamilyRead((state) => state.render.active),
           idsEqual: sameOrder,
-          changed: ({ state }) => (
-            idDelta.hasAny(state.delta.render.edge.active)
-            || state.delta.render.edge.activeIds
-          ),
-          patch: ({ state }) => toFamilyPatchOrSkip(entityDelta.fromIdDelta({
-            changes: state.delta.render.edge.active,
-            order: state.delta.render.edge.activeIds
-          }))
+          change: (state) => toFamilyChange({
+            snapshot: createStableMapFamilyRead((current) => current.render.active)(state),
+            delta: (
+              idDelta.hasAny(state.delta.render.edge.active)
+              || state.delta.render.edge.activeIds
+            )
+              ? {
+                  ...(state.delta.render.edge.activeIds
+                    ? {
+                        order: true as const
+                      }
+                    : {}),
+                  set: [
+                    ...state.delta.render.edge.active.added,
+                    ...state.delta.render.edge.active.updated
+                  ],
+                  remove: [...state.delta.render.edge.active.removed]
+                }
+              : undefined
+          })
         },
         labels: {
           kind: 'family' as const,
           read: createStableFamilyRead((state) => state.render.labels),
           idsEqual: sameOrder,
-          changed: ({ state }) => (
-            idDelta.hasAny(state.delta.render.edge.labels)
-            || state.delta.render.edge.labelsIds
-          ),
-          patch: ({ state }) => toFamilyPatchOrSkip(entityDelta.fromIdDelta({
-            changes: state.delta.render.edge.labels,
-            order: state.delta.render.edge.labelsIds
-          }))
+          change: (state) => toFamilyChange({
+            snapshot: createStableFamilyRead((current) => current.render.labels)(state),
+            delta: (
+              idDelta.hasAny(state.delta.render.edge.labels)
+              || state.delta.render.edge.labelsIds
+            )
+              ? {
+                  ...(state.delta.render.edge.labelsIds
+                    ? {
+                        order: true as const
+                      }
+                    : {}),
+                  set: [
+                    ...state.delta.render.edge.labels.added,
+                    ...state.delta.render.edge.labels.updated
+                  ],
+                  remove: [...state.delta.render.edge.labels.removed]
+                }
+              : undefined
+          })
         },
         masks: {
           kind: 'family' as const,
           read: createStableFamilyRead((state) => state.render.masks),
           idsEqual: sameOrder,
-          changed: ({ state }) => (
-            idDelta.hasAny(state.delta.render.edge.masks)
-            || state.delta.render.edge.masksIds
-          ),
-          patch: ({ state }) => toFamilyPatchOrSkip(entityDelta.fromIdDelta({
-            changes: state.delta.render.edge.masks,
-            order: state.delta.render.edge.masksIds
-          }))
+          change: (state) => toFamilyChange({
+            snapshot: createStableFamilyRead((current) => current.render.masks)(state),
+            delta: (
+              idDelta.hasAny(state.delta.render.edge.masks)
+              || state.delta.render.edge.masksIds
+            )
+              ? {
+                  ...(state.delta.render.edge.masksIds
+                    ? {
+                        order: true as const
+                      }
+                    : {}),
+                  set: [
+                    ...state.delta.render.edge.masks.added,
+                    ...state.delta.render.edge.masks.updated
+                  ],
+                  remove: [...state.delta.render.edge.masks.removed]
+                }
+              : undefined
+          })
         }
       },
       chrome: {
         scene: {
           kind: 'value' as const,
           read: (state) => state.render.chrome,
-          changed: ({ state }) => state.delta.render.chrome.scene
+          change: (state) => toValueChange(
+            state.delta.render.chrome.scene,
+            state.render.chrome
+          )
         },
         edge: {
           kind: 'value' as const,
           read: (state) => state.render.overlay,
-          changed: ({ state }) => state.delta.render.chrome.edge
+          change: (state) => toValueChange(
+            state.delta.render.chrome.edge,
+            state.render.overlay
+          )
         }
       }
     },
@@ -413,20 +675,20 @@ export const createEditorSceneProjection = (input: {
       kind: 'family' as const,
       read: createStableFamilyRead((state) => state.items),
       idsEqual: sameOrder,
-      changed: ({ state }) => state.delta.items.change !== undefined,
-      patch: ({ state }) => state.delta.items.change ?? 'skip'
+      change: (state) => toFamilyChange({
+        snapshot: createStableFamilyRead((current) => current.items)(state),
+        delta: state.delta.items.change
+      })
     }
-  } satisfies ProjectionSurfaceTree<
-    Input,
-    WorkingState,
-    EditorScenePhaseName
-  >,
+  } satisfies ProjectionStoreTree<WorkingState>,
   phases: {
     document: (ctx) => {
       const dirty = readProjectionDirty(ctx)
       const previousDocumentRevision = ctx.state.revision.document
+      const previousBackground = ctx.state.document.background
 
       dirty.previousDocument = ctx.state.document.snapshot
+      resetDocumentPhaseDelta(ctx.state)
 
       patchDocumentState({
         current: ctx.input,
@@ -439,6 +701,15 @@ export const createEditorSceneProjection = (input: {
         ctx.revision === 1
         || previousDocumentRevision !== ctx.input.document.rev
       ) {
+        ctx.state.delta.document.revision = true
+        ctx.phase.document.changed = true
+      }
+
+      if (
+        ctx.revision === 1
+        || previousBackground !== ctx.state.document.background
+      ) {
+        ctx.state.delta.document.background = true
         ctx.phase.document.changed = true
       }
     },

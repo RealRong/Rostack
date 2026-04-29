@@ -9,12 +9,15 @@ import type {
 import {
   collectMutationTouchedIds,
   createTypedMutationDelta,
-  defineMutationSchema,
+  defineEntityMutationSchema,
   type MutationDelta,
   type MutationDeltaInput,
   type MutationPathCodec,
   type TypedMutationDeltaContext
 } from '@shared/mutation'
+import {
+  entities as dataviewEntities
+} from '@dataview/core/entities'
 
 export type DataviewQueryAspect =
   | 'search'
@@ -135,56 +138,21 @@ const VIEW_QUERY_PATH_CODEC: MutationPathCodec<DataviewViewQueryPath> = {
   format: (path) => path.raw
 }
 
-const dataviewMutationSchema = defineMutationSchema({
-  'record.create': {
-    ids: true
+const dataviewMutationSchema = defineEntityMutationSchema({
+  entities: dataviewEntities,
+  entries: {
+    'record.values': {
+      ids: true,
+      paths: VALUE_PATH_CODEC
+    },
+    'view.query': {
+      ids: true,
+      paths: VIEW_QUERY_PATH_CODEC
+    }
   },
-  'record.title': {
-    ids: true
-  },
-  'record.type': {
-    ids: true
-  },
-  'record.meta': {
-    ids: true
-  },
-  'record.delete': {
-    ids: true
-  },
-  'record.values': {
-    ids: true,
-    paths: VALUE_PATH_CODEC
-  },
-  'field.create': {
-    ids: true
-  },
-  'field.delete': {
-    ids: true
-  },
-  'field.schema': {
-    ids: true
-  },
-  'field.meta': {
-    ids: true
-  },
-  'view.create': {
-    ids: true
-  },
-  'view.query': {
-    ids: true,
-    paths: VIEW_QUERY_PATH_CODEC
-  },
-  'view.layout': {
-    ids: true
-  },
-  'view.calc': {
-    ids: true
-  },
-  'view.delete': {
-    ids: true
-  },
-  'document.activeViewId': {},
-  'external.version': {}
+  signals: {
+    'external.version': {}
+  }
 } as const)
 
 const RECORD_TOUCH_KEYS = [

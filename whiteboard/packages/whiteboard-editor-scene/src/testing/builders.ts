@@ -9,9 +9,7 @@ import type {
   NodeId,
   Size
 } from '@whiteboard/core/types'
-import type {
-  RuntimeInputDelta
-} from '../contracts/editor'
+import type { Input } from '../contracts/editor'
 import {
   createWhiteboardMutationDelta,
   type WhiteboardMutationDelta
@@ -25,7 +23,7 @@ export type EditorRuntimeDeltaFlags = Partial<{
 
 export const createEditorRuntimeDelta = (
   input: EditorRuntimeDeltaFlags = {}
-): RuntimeInputDelta => {
+): Input['runtime']['delta'] => {
   const delta = createEmptyRuntimeInputDelta()
 
   if (input.graph) {

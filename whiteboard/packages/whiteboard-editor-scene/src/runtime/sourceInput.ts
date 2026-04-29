@@ -14,8 +14,13 @@ import type {
   HoverState,
   Input,
   MindmapPreview,
-  RuntimeInputDelta
 } from '../contracts/editor'
+import type {
+  WhiteboardRuntimeDelta
+} from '../contracts/execution'
+import {
+  createEmptyWhiteboardRuntimeDelta
+} from '../contracts/execution'
 import {
   createWhiteboardMutationDelta
 } from '../mutation/delta'
@@ -33,34 +38,9 @@ const EMPTY_DOCUMENT_DELTA: MutationDelta = {
   changes: EMPTY_MUTATION_CHANGE_MAP
 }
 
-const createEmptyRuntimeInputDelta = (): RuntimeInputDelta => ({
-  session: {
-    tool: false,
-    selection: false,
-    hover: false,
-    edit: false,
-    interaction: false,
-    draft: {
-      edges: idDelta.create<EdgeId>()
-    },
-    preview: {
-      nodes: idDelta.create<NodeId>(),
-      edges: idDelta.create<EdgeId>(),
-      mindmaps: idDelta.create<MindmapId>(),
-      marquee: false,
-      guides: false,
-      draw: false,
-      edgeGuide: false
-    }
-  },
-  clock: {
-    mindmaps: new Set()
-  }
-})
-
 const createTouchedIdDelta = <TId extends string>(
   ids: Iterable<TId>
-): RuntimeInputDelta['session']['draft']['edges'] => ({
+): WhiteboardRuntimeDelta['session']['draft']['edges'] => ({
   added: new Set(),
   updated: new Set(ids),
   removed: new Set()
@@ -206,8 +186,8 @@ const isInteractionStateEqual = (
 const createPreviewDelta = (input: {
   previous: EditorSceneSourceSnapshot['session']['preview']
   next: EditorSceneSourceSnapshot['session']['preview']
-}): RuntimeInputDelta => {
-  const delta = createEmptyRuntimeInputDelta()
+}): WhiteboardRuntimeDelta => {
+  const delta = createEmptyWhiteboardRuntimeDelta()
   const touchedNodeIds = unionIds(
     readPreviewNodeIds(input.previous),
     readPreviewNodeIds(input.next)
@@ -242,8 +222,8 @@ const createPreviewDelta = (input: {
 
 export const createBootstrapRuntimeInputDelta = (
   source: EditorSceneSourceSnapshot
-): RuntimeInputDelta => {
-  const delta = createEmptyRuntimeInputDelta()
+): WhiteboardRuntimeDelta => {
+  const delta = createEmptyWhiteboardRuntimeDelta()
 
   delta.session.tool = true
   delta.session.selection = true
@@ -287,8 +267,8 @@ export const createSourceRuntimeInputDelta = (input: {
   previous: EditorSceneSourceSnapshot
   next: EditorSceneSourceSnapshot
   change: EditorSceneSourceChange
-}): RuntimeInputDelta => {
-  const delta = createEmptyRuntimeInputDelta()
+}): WhiteboardRuntimeDelta => {
+  const delta = createEmptyWhiteboardRuntimeDelta()
 
   if (input.change.session?.tool) {
     delta.session.tool = true
@@ -347,7 +327,7 @@ export const createSourceRuntimeInputDelta = (input: {
 export const createSceneInput = (input: {
   source: EditorSceneSourceSnapshot
   delta: MutationDelta
-  runtimeDelta: RuntimeInputDelta
+  runtimeDelta: WhiteboardRuntimeDelta
 }): Input => ({
   document: {
     rev: input.source.document.rev,

@@ -35,35 +35,6 @@ export interface GraphDelta {
   }
 }
 
-export interface GraphDirty {
-  order: boolean
-  node: {
-    lifecycle: IdDelta<NodeId>
-    geometry: IdDelta<NodeId>
-    content: IdDelta<NodeId>
-    owner: IdDelta<NodeId>
-  }
-  edge: {
-    lifecycle: IdDelta<EdgeId>
-    route: IdDelta<EdgeId>
-    style: IdDelta<EdgeId>
-    labels: IdDelta<EdgeId>
-    endpoints: IdDelta<EdgeId>
-    box: IdDelta<EdgeId>
-  }
-  mindmap: {
-    lifecycle: IdDelta<MindmapId>
-    geometry: IdDelta<MindmapId>
-    connectors: IdDelta<MindmapId>
-    membership: IdDelta<MindmapId>
-  }
-  group: {
-    lifecycle: IdDelta<GroupId>
-    geometry: IdDelta<GroupId>
-    membership: IdDelta<GroupId>
-  }
-}
-
 export type SceneItemKey =
   | `mindmap:${MindmapId}`
   | `node:${NodeId}`
@@ -148,35 +119,6 @@ export const createGraphDelta = (): GraphDelta => ({
   }
 })
 
-export const createGraphDirty = (): GraphDirty => ({
-  order: false,
-  node: {
-    lifecycle: idDelta.create<NodeId>(),
-    geometry: idDelta.create<NodeId>(),
-    content: idDelta.create<NodeId>(),
-    owner: idDelta.create<NodeId>()
-  },
-  edge: {
-    lifecycle: idDelta.create<EdgeId>(),
-    route: idDelta.create<EdgeId>(),
-    style: idDelta.create<EdgeId>(),
-    labels: idDelta.create<EdgeId>(),
-    endpoints: idDelta.create<EdgeId>(),
-    box: idDelta.create<EdgeId>()
-  },
-  mindmap: {
-    lifecycle: idDelta.create<MindmapId>(),
-    geometry: idDelta.create<MindmapId>(),
-    connectors: idDelta.create<MindmapId>(),
-    membership: idDelta.create<MindmapId>()
-  },
-  group: {
-    lifecycle: idDelta.create<GroupId>(),
-    geometry: idDelta.create<GroupId>(),
-    membership: idDelta.create<GroupId>()
-  }
-})
-
 export const resetGraphDelta = (
   delta: GraphDelta
 ) => {
@@ -190,29 +132,6 @@ export const resetGraphDelta = (
   delta.geometry.edges.clear()
   delta.geometry.mindmaps.clear()
   delta.geometry.groups.clear()
-}
-
-export const resetGraphDirty = (
-  dirty: GraphDirty
-) => {
-  dirty.order = false
-  idDelta.reset(dirty.node.lifecycle)
-  idDelta.reset(dirty.node.geometry)
-  idDelta.reset(dirty.node.content)
-  idDelta.reset(dirty.node.owner)
-  idDelta.reset(dirty.edge.lifecycle)
-  idDelta.reset(dirty.edge.route)
-  idDelta.reset(dirty.edge.style)
-  idDelta.reset(dirty.edge.labels)
-  idDelta.reset(dirty.edge.endpoints)
-  idDelta.reset(dirty.edge.box)
-  idDelta.reset(dirty.mindmap.lifecycle)
-  idDelta.reset(dirty.mindmap.geometry)
-  idDelta.reset(dirty.mindmap.connectors)
-  idDelta.reset(dirty.mindmap.membership)
-  idDelta.reset(dirty.group.lifecycle)
-  idDelta.reset(dirty.group.geometry)
-  idDelta.reset(dirty.group.membership)
 }
 
 export const createItemsDelta = (): ItemsDelta => ({

@@ -1,6 +1,8 @@
 import type {
+  WhiteboardSceneExecution
+} from './execution'
+import type {
   GraphDelta,
-  GraphDirty,
   ItemsDelta,
   RenderDelta,
   SpatialDelta,
@@ -27,11 +29,9 @@ export type {
 
 export interface WorkingState extends State {
   layout?: EditorSceneLayout
+  execution: WhiteboardSceneExecution
   draft: {
     node: Map<NodeId, NodeDraftMeasure>
-  }
-  dirty: {
-    graph: GraphDirty
   }
   delta: {
     graph: GraphDelta

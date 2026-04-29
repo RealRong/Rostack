@@ -12,6 +12,10 @@ import type {
   Input,
   NodeUiView
 } from '../../contracts/editor'
+import type {
+  ExecutionScope,
+  WhiteboardSceneExecution
+} from '../../contracts/execution'
 import type { WorkingState } from '../../contracts/working'
 import {
   buildChromeView,
@@ -31,6 +35,19 @@ const appendIds = <TId extends string>(
   }
 }
 
+const appendScopeIds = <TId extends string>(
+  target: Set<TId>,
+  scope: ExecutionScope<TId>,
+  readAll: () => Iterable<TId>
+) => {
+  if (scope === 'all') {
+    appendIds(target, readAll())
+    return
+  }
+
+  appendIds(target, scope)
+}
+
 const appendMindmapNodeIds = (input: {
   target: Set<NodeId>
   mindmapIds: Iterable<MindmapId>
@@ -44,6 +61,23 @@ const appendMindmapNodeIds = (input: {
         input.target.add(nodeId)
       })
   }
+}
+
+const appendMindmapNodeScope = (input: {
+  target: Set<NodeId>
+  scope: ExecutionScope<MindmapId>
+  working: WorkingState
+}) => {
+  if (input.scope === 'all') {
+    appendIds(input.target, input.working.graph.nodes.keys())
+    return
+  }
+
+  appendMindmapNodeIds({
+    target: input.target,
+    mindmapIds: input.scope,
+    working: input.working
+  })
 }
 
 const readHoveredNodeId = (
@@ -428,46 +462,80 @@ const patchChrome = (input: {
 
 export const patchUiState = (input: {
   current: Input
+  execution: WhiteboardSceneExecution
   working: WorkingState
   reset: boolean
 }): number => {
   input.working.delta.ui = uiChange.create()
+  input.execution.change.ui = {
+    node: new Set<NodeId>(),
+    edge: new Set<EdgeId>(),
+    chrome: false
+  }
 
   const touchedNodeIds = new Set<NodeId>()
   const touchedEdgeIds = new Set<EdgeId>()
-  let chrome = false
+  let chrome = input.execution.runtime.ui
 
-  appendIds(touchedNodeIds, idDelta.touched(input.working.delta.graph.entities.nodes))
-  appendIds(touchedEdgeIds, idDelta.touched(input.working.delta.graph.entities.edges))
+  appendScopeIds(
+    touchedNodeIds,
+    input.execution.change.graph.entity.node,
+    () => input.working.graph.nodes.keys()
+  )
+  appendScopeIds(
+    touchedNodeIds,
+    input.execution.change.graph.geometry.node,
+    () => input.working.graph.nodes.keys()
+  )
+  appendScopeIds(
+    touchedNodeIds,
+    input.execution.change.graph.content.node,
+    () => input.working.graph.nodes.keys()
+  )
+  appendScopeIds(
+    touchedNodeIds,
+    input.execution.change.graph.owner.node,
+    () => input.working.graph.nodes.keys()
+  )
+  appendScopeIds(
+    touchedEdgeIds,
+    input.execution.change.graph.entity.edge,
+    () => input.working.graph.edges.keys()
+  )
+  appendScopeIds(
+    touchedEdgeIds,
+    input.execution.change.graph.geometry.edge,
+    () => input.working.graph.edges.keys()
+  )
+  appendScopeIds(
+    touchedEdgeIds,
+    input.execution.change.graph.content.edge,
+    () => input.working.graph.edges.keys()
+  )
+  appendMindmapNodeScope({
+    target: touchedNodeIds,
+    scope: input.execution.change.graph.entity.mindmap,
+    working: input.working
+  })
+  appendMindmapNodeScope({
+    target: touchedNodeIds,
+    scope: input.execution.change.graph.geometry.mindmap,
+    working: input.working
+  })
+  appendMindmapNodeScope({
+    target: touchedNodeIds,
+    scope: input.execution.change.graph.owner.mindmap,
+    working: input.working
+  })
+  appendIds(touchedNodeIds, input.execution.runtime.node)
+  appendIds(touchedEdgeIds, input.execution.runtime.edge)
   appendMindmapNodeIds({
     target: touchedNodeIds,
-    mindmapIds: idDelta.touched(input.working.delta.graph.entities.mindmaps),
+    mindmapIds: input.execution.runtime.mindmap,
     working: input.working
   })
 
-  appendIds(touchedEdgeIds, idDelta.touched(input.current.runtime.delta.session.draft.edges))
-  appendIds(touchedNodeIds, idDelta.touched(input.current.runtime.delta.session.preview.nodes))
-  appendIds(touchedEdgeIds, idDelta.touched(input.current.runtime.delta.session.preview.edges))
-  appendMindmapNodeIds({
-    target: touchedNodeIds,
-    mindmapIds: idDelta.touched(input.current.runtime.delta.session.preview.mindmaps),
-    working: input.working
-  })
-  appendMindmapNodeIds({
-    target: touchedNodeIds,
-    mindmapIds: input.current.runtime.delta.clock.mindmaps,
-    working: input.working
-  })
-
-  if (
-    input.current.runtime.delta.session.preview.mindmaps.added.size > 0
-    || input.current.runtime.delta.session.preview.mindmaps.updated.size > 0
-    || input.current.runtime.delta.session.preview.mindmaps.removed.size > 0
-  ) {
-    chrome = true
-  }
-
-  if (input.current.runtime.delta.session.selection) {
+  if (input.execution.runtime.ui) {
     appendIds(touchedNodeIds, collectSelectedNodeIds(input.working))
     appendIds(touchedEdgeIds, collectSelectedEdgeIds(input.working))
     appendIds(touchedNodeIds, input.current.runtime.interaction.selection.nodeIds)
@@ -480,10 +548,6 @@ export const patchUiState = (input: {
         || input.current.runtime.interaction.selection.edgeIds.length > 0
       )
     )
-  }
-
-  if (input.current.runtime.delta.session.hover) {
-    chrome = true
 
     const previousNodeId = readHoveredNodeId(input.working.ui.chrome.hover)
     const nextNodeId = readHoveredNodeId(input.current.runtime.interaction.hover)
@@ -502,16 +566,7 @@ export const patchUiState = (input: {
     if (nextEdgeId) {
       touchedEdgeIds.add(nextEdgeId)
     }
-  }
 
-  if (input.current.runtime.delta.session.preview.marquee) {
-    chrome = true
-  }
-  if (input.current.runtime.delta.session.preview.guides) {
-    chrome = true
-  }
-  if (input.current.runtime.delta.session.preview.draw) {
-    chrome = true
     appendIds(
       touchedNodeIds,
       input.working.ui.chrome.preview.draw?.hiddenNodeIds ?? []
@@ -520,9 +575,6 @@ export const patchUiState = (input: {
       touchedNodeIds,
       input.current.runtime.session.preview.draw?.hiddenNodeIds ?? []
     )
-  }
-  if (input.current.runtime.delta.session.edit) {
-    chrome = true
 
     const previousEditingNode = readEditingNodeId(input.working.ui.chrome.edit)
     const nextEditingNode = readEditingNodeId(input.current.runtime.session.edit)
@@ -541,13 +593,6 @@ export const patchUiState = (input: {
     if (nextEditingEdge) {
       touchedEdgeIds.add(nextEditingEdge)
     }
-  }
-  if (
-    input.current.runtime.delta.session.tool
-    || input.current.runtime.delta.session.interaction
-    || input.current.runtime.delta.session.preview.edgeGuide
-  ) {
-    chrome = true
   }
 
   if (
@@ -586,6 +631,11 @@ export const patchUiState = (input: {
     force: input.reset || chrome
   })
   input.working.graph.state.chrome = input.working.ui.chrome
+  input.execution.change.ui = {
+    node: idDelta.touched(input.working.delta.ui.node),
+    edge: idDelta.touched(input.working.delta.ui.edge),
+    chrome: input.working.delta.ui.chrome
+  }
 
   return uiCount + chromeCount
 }

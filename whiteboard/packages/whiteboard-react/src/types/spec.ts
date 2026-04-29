@@ -5,5 +5,4 @@ export type WhiteboardSpec = {
   nodes: NodeSpec
   layout: LayoutNodeCatalog
   toolbar?: unknown
-  scene?: unknown
 }

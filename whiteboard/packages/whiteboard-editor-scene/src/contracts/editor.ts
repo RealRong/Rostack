@@ -60,6 +60,7 @@ import { store } from '@shared/core'
 import type { WhiteboardMutationDelta } from '../mutation/delta'
 import type { Capture } from './capture'
 import type { IdDelta, SceneItemKey } from './delta'
+import type { WhiteboardRuntimeDelta } from './execution'
 import type {
   EdgeActiveView,
   ChromeRenderView,
@@ -86,7 +87,7 @@ export interface Input {
     interaction: InteractionInput
     view: SceneViewSnapshot
     clock: ClockInput
-    delta: RuntimeInputDelta
+    delta: WhiteboardRuntimeDelta
   }
   delta: WhiteboardMutationDelta
 }
@@ -414,35 +415,6 @@ export type DragState =
 
 export interface ClockInput {
   now: number
-}
-
-export interface RuntimeInputDelta {
-  session: SessionInputDelta
-  clock: ClockInputDelta
-}
-
-export interface SessionInputDelta {
-  tool: boolean
-  selection: boolean
-  hover: boolean
-  edit: boolean
-  interaction: boolean
-  draft: {
-    edges: IdDelta<EdgeId>
-  }
-  preview: {
-    nodes: IdDelta<NodeId>
-    edges: IdDelta<EdgeId>
-    mindmaps: IdDelta<MindmapId>
-    marquee: boolean
-    guides: boolean
-    draw: boolean
-    edgeGuide: boolean
-  }
-}
-
-export interface ClockInputDelta {
-  mindmaps: ReadonlySet<MindmapId>
 }
 
 export interface NodeView {

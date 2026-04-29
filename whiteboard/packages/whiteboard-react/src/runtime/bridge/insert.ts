@@ -259,6 +259,24 @@ const runInsertPreset = ({
   return result
 }
 
+const createPresetFromTemplate = (
+  template: WhiteboardInsertPreset['template']
+): WhiteboardInsertPreset => template.kind === 'mindmap'
+  ? {
+      key: '',
+      group: 'mindmap',
+      label: '',
+      kind: 'mindmap',
+      template
+    } satisfies WhiteboardMindmapInsertPreset
+  : {
+      key: '',
+      group: 'text',
+      label: '',
+      kind: 'node',
+      template
+    } satisfies WhiteboardNodeInsertPreset
+
 export const createInsertBridge = ({
   editor,
   catalog
@@ -289,13 +307,7 @@ export const createInsertBridge = ({
     at: Point
   }) => runInsertPreset({
     editor,
-    preset: {
-      key: '',
-      group: input.template.kind === 'mindmap' ? 'mindmap' : 'text',
-      label: '',
-      kind: input.template.kind,
-      template: input.template as never
-    } as WhiteboardInsertPreset,
+    preset: createPresetFromTemplate(input.template),
     at: input.at
   })
 

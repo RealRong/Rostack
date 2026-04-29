@@ -1,15 +1,20 @@
+import { idDelta } from '@shared/delta'
 import type {
   EdgeId,
   GroupId,
   MindmapId,
   NodeId
 } from '@whiteboard/core/types'
-import { idDelta, type IdDelta } from '@shared/delta'
-import {
-  resetGraphDelta,
-  resetGraphDirty
-} from '../../contracts/delta'
+import { resetGraphDelta } from '../../contracts/delta'
 import type { Input } from '../../contracts/editor'
+import {
+  createEmptyWhiteboardGraphExecutionChange,
+  executionScopeFromValues,
+  executionScopeHasAny,
+  executionScopeUnion,
+  type ExecutionScope,
+  type WhiteboardSceneExecution
+} from '../../contracts/execution'
 import type { WorkingState } from '../../contracts/working'
 import type { EdgeNodeSnapshot } from './edge'
 import { patchEdge } from './edge'
@@ -19,23 +24,20 @@ import { patchIndexState } from '../index/update'
 import { patchMindmap } from './mindmap'
 import { patchNode } from './node'
 
-const touchLifecycleIds = <TId extends string>(
-  target: IdDelta<TId>,
-  source: IdDelta<TId>
-) => {
-  source.added.forEach((id) => {
-    idDelta.add(target, id)
-  })
-  source.removed.forEach((id) => {
-    idDelta.remove(target, id)
-  })
-}
-
 type GraphPatchQueue = {
   nodes: Set<NodeId>
   edges: Set<EdgeId>
   mindmaps: Set<MindmapId>
   groups: Set<GroupId>
+}
+
+type ResolvedGraphTargets = {
+  reset: boolean
+  order: boolean
+  nodes: ReadonlySet<NodeId>
+  edges: ReadonlySet<EdgeId>
+  mindmaps: ReadonlySet<MindmapId>
+  groups: ReadonlySet<GroupId>
 }
 
 const createGraphPatchQueue = (): GraphPatchQueue => ({
@@ -62,155 +64,51 @@ const drainQueue = <TId extends string>(
   return ids
 }
 
-const touchDirtyTarget = <TId extends string>(
-  target: IdDelta<TId>,
-  ids: Iterable<TId>,
-  action: 'add' | 'update' | 'remove'
-) => {
-  for (const id of ids) {
-    if (action === 'add') {
-      idDelta.add(target, id)
-      continue
-    }
-    if (action === 'remove') {
-      idDelta.remove(target, id)
-      continue
-    }
-    idDelta.update(target, id)
-  }
-}
+const resolveScope = <TId extends string>(
+  scope: ExecutionScope<TId>,
+  readAll: () => Iterable<TId>
+): ReadonlySet<TId> => scope === 'all'
+  ? new Set(readAll())
+  : new Set(scope)
 
-const touchDocumentIds = <TId extends string>(
-  target: IdDelta<TId>,
-  ids: ReadonlySet<TId> | 'all',
-  action: 'add' | 'update' | 'remove'
-) => {
-  if (ids === 'all') {
-    return
-  }
-  touchDirtyTarget(target, ids, action)
-}
-
-const markGeometryDirty = <TId extends string>(
-  target: IdDelta<TId>,
-  ids: Iterable<TId>
-) => {
-  touchDirtyTarget(target, ids, 'update')
-}
-
-const fanoutEdgeGeometryDirty = (
-  dirty: WorkingState['dirty']['graph'],
-  ids: Iterable<EdgeId>
-) => {
-  markGeometryDirty(dirty.edge.route, ids)
-  markGeometryDirty(dirty.edge.labels, ids)
-  markGeometryDirty(dirty.edge.endpoints, ids)
-  markGeometryDirty(dirty.edge.box, ids)
-}
-
-const fanoutMindmapGeometryDirty = (
-  dirty: WorkingState['dirty']['graph'],
-  ids: Iterable<MindmapId>
-) => {
-  markGeometryDirty(dirty.mindmap.geometry, ids)
-  markGeometryDirty(dirty.mindmap.connectors, ids)
-  markGeometryDirty(dirty.mindmap.membership, ids)
-}
-
-const fanoutGroupGeometryDirty = (
-  dirty: WorkingState['dirty']['graph'],
-  ids: Iterable<GroupId>
-) => {
-  markGeometryDirty(dirty.group.geometry, ids)
-  markGeometryDirty(dirty.group.membership, ids)
-}
-
-const readGraphPatchTargets = (
-  input: Input
-): {
-  reset: boolean
-  order: boolean
-  nodes: ReadonlySet<NodeId>
-  edges: ReadonlySet<EdgeId>
-  mindmaps: ReadonlySet<MindmapId>
-  groups: ReadonlySet<GroupId>
-} => {
-  if (input.delta.reset) {
-    return {
-      reset: true,
-      order: true,
-      nodes: new Set<NodeId>(),
-      edges: new Set<EdgeId>(),
-      mindmaps: new Set<MindmapId>(),
-      groups: new Set<GroupId>()
-    }
-  }
-
-  const runtimeDelta = input.runtime.delta
-  const graphTargets = input.delta.graph.targets()
-  if (graphTargets.reset) {
-    return {
-      reset: true,
-      order: true,
-      nodes: new Set<NodeId>(),
-      edges: new Set<EdgeId>(),
-      mindmaps: new Set<MindmapId>(),
-      groups: new Set<GroupId>()
-    }
-  }
-
-  const nodes = new Set<NodeId>(graphTargets.nodes as ReadonlySet<NodeId>)
-  const edges = new Set<EdgeId>(graphTargets.edges as ReadonlySet<EdgeId>)
-  const mindmaps = new Set<MindmapId>(graphTargets.mindmaps as ReadonlySet<MindmapId>)
-  const groups = new Set<GroupId>(graphTargets.groups as ReadonlySet<GroupId>)
-  const order = graphTargets.order
-
-  enqueueAll(edges, idDelta.touched(runtimeDelta.session.draft.edges))
-  enqueueAll(nodes, idDelta.touched(runtimeDelta.session.preview.nodes))
-  enqueueAll(edges, idDelta.touched(runtimeDelta.session.preview.edges))
-  enqueueAll(mindmaps, idDelta.touched(runtimeDelta.session.preview.mindmaps))
-  enqueueAll(mindmaps, runtimeDelta.clock.mindmaps)
-
-  enqueueAll(edges, input.runtime.session.draft.edges.keys())
-  enqueueAll(nodes, input.runtime.session.preview.nodes.keys())
-  enqueueAll(edges, input.runtime.session.preview.edges.keys())
-
-  if (input.runtime.session.edit?.kind === 'node') {
-    nodes.add(input.runtime.session.edit.nodeId)
-  }
-  if (input.runtime.session.edit?.kind === 'edge-label') {
-    edges.add(input.runtime.session.edit.edgeId)
-  }
-
-  if (input.runtime.session.preview.mindmap?.rootMove) {
-    mindmaps.add(input.runtime.session.preview.mindmap.rootMove.mindmapId)
-  }
-  if (input.runtime.session.preview.mindmap?.subtreeMove) {
-    mindmaps.add(input.runtime.session.preview.mindmap.subtreeMove.mindmapId)
-  }
-  input.runtime.session.preview.mindmap?.enter?.forEach((entry) => {
-    mindmaps.add(entry.mindmapId)
-  })
-
-  return {
-    reset: false,
-    order,
-    nodes,
-    edges,
-    mindmaps,
-    groups
-  }
-}
+const resolveGraphTargets = (input: {
+  execution: WhiteboardSceneExecution
+  working: WorkingState
+}): ResolvedGraphTargets => ({
+  reset: input.execution.reset,
+  order: input.execution.order,
+  nodes: resolveScope(
+    input.execution.target.node,
+    () => [
+      ...(Object.keys(input.working.document.snapshot.nodes) as readonly NodeId[]),
+      ...input.working.graph.nodes.keys()
+    ]
+  ),
+  edges: resolveScope(
+    input.execution.target.edge,
+    () => [
+      ...(Object.keys(input.working.document.snapshot.edges) as readonly EdgeId[]),
+      ...input.working.graph.edges.keys()
+    ]
+  ),
+  mindmaps: resolveScope(
+    input.execution.target.mindmap,
+    () => [
+      ...(Object.keys(input.working.document.snapshot.mindmaps) as readonly MindmapId[]),
+      ...input.working.graph.owners.mindmaps.keys()
+    ]
+  ),
+  groups: resolveScope(
+    input.execution.target.group,
+    () => [
+      ...(Object.keys(input.working.document.snapshot.groups) as readonly GroupId[]),
+      ...input.working.graph.owners.groups.keys()
+    ]
+  )
+})
 
 const hasGraphTargets = (
-  targets: {
-    reset: boolean
-    order: boolean
-    nodes: ReadonlySet<NodeId>
-    edges: ReadonlySet<EdgeId>
-    mindmaps: ReadonlySet<MindmapId>
-    groups: ReadonlySet<GroupId>
-  }
+  targets: ResolvedGraphTargets
 ): boolean => Boolean(
   targets.reset
   || targets.order
@@ -221,41 +119,9 @@ const hasGraphTargets = (
 )
 
 const seedGraphPatchQueue = (input: {
-  working: WorkingState
   queue: GraphPatchQueue
-  targets: {
-    reset: boolean
-    order: boolean
-    nodes: ReadonlySet<NodeId>
-    edges: ReadonlySet<EdgeId>
-    mindmaps: ReadonlySet<MindmapId>
-    groups: ReadonlySet<GroupId>
-  }
+  targets: ResolvedGraphTargets
 }) => {
-  if (input.targets.reset) {
-    enqueueAll(
-      input.queue.nodes,
-      Object.keys(input.working.document.snapshot.nodes) as readonly NodeId[]
-    )
-    enqueueAll(input.queue.nodes, input.working.graph.nodes.keys())
-    enqueueAll(
-      input.queue.edges,
-      Object.keys(input.working.document.snapshot.edges) as readonly EdgeId[]
-    )
-    enqueueAll(input.queue.edges, input.working.graph.edges.keys())
-    enqueueAll(
-      input.queue.mindmaps,
-      Object.keys(input.working.document.snapshot.mindmaps) as readonly MindmapId[]
-    )
-    enqueueAll(input.queue.mindmaps, input.working.graph.owners.mindmaps.keys())
-    enqueueAll(
-      input.queue.groups,
-      Object.keys(input.working.document.snapshot.groups) as readonly GroupId[]
-    )
-    enqueueAll(input.queue.groups, input.working.graph.owners.groups.keys())
-    return
-  }
-
   enqueueAll(input.queue.nodes, input.targets.nodes)
   enqueueAll(input.queue.edges, input.targets.edges)
   enqueueAll(input.queue.mindmaps, input.targets.mindmaps)
@@ -283,19 +149,8 @@ const fanoutNodeGeometry = (input: {
 const preFanoutSeeds = (input: {
   working: WorkingState
   queue: GraphPatchQueue
-  targets: {
-    reset: boolean
-    order: boolean
-    nodes: ReadonlySet<NodeId>
-    edges: ReadonlySet<EdgeId>
-    mindmaps: ReadonlySet<MindmapId>
-    groups: ReadonlySet<GroupId>
-  }
+  targets: ResolvedGraphTargets
 }) => {
-  if (input.targets.reset) {
-    return
-  }
-
   input.targets.nodes.forEach((nodeId) => {
     const nextOwner = input.working.indexes.ownerByNode.get(nodeId)
     const previousOwner = input.working.graph.nodes.get(nodeId)?.base.owner
@@ -467,189 +322,89 @@ const hasGraphEntityLifecycle = (working: WorkingState) => {
     || entities.edges.removed.size > 0
     || entities.mindmaps.added.size > 0
     || entities.mindmaps.removed.size > 0
+    || entities.groups.added.size > 0
+    || entities.groups.removed.size > 0
   )
 }
 
-const seedGraphDirtyFromMutation = (input: {
+const scopeFromTouchedIds = <TId extends string>(
+  ids: ReadonlySet<TId> | 'all'
+): ExecutionScope<TId> => ids === 'all'
+  ? 'all'
+  : new Set(ids)
+
+const compileGraphExecutionChange = (input: {
   current: Input
-  dirty: WorkingState['dirty']['graph']
+  execution: WhiteboardSceneExecution
+  working: WorkingState
 }) => {
-  const { current, dirty } = input
-  dirty.order = current.delta.graph.orderChanged()
-
-  touchDocumentIds(
-    dirty.node.lifecycle,
-    current.delta.node.create.touchedIds(),
-    'add'
-  )
-  touchDocumentIds(
-    dirty.node.lifecycle,
-    current.delta.node.delete.touchedIds(),
-    'remove'
-  )
-  touchDocumentIds(
-    dirty.node.geometry,
-    current.delta.node.geometry.touchedIds(),
-    'update'
-  )
-  touchDocumentIds(
-    dirty.node.content,
-    current.delta.node.content.touchedIds(),
-    'update'
-  )
-  touchDocumentIds(
-    dirty.node.owner,
-    current.delta.node.owner.touchedIds(),
-    'update'
-  )
-
-  touchDocumentIds(
-    dirty.edge.lifecycle,
-    current.delta.edge.create.touchedIds(),
-    'add'
-  )
-  touchDocumentIds(
-    dirty.edge.lifecycle,
-    current.delta.edge.delete.touchedIds(),
-    'remove'
-  )
-  touchDocumentIds(
-    dirty.edge.route,
-    current.delta.graph.affects.edgeRouteIds(),
-    'update'
-  )
-  touchDocumentIds(
-    dirty.edge.endpoints,
-    current.delta.graph.affects.edgeEndpointIds(),
-    'update'
-  )
-  touchDocumentIds(
-    dirty.edge.box,
-    current.delta.graph.affects.edgeBoxIds(),
-    'update'
-  )
-  touchDocumentIds(
-    dirty.edge.style,
-    current.delta.graph.affects.edgeStyleIds(),
-    'update'
-  )
-  touchDocumentIds(
-    dirty.edge.labels,
-    current.delta.graph.affects.edgeLabelIds(),
-    'update'
-  )
-
-  touchDocumentIds(
-    dirty.mindmap.lifecycle,
-    current.delta.mindmap.create.touchedIds(),
-    'add'
-  )
-  touchDocumentIds(
-    dirty.mindmap.lifecycle,
-    current.delta.mindmap.delete.touchedIds(),
-    'remove'
-  )
-  touchDocumentIds(
-    dirty.mindmap.geometry,
-    current.delta.graph.affects.mindmapGeometryIds(),
-    'update'
-  )
-  touchDocumentIds(
-    dirty.mindmap.connectors,
-    current.delta.graph.affects.mindmapConnectorIds(),
-    'update'
-  )
-  touchDocumentIds(
-    dirty.mindmap.membership,
-    current.delta.graph.affects.mindmapMembershipIds(),
-    'update'
-  )
-
-  touchDocumentIds(
-    dirty.group.lifecycle,
-    current.delta.group.create.touchedIds(),
-    'add'
-  )
-  touchDocumentIds(
-    dirty.group.lifecycle,
-    current.delta.group.delete.touchedIds(),
-    'remove'
-  )
-  touchDocumentIds(
-    dirty.group.geometry,
-    current.delta.graph.affects.groupGeometryIds(),
-    'update'
-  )
-  touchDocumentIds(
-    dirty.group.membership,
-    current.delta.graph.affects.groupMembershipIds(),
-    'update'
-  )
-
-  touchDirtyTarget(
-    dirty.node.geometry,
-    idDelta.touched(current.runtime.delta.session.preview.nodes),
-    'update'
-  )
-  touchDirtyTarget(
-    dirty.edge.route,
-    idDelta.touched(current.runtime.delta.session.preview.edges),
-    'update'
-  )
-  touchDirtyTarget(
-    dirty.edge.labels,
-    idDelta.touched(current.runtime.delta.session.preview.edges),
-    'update'
-  )
-  touchDirtyTarget(
-    dirty.edge.route,
-    idDelta.touched(current.runtime.delta.session.draft.edges),
-    'update'
-  )
-  touchDirtyTarget(
-    dirty.edge.style,
-    idDelta.touched(current.runtime.delta.session.draft.edges),
-    'update'
-  )
-  touchDirtyTarget(
-    dirty.mindmap.geometry,
-    idDelta.touched(current.runtime.delta.session.preview.mindmaps),
-    'update'
-  )
-  touchDirtyTarget(
-    dirty.mindmap.geometry,
-    current.runtime.delta.clock.mindmaps,
-    'update'
-  )
-
-  if (current.runtime.session.edit?.kind === 'node') {
-    idDelta.update(dirty.node.content, current.runtime.session.edit.nodeId)
-    idDelta.update(dirty.node.geometry, current.runtime.session.edit.nodeId)
-  }
-  if (current.runtime.session.edit?.kind === 'edge-label') {
-    idDelta.update(dirty.edge.labels, current.runtime.session.edit.edgeId)
+  if (input.execution.reset) {
+    return {
+      entity: {
+        node: 'all',
+        edge: 'all',
+        mindmap: 'all',
+        group: 'all'
+      },
+      geometry: {
+        node: 'all',
+        edge: 'all',
+        mindmap: 'all',
+        group: 'all'
+      },
+      content: {
+        node: 'all',
+        edge: 'all'
+      },
+      owner: {
+        node: 'all',
+        mindmap: 'all',
+        group: 'all'
+      }
+    } satisfies WhiteboardSceneExecution['change']['graph']
   }
 
-  if (current.runtime.session.preview.mindmap?.rootMove) {
-    idDelta.update(
-      dirty.mindmap.geometry,
-      current.runtime.session.preview.mindmap.rootMove.mindmapId
-    )
-  }
-  if (current.runtime.session.preview.mindmap?.subtreeMove) {
-    idDelta.update(
-      dirty.mindmap.geometry,
-      current.runtime.session.preview.mindmap.subtreeMove.mindmapId
-    )
-  }
-  current.runtime.session.preview.mindmap?.enter?.forEach((entry) => {
-    idDelta.update(dirty.mindmap.geometry, entry.mindmapId)
-  })
+  const graphChange = createEmptyWhiteboardGraphExecutionChange()
+  const graphDelta = input.working.delta.graph
+  const editingNodeScope = input.current.runtime.session.edit?.kind === 'node'
+    ? executionScopeFromValues([input.current.runtime.session.edit.nodeId])
+    : new Set<NodeId>()
+  const editingEdgeScope = input.current.runtime.session.edit?.kind === 'edge-label'
+    ? executionScopeFromValues([input.current.runtime.session.edit.edgeId])
+    : new Set<EdgeId>()
+
+  graphChange.entity.node = idDelta.touched(graphDelta.entities.nodes)
+  graphChange.entity.edge = idDelta.touched(graphDelta.entities.edges)
+  graphChange.entity.mindmap = idDelta.touched(graphDelta.entities.mindmaps)
+  graphChange.entity.group = idDelta.touched(graphDelta.entities.groups)
+
+  graphChange.geometry.node = executionScopeFromValues(graphDelta.geometry.nodes)
+  graphChange.geometry.edge = executionScopeFromValues(graphDelta.geometry.edges)
+  graphChange.geometry.mindmap = executionScopeFromValues(graphDelta.geometry.mindmaps)
+  graphChange.geometry.group = executionScopeFromValues(graphDelta.geometry.groups)
+
+  graphChange.content.node = executionScopeUnion(
+    scopeFromTouchedIds(input.current.delta.node.content.touchedIds()),
+    editingNodeScope
+  )
+  graphChange.content.edge = executionScopeUnion(
+    scopeFromTouchedIds(input.current.delta.edge.labels.touchedIds()),
+    scopeFromTouchedIds(input.current.delta.edge.style.touchedIds()),
+    scopeFromTouchedIds(input.current.delta.edge.data.touchedIds()),
+    editingEdgeScope
+  )
+
+  graphChange.owner.node = scopeFromTouchedIds(input.current.delta.node.owner.touchedIds())
+  graphChange.owner.mindmap = scopeFromTouchedIds(input.current.delta.mindmap.structure.touchedIds())
+  graphChange.owner.group = scopeFromTouchedIds(input.current.delta.group.value.touchedIds())
+
+  return graphChange
 }
 
 export const patchGraphState = (input: {
   revision: number
   current: Input
+  execution: WhiteboardSceneExecution
   working: WorkingState
   reset?: boolean
   previousDocument?: WorkingState['document']['snapshot']
@@ -660,20 +415,28 @@ export const patchGraphState = (input: {
 } => {
   const queue = createGraphPatchQueue()
   const delta = input.working.delta.graph
-  const graphDirty = input.working.dirty.graph
   const targets = input.reset
-    ? {
-        reset: true,
-        order: true,
-        nodes: new Set<NodeId>(),
-        edges: new Set<EdgeId>(),
-        mindmaps: new Set<MindmapId>(),
-        groups: new Set<GroupId>()
-      }
-    : readGraphPatchTargets(input.current)
+    ? resolveGraphTargets({
+        execution: {
+          ...input.execution,
+          reset: true,
+          order: true,
+          target: {
+            node: 'all',
+            edge: 'all',
+            mindmap: 'all',
+            group: 'all'
+          }
+        },
+        working: input.working
+      })
+    : resolveGraphTargets({
+        execution: input.execution,
+        working: input.working
+      })
 
   resetGraphDelta(delta)
-  resetGraphDirty(graphDirty)
+  input.execution.change.graph = createEmptyWhiteboardGraphExecutionChange()
 
   if (!hasGraphTargets(targets)) {
     return {
@@ -686,11 +449,6 @@ export const patchGraphState = (input: {
   delta.revision = input.revision as typeof delta.revision
   delta.order = targets.reset || targets.order
 
-  seedGraphDirtyFromMutation({
-    current: input.current,
-    dirty: graphDirty
-  })
-
   patchIndexState({
     state: input.working.indexes,
     previous: input.previousDocument,
@@ -699,7 +457,6 @@ export const patchGraphState = (input: {
   })
 
   seedGraphPatchQueue({
-    working: input.working,
     queue,
     targets
   })
@@ -738,14 +495,11 @@ export const patchGraphState = (input: {
   )
 
   input.working.revision.document = input.current.document.rev
-  touchLifecycleIds(graphDirty.node.lifecycle, delta.entities.nodes)
-  touchLifecycleIds(graphDirty.edge.lifecycle, delta.entities.edges)
-  touchLifecycleIds(graphDirty.mindmap.lifecycle, delta.entities.mindmaps)
-  touchLifecycleIds(graphDirty.group.lifecycle, delta.entities.groups)
-  markGeometryDirty(graphDirty.node.geometry, delta.geometry.nodes)
-  fanoutEdgeGeometryDirty(graphDirty, delta.geometry.edges)
-  fanoutMindmapGeometryDirty(graphDirty, delta.geometry.mindmaps)
-  fanoutGroupGeometryDirty(graphDirty, delta.geometry.groups)
+  input.execution.change.graph = compileGraphExecutionChange({
+    current: input.current,
+    execution: input.execution,
+    working: input.working
+  })
 
   return {
     ran: true,
@@ -754,9 +508,10 @@ export const patchGraphState = (input: {
       targets.reset
       || delta.order
       || hasGraphEntityLifecycle(input.working)
-      || delta.geometry.nodes.size > 0
-      || delta.geometry.edges.size > 0
-      || delta.geometry.mindmaps.size > 0
+      || executionScopeHasAny(input.execution.change.graph.geometry.node)
+      || executionScopeHasAny(input.execution.change.graph.geometry.edge)
+      || executionScopeHasAny(input.execution.change.graph.geometry.mindmap)
+      || executionScopeHasAny(input.execution.change.graph.geometry.group)
     )
   }
 }

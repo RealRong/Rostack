@@ -3,11 +3,13 @@ import type { Document } from '@whiteboard/core/types'
 import type { Revision } from '@shared/projection'
 import {
   createGraphDelta,
-  createGraphDirty,
   createItemsDelta,
   renderChange,
   uiChange
 } from '../contracts/delta'
+import {
+  createEmptyWhiteboardSceneExecution
+} from '../contracts/execution'
 import type {
   EditorSceneLayout
 } from '../contracts/editor'
@@ -48,11 +50,9 @@ export const createWorking = (input: {
 
   return {
     layout: input.layout,
+    execution: createEmptyWhiteboardSceneExecution(),
     draft: {
       node: new Map()
-    },
-    dirty: {
-      graph: createGraphDirty()
     },
     revision: {
       document: snapshot.revision as Revision

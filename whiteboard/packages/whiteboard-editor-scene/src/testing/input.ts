@@ -6,33 +6,15 @@ import type {
   NodeId
 } from '@whiteboard/core/types'
 import type { Input } from '../contracts/editor'
+import {
+  createEmptyWhiteboardRuntimeDelta
+} from '../contracts/execution'
 import { createWhiteboardMutationDelta } from '../mutation/delta'
 import { createEmptyDocumentSnapshot } from '../runtime/state'
 
-export const createEmptyRuntimeInputDelta = (): Input['runtime']['delta'] => ({
-  session: {
-    tool: false,
-    selection: false,
-    hover: false,
-    edit: false,
-    interaction: false,
-    draft: {
-      edges: idDelta.create<EdgeId>()
-    },
-    preview: {
-      nodes: idDelta.create<NodeId>(),
-      edges: idDelta.create<EdgeId>(),
-      mindmaps: idDelta.create<MindmapId>(),
-      marquee: false,
-      guides: false,
-      draw: false,
-      edgeGuide: false
-    }
-  },
-  clock: {
-    mindmaps: new Set()
-  }
-})
+export const createEmptyRuntimeInputDelta = (): Input['runtime']['delta'] => (
+  createEmptyWhiteboardRuntimeDelta()
+)
 
 export const createEmptyInput = (): Input => ({
   document: {

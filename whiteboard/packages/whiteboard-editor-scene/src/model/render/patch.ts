@@ -8,6 +8,7 @@ import type {
 import type {
   Edge,
   EdgeId,
+  MindmapId,
   NodeId
 } from '@whiteboard/core/types'
 import type {
@@ -21,6 +22,13 @@ import type {
   Input,
   SessionInput
 } from '../../contracts/editor'
+import type {
+  ExecutionScope,
+  WhiteboardSceneExecution
+} from '../../contracts/execution'
+import {
+  executionScopeHasAny
+} from '../../contracts/execution'
 import type {
   ChromeRenderView,
   EdgeActiveView,
@@ -770,80 +778,230 @@ const readActiveEdgeIds = (
     : [])
 ])
 
-const collectNodeRenderIds = (
-  working: WorkingState
-): ReadonlySet<NodeId> => idDelta.touchedMany(
-  working.dirty.graph.node.lifecycle,
-  working.dirty.graph.node.geometry,
-  working.dirty.graph.node.content,
-  working.dirty.graph.node.owner,
-  working.delta.ui.node
-)
+const appendScopeIds = <TId extends string>(
+  target: Set<TId>,
+  scope: ExecutionScope<TId>,
+  readAll: () => Iterable<TId>
+) => {
+  if (scope === 'all') {
+    for (const id of readAll()) {
+      target.add(id)
+    }
+    return
+  }
 
-const collectStaticsEdgeIds = (
+  scope.forEach((id) => {
+    target.add(id)
+  })
+}
+
+const appendMindmapNodeScope = (input: {
+  target: Set<NodeId>
+  scope: ExecutionScope<MindmapId>
   working: WorkingState
-): ReadonlySet<EdgeId> => {
-  const edgeIds = new Set<EdgeId>(idDelta.touchedMany(
-    working.dirty.graph.edge.lifecycle,
-    working.dirty.graph.edge.route,
-    working.dirty.graph.edge.style
-  ))
-  working.delta.items.change?.set?.forEach((key) => {
+}) => {
+  if (input.scope === 'all') {
+    input.working.graph.nodes.forEach((_view, nodeId) => {
+      input.target.add(nodeId)
+    })
+    return
+  }
+
+  input.scope.forEach((mindmapId) => {
+    input.working.graph.owners.mindmaps
+      .get(mindmapId)
+      ?.structure.nodeIds
+      .forEach((nodeId) => {
+        input.target.add(nodeId)
+      })
+  })
+}
+
+const appendEdgeItemScope = (input: {
+  target: Set<EdgeId>
+  scope: ExecutionScope<SceneItemKey>
+  working: WorkingState
+}) => {
+  if (input.scope === 'all') {
+    input.working.items.ids.forEach((key) => {
+      const edgeId = toEdgeIdFromSceneItemKey(key)
+      if (edgeId) {
+        input.target.add(edgeId)
+      }
+    })
+    return
+  }
+
+  input.scope.forEach((key) => {
     const edgeId = toEdgeIdFromSceneItemKey(key)
     if (edgeId) {
-      edgeIds.add(edgeId)
+      input.target.add(edgeId)
     }
   })
-  working.delta.items.change?.remove?.forEach((key) => {
-    const edgeId = toEdgeIdFromSceneItemKey(key)
-    if (edgeId) {
-      edgeIds.add(edgeId)
-    }
+}
+
+const collectNodeRenderIds = (input: {
+  working: WorkingState
+  execution: WhiteboardSceneExecution
+}): ReadonlySet<NodeId> => {
+  const nodeIds = new Set<NodeId>()
+
+  appendScopeIds(
+    nodeIds,
+    input.execution.change.graph.entity.node,
+    () => input.working.graph.nodes.keys()
+  )
+  appendScopeIds(
+    nodeIds,
+    input.execution.change.graph.geometry.node,
+    () => input.working.graph.nodes.keys()
+  )
+  appendScopeIds(
+    nodeIds,
+    input.execution.change.graph.content.node,
+    () => input.working.graph.nodes.keys()
+  )
+  appendScopeIds(
+    nodeIds,
+    input.execution.change.graph.owner.node,
+    () => input.working.graph.nodes.keys()
+  )
+  appendScopeIds(
+    nodeIds,
+    input.execution.change.ui.node,
+    () => input.working.graph.nodes.keys()
+  )
+  appendMindmapNodeScope({
+    target: nodeIds,
+    scope: input.execution.change.graph.entity.mindmap,
+    working: input.working
+  })
+  appendMindmapNodeScope({
+    target: nodeIds,
+    scope: input.execution.change.graph.geometry.mindmap,
+    working: input.working
+  })
+  appendMindmapNodeScope({
+    target: nodeIds,
+    scope: input.execution.change.graph.owner.mindmap,
+    working: input.working
+  })
+
+  return nodeIds
+}
+
+const collectStaticsEdgeIds = (input: {
+  working: WorkingState
+  execution: WhiteboardSceneExecution
+}): ReadonlySet<EdgeId> => {
+  const edgeIds = new Set<EdgeId>()
+  appendScopeIds(
+    edgeIds,
+    input.execution.change.graph.entity.edge,
+    () => input.working.graph.edges.keys()
+  )
+  appendScopeIds(
+    edgeIds,
+    input.execution.change.graph.geometry.edge,
+    () => input.working.graph.edges.keys()
+  )
+  appendScopeIds(
+    edgeIds,
+    input.execution.change.graph.content.edge,
+    () => input.working.graph.edges.keys()
+  )
+  appendEdgeItemScope({
+    target: edgeIds,
+    scope: input.execution.change.items,
+    working: input.working
   })
   return edgeIds
 }
 
-const collectLabelEdgeIds = (
+const collectLabelEdgeIds = (input: {
   working: WorkingState
-): ReadonlySet<EdgeId> => {
-  return idDelta.touchedMany(
-    working.dirty.graph.edge.lifecycle,
-    working.dirty.graph.edge.route,
-    working.dirty.graph.edge.labels,
-    working.delta.ui.edge
+  execution: WhiteboardSceneExecution
+}): ReadonlySet<EdgeId> => {
+  const edgeIds = new Set<EdgeId>()
+  appendScopeIds(
+    edgeIds,
+    input.execution.change.graph.entity.edge,
+    () => input.working.graph.edges.keys()
   )
+  appendScopeIds(
+    edgeIds,
+    input.execution.change.graph.geometry.edge,
+    () => input.working.graph.edges.keys()
+  )
+  appendScopeIds(
+    edgeIds,
+    input.execution.change.graph.content.edge,
+    () => input.working.graph.edges.keys()
+  )
+  appendScopeIds(
+    edgeIds,
+    input.execution.change.ui.edge,
+    () => input.working.graph.edges.keys()
+  )
+  return edgeIds
 }
 
-const collectMaskEdgeIds = (
+const collectMaskEdgeIds = (input: {
   working: WorkingState
-): ReadonlySet<EdgeId> => idDelta.touchedMany(
-  working.dirty.graph.edge.lifecycle,
-  working.dirty.graph.edge.route,
-  working.dirty.graph.edge.labels
-)
+  execution: WhiteboardSceneExecution
+}): ReadonlySet<EdgeId> => {
+  const edgeIds = new Set<EdgeId>()
+  appendScopeIds(
+    edgeIds,
+    input.execution.change.graph.entity.edge,
+    () => input.working.graph.edges.keys()
+  )
+  appendScopeIds(
+    edgeIds,
+    input.execution.change.graph.geometry.edge,
+    () => input.working.graph.edges.keys()
+  )
+  appendScopeIds(
+    edgeIds,
+    input.execution.change.graph.content.edge,
+    () => input.working.graph.edges.keys()
+  )
+  return edgeIds
+}
 
 const collectActiveEdgeIds = (input: {
   working: WorkingState
   current: Input
-}): ReadonlySet<EdgeId> => new Set<EdgeId>([
-  ...readActiveEdgeIds(input.current),
-  ...input.working.render.active.keys(),
-  ...input.working.dirty.graph.edge.lifecycle.added,
-  ...input.working.dirty.graph.edge.lifecycle.updated,
-  ...input.working.dirty.graph.edge.lifecycle.removed,
-  ...input.working.dirty.graph.edge.route.added,
-  ...input.working.dirty.graph.edge.route.updated,
-  ...input.working.dirty.graph.edge.route.removed,
-  ...input.working.dirty.graph.edge.style.added,
-  ...input.working.dirty.graph.edge.style.updated,
-  ...input.working.dirty.graph.edge.style.removed,
-  ...input.working.dirty.graph.edge.box.added,
-  ...input.working.dirty.graph.edge.box.updated,
-  ...input.working.dirty.graph.edge.box.removed,
-  ...input.working.delta.ui.edge.added,
-  ...input.working.delta.ui.edge.updated,
-  ...input.working.delta.ui.edge.removed
-])
+  execution: WhiteboardSceneExecution
+}): ReadonlySet<EdgeId> => {
+  const edgeIds = new Set<EdgeId>([
+    ...readActiveEdgeIds(input.current),
+    ...input.working.render.active.keys()
+  ])
+
+  appendScopeIds(
+    edgeIds,
+    input.execution.change.graph.entity.edge,
+    () => input.working.graph.edges.keys()
+  )
+  appendScopeIds(
+    edgeIds,
+    input.execution.change.graph.geometry.edge,
+    () => input.working.graph.edges.keys()
+  )
+  appendScopeIds(
+    edgeIds,
+    input.execution.change.graph.content.edge,
+    () => input.working.graph.edges.keys()
+  )
+  appendScopeIds(
+    edgeIds,
+    input.execution.change.ui.edge,
+    () => input.working.graph.edges.keys()
+  )
+
+  return edgeIds
+}
 
 const writeNodeRenderDelta = (input: {
   working: WorkingState
@@ -992,6 +1150,7 @@ const replaceIdSegment = <TId extends string>(
 
 const patchStatics = (input: {
   working: WorkingState
+  execution: WhiteboardSceneExecution
   reset: boolean
   statics: boolean
 }): number => {
@@ -1055,7 +1214,10 @@ const patchStatics = (input: {
     return count
   }
 
-  const touchedEdgeIds = collectStaticsEdgeIds(input.working)
+  const touchedEdgeIds = collectStaticsEdgeIds({
+    working: input.working,
+    execution: input.execution
+  })
   if (touchedEdgeIds.size === 0) {
     return 0
   }
@@ -1168,6 +1330,7 @@ const patchStatics = (input: {
 
 const patchNodeRender = (input: {
   working: WorkingState
+  execution: WhiteboardSceneExecution
   reset: boolean
   node: boolean
 }): number => {
@@ -1226,7 +1389,10 @@ const patchNodeRender = (input: {
     return 0
   }
 
-  collectNodeRenderIds(input.working).forEach((nodeId) => {
+  collectNodeRenderIds({
+    working: input.working,
+    execution: input.execution
+  }).forEach((nodeId) => {
     const previousView = previous.get(nodeId)
     const nextCandidate = buildNodeRenderView({
       working: input.working,
@@ -1266,6 +1432,7 @@ const patchNodeRender = (input: {
 
 const patchLabelsAndMasks = (input: {
   working: WorkingState
+  execution: WhiteboardSceneExecution
   reset: boolean
   labels: boolean
   masks: boolean
@@ -1368,10 +1535,16 @@ const patchLabelsAndMasks = (input: {
   }
 
   const touchedLabelEdgeIds = input.labels
-    ? collectLabelEdgeIds(input.working)
+    ? collectLabelEdgeIds({
+        working: input.working,
+        execution: input.execution
+      })
     : new Set<EdgeId>()
   const touchedMaskEdgeIds = input.masks
-    ? collectMaskEdgeIds(input.working)
+    ? collectMaskEdgeIds({
+        working: input.working,
+        execution: input.execution
+      })
     : new Set<EdgeId>()
 
   if (touchedLabelEdgeIds.size === 0 && touchedMaskEdgeIds.size === 0) {
@@ -1562,6 +1735,7 @@ const patchLabelsAndMasks = (input: {
 const patchActive = (input: {
   working: WorkingState
   current: Input
+  execution: WhiteboardSceneExecution
   reset: boolean
   active: boolean
 }): number => {
@@ -1620,7 +1794,8 @@ const patchActive = (input: {
 
   collectActiveEdgeIds({
     working: input.working,
-    current: input.current
+    current: input.current,
+    execution: input.execution
   }).forEach((edgeId) => {
     const previousView = previous.get(edgeId)
     const nextCandidate = activeIds.has(edgeId)
@@ -1712,84 +1887,75 @@ const patchChromeRender = (input: {
 export const patchRenderState = (input: {
   working: WorkingState
   current: Input
+  execution: WhiteboardSceneExecution
   reset: boolean
 }): number => {
   input.working.delta.render = renderChange.create()
+  input.execution.change.render = {
+    node: new Set<NodeId>(),
+    edge: {
+      statics: new Set<EdgeStaticId>(),
+      active: new Set<EdgeId>(),
+      labels: new Set<EdgeLabelKey>(),
+      masks: new Set<EdgeId>()
+    },
+    chrome: {
+      scene: false,
+      edge: false
+    }
+  }
 
   const scope = {
     reset: input.reset,
     node: (
       input.reset
-      || idDelta.hasAnyOf(
-        input.working.dirty.graph.node.lifecycle,
-        input.working.dirty.graph.node.geometry,
-        input.working.dirty.graph.node.content,
-        input.working.dirty.graph.node.owner,
-        input.working.delta.ui.node
-      )
+      || executionScopeHasAny(input.execution.change.graph.entity.node)
+      || executionScopeHasAny(input.execution.change.graph.geometry.node)
+      || executionScopeHasAny(input.execution.change.graph.content.node)
+      || executionScopeHasAny(input.execution.change.graph.owner.node)
+      || executionScopeHasAny(input.execution.change.graph.entity.mindmap)
+      || executionScopeHasAny(input.execution.change.graph.geometry.mindmap)
+      || executionScopeHasAny(input.execution.change.graph.owner.mindmap)
+      || executionScopeHasAny(input.execution.change.ui.node)
     ),
     statics: (
       input.reset
-      || input.working.delta.items.change !== undefined
-      || idDelta.hasAnyOf(
-        input.working.dirty.graph.edge.lifecycle,
-        input.working.dirty.graph.edge.route,
-        input.working.dirty.graph.edge.style
-      )
+      || executionScopeHasAny(input.execution.change.graph.entity.edge)
+      || executionScopeHasAny(input.execution.change.graph.geometry.edge)
+      || executionScopeHasAny(input.execution.change.graph.content.edge)
+      || executionScopeHasAny(input.execution.change.items)
     ),
     active: (
       input.reset
-      || idDelta.hasAnyOf(
-        input.working.dirty.graph.edge.lifecycle,
-        input.working.dirty.graph.edge.route,
-        input.working.dirty.graph.edge.style,
-        input.working.dirty.graph.edge.box,
-        input.working.delta.ui.edge
-      )
-      || Boolean(
-        input.current.runtime.delta.session.hover
-        || input.current.runtime.delta.session.selection
-        || input.current.runtime.delta.session.edit
-      )
+      || executionScopeHasAny(input.execution.change.graph.entity.edge)
+      || executionScopeHasAny(input.execution.change.graph.geometry.edge)
+      || executionScopeHasAny(input.execution.change.graph.content.edge)
+      || executionScopeHasAny(input.execution.change.ui.edge)
+      || input.execution.change.ui.chrome
     ),
     labels: (
       input.reset
-      || idDelta.hasAnyOf(
-        input.working.dirty.graph.edge.lifecycle,
-        input.working.dirty.graph.edge.route,
-        input.working.dirty.graph.edge.labels,
-        input.working.delta.ui.edge
-      )
-      || Boolean(
-        input.current.runtime.delta.session.selection
-        || input.current.runtime.delta.session.edit
-      )
+      || executionScopeHasAny(input.execution.change.graph.entity.edge)
+      || executionScopeHasAny(input.execution.change.graph.geometry.edge)
+      || executionScopeHasAny(input.execution.change.graph.content.edge)
+      || executionScopeHasAny(input.execution.change.ui.edge)
     ),
     masks: (
       input.reset
-      || idDelta.hasAnyOf(
-        input.working.dirty.graph.edge.lifecycle,
-        input.working.dirty.graph.edge.route,
-        input.working.dirty.graph.edge.labels
-      )
+      || executionScopeHasAny(input.execution.change.graph.entity.edge)
+      || executionScopeHasAny(input.execution.change.graph.geometry.edge)
+      || executionScopeHasAny(input.execution.change.graph.content.edge)
     ),
     overlay: (
       input.reset
-      || idDelta.hasAnyOf(
-        input.working.dirty.graph.edge.route,
-        input.working.dirty.graph.edge.endpoints,
-        input.working.dirty.graph.edge.box
-      )
-      || Boolean(
-        input.current.runtime.delta.session.tool
-        || input.current.runtime.delta.session.interaction
-        || input.current.runtime.delta.session.preview.edgeGuide
-        || input.current.runtime.delta.session.selection
-        || input.current.runtime.delta.session.hover
-        || input.current.runtime.delta.session.edit
-      )
+      || executionScopeHasAny(input.execution.change.graph.entity.edge)
+      || executionScopeHasAny(input.execution.change.graph.geometry.edge)
+      || executionScopeHasAny(input.execution.change.graph.content.edge)
+      || executionScopeHasAny(input.execution.change.ui.edge)
+      || input.execution.change.ui.chrome
+      || input.execution.runtime.ui
     ),
-    chrome: input.reset || input.working.delta.ui.chrome
+    chrome: input.reset || input.execution.change.ui.chrome
   }
 
   if (
@@ -1805,19 +1971,22 @@ export const patchRenderState = (input: {
     return 0
   }
 
-  return (
+  const count = (
     patchNodeRender({
       working: input.working,
+      execution: input.execution,
       reset: scope.reset,
       node: scope.node
     })
     + patchStatics({
       working: input.working,
+      execution: input.execution,
       reset: scope.reset,
       statics: scope.statics
     })
     + patchLabelsAndMasks({
       working: input.working,
+      execution: input.execution,
       reset: scope.reset,
       labels: scope.labels,
       masks: scope.masks
@@ -1825,6 +1994,7 @@ export const patchRenderState = (input: {
     + patchActive({
       working: input.working,
       current: input.current,
+      execution: input.execution,
       reset: scope.reset,
       active: scope.active
     })
@@ -1841,4 +2011,20 @@ export const patchRenderState = (input: {
       overlay: scope.overlay
     })
   )
+
+  input.execution.change.render = {
+    node: idDelta.touched(input.working.delta.render.node),
+    edge: {
+      statics: idDelta.touched(input.working.delta.render.edge.statics),
+      active: idDelta.touched(input.working.delta.render.edge.active),
+      labels: idDelta.touched(input.working.delta.render.edge.labels),
+      masks: idDelta.touched(input.working.delta.render.edge.masks)
+    },
+    chrome: {
+      scene: input.working.delta.render.chrome.scene,
+      edge: input.working.delta.render.chrome.edge
+    }
+  }
+
+  return count
 }

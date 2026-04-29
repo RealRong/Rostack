@@ -32,13 +32,15 @@ import type {
 import {
   createItemsDelta,
   renderChange,
-  resetGraphDirty,
   uiChange,
   resetGraphDelta
 } from '../contracts/delta'
 import type {
   WorkingState
 } from '../contracts/working'
+import {
+  executionScopeHasAny
+} from '../contracts/execution'
 import type {
   EdgeActiveView,
   EdgeLabelKey,
@@ -51,9 +53,11 @@ import { patchDocumentState } from '../model/document/patch'
 import { patchItemsState } from '../model/items/patch'
 import { patchRenderState } from '../model/render/patch'
 import { patchSpatial } from '../model/spatial/update'
+import { resetSpatialDelta } from '../model/spatial/update'
 import { patchUiState } from '../model/ui/patch'
 import { createEditorSceneRead } from './read'
 import { buildEditorSceneCapture } from './capture'
+import { createWhiteboardSceneExecution } from './execution'
 import { createWorking } from './state'
 
 export type EditorScenePhaseName =
@@ -179,7 +183,6 @@ const resetGraphPhaseDelta = (
   state: WorkingState
 ) => {
   resetGraphDelta(state.delta.graph)
-  resetGraphDirty(state.dirty.graph)
 }
 
 const resetItemsPhaseDelta = (
@@ -198,6 +201,20 @@ const resetRenderPhaseDelta = (
   state: WorkingState
 ) => {
   state.delta.render = renderChange.create()
+}
+
+const collectItemChangeScope = (
+  state: WorkingState
+): WorkingState['execution']['change']['items'] => {
+  const change = state.delta.items.change
+  if (!change) {
+    return new Set<SceneItemKey>()
+  }
+
+  return new Set<SceneItemKey>([
+    ...(change.set ?? []),
+    ...(change.remove ?? [])
+  ])
 }
 
 const toDocumentSnapshot = (
@@ -416,6 +433,7 @@ export const createEditorSceneProjection = (input: {
         working: ctx.state,
         reset: ctx.dirty.reset
       })
+      ctx.state.execution = createWhiteboardSceneExecution(ctx.input)
 
       if (
         ctx.revision === 1
@@ -432,8 +450,9 @@ export const createEditorSceneProjection = (input: {
         const result = patchGraphState({
           revision: ctx.revision,
           current: ctx.input,
+          execution: ctx.state.execution,
           working: ctx.state,
-          reset: ctx.revision === 1,
+          reset: ctx.revision === 1 || ctx.state.execution.reset,
           previousDocument: dirty.previousDocument
         })
         if (!result.ran) {
@@ -454,13 +473,28 @@ export const createEditorSceneProjection = (input: {
     spatial: {
       after: ['graph'],
       run: (ctx) => {
+        if (
+          !(
+            ctx.revision === 1
+            || ctx.state.execution.reset
+            || ctx.state.execution.order
+            || executionScopeHasAny(ctx.state.execution.change.graph.geometry.node)
+            || executionScopeHasAny(ctx.state.execution.change.graph.geometry.edge)
+            || executionScopeHasAny(ctx.state.execution.change.graph.geometry.mindmap)
+            || executionScopeHasAny(ctx.state.execution.change.graph.geometry.group)
+          )
+        ) {
+          resetSpatialDelta(ctx.state.delta.spatial)
+          return
+        }
+
         const result = patchSpatial({
           revision: ctx.revision,
           graph: ctx.state.graph,
           snapshot: toDocumentSnapshot(ctx.input.document),
           graphDelta: ctx.state.delta.graph,
           state: ctx.state.spatial,
-          reset: ctx.revision === 1,
+          reset: ctx.revision === 1 || ctx.state.execution.reset,
           delta: ctx.state.delta.spatial
         })
 
@@ -472,10 +506,17 @@ export const createEditorSceneProjection = (input: {
     items: {
       after: ['graph'],
       run: (ctx) => {
+        ctx.state.execution.change.items = new Set<SceneItemKey>()
+
         if (
           !(
             ctx.revision === 1
-            || ctx.input.delta.graph.affects.items()
+            || ctx.state.execution.reset
+            || ctx.state.execution.order
+            || executionScopeHasAny(ctx.state.execution.change.graph.entity.node)
+            || executionScopeHasAny(ctx.state.execution.change.graph.entity.edge)
+            || executionScopeHasAny(ctx.state.execution.change.graph.entity.mindmap)
+            || executionScopeHasAny(ctx.state.execution.change.graph.entity.group)
           )
         ) {
           resetItemsPhaseDelta(ctx.state)
@@ -486,13 +527,18 @@ export const createEditorSceneProjection = (input: {
           revision: ctx.revision,
           snapshot: toDocumentSnapshot(ctx.input.document),
           working: ctx.state,
-          reset: ctx.revision === 1 || ctx.input.delta.reset === true
+          reset: ctx.revision === 1 || ctx.state.execution.reset
         })
 
         if (!result.changed) {
           return
         }
 
+        ctx.state.execution.change.items = (
+          ctx.revision === 1 || ctx.state.execution.reset
+            ? 'all'
+            : collectItemChangeScope(ctx.state)
+        )
         ctx.phase.items.changed = true
       }
     },
@@ -501,13 +547,17 @@ export const createEditorSceneProjection = (input: {
       run: (ctx) => {
         const count = patchUiState({
           current: ctx.input,
+          execution: ctx.state.execution,
           working: ctx.state,
-          reset: ctx.revision === 1 || ctx.input.delta.reset === true
+          reset: ctx.revision === 1 || ctx.state.execution.reset
         })
 
         if (count > 0) {
           ctx.phase.ui.changed = true
+          return
         }
+
+        resetUiPhaseDelta(ctx.state)
       }
     },
     render: {
@@ -515,8 +565,9 @@ export const createEditorSceneProjection = (input: {
       run: (ctx) => {
         const count = patchRenderState({
           current: ctx.input,
+          execution: ctx.state.execution,
           working: ctx.state,
-          reset: ctx.revision === 1 || ctx.input.delta.reset === true
+          reset: ctx.revision === 1 || ctx.state.execution.reset
         })
 
         if (count > 0) {

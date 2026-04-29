@@ -230,7 +230,7 @@ const sameOrder = <T,>(
 const hasDeltaChanges = (
   delta: MutationDelta
 ): boolean => delta.reset === true
-  || Object.keys(delta.changes ?? {}).length > 0
+  || delta.changes.size > 0
 
 const isQueryStateEmpty = (
   state: QueryPhaseState

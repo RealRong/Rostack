@@ -65,7 +65,7 @@ MutationDelta
 
 这说明 editor-scene 不能继续围绕旧 scope/emit/plan runtime 修补，必须直接重写到新的 `createProjection(...)` 模型。
 
-## 4. `GraphDelta / GraphChanges / UiDelta / RenderDelta` 可以保留，但只能作为 runtime 内部 phase delta
+## 4. `GraphDelta / SpatialDelta / ItemsDelta / UiDelta / RenderDelta` 可以保留，但只能作为 runtime 内部 phase delta
 
 这几类 delta 不是持久化协议，它们是：
 
@@ -78,7 +78,12 @@ MutationDelta
 - 不再从 `EngineDelta / DocumentDelta` 派生
 - 不再作为 engine/scene 公共接缝出现
 
-换句话说，`MutationDelta` 是唯一正式 document delta，`GraphDelta / UiDelta / RenderDelta` 只是 projection runtime 内部状态。
+同时需要明确：
+
+- `graphChanges` 这类更细粒度的 touched/invalidation 信息如果仍然需要，最终应收敛到 `state.dirty.graph`
+- 不应再把它建模成与 `state.delta.graph` 并列的第二个 graph delta
+
+换句话说，`MutationDelta` 是唯一正式 document delta，`GraphDelta / SpatialDelta / ItemsDelta / UiDelta / RenderDelta` 只是 projection runtime 内部状态；render 所需的更细粒度 graph invalidation 仍可存在，但它属于 `dirty`，不属于第二套 `delta`。
 
 ## 最终架构决策
 
@@ -201,6 +206,98 @@ interface EditorSceneProjectionInput {
 
 因为它们描述的是非持久化 scene 本地状态，不是 mutation 协议。
 
+## 3.1 `shared/mutation` 必须提供最终读模型，scene 不再自建 helper
+
+whiteboard 这里真正缺的不是 `readTouchedNodes(...)` 这类 scene helper，而是 `MutationDelta` 自身的读取能力。
+
+当前问题有两个：
+
+- `MutationDelta.changes` 只是裸 `Record<string, MutationChange>`
+- `MutationChange` 还是 `true | string[] | object` 的 union 形态
+
+这会直接导致上层每次都要先发明一层 helper 去解释：
+
+- key 是否存在
+- ids 怎么取
+- paths 怎么取
+- payload 怎么取
+
+这不是最终态。
+
+最终设计应当是：
+
+- `MutationDeltaInput` 继续允许写入侧使用轻量输入形态
+- engine commit 暴露出来的 normalized `MutationDelta` 必须是稳定、直接可读的读模型
+- scene / dataview / projection runtime 直接读取 `MutationDelta`
+- 不再为 whiteboard 单独发明 `readTouchedNodes(...) / hasEdgeRouteChanges(...)` 之类 helper 文件
+
+推荐最终 API：
+
+```ts
+type MutationChangeInput =
+  | true
+  | readonly string[]
+  | {
+      ids?: readonly string[] | 'all'
+      paths?: Record<string, readonly string[] | 'all'> | 'all'
+      order?: true
+      [payload: string]: unknown
+    }
+
+interface MutationChange {
+  ids?: readonly string[] | 'all'
+  paths?: Readonly<Record<string, readonly string[] | 'all'>> | 'all'
+  order?: true
+  [payload: string]: unknown
+}
+
+interface MutationChangeMap {
+  readonly size: number
+  has(key: string): boolean
+  get(key: string): MutationChange | undefined
+  keys(): Iterable<string>
+  entries(): Iterable<[string, MutationChange]>
+}
+
+interface MutationDelta {
+  reset?: true
+  changes: MutationChangeMap
+}
+```
+
+几个明确约束：
+
+- projection/runtime 读取的一律是 normalized `MutationDelta`，不是 `MutationDeltaInput`
+- normalized `MutationDelta.changes` 必须始终存在，哪怕是空 map，也不能再是可选裸对象
+- `MutationChange` 在读模型里不再暴露 `true | string[]` 这类 union 简写，统一归一化成 object 形态
+
+这样 phase 里就可以直接内联读取，而不是再包 helper：
+
+```ts
+const changes = delta.changes
+
+const canvasOrderChanged =
+  delta.reset === true
+  || changes.has('canvas.order')
+
+const nodeGeometryIds =
+  changes.get('node.geometry')?.ids
+
+const edgeRouteIds =
+  changes.get('edge.route')?.ids
+
+const backgroundChanged =
+  delta.reset === true
+  || changes.has('document.background')
+```
+
+这才是最终态：
+
+- 语义 key 直接可读
+- phase 判断可以直接内联
+- 不需要 whiteboard 自己再维护 `dirty.ts`
+- 不需要 dataview 自己再维护一层 `readMutationChange / readChangeIds / readChangePaths` 包装协议
+
 ## 4. editor-scene 必须直接切到 `createProjection(...)`
 
 最终不允许再保留：
@@ -291,7 +388,18 @@ document
 - patch graph node/edge/mindmap/group 视图
 - patch indexes
 - 生成内部 `state.delta.graph`
-- 生成内部 `state.delta.graphChanges`
+- 生成内部 `state.dirty.graph`
+
+这里要严格区分两层含义：
+
+- `state.delta.graph` 是 graph phase 的正式结果增量，供 `spatial / items / surface` 消费
+- `state.dirty.graph` 是 render 等 hot-path phase 需要的细粒度 invalidation 集合，例如 `node.content / edge.route / edge.labels / edge.box / mindmap.connectors / group.membership`
+
+最终态不应再保留：
+
+- `state.delta.graphChanges`
+
+因为它本质上不是第二个 graph 结果 delta，而是 graph phase 内部的 render invalidation bag。
 
 最终不再读：
 
@@ -385,28 +493,38 @@ items phase 的正式 document 判脏来源只有：
 - edge statics / labels / masks / active 都是 hot-path family
 - 这些 family 需要 phase 直接产出 patch，不能退化成全量 diff
 
-## 新的 dirty helper 设计
+## `MutationDelta` 读取原则
 
-推荐新增：
+最终不建议新增：
 
 - `whiteboard-editor-scene/src/runtime/mutation/dirty.ts`
+- `readTouchedNodes(...)`
+- `readTouchedEdges(...)`
+- `readTouchedMindmaps(...)`
+- `readTouchedGroups(...)`
+- `hasCanvasOrderChange(...)`
+- `hasBackgroundChange(...)`
+- `hasNodeGeometryChanges(...)`
+- `hasEdgeRouteChanges(...)`
 
-只负责从 `MutationDelta` 读取 semantic dirty facts，例如：
+原因很明确：
 
-- `readTouchedNodes(delta)`
-- `readTouchedEdges(delta)`
-- `readTouchedMindmaps(delta)`
-- `readTouchedGroups(delta)`
-- `hasCanvasOrderChange(delta)`
-- `hasBackgroundChange(delta)`
-- `hasNodeGeometryChanges(delta, ids?)`
-- `hasEdgeRouteChanges(delta, ids?)`
+- 如果 scene 要靠这类 helper 才能读懂 `MutationDelta`，说明读模型本身不够直观
+- 这些 helper 一旦进入代码库，就会继续膨胀成第二层协议
+- 最后会把 semantic key 又重新包回“本地兼容层”
 
-这个文件的定位要和 dataview 的 [dirty.ts](/Users/realrong/Rostack/dataview/packages/dataview-engine/src/active/projection/dirty.ts) 一样：
+最终原则应当固定为：
 
-- 只读 `MutationDelta`
-- 不做 runtime patch
-- 不输出兼容 delta
+- `MutationDelta` 自身提供最终读取能力
+- phase 默认直接内联读取 semantic key
+- 只有极少数完全通用的能力，才允许下沉到 `shared/mutation`
+- 不允许在 whiteboard-editor-scene 内部再发明一层 mutation helper 协议
+
+scene runtime 内部仍然可以保留：
+
+- `state.dirty.graph`
+
+但它的职责只是承载 graph phase 产出的细粒度 invalidation facts，供 render phase 判脏和收集 touched ids 使用；它不是 document delta 读取层，也不是 `MutationDelta` 的解释器。
 
 ## 公共 API 最终形态
 
@@ -479,7 +597,34 @@ interface EditorSceneProjectionInput {
 
 ## 实施顺序
 
-## Phase 1. 清掉 engine publish glue
+## Phase 1. 先收敛 `shared/mutation` 的最终读模型
+
+必须完成：
+
+- 区分写侧 `MutationDeltaInput` 和读侧 normalized `MutationDelta`
+- normalized `MutationDelta` 改成稳定读模型：`delta.changes` 始终存在且提供 `has/get/keys/entries/size`
+- normalized `MutationChange` 改成统一 object 形态，不再向读侧暴露 `true | string[] | object` union
+- engine commit、projection input、runtime phase 读取的一律是新的 normalized `MutationDelta`
+- 不保留 “旧裸对象 `changes` + 新读模型并存” 的双轨期
+
+验收：
+
+- `rg "changes\\?\\[|Object\\.keys\\(delta\\.changes|Object\\.entries\\(delta\\.changes|readMutationChange|readChangeIds|readChangePaths|readChangePayload|hasDeltaChange" dataview/packages/dataview-engine shared/projection whiteboard/packages/whiteboard-editor-scene -g '*.ts'` 无结果
+
+## Phase 2. 迁移所有读侧消费者到 `delta.changes.has/get(...)`
+
+必须完成：
+
+- dataview 删除基于旧裸对象/旧 helper 的 delta 读取层，直接读取新的 `MutationDelta`
+- `shared/projection` 删除内部 `readMutationChange / readChangeIds` 这类旧解释器，直接读取新的 `MutationDelta`
+- whiteboard 后续 phase 代码统一按 `delta.changes.has/get(...)` 内联读取
+- 不新增任何 dataview/whiteboard 本地 mutation helper 协议
+
+验收：
+
+- `rg "readMutationChange|readChangeIds|readChangePaths|readChangePayload|hasDeltaChange" dataview/packages/dataview-engine shared/projection whiteboard/packages/whiteboard-editor-scene -g '*.ts'` 无结果
+
+## Phase 3. 清掉 engine publish glue
 
 必须完成：
 
@@ -492,7 +637,7 @@ interface EditorSceneProjectionInput {
 
 - `rg "EnginePublish|EngineDelta|createEngineDelta|createEnginePublish|createInitialEnginePublish|createEnginePublishFromCommit" whiteboard/packages/whiteboard-engine -g '*.ts'` 无结果
 
-## Phase 2. 重写 editor-scene source contract
+## Phase 4. 重写 editor-scene source contract
 
 必须完成：
 
@@ -505,7 +650,7 @@ interface EditorSceneProjectionInput {
 
 - `rg "document\\.publish|EngineSnapshot|DocumentDelta|createDocumentInputDelta" whiteboard/packages/whiteboard-editor-scene -g '*.ts'` 无结果
 
-## Phase 3. 把 scene input 切到 `MutationDelta + RuntimeInputDelta`
+## Phase 5. 把 scene input 切到 `MutationDelta + RuntimeInputDelta`
 
 必须完成：
 
@@ -518,7 +663,7 @@ interface EditorSceneProjectionInput {
 
 - `rg "delta\\.document|InputDelta|DocumentDelta" whiteboard/packages/whiteboard-editor-scene/src -g '*.ts'` 只允许剩余新的 `RuntimeInputDelta` 定义，不允许旧 document delta 结构
 
-## Phase 4. editor-scene 切到 `createProjection(...)`
+## Phase 6. editor-scene 切到 `createProjection(...)`
 
 必须完成：
 
@@ -532,42 +677,51 @@ interface EditorSceneProjectionInput {
 
 - `rg "createProjectionRuntime|ProjectionSpec|ScopeSchema|ScopeValue|ScopeInputValue" whiteboard/packages/whiteboard-editor-scene -g '*.ts'` 无结果
 
-## Phase 5. 直接以 `MutationDelta` 驱动 graph phase
+## Phase 7. 直接以 `MutationDelta` 驱动 graph/runtime phases
 
 必须完成：
 
-- 新增 `runtime/mutation/dirty.ts`
+- graph/document/items/ui/render phases 直接用 `delta.changes.has/get(...)` 读取 semantic key
 - graph phase 直接解析 `node.* / edge.* / mindmap.* / group.* / canvas.order / document.background`
 - 删除 `EngineDelta -> GraphScopeInput` 这层兼容转换
+- `state.dirty.graph` 由 graph phase 直接产出，不再由 `state.delta.graph` 二次翻译成 `graphChanges`
+- 不新增 whiteboard 本地 mutation helper 协议
 
 验收：
 
 - `rg "EngineDelta|delta\\.document\\.|createDocumentInputDelta" whiteboard/packages/whiteboard-editor-scene/src/runtime whiteboard/packages/whiteboard-editor-scene/src/model -g '*.ts'` 无结果
+- `rg "readTouchedNodes|readTouchedEdges|readTouchedMindmaps|readTouchedGroups|hasCanvasOrderChange|hasBackgroundChange|hasNodeGeometryChanges|hasEdgeRouteChanges" whiteboard/packages/whiteboard-editor-scene -g '*.ts'` 无结果
+- `rg "graphChanges" whiteboard/packages/whiteboard-editor-scene -g '*.ts'` 无结果
 
-## Phase 6. 收口测试和内部 delta 边界
+## Phase 8. 收口测试和内部 delta 边界
 
 必须完成：
 
 - scene 测试改为直接构造 `MutationDelta`
+- dataview 测试改为直接断言新的 `MutationDelta` 读模型，而不是旧 helper/旧裸对象读取
 - engine 测试不再断言 `current().delta`
-- `GraphDelta / GraphChanges / SpatialDelta / ItemsDelta / UiDelta / RenderDelta` 保留为 runtime 内部状态，不再作为公共接缝
+- `GraphDelta / SpatialDelta / ItemsDelta / UiDelta / RenderDelta` 保留为 runtime 内部状态，不再作为公共接缝
+- render 需要的细粒度 graph touched/invalidation 统一收敛到 `state.dirty.graph`
 
 验收：
 
-- `rg "current\\(\\)\\.delta|publish\\.delta|EngineDelta" whiteboard/packages -g '*.ts'` 无结果
+- `rg "current\\(\\)\\.delta|publish\\.delta|EngineDelta|graphChanges" whiteboard/packages -g '*.ts'` 无结果
 
 ## 最终验收标准
 
 全部完成后，必须同时满足：
 
 1. `whiteboard-editor-scene` 的唯一正式 document delta 输入是 `MutationDelta`
-2. `whiteboard-engine` 不再维护 `EnginePublish / EngineDelta`
-3. `whiteboard-editor-scene` 不再维护 `DocumentDelta`
-4. `whiteboard-editor-scene` 不再依赖 `createProjectionRuntime`
-5. `whiteboard-editor-scene` 不再依赖旧 scope/emit projection 协议
-6. `graph / spatial / items / ui / render` 只是单一 runtime 的内部 phases
-7. 没有任何“新 MutationDelta + 旧 EngineDelta/DocumentDelta 并存”的过渡结构
-8. edge statics / active / labels / masks 等 hot-path family 仍然由 phase 直接产出 patch，不退化成全量 diff
+2. `MutationDelta` 的读取能力由 `shared/mutation` 统一提供，读侧直接使用 `delta.changes.has/get(...)`
+3. dataview / shared-projection / whiteboard-editor-scene 都不再维护自己的 mutation 解释层
+4. `whiteboard-engine` 不再维护 `EnginePublish / EngineDelta`
+5. `whiteboard-editor-scene` 不再维护 `DocumentDelta`
+6. `whiteboard-editor-scene` 不再依赖 `createProjectionRuntime`
+7. `whiteboard-editor-scene` 不再依赖旧 scope/emit projection 协议
+8. `graph / spatial / items / ui / render` 只是单一 runtime 的内部 phases
+9. 没有任何“新 MutationDelta + 旧 EngineDelta/DocumentDelta 并存”的过渡结构
+10. edge statics / active / labels / masks 等 hot-path family 仍然由 phase 直接产出 patch，不退化成全量 diff
+11. `state.delta.graphChanges` 被删除，细粒度 graph invalidation 统一收敛到 `state.dirty.graph`
 
 ## 结论
 
@@ -576,7 +730,8 @@ interface EditorSceneProjectionInput {
 - `whiteboard-engine` 删除 publish glue
 - scene source 删除 `publish`/`EngineDelta`/`DocumentDelta`
 - scene projection 输入直接变成 `MutationDelta + RuntimeInputDelta`
+- `MutationDelta` 本身收敛到直接可读的最终读模型，phase 通过 `delta.changes.has/get(...)` 直接内联读取 semantic key
 - editor-scene 直接重写到 `createProjection(...)`
 - graph/spatial/items/ui/render 全部成为单一 runtime 的内部 phases
 
-任何“保留 `EngineDelta` 给 scene 用，再额外加 `MutationDelta`”的方案，或者“保留 `createProjectionRuntime` 先跑着”的方案，都不是最终态，只是旧架构继续续命。
+任何“保留 `EngineDelta` 给 scene 用，再额外加 `MutationDelta`”的方案，或者“保留 `createProjectionRuntime` 先跑着”的方案，或者“再在 scene 里包一层 `readTouchedNodes(...)` helper 才能消费 delta”的方案，都不是最终态，只是旧架构继续续命。

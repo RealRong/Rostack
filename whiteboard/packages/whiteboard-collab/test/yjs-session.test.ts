@@ -13,7 +13,7 @@ const createTestEngine = (id = 'doc_test') =>
 
 const readDocument = (
   engine: ReturnType<typeof createTestEngine>
-) => engine.current().snapshot.document
+) => engine.current().doc
 
 const createStore = (
   doc: Y.Doc

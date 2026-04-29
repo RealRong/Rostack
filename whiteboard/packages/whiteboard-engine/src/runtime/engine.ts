@@ -32,10 +32,6 @@ import type {
 } from '../contracts/intent'
 import { failure } from '../result'
 import type { Document, Operation, ResultCode } from '@whiteboard/core/types'
-import {
-  createEnginePublishFromCommit,
-  createInitialEnginePublish
-} from './publish'
 
 const resolveIntentOrigin = (
   intent: Intent,
@@ -134,19 +130,25 @@ export const createEngine = ({
       }
     }
   })
-  let publish = createInitialEnginePublish(core.document())
-  const publishListeners = new Set<(publish: ReturnType<Engine['current']>) => void>()
+  let current: ReturnType<Engine['current']> = {
+    rev: 0,
+    doc: core.document()
+  }
+  const currentListeners = new Set<(current: ReturnType<Engine['current']>) => void>()
 
   core.subscribe((commit) => {
-    publish = createEnginePublishFromCommit(commit)
+    current = {
+      rev: commit.rev,
+      doc: commit.document
+    }
     if (commit.kind === 'apply' && commit.forward.some((op) => isCheckpointOperation(op))) {
       core.history.clear()
     }
     if (onDocumentChange) {
       onDocumentChange(commit.document)
     }
-    publishListeners.forEach((listener) => {
-      listener(publish)
+    currentListeners.forEach((listener) => {
+      listener(current)
     })
   })
 
@@ -157,11 +159,11 @@ export const createEngine = ({
     },
     history: core.history,
     doc: () => core.document(),
-    current: () => publish,
+    current: () => current,
     subscribe: (listener) => {
-      publishListeners.add(listener)
+      currentListeners.add(listener)
       return () => {
-        publishListeners.delete(listener)
+        currentListeners.delete(listener)
       }
     },
     execute: <TIntent extends Intent>(

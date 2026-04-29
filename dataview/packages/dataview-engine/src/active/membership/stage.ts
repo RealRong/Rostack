@@ -75,8 +75,8 @@ const resolveMembershipAction = (input: {
     hasViewQueryChange(input.delta, input.activeViewId, ['group'])
     || hasFieldSchemaChange(input.delta, groupField)
     || input.delta.reset === true
-    || input.delta.changes?.['record.create'] !== undefined
-    || input.delta.changes?.['record.delete'] !== undefined
+    || input.delta.changes.has('record.create')
+    || input.delta.changes.has('record.delete')
   ) {
     return 'rebuild'
   }

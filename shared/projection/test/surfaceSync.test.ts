@@ -1,5 +1,11 @@
 import { expect, it } from 'vitest'
-import type { MutationDelta } from '@shared/mutation'
+import {
+  createMutationChangeMap,
+  EMPTY_MUTATION_CHANGE_MAP,
+  type MutationChange,
+  type MutationChangeInput,
+  type MutationDelta
+} from '@shared/mutation'
 import { createProjection } from '../src'
 
 type Item = {
@@ -27,6 +33,39 @@ type State = {
     byId: ReadonlyMap<string, Item>
   }
   customPatch: Input['customPatch']
+}
+
+const createDelta = (
+  changes?: Record<string, MutationChangeInput>
+): MutationDelta => ({
+  changes: changes
+    ? createMutationChangeMap(
+        Object.fromEntries(
+          Object.entries(changes).map(([key, change]) => [
+            key,
+            normalizeChange(change)
+          ])
+        )
+      )
+    : EMPTY_MUTATION_CHANGE_MAP
+})
+
+const normalizeChange = (
+  change: MutationChangeInput
+): MutationChange => {
+  if (change === true) {
+    return {
+      ids: 'all'
+    }
+  }
+
+  if (Array.isArray(change)) {
+    return {
+      ids: change
+    }
+  }
+
+  return change
 }
 
 const sameOrder = <T,>(
@@ -126,7 +165,7 @@ it('value field changed=false skips read and notification', async () => {
   })
 
   runtime.update({
-    delta: {},
+    delta: createDelta(),
     value: 1,
     skipValue: true
   })
@@ -145,7 +184,7 @@ it('declared changed keys gate value store updates', async () => {
   })
 
   runtime.update({
-    delta: {},
+    delta: createDelta(),
     value: 1
   })
   await Promise.resolve()
@@ -154,11 +193,9 @@ it('declared changed keys gate value store updates', async () => {
   expect(runtime.stores.declaredValue.get()).toBe(0)
 
   runtime.update({
-    delta: {
-      changes: {
-        'value.changed': true
-      }
-    },
+    delta: createDelta({
+      'value.changed': true
+    }),
     value: 2
   })
   await Promise.resolve()
@@ -171,11 +208,9 @@ it('simple family patch applies only touched keys and preserves ids reference', 
   const runtime = createRuntime()
 
   runtime.update({
-    delta: {
-      changes: {
-        'items.create': ['a', 'b']
-      }
-    },
+    delta: createDelta({
+      'items.create': ['a', 'b']
+    }),
     value: 0,
     items: [{
       id: 'a',
@@ -197,11 +232,9 @@ it('simple family patch applies only touched keys and preserves ids reference', 
   })
 
   runtime.update({
-    delta: {
-      changes: {
-        'items.update': ['a']
-      }
-    },
+    delta: createDelta({
+      'items.update': ['a']
+    }),
     value: 0,
     items: [{
       id: 'a',
@@ -224,11 +257,9 @@ it('custom family patch builder can skip writes', async () => {
   const runtime = createRuntime()
 
   runtime.update({
-    delta: {
-      changes: {
-        'items.custom': true
-      }
-    },
+    delta: createDelta({
+      'items.custom': true
+    }),
     value: 0,
     items: [{
       id: 'a',
@@ -243,11 +274,9 @@ it('custom family patch builder can skip writes', async () => {
   })
 
   runtime.update({
-    delta: {
-      changes: {
-        'items.custom': true
-      }
-    },
+    delta: createDelta({
+      'items.custom': true
+    }),
     value: 0,
     items: [{
       id: 'a',

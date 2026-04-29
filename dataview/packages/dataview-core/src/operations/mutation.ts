@@ -39,8 +39,8 @@ import {
   entityTable
 } from '@shared/core'
 import type {
+  MutationChangeInput,
   MutationCustomTable,
-  MutationDelta,
   MutationDeltaInput,
   MutationFootprint
 } from '@shared/mutation'
@@ -108,7 +108,7 @@ const appendPathsChange = (
 const appendObjectChange = (
   delta: MutationDeltaInput,
   key: string,
-  change: Exclude<MutationDelta['changes'], undefined>[string]
+  change: MutationChangeInput
 ): void => {
   delta.changes ??= {}
   delta.changes[key] = change

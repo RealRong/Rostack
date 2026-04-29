@@ -11,6 +11,7 @@ import {
   operations as dataviewOperations
 } from '@dataview/core/operations'
 import {
+  EMPTY_MUTATION_CHANGE_MAP,
   MutationEngine,
   type MutationOptions
 } from '@shared/mutation'
@@ -83,7 +84,8 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
   projection.update({
     document: mutationEngine.current().document,
     delta: {
-      reset: true
+      reset: true,
+      changes: EMPTY_MUTATION_CHANGE_MAP
     },
     runtime: {}
   })

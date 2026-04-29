@@ -23,7 +23,10 @@ import {
 } from '@dataview/engine/active/query/state'
 import { createDocumentReadContext } from '@dataview/engine/document/reader'
 import { entityTable } from '@shared/core'
-import type { MutationDelta } from '@shared/mutation'
+import {
+  EMPTY_MUTATION_CHANGE_MAP,
+  type MutationDelta
+} from '@shared/mutation'
 
 const TITLE_FIELD_ID = 'title'
 const FIELD_STATUS = 'status'
@@ -148,8 +151,11 @@ const createDocument = (input = {}) => {
 }
 
 const createDelta = (
-  delta: MutationDelta = {}
-): MutationDelta => delta
+  delta: Partial<MutationDelta> = {}
+): MutationDelta => ({
+  changes: EMPTY_MUTATION_CHANGE_MAP,
+  ...delta
+})
 
 const normalizeDemand = (document, demand = {}) => {
   const context = createDocumentReadContext(document)

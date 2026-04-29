@@ -7,11 +7,7 @@ import type {
 import type {
   CoreRegistries,
   Document,
-  GroupId,
-  NodeId,
-  Operation,
-  EdgeId,
-  MindmapId
+  Operation
 } from '@whiteboard/core/types'
 import type { BoardConfig } from '@whiteboard/engine/config'
 import type {
@@ -24,31 +20,11 @@ import type {
   IntentKind
 } from './intent'
 import type { IntentResult } from './result'
-import type {
-  IdDelta,
-  Revision
-} from './core'
-export type { IdDelta } from './core'
+import type { Revision } from './core'
 
-export interface Snapshot {
-  revision: Revision
-  document: Document
-}
-
-export interface EngineDelta {
-  reset: boolean
-  background: boolean
-  order: boolean
-  nodes: IdDelta<NodeId>
-  edges: IdDelta<EdgeId>
-  mindmaps: IdDelta<MindmapId>
-  groups: IdDelta<GroupId>
-}
-
-export interface EnginePublish {
+export interface EngineCurrent {
   rev: Revision
-  snapshot: Snapshot
-  delta: EngineDelta
+  doc: Document
 }
 
 export type EngineCommits = {
@@ -65,8 +41,8 @@ export interface Engine {
     EngineApplyCommit
   >
   doc(): Document
-  current(): EnginePublish
-  subscribe(listener: (publish: EnginePublish) => void): () => void
+  current(): EngineCurrent
+  subscribe(listener: (current: EngineCurrent) => void): () => void
   execute<TIntent extends Intent>(
     intent: TIntent,
     options?: MutationOptions

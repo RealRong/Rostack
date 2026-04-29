@@ -24,13 +24,12 @@ test('engine exposes created mindmap roots through committed document and delta'
   }
 
   const { mindmapId, rootId } = result.data
-  const publish = engine.current()
-  const snapshot = publish.snapshot
-  assert.equal(snapshot.document.nodes[rootId]?.type, 'text')
-  assert.equal(snapshot.document.nodes[rootId]?.owner?.kind, 'mindmap')
-  assert.equal(snapshot.document.nodes[rootId]?.owner?.id, mindmapId)
-  assert.equal(snapshot.document.mindmaps[mindmapId]?.root, rootId)
-  assert.ok(Boolean(snapshot.document.mindmaps[mindmapId]?.members[rootId]))
-  assert.ok(publish.delta.nodes.added.has(rootId))
-  assert.ok(publish.delta.mindmaps.added.has(mindmapId))
+  const current = engine.current()
+  assert.equal(current.doc.nodes[rootId]?.type, 'text')
+  assert.equal(current.doc.nodes[rootId]?.owner?.kind, 'mindmap')
+  assert.equal(current.doc.nodes[rootId]?.owner?.id, mindmapId)
+  assert.equal(current.doc.mindmaps[mindmapId]?.root, rootId)
+  assert.ok(Boolean(current.doc.mindmaps[mindmapId]?.members[rootId]))
+  assert.deepEqual(result.commit.delta.changes.get('node.create')?.ids, [rootId])
+  assert.deepEqual(result.commit.delta.changes.get('mindmap.create')?.ids, [mindmapId])
 })

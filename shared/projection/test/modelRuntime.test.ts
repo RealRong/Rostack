@@ -1,10 +1,46 @@
 import { store } from '../../core/src/index.ts'
 import { expect, it } from 'vitest'
+import {
+  createMutationChangeMap,
+  type MutationChange,
+  type MutationChangeInput
+} from '@shared/mutation'
 import { createProjection } from '../src'
 
 type Item = {
   id: string
   value: number
+}
+
+const createDelta = (
+  changes: Record<string, MutationChangeInput>
+) => ({
+  changes: createMutationChangeMap(
+    Object.fromEntries(
+      Object.entries(changes).map(([key, change]) => [
+        key,
+        normalizeChange(change)
+      ])
+    )
+  )
+})
+
+const normalizeChange = (
+  change: MutationChangeInput
+): MutationChange => {
+  if (change === true) {
+    return {
+      ids: 'all'
+    }
+  }
+
+  if (Array.isArray(change)) {
+    return {
+      ids: change
+    }
+  }
+
+  return change
 }
 
 it('projection runtime exposes current output and keyed family subscriptions', () => {
@@ -55,11 +91,9 @@ it('projection runtime exposes current output and keyed family subscriptions', (
   })
 
   const first = runtime.update({
-    delta: {
-      changes: {
-        'items.write': ['a']
-      }
-    },
+    delta: createDelta({
+      'items.write': ['a']
+    }),
     items: [{
       id: 'a',
       value: 1
@@ -74,11 +108,9 @@ it('projection runtime exposes current output and keyed family subscriptions', (
   expect(runtime.current()).toEqual(first.output)
 
   runtime.update({
-    delta: {
-      changes: {
-        'items.write': ['a']
-      }
-    },
+    delta: createDelta({
+      'items.write': ['a']
+    }),
     items: [{
       id: 'a',
       value: 2

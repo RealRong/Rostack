@@ -303,43 +303,29 @@ const isField = <
   )
 )
 
-const readMutationChange = (
-  delta: MutationDelta,
-  key: string
-): MutationChange | undefined => delta.changes?.[key]
-
 const hasDeltaKey = (
   delta: MutationDelta,
   key: string
 ): boolean => delta.reset === true
-  || readMutationChange(delta, key) !== undefined
+  || delta.changes.has(key)
 
-const readChangeIds = (
+const collectChangeIds = (
   change: MutationChange | undefined
 ): readonly string[] | 'all' | undefined => {
   if (!change) {
     return undefined
   }
 
-  if (change === true) {
+  if (change.ids !== undefined) {
+    return change.ids
+  }
+
+  if (change.paths === 'all') {
     return 'all'
   }
 
-  if (Array.isArray(change)) {
-    return change
-  }
-
-  const objectChange = change as Exclude<
-    MutationChange,
-    true | readonly string[]
-  >
-
-  if (objectChange.ids !== undefined) {
-    return objectChange.ids
-  }
-
-  if (objectChange.paths) {
-    return Object.keys(objectChange.paths)
+  if (change.paths) {
+    return Object.keys(change.paths)
   }
 
   return undefined
@@ -379,13 +365,13 @@ const collectPatchIds = (
   let hit = false
   const ids = new Set<string>()
   for (const key of keys ?? []) {
-    const change = readMutationChange(delta, key)
+    const change = delta.changes.get(key)
     if (change === undefined) {
       continue
     }
 
     hit = true
-    const touched = readChangeIds(change)
+    const touched = collectChangeIds(change)
     if (touched === 'all') {
       return {
         hit: true,
@@ -452,7 +438,7 @@ const compilePatchBuilder = <
     if (removed.ids === 'all') {
       return 'replace'
     }
-    const order = orderKeys.some((key) => readMutationChange(delta, key) !== undefined)
+    const order = orderKeys.some((key) => delta.changes.has(key))
 
     if (!created.hit && !updated.hit && !removed.hit && !order) {
       return 'skip'

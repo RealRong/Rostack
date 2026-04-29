@@ -10,9 +10,9 @@ describe('document engine subscribe', () => {
 
     let count = 0
     let revision = -1
-    const unsubscribe = engine.subscribe((publish) => {
+    const unsubscribe = engine.subscribe((current) => {
       count += 1
-      revision = publish.rev
+      revision = current.rev
     })
 
     const result = engine.execute({
@@ -31,7 +31,7 @@ describe('document engine subscribe', () => {
     expect(result.ok).toBe(true)
     expect(count).toBe(1)
     expect(revision).toBe(1)
-    expect(Object.keys(engine.current().snapshot.document.nodes)).toHaveLength(1)
+    expect(Object.keys(engine.current().doc.nodes)).toHaveLength(1)
   })
 
   it('increments revision monotonically across execute and apply', () => {
@@ -65,6 +65,9 @@ describe('document engine subscribe', () => {
 
     expect(second.ok).toBe(true)
     expect(engine.current().rev).toBe(2)
-    expect(engine.current().delta.nodes.updated.has('node_1')).toBe(true)
+    if (!second.ok) {
+      return
+    }
+    expect(second.commit.delta.changes.get('node.geometry')?.ids).toContain('node_1')
   })
 })

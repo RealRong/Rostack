@@ -45,6 +45,7 @@ export type {
 export type {
   MutationChange,
   MutationChangeInput,
+  MutationChangeMap,
   ApplyCommit,
   CommitRecord,
   CommitStream,
@@ -61,6 +62,8 @@ export type {
   Origin
 } from './write'
 export {
+  createMutationChangeMap,
+  EMPTY_MUTATION_CHANGE_MAP,
   assertMutationFootprint,
   assertMutationFootprintList,
   isMutationFootprint

@@ -18,6 +18,8 @@ import type {
   CommitRecord,
   CommitStream,
   MutationChange,
+  MutationChangeMap,
+  MutationChangeInput,
   MutationCommitRecord,
   MutationDelta,
   MutationDeltaInput,
@@ -25,6 +27,10 @@ import type {
   MutationIssue,
   MutationReplaceCommit,
   Origin,
+} from './write'
+import {
+  createMutationChangeMap,
+  EMPTY_MUTATION_CHANGE_MAP
 } from './write'
 
 export interface MutationCompileIssue<
@@ -393,6 +399,7 @@ type CompiledEntitySpec = {
 type DeltaAccumulatorEntry = {
   full: boolean
   ids: Set<string> | 'all'
+  pathsAll: boolean
   paths: Map<string, Set<string> | 'all'>
   order: boolean
   extra: Record<string, unknown>
@@ -411,7 +418,9 @@ const COMPILE_APPLY_FAILED_CODE = 'mutation_engine.compile.apply_failed'
 const APPLY_EMPTY_CODE = 'mutation_engine.apply.empty'
 const EXECUTE_EMPTY_CODE = 'mutation_engine.execute.empty'
 
-const EMPTY_DELTA: MutationDelta = {}
+const EMPTY_DELTA: MutationDelta = {
+  changes: EMPTY_MUTATION_CHANGE_MAP
+}
 const EMPTY_ISSUES: readonly MutationIssue[] = []
 const EMPTY_COMPILE_ISSUES: readonly MutationCompileIssue[] = []
 const EMPTY_OUTPUTS: readonly unknown[] = []
@@ -463,8 +472,8 @@ const isCompileControl = <Code extends string>(
 )
 
 const isMutationChangeObject = (
-  change: MutationChange
-): change is Exclude<MutationChange, true | readonly string[]> => (
+  change: MutationChangeInput
+): change is Exclude<MutationChangeInput, true | readonly string[]> => (
   change !== true
   && !Array.isArray(change)
 )
@@ -932,6 +941,7 @@ const addIdsToChange = (
 ): void => {
   if (ids === 'all') {
     entry.ids = 'all'
+    entry.pathsAll = false
     entry.paths.clear()
     return
   }
@@ -947,8 +957,13 @@ const addIdsToChange = (
 
 const addPathsToChange = (
   entry: DeltaAccumulatorEntry,
-  paths: Record<string, readonly string[] | 'all'>
+  paths: Record<string, readonly string[] | 'all'> | 'all'
 ): void => {
+  if (paths === 'all') {
+    entry.pathsAll = true
+    return
+  }
+
   const entries = Object.entries(paths)
 
   for (let index = 0; index < entries.length; index += 1) {
@@ -974,11 +989,12 @@ const addPathsToChange = (
 const mergeMutationChange = (
   target: Map<string, DeltaAccumulatorEntry>,
   key: string,
-  change: MutationChange
+  change: MutationChangeInput
 ): void => {
   const current = target.get(key) ?? {
     full: false,
     ids: new Set<string>(),
+    pathsAll: false,
     paths: new Map<string, Set<string> | 'all'>(),
     order: false,
     extra: {}
@@ -1077,6 +1093,7 @@ const applyDeleteCoverage = (
     if (covered === 'all') {
       entry.full = false
       entry.ids = new Set<string>()
+      entry.pathsAll = false
       entry.paths.clear()
       return
     }
@@ -1099,7 +1116,7 @@ const finalizeMutationChange = (
 ): MutationChange | undefined => {
   const extraKeys = Object.keys(entry.extra)
   const hasIds = entry.ids === 'all' || entry.ids.size > 0
-  const hasPaths = entry.paths.size > 0
+  const hasPaths = entry.pathsAll || entry.paths.size > 0
 
   if (
     entry.full
@@ -1108,15 +1125,9 @@ const finalizeMutationChange = (
     && !hasPaths
     && extraKeys.length === 0
   ) {
-    return true
-  }
-
-  if (!entry.order && hasIds && !hasPaths && extraKeys.length === 0) {
-    return entry.ids === 'all'
-      ? {
-          ids: 'all'
-        }
-      : toSortedArray(entry.ids)
+    return {
+      ids: 'all'
+    }
   }
 
   if (!entry.order && !hasIds && !hasPaths && extraKeys.length === 0) {
@@ -1131,7 +1142,9 @@ const finalizeMutationChange = (
     change.ids = toSortedArray(entry.ids)
   }
 
-  if (entry.paths.size > 0) {
+  if (entry.pathsAll) {
+    change.paths = 'all'
+  } else if (entry.paths.size > 0) {
     const paths: Record<string, readonly string[] | 'all'> = {}
     entry.paths.forEach((value, id) => {
       paths[id] = value === 'all'
@@ -1154,7 +1167,7 @@ const finalizeMutationChange = (
 }
 
 const normalizeMutationDelta = (
-  input?: MutationDeltaInput
+  input?: MutationDeltaInput | MutationDelta
 ): MutationDelta => {
   if (!input) {
     return EMPTY_DELTA
@@ -1162,7 +1175,9 @@ const normalizeMutationDelta = (
 
   const changes = new Map<string, DeltaAccumulatorEntry>()
   if (input.changes) {
-    const entries = Object.entries(input.changes)
+    const entries = readChangeEntries({
+      changes: input.changes
+    })
     for (let index = 0; index < entries.length; index += 1) {
       const [key, change] = entries[index]!
       mergeMutationChange(changes, key, change)
@@ -1190,17 +1205,25 @@ const normalizeMutationDelta = (
           reset: true
         }
       : {}),
-    ...(hasChanges
-      ? {
-          changes: normalizedChanges
-        }
-      : {})
+    changes: createMutationChangeMap(normalizedChanges)
   }
 }
 
+const readChangeEntries = (
+  source: {
+    changes: MutationChangeMap | Record<string, MutationChangeInput>
+  }
+): readonly (readonly [string, MutationChangeInput])[] => {
+  if ('entries' in source.changes && typeof source.changes.entries === 'function') {
+    return [...source.changes.entries()]
+  }
+
+  return Object.entries(source.changes) as readonly (readonly [string, MutationChangeInput])[]
+}
+
 const mergeMutationDeltas = (
-  left: MutationDeltaInput | undefined,
-  right: MutationDeltaInput | undefined
+  left: MutationDeltaInput | MutationDelta | undefined,
+  right: MutationDeltaInput | MutationDelta | undefined
 ): MutationDelta => {
   if (!left) {
     return normalizeMutationDelta(right)
@@ -1219,7 +1242,9 @@ const mergeMutationDeltas = (
       continue
     }
 
-    const entries = Object.entries(source.changes)
+    const entries = readChangeEntries({
+      changes: source.changes
+    })
     for (let entryIndex = 0; entryIndex < entries.length; entryIndex += 1) {
       const [key, change] = entries[entryIndex]!
       mergeMutationChange(changes, key, change)
@@ -1247,11 +1272,7 @@ const mergeMutationDeltas = (
           reset: true
         }
       : {}),
-    ...(hasChanges
-      ? {
-          changes: normalizedChanges
-        }
-      : {})
+    changes: createMutationChangeMap(normalizedChanges)
   }
 }
 
@@ -1371,7 +1392,7 @@ const buildEntityDelta = (
 
 const hasDeltaFact = (
   delta: MutationDelta
-): boolean => delta.reset === true || delta.changes !== undefined
+): boolean => delta.reset === true || delta.changes.size > 0
 
 const readMutationIssues = (
   issues?: readonly MutationIssue[]
@@ -2564,7 +2585,8 @@ class MutationRuntime<
       origin: options?.origin ?? 'system',
       document: nextDocument,
       delta: {
-        reset: true
+        reset: true,
+        changes: EMPTY_MUTATION_CHANGE_MAP
       },
       issues: EMPTY_ISSUES,
       outputs: EMPTY_OUTPUTS

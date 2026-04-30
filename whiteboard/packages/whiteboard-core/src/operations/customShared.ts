@@ -8,6 +8,9 @@ import type {
 import {
   compileMutationEntityEffects
 } from '@shared/mutation/engine'
+import {
+  whiteboardMutationBuilder
+} from '../mutation'
 import { whiteboardEntities } from '@whiteboard/core/operations/entities'
 import type {
   Document,
@@ -165,11 +168,7 @@ export const createWhiteboardCustomResult = (input: {
     after: input.document,
     effects: entityEffects,
     extraDelta: input.effects?.canvasOrder
-      ? {
-          changes: {
-            'canvas.order': true
-          }
-        }
+      ? whiteboardMutationBuilder.flag('canvas.order')
       : undefined,
     extraFootprint: []
   })

@@ -7,6 +7,7 @@ import type {
   Size
 } from '@whiteboard/core/types'
 import { createEngine } from '@whiteboard/engine'
+import { createWhiteboardMutationDelta } from '@whiteboard/engine/mutation'
 import type { MutationDelta } from '@shared/mutation'
 import type { Input } from '../src/contracts/editor'
 import { createEmptyInput, createEmptyRuntimeInputDelta } from '../src/testing/input'
@@ -15,7 +16,6 @@ import {
   createEditorGraphLayout,
   type EditorGraphLayoutState
 } from '../src/testing/builders'
-import { createWhiteboardMutationDelta } from '../src/mutation/delta'
 import { createEditorSceneProjectionHarness } from '../src/testing/runtime'
 
 const createNode = (input: {

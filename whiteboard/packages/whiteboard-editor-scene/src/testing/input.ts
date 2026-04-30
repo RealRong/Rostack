@@ -4,11 +4,11 @@ import type {
   MindmapId,
   NodeId
 } from '@whiteboard/core/types'
+import { createWhiteboardMutationDelta } from '@whiteboard/engine/mutation'
 import type { Input } from '../contracts/editor'
 import {
   createEmptyEditorSceneRuntimeDelta
 } from '../contracts/plan'
-import { createWhiteboardMutationDelta } from '../mutation/delta'
 import { createEmptyDocumentSnapshot } from '../projection/state'
 
 const EMPTY_MUTATION_CHANGES = Object.freeze(

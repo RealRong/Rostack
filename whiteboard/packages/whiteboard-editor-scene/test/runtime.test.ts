@@ -8,6 +8,7 @@ import type {
   Size
 } from '@whiteboard/core/types'
 import { createEngine } from '@whiteboard/engine'
+import { createWhiteboardMutationDelta } from '@whiteboard/engine/mutation'
 import type { MutationDelta } from '@shared/mutation'
 import {
   type Result
@@ -26,7 +27,6 @@ import { createEmptyInput } from '../src/testing/input'
 import {
   createProjectionRuntime
 } from '../src/projection/createProjectionRuntime'
-import { createWhiteboardMutationDelta } from '../src/mutation/delta'
 
 type RuntimeInputOptions = {
   edit?: EditorSceneInput['runtime']['session']['edit']

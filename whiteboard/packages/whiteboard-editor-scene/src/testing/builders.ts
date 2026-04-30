@@ -3,16 +3,16 @@ import {
   type LayoutNodeCatalog,
   type NodeDraftMeasure
 } from '@whiteboard/core/layout'
+import {
+  createWhiteboardMutationDelta,
+  type WhiteboardMutationDelta
+} from '@whiteboard/engine/mutation'
 import type {
   EdgeId,
   NodeId,
   Size
 } from '@whiteboard/core/types'
 import type { Input } from '../contracts/editor'
-import {
-  createWhiteboardMutationDelta,
-  type WhiteboardMutationDelta
-} from '../mutation/delta'
 import { createEmptyRuntimeInputDelta } from './input'
 
 const EMPTY_MUTATION_CHANGES = Object.freeze(

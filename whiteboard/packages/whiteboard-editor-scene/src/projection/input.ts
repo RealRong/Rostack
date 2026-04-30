@@ -22,7 +22,7 @@ import {
 } from '../contracts/plan'
 import {
   createWhiteboardMutationDelta
-} from '../mutation/delta'
+} from '@whiteboard/engine/mutation'
 import type {
   EditorSceneSourceChange,
   EditorSceneSourceSnapshot

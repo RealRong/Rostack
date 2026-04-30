@@ -2,6 +2,7 @@ export { DEFAULT_BOARD_CONFIG } from './config/defaults'
 export type { BoardConfig } from './config'
 export { normalizeDocument } from '@whiteboard/core/document'
 export { createEngine } from './runtime/engine'
+export * from './mutation'
 
 import { createEngine as createEngineBase } from './runtime/engine'
 

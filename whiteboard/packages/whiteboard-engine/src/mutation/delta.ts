@@ -10,8 +10,8 @@ import {
   type MutationDeltaInput
 } from '@shared/mutation'
 import {
-  defineMutationSchema
-} from '@shared/mutation/typed'
+  whiteboardMutationSchema
+} from '@whiteboard/core/mutation'
 
 export type WhiteboardMutationDelta = MutationDelta & {
   raw: MutationDelta
@@ -103,67 +103,6 @@ export type WhiteboardMutationDelta = MutationDelta & {
     }
   }
 }
-
-const whiteboardMutationSchema = defineMutationSchema({
-  'canvas.order': {},
-  'node.create': {
-    ids: true
-  },
-  'node.delete': {
-    ids: true
-  },
-  'node.geometry': {
-    ids: true
-  },
-  'node.owner': {
-    ids: true
-  },
-  'node.content': {
-    ids: true
-  },
-  'edge.create': {
-    ids: true
-  },
-  'edge.delete': {
-    ids: true
-  },
-  'edge.endpoints': {
-    ids: true
-  },
-  'edge.route': {
-    ids: true
-  },
-  'edge.style': {
-    ids: true
-  },
-  'edge.labels': {
-    ids: true
-  },
-  'edge.data': {
-    ids: true
-  },
-  'mindmap.create': {
-    ids: true
-  },
-  'mindmap.delete': {
-    ids: true
-  },
-  'mindmap.structure': {
-    ids: true
-  },
-  'mindmap.layout': {
-    ids: true
-  },
-  'group.create': {
-    ids: true
-  },
-  'group.delete': {
-    ids: true
-  },
-  'group.value': {
-    ids: true
-  }
-} as const)
 
 const createTouchedIdView = <TId extends string>(
   read: () => ReadonlySet<TId> | 'all',

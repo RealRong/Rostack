@@ -5,6 +5,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./config": "./src/config/index.ts",
+    "./mutation": "./src/mutation/index.ts",
     "./contracts/*": "./src/contracts/*.ts"
   },
   "files": [

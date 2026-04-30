@@ -57,7 +57,7 @@ import type {
   Revision
 } from '@shared/projection'
 import { store } from '@shared/core'
-import type { WhiteboardMutationDelta } from '../mutation/delta'
+import type { WhiteboardMutationDelta } from '@whiteboard/engine/mutation'
 import type { Capture } from './capture'
 import type { IdDelta, SceneItemKey } from './delta'
 import type { EditorSceneRuntimeDelta } from './plan'

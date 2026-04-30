@@ -20,9 +20,11 @@ import type {
   MindmapRecord,
   Node,
   NodeId,
-  Operation,
   ResultCode
 } from '@whiteboard/core/types'
+import type {
+  WhiteboardInternalOperation
+} from '@whiteboard/core/operations/internal'
 import type {
   WhiteboardIntent,
   WhiteboardIntentKind,
@@ -52,7 +54,7 @@ export type WhiteboardCompileContext<
 > = MutationCompileHandlerInput<
   Document,
   WhiteboardIntent<K>,
-  Operation,
+  WhiteboardInternalOperation,
   WhiteboardIntentOutput<K>,
   DocumentReader,
   WhiteboardCompileServices,
@@ -62,7 +64,7 @@ export type WhiteboardCompileContext<
 export type WhiteboardCompileHandlerTable = MutationCompileHandlerTable<
   WhiteboardMutationTable,
   Document,
-  Operation,
+  WhiteboardInternalOperation,
   DocumentReader,
   WhiteboardCompileServices,
   WhiteboardCompileCode

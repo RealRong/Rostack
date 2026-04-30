@@ -9,6 +9,9 @@ import type {
   WhiteboardCompileServices
 } from '@whiteboard/core/operations/compile'
 import type {
+  WhiteboardInternalOperation
+} from '@whiteboard/core/operations/internal'
+import type {
   Document,
   Operation,
   ResultCode
@@ -50,7 +53,7 @@ export type WhiteboardCustomPlanner<
 
 export type WhiteboardCustomTableType = MutationCustomTable<
   Document,
-  Operation,
+  WhiteboardInternalOperation,
   DocumentReader,
   WhiteboardCompileServices,
   string,

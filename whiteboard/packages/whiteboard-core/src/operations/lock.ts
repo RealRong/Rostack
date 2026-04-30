@@ -320,19 +320,8 @@ const readLockViolationForOperation = ({
           }
         : undefined
     }
-    case 'edge.patch':
-    case 'edge.label.insert':
-    case 'edge.label.delete':
-    case 'edge.label.move':
-    case 'edge.label.patch':
-    case 'edge.route.point.insert':
-    case 'edge.route.point.delete':
-    case 'edge.route.point.move':
-    case 'edge.route.point.patch': {
-      const edgeId = 'id' in operation
-        ? operation.id
-        : operation.edgeId
-
+    case 'edge.patch': {
+      const edgeId = operation.id
       if (
         readEdgeLocked(edgeId)
         && !(operation.type === 'edge.patch' && isEdgeLockOnlyPatch(operation))
@@ -349,10 +338,6 @@ const readLockViolationForOperation = ({
         && hasOwn(operation.patch, 'locked')
       ) {
         updateEdgeLocked(edgeId, Boolean(operation.patch.locked))
-      }
-
-      if (operation.type !== 'edge.patch') {
-        return undefined
       }
 
       const current = readEdge(edgeId)

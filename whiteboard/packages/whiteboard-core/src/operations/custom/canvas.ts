@@ -1,13 +1,6 @@
 import {
-  type MutationOrderedEffect
-} from '@shared/mutation'
-import {
-  readStructuralEffectResult
-} from '@shared/mutation/engine'
-import {
   CANVAS_ORDER_STRUCTURE,
   canvasRefKey,
-  whiteboardStructures,
   toStructuralCanvasAnchor,
 } from './structures'
 import type {
@@ -28,46 +21,18 @@ export const planCanvasOrderMove = (
   }
 
   const anchor = toStructuralCanvasAnchor(currentOrder, existingRefs, input.op.to)
-  const effect: MutationOrderedEffect = existingRefs.length === 1
-    ? {
-        type: 'ordered.move',
-        structure: CANVAS_ORDER_STRUCTURE,
-        itemId: canvasRefKey(existingRefs[0]!),
-        to: anchor
-      }
-    : {
-        type: 'ordered.splice',
-        structure: CANVAS_ORDER_STRUCTURE,
-        itemIds: existingRefs.map((ref) => canvasRefKey(ref)),
-        to: anchor
-      }
-  const result = readStructuralEffectResult({
-    document: input.document,
-    effect,
-    structures: whiteboardStructures
-  })
-  if (!result.ok) {
-    return input.fail({
-      code: 'invalid',
-      message: result.error.message
-    })
-  }
-  if (result.data.historyMode === 'neutral') {
-    return
-  }
-
-  if (effect.type === 'ordered.move') {
+  if (existingRefs.length === 1) {
     input.effects.structure.ordered.move(
-      effect.structure,
-      effect.itemId,
-      effect.to
+      CANVAS_ORDER_STRUCTURE,
+      canvasRefKey(existingRefs[0]!),
+      anchor
     )
     return
   }
 
   input.effects.structure.ordered.splice(
-    effect.structure,
-    effect.itemIds,
-    effect.to
+    CANVAS_ORDER_STRUCTURE,
+    existingRefs.map((ref) => canvasRefKey(ref)),
+    anchor
   )
 }

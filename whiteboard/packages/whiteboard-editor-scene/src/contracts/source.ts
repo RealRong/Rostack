@@ -1,5 +1,10 @@
 import type { SelectionTarget } from '@whiteboard/core/selection'
-import type { Document as WhiteboardDocument } from '@whiteboard/core/types'
+import type {
+  Document as WhiteboardDocument,
+  EdgeId,
+  MindmapId,
+  NodeId
+} from '@whiteboard/core/types'
 import type { MutationDelta } from '@shared/mutation'
 import type { Revision } from '@shared/projection'
 import type {
@@ -33,6 +38,21 @@ export interface EditorSceneSourceSnapshot {
   view: SceneViewSnapshot
 }
 
+export interface EditorSceneSourceEditChange {
+  touchedDraftEdgeIds: readonly EdgeId[]
+}
+
+export interface EditorSceneSourcePreviewChange {
+  touchedNodeIds: readonly NodeId[]
+  touchedEdgeIds: readonly EdgeId[]
+  touchedMindmapIds: readonly MindmapId[]
+  marquee: boolean
+  guides: boolean
+  draw: boolean
+  edgeGuide: boolean
+  hover: boolean
+}
+
 export interface EditorSceneSourceChange {
   document?: {
     rev: Revision
@@ -42,8 +62,8 @@ export interface EditorSceneSourceChange {
   session?: {
     tool?: true
     selection?: true
-    edit?: true
-    preview?: true
+    edit?: EditorSceneSourceEditChange
+    preview?: EditorSceneSourcePreviewChange
   }
   interaction?: {
     hover?: true

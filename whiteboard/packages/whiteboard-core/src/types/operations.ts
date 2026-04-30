@@ -238,14 +238,6 @@ export type Op =
   | { readonly type: 'node.delete'; readonly id: NodeId }
   | { readonly type: 'edge.create'; readonly value: Edge }
   | { readonly type: 'edge.patch'; readonly id: EdgeId; readonly patch: EdgePatch }
-  | { readonly type: 'edge.label.insert'; readonly edgeId: EdgeId; readonly label: EdgeLabel; readonly to: EdgeLabelAnchor }
-  | { readonly type: 'edge.label.delete'; readonly edgeId: EdgeId; readonly labelId: string }
-  | { readonly type: 'edge.label.move'; readonly edgeId: EdgeId; readonly labelId: string; readonly to: EdgeLabelAnchor }
-  | { readonly type: 'edge.label.patch'; readonly edgeId: EdgeId; readonly labelId: string; readonly patch: EdgeLabelPatch }
-  | { readonly type: 'edge.route.point.insert'; readonly edgeId: EdgeId; readonly point: EdgeRoutePoint; readonly to: EdgeRoutePointAnchor }
-  | { readonly type: 'edge.route.point.delete'; readonly edgeId: EdgeId; readonly pointId: string }
-  | { readonly type: 'edge.route.point.move'; readonly edgeId: EdgeId; readonly pointId: string; readonly to: EdgeRoutePointAnchor }
-  | { readonly type: 'edge.route.point.patch'; readonly edgeId: EdgeId; readonly pointId: string; readonly patch: Partial<Record<EdgeRoutePointField, number>> }
   | { readonly type: 'edge.delete'; readonly id: EdgeId }
   | { readonly type: 'group.create'; readonly value: Group }
   | { readonly type: 'group.patch'; readonly id: GroupId; readonly patch: GroupPatch }

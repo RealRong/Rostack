@@ -68,9 +68,14 @@ import {
 import type {
   MutationEffect,
   MutationEffectProgram,
+  MutationOrderedEffect,
+  MutationTreeEffect,
 } from './effect/effect'
 import {
   createMutationEffectBuilder
+} from './effect/effectBuilder'
+import type {
+  MutationEffectBuilder
 } from './effect/effectBuilder'
 import {
   compileEntities,
@@ -78,6 +83,7 @@ import {
   lowerCanonicalEntityOperation,
 } from './entity'
 import {
+  readStructuralEffectResult,
   lowerStructuralOperation,
   readStructuralOperation
 } from './structural'
@@ -90,6 +96,151 @@ import type {
   MutationEntityCanonicalOperation,
   MutationStructuralCanonicalOperation
 } from './contracts'
+
+const createCustomPlannerEffects = <
+  Doc extends object,
+  Tag extends string = string,
+  Code extends string = string
+>(input: {
+  document: Doc
+  structures?: MutationStructureSource<Doc>
+  fail(issue: {
+    code: Code
+    message: string
+  }): never
+}) => {
+  const builder = createMutationEffectBuilder<Tag>()
+
+  const commitStructuralEffect = (
+    effect: MutationOrderedEffect<Tag> | MutationTreeEffect<Tag>
+  ): boolean => {
+    const result = readStructuralEffectResult<Doc, Code>({
+      document: input.document,
+      effect,
+      structures: input.structures
+    })
+    if (!result.ok) {
+      return input.fail({
+        code: result.error.code as Code,
+        message: result.error.message
+      })
+    }
+    if (result.data.historyMode === 'neutral') {
+      return false
+    }
+
+    switch (effect.type) {
+      case 'ordered.insert':
+        builder.structure.ordered.insert(effect.structure, effect.itemId, effect.value, effect.to, effect.tags)
+        return true
+      case 'ordered.move':
+        builder.structure.ordered.move(effect.structure, effect.itemId, effect.to, effect.tags)
+        return true
+      case 'ordered.splice':
+        builder.structure.ordered.splice(effect.structure, effect.itemIds, effect.to, effect.tags)
+        return true
+      case 'ordered.delete':
+        builder.structure.ordered.delete(effect.structure, effect.itemId, effect.tags)
+        return true
+      case 'ordered.patch':
+        builder.structure.ordered.patch(effect.structure, effect.itemId, effect.patch, effect.tags)
+        return true
+      case 'tree.insert':
+        builder.structure.tree.insert(
+          effect.structure,
+          effect.nodeId,
+          effect.parentId,
+          effect.index,
+          effect.value,
+          effect.tags
+        )
+        return true
+      case 'tree.move':
+        builder.structure.tree.move(
+          effect.structure,
+          effect.nodeId,
+          effect.parentId,
+          effect.index,
+          effect.tags
+        )
+        return true
+      case 'tree.delete':
+        builder.structure.tree.delete(effect.structure, effect.nodeId, effect.tags)
+        return true
+      case 'tree.restore':
+        builder.structure.tree.restore(effect.structure, effect.snapshot, effect.tags)
+        return true
+      case 'tree.node.patch':
+        builder.structure.tree.patch(effect.structure, effect.nodeId, effect.patch, effect.tags)
+        return true
+    }
+  }
+
+  const effects: MutationEffectBuilder<Tag> = {
+    entity: builder.entity,
+    semantic: builder.semantic,
+    build: builder.build,
+    structure: {
+      ordered: {
+        insert: builder.structure.ordered.insert,
+        delete: builder.structure.ordered.delete,
+        move: (structure, itemId, to, tags) => {
+          commitStructuralEffect({
+            type: 'ordered.move',
+            structure,
+            itemId,
+            to,
+            ...(tags === undefined ? {} : { tags })
+          })
+        },
+        splice: (structure, itemIds, to, tags) => {
+          commitStructuralEffect({
+            type: 'ordered.splice',
+            structure,
+            itemIds,
+            to,
+            ...(tags === undefined ? {} : { tags })
+          })
+        },
+        patch: (structure, itemId, patch, tags) => {
+          commitStructuralEffect({
+            type: 'ordered.patch',
+            structure,
+            itemId,
+            patch,
+            ...(tags === undefined ? {} : { tags })
+          })
+        }
+      },
+      tree: {
+        insert: builder.structure.tree.insert,
+        delete: builder.structure.tree.delete,
+        restore: builder.structure.tree.restore,
+        move: (structure, nodeId, parentId, index, tags) => {
+          commitStructuralEffect({
+            type: 'tree.move',
+            structure,
+            nodeId,
+            ...(parentId === undefined ? {} : { parentId }),
+            ...(index === undefined ? {} : { index }),
+            ...(tags === undefined ? {} : { tags })
+          })
+        },
+        patch: (structure, nodeId, patch, tags) => {
+          commitStructuralEffect({
+            type: 'tree.node.patch',
+            structure,
+            nodeId,
+            patch,
+            ...(tags === undefined ? {} : { tags })
+          })
+        }
+      }
+    }
+  }
+
+  return effects
+}
 
 const readCustomOperationResult = <
   Doc extends object,
@@ -110,7 +261,13 @@ const readCustomOperationResult = <
   normalize(doc: Doc): Doc
 }): MutationApplyResult<Doc, Op, Code> => {
   try {
-    const effects = createMutationEffectBuilder()
+    const effects = createCustomPlannerEffects<Doc, string, Code>({
+      document: input.document,
+      structures: input.structures,
+      fail: (issue) => {
+        throw new MutationCustomReduceError(issue)
+      }
+    })
     input.spec.plan({
       op: input.operation,
       document: input.document,

@@ -30,11 +30,9 @@ export const createRuntime = (input: {
 
   const publish = (change: Parameters<EditorSceneSource['subscribe']>[0] extends (value: infer TValue) => void
     ? TValue
-    : never, previousSource = currentSource) => {
+    : never) => {
     currentSource = input.source.get()
     const runtimeDelta = createSourceRuntimeInputDelta({
-      previous: previousSource,
-      next: currentSource,
       change
     })
     lastResult = runtime.update(createSceneInput({

@@ -8,7 +8,6 @@ import type {
 } from '@whiteboard/core/types'
 import type {
   EditSession,
-  HoverState,
   Input
 } from '../contracts/editor'
 import type {
@@ -82,126 +81,6 @@ const readPreviewMindmapIds = (
   return ids
 }
 
-const isHoverStateEqual = (
-  left: HoverState,
-  right: HoverState
-): boolean => {
-  if (left.kind !== right.kind) {
-    return false
-  }
-
-  switch (left.kind) {
-    case 'node':
-      return left.nodeId === (right.kind === 'node' ? right.nodeId : undefined)
-    case 'edge':
-      return left.edgeId === (right.kind === 'edge' ? right.edgeId : undefined)
-    case 'mindmap':
-      return left.mindmapId === (right.kind === 'mindmap' ? right.mindmapId : undefined)
-    case 'group':
-      return left.groupId === (right.kind === 'group' ? right.groupId : undefined)
-    case 'selection-box':
-    case 'none':
-      return true
-    default:
-      return false
-  }
-}
-
-const isStringArrayEqual = (
-  left: readonly string[],
-  right: readonly string[]
-): boolean => (
-  left.length === right.length
-  && left.every((value, index) => value === right[index])
-)
-
-const isDragStateEqual = (
-  left: EditorSceneSourceSnapshot['interaction']['drag'],
-  right: EditorSceneSourceSnapshot['interaction']['drag']
-): boolean => {
-  if (left.kind !== right.kind) {
-    return false
-  }
-
-  switch (left.kind) {
-    case 'idle':
-    case 'draw':
-      return true
-    case 'selection-move':
-      return isStringArrayEqual(left.nodeIds, right.kind === 'selection-move' ? right.nodeIds : [])
-        && isStringArrayEqual(left.edgeIds, right.kind === 'selection-move' ? right.edgeIds : [])
-    case 'selection-marquee':
-      return right.kind === 'selection-marquee'
-        && left.match === right.match
-        && left.worldRect.x === right.worldRect.x
-        && left.worldRect.y === right.worldRect.y
-        && left.worldRect.width === right.worldRect.width
-        && left.worldRect.height === right.worldRect.height
-    case 'selection-transform':
-      return isStringArrayEqual(left.nodeIds, right.kind === 'selection-transform' ? right.nodeIds : [])
-    case 'edge-label':
-      return right.kind === 'edge-label'
-        && left.edgeId === right.edgeId
-        && left.labelId === right.labelId
-    case 'edge-route':
-      return right.kind === 'edge-route'
-        && left.edgeId === right.edgeId
-    case 'mindmap-drag':
-      return right.kind === 'mindmap-drag'
-        && left.mindmapId === right.mindmapId
-        && left.nodeId === right.nodeId
-    default:
-      return false
-  }
-}
-
-const isInteractionStateEqual = (
-  left: EditorSceneSourceSnapshot['interaction'],
-  right: EditorSceneSourceSnapshot['interaction']
-): boolean => (
-  left.chrome === right.chrome
-  && left.editingEdge === right.editingEdge
-  && isHoverStateEqual(left.hover, right.hover)
-  && isDragStateEqual(left.drag, right.drag)
-)
-
-const createPreviewDelta = (input: {
-  previous: EditorSceneSourceSnapshot['session']['preview']
-  next: EditorSceneSourceSnapshot['session']['preview']
-}): EditorSceneRuntimeDelta => {
-  const delta = createEmptyEditorSceneRuntimeDelta()
-  const touchedNodeIds = unionIds(
-    readPreviewNodeIds(input.previous),
-    readPreviewNodeIds(input.next)
-  )
-  const touchedEdgeIds = unionIds(
-    readPreviewEdgeIds(input.previous),
-    readPreviewEdgeIds(input.next)
-  )
-  const touchedMindmapIds = unionIds(
-    readPreviewMindmapIds(input.previous.mindmap),
-    readPreviewMindmapIds(input.next.mindmap)
-  )
-
-  if (touchedNodeIds.size > 0) {
-    delta.session.preview.nodes = createTouchedIdDelta(touchedNodeIds)
-  }
-  if (touchedEdgeIds.size > 0) {
-    delta.session.preview.edges = createTouchedIdDelta(touchedEdgeIds)
-  }
-  if (touchedMindmapIds.size > 0) {
-    delta.session.preview.mindmaps = createTouchedIdDelta(touchedMindmapIds)
-  }
-
-  delta.session.preview.marquee = true
-  delta.session.preview.guides = true
-  delta.session.preview.draw = true
-  delta.session.preview.edgeGuide = true
-  delta.session.hover = true
-
-  return delta
-}
-
 export const createBootstrapRuntimeInputDelta = (
   source: EditorSceneSourceSnapshot
 ): EditorSceneRuntimeDelta => {
@@ -239,8 +118,6 @@ export const createBootstrapRuntimeInputDelta = (
 }
 
 export const createSourceRuntimeInputDelta = (input: {
-  previous: EditorSceneSourceSnapshot
-  next: EditorSceneSourceSnapshot
   change: EditorSceneSourceChange
 }): EditorSceneRuntimeDelta => {
   const delta = createEmptyEditorSceneRuntimeDelta()
@@ -251,41 +128,37 @@ export const createSourceRuntimeInputDelta = (input: {
   if (input.change.session?.selection) {
     delta.session.selection = true
   }
-  if (input.change.session?.edit) {
+  const editChange = input.change.session?.edit
+  if (editChange) {
     delta.session.edit = true
-    const touchedEdgeIds = unionIds(
-      readEditedEdgeIds(input.previous.session.edit),
-      readEditedEdgeIds(input.next.session.edit)
-    )
-    if (touchedEdgeIds.size > 0) {
-      delta.session.draft.edges = createTouchedIdDelta(touchedEdgeIds)
+    if (editChange.touchedDraftEdgeIds.length > 0) {
+      delta.session.draft.edges = createTouchedIdDelta(editChange.touchedDraftEdgeIds)
     }
   }
-  if (input.change.session?.preview) {
-    const previewDelta = createPreviewDelta({
-      previous: input.previous.session.preview,
-      next: input.next.session.preview
-    })
-    delta.session.hover = delta.session.hover || previewDelta.session.hover
-    delta.session.preview = previewDelta.session.preview
+  const previewChange = input.change.session?.preview
+  if (previewChange) {
+    if (previewChange.touchedNodeIds.length > 0) {
+      delta.session.preview.nodes = createTouchedIdDelta(previewChange.touchedNodeIds)
+    }
+    if (previewChange.touchedEdgeIds.length > 0) {
+      delta.session.preview.edges = createTouchedIdDelta(previewChange.touchedEdgeIds)
+    }
+    if (previewChange.touchedMindmapIds.length > 0) {
+      delta.session.preview.mindmaps = createTouchedIdDelta(previewChange.touchedMindmapIds)
+    }
+
+    delta.session.preview.marquee = previewChange.marquee
+    delta.session.preview.guides = previewChange.guides
+    delta.session.preview.draw = previewChange.draw
+    delta.session.preview.edgeGuide = previewChange.edgeGuide
+    delta.session.hover = delta.session.hover || previewChange.hover
   }
 
-  if (
-    input.change.interaction?.hover
-    || !isHoverStateEqual(
-      input.previous.interaction.hover,
-      input.next.interaction.hover
-    )
-  ) {
+  if (input.change.interaction?.hover) {
     delta.session.hover = true
   }
 
-  if (
-    !isInteractionStateEqual(
-      input.previous.interaction,
-      input.next.interaction
-    )
-  ) {
+  if (input.change.interaction) {
     delta.session.interaction = true
   }
 

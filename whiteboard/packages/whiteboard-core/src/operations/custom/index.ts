@@ -8,22 +8,14 @@ import type {
   WhiteboardCompileServices
 } from '@whiteboard/core/operations/compile'
 import type {
-  Document,
-  Operation
+  WhiteboardInternalOperation
+} from '@whiteboard/core/operations/internal'
+import type {
+  Document
 } from '@whiteboard/core/types'
 import {
   planCanvasOrderMove
 } from './canvas'
-import {
-  planEdgeLabelDelete,
-  planEdgeLabelInsert,
-  planEdgeLabelMove,
-  planEdgeLabelPatch,
-  planEdgeRoutePointDelete,
-  planEdgeRoutePointInsert,
-  planEdgeRoutePointMove,
-  planEdgeRoutePointPatch,
-} from './edge'
 import {
   planMindmapBranchPatch,
   planMindmapCreate,
@@ -52,30 +44,6 @@ export {
 export const whiteboardCustom = {
   'canvas.order.move': {
     plan: planCanvasOrderMove
-  },
-  'edge.label.insert': {
-    plan: planEdgeLabelInsert
-  },
-  'edge.label.delete': {
-    plan: planEdgeLabelDelete
-  },
-  'edge.label.move': {
-    plan: planEdgeLabelMove
-  },
-  'edge.label.patch': {
-    plan: planEdgeLabelPatch
-  },
-  'edge.route.point.insert': {
-    plan: planEdgeRoutePointInsert
-  },
-  'edge.route.point.delete': {
-    plan: planEdgeRoutePointDelete
-  },
-  'edge.route.point.move': {
-    plan: planEdgeRoutePointMove
-  },
-  'edge.route.point.patch': {
-    plan: planEdgeRoutePointPatch
   },
   'mindmap.create': {
     plan: planMindmapCreate
@@ -115,7 +83,7 @@ export const whiteboardCustom = {
   }
 } as const satisfies MutationCustomTable<
   Document,
-  Operation,
+  WhiteboardInternalOperation,
   DocumentReader,
   WhiteboardCompileServices,
   string,

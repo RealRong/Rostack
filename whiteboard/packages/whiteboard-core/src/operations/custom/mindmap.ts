@@ -1,9 +1,3 @@
-import type {
-  MutationTreeEffect
-} from '@shared/mutation'
-import {
-  readStructuralEffectResult
-} from '@shared/mutation/engine'
 import { mindmap as mindmapApi } from '@whiteboard/core/mindmap'
 import {
   readMindmapTopicUpdateFromPatch
@@ -28,30 +22,10 @@ import {
   readCanvasOrderAnchorFromSlot,
   readMindmapLayoutChangedNodeIds,
   resolveInsertedMindmapBranchStyle,
-  whiteboardStructures,
 } from './structures'
 import type {
   WhiteboardCustomPlanContext
 } from './types'
-
-const previewTreeEffect = (
-  input: WhiteboardCustomPlanContext,
-  effect: MutationTreeEffect
-): boolean => {
-  const result = readStructuralEffectResult({
-    document: input.document,
-    effect,
-    structures: whiteboardStructures
-  })
-  if (!result.ok) {
-    return input.fail({
-      code: 'invalid',
-      message: result.error.message
-    })
-  }
-
-  return result.data.historyMode !== 'neutral'
-}
 
 export const planMindmapCreate = (
   input: WhiteboardCustomPlanContext<
@@ -403,25 +377,12 @@ export const planMindmapTopicMove = (
     ? (input.op.input.side ?? member.side ?? 'right')
     : undefined
   const structure = mindmapTreeStructure(input.op.id)
-  const effect: MutationTreeEffect = {
-    type: 'tree.move',
+  input.effects.structure.tree.move(
     structure,
-    nodeId: input.op.input.nodeId,
-    parentId: input.op.input.parentId,
-    ...(input.op.input.index === undefined
-      ? {}
-      : {
-          index: input.op.input.index
-        })
-  }
-  if (previewTreeEffect(input, effect)) {
-    input.effects.structure.tree.move(
-      effect.structure,
-      effect.nodeId,
-      effect.parentId,
-      effect.index
-    )
-  }
+    input.op.input.nodeId,
+    input.op.input.parentId,
+    input.op.input.index
+  )
   if (!same(member.side, nextSide)) {
     input.effects.structure.tree.patch(
       structure,

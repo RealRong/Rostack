@@ -30,6 +30,7 @@ export type {
   WhiteboardCompileContext,
   WhiteboardCompileHandlerTable,
   WhiteboardCompileIds,
+  WhiteboardInternalOperation,
   WhiteboardCompileServices
 } from '@whiteboard/core/operations/compile'
 export type {

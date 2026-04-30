@@ -1,10 +1,4 @@
 import type {
-  MutationOrderedEffect
-} from '@shared/mutation'
-import {
-  readStructuralEffectResult
-} from '@shared/mutation/engine'
-import type {
   Operation
 } from '@whiteboard/core/types'
 import {
@@ -16,30 +10,10 @@ import {
   getLabels,
   getManualRoutePoints,
   toStructuralOrderedAnchor,
-  whiteboardStructures
 } from './structures'
 import type {
   WhiteboardCustomPlanContext
 } from './types'
-
-const previewOrderedEffect = (
-  input: WhiteboardCustomPlanContext,
-  effect: MutationOrderedEffect
-): boolean => {
-  const result = readStructuralEffectResult({
-    document: input.document,
-    effect,
-    structures: whiteboardStructures
-  })
-  if (!result.ok) {
-    return input.fail({
-      code: 'invalid',
-      message: result.error.message
-    })
-  }
-
-  return result.data.historyMode !== 'neutral'
-}
 
 export const planEdgeLabelInsert = (
   input: WhiteboardCustomPlanContext<
@@ -87,20 +61,10 @@ export const planEdgeLabelMove = (
     return
   }
 
-  const effect: MutationOrderedEffect = {
-    type: 'ordered.move',
-    structure: edgeLabelsStructure(input.op.edgeId),
-    itemId: input.op.labelId,
-    to: toStructuralOrderedAnchor(input.op.to)
-  }
-  if (!previewOrderedEffect(input, effect)) {
-    return
-  }
-
   input.effects.structure.ordered.move(
-    effect.structure,
-    effect.itemId,
-    effect.to
+    edgeLabelsStructure(input.op.edgeId),
+    input.op.labelId,
+    toStructuralOrderedAnchor(input.op.to)
   )
 }
 
@@ -117,20 +81,10 @@ export const planEdgeLabelPatch = (
     })
   }
 
-  const effect: MutationOrderedEffect = {
-    type: 'ordered.patch',
-    structure: edgeLabelsStructure(input.op.edgeId),
-    itemId: input.op.labelId,
-    patch: clone(input.op.patch)!
-  }
-  if (!previewOrderedEffect(input, effect)) {
-    return
-  }
-
   input.effects.structure.ordered.patch(
-    effect.structure,
-    effect.itemId,
-    effect.patch
+    edgeLabelsStructure(input.op.edgeId),
+    input.op.labelId,
+    clone(input.op.patch)!
   )
 }
 
@@ -180,20 +134,10 @@ export const planEdgeRoutePointMove = (
     return
   }
 
-  const effect: MutationOrderedEffect = {
-    type: 'ordered.move',
-    structure: edgeRoutePointsStructure(input.op.edgeId),
-    itemId: input.op.pointId,
-    to: toStructuralOrderedAnchor(input.op.to)
-  }
-  if (!previewOrderedEffect(input, effect)) {
-    return
-  }
-
   input.effects.structure.ordered.move(
-    effect.structure,
-    effect.itemId,
-    effect.to
+    edgeRoutePointsStructure(input.op.edgeId),
+    input.op.pointId,
+    toStructuralOrderedAnchor(input.op.to)
   )
 }
 
@@ -210,19 +154,9 @@ export const planEdgeRoutePointPatch = (
     })
   }
 
-  const effect: MutationOrderedEffect = {
-    type: 'ordered.patch',
-    structure: edgeRoutePointsStructure(input.op.edgeId),
-    itemId: input.op.pointId,
-    patch: clone(input.op.patch)!
-  }
-  if (!previewOrderedEffect(input, effect)) {
-    return
-  }
-
   input.effects.structure.ordered.patch(
-    effect.structure,
-    effect.itemId,
-    effect.patch
+    edgeRoutePointsStructure(input.op.edgeId),
+    input.op.pointId,
+    clone(input.op.patch)!
   )
 }

@@ -38,29 +38,6 @@ const translateRect = (
   height: rect.height
 })
 
-const interpolateRect = (
-  from: Rect,
-  to: Rect,
-  progress: number
-): Rect => ({
-  x: from.x + (to.x - from.x) * progress,
-  y: from.y + (to.y - from.y) * progress,
-  width: from.width + (to.width - from.width) * progress,
-  height: from.height + (to.height - from.height) * progress
-})
-
-const readEnterProgress = (
-  startedAt: number,
-  durationMs: number,
-  now: number
-): number => {
-  if (durationMs <= 0) {
-    return 1
-  }
-
-  return Math.max(0, Math.min(1, (now - startedAt) / durationMs))
-}
-
 const isMindmapRenderConnectorEqual = (
   left: MindmapView['render']['connectors'][number],
   right: MindmapView['render']['connectors'][number]
@@ -176,34 +153,6 @@ const applySubtreeMovePreview = (input: {
   }
 }
 
-const applyEnterPreview = (input: {
-  layout: MindmapLayout
-  enter: readonly NonNullable<NonNullable<Input['runtime']['session']['preview']['mindmap']>['enter']>[number][]
-  now: number
-}) => {
-  if (!input.enter.length) {
-    return input.layout
-  }
-
-  const node = {
-    ...input.layout.node
-  }
-
-  input.enter.forEach((entry) => {
-    const targetRect = node[entry.nodeId] ?? entry.toRect
-    node[entry.nodeId] = interpolateRect(
-      entry.fromRect,
-      targetRect,
-      readEnterProgress(entry.startedAt, entry.durationMs, input.now)
-    )
-  })
-
-  return {
-    node,
-    bbox: geometryApi.rect.boundingRect(Object.values(node)) ?? input.layout.bbox
-  }
-}
-
 export const readMindmapNodeIds = (
   record: MindmapRecord | undefined
 ): readonly NodeId[] => record
@@ -309,15 +258,6 @@ const buildMindmapEntry = (
       layout,
       tree,
       preview: preview.subtreeMove
-    })
-  }
-
-  const enter = preview?.enter?.filter((entry) => entry.mindmapId === mindmapId) ?? []
-  if (enter.length > 0) {
-    layout = applyEnterPreview({
-      layout,
-      enter,
-      now: input.runtime.clock.now
     })
   }
 

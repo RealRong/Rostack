@@ -36,6 +36,15 @@ const buildOverlayFrameStyle = (
   transformOrigin: rotation !== 0 ? 'center center' : undefined
 })
 
+const resolveDisplayRect = (
+  view: RuntimeNodeView
+): Rect => ({
+  x: view.presentation?.position?.x ?? view.rect.x,
+  y: view.presentation?.position?.y ?? view.rect.y,
+  width: view.rect.width,
+  height: view.rect.height
+})
+
 export type NodeView = {
   nodeId: NodeId
   node: RuntimeNodeView['node']
@@ -107,6 +116,7 @@ const resolveNodeViewState = (
   capability: ReturnType<typeof resolveNodeCapability>
 ): NodeView => {
   const nodeSpec = nodes.entryByType.resolve(baseView.node.type)
+  const rect = resolveDisplayRect(baseView)
   const write: NodeWrite = {
     patch: (update: NodeUpdateInput) => {
       editor.write.node.patch([baseView.node.id], update)
@@ -114,7 +124,7 @@ const resolveNodeViewState = (
   }
   const renderProps: NodeRenderProps = {
     node: baseView.node,
-    rect: baseView.rect,
+    rect,
     rotation: baseView.rotation,
     selected: baseView.state.selected,
     hovered: baseView.state.hovered,
@@ -125,7 +135,7 @@ const resolveNodeViewState = (
     ? nodeSpec.behavior.style(renderProps)
     : {}
   const transformStyle = buildNodeTransformStyle(
-    baseView.rect,
+    rect,
     baseView.rotation,
     nodeStyle
   )
@@ -133,7 +143,7 @@ const resolveNodeViewState = (
   return {
     nodeId: baseView.node.id,
     node: baseView.node,
-    rect: baseView.rect,
+    rect,
     rotation: baseView.rotation,
     hidden: baseView.state.hidden,
     resizing: baseView.state.resizing,

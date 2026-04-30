@@ -40,7 +40,6 @@ export type {
   HoverState,
   InsertTemplate,
   InteractionInput,
-  MindmapEnterPreview,
   MindmapPreview,
   MindmapRenderView,
   MindmapStructureView,

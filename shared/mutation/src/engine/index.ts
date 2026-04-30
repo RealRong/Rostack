@@ -28,8 +28,24 @@ export type {
   MutationIntentKind,
   MutationIntentOf,
   MutationIntentTable,
+  MutationOrderedAnchor,
+  MutationOrderedSlot,
   MutationOptions,
   MutationOutputOf,
+  MutationStructureSpec,
+  MutationStructureTable,
+  MutationStructuralCanonicalOperation,
+  MutationStructuralFact,
+  MutationStructuralOrderedDeleteOperation,
+  MutationStructuralOrderedInsertOperation,
+  MutationStructuralOrderedMoveOperation,
+  MutationStructuralTreeDeleteOperation,
+  MutationStructuralTreeInsertOperation,
+  MutationStructuralTreeMoveOperation,
+  MutationStructuralTreeRestoreOperation,
+  MutationTreeNodeSnapshot,
+  MutationTreeSnapshot,
+  MutationTreeSubtreeSnapshot,
   MutationResult
 } from './contracts'
 export {
@@ -46,6 +62,16 @@ export {
   mutationFootprintBatchConflicts,
   mutationFootprintConflicts
 } from './footprint'
+export {
+  createStructuralOrderedDeleteOperation,
+  createStructuralOrderedInsertOperation,
+  createStructuralOrderedMoveOperation,
+  createStructuralTreeDeleteOperation,
+  createStructuralTreeInsertOperation,
+  createStructuralTreeMoveOperation,
+  createStructuralTreeRestoreOperation,
+  readStructuralOperation,
+} from './structural'
 export {
   MutationEngine
 } from './runtime'

@@ -13,7 +13,7 @@ import type {
 } from '@whiteboard/editor/write/types'
 import type {
   SelectionActions,
-  SelectionSessionDeps
+  SelectionCommands
 } from '@whiteboard/editor/action/types'
 
 const DEFAULT_FRAME_PADDING = 32
@@ -28,7 +28,7 @@ type SelectionActionHelpersHost = {
   canvas: CanvasWrite
   group: GroupWrite
   node: Pick<NodeWrite, 'create'>
-  session: SelectionSessionDeps
+  session: Pick<SelectionCommands, 'replace' | 'clear'>
   defaults: EditorDefaults['templates']
 }
 
@@ -59,7 +59,7 @@ const toCanvasRefs = (
 
 const createFrame = (
   node: Pick<NodeWrite, 'create'>,
-  session: SelectionSessionDeps,
+  session: Pick<SelectionCommands, 'replace'>,
   defaults: EditorDefaults['templates'],
   bounds: {
     x: number
@@ -83,13 +83,13 @@ const createFrame = (
     return false
   }
 
-  session.replaceSelection({
+  session.replace({
     nodeIds: [result.data.nodeId]
   })
   return true
 }
 
-export const createSelectionActions = ({
+const createSelectionActionHelpers = ({
   read,
   canvas,
   group,
@@ -110,7 +110,7 @@ export const createSelectionActions = ({
     }
 
     if (options?.selectInserted !== false) {
-      session.replaceSelection({
+      session.replace({
         nodeIds: result.data.roots.nodeIds.length > 0
           ? result.data.roots.nodeIds
           : result.data.allNodeIds,
@@ -135,7 +135,7 @@ export const createSelectionActions = ({
     }
 
     if (options?.clearSelection !== false) {
-      session.clearSelection()
+      session.clear()
     }
 
     return true
@@ -165,7 +165,7 @@ export const createSelectionActions = ({
       return true
     }
 
-    session.replaceSelection(target)
+    session.replace(target)
     return true
   },
   ungroup: (input, options) => {
@@ -181,11 +181,11 @@ export const createSelectionActions = ({
     }
 
     if (options?.fallbackSelection === 'none') {
-      session.clearSelection()
+      session.clear()
       return true
     }
 
-    session.replaceSelection({
+    session.replace({
       nodeIds: result.data.nodeIds,
       edgeIds: result.data.edgeIds
     })
@@ -199,3 +199,40 @@ export const createSelectionActions = ({
     options?.padding ?? DEFAULT_FRAME_PADDING
   )
 })
+
+export const createSelectionActions = (input: {
+  document: Pick<import('@whiteboard/editor-scene').DocumentQuery, 'nodeIds' | 'edgeIds'>
+  read: Pick<EditorSceneApi, 'query'>
+  canvas: CanvasWrite
+  group: GroupWrite
+  node: Pick<NodeWrite, 'create'>
+  session: SelectionCommands
+  defaults: EditorDefaults['templates']
+}): SelectionActions => {
+  const helpers = createSelectionActionHelpers(input)
+
+  return {
+    replace: (target) => {
+      input.session.replace(selectionApi.target.normalize(target))
+    },
+    add: (target) => {
+      input.session.add(selectionApi.target.normalize(target))
+    },
+    remove: (target) => {
+      input.session.remove(selectionApi.target.normalize(target))
+    },
+    toggle: (target) => {
+      input.session.toggle(selectionApi.target.normalize(target))
+    },
+    selectAll: () => {
+      input.session.replace({
+        nodeIds: input.document.nodeIds(),
+        edgeIds: input.document.edgeIds()
+      })
+    },
+    clear: () => {
+      input.session.clear()
+    },
+    ...helpers
+  }
+}

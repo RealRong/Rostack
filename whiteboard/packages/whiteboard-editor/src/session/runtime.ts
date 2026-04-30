@@ -67,6 +67,14 @@ export type EditorSessionMutate = {
   edit: Pick<EditMutate, 'set' | 'input' | 'caret' | 'composing' | 'clear'>
 }
 
+export type EditorSessionSelectionCommands = {
+  replace: EditorSessionMutate['selection']['replace']
+  add: EditorSessionMutate['selection']['add']
+  remove: EditorSessionMutate['selection']['remove']
+  toggle: EditorSessionMutate['selection']['toggle']
+  clear: EditorSessionMutate['selection']['clear']
+}
+
 export type EditorSessionInteractionRead = {
   mode: store.ReadStore<InteractionMode>
   busy: store.ReadStore<boolean>
@@ -90,6 +98,9 @@ export type EditorSessionInteractionWrite = {
 export type EditorSession = {
   state: EditorSessionState
   mutate: EditorSessionMutate
+  commands: {
+    selection: EditorSessionSelectionCommands
+  }
   viewport: ViewportRuntime
   interaction: {
     read: EditorSessionInteractionRead
@@ -109,6 +120,31 @@ const resolveDrawBrush = (
 ) => tool.type === 'draw' && hasDrawBrush(tool.mode)
   ? tool.mode
   : DEFAULT_DRAW_BRUSH
+
+const createSelectionCommands = (
+  mutate: EditorSessionMutate
+): EditorSessionSelectionCommands => {
+  const applySelection = <TArgs extends unknown[]>(
+    apply: (...args: TArgs) => boolean
+  ) => (
+    ...args: TArgs
+  ) => {
+    if (!apply(...args)) {
+      return false
+    }
+
+    mutate.edit.clear()
+    return true
+  }
+
+  return {
+    replace: applySelection(mutate.selection.replace),
+    add: applySelection(mutate.selection.add),
+    remove: applySelection(mutate.selection.remove),
+    toggle: applySelection(mutate.selection.toggle),
+    clear: applySelection(mutate.selection.clear)
+  }
+}
 
 export const createEditorSession = ({
   initialTool,
@@ -183,6 +219,9 @@ export const createEditorSession = ({
       clear: edit.mutate.clear
     }
   }
+  const commands = {
+    selection: createSelectionCommands(mutate)
+  }
 
   const resetDocument = () => {
     edit.mutate.clear()
@@ -197,6 +236,7 @@ export const createEditorSession = ({
   return {
     state,
     mutate,
+    commands,
     viewport,
     interaction: {
       read: interaction.state,

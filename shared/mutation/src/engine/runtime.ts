@@ -54,7 +54,9 @@ import {
   type MutationIntentTable,
   type MutationOptions,
   type MutationOutputOf,
-  type MutationResult
+  type MutationResult,
+  type MutationStructuralFact,
+  type MutationStructureTable,
 } from './contracts'
 import {
   buildEntityDelta,
@@ -85,6 +87,10 @@ import {
   readTableEntityPath
 } from './entity'
 import {
+  readStructuralOperation,
+  readStructuralOperationResult
+} from './structural'
+import {
   buildEntityFootprint,
   dedupeFootprints,
   mutationFootprintBatchConflicts
@@ -92,7 +98,7 @@ import {
 import type {
   CompiledEntitySpec,
   MutableRecordWrite,
-  MutationCanonicalOperation
+  MutationEntityCanonicalOperation
 } from './contracts'
 
 const readMutationIssues = (
@@ -161,6 +167,7 @@ const readCustomOperationResult = <
           forward: [input.operation],
           inverse: [],
           delta,
+          structural: EMPTY_OUTPUTS as readonly MutationStructuralFact[],
           footprint,
           outputs,
           issues,
@@ -193,6 +200,7 @@ const readCustomOperationResult = <
         forward,
         inverse,
         delta,
+        structural: EMPTY_OUTPUTS as readonly MutationStructuralFact[],
         footprint,
         outputs,
         issues,
@@ -261,6 +269,7 @@ const readSingletonCreateResult = <
         undefined,
         changedPaths
       ),
+      structural: EMPTY_OUTPUTS as readonly MutationStructuralFact[],
       footprint: buildEntityFootprint(
         input.spec,
         'create',
@@ -296,6 +305,7 @@ const readSingletonCreateResult = <
       undefined,
       changedPaths
     ),
+    structural: EMPTY_OUTPUTS as readonly MutationStructuralFact[],
     footprint: buildEntityFootprint(
       input.spec,
       'create',
@@ -347,6 +357,7 @@ const readSingletonDeleteResult = <
       undefined,
       changedPaths
     ),
+    structural: EMPTY_OUTPUTS as readonly MutationStructuralFact[],
     footprint: buildEntityFootprint(
       input.spec,
       'delete',
@@ -371,7 +382,7 @@ const readCanonicalOperationResult = <
   kind: 'create' | 'patch' | 'delete'
   normalize(doc: Doc): Doc
 }): MutationApplyResult<Doc, Op> => {
-  const operation = input.operation as MutationCanonicalOperation
+  const operation = input.operation as MutationEntityCanonicalOperation
   const spec = input.spec
 
   try {
@@ -405,6 +416,7 @@ const readCanonicalOperationResult = <
               id,
               changedPaths
             ),
+            structural: EMPTY_OUTPUTS as readonly MutationStructuralFact[],
             footprint: buildEntityFootprint(
               spec,
               'create',
@@ -444,6 +456,7 @@ const readCanonicalOperationResult = <
               id,
               changedPaths
             ),
+            structural: EMPTY_OUTPUTS as readonly MutationStructuralFact[],
             footprint: buildEntityFootprint(
               spec,
               'delete',
@@ -474,6 +487,7 @@ const readCanonicalOperationResult = <
             forward: [input.operation],
             inverse: [],
             delta: EMPTY_DELTA,
+            structural: EMPTY_OUTPUTS as readonly MutationStructuralFact[],
             footprint: [],
             outputs: EMPTY_OUTPUTS,
             issues: EMPTY_ISSUES,
@@ -505,6 +519,7 @@ const readCanonicalOperationResult = <
             id,
             changedPaths
           ),
+          structural: EMPTY_OUTPUTS as readonly MutationStructuralFact[],
           footprint: buildEntityFootprint(
             spec,
             'patch',
@@ -554,6 +569,7 @@ const readCanonicalOperationResult = <
           forward: [input.operation],
           inverse: [],
           delta: EMPTY_DELTA,
+          structural: EMPTY_OUTPUTS as readonly MutationStructuralFact[],
           footprint: [],
           outputs: EMPTY_OUTPUTS,
           issues: EMPTY_ISSUES,
@@ -588,6 +604,7 @@ const readCanonicalOperationResult = <
           undefined,
           changedPaths
         ),
+        structural: EMPTY_OUTPUTS as readonly MutationStructuralFact[],
         footprint: buildEntityFootprint(
           spec,
           'patch',
@@ -639,6 +656,7 @@ const applyConcreteOperations = <
   document: Doc
   operations: readonly Op[]
   entities: ReadonlyMap<string, CompiledEntitySpec>
+  structures?: MutationStructureTable<Doc>
   custom?: MutationCustomTable<Doc, Op, Reader, Services, Code>
   createReader: MutationReaderFactory<Doc, Reader>
   origin: Origin
@@ -647,6 +665,7 @@ const applyConcreteOperations = <
 }): MutationApplyResult<Doc, Op, Code> => {
   let currentDocument = input.document
   let delta = EMPTY_DELTA
+  const structural: MutationStructuralFact[] = []
   const forward: Op[] = []
   const inverse: Op[] = []
   const footprint: MutationFootprint[] = []
@@ -657,9 +676,17 @@ const applyConcreteOperations = <
 
   for (let index = 0; index < input.operations.length; index += 1) {
     const operation = input.operations[index]!
-    const customSpec = input.custom?.[operation.type]
     const descriptor = readCanonicalOperation(operation.type)
-    const applied = customSpec
+    const structuralDescriptor = readStructuralOperation(operation.type)
+    const customSpec = input.custom?.[operation.type]
+    const applied = structuralDescriptor
+      ? readStructuralOperationResult<Doc, Op, Code>({
+          document: currentDocument,
+          operation,
+          structures: input.structures,
+          descriptor: structuralDescriptor
+        })
+      : customSpec
       ? readCustomOperationResult<Doc, Op, Reader, Services, Code>({
           document: currentDocument,
           operation,
@@ -701,6 +728,7 @@ const applyConcreteOperations = <
 
     currentDocument = applied.data.document
     delta = mergeMutationDeltas(delta, applied.data.delta)
+    structural.push(...applied.data.structural)
     forward.push(...applied.data.forward)
     footprint.push(...applied.data.footprint)
     outputs.push(...applied.data.outputs)
@@ -723,6 +751,7 @@ const applyConcreteOperations = <
       forward,
       inverse,
       delta,
+      structural,
       footprint: dedupeFootprints(footprint),
       outputs,
       issues,
@@ -751,6 +780,7 @@ const compileMutationIntents = <
   origin: Origin
   services: Services | undefined
   entities: ReadonlyMap<string, CompiledEntitySpec>
+  structures?: MutationStructureTable<Doc>
   custom?: MutationCustomTable<Doc, Op, Reader, Services, Code>
   createReader: MutationReaderFactory<Doc, Reader>
   normalize(doc: Doc): Doc
@@ -864,6 +894,7 @@ const compileMutationIntents = <
       document: workingDocument,
       operations: pendingOps,
       entities: input.entities,
+      structures: input.structures,
       custom: input.custom,
       createReader: input.createReader,
       origin: input.origin,
@@ -917,6 +948,7 @@ class MutationRuntime<
   private readonly createReader: MutationReaderFactory<Doc, Reader>
   private readonly normalize: (doc: Doc) => Doc
   private readonly entities: ReadonlyMap<string, CompiledEntitySpec>
+  private readonly structures?: MutationStructureTable<Doc>
   private readonly custom?: MutationCustomTable<Doc, Op, Reader, Services, Code>
   private readonly services: Services | undefined
   private readonly compileHandlers?: MutationCompileHandlerTable<any, Doc, Op, Reader, Services, Code>
@@ -936,6 +968,7 @@ class MutationRuntime<
     normalize(doc: Doc): Doc
     createReader: MutationReaderFactory<Doc, Reader>
     entities?: Readonly<Record<string, any>>
+    structures?: MutationStructureTable<Doc>
     custom?: MutationCustomTable<Doc, Op, Reader, Services, Code>
     services?: Services
     compile?: MutationCompileHandlerTable<any, Doc, Op, Reader, Services, Code>
@@ -944,6 +977,7 @@ class MutationRuntime<
     this.createReader = input.createReader
     this.normalize = input.normalize
     this.entities = compileEntities(input.entities)
+    this.structures = input.structures
     this.custom = input.custom
     this.services = input.services
     this.compileHandlers = input.compile
@@ -1023,6 +1057,7 @@ class MutationRuntime<
         reset: true,
         changes: EMPTY_OUTPUTS as never
       },
+      structural: EMPTY_OUTPUTS as readonly MutationStructuralFact[],
       issues: EMPTY_ISSUES,
       outputs: EMPTY_OUTPUTS
     }
@@ -1057,6 +1092,7 @@ class MutationRuntime<
       document: this.documentState,
       operations,
       entities: this.entities,
+      structures: this.structures,
       custom: this.custom,
       createReader: this.createReader,
       origin: options?.origin ?? 'user',
@@ -1072,6 +1108,7 @@ class MutationRuntime<
       forward: applied.data.forward,
       inverse: applied.data.inverse,
       delta: applied.data.delta,
+      structural: applied.data.structural,
       footprint: applied.data.footprint,
       outputs: applied.data.outputs,
       issues: applied.data.issues,
@@ -1124,6 +1161,7 @@ class MutationRuntime<
       origin: options?.origin ?? 'user',
       services: this.services,
       entities: this.entities,
+      structures: this.structures,
       custom: this.custom,
       createReader: this.createReader,
       normalize: this.normalize
@@ -1168,6 +1206,7 @@ class MutationRuntime<
       document: this.documentState,
       operations: planned.ops,
       entities: this.entities,
+      structures: this.structures,
       custom: this.custom,
       createReader: this.createReader,
       origin: options?.origin ?? 'user',
@@ -1192,6 +1231,7 @@ class MutationRuntime<
       forward: applied.data.forward,
       inverse: applied.data.inverse,
       delta: applied.data.delta,
+      structural: applied.data.structural,
       footprint: applied.data.footprint,
       outputs: [
         ...planned.outputs,
@@ -1230,6 +1270,7 @@ class MutationRuntime<
     forward: readonly Op[]
     inverse: readonly Op[]
     delta: any
+    structural: readonly MutationStructuralFact[]
     footprint: readonly MutationFootprint[]
     outputs: readonly unknown[]
     issues: readonly MutationIssue[]
@@ -1250,6 +1291,7 @@ class MutationRuntime<
       forward: input.forward,
       inverse: input.inverse,
       delta: input.delta,
+      structural: input.structural,
       footprint: input.footprint,
       issues: input.issues,
       outputs: input.outputs,
@@ -1311,6 +1353,7 @@ export class MutationEngine<
       normalize: input.normalize,
       createReader: input.createReader,
       entities: input.entities,
+      structures: input.structures,
       custom: input.custom,
       services: input.services,
       compile: input.compile,

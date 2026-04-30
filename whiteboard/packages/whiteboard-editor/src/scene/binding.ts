@@ -1,4 +1,4 @@
-import { scheduler, store } from '@shared/core'
+import { store } from '@shared/core'
 import { mindmap as mindmapApi } from '@whiteboard/core/mindmap'
 import type {
   DragState,
@@ -17,6 +17,7 @@ import type {
 } from '@whiteboard/editor/input/hover/store'
 import { isEdgeInteractionMode } from '@whiteboard/editor/input/interaction/mode'
 import type {
+  NodePresentationEntry,
   EditorInputPreviewState
 } from '@whiteboard/editor/session/preview/types'
 import type { EditorSession } from '@whiteboard/editor/session/runtime'
@@ -74,6 +75,17 @@ const mergeNodePreviewPatch = (
     ...(current?.patch ?? {}),
     ...patch
   },
+  presentation: current?.presentation,
+  hovered: current?.hovered ?? false,
+  hidden: current?.hidden ?? false
+})
+
+const mergeNodePresentation = (
+  current: NodePreview | undefined,
+  entry: NodePresentationEntry
+): NodePreview => ({
+  patch: current?.patch,
+  presentation: entry.presentation,
   hovered: current?.hovered ?? false,
   hidden: current?.hidden ?? false
 })
@@ -100,10 +112,21 @@ const readNodePreviews = (
     )
   })
 
+  preview.node.presentation.forEach((entry) => {
+    byId.set(
+      entry.id,
+      mergeNodePresentation(
+        byId.get(entry.id),
+        entry
+      )
+    )
+  })
+
   preview.draw.hidden.forEach((nodeId) => {
     const current = byId.get(nodeId)
     byId.set(nodeId, {
       patch: current?.patch,
+      presentation: current?.presentation,
       hovered: current?.hovered ?? false,
       hidden: true
     })
@@ -172,22 +195,7 @@ const readMindmapPreview = (
           ghost: preview.subtreeMove.ghost,
           drop: preview.subtreeMove.drop
         }
-      : undefined,
-    enter: preview.enter?.flatMap((entry) => {
-      const mindmapId = mindmapApi.tree.resolveId(engine.doc, entry.treeId)
-      return mindmapId
-        ? [{
-            mindmapId,
-            nodeId: entry.nodeId,
-            parentId: entry.parentId,
-            route: entry.route,
-            fromRect: entry.fromRect,
-            toRect: entry.toRect,
-            startedAt: entry.startedAt,
-            durationMs: entry.durationMs
-          }]
-        : []
-    })
+      : undefined
   }
 }
 
@@ -264,31 +272,7 @@ const readDragState = (
 }
 
 export interface EditorSceneBinding extends EditorSceneSource {
-  emit(change: EditorSceneSourceChange): void
   dispose(): void
-}
-
-export const readActiveMindmapTickIds = (input: {
-  engine: Pick<Engine, 'current'>
-  preview: EditorInputPreviewState['mindmap']['preview']
-  now?: number
-}): ReadonlySet<string> => {
-  const ids = new Set<string>()
-  const now = input.now ?? scheduler.readMonotonicNow()
-  const document = input.engine.current().doc
-
-  input.preview?.enter?.forEach((entry) => {
-    if (entry.startedAt + entry.durationMs <= now) {
-      return
-    }
-
-    const mindmapId = mindmapApi.tree.resolveId(document, entry.treeId)
-    if (mindmapId) {
-      ids.add(mindmapId)
-    }
-  })
-
-  return ids
 }
 
 export const createEditorSceneBinding = ({
@@ -369,9 +353,6 @@ export const createEditorSceneBinding = ({
         zoom: viewport.zoom,
         center: viewport.center,
         worldRect: session.viewport.read.worldRect()
-      },
-      clock: {
-        now: scheduler.readMonotonicNow()
       }
     }
   }
@@ -466,9 +447,6 @@ export const createEditorSceneBinding = ({
       return () => {
         listeners.delete(listener)
       }
-    },
-    emit: (change) => {
-      notify(change)
     },
     dispose: () => {
       if (disposed) {

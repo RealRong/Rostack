@@ -86,7 +86,6 @@ export interface Input {
     session: SessionInput
     interaction: InteractionInput
     view: SceneViewSnapshot
-    clock: ClockInput
     delta: EditorSceneRuntimeDelta
   }
   delta: WhiteboardMutationDelta
@@ -207,8 +206,13 @@ export interface EdgeGuidePreview {
 
 export type NodePreviewPatch = Omit<TransformPreviewPatch, 'id'>
 
+export interface NodePresentation {
+  position?: Point
+}
+
 export interface NodePreview {
   patch?: NodePreviewPatch
+  presentation?: NodePresentation
   hovered: boolean
   hidden: boolean
 }
@@ -244,17 +248,6 @@ export interface SelectionPreview {
   guides: readonly Guide[]
 }
 
-export interface MindmapEnterPreview {
-  mindmapId: MindmapId
-  nodeId: NodeId
-  parentId: NodeId
-  route: readonly Point[]
-  fromRect: Rect
-  toRect: Rect
-  startedAt: number
-  durationMs: number
-}
-
 export interface MindmapPreview {
   rootMove?: {
     mindmapId: MindmapId
@@ -266,7 +259,6 @@ export interface MindmapPreview {
     ghost: Rect
     drop?: MindmapDragDropTarget
   }
-  enter?: readonly MindmapEnterPreview[]
 }
 
 export type ToolState =
@@ -412,10 +404,6 @@ export type DragState =
       mindmapId: MindmapId
       nodeId: NodeId
     }
-
-export interface ClockInput {
-  now: number
-}
 
 export interface NodeView {
   base: NodeBaseView

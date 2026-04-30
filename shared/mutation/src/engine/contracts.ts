@@ -13,7 +13,11 @@ import type {
   MutationDeltaInput,
   MutationFootprint,
   MutationIssue,
+  MutationOrderedAnchor,
   MutationReplaceCommit,
+  MutationStructuralFact,
+  MutationTreeSnapshot,
+  MutationTreeSubtreeSnapshot,
   Origin,
 } from '../write'
 export type {
@@ -21,7 +25,13 @@ export type {
   MutationChangeInput,
   MutationDelta,
   MutationDeltaInput,
-  MutationFootprint
+  MutationFootprint,
+  MutationOrderedAnchor,
+  MutationOrderedSlot,
+  MutationStructuralFact,
+  MutationTreeNodeSnapshot,
+  MutationTreeSnapshot,
+  MutationTreeSubtreeSnapshot,
 } from '../write'
 
 export type MutableRecordWrite = Record<string, unknown>
@@ -146,15 +156,16 @@ export type MutationApplyResult<
 > =
   | {
       ok: true
-      data: {
-        document: Doc
-        forward: readonly Op[]
-        inverse: readonly Op[]
-        delta: MutationDelta
-        footprint: readonly MutationFootprint[]
-        outputs: readonly unknown[]
-        issues: readonly MutationIssue[]
-        historyMode: 'track' | 'skip' | 'neutral'
+    data: {
+      document: Doc
+      forward: readonly Op[]
+      inverse: readonly Op[]
+      delta: MutationDelta
+      structural: readonly MutationStructuralFact[]
+      footprint: readonly MutationFootprint[]
+      outputs: readonly unknown[]
+      issues: readonly MutationIssue[]
+      historyMode: 'track' | 'skip' | 'neutral'
       }
     }
   | MutationFailure<Code>
@@ -243,6 +254,37 @@ export interface MutationEntitySpec {
   members: Readonly<Record<string, 'field' | 'record'>>
   change?: Readonly<Record<string, readonly string[]>>
 }
+
+export interface MutationOrderedStructureSpec<
+  Doc,
+  Item = unknown
+> {
+  kind: 'ordered'
+  read(document: Doc): readonly Item[]
+  identify(item: Item): string
+  write(document: Doc, items: readonly Item[]): Doc
+  clone?(item: Item): Item
+}
+
+export interface MutationTreeStructureSpec<
+  Doc,
+  Value = unknown
+> {
+  kind: 'tree'
+  read(document: Doc): MutationTreeSnapshot<Value>
+  write(document: Doc, tree: MutationTreeSnapshot<Value>): Doc
+  clone?(value: Value): Value
+}
+
+export type MutationStructureSpec<
+  Doc
+> =
+  | MutationOrderedStructureSpec<Doc, unknown>
+  | MutationTreeStructureSpec<Doc, unknown>
+
+export type MutationStructureTable<
+  Doc
+> = Readonly<Record<string, MutationStructureSpec<Doc>>>
 
 export interface MutationHistoryOptions {
   capacity?: number
@@ -337,6 +379,7 @@ export interface MutationEngineOptions<
   createReader: MutationReaderFactory<Doc, Reader>
   services?: Services
   entities?: Readonly<Record<string, MutationEntitySpec>>
+  structures?: MutationStructureTable<Doc>
   custom?: MutationCustomTable<Doc, Op, Reader, Services, Code>
   compile?: MutationCompileHandlerTable<Table, Doc, Op, Reader, Services, Code>
   history?: MutationHistoryOptions | false
@@ -352,12 +395,75 @@ export type MutationOperationKind =
   | 'patch'
   | 'delete'
 
-export type MutationCanonicalOperation = {
+export type MutationEntityCanonicalOperation = {
   type: string
   id?: string
   value?: unknown
   patch?: MutationEntityPatch
 }
+
+export type MutationStructuralOrderedInsertOperation = {
+  type: 'structural.ordered.insert'
+  structure: string
+  itemId: string
+  value: unknown
+  to: MutationOrderedAnchor
+}
+
+export type MutationStructuralOrderedMoveOperation = {
+  type: 'structural.ordered.move'
+  structure: string
+  itemId: string
+  to: MutationOrderedAnchor
+}
+
+export type MutationStructuralOrderedDeleteOperation = {
+  type: 'structural.ordered.delete'
+  structure: string
+  itemId: string
+}
+
+export type MutationStructuralTreeInsertOperation = {
+  type: 'structural.tree.insert'
+  structure: string
+  nodeId: string
+  parentId?: string
+  index?: number
+  value?: unknown
+}
+
+export type MutationStructuralTreeMoveOperation = {
+  type: 'structural.tree.move'
+  structure: string
+  nodeId: string
+  parentId?: string
+  index?: number
+}
+
+export type MutationStructuralTreeDeleteOperation = {
+  type: 'structural.tree.delete'
+  structure: string
+  nodeId: string
+}
+
+export type MutationStructuralTreeRestoreOperation = {
+  type: 'structural.tree.restore'
+  structure: string
+  snapshot: MutationTreeSubtreeSnapshot
+}
+
+export type MutationStructuralCanonicalOperation =
+  | MutationStructuralOrderedInsertOperation
+  | MutationStructuralOrderedMoveOperation
+  | MutationStructuralOrderedDeleteOperation
+  | MutationStructuralTreeInsertOperation
+  | MutationStructuralTreeMoveOperation
+  | MutationStructuralTreeDeleteOperation
+  | MutationStructuralTreeRestoreOperation
+
+export type MutationCanonicalOperation =
+  | MutationEntityCanonicalOperation
+  | MutationStructuralCanonicalOperation
 
 export type CompiledMemberSpec = {
   name: string

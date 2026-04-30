@@ -278,6 +278,26 @@ export const tryStartEdgeRoute = (input: {
   }
 }
 
+export const removeEdgeRoutePoint = (
+  ctx: Pick<EditorHostDeps, 'projection' | 'write'>,
+  edgeId: EdgeId,
+  index: number
+) => {
+  const edge = ctx.projection.query.edge.get(edgeId)?.base.edge
+  if (!edge) {
+    throw new Error(`Edge ${edgeId} not found.`)
+  }
+
+  const patch = edgeApi.route.remove(edge, index)
+  if (!patch) {
+    throw new Error(`Edge route point ${edgeId}:${index} not found.`)
+  }
+
+  ctx.write.edge.route.set(edgeId, patch.route ?? {
+    kind: 'auto'
+  })
+}
+
 const readProjectedRoutePoint = (
   state: Extract<EdgeRouteHandleState, { kind: 'anchor' | 'insert' }>,
   pointerWorld: Point

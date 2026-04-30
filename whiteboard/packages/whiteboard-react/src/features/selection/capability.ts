@@ -1,4 +1,5 @@
 import type { SelectionTarget } from '@whiteboard/core/selection'
+import { document as documentApi } from '@whiteboard/core/document'
 import {
   resolveLockDecision
 } from '@whiteboard/core/operations'
@@ -23,14 +24,14 @@ export const readSelectionCan = ({
   editor: WhiteboardRuntime
   target: SelectionTarget
 }): SelectionCan => {
-  const document = editor.document.get()
+  const reader = documentApi.reader(() => editor.document.get())
   const pureNodeSelection =
     target.nodeIds.length > 0
     && target.edgeIds.length === 0
   const count = target.nodeIds.length + target.edgeIds.length
   const exactGroupIds = editor.scene.query.group.exact(target)
   const orderLock = resolveLockDecision({
-    document,
+    reader,
     target: {
       kind: 'refs',
       refs: [
@@ -40,7 +41,7 @@ export const readSelectionCan = ({
     }
   })
   const destructiveLock = resolveLockDecision({
-    document,
+    reader,
     target: {
       kind: 'refs',
       refs: [
@@ -51,14 +52,14 @@ export const readSelectionCan = ({
     }
   })
   const groupingLock = resolveLockDecision({
-    document,
+    reader,
     target: {
       kind: 'nodes',
       nodeIds: target.nodeIds
     }
   })
   const ungroupLock = resolveLockDecision({
-    document,
+    reader,
     target: {
       kind: 'groups',
       groupIds: exactGroupIds

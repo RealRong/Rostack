@@ -29,9 +29,6 @@ export interface EditorSceneRuntimeDelta {
       edgeGuide: boolean
     }
   }
-  clock: {
-    mindmaps: ReadonlySet<MindmapId>
-  }
 }
 
 export interface EditorScenePlan {
@@ -88,9 +85,6 @@ export const createEmptyEditorSceneRuntimeDelta = (): EditorSceneRuntimeDelta =>
       draw: false,
       edgeGuide: false
     }
-  },
-  clock: {
-    mindmaps: new Set()
   }
 })
 

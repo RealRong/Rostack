@@ -14,10 +14,6 @@ import {
 import type {
   InteractionSession
 } from '@whiteboard/editor/input/core/types'
-import {
-  clearSelection,
-  replaceSelection
-} from '@whiteboard/editor/input/helpers'
 import type { PointerDownInput } from '@whiteboard/editor/types/input'
 import { GestureTuning } from '@whiteboard/editor/input/session/tuning'
 import type { EditorHostDeps } from '@whiteboard/editor/input/runtime'
@@ -194,9 +190,7 @@ const syncMarqueeInteraction = (
   next: MarqueeSelectionState
 ) => {
   if (!selectionApi.target.equal(previous.selection, next.selection)) {
-    replaceSelection({
-      session: ctx.session
-    }, next.selection)
+    ctx.session.commands.selection.replace(next.selection)
   }
 
   interaction.gesture = next.kind === 'active'
@@ -228,9 +222,7 @@ export const createMarqueeSession = (
   let interaction = null as InteractionSession | null
 
   if (input.action.clearOnStart) {
-    clearSelection({
-      session: ctx.session
-    })
+    ctx.session.commands.selection.clear()
   }
 
   const dispatch = (

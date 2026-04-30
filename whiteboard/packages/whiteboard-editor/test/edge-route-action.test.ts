@@ -4,6 +4,7 @@ import {
   createEditorActionsApi
 } from '../src/action'
 import { createToolService } from '../src/services/tool'
+import { createEditorTaskRuntime } from '../src/tasks/runtime'
 
 const okResult = () => ({ ok: true }) as const
 
@@ -84,6 +85,15 @@ const createActions = (edge = createEdge()) => {
         caret: vi.fn(),
         composing: vi.fn(),
         clear: vi.fn()
+      }
+    },
+    commands: {
+      selection: {
+        replace: vi.fn(() => true),
+        add: vi.fn(() => true),
+        remove: vi.fn(() => true),
+        toggle: vi.fn(() => true),
+        clear: vi.fn(() => true)
       }
     },
     state: {
@@ -278,35 +288,16 @@ const createActions = (edge = createEdge()) => {
       clear: vi.fn()
     }
   } as never
-  const boundary = {
-    atomic: <TArgs extends unknown[], TResult>(fn: (...args: TArgs) => TResult) => (
-      ...args: TArgs
-    ) => fn(...args),
-    procedure: <TArgs extends unknown[], TResult>(fn: (...args: TArgs) => Generator<unknown, TResult, unknown>) => (
-      ...args: TArgs
-    ) => {
-      const procedure = fn(...args)
-      let step = procedure.next()
-
-      while (!step.done) {
-        throw new Error(`Unexpected procedure signal: ${(step.value as { kind?: string })?.kind ?? 'unknown'}`)
-      }
-
-      return step.value
-    }
-  } as const
+  const tasks = createEditorTaskRuntime()
   const actions = createEditorActionsApi({
-    boundary,
-    engine: {
-      current: vi.fn(() => ({
-        snapshot: {},
-        change: {}
-      }))
-    } as never,
     document,
+    state: {
+      viewport: session.viewport.read,
+      selection: session.state.selection
+    } as never,
     session,
     graph,
-    layout,
+    tasks,
     tool: createToolService({
       session
     }),
@@ -321,6 +312,9 @@ const createActions = (edge = createEdge()) => {
 
   return {
     actions,
+    dispose: () => {
+      tasks.dispose()
+    },
     setRoute,
     insertRoute,
     updateRoute,

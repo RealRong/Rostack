@@ -1,6 +1,8 @@
 import { geometry as geometryApi } from '@whiteboard/core/geometry'
 import type { NodeId } from '@whiteboard/core/types'
 import type {
+  NodePresentation,
+  NodePresentationEntry,
   NodePreviewState,
   NodePreviewEntry,
   NodeSelectionPreviewState,
@@ -11,6 +13,7 @@ import type {
 
 export const EMPTY_NODE_PATCHES: readonly NodePreviewEntry[] = []
 export const EMPTY_TEXT_PREVIEW_PATCHES: readonly TextPreviewEntry[] = []
+export const EMPTY_NODE_PRESENTATIONS: readonly NodePresentationEntry[] = []
 export const EMPTY_NODE_HIDDEN: readonly NodeId[] = []
 
 export const EMPTY_NODE_SELECTION_FEEDBACK: NodeSelectionPreviewState = {
@@ -22,8 +25,14 @@ const EMPTY_NODE_TEXT_FEEDBACK: NodeTextPreviewState = {
 }
 
 export const EMPTY_NODE_FEEDBACK: NodePreviewState = {
-  text: EMPTY_NODE_TEXT_FEEDBACK
+  text: EMPTY_NODE_TEXT_FEEDBACK,
+  presentation: EMPTY_NODE_PRESENTATIONS
 }
+
+const isNodePresentationEqual = (
+  left: NodePresentation | undefined,
+  right: NodePresentation | undefined
+) => geometryApi.equal.point(left?.position, right?.position)
 
 const isTextPreviewPatchEqual = (
   left: TextPreviewPatch | undefined,
@@ -236,7 +245,10 @@ export const clearNodeTextPreviewSize = (
 export const isNodeFeedbackStateEqual = (
   left: NodePreviewState,
   right: NodePreviewState
-) => left.text.patches === right.text.patches
+) => (
+  left.text.patches === right.text.patches
+  && left.presentation === right.presentation
+)
 
 export const normalizeNodeFeedbackState = (
   state: NodePreviewState
@@ -244,8 +256,14 @@ export const normalizeNodeFeedbackState = (
   const textPatches = state.text.patches.length > 0
     ? state.text.patches
     : EMPTY_TEXT_PREVIEW_PATCHES
+  const presentation = state.presentation.length > 0
+    ? state.presentation
+    : EMPTY_NODE_PRESENTATIONS
 
-  if (textPatches === EMPTY_TEXT_PREVIEW_PATCHES) {
+  if (
+    textPatches === EMPTY_TEXT_PREVIEW_PATCHES
+    && presentation === EMPTY_NODE_PRESENTATIONS
+  ) {
     return EMPTY_NODE_FEEDBACK
   }
 
@@ -255,6 +273,36 @@ export const normalizeNodeFeedbackState = (
         ? EMPTY_NODE_TEXT_FEEDBACK
         : {
             patches: textPatches
-          }
+          },
+    presentation
   }
 }
+
+export const updateNodePresentation = (
+  state: NodePreviewState,
+  nodeId: NodeId,
+  presentation: NodePresentation | undefined
+): NodePreviewState => {
+  const current = state.presentation.find((entry) => entry.id === nodeId)?.presentation
+  if (isNodePresentationEqual(current, presentation)) {
+    return state
+  }
+
+  const next = state.presentation.filter((entry) => entry.id !== nodeId)
+  if (presentation?.position) {
+    next.push({
+      id: nodeId,
+      presentation
+    })
+  }
+
+  return normalizeNodeFeedbackState({
+    ...state,
+    presentation: next
+  })
+}
+
+export const clearNodePresentation = (
+  state: NodePreviewState,
+  nodeId: NodeId
+): NodePreviewState => updateNodePresentation(state, nodeId, undefined)

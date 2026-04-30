@@ -1,0 +1,338 @@
+import { scheduler } from '@shared/core'
+import { mindmap as mindmapApi } from '@whiteboard/core/mindmap'
+import type {
+  MindmapId,
+  MindmapInsertInput,
+  MindmapNodeId,
+  Point,
+  Rect
+} from '@whiteboard/core/types'
+import type {
+  MindmapActions,
+  MindmapInsertBehavior
+} from '@whiteboard/editor/action/types'
+import type { EditorSceneApi } from '@whiteboard/editor/scene/api'
+import {
+  clearNodePresentation,
+  updateNodePresentation
+} from '@whiteboard/editor/session/preview/node'
+import type { EditorSession } from '@whiteboard/editor/session/runtime'
+import type { EditorWrite } from '@whiteboard/editor/write'
+import type { EditorTaskRuntime } from './runtime'
+import {
+  isEditorTaskRuntimeDisposedError
+} from './runtime'
+
+const DEFAULT_MINDMAP_ENTER_DURATION_MS = 220
+
+type MindmapActionDeps = {
+  graph: Pick<EditorSceneApi, 'query'>
+  session: Pick<EditorSession, 'preview'>
+  tasks: EditorTaskRuntime
+  write: Pick<EditorWrite, 'mindmap'>
+  focusNode: (input: {
+    nodeId: MindmapNodeId
+    behavior: MindmapInsertBehavior | undefined
+  }) => void
+  focusRoot: (input: {
+    nodeId: MindmapNodeId
+    focus: 'edit-root' | 'select-root' | 'none' | undefined
+  }) => void
+}
+
+type MindmapEnterJob = {
+  nodeId: MindmapNodeId
+  from: Point
+  to: Point
+  startedAt: number
+  durationMs: number
+}
+
+const toRectCenter = (
+  rect: Rect
+): Point => ({
+  x: rect.x + rect.width / 2,
+  y: rect.y + rect.height / 2
+})
+
+const interpolatePoint = (
+  from: Point,
+  to: Point,
+  progress: number
+): Point => ({
+  x: from.x + (to.x - from.x) * progress,
+  y: from.y + (to.y - from.y) * progress
+})
+
+const readProgress = (
+  startedAt: number,
+  durationMs: number
+): number => {
+  if (durationMs <= 0) {
+    return 1
+  }
+
+  return Math.max(
+    0,
+    Math.min(
+      1,
+      (scheduler.readMonotonicNow() - startedAt) / durationMs
+    )
+  )
+}
+
+const withNodePresentation = (
+  session: Pick<EditorSession, 'preview'>,
+  nodeId: MindmapNodeId,
+  position?: Point
+) => {
+  session.preview.write.set((current) => {
+    const nextNode = position
+      ? updateNodePresentation(current.node, nodeId, {
+          position
+        })
+      : clearNodePresentation(current.node, nodeId)
+
+    return nextNode === current.node
+      ? current
+      : {
+          ...current,
+          node: nextNode
+        }
+  })
+}
+
+const readInsertAnchorId = (
+  input: MindmapInsertInput
+) => {
+  const anchorId = input.options?.layout?.anchorId
+  if (anchorId) {
+    return anchorId
+  }
+
+  switch (input.kind) {
+    case 'child':
+      return input.parentId
+    case 'sibling':
+    case 'parent':
+      return input.nodeId
+  }
+}
+
+const buildEnterJob = (input: {
+  graph: Pick<EditorSceneApi, 'query'>
+  treeId: MindmapId
+  nodeId: MindmapNodeId
+  anchorId?: MindmapNodeId
+}): MindmapEnterJob | undefined => {
+  const structure = input.graph.query.mindmap.structure(input.treeId)
+  const targetRect = input.graph.query.node.get(input.nodeId)?.geometry.rect
+  if (!structure || !targetRect) {
+    return undefined
+  }
+
+  const parentId = structure.tree.nodes[input.nodeId]?.parentId
+  const anchorRect = input.graph.query.node.get(
+    input.anchorId ?? parentId ?? ''
+  )?.geometry.rect
+  if (!anchorRect) {
+    return undefined
+  }
+
+  const anchor = toRectCenter(anchorRect)
+
+  return {
+    nodeId: input.nodeId,
+    from: {
+      x: anchor.x - targetRect.width / 2,
+      y: anchor.y - targetRect.height / 2
+    },
+    to: {
+      x: targetRect.x,
+      y: targetRect.y
+    },
+    startedAt: scheduler.readMonotonicNow(),
+    durationMs: DEFAULT_MINDMAP_ENTER_DURATION_MS
+  }
+}
+
+const resolveEnterJob = async (input: {
+  graph: Pick<EditorSceneApi, 'query'>
+  treeId: MindmapId
+  nodeId: MindmapNodeId
+  anchorId?: MindmapNodeId
+  tasks: EditorTaskRuntime
+}): Promise<MindmapEnterJob | undefined> => {
+  const current = buildEnterJob(input)
+  if (current) {
+    return current
+  }
+
+  await input.tasks.nextFrame()
+  return buildEnterJob(input)
+}
+
+const animateEnter = async (input: {
+  session: Pick<EditorSession, 'preview'>
+  tasks: EditorTaskRuntime
+  job: MindmapEnterJob
+}) => {
+  withNodePresentation(input.session, input.job.nodeId, input.job.from)
+
+  try {
+    while (true) {
+      const progress = readProgress(
+        input.job.startedAt,
+        input.job.durationMs
+      )
+      if (progress >= 1) {
+        break
+      }
+
+      await input.tasks.nextFrame()
+
+      const nextProgress = readProgress(
+        input.job.startedAt,
+        input.job.durationMs
+      )
+      if (nextProgress >= 1) {
+        break
+      }
+
+      withNodePresentation(
+        input.session,
+        input.job.nodeId,
+        interpolatePoint(input.job.from, input.job.to, nextProgress)
+      )
+    }
+  } finally {
+    withNodePresentation(
+      input.session,
+      input.job.nodeId
+    )
+  }
+}
+
+const runTask = (
+  task: Promise<void>
+) => {
+  void task.catch((error) => {
+    if (isEditorTaskRuntimeDisposedError(error)) {
+      return
+    }
+
+    throw error
+  })
+}
+
+export const createMindmapActions = ({
+  graph,
+  session,
+  tasks,
+  write,
+  focusNode,
+  focusRoot
+}: MindmapActionDeps) => {
+  const animateAndFocus = (input: {
+    treeId: MindmapId
+    nodeId: MindmapNodeId
+    anchorId?: MindmapNodeId
+    behavior: MindmapInsertBehavior | undefined
+  }) => runTask((async () => {
+    const shouldEnter = input.behavior?.enter === 'from-anchor'
+    const job = shouldEnter
+      ? await resolveEnterJob({
+          graph,
+          treeId: input.treeId,
+          nodeId: input.nodeId,
+          anchorId: input.anchorId,
+          tasks
+        })
+      : undefined
+
+    if (job) {
+      await animateEnter({
+        session,
+        tasks,
+        job
+      })
+    }
+
+    focusNode({
+      nodeId: input.nodeId,
+      behavior: input.behavior
+    })
+  })())
+
+  const create: MindmapActions['create'] = (
+    payload,
+    options
+  ) => {
+    const result = write.mindmap.create(payload)
+    if (result.ok) {
+      focusRoot({
+        nodeId: result.data.rootId,
+        focus: options?.focus
+      })
+    }
+    return result
+  }
+
+  const insert: MindmapActions['insert'] = (
+    id,
+    input,
+    options
+  ) => {
+    const result = write.mindmap.topic.insert(id, input)
+    if (result.ok) {
+      animateAndFocus({
+        treeId: id,
+        nodeId: result.data.nodeId,
+        anchorId: readInsertAnchorId(input),
+        behavior: options?.behavior
+      })
+    }
+    return result
+  }
+
+  const insertRelative: MindmapActions['insertRelative'] = (
+    input
+  ) => {
+    const structure = graph.query.mindmap.structure(input.id)
+    if (!structure) {
+      return undefined
+    }
+
+    const insertInput = mindmapApi.plan.relativeInsertInput({
+      structure: {
+        rootId: structure.rootId,
+        nodeIds: structure.nodeIds,
+        tree: structure.tree
+      },
+      targetNodeId: input.targetNodeId,
+      relation: input.relation,
+      side: input.side,
+      payload: input.payload
+    })
+    if (!insertInput) {
+      return undefined
+    }
+
+    const result = write.mindmap.topic.insert(input.id, insertInput)
+    if (result.ok) {
+      animateAndFocus({
+        treeId: input.id,
+        nodeId: result.data.nodeId,
+        anchorId: input.targetNodeId,
+        behavior: input.behavior
+      })
+    }
+    return result
+  }
+
+  return {
+    create,
+    insert,
+    insertRelative
+  }
+}

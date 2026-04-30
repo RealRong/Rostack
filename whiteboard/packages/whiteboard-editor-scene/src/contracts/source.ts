@@ -3,7 +3,6 @@ import type { Document as WhiteboardDocument } from '@whiteboard/core/types'
 import type { MutationDelta } from '@shared/mutation'
 import type { Revision } from '@shared/projection'
 import type {
-  ClockInput,
   DragState,
   DraftInput,
   EditSession,
@@ -32,7 +31,6 @@ export interface EditorSceneSourceSnapshot {
     editingEdge: boolean
   }
   view: SceneViewSnapshot
-  clock: ClockInput
 }
 
 export interface EditorSceneSourceChange {
@@ -54,7 +52,6 @@ export interface EditorSceneSourceChange {
     editingEdge?: true
   }
   view?: true
-  clock?: true
 }
 
 export interface EditorSceneSource {

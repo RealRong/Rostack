@@ -2,12 +2,9 @@ import type { HistoryPort } from '@shared/mutation'
 import type { Viewport } from '@whiteboard/core/types'
 import type { WhiteboardLayoutService } from '@whiteboard/core/layout'
 import { createEditorActionsApi } from '@whiteboard/editor/action'
-import { createEditorBoundaryRuntime } from '@whiteboard/editor/boundary/runtime'
-import { createEditorBoundaryTaskRuntime } from '@whiteboard/editor/boundary/task'
 import { createEditorDerived } from '@whiteboard/editor/editor/derived'
 import { createEditorEvents } from '@whiteboard/editor/editor/events'
 import { createEditorState } from '@whiteboard/editor/editor/state'
-import { createEditorInputApi } from '@whiteboard/editor/input/host'
 import { createEditorHost } from '@whiteboard/editor/input/runtime'
 import { createRuntime as createSceneRuntime } from '@whiteboard/editor-scene'
 import { createEditorSceneApi } from '@whiteboard/editor/scene/api'
@@ -18,6 +15,7 @@ import {
   type DrawState
 } from '@whiteboard/editor/session/draw/state'
 import { createEditorSession } from '@whiteboard/editor/session/runtime'
+import { createEditorTaskRuntime } from '@whiteboard/editor/tasks/runtime'
 import type { Editor } from '@whiteboard/editor/types/editor'
 import {
   DEFAULT_EDITOR_DEFAULTS,
@@ -86,37 +84,14 @@ export const createEditor = (input: {
   const tool = createToolService({
     session
   })
-
-  let boundary: ReturnType<typeof createEditorBoundaryRuntime>
-  const tasks = createEditorBoundaryTaskRuntime({
-    execute: (procedure) => {
-      if (!boundary) {
-        throw new Error('Editor boundary runtime is not ready.')
-      }
-
-      boundary.execute(procedure)
-    }
-  })
-  boundary = createEditorBoundaryRuntime({
-    scene: {
-      current: () => ({
-        revision: sceneRuntime.revision(),
-        state: sceneRuntime.state()
-      }),
-      publish: (change) => {
-        sceneBinding.emit(change)
-      }
-    },
-    tasks
-  })
+  const tasks = createEditorTaskRuntime()
 
   const actions = createEditorActionsApi({
-    boundary,
-    engine: input.engine,
     document,
     state,
     session,
     graph: scene,
+    tasks,
     tool,
     write: writeRuntime,
     nodeType,
@@ -142,15 +117,11 @@ export const createEditor = (input: {
     tool,
     nodeType
   })
-  const inputApi = createEditorInputApi({
-    boundary,
-    host
-  })
   const events = createEditorEvents({
     engine: input.engine,
     session,
     document,
-    resetHost: inputApi.cancel
+    resetHost: host.cancel
   })
 
   return {
@@ -159,13 +130,13 @@ export const createEditor = (input: {
     state,
     derived,
     history: input.history,
-    input: inputApi,
+    input: host,
     write: actions,
     events: events.events,
     dispose: () => {
       events.dispose()
+      tasks.dispose()
       host.cancel()
-      boundary.dispose()
       scene.dispose()
       sceneRuntime.dispose()
       sceneBinding.dispose()

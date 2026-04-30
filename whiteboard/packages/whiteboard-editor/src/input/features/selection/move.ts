@@ -8,9 +8,6 @@ import type {
 } from '@whiteboard/editor/input/core/types'
 import { createGesture } from '@whiteboard/editor/input/core/gesture'
 import { createMindmapDragSession, tryStartMindmapDragForNode } from '@whiteboard/editor/input/features/mindmap/drag'
-import {
-  replaceSelection
-} from '@whiteboard/editor/input/helpers'
 import type {
   PointerDownInput
 } from '@whiteboard/editor/types/input'
@@ -90,9 +87,7 @@ export const createMoveInteraction = (
     input.visibility.kind === 'show'
     || input.visibility.kind === 'temporary'
   ) {
-    replaceSelection({
-      session: ctx.session
-    }, input.visibility.selection)
+    ctx.session.commands.selection.replace(input.visibility.selection)
   }
 
   if (pickedNodeId) {
@@ -114,9 +109,7 @@ export const createMoveInteraction = (
       session.cleanup = () => {
         cleanup?.()
         if (restoreSelection) {
-          replaceSelection({
-            session: ctx.session
-          }, restoreSelection)
+          ctx.session.commands.selection.replace(restoreSelection)
         }
       }
 
@@ -208,9 +201,7 @@ export const createMoveInteraction = (
     },
     cleanup: () => {
       if (restoreSelection) {
-        replaceSelection({
-          session: ctx.session
-        }, restoreSelection)
+        ctx.session.commands.selection.replace(restoreSelection)
       }
     }
   }

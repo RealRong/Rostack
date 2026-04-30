@@ -214,20 +214,6 @@ const isMindmapDropTargetEqual = (
   && isMindmapDropLineEqual(left.insertLine, right.insertLine)
 )
 
-const isMindmapEnterPreviewEqual = (
-  left: NonNullable<MindmapPreview['enter']>[number],
-  right: NonNullable<MindmapPreview['enter']>[number]
-): boolean => (
-  left.mindmapId === right.mindmapId
-  && left.nodeId === right.nodeId
-  && left.parentId === right.parentId
-  && equal.sameOrder(left.route, right.route, equal.samePoint)
-  && equal.sameOptionalRect(left.fromRect, right.fromRect)
-  && equal.sameOptionalRect(left.toRect, right.toRect)
-  && left.startedAt === right.startedAt
-  && left.durationMs === right.durationMs
-)
-
 const isMindmapPreviewEqual = (
   left: MindmapPreview | null,
   right: MindmapPreview | null
@@ -254,7 +240,6 @@ const isMindmapPreviewEqual = (
       && isMindmapDropTargetEqual(left.subtreeMove.drop, right.subtreeMove.drop)
     )
   )
-  && equal.sameOrder(left.enter ?? [], right.enter ?? [], isMindmapEnterPreviewEqual)
 )
 
 const readNodeUiEdit = (

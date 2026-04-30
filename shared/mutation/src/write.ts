@@ -33,6 +33,71 @@ export interface MutationDeltaInput {
   changes?: Record<string, MutationChangeInput>
 }
 
+export type MutationOrderedAnchor =
+  | {
+      kind: 'start'
+    }
+  | {
+      kind: 'end'
+    }
+  | {
+      kind: 'before'
+      itemId: string
+    }
+  | {
+      kind: 'after'
+      itemId: string
+    }
+
+export interface MutationOrderedSlot {
+  prevId?: string
+  nextId?: string
+}
+
+export interface MutationTreeNodeSnapshot<
+  TValue = unknown
+> {
+  parentId?: string
+  children: readonly string[]
+  value?: TValue
+}
+
+export interface MutationTreeSnapshot<
+  TValue = unknown
+> {
+  rootIds: readonly string[]
+  nodes: Readonly<Record<string, MutationTreeNodeSnapshot<TValue>>>
+}
+
+export interface MutationTreeSubtreeSnapshot<
+  TValue = unknown
+> {
+  rootId: string
+  parentId?: string
+  index: number
+  nodes: Readonly<Record<string, MutationTreeNodeSnapshot<TValue>>>
+}
+
+export type MutationStructuralFact =
+  | {
+      kind: 'ordered'
+      action: 'insert' | 'move' | 'delete'
+      structure: string
+      itemId: string
+      from?: MutationOrderedSlot
+      to?: MutationOrderedAnchor
+    }
+  | {
+      kind: 'tree'
+      action: 'insert' | 'move' | 'delete' | 'restore'
+      structure: string
+      nodeId: string
+      parentId?: string
+      index?: number
+      previousParentId?: string
+      previousIndex?: number
+    }
+
 export type MutationFootprint =
   | {
       kind: 'global'
@@ -63,6 +128,20 @@ export type MutationFootprint =
       relation: string
       target?: string
     }
+  | {
+      kind: 'structure'
+      structure: string
+    }
+  | {
+      kind: 'structure-item'
+      structure: string
+      id: string
+    }
+  | {
+      kind: 'structure-parent'
+      structure: string
+      id: string
+    }
 
 export type MutationFootprintInput = MutationFootprint
 
@@ -89,32 +168,45 @@ export const isMutationFootprint = (
   if (
     !isObjectRecord(value)
     || typeof value.kind !== 'string'
-    || typeof value.family !== 'string'
   ) {
     return false
   }
 
   switch (value.kind) {
     case 'global':
-      return value.family.length > 0
+      return readNonEmptyString(value.family) !== undefined
     case 'entity':
-      return readNonEmptyString(value.id) !== undefined
+      return (
+        readNonEmptyString(value.family) !== undefined
+        && readNonEmptyString(value.id) !== undefined
+      )
     case 'field':
       return (
-        readNonEmptyString(value.id) !== undefined
+        readNonEmptyString(value.family) !== undefined
+        && readNonEmptyString(value.id) !== undefined
         && readNonEmptyString(value.field) !== undefined
       )
     case 'record':
       return (
-        readNonEmptyString(value.id) !== undefined
+        readNonEmptyString(value.family) !== undefined
+        && readNonEmptyString(value.id) !== undefined
         && readNonEmptyString(value.scope) !== undefined
         && typeof value.path === 'string'
       )
     case 'relation':
       return (
-        readNonEmptyString(value.id) !== undefined
+        readNonEmptyString(value.family) !== undefined
+        && readNonEmptyString(value.id) !== undefined
         && readNonEmptyString(value.relation) !== undefined
         && (value.target === undefined || readNonEmptyString(value.target) !== undefined)
+      )
+    case 'structure':
+      return readNonEmptyString(value.structure) !== undefined
+    case 'structure-item':
+    case 'structure-parent':
+      return (
+        readNonEmptyString(value.structure) !== undefined
+        && readNonEmptyString(value.id) !== undefined
       )
     default:
       return false
@@ -166,6 +258,7 @@ export interface MutationCommit<
   forward: readonly Op[]
   inverse: readonly Op[]
   delta: MutationDelta
+  structural: readonly MutationStructuralFact[]
   footprint: readonly Footprint[]
   issues: readonly MutationIssue[]
   outputs: readonly unknown[]
@@ -178,6 +271,7 @@ export interface MutationReplaceCommit<Doc> {
   origin: MutationOrigin
   document: Doc
   delta: MutationDelta
+  structural: readonly MutationStructuralFact[]
   issues: readonly MutationIssue[]
   outputs: readonly unknown[]
 }

@@ -28,6 +28,9 @@ export interface NodeRenderView {
   bounds: Rect
   rotation: number
   outline: NodeGeometry
+  presentation?: {
+    position?: Point
+  }
   state: {
     hidden: boolean
     selected: boolean

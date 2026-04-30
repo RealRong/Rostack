@@ -71,9 +71,6 @@ export const createEmptyInput = (): Input => ({
         height: 0
       }
     },
-    clock: {
-      now: 0
-    },
     delta: createEmptyRuntimeInputDelta()
   },
   delta: createWhiteboardMutationDelta({

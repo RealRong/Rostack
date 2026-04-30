@@ -23,9 +23,6 @@ import type { Tool } from '@whiteboard/editor/types/tool'
 import type { InteractionSession } from '@whiteboard/editor/input/core/types'
 import { FINISH } from '@whiteboard/editor/input/session/result'
 import { createGesture } from '@whiteboard/editor/input/core/gesture'
-import {
-  replaceSelection
-} from '@whiteboard/editor/input/helpers'
 import type { EditorHostDeps } from '@whiteboard/editor/input/runtime'
 import { resolveNodeEditorCapability } from '@whiteboard/editor/types/node'
 
@@ -611,9 +608,7 @@ const commitConnectState = (
   }
 
   ctx.tool.select()
-  replaceSelection({
-    session: ctx.session
-  }, {
+  ctx.session.commands.selection.replace({
     edgeIds: [result.data.edgeId]
   })
 }

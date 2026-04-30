@@ -93,7 +93,7 @@ const createEditor = () => {
 }
 
 describe('mindmap enter animation', () => {
-  it('publishes intermediate topic positions while the enter preview is active', () => {
+  it('publishes intermediate topic positions while the enter preview is active', async () => {
     vi.useFakeTimers()
     vi.setSystemTime(0)
     const nowSpy = vi.spyOn(performance, 'now').mockImplementation(() => Date.now())
@@ -130,20 +130,24 @@ describe('mindmap enter animation', () => {
         return
       }
 
-      const startRect = editor.scene.query.node.get(inserted.data.nodeId)?.geometry.rect
-      expect(startRect).toBeDefined()
+      await Promise.resolve()
 
-      vi.advanceTimersByTime(120)
-      const midRect = editor.scene.query.node.get(inserted.data.nodeId)?.geometry.rect
+      const baseRect = editor.scene.query.node.get(inserted.data.nodeId)?.geometry.rect
+      expect(baseRect).toBeDefined()
 
-      vi.advanceTimersByTime(200)
+      await vi.advanceTimersByTimeAsync(120)
+      const midPosition = editor.scene.stores.render.node.byId.get(inserted.data.nodeId)?.presentation?.position
+
+      await vi.advanceTimersByTimeAsync(200)
+      const endPosition = editor.scene.stores.render.node.byId.get(inserted.data.nodeId)?.presentation?.position
       const endRect = editor.scene.query.node.get(inserted.data.nodeId)?.geometry.rect
 
-      expect(midRect).toBeDefined()
+      expect(midPosition).toBeDefined()
+      expect(endPosition).toBeUndefined()
       expect(endRect).toBeDefined()
-      expect(midRect!.x).toBeGreaterThan(startRect!.x)
-      expect(midRect!.x).toBeLessThan(endRect!.x)
-      expect(endRect!.x).toBeGreaterThan(startRect!.x)
+      expect(baseRect!.x).toBe(endRect!.x)
+      expect(midPosition!.x).toBeLessThan(endRect!.x)
+      expect(midPosition!.x).not.toBe(endRect!.x)
     } finally {
       editor.dispose()
       nowSpy.mockRestore()

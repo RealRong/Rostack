@@ -32,6 +32,15 @@ export type NodePreviewEntry = {
   patch: NodePreviewPatch
 }
 
+export type NodePresentation = {
+  position?: Point
+}
+
+export type NodePresentationEntry = {
+  id: NodeId
+  presentation: NodePresentation
+}
+
 export type NodeGeometryPreview = NodePatch
 
 export type TextLayoutPreview = {
@@ -59,6 +68,7 @@ export type NodeTextPreviewState = {
 
 export type NodePreviewState = {
   text: NodeTextPreviewState
+  presentation: readonly NodePresentationEntry[]
 }
 
 export type EdgeFeedbackEntry = {
@@ -105,18 +115,6 @@ export type MindmapRootMovePreview = {
 export type MindmapPreviewState = {
   rootMove?: MindmapRootMovePreview
   subtreeMove?: MindmapSubtreeMovePreview
-  enter?: readonly MindmapEnterPreview[]
-}
-
-export type MindmapEnterPreview = {
-  treeId: NodeId
-  nodeId: MindmapNodeId
-  parentId: MindmapNodeId
-  route: readonly Point[]
-  fromRect: Rect
-  toRect: Rect
-  startedAt: number
-  durationMs: number
 }
 
 export type SelectionPreviewState = {

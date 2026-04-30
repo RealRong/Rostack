@@ -82,6 +82,29 @@ export const mutationFootprintConflicts = (
   left: MutationFootprint,
   right: MutationFootprint
 ): boolean => {
+  const leftStructural = (
+    left.kind === 'structure'
+    || left.kind === 'structure-item'
+    || left.kind === 'structure-parent'
+  )
+  const rightStructural = (
+    right.kind === 'structure'
+    || right.kind === 'structure-item'
+    || right.kind === 'structure-parent'
+  )
+
+  if (leftStructural || rightStructural) {
+    if (!leftStructural || !rightStructural || left.structure !== right.structure) {
+      return false
+    }
+
+    if (left.kind === 'structure' || right.kind === 'structure') {
+      return true
+    }
+
+    return left.id === right.id && left.kind === right.kind
+  }
+
   if (left.family !== right.family) {
     return false
   }

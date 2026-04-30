@@ -1,7 +1,9 @@
 import { describe, expect, test } from 'vitest'
 import {
   MutationEngine,
-  type MutationEntitySpec
+  type MutationEntitySpec,
+  type MutationStructuralCanonicalOperation,
+  type MutationTreeSnapshot
 } from '@shared/mutation'
 import type {
   MutationCurrent,
@@ -210,5 +212,164 @@ describe('MutationEngine current API', () => {
       document: createDocument()
     })
     expect(engine.history.get().undoDepth).toBe(0)
+  })
+})
+
+type StructuralDoc = {
+  ordered: {
+    items: string[]
+  }
+  tree: MutationTreeSnapshot<string>
+}
+
+const createStructuralDocument = (): StructuralDoc => ({
+  ordered: {
+    items: ['a', 'b', 'c']
+  },
+  tree: {
+    rootIds: ['root'],
+    nodes: {
+      root: {
+        children: ['left', 'right'],
+        value: 'root'
+      },
+      left: {
+        parentId: 'root',
+        children: [],
+        value: 'left'
+      },
+      right: {
+        parentId: 'root',
+        children: [],
+        value: 'right'
+      }
+    }
+  }
+})
+
+const createStructuralEngine = () => new MutationEngine<
+  StructuralDoc,
+  MutationIntentTable,
+  MutationStructuralCanonicalOperation,
+  StructuralDoc
+>({
+  document: createStructuralDocument(),
+  normalize: (document) => document,
+  createReader: (readDocument) => readDocument(),
+  structures: {
+    canvas: {
+      kind: 'ordered',
+      read: (document) => document.ordered.items,
+      identify: (item) => item,
+      write: (document, items) => ({
+        ...document,
+        ordered: {
+          items: [...items]
+        }
+      })
+    },
+    outline: {
+      kind: 'tree',
+      read: (document) => document.tree,
+      write: (document, tree) => ({
+        ...document,
+        tree
+      })
+    }
+  }
+})
+
+describe('MutationEngine structural API', () => {
+  test('applies ordered structural move with inverse, footprint, and structural facts', () => {
+    const engine = createStructuralEngine()
+    const result = engine.apply({
+      type: 'structural.ordered.move',
+      structure: 'canvas',
+      itemId: 'c',
+      to: {
+        kind: 'before',
+        itemId: 'b'
+      }
+    })
+
+    expect(result.ok).toBe(true)
+    if (!result.ok) {
+      return
+    }
+
+    expect(result.commit.document.ordered.items).toEqual(['a', 'c', 'b'])
+    expect(result.commit.delta.changes).toEqual({})
+    expect(result.commit.inverse).toEqual([{
+      type: 'structural.ordered.move',
+      structure: 'canvas',
+      itemId: 'c',
+      to: {
+        kind: 'after',
+        itemId: 'b'
+      }
+    }])
+    expect(result.commit.structural).toEqual([{
+      kind: 'ordered',
+      action: 'move',
+      structure: 'canvas',
+      itemId: 'c',
+      from: {
+        prevId: 'b'
+      },
+      to: {
+        kind: 'before',
+        itemId: 'b'
+      }
+    }])
+    expect(result.commit.footprint).toEqual([{
+      kind: 'structure',
+      structure: 'canvas'
+    }, {
+      kind: 'structure-item',
+      structure: 'canvas',
+      id: 'c'
+    }])
+  })
+
+  test('applies tree structural delete and restores from generated inverse snapshot', () => {
+    const engine = createStructuralEngine()
+    const deleted = engine.apply({
+      type: 'structural.tree.delete',
+      structure: 'outline',
+      nodeId: 'left'
+    })
+
+    expect(deleted.ok).toBe(true)
+    if (!deleted.ok) {
+      return
+    }
+
+    expect(deleted.commit.document.tree.nodes.left).toBeUndefined()
+    expect(deleted.commit.document.tree.nodes.root?.children).toEqual(['right'])
+    expect(deleted.commit.delta.changes).toEqual({})
+    expect(deleted.commit.structural).toEqual([{
+      kind: 'tree',
+      action: 'delete',
+      structure: 'outline',
+      nodeId: 'left',
+      previousParentId: 'root',
+      previousIndex: 0
+    }])
+
+    const restored = engine.apply(deleted.commit.inverse)
+    expect(restored.ok).toBe(true)
+    if (!restored.ok) {
+      return
+    }
+
+    expect(restored.commit.document).toEqual(createStructuralDocument())
+    expect(restored.commit.structural).toEqual([{
+      kind: 'tree',
+      action: 'restore',
+      structure: 'outline',
+      nodeId: 'left',
+      parentId: 'root',
+      index: 0
+    }])
   })
 })

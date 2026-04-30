@@ -16,7 +16,7 @@ import {
   mutationFailure,
   type MutableRecordWrite,
   type MutationApplyResult,
-  type MutationCanonicalOperation,
+  type MutationEntityCanonicalOperation,
   type MutationEntityPatch,
   type MutationEntitySpec,
   type MutationOperationKind,
@@ -270,7 +270,7 @@ export const readCanonicalOperation = (
 
 export const readRequiredId = (
   family: string,
-  op: MutationCanonicalOperation
+  op: MutationEntityCanonicalOperation
 ): string => {
   if (typeof op.id !== 'string' || op.id.length === 0) {
     throw new Error(`Mutation operation "${family}" requires a non-empty id.`)
@@ -282,7 +282,7 @@ export const readRequiredId = (
 export const readRequiredValue = (
   family: string,
   kind: MutationOperationKind,
-  op: MutationCanonicalOperation
+  op: MutationEntityCanonicalOperation
 ): unknown => {
   if (!hasOwn(op, 'value')) {
     throw new Error(`Mutation operation "${family}.${kind}" requires a value.`)
@@ -293,7 +293,7 @@ export const readRequiredValue = (
 
 export const readRequiredPatch = (
   family: string,
-  op: MutationCanonicalOperation
+  op: MutationEntityCanonicalOperation
 ): MutationEntityPatch => {
   if (!isObjectRecord(op.patch)) {
     throw new Error(`Mutation operation "${family}.patch" requires an object patch.`)

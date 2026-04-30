@@ -1,18 +1,15 @@
-import { scheduler } from '@shared/core'
 import { idDelta } from '@shared/delta'
 import {
   type MutationDelta
 } from '@shared/mutation'
 import type {
   EdgeId,
-  MindmapId,
   NodeId
 } from '@whiteboard/core/types'
 import type {
   EditSession,
   HoverState,
-  Input,
-  MindmapPreview,
+  Input
 } from '../contracts/editor'
 import type {
   EditorSceneRuntimeDelta
@@ -70,9 +67,9 @@ const readPreviewEdgeIds = (
 ): ReadonlySet<EdgeId> => new Set(preview.edges.keys())
 
 const readPreviewMindmapIds = (
-  preview: MindmapPreview | null
-): ReadonlySet<MindmapId> => {
-  const ids = new Set<MindmapId>()
+  preview: EditorSceneSourceSnapshot['session']['preview']['mindmap']
+): ReadonlySet<string> => {
+  const ids = new Set<string>()
 
   if (preview?.rootMove) {
     ids.add(preview.rootMove.mindmapId)
@@ -80,25 +77,6 @@ const readPreviewMindmapIds = (
   if (preview?.subtreeMove) {
     ids.add(preview.subtreeMove.mindmapId)
   }
-  preview?.enter?.forEach((entry) => {
-    ids.add(entry.mindmapId)
-  })
-
-  return ids
-}
-
-export const readActiveMindmapTickIds = (input: {
-  preview: MindmapPreview | null
-  now?: number
-}): ReadonlySet<MindmapId> => {
-  const ids = new Set<MindmapId>()
-  const now = input.now ?? scheduler.readMonotonicNow()
-
-  input.preview?.enter?.forEach((entry) => {
-    if (entry.startedAt + entry.durationMs > now) {
-      ids.add(entry.mindmapId)
-    }
-  })
 
   return ids
 }
@@ -242,10 +220,6 @@ export const createBootstrapRuntimeInputDelta = (
   const previewNodeIds = readPreviewNodeIds(source.session.preview)
   const previewEdgeIds = readPreviewEdgeIds(source.session.preview)
   const previewMindmapIds = readPreviewMindmapIds(source.session.preview.mindmap)
-  const clockMindmapIds = readActiveMindmapTickIds({
-    preview: source.session.preview.mindmap,
-    now: source.clock.now
-  })
 
   if (editedEdgeIds.size > 0) {
     delta.session.draft.edges = createTouchedIdDelta(editedEdgeIds)
@@ -258,9 +232,6 @@ export const createBootstrapRuntimeInputDelta = (
   }
   if (previewMindmapIds.size > 0) {
     delta.session.preview.mindmaps = createTouchedIdDelta(previewMindmapIds)
-  }
-  if (clockMindmapIds.size > 0) {
-    delta.clock.mindmaps = new Set(clockMindmapIds)
   }
 
   return delta
@@ -317,13 +288,6 @@ export const createSourceRuntimeInputDelta = (input: {
     delta.session.interaction = true
   }
 
-  if (input.change.clock) {
-    delta.clock.mindmaps = new Set(readActiveMindmapTickIds({
-      preview: input.next.session.preview.mindmap,
-      now: input.next.clock.now
-    }))
-  }
-
   return delta
 }
 
@@ -351,7 +315,6 @@ export const createSceneInput = (input: {
       editingEdge: input.source.interaction.editingEdge
     },
     view: input.source.view,
-    clock: input.source.clock,
     delta: input.runtimeDelta
   },
   delta: createWhiteboardMutationDelta(input.delta)

@@ -1,14 +1,8 @@
 import type {
-  EditorBoundaryRuntime
-} from '@whiteboard/editor/boundary/runtime'
-import type {
   EditorInputHost,
   EditorState
 } from '@whiteboard/editor/types/editor'
 import type { EditorSceneApi } from '@whiteboard/editor/scene/api'
-import {
-  replaceSelection
-} from '@whiteboard/editor/input/helpers'
 import type { EditorSession } from '@whiteboard/editor/session/runtime'
 import type { ContextMenuIntent } from '@whiteboard/editor/types/input'
 import type { InteractionRuntime } from '@whiteboard/editor/input/core/types'
@@ -44,7 +38,7 @@ export const createEditorInputHost = ({
   interaction: InteractionRuntime
   edgeHover: EdgeHoverService
   projection: Pick<EditorSceneApi, 'query'>
-  session: Pick<EditorSession, 'state' | 'mutate' | 'viewport' | 'interaction'>
+  session: Pick<EditorSession, 'state' | 'viewport' | 'interaction' | 'commands'>
 }): EditorInputHost => {
   const writePointer = (sample: {
     client: { x: number, y: number }
@@ -97,9 +91,7 @@ export const createEditorInputHost = ({
             return readSelectionIntent(session.state.selection, input.screen)
           }
 
-          replaceSelection({
-            session
-          }, {
+          session.commands.selection.replace({
             nodeIds: [input.pick.id]
           })
           return readSelectionIntent(session.state.selection, input.screen)
@@ -114,15 +106,11 @@ export const createEditorInputHost = ({
             }
           }
 
-          replaceSelection({
-            session
-          }, target)
+          session.commands.selection.replace(target)
           return readSelectionIntent(session.state.selection, input.screen)
         }
         case 'edge':
-          replaceSelection({
-            session
-          }, {
+          session.commands.selection.replace({
             edgeIds: [input.pick.id]
           })
           return {
@@ -219,24 +207,3 @@ export const createEditorInputHost = ({
     }
   }
 }
-
-export const createEditorInputApi = ({
-  boundary,
-  host
-}: {
-  boundary: Pick<EditorBoundaryRuntime, 'atomic'>
-  host: EditorInputHost
-}): EditorInputHost => ({
-  pointerMode: host.pointerMode,
-  contextMenu: boundary.atomic(host.contextMenu),
-  pointerDown: boundary.atomic(host.pointerDown),
-  pointerMove: boundary.atomic(host.pointerMove),
-  pointerUp: boundary.atomic(host.pointerUp),
-  pointerCancel: boundary.atomic(host.pointerCancel),
-  pointerLeave: boundary.atomic(host.pointerLeave),
-  wheel: boundary.atomic(host.wheel),
-  cancel: boundary.atomic(host.cancel),
-  keyDown: boundary.atomic(host.keyDown),
-  keyUp: boundary.atomic(host.keyUp),
-  blur: boundary.atomic(host.blur)
-})

@@ -29,6 +29,7 @@ const isNodeRenderViewEqual = (
   && equal.sameRect(left.bounds, right.bounds)
   && left.rotation === right.rotation
   && left.outline === right.outline
+  && equal.sameOptionalPoint(left.presentation?.position, right.presentation?.position)
   && left.state.hidden === right.state.hidden
   && left.state.selected === right.state.selected
   && left.state.hovered === right.state.hovered
@@ -49,6 +50,7 @@ const buildNodeRenderView = (
   }
 
   const state = context.working.ui.nodes.get(nodeId)
+  const presentation = context.current.runtime.session.preview.nodes.get(nodeId)?.presentation
 
   return {
     id: nodeId,
@@ -58,6 +60,7 @@ const buildNodeRenderView = (
     bounds: graph.geometry.bounds,
     rotation: graph.geometry.rotation,
     outline: graph.geometry.outline,
+    presentation,
     state: {
       hidden: state?.hidden ?? false,
       selected: state?.selected ?? false,

@@ -39,7 +39,6 @@ type RuntimeInputOptions = {
   marquee?: EditorSceneInput['runtime']['session']['preview']['selection']['marquee']
   guides?: readonly Guide[]
   mindmapPreview?: EditorSceneInput['runtime']['session']['preview']['mindmap']
-  now?: number
   delta?: EditorSceneInput['runtime']['delta']
   documentDelta?: EditorSceneInput['delta'] | MutationDelta
 }
@@ -121,7 +120,6 @@ const createInput = (
   value.runtime.interaction.hover = options.hover ?? {
     kind: 'none'
   }
-  value.runtime.clock.now = options.now ?? 0
   value.runtime.delta = options.delta ?? createEditorRuntimeDelta()
   value.delta = createWhiteboardMutationDelta(
     options.documentDelta ?? createMutationDelta()

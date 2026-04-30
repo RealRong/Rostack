@@ -74,8 +74,7 @@ const readRuntimeTouch = (
       : [])
   ]),
   mindmap: new Set<MindmapId>([
-    ...idDelta.touched(current.runtime.delta.session.preview.mindmaps),
-    ...current.runtime.delta.clock.mindmaps
+    ...idDelta.touched(current.runtime.delta.session.preview.mindmaps)
   ]),
   ui: Boolean(
     current.runtime.delta.session.tool
@@ -90,7 +89,6 @@ const readRuntimeTouch = (
     || current.runtime.delta.session.preview.mindmaps.added.size > 0
     || current.runtime.delta.session.preview.mindmaps.updated.size > 0
     || current.runtime.delta.session.preview.mindmaps.removed.size > 0
-    || current.runtime.delta.clock.mindmaps.size > 0
   )
 })
 
@@ -262,9 +260,6 @@ export const createEditorScenePlan = (
   if (input.runtime.session.preview.mindmap?.subtreeMove) {
     mindmapTargetIds.add(input.runtime.session.preview.mindmap.subtreeMove.mindmapId)
   }
-  input.runtime.session.preview.mindmap?.enter?.forEach((entry) => {
-    mindmapTargetIds.add(entry.mindmapId)
-  })
 
   plan.graph = {
     node: toScope(nodeTargetIds),
@@ -442,6 +437,7 @@ export const refreshEditorScenePlanForRender = (input: {
     scope: graphTouch.mindmap.owner,
     working: input.working
   })
+  appendIds(node, runtimeTouch.node)
 
   appendIds(edgeStatics, graphTouch.edge.entity as ReadonlySet<EdgeId>)
   appendIds(edgeStatics, graphTouch.edge.geometry as ReadonlySet<EdgeId>)

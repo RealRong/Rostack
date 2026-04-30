@@ -10,11 +10,7 @@ import type {
 } from '@whiteboard/core/selection'
 import type { SelectionMode } from '@whiteboard/core/node'
 import type { GroupId, Node, NodeId } from '@whiteboard/core/types'
-import {
-  clearSelection,
-  replaceSelection,
-  startNodeEdit
-} from '@whiteboard/editor/input/helpers'
+import { startNodeEdit } from '@whiteboard/editor/edit/runtime'
 import type { EditorHostDeps } from '@whiteboard/editor/input/runtime'
 import { resolveNodeEditorCapability } from '@whiteboard/editor/types/node'
 
@@ -159,31 +155,6 @@ const resolveSelectionEditField = (
     default:
       return undefined
   }
-}
-
-const createSelectionSession = (
-  input: {
-    ctx: Pick<EditorHostDeps, 'engine' | 'document' | 'projection' | 'sessionRead' | 'snap' | 'write' | 'session'>
-    start: PointerDownInput
-    decision: SelectionDragAction | SelectionMarqueeAction | undefined
-  }
-) => {
-  if (!input.decision) {
-    return null
-  }
-
-  if (input.decision.kind === 'move') {
-    return createMoveInteraction(input.ctx, {
-      start: input.start,
-      target: input.decision.target,
-      visibility: input.decision.visibility
-    })
-  }
-
-  return createMarqueeSession(input.ctx, {
-    start: input.start,
-    action: input.decision
-  })
 }
 
 const isSingleSelectedNode = (
@@ -665,14 +636,10 @@ const applySelectionTap = (
 ) => {
   switch (tap.kind) {
     case 'clear':
-      clearSelection({
-        session: ctx.session
-      })
+      ctx.session.commands.selection.clear()
       return
     case 'select':
-      replaceSelection({
-        session: ctx.session
-      }, tap.target)
+      ctx.session.commands.selection.replace(tap.target)
       return
     case 'edit-node': {
       const field = resolveSelectionEditField(
@@ -685,8 +652,9 @@ const applySelectionTap = (
       startNodeEdit({
         session: ctx.session,
         document: ctx.document,
-        nodeType: ctx.nodeType
-      }, tap.nodeId, field, {
+        nodeType: ctx.nodeType,
+        nodeId: tap.nodeId,
+        field,
         caret: {
           kind: 'point',
           client: input.client
@@ -696,15 +664,14 @@ const applySelectionTap = (
     }
     case 'edit-field':
       if (!selectionApi.target.equal(ctx.sceneDerived.selection.summary.get().target, tap.selection)) {
-        replaceSelection({
-          session: ctx.session
-        }, tap.selection)
+        ctx.session.commands.selection.replace(tap.selection)
       }
       startNodeEdit({
         session: ctx.session,
         document: ctx.document,
-        nodeType: ctx.nodeType
-      }, tap.nodeId, tap.field, {
+        nodeType: ctx.nodeType,
+        nodeId: tap.nodeId,
+        field: tap.field,
         caret: {
           kind: 'point',
           client: input.client
@@ -723,11 +690,23 @@ const createSelectionPressSession = (
 ): InteractionSession => createPressDragSession({
   start,
   chrome: resolved.behavior.chrome,
-  createDragSession: (nextInput) => createSelectionSession({
-    ctx,
-    start,
-    decision: resolved.behavior.drag
-  }),
+  createDragSession: () => {
+    const decision = resolved.behavior.drag
+    if (!decision) {
+      return null
+    }
+
+    return decision.kind === 'move'
+      ? createMoveInteraction(ctx, {
+          start,
+          target: decision.target,
+          visibility: decision.visibility
+        })
+      : createMarqueeSession(ctx, {
+          start,
+          action: decision
+        })
+  },
   onTap: (input) => {
     const tap = resolved.behavior.tap
     if (!tap) {
@@ -741,11 +720,15 @@ const createSelectionPressSession = (
 
     applySelectionTap(ctx, tap, input)
   },
-  onHold: () => createSelectionSession({
-    ctx,
-    start,
-    decision: resolved.behavior.hold
-  })
+  onHold: () => {
+    const decision = resolved.behavior.hold
+    return decision
+      ? createMarqueeSession(ctx, {
+          start,
+          action: decision
+        })
+      : null
+  }
 })
 
 const tryStartSelectionPress = (
@@ -802,14 +785,10 @@ const tryStartSelectionPress = (
     return null
   }
 
-  const resolved = {
+  return createSelectionPressSession(ctx, input, {
     target,
     behavior
-  }
-
-  return resolved
-    ? createSelectionPressSession(ctx, input, resolved)
-    : null
+  })
 }
 
 export const createSelectionBinding = (

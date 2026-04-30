@@ -110,8 +110,7 @@ const mergeMindmapPreview = (
 
   return {
     ...base,
-    ...draft,
-    enter: draft.enter ?? base.enter
+    ...draft
   }
 }
 

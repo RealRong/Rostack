@@ -11,6 +11,7 @@ import type {
   MutationStructuralOrderedDeleteOperation,
   MutationStructuralOrderedInsertOperation,
   MutationStructuralOrderedMoveOperation,
+  MutationStructuralOrderedSpliceOperation,
   MutationStructuralTreeDeleteOperation,
   MutationStructuralTreeInsertOperation,
   MutationStructuralTreeMoveOperation,
@@ -31,7 +32,7 @@ import {
 type StructuralDescriptor =
   | {
       kind: 'ordered'
-      action: 'insert' | 'move' | 'delete'
+      action: 'insert' | 'move' | 'splice' | 'delete'
     }
   | {
       kind: 'tree'
@@ -221,6 +222,130 @@ const insertOrderedItem = <TItem,>(
     ? [...filtered.slice(0, anchorIndex), item, ...filtered.slice(anchorIndex)]
     : [...filtered.slice(0, anchorIndex + 1), item, ...filtered.slice(anchorIndex + 1)]
 }
+
+const readOrderedSpliceItemIds = (
+  value: unknown
+): readonly string[] => {
+  if (!Array.isArray(value)) {
+    throw new Error('Structural ordered splice operation requires itemIds.')
+  }
+
+  const normalized: string[] = []
+  const seen = new Set<string>()
+  value.forEach((entry) => {
+    if (typeof entry !== 'string' || entry.length === 0) {
+      throw new Error('Structural ordered splice operation itemIds must contain non-empty strings.')
+    }
+    if (seen.has(entry)) {
+      return
+    }
+    seen.add(entry)
+    normalized.push(entry)
+  })
+
+  if (!normalized.length) {
+    throw new Error('Structural ordered splice operation requires at least one itemId.')
+  }
+
+  return normalized
+}
+
+const insertOrderedBlock = <TItem,>(
+  items: readonly TItem[],
+  itemIds: readonly string[],
+  anchor: MutationOrderedAnchor,
+  identify: (item: TItem) => string
+): TItem[] => {
+  const movingSet = new Set(itemIds)
+  const block = items.filter((item) => movingSet.has(identify(item)))
+  if (block.length === 0) {
+    return [...items]
+  }
+
+  if (
+    (anchor.kind === 'before' || anchor.kind === 'after')
+    && movingSet.has(anchor.itemId)
+  ) {
+    return [...items]
+  }
+
+  const filtered = items.filter((item) => !movingSet.has(identify(item)))
+
+  if (anchor.kind === 'start') {
+    return [...block, ...filtered]
+  }
+  if (anchor.kind === 'end') {
+    return [...filtered, ...block]
+  }
+
+  const anchorIndex = filtered.findIndex((entry) => identify(entry) === anchor.itemId)
+  if (anchorIndex < 0) {
+    return anchor.kind === 'before'
+      ? [...block, ...filtered]
+      : [...filtered, ...block]
+  }
+
+  return anchor.kind === 'before'
+    ? [...filtered.slice(0, anchorIndex), ...block, ...filtered.slice(anchorIndex)]
+    : [...filtered.slice(0, anchorIndex + 1), ...block, ...filtered.slice(anchorIndex + 1)]
+}
+
+const createOrderedMovePlan = (input: {
+  currentIds: readonly string[]
+  targetIds: readonly string[]
+}): readonly {
+  itemId: string
+  to: MutationOrderedAnchor
+}[] => {
+  const working = [...input.currentIds]
+  const moves: {
+    itemId: string
+    to: MutationOrderedAnchor
+  }[] = []
+
+  for (let index = 0; index < input.targetIds.length; index += 1) {
+    const itemId = input.targetIds[index]!
+    if (working[index] === itemId) {
+      continue
+    }
+
+    const currentIndex = working.indexOf(itemId)
+    if (currentIndex < 0) {
+      continue
+    }
+
+    working.splice(currentIndex, 1)
+    working.splice(index, 0, itemId)
+    moves.push({
+      itemId,
+      to: index === 0
+        ? {
+            kind: 'start'
+          }
+        : {
+            kind: 'after',
+            itemId: input.targetIds[index - 1]!
+          }
+    })
+  }
+
+  return moves
+}
+
+const orderedSpliceFootprint = (
+  structure: string,
+  itemIds: readonly string[]
+): readonly MutationFootprint[] => [
+  {
+    kind: 'structure',
+    structure
+  },
+  ...itemIds.map((itemId) => ({
+    kind: 'structure-item' as const,
+    structure,
+    id: itemId
+  }))
+]
 
 const cloneTreeNode = <TValue,>(
   node: MutationTreeNodeSnapshot<TValue>
@@ -445,6 +570,11 @@ export const readStructuralOperation = (
         kind: 'ordered',
         action: 'move'
       }
+    case 'structural.ordered.splice':
+      return {
+        kind: 'ordered',
+        action: 'splice'
+      }
     case 'structural.ordered.delete':
       return {
         kind: 'ordered',
@@ -502,6 +632,13 @@ export const createStructuralOrderedMoveOperation = <Op extends { type: string }
   ...input
 }) as unknown as Op
 
+export const createStructuralOrderedSpliceOperation = <Op extends { type: string }>(
+  input: Omit<MutationStructuralOrderedSpliceOperation, 'type'>
+): Op => ({
+  type: 'structural.ordered.splice',
+  ...input
+}) as unknown as Op
+
 export const createStructuralOrderedDeleteOperation = <Op extends { type: string }>(
   input: Omit<MutationStructuralOrderedDeleteOperation, 'type'>
 ): Op => ({
@@ -546,18 +683,18 @@ const readOrderedOperationResult = <
   document: Doc
   operation: Op
   spec: Extract<MutationStructureSpec<Doc>, { kind: 'ordered' }>
-  action: 'insert' | 'move' | 'delete'
+  action: 'insert' | 'move' | 'splice' | 'delete'
 }): MutationApplyResult<Doc, Op> => {
-  const operation = input.operation as unknown as MutationStructuralOrderedInsertOperation | MutationStructuralOrderedMoveOperation | MutationStructuralOrderedDeleteOperation
+  const operation = input.operation as unknown as MutationStructuralOrderedInsertOperation | MutationStructuralOrderedMoveOperation | MutationStructuralOrderedSpliceOperation | MutationStructuralOrderedDeleteOperation
   const structure = readRequiredStructure(operation.structure)
-  const itemId = readRequiredItemId(operation.itemId)
   const items = input.spec.read(input.document)
   const identify = input.spec.identify
   const itemIds = items.map((item) => identify(item))
-  const currentIndex = itemIds.indexOf(itemId)
 
   if (input.action === 'insert') {
     const insertOperation = operation as MutationStructuralOrderedInsertOperation
+    const itemId = readRequiredItemId(insertOperation.itemId)
+    const currentIndex = itemIds.indexOf(itemId)
     if (currentIndex >= 0) {
       return mutationFailure(
         'mutation_engine.apply.invalid_operation',
@@ -592,6 +729,61 @@ const readOrderedOperationResult = <
       footprint: orderedFootprint(structure, itemId)
     })
   }
+
+  if (input.action === 'splice') {
+    const spliceOperation = operation as MutationStructuralOrderedSpliceOperation
+    const movingIds = readOrderedSpliceItemIds(spliceOperation.itemIds)
+    const missingId = movingIds.find((movingId) => !itemIds.includes(movingId))
+    if (missingId) {
+      return mutationFailure(
+        'mutation_engine.apply.invalid_operation',
+        `Structural ordered splice cannot find item "${missingId}" in "${structure}".`
+      )
+    }
+
+    const anchor = readRequiredOrderedAnchor(spliceOperation.to)
+    const nextItems = insertOrderedBlock(items, movingIds, anchor, identify)
+    if (sameJsonValue(nextItems, items)) {
+      return structuralSuccess({
+        document: input.document,
+        forward: [input.operation],
+        inverse: [],
+        structural: [],
+        footprint: [],
+        historyMode: 'neutral'
+      })
+    }
+
+    const nextItemIds = nextItems.map((item) => identify(item))
+    const inverseMoves = createOrderedMovePlan({
+      currentIds: nextItemIds,
+      targetIds: itemIds
+    }).map(({ itemId, to }) => createStructuralOrderedMoveOperation<Op>({
+      structure,
+      itemId,
+      to
+    }))
+
+    return structuralSuccess({
+      document: input.spec.write(input.document, nextItems),
+      forward: [input.operation],
+      inverse: inverseMoves,
+      structural: movingIds.map((movingId) => ({
+        kind: 'ordered' as const,
+        action: 'move' as const,
+        structure,
+        itemId: movingId,
+        from: readOrderedSlot(itemIds, movingId),
+        to: anchorFromSlot(readOrderedSlot(nextItemIds, movingId))
+      })),
+      footprint: orderedSpliceFootprint(structure, movingIds)
+    })
+  }
+
+  const itemId = readRequiredItemId(
+    (operation as MutationStructuralOrderedMoveOperation | MutationStructuralOrderedDeleteOperation).itemId
+  )
+  const currentIndex = itemIds.indexOf(itemId)
 
   if (currentIndex < 0) {
     return mutationFailure(

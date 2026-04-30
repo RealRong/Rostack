@@ -3,9 +3,7 @@ import type {
   WhiteboardCompileHandlerTable
 } from '@whiteboard/core/operations/compile/helpers'
 import {
-  createCanvasOrderMoveOps,
-  readCompileServices,
-  reorderCanvasRefs
+  readCompileServices
 } from '@whiteboard/core/operations/compile/helpers'
 
 type GroupIntentHandlers = Pick<
@@ -26,7 +24,7 @@ export const groupIntentHandlers: GroupIntentHandlers = {
     })
 
     ctx.intent.target.nodeIds?.forEach((nodeId) => {
-      ctx.emitMany(...nodeApi.update.createFieldsOperation(nodeId, {
+      ctx.emit(...nodeApi.update.createFieldsOperation(nodeId, {
         groupId
       }))
     })
@@ -48,9 +46,11 @@ export const groupIntentHandlers: GroupIntentHandlers = {
     const refs = ctx.intent.ids.flatMap((groupId) =>
       ctx.reader.canvas.groupRefs(groupId)
     )
-    const current = ctx.reader.canvas.order()
-    const target = reorderCanvasRefs(current, refs, ctx.intent.mode)
-    createCanvasOrderMoveOps(current, target).forEach((op) => ctx.emit(op))
+    ctx.emit({
+      type: 'canvas.order.move',
+      refs,
+      to: ctx.intent.to
+    })
   },
   'group.ungroup': (ctx) => {
     const document = ctx.document
@@ -67,7 +67,7 @@ export const groupIntentHandlers: GroupIntentHandlers = {
       refs.forEach((ref) => {
         if (ref.kind === 'node') {
           nodeIds.push(ref.id)
-          ctx.emitMany(...nodeApi.update.createFieldsOperation(ref.id, {
+          ctx.emit(...nodeApi.update.createFieldsOperation(ref.id, {
             groupId: undefined
           }))
           return

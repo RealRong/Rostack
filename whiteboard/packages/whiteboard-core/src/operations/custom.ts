@@ -1,5 +1,6 @@
 import {
-  equal
+  equal,
+  order
 } from '@shared/core'
 import {
   record as draftRecord,
@@ -13,6 +14,7 @@ import type {
   MutationStructuralOrderedDeleteOperation,
   MutationStructuralOrderedInsertOperation,
   MutationStructuralOrderedMoveOperation,
+  MutationStructuralOrderedSpliceOperation,
   MutationStructuralTreeDeleteOperation,
   MutationStructuralTreeInsertOperation,
   MutationStructuralTreeMoveOperation,
@@ -25,6 +27,7 @@ import {
   createStructuralOrderedDeleteOperation,
   createStructuralOrderedInsertOperation,
   createStructuralOrderedMoveOperation,
+  createStructuralOrderedSpliceOperation,
   createStructuralTreeDeleteOperation,
   createStructuralTreeInsertOperation,
   createStructuralTreeMoveOperation,
@@ -234,6 +237,44 @@ const fromStructuralCanvasAnchor = (
     kind: anchor.kind,
     ref
   }
+}
+
+const applyCanvasOrderMove = (
+  current: readonly CanvasItemRef[],
+  ref: CanvasItemRef,
+  to: CanvasOrderAnchor
+): readonly CanvasItemRef[] => {
+  const itemId = canvasRefKey(ref)
+  const currentIds = current.map((entry) => canvasRefKey(entry))
+  const nextIds = order.moveItem(currentIds, itemId, to.kind === 'before'
+    ? {
+        before: canvasRefKey(to.ref)
+      }
+    : to.kind === 'after'
+      ? {
+          before: readNextIdFromCanvasOrder(current, canvasRefKey(to.ref))
+        }
+      : to.kind === 'front'
+        ? {
+            before: currentIds.find((entryId) => entryId !== itemId)
+          }
+        : {})
+
+  return nextIds.map((entryId) => (
+    readCanvasRefByKey(current, entryId) ?? readCanvasRefFromKey(entryId)
+  ))
+}
+
+const readNextIdFromCanvasOrder = (
+  current: readonly CanvasItemRef[],
+  itemId: string
+): string | undefined => {
+  const index = current.findIndex((entry) => canvasRefKey(entry) === itemId)
+  return index >= 0
+    ? current[index + 1]
+      ? canvasRefKey(current[index + 1]!)
+      : undefined
+    : undefined
 }
 
 const fromStructuralEdgeLabelAnchor = (
@@ -1981,54 +2022,77 @@ const reduceCanvasOrderMove = (
     return
   }
 
-  let document = input.document
-  let inverseAnchor: MutationOrderedAnchor | undefined
-  let changed = false
-  const footprint: MutationFootprint[] = []
   const firstAnchor = toStructuralCanvasAnchor(currentOrder, existingRefs, input.op.to)
+  const result = existingRefs.length === 1
+    ? readStructuralDocument({
+        document: input.document,
+        operation: createStructuralOrderedMoveOperation<MutationStructuralOrderedMoveOperation>({
+          structure: CANVAS_ORDER_STRUCTURE,
+          itemId: canvasRefKey(existingRefs[0]!),
+          to: firstAnchor
+        }),
+        fail: input.fail
+      })
+    : readStructuralDocument({
+        document: input.document,
+        operation: createStructuralOrderedSpliceOperation<MutationStructuralOrderedSpliceOperation>({
+          structure: CANVAS_ORDER_STRUCTURE,
+          itemIds: existingRefs.map((ref) => canvasRefKey(ref)),
+          to: firstAnchor
+        }),
+        fail: input.fail
+      })
 
-  existingRefs.forEach((ref, index) => {
-    const result = readStructuralDocument({
-      document,
-      operation: createStructuralOrderedMoveOperation<MutationStructuralOrderedMoveOperation>({
-        structure: CANVAS_ORDER_STRUCTURE,
-        itemId: canvasRefKey(ref),
-        to: index === 0
-          ? firstAnchor
-          : {
-              kind: 'after',
-              itemId: canvasRefKey(existingRefs[index - 1]!)
-            }
-      }),
-      fail: input.fail
-    })
-    document = result.document
-    footprint.push(...result.footprint)
-    if (result.historyMode !== 'neutral') {
-      changed = true
-      const inverse = result.inverse[0]
-      if (!inverseAnchor && inverse?.type === 'structural.ordered.move') {
-        inverseAnchor = inverse.to
-      }
-    }
-  })
-
-  if (!changed || !inverseAnchor) {
+  if (result.historyMode === 'neutral') {
     return
   }
 
+  const inverse = existingRefs.length === 1
+    ? (() => {
+        const inverseMove = result.inverse[0]
+        if (inverseMove?.type !== 'structural.ordered.move') {
+          return input.fail({
+            code: 'invalid',
+            message: 'Canvas order move inverse is invalid.'
+          })
+        }
+
+        return [{
+          type: 'canvas.order.move',
+          refs: existingRefs.map((ref) => cloneCanvasRef(ref)!),
+          to: fromStructuralCanvasAnchor(currentOrder, inverseMove.to)
+        } satisfies Operation]
+      })()
+    : (() => {
+        const inverseOps: Operation[] = []
+        let working: readonly CanvasItemRef[] = result.document.canvas.order
+
+        result.inverse.forEach((inverseOp) => {
+          if (inverseOp.type !== 'structural.ordered.move') {
+            return
+          }
+
+          const ref = readCanvasRefFromKey(inverseOp.itemId)
+          const to = fromStructuralCanvasAnchor(working, inverseOp.to)
+          inverseOps.push({
+            type: 'canvas.order.move',
+            refs: [ref],
+            to
+          })
+          working = applyCanvasOrderMove(working, ref, to)
+        })
+
+        return inverseOps
+      })()
+
   return createWhiteboardCustomResult({
-    document,
+    document: result.document,
     delta: mergeDelta(
       createCanvasOrderDelta()
     ),
-    footprint,
+    footprint: result.footprint,
     history: {
-      inverse: [{
-        type: 'canvas.order.move',
-        refs: existingRefs.map((ref) => cloneCanvasRef(ref)!),
-        to: fromStructuralCanvasAnchor(currentOrder, inverseAnchor)
-      }]
+      inverse
     }
   })
 }

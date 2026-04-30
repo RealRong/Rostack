@@ -151,11 +151,17 @@ export const createFieldsApi = (
 
         return findAddedOption(currentOptions, fieldApi.option.read.list(nextField))
       },
-      setOrder: (id, order) => {
+      move: (input) => {
         engine.execute({
-          type: 'field.option.setOrder',
-          field: id,
-          order: [...order]
+          type: 'field.option.move',
+          field: input.field,
+          option: input.option,
+          ...(input.before !== undefined
+            ? { before: input.before }
+            : {}),
+          ...(input.category !== undefined
+            ? { category: input.category }
+            : {})
         })
       },
       patch: (input) => {

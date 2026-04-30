@@ -24,9 +24,9 @@ import type {
   NodeId,
   NodeInput,
   NodeUpdateInput,
-  OrderMode,
   Origin,
-  Point
+  Point,
+  CanvasOrderAnchor
 } from '@whiteboard/core/types'
 import type {
   Slice,
@@ -37,8 +37,6 @@ import type {
   NodeAlignMode,
   NodeDistributeMode
 } from '@whiteboard/core/node'
-
-export type { OrderMode } from '@whiteboard/core/types'
 
 export type NodeBatchUpdate = {
   id: NodeId
@@ -93,7 +91,7 @@ export type CanvasIntent =
   | {
       type: 'canvas.order.move'
       refs: readonly CanvasItemRef[]
-      mode: OrderMode
+      to: CanvasOrderAnchor
     }
 
 export type NodeIntent =
@@ -151,7 +149,7 @@ export type GroupIntent =
   | {
       type: 'group.order.move'
       ids: readonly GroupId[]
-      mode: OrderMode
+      to: CanvasOrderAnchor
     }
   | {
       type: 'group.ungroup'

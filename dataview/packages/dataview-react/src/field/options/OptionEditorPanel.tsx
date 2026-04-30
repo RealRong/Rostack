@@ -25,7 +25,6 @@ import {
 } from '@dataview/react/menu-builders'
 import { FIELD_DROPDOWN_MENU_PROPS } from '@dataview/react/field/dropdown'
 import type { OptionLike } from '@dataview/react/field/options/OptionEditorPopover'
-import { buildStatusIdsAfterCategoryMove } from '@dataview/react/field/options/statusOptionMenu'
 import { useTranslation } from '@shared/i18n/react'
 
 export interface OptionEditorPanelProps {
@@ -94,19 +93,10 @@ export const OptionEditorPanel = (props: OptionEditorPanelProps) => {
       return
     }
 
-    editor.fields.options.setOrder(
-      props.fieldId,
-      buildStatusIdsAfterCategoryMove(
-        fieldApi.status.sections(field),
-        props.option.id,
-        statusCategory,
-        category
-      )
-    )
-    editor.fields.options.patch({
+    editor.fields.options.move({
       field: props.fieldId,
       option: props.option.id,
-      patch: { category }
+      category
     })
   }
 

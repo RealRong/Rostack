@@ -30,16 +30,6 @@ import {
 } from '@dataview/react/menu-builders'
 import { FIELD_DROPDOWN_MENU_PROPS } from '@dataview/react/field/dropdown'
 
-const buildOrderedIds = (
-  sections: ReturnType<typeof fieldApi.status.sections>,
-  category: StatusCategory,
-  reordered: readonly FieldOption[]
-) => sections.flatMap(section => (
-  section.category === category
-    ? reordered.map(option => option.id)
-    : section.options.map(option => option.id)
-))
-
 type StatusSectionItem = MenuReorderItem
 
 export const FieldStatusOptionsSection = (props: {
@@ -137,10 +127,12 @@ export const FieldStatusOptionsSection = (props: {
                 }}
                 onMove={(from, to) => {
                   const reordered = order.moveAt(section.options, from, to)
-                  editor.fields.options.setOrder(
-                    props.field.id,
-                    buildOrderedIds(sections, section.category, reordered)
-                  )
+                  editor.fields.options.move({
+                    field: props.field.id,
+                    option: reordered[to]!.id,
+                    before: reordered[to + 1]?.id,
+                    category: section.category
+                  })
                 }}
               />
             ) : null}

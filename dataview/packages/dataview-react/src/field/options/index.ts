@@ -2,9 +2,6 @@ export { FieldOptionTag } from '@dataview/react/field/options/FieldOptionTag'
 export { OptionToken } from '@dataview/react/field/options/OptionToken'
 export { OptionEditorPanel } from '@dataview/react/field/options/OptionEditorPanel'
 export { OptionEditorPopover } from '@dataview/react/field/options/OptionEditorPopover'
-export {
-  buildStatusIdsAfterCategoryMove
-} from '@dataview/react/field/options/statusOptionMenu'
 export type {
   FieldOptionTagAppearance,
   FieldOptionTagProps

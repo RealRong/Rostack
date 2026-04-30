@@ -6,12 +6,10 @@ import type {
   WhiteboardCompileHandlerTable
 } from '@whiteboard/core/operations/compile/helpers'
 import {
-  createCanvasOrderMoveOps,
   failCancelled,
   failInvalid,
   readCompileRegistries,
-  readCompileServices,
-  reorderCanvasRefs
+  readCompileServices
 } from '@whiteboard/core/operations/compile/helpers'
 import { resolveLockDecision } from '@whiteboard/core/operations/lock'
 import type { CanvasItemRef } from '@whiteboard/core/types'
@@ -237,7 +235,7 @@ const compileCanvasSelectionMove = (
         node.position.x !== entry.position.x
         || node.position.y !== entry.position.y
       ) {
-        ctx.emitMany(...nodeApi.update.createOperation(node.id, {
+        ctx.emit(...nodeApi.update.createOperation(node.id, {
           fields: {
             position: entry.position
           }
@@ -307,9 +305,9 @@ export const canvasIntentHandlers: CanvasIntentHandlers = {
     }
   },
   'canvas.selection.move': (ctx) => compileCanvasSelectionMove(ctx),
-  'canvas.order.move': (ctx) => {
-    const current = ctx.reader.canvas.order()
-    const target = reorderCanvasRefs(current, ctx.intent.refs, ctx.intent.mode)
-    createCanvasOrderMoveOps(current, target).forEach((op) => ctx.emit(op))
-  }
+  'canvas.order.move': (ctx) => ctx.emit({
+    type: 'canvas.order.move',
+    refs: ctx.intent.refs,
+    to: ctx.intent.to
+  })
 }

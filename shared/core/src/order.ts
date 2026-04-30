@@ -88,7 +88,7 @@ export const moveAt = <T,>(
   return next
 }
 
-export const moveBlock = <T,>(
+export const splice = <T,>(
   ids: readonly T[],
   targets: readonly T[],
   options: {

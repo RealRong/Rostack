@@ -2,8 +2,7 @@ import type {
   DataRecord,
   FieldId,
   Intent,
-  RecordId,
-  View
+  RecordId
 } from '@dataview/core/types'
 import {
   TITLE_FIELD_ID
@@ -21,10 +20,6 @@ import type {
   DocumentReader
 } from './document/reader'
 import {
-  createEntityPatch
-} from './compile-patch'
-import {
-  emitMany,
   issue,
   resolveTarget,
   type DataviewCompileInput
@@ -35,37 +30,8 @@ const emitData = <T>(
   data: T,
   ...operations: readonly DocumentOperation[]
 ): T => {
-  emitMany(input, ...operations)
+  input.emit(...operations)
   return data
-}
-
-const toViewPatch = (
-  current: View,
-  next: View
-): DocumentOperation => ({
-  type: 'view.patch',
-  id: current.id,
-  patch: createEntityPatch(current, next)
-})
-
-const buildRecordRemoveViewOps = (
-  reader: DocumentReader,
-  recordIds: readonly RecordId[]
-): DocumentOperation[] => {
-  const removedRecordIdSet = new Set(recordIds)
-  return reader.views.list().flatMap((view) => {
-    const nextOrders = reader.records.normalize(
-      view.orders.filter((recordId) => !removedRecordIdSet.has(recordId))
-    )
-
-    return nextOrders.length === view.orders.length
-      && nextOrders.every((recordId, index) => recordId === view.orders[index])
-      ? []
-      : [toViewPatch(view, {
-          ...view,
-          orders: nextOrders
-        })]
-  })
 }
 
 const resolveDefaultRecordType = (
@@ -241,7 +207,7 @@ const lowerRecordPatch = (
     )
   }
 
-  emitMany(input, ...recordIds.map((recordId): DocumentOperation => ({
+  input.emit(...recordIds.map((recordId): DocumentOperation => ({
     type: 'record.patch',
     id: recordId,
     patch: intent.patch
@@ -258,14 +224,10 @@ const lowerRecordRemove = (
     return
   }
 
-  emitMany(
-    input,
-    ...buildRecordRemoveViewOps(reader, recordIds),
-    {
-      type: 'record.remove',
-      recordIds: [...recordIds]
-    }
-  )
+  input.emit({
+    type: 'record.remove',
+    recordIds: [...recordIds]
+  })
 }
 
 const lowerRecordFieldsWriteMany = (

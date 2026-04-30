@@ -31,7 +31,7 @@ import {
 import {
   applyRecordOrder,
   normalizeRecordOrderIds,
-  reorderRecordBlockIds,
+  spliceRecordIds,
   reorderRecordIds
 } from '@dataview/core/view/order'
 import {
@@ -64,7 +64,6 @@ import {
   patchKanbanLayout,
   patchTableLayout,
   replaceDisplayFields,
-  reorderViewOrders,
   sameDisplay,
   sameViewCalc,
   sameViewOptions,
@@ -122,8 +121,7 @@ export const view = {
     normalize: normalizeRecordOrderIds,
     apply: applyRecordOrder,
     move: reorderRecordIds,
-    moveBlock: reorderRecordBlockIds,
-    reorder: reorderViewOrders,
+    splice: spliceRecordIds,
     clear: clearViewOrders
   },
   options: {

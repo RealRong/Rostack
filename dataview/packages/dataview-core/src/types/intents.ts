@@ -66,7 +66,6 @@ interface ViewCreateInputBase {
   sort?: Sort
   calc?: ViewCalc
   display?: ViewDisplay
-  orders?: RecordId[]
 }
 
 export interface TableViewCreateInput extends ViewCreateInputBase {
@@ -100,7 +99,6 @@ interface ViewPatchBase {
   sort?: Sort
   calc?: ViewCalc
   display?: ViewDisplay
-  orders?: RecordId[]
 }
 
 export interface TableViewPatch extends ViewPatchBase {
@@ -175,9 +173,11 @@ export type Intent =
       name?: string
     }
   | {
-      type: 'field.option.setOrder'
+      type: 'field.option.move'
       field: CustomFieldId
-      order: string[]
+      option: string
+      before?: string
+      category?: StatusCategory
     }
   | {
       type: 'field.option.patch'
@@ -202,6 +202,45 @@ export type Intent =
       type: 'view.patch'
       id: ViewId
       patch: ViewPatch
+    }
+  | {
+      type: 'view.order.move'
+      id: ViewId
+      record: RecordId
+      before?: RecordId
+    }
+  | {
+      type: 'view.order.splice'
+      id: ViewId
+      records: RecordId[]
+      before?: RecordId
+    }
+  | {
+      type: 'view.display.move'
+      id: ViewId
+      field: FieldId
+      before?: FieldId
+    }
+  | {
+      type: 'view.display.splice'
+      id: ViewId
+      fields: FieldId[]
+      before?: FieldId
+    }
+  | {
+      type: 'view.display.show'
+      id: ViewId
+      field: FieldId
+      before?: FieldId
+    }
+  | {
+      type: 'view.display.hide'
+      id: ViewId
+      field: FieldId
+    }
+  | {
+      type: 'view.display.clear'
+      id: ViewId
     }
   | {
       type: 'view.open'

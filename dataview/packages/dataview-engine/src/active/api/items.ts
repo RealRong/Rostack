@@ -9,7 +9,6 @@ import type {
 } from '@dataview/core/intent'
 import { field as fieldApi } from '@dataview/core/field'
 import { group as groupCore } from '@dataview/core/view'
-import { view as viewApi } from '@dataview/core/view'
 import { collection, equal } from '@shared/core'
 import type {
   ItemId,
@@ -28,25 +27,30 @@ const createMoveOrderAction = (
   base: ActiveViewContext,
   recordIds: readonly RecordId[],
   beforeRecordId?: RecordId
-): Extract<CoreIntent, { type: 'view.patch' }> | undefined => {
+): Extract<CoreIntent, { type: 'view.order.move' | 'view.order.splice' }> | undefined => {
   const view = base.view()
   const viewId = base.reader.views.activeId()
   if (!view || !viewId || !recordIds.length) {
     return undefined
   }
 
-  return {
-    type: 'view.patch',
-    id: viewId,
-    patch: {
-      orders: viewApi.order.reorder({
-        allRecordIds: base.reader.document().records.ids,
-        currentOrder: view.orders,
-        movingRecordIds: recordIds,
-        beforeRecordId
-      })
-    }
-  }
+  return recordIds.length === 1
+    ? {
+        type: 'view.order.move',
+        id: viewId,
+        record: recordIds[0]!,
+        ...(beforeRecordId !== undefined
+          ? { before: beforeRecordId }
+          : {})
+      }
+    : {
+        type: 'view.order.splice',
+        id: viewId,
+        records: [...recordIds],
+        ...(beforeRecordId !== undefined
+          ? { before: beforeRecordId }
+          : {})
+      }
 }
 
 const createGroupValueActions = (input: {

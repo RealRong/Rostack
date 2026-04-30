@@ -82,8 +82,7 @@ export interface MutationCompileHandlerInput<
   document: Doc
   reader: Reader
   services: Services | undefined
-  emit(op: Op): void
-  emitMany(...ops: readonly Op[]): void
+  emit(...ops: readonly Op[]): void
   output(value: Output): void
   issue(issue: MutationCompileIssue<Code>): void
   stop(): {
@@ -429,6 +428,13 @@ export type MutationStructuralOrderedMoveOperation = {
   to: MutationOrderedAnchor
 }
 
+export type MutationStructuralOrderedSpliceOperation = {
+  type: 'structural.ordered.splice'
+  structure: string
+  itemIds: readonly string[]
+  to: MutationOrderedAnchor
+}
+
 export type MutationStructuralOrderedDeleteOperation = {
   type: 'structural.ordered.delete'
   structure: string
@@ -467,6 +473,7 @@ export type MutationStructuralTreeRestoreOperation = {
 export type MutationStructuralCanonicalOperation =
   | MutationStructuralOrderedInsertOperation
   | MutationStructuralOrderedMoveOperation
+  | MutationStructuralOrderedSpliceOperation
   | MutationStructuralOrderedDeleteOperation
   | MutationStructuralTreeInsertOperation
   | MutationStructuralTreeMoveOperation

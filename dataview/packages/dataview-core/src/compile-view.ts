@@ -2,6 +2,7 @@ import type {
   FieldId,
   Filter,
   Intent,
+  RecordId,
   Search,
   Sort,
   SortRule,
@@ -36,7 +37,7 @@ import {
 import {
   sort as sortApi
 } from '@dataview/core/view'
-import { createId } from '@shared/core'
+import { createId, order } from '@shared/core'
 import {
   view as viewApi
 } from '@dataview/core/view'
@@ -49,7 +50,6 @@ import {
   createEntityPatch
 } from './compile-patch'
 import {
-  emitMany,
   issue as compileIssue,
   reportIssues,
   requireValue,
@@ -63,7 +63,7 @@ const emitOps = (
   input: DataviewCompileInput,
   ...operations: readonly DocumentOperation[]
 ) => {
-  emitMany(input, ...operations)
+  input.emit(...operations)
 }
 
 const emitData = <T>(
@@ -85,6 +85,74 @@ const toViewPatch = (
     id: current.id,
     patch
   }
+}
+
+const buildViewDisplayOps = (
+  current: View,
+  next: View
+): DocumentOperation[] => {
+  if (equal.sameOrder(current.display.fields, next.display.fields)) {
+    return []
+  }
+
+  const operations: DocumentOperation[] = []
+  let working = [...current.display.fields]
+  const nextFieldSet = new Set(next.display.fields)
+
+  current.display.fields.forEach((fieldId) => {
+    if (nextFieldSet.has(fieldId)) {
+      return
+    }
+
+    operations.push({
+      type: 'view.display.hide',
+      id: current.id,
+      field: fieldId
+    })
+    working = working.filter((entry) => entry !== fieldId)
+  })
+
+  for (let index = next.display.fields.length - 1; index >= 0; index -= 1) {
+    const fieldId = next.display.fields[index]!
+    const before = next.display.fields[index + 1]
+    if (!working.includes(fieldId)) {
+      operations.push({
+        type: 'view.display.show',
+        id: current.id,
+        field: fieldId,
+        ...(before !== undefined
+          ? { before }
+          : {})
+      })
+      working = order.moveItem(working, fieldId, {
+        ...(before !== undefined
+          ? { before }
+          : {})
+      })
+      continue
+    }
+
+    const reordered = order.moveItem(working, fieldId, {
+      ...(before !== undefined
+        ? { before }
+        : {})
+    })
+    if (equal.sameOrder(working, reordered)) {
+      continue
+    }
+
+    operations.push({
+      type: 'view.display.move',
+      id: current.id,
+      field: fieldId,
+      ...(before !== undefined
+        ? { before }
+        : {})
+    })
+    working = reordered
+  }
+
+  return operations
 }
 
 const issue = (
@@ -453,9 +521,7 @@ const applyViewPatch = (
     display: patch.display !== undefined
       ? viewApi.display.clone(patch.display)
       : viewApi.display.clone(view.display),
-    orders: patch.orders !== undefined
-      ? [...patch.orders]
-      : [...view.orders]
+    orders: [...view.orders]
   }
 
   switch (nextType) {
@@ -680,7 +746,7 @@ const lowerViewCreate = (
     display: intent.input.display
       ? viewApi.display.clone(intent.input.display)
       : viewApi.options.defaultDisplay(intent.input.type, fields),
-    orders: intent.input.orders ? [...intent.input.orders] : []
+    orders: []
   }
   let created: View
   switch (intent.input.type) {
@@ -768,7 +834,25 @@ const lowerViewPatch = (
   }
 
   reportIssues(input, ...validateView(reader, input.source, nextView))
-  input.emit(toViewPatch(view, nextView))
+  const displayOps = buildViewDisplayOps(view, nextView)
+  const patchTarget = displayOps.length > 0
+    ? {
+        ...view,
+        display: nextView.display
+      }
+    : view
+  const patch = createEntityPatch(patchTarget, nextView)
+
+  input.emit(
+    ...displayOps,
+    ...(Object.keys(patch).length
+      ? [{
+          type: 'view.patch',
+          id: view.id,
+          patch
+        } satisfies DocumentOperation]
+      : [])
+  )
 }
 
 const lowerViewOpen = (
@@ -784,6 +868,224 @@ const lowerViewOpen = (
   input.emit({
     type: 'view.open',
     id: view.id
+  })
+}
+
+const lowerViewOrderMove = (
+  intent: Extract<Intent, { type: 'view.order.move' }>,
+  input: DataviewCompileInput,
+  reader: DocumentReader
+) => {
+  const view = requireView(input, reader, intent.id)
+  if (!view) {
+    return
+  }
+
+  const recordId = string.trimToUndefined(intent.record)
+  if (!recordId) {
+    compileIssue(
+      input,
+      'view.invalidOrder',
+      'view.order.move requires a non-empty record id',
+      'record'
+    )
+    return
+  }
+  if (!reader.records.has(recordId)) {
+    compileIssue(
+      input,
+      'record.notFound',
+      `Unknown record: ${recordId}`,
+      'record'
+    )
+    return
+  }
+
+  const beforeRecordId = string.trimToUndefined(intent.before)
+  if (beforeRecordId !== undefined && beforeRecordId !== recordId && !reader.records.has(beforeRecordId)) {
+    compileIssue(
+      input,
+      'record.notFound',
+      `Unknown record: ${beforeRecordId}`,
+      'before'
+    )
+    return
+  }
+
+  void view
+  input.emit({
+    type: 'view.order.move',
+    id: intent.id,
+    record: recordId,
+    ...(beforeRecordId !== undefined && beforeRecordId !== recordId
+      ? { before: beforeRecordId }
+      : {})
+  })
+}
+
+const lowerViewOrderSplice = (
+  intent: Extract<Intent, { type: 'view.order.splice' }>,
+  input: DataviewCompileInput,
+  reader: DocumentReader
+) => {
+  const view = requireView(input, reader, intent.id)
+  if (!view) {
+    return
+  }
+
+  const recordIds = Array.from(new Set(
+    intent.records.map((recordId) => string.trimToUndefined(recordId)).filter((recordId): recordId is RecordId => Boolean(recordId))
+  ))
+  if (!recordIds.length) {
+    compileIssue(
+      input,
+      'view.invalidOrder',
+      'view.order.splice requires at least one record id',
+      'records'
+    )
+    return
+  }
+  if (recordIds.some((recordId) => !reader.records.has(recordId))) {
+    const missing = recordIds.find((recordId) => !reader.records.has(recordId))
+    compileIssue(
+      input,
+      'record.notFound',
+      `Unknown record: ${missing}`,
+      'records'
+    )
+    return
+  }
+
+  const beforeRecordId = string.trimToUndefined(intent.before)
+  if (beforeRecordId !== undefined && !reader.records.has(beforeRecordId)) {
+    compileIssue(
+      input,
+      'record.notFound',
+      `Unknown record: ${beforeRecordId}`,
+      'before'
+    )
+    return
+  }
+
+  void view
+  input.emit({
+    type: 'view.order.splice',
+    id: intent.id,
+    records: recordIds,
+    ...(beforeRecordId !== undefined
+      ? { before: beforeRecordId }
+      : {})
+  })
+}
+
+const lowerViewDisplayMove = (
+  intent: Extract<Intent, { type: 'view.display.move' }>,
+  input: DataviewCompileInput,
+  reader: DocumentReader
+) => {
+  if (!requireView(input, reader, intent.id)) {
+    return
+  }
+  if (!reader.fields.has(intent.field)) {
+    compileIssue(input, 'field.notFound', `Unknown field: ${intent.field}`, 'field')
+    return
+  }
+
+  input.emit({
+    type: 'view.display.move',
+    id: intent.id,
+    field: intent.field,
+    ...(intent.before !== undefined && intent.before !== intent.field
+      ? { before: intent.before }
+      : {})
+  })
+}
+
+const lowerViewDisplaySplice = (
+  intent: Extract<Intent, { type: 'view.display.splice' }>,
+  input: DataviewCompileInput,
+  reader: DocumentReader
+) => {
+  if (!requireView(input, reader, intent.id)) {
+    return
+  }
+
+  const fieldIds = Array.from(new Set(intent.fields))
+  if (!fieldIds.length) {
+    compileIssue(input, 'view.invalidProjection', 'view.display.splice requires at least one field id', 'fields')
+    return
+  }
+  if (fieldIds.some((fieldId) => !reader.fields.has(fieldId))) {
+    const missing = fieldIds.find((fieldId) => !reader.fields.has(fieldId))
+    compileIssue(input, 'field.notFound', `Unknown field: ${missing}`, 'fields')
+    return
+  }
+
+  input.emit({
+    type: 'view.display.splice',
+    id: intent.id,
+    fields: fieldIds,
+    ...(intent.before !== undefined
+      ? { before: intent.before }
+      : {})
+  })
+}
+
+const lowerViewDisplayShow = (
+  intent: Extract<Intent, { type: 'view.display.show' }>,
+  input: DataviewCompileInput,
+  reader: DocumentReader
+) => {
+  if (!requireView(input, reader, intent.id)) {
+    return
+  }
+  if (!reader.fields.has(intent.field)) {
+    compileIssue(input, 'field.notFound', `Unknown field: ${intent.field}`, 'field')
+    return
+  }
+
+  input.emit({
+    type: 'view.display.show',
+    id: intent.id,
+    field: intent.field,
+    ...(intent.before !== undefined && intent.before !== intent.field
+      ? { before: intent.before }
+      : {})
+  })
+}
+
+const lowerViewDisplayHide = (
+  intent: Extract<Intent, { type: 'view.display.hide' }>,
+  input: DataviewCompileInput,
+  reader: DocumentReader
+) => {
+  if (!requireView(input, reader, intent.id)) {
+    return
+  }
+  if (!reader.fields.has(intent.field)) {
+    compileIssue(input, 'field.notFound', `Unknown field: ${intent.field}`, 'field')
+    return
+  }
+
+  input.emit({
+    type: 'view.display.hide',
+    id: intent.id,
+    field: intent.field
+  })
+}
+
+const lowerViewDisplayClear = (
+  intent: Extract<Intent, { type: 'view.display.clear' }>,
+  input: DataviewCompileInput,
+  reader: DocumentReader
+) => {
+  if (!requireView(input, reader, intent.id)) {
+    return
+  }
+
+  input.emit({
+    type: 'view.display.clear',
+    id: intent.id
   })
 }
 
@@ -813,6 +1115,20 @@ export const compileViewIntent = (
       return lowerViewCreate(intent, input, reader)
     case 'view.patch':
       return lowerViewPatch(intent, input, reader)
+    case 'view.order.move':
+      return lowerViewOrderMove(intent, input, reader)
+    case 'view.order.splice':
+      return lowerViewOrderSplice(intent, input, reader)
+    case 'view.display.move':
+      return lowerViewDisplayMove(intent, input, reader)
+    case 'view.display.splice':
+      return lowerViewDisplaySplice(intent, input, reader)
+    case 'view.display.show':
+      return lowerViewDisplayShow(intent, input, reader)
+    case 'view.display.hide':
+      return lowerViewDisplayHide(intent, input, reader)
+    case 'view.display.clear':
+      return lowerViewDisplayClear(intent, input, reader)
     case 'view.open':
       return lowerViewOpen(intent, input, reader)
     case 'view.remove':

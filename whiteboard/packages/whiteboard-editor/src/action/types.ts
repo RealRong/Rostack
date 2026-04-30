@@ -131,7 +131,7 @@ export type SelectionActions = {
   ) => boolean
   order: (
     target: SelectionInput,
-    mode: import('@whiteboard/core/types').OrderMode
+    mode: 'front' | 'back' | 'forward' | 'backward'
   ) => boolean
   group: (
     target: SelectionInput,

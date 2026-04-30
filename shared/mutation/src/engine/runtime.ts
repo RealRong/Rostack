@@ -829,10 +829,7 @@ const compileMutationIntents = <
       document: workingDocument,
       reader: input.createReader(() => workingDocument),
       services: input.services,
-      emit: (operation) => {
-        pendingOps.push(operation)
-      },
-      emitMany: (...nextOps) => {
+      emit: (...nextOps) => {
         for (let opIndex = 0; opIndex < nextOps.length; opIndex += 1) {
           pendingOps.push(nextOps[opIndex]!)
         }

@@ -26,15 +26,15 @@ export const reorderRecordIds = (
     : {})
 })
 
-export interface ReorderRecordBlockIdsOptions {
+export interface SpliceRecordIdsOptions {
   beforeRecordId?: RecordId
 }
 
-export const reorderRecordBlockIds = (
+export const spliceRecordIds = (
   recordIds: readonly RecordId[],
   targetRecordIds: readonly RecordId[],
-  options: ReorderRecordBlockIdsOptions = {}
-) => order.moveBlock(recordIds, targetRecordIds, {
+  options: SpliceRecordIdsOptions = {}
+) => order.splice(recordIds, targetRecordIds, {
   ...(options.beforeRecordId !== undefined
     ? { before: options.beforeRecordId }
     : {})

@@ -10,10 +10,10 @@ import {
 } from '@whiteboard/core/operations/compile/helpers'
 
 const emitOps = (
-  ctx: Pick<WhiteboardCompileContext, 'emitMany'>,
+  ctx: Pick<WhiteboardCompileContext, 'emit'>,
   ops: readonly import('@whiteboard/core/types').Operation[]
 ) => {
-  ctx.emitMany(...ops)
+  ctx.emit(...ops)
 }
 
 type DocumentIntentHandlers = Pick<

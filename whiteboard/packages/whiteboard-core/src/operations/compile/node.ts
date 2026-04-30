@@ -278,7 +278,7 @@ export const nodeIntentHandlers: NodeIntentHandlers = {
 
       const mindmapId = getNodeMindmapId(node)
       if (!mindmapId) {
-        ctx.emitMany(...nodeApi.update.createFieldsOperation(id, {
+        ctx.emit(...nodeApi.update.createFieldsOperation(id, {
           position: {
             x: node.position.x + intent.delta.x,
             y: node.position.y + intent.delta.y

@@ -131,7 +131,7 @@ export const ViewFieldsPanel = () => {
               type="button"
               className="text-primary transition-colors hover:text-primary/80"
               onClick={() => {
-                currentViewDomain?.display.replace([])
+                currentViewDomain?.display.clear()
               }}
             >
               {t(meta.ui.viewSettings.fieldsPanel.hideAll)}

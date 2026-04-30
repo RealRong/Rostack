@@ -331,6 +331,78 @@ describe('MutationEngine structural API', () => {
     }])
   })
 
+  test('applies ordered structural splice as a block and expands inverse into primitive moves', () => {
+    const engine = createStructuralEngine()
+    const result = engine.apply({
+      type: 'structural.ordered.splice',
+      structure: 'canvas',
+      itemIds: ['b', 'd'],
+      to: {
+        kind: 'start'
+      }
+    })
+
+    expect(result.ok).toBe(true)
+    if (!result.ok) {
+      return
+    }
+
+    expect(result.commit.document.ordered.items).toEqual(['b', 'd', 'a', 'c'])
+    expect(result.commit.inverse).toEqual([{
+      type: 'structural.ordered.move',
+      structure: 'canvas',
+      itemId: 'a',
+      to: {
+        kind: 'start'
+      }
+    }, {
+      type: 'structural.ordered.move',
+      structure: 'canvas',
+      itemId: 'c',
+      to: {
+        kind: 'after',
+        itemId: 'b'
+      }
+    }])
+    expect(result.commit.structural).toEqual([{
+      kind: 'ordered',
+      action: 'move',
+      structure: 'canvas',
+      itemId: 'b',
+      from: {
+        prevId: 'a',
+        nextId: 'c'
+      },
+      to: {
+        kind: 'start'
+      }
+    }, {
+      kind: 'ordered',
+      action: 'move',
+      structure: 'canvas',
+      itemId: 'd',
+      from: {
+        prevId: 'c'
+      },
+      to: {
+        kind: 'after',
+        itemId: 'b'
+      }
+    }])
+    expect(result.commit.footprint).toEqual([{
+      kind: 'structure',
+      structure: 'canvas'
+    }, {
+      kind: 'structure-item',
+      structure: 'canvas',
+      id: 'b'
+    }, {
+      kind: 'structure-item',
+      structure: 'canvas',
+      id: 'd'
+    }])
+  })
+
   test('applies tree structural delete and restores from generated inverse snapshot', () => {
     const engine = createStructuralEngine()
     const deleted = engine.apply({

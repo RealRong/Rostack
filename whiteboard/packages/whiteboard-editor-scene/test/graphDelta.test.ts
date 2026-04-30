@@ -239,7 +239,9 @@ describe('graph delta patching', () => {
         kind: 'node',
         id: firstId
       }],
-      mode: 'front'
+      to: {
+        kind: 'front'
+      }
     })
     expect(reorder.ok).toBe(true)
 

@@ -1,5 +1,4 @@
 import type { MutationResult } from '@shared/mutation/engine'
-import type { OrderMode } from '@whiteboard/core/types'
 import type {
   CanvasIntent,
   DocumentIntent,
@@ -23,7 +22,6 @@ export type {
   GroupIntent,
   MindmapIntent,
   NodeIntent,
-  OrderMode,
   ReplaceDocumentIntent,
   WhiteboardIntentTable
 }

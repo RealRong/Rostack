@@ -47,11 +47,12 @@ const insertField = (
       }
     },
     {
-      type: 'view.patch',
+      type: 'view.display.show',
       id: view.id,
-      patch: {
-        display: viewApi.display.show(view.display, fieldId, beforeFieldId)
-      }
+      field: fieldId,
+      ...(beforeFieldId !== undefined && beforeFieldId !== null
+        ? { before: beforeFieldId }
+        : {})
     }
   ] as const satisfies readonly CoreIntent[])
 
@@ -63,30 +64,67 @@ const insertField = (
 export const createDisplayApi = (
   base: ActiveViewContext
 ): ActiveViewApi['display'] => ({
-  replace: fieldIds => {
-    base.patchView(() => ({
-      display: viewApi.display.replace(fieldIds)
-    }))
-  },
   move: (ids, target) => {
-    base.patchView(view => ({
-      display: viewApi.display.move(view.display, ids, target.before)
-    }))
+    const viewId = base.id()
+    if (!viewId || !ids.length) {
+      return
+    }
+
+    base.execute(ids.length === 1
+      ? {
+          type: 'view.display.move',
+          id: viewId,
+          field: ids[0]!,
+          ...(target.before !== undefined && target.before !== null
+            ? { before: target.before }
+            : {})
+        }
+      : {
+          type: 'view.display.splice',
+          id: viewId,
+          fields: [...ids],
+          ...(target.before !== undefined && target.before !== null
+            ? { before: target.before }
+            : {})
+        })
   },
   show: (fieldId, beforeFieldId) => {
-    base.patchView(view => ({
-      display: viewApi.display.show(view.display, fieldId, beforeFieldId)
-    }))
+    const viewId = base.id()
+    if (!viewId) {
+      return
+    }
+
+    base.execute({
+      type: 'view.display.show',
+      id: viewId,
+      field: fieldId,
+      ...(beforeFieldId !== undefined && beforeFieldId !== null
+        ? { before: beforeFieldId }
+        : {})
+    })
   },
   hide: fieldId => {
-    base.patchView(view => ({
-      display: viewApi.display.hide(view.display, fieldId)
-    }))
+    const viewId = base.id()
+    if (!viewId) {
+      return
+    }
+
+    base.execute({
+      type: 'view.display.hide',
+      id: viewId,
+      field: fieldId
+    })
   },
   clear: () => {
-    base.patchView(() => ({
-      display: viewApi.display.clear()
-    }))
+    const viewId = base.id()
+    if (!viewId) {
+      return
+    }
+
+    base.execute({
+      type: 'view.display.clear',
+      id: viewId
+    })
   }
 })
 

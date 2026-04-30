@@ -81,7 +81,7 @@ export const reorderRows = (input: {
     return [...input.rowIds]
   }
 
-  return order.moveBlock(input.rowIds, movingIds, {
+  return order.splice(input.rowIds, movingIds, {
     before: input.before ?? undefined
   })
 }

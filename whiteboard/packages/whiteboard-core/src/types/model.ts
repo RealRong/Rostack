@@ -113,12 +113,6 @@ export type EdgeMarker =
   | 'circle-bar'
 export type EdgeDash = 'solid' | 'dashed' | 'dotted'
 export type EdgeTextMode = 'horizontal' | 'tangent'
-export type OrderMode =
-  | 'set'
-  | 'front'
-  | 'back'
-  | 'forward'
-  | 'backward'
 
 export type NodeEdgeEnd = {
   kind: 'node'

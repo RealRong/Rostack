@@ -1,5 +1,6 @@
 import { selection as selectionApi, type SelectionTarget } from '@whiteboard/core/selection'
 import type {
+  CanvasOrderAnchor,
   CanvasItemRef,
   GroupId
 } from '@whiteboard/core/types'
@@ -8,8 +9,7 @@ import type { EditorDefaults } from '@whiteboard/editor/types/defaults'
 import type {
   CanvasWrite,
   GroupWrite,
-  NodeWrite,
-  OrderMode
+  NodeWrite
 } from '@whiteboard/editor/write/types'
 import type {
   SelectionActions,
@@ -35,14 +35,22 @@ type SelectionActionHelpersHost = {
 const orderRefs = (
   canvas: Pick<CanvasWrite, 'order'>,
   refs: CanvasItemRef[],
-  mode: OrderMode
-) => canvas.order.move(refs, mode)
+  mode: 'front' | 'back' | 'forward' | 'backward'
+) => mode === 'forward' || mode === 'backward'
+  ? canvas.order.step(refs, mode)
+  : canvas.order.move(refs, {
+      kind: mode
+    } satisfies CanvasOrderAnchor)
 
 const orderGroups = (
   group: Pick<GroupWrite, 'order'>,
   groupIds: readonly GroupId[],
-  mode: OrderMode
-) => group.order.move(groupIds, mode)
+  mode: 'front' | 'back' | 'forward' | 'backward'
+) => mode === 'forward' || mode === 'backward'
+  ? group.order.step(groupIds, mode)
+  : group.order.move(groupIds, {
+      kind: mode
+    } satisfies CanvasOrderAnchor)
 
 const toCanvasRefs = (
   target: SelectionTarget

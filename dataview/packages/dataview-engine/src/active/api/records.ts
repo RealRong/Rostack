@@ -4,9 +4,6 @@ import type {
 import type {
   Intent as CoreIntent
 } from '@dataview/core/intent'
-import {
-  view as viewApi
-} from '@dataview/core/view'
 import { createId } from '@shared/core'
 import type {
   ItemId,
@@ -27,30 +24,30 @@ const createMoveOrderAction = (
   base: ActiveViewContext,
   recordIds: readonly RecordId[],
   beforeRecordId?: RecordId
-): Extract<CoreIntent, { type: 'view.patch' }> | undefined => {
+): Extract<CoreIntent, { type: 'view.order.move' | 'view.order.splice' }> | undefined => {
   const view = base.view()
   const viewId = base.reader.views.activeId()
   if (!view || !viewId || !recordIds.length) {
     return undefined
   }
 
-  const allRecordIds = [
-    ...base.reader.document().records.ids,
-    ...recordIds.filter(recordId => !base.reader.records.has(recordId))
-  ]
-
-  return {
-    type: 'view.patch',
-    id: viewId,
-    patch: {
-      orders: viewApi.order.reorder({
-        allRecordIds,
-        currentOrder: view.orders,
-        movingRecordIds: recordIds,
-        beforeRecordId
-      })
-    }
-  }
+  return recordIds.length === 1
+    ? {
+        type: 'view.order.move',
+        id: viewId,
+        record: recordIds[0]!,
+        ...(beforeRecordId !== undefined
+          ? { before: beforeRecordId }
+          : {})
+      }
+    : {
+        type: 'view.order.splice',
+        id: viewId,
+        records: [...recordIds],
+        ...(beforeRecordId !== undefined
+          ? { before: beforeRecordId }
+          : {})
+      }
 }
 
 const resolveCreateContext = (input: {

@@ -1,5 +1,7 @@
 import type { Engine } from '@whiteboard/engine'
 import type { CanvasWrite } from '@whiteboard/editor/write/types'
+import type { IntentResult } from '@whiteboard/engine/types/result'
+import { planCanvasOrderStep } from '@whiteboard/editor/write/orderStep'
 
 export const createCanvasWrite = (
   engine: Engine
@@ -19,10 +21,26 @@ export const createCanvasWrite = (
     })
   },
   order: {
-    move: (refs, mode) => engine.execute({
+    move: (refs, to) => engine.execute({
       type: 'canvas.order.move',
       refs,
-      mode
-    })
+      to
+    }),
+    step: (refs, direction) => {
+      const planned = planCanvasOrderStep({
+        document: engine.doc(),
+        refs,
+        direction
+      })
+      return (planned.length > 0
+        ? engine.execute(planned as any)
+        : engine.execute({
+            type: 'canvas.order.move',
+            refs: [],
+            to: {
+              kind: 'front'
+            }
+          })) as IntentResult
+    }
   }
 })

@@ -35,9 +35,9 @@ import type {
   NodeTemplate,
   NodeId,
   NodeUpdateInput,
-  OrderMode,
   Origin,
-  Point
+  Point,
+  CanvasOrderAnchor
 } from '@whiteboard/core/types'
 import type {
   MindmapBranchLineKind,
@@ -50,7 +50,7 @@ import type {
 } from '@whiteboard/core/document'
 import type { IntentResult } from '@whiteboard/engine/types/result'
 
-export type { OrderMode } from '@whiteboard/core/types'
+export type OrderStepDirection = 'forward' | 'backward'
 
 export type DocumentWrite = {
   replace: (document: Document) => IntentResult
@@ -78,7 +78,11 @@ export type CanvasWrite = {
   order: {
     move: (
       refs: readonly CanvasItemRef[],
-      mode: OrderMode
+      to: CanvasOrderAnchor
+    ) => IntentResult
+    step: (
+      refs: readonly CanvasItemRef[],
+      direction: OrderStepDirection
     ) => IntentResult
   }
 }
@@ -171,7 +175,11 @@ export type GroupWrite = {
   order: {
     move: (
       ids: readonly GroupId[],
-      mode: OrderMode
+      to: CanvasOrderAnchor
+    ) => IntentResult
+    step: (
+      ids: readonly GroupId[],
+      direction: OrderStepDirection
     ) => IntentResult
   }
   ungroup: (

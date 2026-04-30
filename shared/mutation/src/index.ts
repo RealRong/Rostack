@@ -14,6 +14,7 @@ export type {
   MutationStructuralOrderedDeleteOperation,
   MutationStructuralOrderedInsertOperation,
   MutationStructuralOrderedMoveOperation,
+  MutationStructuralOrderedSpliceOperation,
   MutationStructuralTreeDeleteOperation,
   MutationStructuralTreeInsertOperation,
   MutationStructuralTreeMoveOperation,
@@ -23,9 +24,11 @@ export type {
   MutationTreeSubtreeSnapshot,
 } from './engine'
 export {
+  applyStructuralOperation,
   createStructuralOrderedDeleteOperation,
   createStructuralOrderedInsertOperation,
   createStructuralOrderedMoveOperation,
+  createStructuralOrderedSpliceOperation,
   createStructuralTreeDeleteOperation,
   createStructuralTreeInsertOperation,
   createStructuralTreeMoveOperation,

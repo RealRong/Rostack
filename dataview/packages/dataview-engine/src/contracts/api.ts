@@ -138,7 +138,12 @@ export interface FieldsApi {
         name?: string
       }
     ) => FieldOption | undefined
-    setOrder: (id: CustomFieldId, order: readonly string[]) => void
+    move: (input: {
+      field: CustomFieldId
+      option: string
+      before?: string
+      category?: StatusCategory
+    }) => void
     patch: (input: {
       field: CustomFieldId
       option: string

@@ -19,7 +19,7 @@ import {
 } from '@shared/core'
 import {
   applyRecordOrder,
-  reorderRecordBlockIds
+  spliceRecordIds
 } from '@dataview/core/view/order'
 import {
   cloneViewOptions
@@ -69,7 +69,7 @@ export const moveDisplayFields = (
   }
 
   return {
-    fields: order.moveBlock(display.fields, nextFieldIds, {
+    fields: order.splice(display.fields, nextFieldIds, {
       before: beforeFieldId ?? undefined
     })
   }
@@ -126,27 +126,6 @@ export const sameViewCalc = (
   left: ViewCalc,
   right: ViewCalc
 ): boolean => equal.sameShallowRecord(left, right)
-
-export const reorderViewOrders = (input: {
-  allRecordIds: readonly RecordId[]
-  currentOrder: readonly RecordId[]
-  movingRecordIds: readonly RecordId[]
-  beforeRecordId?: RecordId
-}): RecordId[] => {
-  const movingRecordIds = collection.unique(input.movingRecordIds)
-  if (!movingRecordIds.length) {
-    return [...input.currentOrder]
-  }
-
-  const appliedOrder = applyRecordOrder(input.allRecordIds, input.currentOrder)
-  return reorderRecordBlockIds(
-    appliedOrder,
-    movingRecordIds,
-    {
-      beforeRecordId: input.beforeRecordId
-    }
-  )
-}
 
 export const clearViewOrders = (): RecordId[] => []
 

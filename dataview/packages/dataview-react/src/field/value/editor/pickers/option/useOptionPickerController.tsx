@@ -400,10 +400,17 @@ export const useOptionPickerController = (
   ])
 
   const reorderOptions = useCallback((from: number, to: number) => {
-    editor.fields.options.setOrder(
-      fieldId,
-      order.moveAt(options, from, to).map(option => option.id)
-    )
+    const reordered = order.moveAt(options, from, to)
+    const moved = reordered[to]
+    if (!moved) {
+      return
+    }
+
+    editor.fields.options.move({
+      field: fieldId,
+      option: moved.id,
+      before: reordered[to + 1]?.id
+    })
   }, [editor.fields.options, fieldId, options])
 
   const onQueryChange = useCallback((value: string) => {

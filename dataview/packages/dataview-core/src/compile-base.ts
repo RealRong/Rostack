@@ -29,15 +29,6 @@ export type DataviewCompileInput<
   ValidationCode
 >
 
-export const emitMany = (
-  input: DataviewCompileInput,
-  ...operations: readonly DocumentOperation[]
-): void => {
-  operations.forEach((operation) => {
-    input.emit(operation)
-  })
-}
-
 export const pushIssue = (
   input: DataviewCompileInput,
   issue: ValidationIssue

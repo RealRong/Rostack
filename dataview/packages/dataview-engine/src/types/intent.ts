@@ -83,8 +83,8 @@ export interface DataviewIntentTable extends MutationIntentTable {
       id: string
     }
   }
-  'field.option.setOrder': {
-    intent: IntentOfType<'field.option.setOrder'>
+  'field.option.move': {
+    intent: IntentOfType<'field.option.move'>
     output: void
   }
   'field.option.patch': {
@@ -107,6 +107,34 @@ export interface DataviewIntentTable extends MutationIntentTable {
   }
   'view.patch': {
     intent: IntentOfType<'view.patch'>
+    output: void
+  }
+  'view.order.move': {
+    intent: IntentOfType<'view.order.move'>
+    output: void
+  }
+  'view.order.splice': {
+    intent: IntentOfType<'view.order.splice'>
+    output: void
+  }
+  'view.display.move': {
+    intent: IntentOfType<'view.display.move'>
+    output: void
+  }
+  'view.display.splice': {
+    intent: IntentOfType<'view.display.splice'>
+    output: void
+  }
+  'view.display.show': {
+    intent: IntentOfType<'view.display.show'>
+    output: void
+  }
+  'view.display.hide': {
+    intent: IntentOfType<'view.display.hide'>
+    output: void
+  }
+  'view.display.clear': {
+    intent: IntentOfType<'view.display.clear'>
     output: void
   }
   'view.open': {

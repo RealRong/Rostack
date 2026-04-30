@@ -45,14 +45,15 @@ test('view calc comparison is stable across object key order', () => {
   )
 })
 
-test('view order reorder dedupes moving ids before applying moveBlock', () => {
+test('view order splice dedupes moving ids before applying splice', () => {
   assert.deepEqual(
-    view.order.reorder({
-      allRecordIds: ['a', 'b', 'c', 'd'],
-      currentOrder: ['c', 'a'],
-      movingRecordIds: ['c', 'c'],
-      beforeRecordId: 'b'
-    }),
+    view.order.splice(
+      ['a', 'b', 'c', 'd'],
+      ['c', 'c'],
+      {
+        beforeRecordId: 'b'
+      }
+    ),
     ['a', 'c', 'b', 'd']
   )
 })

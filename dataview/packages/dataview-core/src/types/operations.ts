@@ -3,7 +3,9 @@ import type {
   CustomFieldId,
   DataRecord,
   FieldId,
+  FieldOption,
   RecordId,
+  StatusCategory,
   View,
   ViewId
 } from './state'
@@ -66,6 +68,45 @@ export type DocumentOperation =
       patch: Partial<Omit<View, 'id'>>
     }
   | {
+      type: 'view.order.move'
+      id: ViewId
+      record: RecordId
+      before?: RecordId
+    }
+  | {
+      type: 'view.order.splice'
+      id: ViewId
+      records: readonly RecordId[]
+      before?: RecordId
+    }
+  | {
+      type: 'view.display.move'
+      id: ViewId
+      field: FieldId
+      before?: FieldId
+    }
+  | {
+      type: 'view.display.splice'
+      id: ViewId
+      fields: readonly FieldId[]
+      before?: FieldId
+    }
+  | {
+      type: 'view.display.show'
+      id: ViewId
+      field: FieldId
+      before?: FieldId
+    }
+  | {
+      type: 'view.display.hide'
+      id: ViewId
+      field: FieldId
+    }
+  | {
+      type: 'view.display.clear'
+      id: ViewId
+    }
+  | {
       type: 'view.delete'
       id: ViewId
     }
@@ -85,6 +126,24 @@ export type DocumentOperation =
       type: 'field.patch'
       id: CustomFieldId
       patch: Partial<Omit<CustomField, 'id'>>
+    }
+  | {
+      type: 'field.option.insert'
+      field: CustomFieldId
+      option: FieldOption
+      before?: string
+    }
+  | {
+      type: 'field.option.move'
+      field: CustomFieldId
+      option: string
+      before?: string
+      category?: StatusCategory
+    }
+  | {
+      type: 'field.option.delete'
+      field: CustomFieldId
+      option: string
     }
   | {
       type: 'field.delete'

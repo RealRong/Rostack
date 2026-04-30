@@ -14,54 +14,6 @@ import type {
 import type { DocumentFrame } from '@whiteboard/editor-scene'
 import type { EditorWrite } from '@whiteboard/editor/write'
 
-const toEdgeUpdateInput = (
-  patch: EdgePatch
-) => {
-  const fields = {
-    ...(patch.source ? { source: patch.source } : {}),
-    ...(patch.target ? { target: patch.target } : {}),
-    ...(patch.type ? { type: patch.type } : {}),
-    ...(Object.prototype.hasOwnProperty.call(patch, 'locked') ? { locked: patch.locked } : {}),
-    ...(Object.prototype.hasOwnProperty.call(patch, 'groupId') ? { groupId: patch.groupId } : {}),
-    ...(Object.prototype.hasOwnProperty.call(patch, 'textMode') ? { textMode: patch.textMode } : {})
-  }
-  const record = {
-    ...(Object.prototype.hasOwnProperty.call(patch, 'data')
-      ? {
-          data: patch.data
-        }
-      : {}),
-    ...(Object.prototype.hasOwnProperty.call(patch, 'style')
-      ? {
-          style: patch.style
-        }
-      : {})
-  }
-
-  return {
-    ...(Object.keys(fields).length > 0 ? { fields } : {}),
-    ...(Object.keys(record).length > 0 ? { record } : {})
-  }
-}
-
-const toEdgeLabelUpdateInput = (
-  patch: Parameters<EdgeActions['label']['patch']>[2]
-) => ({
-  fields: {
-    ...(patch.text !== undefined ? { text: patch.text } : {}),
-    ...(patch.t !== undefined ? { t: patch.t } : {}),
-    ...(patch.offset !== undefined ? { offset: patch.offset } : {})
-  },
-  ...(patch.style || patch.data
-    ? {
-        record: {
-          ...(patch.style ? { style: patch.style } : {}),
-          ...(patch.data ? { data: patch.data } : {})
-        }
-      }
-    : {})
-})
-
 const readEdgeOrThrow = (
   graph: Pick<EditorSceneApi, 'read'>,
   edgeId: string
@@ -108,7 +60,7 @@ export const createEdgeActions = (input: {
 }): EdgeActions => ({
   create: (value) => input.write.edge.create(value),
   patch: (edgeIds, patch) => {
-    const update = toEdgeUpdateInput(patch)
+    const update = edgeApi.update.fromPatch(patch)
     if (!update.fields && !update.record) {
       return undefined
     }
@@ -180,7 +132,13 @@ export const createEdgeActions = (input: {
     patch: (edgeId, labelId, patch) => input.write.edge.label.update(
       edgeId,
       labelId,
-      toEdgeLabelUpdateInput(patch)
+      edgeApi.label.patch.fromPatch({
+        ...(patch.text !== undefined ? { text: patch.text } : {}),
+        ...(patch.t !== undefined ? { t: patch.t } : {}),
+        ...(patch.offset !== undefined ? { offset: patch.offset } : {}),
+        ...(patch.style ? { style: patch.style } : {}),
+        ...(patch.data ? { data: patch.data } : {})
+      })
     ),
     remove: (edgeId, labelId) => {
       input.edit.clearEditingEdgeLabel({

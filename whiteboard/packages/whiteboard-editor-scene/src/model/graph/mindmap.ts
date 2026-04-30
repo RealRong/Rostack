@@ -24,7 +24,7 @@ import {
   readProjectedNodeRect,
   readProjectedNodeSize
 } from './node'
-import { applyEntity } from '@shared/projection'
+import { reconcileEntity } from '../reconcile'
 
 const isMindmapRenderConnectorEqual = (
   left: MindmapView['render']['connectors'][number],
@@ -297,7 +297,7 @@ export const patchMindmap = (input: {
     next
   })
 
-  const result = applyEntity({
+  const result = reconcileEntity({
     id: input.mindmapId,
     previous,
     next,

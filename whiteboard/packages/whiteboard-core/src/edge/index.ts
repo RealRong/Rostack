@@ -96,8 +96,11 @@ import {
   isEdgePatchEqual
 } from '@whiteboard/core/edge/patch'
 import {
+  createEdgeStyleRecordUpdate,
+  createEdgeStyleRecordWrite,
   createEdgeLabelPatch,
   createEdgePatch,
+  readEdgeUpdateFromPatch,
   readEdgeLabelUpdateFromPatch
 } from '@whiteboard/core/edge/update'
 import {
@@ -227,7 +230,12 @@ export const edge = {
     equal: isEdgePatchEqual
   },
   update: {
-    toPatch: createEdgePatch
+    toPatch: createEdgePatch,
+    fromPatch: readEdgeUpdateFromPatch,
+    style: createEdgeStyleRecordUpdate,
+    record: {
+      style: createEdgeStyleRecordWrite
+    }
   },
   equal: {
     anchor: sameEdgeAnchor,

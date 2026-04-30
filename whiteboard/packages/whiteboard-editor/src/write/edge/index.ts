@@ -2,6 +2,7 @@ import {
   record as draftRecord,
   type Path
 } from '@shared/draft'
+import { edge as edgeApi } from '@whiteboard/core/edge'
 import type {
   Edge,
   EdgeId,
@@ -27,13 +28,6 @@ const readCommittedEdge = (
   read: Pick<DocumentFrame, 'edge'>,
   edgeId: EdgeId
 ) => read.edge(edgeId)
-
-const createStyleMutation = (
-  path: Path,
-  value: unknown
-) => ({
-  [`style.${path}`]: value
-})
 
 const updateEdges = (
   engine: Engine,
@@ -102,9 +96,7 @@ const updateEdgeStyle = (
     return undefined
   }
 
-  return {
-    record: createStyleMutation(path, value)
-  }
+  return edgeApi.update.style(path, value)
 })
 
 export const createEdgeWrite = ({
@@ -171,8 +163,8 @@ export const createEdgeWrite = ({
 
       return {
         record: {
-          ...createStyleMutation('start', end),
-          ...createStyleMutation('end', start)
+          ...edgeApi.update.record.style('start', end),
+          ...edgeApi.update.record.style('end', start)
         }
       }
     })

@@ -2,6 +2,7 @@ import { json } from '@shared/core'
 import {
   path as draftPath,
   record as draftRecord,
+  type Path,
   type RecordWrite
 } from '@shared/draft'
 import type {
@@ -123,6 +124,34 @@ const cloneRecordWrite = (
     )
   )
 }
+
+export const createNodeStyleRecordWrite = (
+  path: Path,
+  value: unknown
+): RecordWrite => Object.freeze({
+  [`style.${path}`]: value
+})
+
+export const createNodeDataRecordWrite = (
+  path: Path,
+  value: unknown
+): RecordWrite => Object.freeze({
+  [`data.${path}`]: value
+})
+
+export const createNodeStyleRecordUpdate = (
+  path: Path,
+  value: unknown
+): NodeUpdateInput => ({
+  record: createNodeStyleRecordWrite(path, value)
+})
+
+export const createNodeDataRecordUpdate = (
+  path: Path,
+  value: unknown
+): NodeUpdateInput => ({
+  record: createNodeDataRecordWrite(path, value)
+})
 
 const hasRecordWrite = (
   record?: RecordWrite

@@ -1,5 +1,9 @@
 import { json } from '@shared/core'
 import type {
+  Path,
+  RecordWrite
+} from '@shared/draft'
+import type {
   EdgeFieldPatch,
   EdgeLabelFieldPatch,
   EdgeLabelPatch,
@@ -68,11 +72,58 @@ const cloneEdgeLabelFieldPatch = (
   return patch
 }
 
+export const createEdgeStyleRecordWrite = (
+  path: Path,
+  value: unknown
+): RecordWrite => Object.freeze({
+  [`style.${path}`]: value
+})
+
+export const createEdgeStyleRecordUpdate = (
+  path: Path,
+  value: unknown
+): EdgeUpdateInput => ({
+  record: createEdgeStyleRecordWrite(path, value)
+})
+
 export const createEdgePatch = (
   update: EdgeUpdateInput
 ): EdgePatch => applyScopedRecordWriteToPatch({
   ...(update.fields ? cloneEdgeFieldPatch(update.fields) : {})
 }, update.record, ['route', 'style', 'labels', 'data'])
+
+export const readEdgeUpdateFromPatch = (
+  patch: EdgePatch
+): EdgeUpdateInput => {
+  const {
+    record
+  } = splitScopedPatch(patch, ['route', 'style', 'labels', 'data'])
+  const fields: EdgeFieldPatch = {}
+
+  if (hasOwn(patch, 'source')) {
+    fields.source = json.clone(patch.source)
+  }
+  if (hasOwn(patch, 'target')) {
+    fields.target = json.clone(patch.target)
+  }
+  if (hasOwn(patch, 'type')) {
+    fields.type = json.clone(patch.type)
+  }
+  if (hasOwn(patch, 'locked')) {
+    fields.locked = json.clone(patch.locked)
+  }
+  if (hasOwn(patch, 'groupId')) {
+    fields.groupId = json.clone(patch.groupId)
+  }
+  if (hasOwn(patch, 'textMode')) {
+    fields.textMode = json.clone(patch.textMode)
+  }
+
+  return {
+    ...(Object.keys(fields).length ? { fields } : {}),
+    ...(record ? { record } : {})
+  }
+}
 
 export const createEdgeLabelPatch = (
   update: EdgeLabelUpdateInput

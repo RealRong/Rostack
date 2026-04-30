@@ -1,8 +1,7 @@
-import { family } from '../../core/src/index'
-import type { MutableFamilyState } from '../../core/src/index'
+import { family, type MutableFamilyState } from '@shared/core'
 import { idDelta, type IdDelta } from '@shared/delta'
 
-export const applyValue = <TValue,>(input: {
+export const reconcileValue = <TValue,>(input: {
   previous: TValue
   next: TValue
   equal: (left: TValue, right: TValue) => boolean
@@ -19,7 +18,7 @@ export const applyValue = <TValue,>(input: {
   return changed ? 1 : 0
 }
 
-export const applyFamilyReset = <TId extends string, TValue>(input: {
+export const reconcileFamilyReset = <TId extends string, TValue>(input: {
   previous: MutableFamilyState<TId, TValue>
   ids: Iterable<TId>
   build: (id: TId, previous: TValue | undefined) => TValue | undefined
@@ -60,7 +59,7 @@ export const applyFamilyReset = <TId extends string, TValue>(input: {
   return count
 }
 
-export const applyFamilyTouched = <TId extends string, TValue>(input: {
+export const reconcileFamilyTouched = <TId extends string, TValue>(input: {
   state: MutableFamilyState<TId, TValue>
   ids: Iterable<TId>
   build: (id: TId, previous: TValue | undefined) => TValue | undefined
@@ -95,7 +94,7 @@ export const applyFamilyTouched = <TId extends string, TValue>(input: {
   return count
 }
 
-export const applyEntity = <TId extends string, TValue>(input: {
+export const reconcileEntity = <TId extends string, TValue>(input: {
   id: TId
   previous: TValue | undefined
   next: TValue | undefined

@@ -1,8 +1,8 @@
 import { equal } from '@shared/core'
 import type { ChromeRenderView } from '../../contracts/render'
-import { applyValue } from '@shared/projection'
 import type { RenderContext } from './context'
 import { isOverlayViewEqual } from './overlay'
+import { reconcileValue } from '../reconcile'
 
 const isChromeRenderViewEqual = (
   left: ChromeRenderView,
@@ -33,7 +33,7 @@ export const patchRenderChrome = (
     return 0
   }
 
-  return applyValue({
+  return reconcileValue({
     previous: context.working.render.chrome,
     next: buildChromeRenderView(context),
     equal: isChromeRenderViewEqual,

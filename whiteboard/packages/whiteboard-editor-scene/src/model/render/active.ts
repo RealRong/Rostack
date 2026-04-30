@@ -3,8 +3,8 @@ import { idDelta } from '@shared/delta'
 import { edge as edgeApi } from '@whiteboard/core/edge'
 import type { EdgeId } from '@whiteboard/core/types'
 import type { EdgeActiveView, EdgeStaticView } from '../../contracts/render'
-import { applyFamilyReset, applyFamilyTouched } from '@shared/projection'
 import type { RenderContext } from './context'
+import { reconcileFamilyReset, reconcileFamilyTouched } from '../reconcile'
 
 const isStaticStyleEqual = (
   left: EdgeStaticView['style'],
@@ -87,7 +87,7 @@ export const patchRenderActive = (
   }
 
   if (context.reset) {
-    return applyFamilyReset({
+    return reconcileFamilyReset({
       previous: context.working.render.active,
       ids: context.active,
       build: (edgeId) => buildActiveView({
@@ -109,7 +109,7 @@ export const patchRenderActive = (
     })
   }
 
-  return applyFamilyTouched({
+  return reconcileFamilyTouched({
     state: context.working.render.active,
     ids: context.touched.edge.active,
     build: (edgeId) => context.active.has(edgeId)

@@ -20,7 +20,7 @@ import type {
   GraphNodeEntry,
   WorkingState
 } from '../../contracts/working'
-import { applyEntity } from '@shared/projection'
+import { reconcileEntity } from '../reconcile'
 
 const nodeModelCache = new WeakMap<Node, NodeModel>()
 
@@ -328,7 +328,7 @@ export const patchNode = (input: {
     }
   }
 
-  const result = applyEntity({
+  const result = reconcileEntity({
     id: input.nodeId,
     previous,
     next,

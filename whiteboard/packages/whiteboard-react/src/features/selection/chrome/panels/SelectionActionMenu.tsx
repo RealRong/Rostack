@@ -1,20 +1,9 @@
 import { Menu, type MenuItem } from '@shared/ui'
 import { useStoreValue } from '@shared/react'
+import { geometry as geometryApi } from '@whiteboard/core/geometry'
 import { useEditorRuntime, useWhiteboardServices } from '@whiteboard/react/runtime/hooks'
 import { readSelectionCan } from '@whiteboard/react/features/selection/capability'
 import { ORDER_MENU_ITEMS } from '@whiteboard/react/features/selection/chrome/panels/order'
-
-const readRectCenter = (
-  box: {
-    x: number
-    y: number
-    width: number
-    height: number
-  }
-) => ({
-  x: box.x + box.width / 2,
-  y: box.y + box.height / 2
-})
 
 const readLockLabel = (
   lock: 'none' | 'mixed' | 'all'
@@ -95,8 +84,8 @@ export const SelectionActionMenu = ({
       onSelect: () => {
         void clipboard.paste(summary.box
           ? {
-              origin: readRectCenter(summary.box)
-            }
+            origin: geometryApi.rect.center(summary.box)
+          }
           : undefined)
       }
     },

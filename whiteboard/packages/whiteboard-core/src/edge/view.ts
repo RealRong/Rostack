@@ -88,7 +88,7 @@ export const resolveEdgeView = (
   }
 }
 
-type NodeGeometryInput = {
+export type EdgeNodeGeometryInput = {
   node: NodeModel
   rect: Rect
   outline: NodeGeometry['outline']
@@ -97,7 +97,7 @@ type NodeGeometryInput = {
 }
 
 const readResolvedNodeSnapshot = (
-  readNodeGeometry: (nodeId: NodeId) => NodeGeometryInput | undefined,
+  readNodeGeometry: (nodeId: NodeId) => EdgeNodeGeometryInput | undefined,
   end: Edge['source'] | Edge['target']
 ) => {
   if (end.kind !== 'node') {
@@ -119,7 +119,7 @@ const readResolvedNodeSnapshot = (
 
 export const resolveEdgeViewFromNodeGeometry = (input: {
   edge: Edge
-  readNodeGeometry: (nodeId: NodeId) => NodeGeometryInput | undefined
+  readNodeGeometry: (nodeId: NodeId) => EdgeNodeGeometryInput | undefined
 }): EdgeView | undefined => {
   const source = readResolvedNodeSnapshot(
     input.readNodeGeometry,

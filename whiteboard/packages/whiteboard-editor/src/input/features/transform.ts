@@ -4,12 +4,11 @@ import { node as nodeApi,
   type TransformSelectionMember,
   type TransformSpec
 } from '@whiteboard/core/node'
-import type { Node, NodeId } from '@whiteboard/core/types'
+import type { Node } from '@whiteboard/core/types'
 import type { InteractionBinding, InteractionSession } from '@whiteboard/editor/input/core/types'
 import { FINISH } from '@whiteboard/editor/input/session/result'
 import { createGesture } from '@whiteboard/editor/input/core/gesture'
 import type { PointerDownInput } from '@whiteboard/editor/types/input'
-import type { TransformPickHandle } from '@whiteboard/editor/types/pick'
 import type { EditorHostDeps } from '@whiteboard/editor/input/runtime'
 import { resolveNodeEditorCapability } from '@whiteboard/editor/types/node'
 
@@ -51,83 +50,6 @@ const toSpatialSelectionPlan = (
   })
 })
 
-const readNodeTransformSpec = (
-  ctx: Pick<EditorHostDeps, 'projection' | 'nodeType'>,
-  nodeId: NodeId,
-  handle: TransformPickHandle,
-  input: PointerDownInput
-): RuntimeTransformSpec | undefined => {
-  const geometry = ctx.projection.read.scene.nodes.get(nodeId)
-  if (!geometry || geometry.base.node.locked) {
-    return undefined
-  }
-
-  const capability = resolveNodeEditorCapability(geometry.base.node, ctx.nodeType)
-  const target: TransformTarget = {
-    id: geometry.base.node.id,
-    node: toSpatialNode({
-      node: geometry.base.node,
-      rect: geometry.geometry.rect,
-      rotation: geometry.geometry.rotation
-    }),
-    rect: geometry.geometry.rect
-  }
-  const rotation = geometry.geometry.rotation
-
-  if (handle.kind === 'resize') {
-    if (!handle.direction || !capability.resize) {
-      return undefined
-    }
-
-    const behavior = nodeApi.transform.resolveBehavior(target.node, {
-      role: capability.role,
-      resize: capability.resize
-    })
-    if (target.node.type === 'text' && behavior) {
-      const plan = nodeApi.transform.buildPlan({
-        box: target.rect,
-        members: [{
-          ...target,
-          behavior
-        }]
-      })
-      if (!plan) {
-        return undefined
-      }
-
-      return {
-        kind: 'selection-resize',
-        pointerId: input.pointerId,
-        plan,
-        rotation,
-        handle: handle.direction,
-        startScreen: input.client
-      }
-    }
-
-    return {
-      kind: 'single-resize',
-      pointerId: input.pointerId,
-      target,
-      handle: handle.direction,
-      rotation,
-      startScreen: input.client
-    }
-  }
-
-  if (!capability.rotate) {
-    return undefined
-  }
-
-  return {
-    kind: 'single-rotate',
-    pointerId: input.pointerId,
-    target,
-    rotation,
-    startWorld: input.world
-  }
-}
-
 const resolveTransformSpec = (
   ctx: Pick<EditorHostDeps, 'projection' | 'sessionRead' | 'nodeType' | 'sceneDerived'>,
   input: PointerDownInput
@@ -143,7 +65,33 @@ const resolveTransformSpec = (
   }
 
   if (input.pick.kind === 'node') {
-    return readNodeTransformSpec(ctx, input.pick.id, input.pick.handle, input) ?? null
+    const geometry = ctx.projection.read.scene.nodes.get(input.pick.id)
+    if (!geometry) {
+      return null
+    }
+
+    const capability = resolveNodeEditorCapability(geometry.base.node, ctx.nodeType)
+    return nodeApi.transform.resolveSpec({
+      target: {
+        id: geometry.base.node.id,
+        node: toSpatialNode({
+          node: geometry.base.node,
+          rect: geometry.geometry.rect,
+          rotation: geometry.geometry.rotation
+        }),
+        rect: geometry.geometry.rect
+      },
+      rotation: geometry.geometry.rotation,
+      handle: input.pick.handle,
+      pointerId: input.pointerId,
+      startScreen: input.client,
+      startWorld: input.world,
+      capability: {
+        role: capability.role,
+        resize: capability.resize,
+        rotate: capability.rotate
+      }
+    }) ?? null
   }
 
   const selection = ctx.sceneDerived.selection.summary.get()

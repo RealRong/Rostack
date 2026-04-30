@@ -13,7 +13,6 @@ import type { PointerDownInput } from '@whiteboard/editor/types/input'
 import type { Tool } from '@whiteboard/editor/types/tool'
 import type { MindmapPreviewState } from '@whiteboard/editor/session/preview/types'
 import type { EditorHostDeps } from '@whiteboard/editor/input/runtime'
-import type { EditorSceneRead } from '@whiteboard/editor-scene'
 import type { Node } from '@whiteboard/core/types'
 
 export type MindmapDragState = CoreMindmapDragState
@@ -41,12 +40,6 @@ export type MindmapDragCommit =
       layout: MindmapLayoutSpec
     }
 
-type MindmapQuery = {
-  id: EditorSceneRead['scene']['mindmaps']['id']
-  structure: EditorSceneRead['scene']['mindmaps']['structure']
-  layout: EditorSceneRead['scene']['mindmaps']['get']
-}
-
 const previewMindmapDrag = (
   state: MindmapDragState
 ): MindmapPreviewState => {
@@ -72,37 +65,11 @@ const previewMindmapDrag = (
   }
 }
 
-const readMindmapTreeView = (
-  mindmap: {
-    id: MindmapQuery['id']
-    structure: MindmapQuery['structure']
-    layout: MindmapQuery['layout']
-  },
-  treeId: NodeId
-) => {
-  const structure = mindmap.structure(treeId)
-  const view = mindmap.layout(treeId)
-  const id = mindmap.id(treeId)
-  const computed = view?.tree.layout
-  if (!structure || !computed || !id) {
-    return undefined
-  }
-
-  return {
-    id,
-    tree: structure.tree,
-    layout: structure.tree.layout,
-    computed
-  }
-}
-
 export const tryStartMindmapDrag = (input: {
   tool: Tool
   pointer: PointerDownInput
   mindmap: {
-    id: MindmapQuery['id']
-    structure: MindmapQuery['structure']
-    layout: MindmapQuery['layout']
+    tree: EditorHostDeps['projection']['read']['scene']['mindmaps']['tree']
   }
   node: (nodeId: NodeId) => Node | undefined
   selection: Pick<store.ReadStore<SelectionSummary>, 'get'>
@@ -121,14 +88,12 @@ export const tryStartMindmapDrag = (input: {
     : pick.kind === 'node' && pick.part !== 'field'
       ? pick.id
       : undefined
+  const treeView = treeId
+    ? input.mindmap.tree(treeId)
+    : undefined
   const locked = Boolean(
-    (treeId
-      ? (() => {
-        const structure = input.mindmap.structure(treeId)
-        return structure
-            ? input.node(structure.rootId)?.locked
-            : undefined
-        })()
+    (treeView
+      ? input.node(treeView.rootId)?.locked
       : undefined)
     || pickedNode?.locked
   )
@@ -148,7 +113,6 @@ export const tryStartMindmapDrag = (input: {
     return undefined
   }
 
-  const treeView = readMindmapTreeView(input.mindmap, treeId)
   if (!treeView) {
     return undefined
   }
@@ -181,9 +145,7 @@ export const tryStartMindmapDragForNode = (input: {
   pointerId: number
   world: Point
   mindmap: {
-    id: MindmapQuery['id']
-    structure: MindmapQuery['structure']
-    layout: MindmapQuery['layout']
+    tree: EditorHostDeps['projection']['read']['scene']['mindmaps']['tree']
   }
   node: (nodeId: NodeId) => Node | undefined
 }): MindmapDragState | undefined => {
@@ -191,15 +153,13 @@ export const tryStartMindmapDragForNode = (input: {
   const treeId = pickedNode?.owner?.kind === 'mindmap'
     ? pickedNode.owner.id
     : undefined
+  const treeView = treeId
+    ? input.mindmap.tree(treeId)
+    : undefined
   const locked = Boolean(
     pickedNode?.locked
-    || (treeId
-      ? (() => {
-        const structure = input.mindmap.structure(treeId)
-        return structure
-            ? input.node(structure.rootId)?.locked
-            : undefined
-      })()
+    || (treeView
+      ? input.node(treeView.rootId)?.locked
       : undefined)
   )
 
@@ -207,7 +167,6 @@ export const tryStartMindmapDragForNode = (input: {
     return undefined
   }
 
-  const treeView = readMindmapTreeView(input.mindmap, treeId)
   if (!treeView) {
     return undefined
   }
@@ -239,16 +198,14 @@ const stepMindmapDrag = (input: {
   state: MindmapDragState
   world: Point
   mindmap: {
-    id: MindmapQuery['id']
-    structure: MindmapQuery['structure']
-    layout: MindmapQuery['layout']
+    tree: EditorHostDeps['projection']['read']['scene']['mindmaps']['tree']
   }
 }): MindmapDragState => mindmapApi.drop.projectDrag({
   active: input.state,
   world: input.world,
   treeView:
     input.state.kind === 'subtree'
-      ? readMindmapTreeView(input.mindmap, input.state.treeId)
+      ? input.mindmap.tree(input.state.treeId)
       : undefined
 })
 
@@ -302,9 +259,7 @@ export const createMindmapDragSession = (
       state,
       world,
       mindmap: {
-        id: ctx.projection.read.scene.mindmaps.id,
-        structure: ctx.projection.read.scene.mindmaps.structure,
-        layout: ctx.projection.read.scene.mindmaps.get
+        tree: ctx.projection.read.scene.mindmaps.tree
       }
     })
     interaction!.gesture = createGesture('mindmap-drag', {

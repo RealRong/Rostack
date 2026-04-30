@@ -14,17 +14,23 @@ import {
   resolveAnchorFromPoint,
   resolveEdgeActivationPaddingWorld,
   resolveEdgeConnectEvaluation,
+  resolveEdgeCreatePreviewPath,
   resolveEdgeConnectPreview,
+  projectEdgeConnectState,
   resolveEdgeConnectQueryRect,
   resolveEdgeConnectTarget,
   resolveEdgeConnectThresholdWorld,
   resolveEdgeHandleSnapWorld,
+  resolveReconnectDraftPatch,
   resolveReconnectDraftEnd,
+  resolveReconnectFixedPoint,
+  resolveReconnectWorld,
   setEdgeConnectTarget,
   startEdgeCreate,
   startEdgeReconnect,
   toEdgeConnectCommit,
   toEdgeConnectPatch,
+  toEdgeReconnectPatch,
   toEdgeDraftEnd
 } from '@whiteboard/core/edge/connect'
 import { createEdgeDuplicateInput } from '@whiteboard/core/edge/duplicate'
@@ -50,6 +56,7 @@ import {
   isPointEdgeEnd
 } from '@whiteboard/core/edge/guards'
 import {
+  distanceToViewPoint,
   getEdgePathBounds,
   matchEdgeRect,
   distanceToPath
@@ -103,6 +110,16 @@ import {
   resolveEdgeView,
   resolveEdgeViewFromNodeGeometry
 } from '@whiteboard/core/edge/view'
+import {
+  buildEdgeLabelRect,
+  createEdgeNodeSnapshot,
+  readEdgeLabelDisplayText,
+  readManualRoutePoints,
+  resolveProjectedEdge,
+  resolveProjectedEdgeBox,
+  resolveProjectedEdgeNodes,
+  resolveProjectedEdgeRoute
+} from '@whiteboard/core/edge/project'
 
 export const edge = {
   guard: {
@@ -136,10 +153,21 @@ export const edge = {
     resolve: resolveEdgeView,
     resolveFromNodeGeometry: resolveEdgeViewFromNodeGeometry
   },
+  project: {
+    edge: resolveProjectedEdge,
+    nodes: resolveProjectedEdgeNodes,
+    route: resolveProjectedEdgeRoute,
+    box: resolveProjectedEdgeBox,
+    manualPoints: readManualRoutePoints,
+    labelRect: buildEdgeLabelRect,
+    labelDisplayText: readEdgeLabelDisplayText,
+    nodeSnapshot: createEdgeNodeSnapshot
+  },
   hit: {
     test: matchEdgeRect,
     pathBounds: getEdgePathBounds,
-    distanceToPath
+    distanceToPath,
+    distanceToViewPoint
   },
   render: {
     staticStyle,
@@ -180,6 +208,12 @@ export const edge = {
     handleSnapWorld: resolveEdgeHandleSnapWorld,
     activationPaddingWorld: resolveEdgeActivationPaddingWorld,
     queryRect: resolveEdgeConnectQueryRect,
+    previewPath: resolveEdgeCreatePreviewPath,
+    project: projectEdgeConnectState,
+    reconnectFixedPoint: resolveReconnectFixedPoint,
+    reconnectDraftPatch: resolveReconnectDraftPatch,
+    reconnectWorld: resolveReconnectWorld,
+    reconnectPatch: toEdgeReconnectPatch,
     resolveReconnectDraftEnd,
     setTarget: setEdgeConnectTarget,
     startCreate: startEdgeCreate,
@@ -268,6 +302,10 @@ export type {
 export type {
   EdgeBox
 } from '@whiteboard/core/edge/view'
+export type {
+  ProjectedEdgeLabel,
+  ProjectedEdgeRoute
+} from '@whiteboard/core/edge/project'
 export {
   resolveEdgeViewFromNodeGeometry
 } from '@whiteboard/core/edge/view'

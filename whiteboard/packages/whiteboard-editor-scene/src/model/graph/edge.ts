@@ -26,39 +26,15 @@ const readEdgePatch = (
   entry: GraphEdgeEntry
 ) => entry.preview?.patch ?? entry.draft?.patch
 
-const readEdgeLabelDisplayText = (
-  value: string,
-  editing: boolean
-) => value || (editing ? 'Label' : '')
-
-const buildEdgeLabelRect = (
-  point: Point,
-  size: Size
-): Rect => ({
-  x: point.x - size.width / 2,
-  y: point.y - size.height / 2,
-  width: size.width,
-  height: size.height
-})
-
 const toEdgeNodeSnapshot = (
   nodeView: NodeView | undefined
 ) => nodeView
-  ? {
-      node: {
-        ...nodeView.base.node,
-        position: {
-          x: nodeView.geometry.rect.x,
-          y: nodeView.geometry.rect.y
-        },
-        size: {
-          width: nodeView.geometry.rect.width,
-          height: nodeView.geometry.rect.height
-        },
-        rotation: nodeView.geometry.rotation
-      },
-      geometry: nodeView.geometry.outline
-    }
+  ? edgeApi.project.nodeSnapshot({
+      node: nodeView.base.node,
+      rect: nodeView.geometry.rect,
+      outline: nodeView.geometry.outline,
+      rotation: nodeView.geometry.rotation
+    })
   : undefined
 
 export type EdgeNodeSnapshot = ReturnType<typeof toEdgeNodeSnapshot>
@@ -84,39 +60,14 @@ const readEdgeNodeSnapshot = (input: {
 
 const readProjectedEdge = (
   entry: GraphEdgeEntry
-): Edge => {
-  const patch = readEdgePatch(entry)
-  return patch
-    ? edgeApi.patch.apply(entry.base.edge, patch)
-    : entry.base.edge
-}
+): Edge => edgeApi.project.edge({
+  edge: entry.base.edge,
+  patch: readEdgePatch(entry)
+})
 
 const readProjectedEdgeNodes = (
   edge: Edge
-) => ({
-  source: edge.source.kind === 'node'
-    ? edge.source.nodeId
-    : undefined,
-  target: edge.target.kind === 'node'
-    ? edge.target.nodeId
-    : undefined
-})
-
-const readEdgePoints = (
-  edge: Edge
-): readonly Point[] => edge.route?.kind === 'manual'
-  ? edge.route.points
-  : []
-
-const readEdgeBox = (
-  rect: Rect | undefined,
-  edge: GraphEdgeEntry['base']['edge']
-) => rect
-  ? {
-      rect,
-      pad: Math.max(24, (edge.style?.width ?? 2) + 16)
-    }
-  : undefined
+) => edgeApi.project.nodes(edge)
 
 const isEdgeHandleEqual = (
   left: EdgeView['route']['handles'][number],
@@ -296,108 +247,37 @@ export const buildEdgeView = (input: {
       return undefined
     }
   })()
-  const textMode = edge.textMode ?? 'horizontal'
-  const labels = (edge.labels ?? []).flatMap((label) => {
-    const editSession = input.edit?.kind === 'edge-label'
-      && input.edit.edgeId === input.edgeId
-      && input.edit.labelId === label.id
-      ? input.edit
-      : undefined
-    const text = editSession
-      ? editSession.text
-      : label.text ?? ''
-    const displayText = readEdgeLabelDisplayText(text, Boolean(editSession))
-    if (!displayText.trim()) {
-      return []
-    }
-
-    const measuredLabel = label.text === displayText
-      ? label
-      : {
-          ...label,
-          text: displayText
-        }
-    const measuredSize = input.layout?.runtime({
+  const route = edgeApi.project.route({
+    edge,
+    geometry,
+    readLabelText: (label) => {
+      const editSession = input.edit?.kind === 'edge-label'
+        && input.edit.edgeId === input.edgeId
+        && input.edit.labelId === label.id
+        ? input.edit
+        : undefined
+      return {
+        text: editSession
+          ? editSession.text
+          : label.text ?? '',
+        editing: Boolean(editSession)
+      }
+    },
+    measureLabel: (label) => input.layout?.runtime({
       kind: 'edge.label',
       edgeId: input.edgeId,
       labelId: label.id,
-      label: measuredLabel
+      label
     }).size
-    const size = edgeApi.label.placementSize({
-      textMode,
-      measuredSize,
-      text: displayText,
-      fontSize: label.style?.size
-    })
-    if (!size) {
-      return []
-    }
-
-    const placement = geometry
-      ? edgeApi.label.placement({
-          path: geometry.path,
-          t: label.t,
-          offset: label.offset,
-          textMode,
-          labelSize: size,
-          sideGap: edgeApi.label.sideGap(textMode)
-        })
-      : undefined
-
-    if (!placement) {
-      return []
-    }
-
-    const angle = textMode === 'tangent'
-      ? placement.angle
-      : 0
-
-    return [{
-      labelId: label.id,
-      text,
-      displayText,
-      style: label.style,
-      size,
-      point: placement.point,
-      angle,
-      rect: buildEdgeLabelRect(placement.point, size),
-      maskRect: edgeApi.label.mask({
-        center: placement.point,
-        size,
-        angle,
-        margin: 4
-      })
-    }]
   })
-  const pathBounds = geometry
-    ? edgeApi.path.bounds(geometry.path)
-    : undefined
-  const bounds = geometryApi.rect.boundingRect([
-    ...(
-      pathBounds
-        ? [pathBounds]
-        : []
-    ),
-    ...labels.map((label) => label.rect)
-  ])
 
   return {
     base: {
       edge,
       nodes: readProjectedEdgeNodes(edge)
     },
-    route: {
-      points: geometry?.path.points ?? readEdgePoints(edge),
-      segments: geometry?.path.segments ?? [],
-      svgPath: geometry?.path.svgPath,
-      bounds,
-      source: geometry?.ends.source.point,
-      target: geometry?.ends.target.point,
-      ends: geometry?.ends,
-      handles: geometry?.handles ?? [],
-      labels
-    },
-    box: readEdgeBox(pathBounds, edge)
+    route,
+    box: edgeApi.project.box(route.pathBounds, edge)
   }
 }
 

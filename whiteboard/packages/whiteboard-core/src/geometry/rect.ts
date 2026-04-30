@@ -34,6 +34,24 @@ export const rectIntersects = (a: Rect, b: Rect) => (
   a.y + a.height >= b.y
 )
 
+export const distancePointToRect = (
+  point: Point,
+  rect: Rect
+): number => {
+  const dx = Math.max(
+    rect.x - point.x,
+    0,
+    point.x - (rect.x + rect.width)
+  )
+  const dy = Math.max(
+    rect.y - point.y,
+    0,
+    point.y - (rect.y + rect.height)
+  )
+
+  return Math.hypot(dx, dy)
+}
+
 export const expandRect = (
   rect: Rect,
   value: number

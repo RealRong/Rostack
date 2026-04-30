@@ -1,8 +1,5 @@
 import { scheduler } from '@shared/core'
-import type {
-  Point,
-  Rect
-} from '@whiteboard/core/types'
+import { geometry as geometryApi } from '@whiteboard/core/geometry'
 import type { EditorSceneRuntime as SceneRuntime } from '@whiteboard/editor-scene'
 import type {
   EditorSceneApi,
@@ -15,16 +12,6 @@ import type {
 export type { EditorSceneApi }
 
 const DEFAULT_PICK_RADIUS_SCREEN = 8
-
-const toPickRect = (
-  point: Point,
-  radius: number
-): Rect => ({
-  x: point.x - radius,
-  y: point.y - radius,
-  width: radius * 2,
-  height: radius * 2
-})
 
 const isScenePickRuntimeResultEqual = (
   left: ScenePickRuntimeResult | undefined,
@@ -64,7 +51,10 @@ const createScenePick = (input: {
     })
 
     return {
-      rect: next.rect ?? toPickRect(request.world, request.radius ?? DEFAULT_PICK_RADIUS_SCREEN),
+      rect: next.rect ?? geometryApi.rect.fromPoint(
+        request.world,
+        request.radius ?? DEFAULT_PICK_RADIUS_SCREEN
+      ),
       target: next.target && next.target.kind !== 'group'
         ? next.target
         : undefined,

@@ -32,10 +32,16 @@ import {
   readNodeRotation
 } from '@whiteboard/core/node/geometry'
 import {
+  distanceToNodePoint,
   filterNodeIdsInRect,
   getNodeIdsInRect,
   matchCanvasNodeRect
 } from '@whiteboard/core/node/hitTest'
+import {
+  resolveProjectedNodeRect,
+  resolveProjectedNodeRotation,
+  resolveProjectedNodeSize
+} from '@whiteboard/core/node/project'
 import {
   alignNodes,
   distributeNodes
@@ -131,6 +137,7 @@ import {
   resizeHandleMap,
   resolveAnchoredRect,
   resolveNodeTransformBehavior,
+  resolveTransformSpec,
   resolveResizeRectFromSize,
   resolveSelectionTransformFamily,
   rotateVector,
@@ -231,6 +238,7 @@ export const node = {
     projectRotateTransformPatches,
     anchoredRect: resolveAnchoredRect,
     resolveBehavior: resolveNodeTransformBehavior,
+    resolveSpec: resolveTransformSpec,
     resizeRectFromSize: resolveResizeRectFromSize,
     selectionFamily: resolveSelectionTransformFamily,
     start: startTransform,
@@ -255,7 +263,13 @@ export const node = {
   hit: {
     filterIdsInRect: filterNodeIdsInRect,
     idsInRect: getNodeIdsInRect,
-    matchRect: matchCanvasNodeRect
+    matchRect: matchCanvasNodeRect,
+    distanceToPoint: distanceToNodePoint
+  },
+  project: {
+    rect: resolveProjectedNodeRect,
+    rotation: resolveProjectedNodeRotation,
+    size: resolveProjectedNodeSize
   },
   op: {
     create: createNodeOp,
@@ -362,6 +376,8 @@ export type {
   AnchoredRectInput,
   NodeTransformBehavior,
   TransformSpec,
+  TransformSpecCapability,
+  TransformSpecHandle,
   TransformState,
   TransformStepInput,
   TransformStepResult,

@@ -6,8 +6,7 @@ import type {
   GroupId,
   MindmapId,
   NodeId,
-  Point,
-  Rect
+  Point
 } from '@whiteboard/core/types'
 import type {
   SceneHit,
@@ -18,57 +17,10 @@ import type { WorkingState } from '../../contracts/working'
 
 export const DEFAULT_HIT_THRESHOLD = 8
 
-export const toRect = (
-  point: Point,
-  radius: number
-): Rect => ({
-  x: point.x - radius,
-  y: point.y - radius,
-  width: radius * 2,
-  height: radius * 2
-})
-
-const readRectDistance = (
-  rect: Rect,
-  point: Point
-): number => {
-  const dx = point.x < rect.x
-    ? rect.x - point.x
-    : point.x > rect.x + rect.width
-      ? point.x - (rect.x + rect.width)
-      : 0
-  const dy = point.y < rect.y
-    ? rect.y - point.y
-    : point.y > rect.y + rect.height
-      ? point.y - (rect.y + rect.height)
-      : 0
-
-  return Math.hypot(dx, dy)
-}
-
 type HitWinner = {
   target: SceneHitItem
   distance: number
   order: number
-}
-
-const pickBetter = (
-  current: HitWinner | undefined,
-  next: HitWinner
-): HitWinner => {
-  if (!current) {
-    return next
-  }
-  if (next.distance < current.distance) {
-    return next
-  }
-  if (next.distance > current.distance) {
-    return current
-  }
-  if (next.order > current.order) {
-    return next
-  }
-  return current
 }
 
 const readNodeDistance = (input: {
@@ -82,19 +34,12 @@ const readNodeDistance = (input: {
     return undefined
   }
 
-  return nodeApi.outline.containsPoint(
-    graph.base.node,
-    graph.geometry.rect,
-    graph.geometry.rotation,
-    input.point
-  )
-    ? 0
-    : nodeApi.outline.distanceToOutline(
-        graph.base.node,
-        graph.geometry.rect,
-        graph.geometry.rotation,
-        input.point
-      )
+  return nodeApi.hit.distanceToPoint({
+    node: graph.base.node,
+    rect: graph.geometry.rect,
+    rotation: graph.geometry.rotation,
+    point: input.point
+  })
 }
 
 const readEdgeDistance = (input: {
@@ -103,21 +48,10 @@ const readEdgeDistance = (input: {
   point: Point
 }): number | undefined => {
   const edge = input.state.graph.edges.get(input.edgeId)
-  if (!edge?.route.svgPath) {
-    return undefined
-  }
-
-  const distance = edgeApi.hit.distanceToPath({
-    path: {
-      points: [...edge.route.points],
-      segments: [...edge.route.segments]
-    },
+  return edgeApi.hit.distanceToViewPoint({
+    path: edge?.route,
     point: input.point
   })
-
-  return Number.isFinite(distance)
-    ? distance
-    : undefined
 }
 
 const readMindmapDistance = (input: {
@@ -132,7 +66,7 @@ const readMindmapDistance = (input: {
 
   return geometryApi.rect.containsPoint(input.point, bounds)
     ? 0
-    : readRectDistance(bounds, input.point)
+    : geometryApi.rect.distanceToPoint(input.point, bounds)
 }
 
 const readGroupDistance = (input: {
@@ -147,7 +81,7 @@ const readGroupDistance = (input: {
 
   return geometryApi.rect.containsPoint(input.point, bounds)
     ? 0
-    : readRectDistance(bounds, input.point)
+    : geometryApi.rect.distanceToPoint(input.point, bounds)
 }
 
 export const createHitRead = (input: {
@@ -173,7 +107,7 @@ export const createHitRead = (input: {
       order: number
     } | undefined
 
-    input.spatial.candidates(toRect(point, radius), {
+    input.spatial.candidates(geometryApi.rect.fromPoint(point, radius), {
       kinds: ['node']
     }).records.forEach((record) => {
       if (record.item.kind !== 'node' || exclude?.has(record.item.id)) {
@@ -189,17 +123,16 @@ export const createHitRead = (input: {
         return
       }
 
-      if (
-        !winner
-        || distance < winner.distance
-        || (distance === winner.distance && record.order > winner.order)
-      ) {
-        winner = {
+      winner = geometryApi.scalar.pickPreferred(
+        winner,
+        {
           id: record.item.id,
           distance,
           order: record.order
-        }
-      }
+        },
+        (candidate) => candidate.distance,
+        (candidate) => candidate.order
+      )
     })
 
     return winner?.id
@@ -223,7 +156,7 @@ export const createHitRead = (input: {
       order: number
     } | undefined
 
-    input.spatial.candidates(toRect(point, radius), {
+    input.spatial.candidates(geometryApi.rect.fromPoint(point, radius), {
       kinds: ['edge']
     }).records.forEach((record) => {
       if (record.item.kind !== 'edge' || exclude?.has(record.item.id)) {
@@ -239,17 +172,16 @@ export const createHitRead = (input: {
         return
       }
 
-      if (
-        !winner
-        || distance < winner.distance
-        || (distance === winner.distance && record.order > winner.order)
-      ) {
-        winner = {
+      winner = geometryApi.scalar.pickPreferred(
+        winner,
+        {
           id: record.item.id,
           distance,
           order: record.order
-        }
-      }
+        },
+        (candidate) => candidate.distance,
+        (candidate) => candidate.order
+      )
     })
 
     return winner?.id
@@ -277,7 +209,7 @@ export const createHitRead = (input: {
     const state = input.state()
     let winner: HitWinner | undefined
 
-    input.spatial.candidates(toRect(point, radius), {
+    input.spatial.candidates(geometryApi.rect.fromPoint(point, radius), {
       kinds: kinds?.filter((kind) => kind !== 'group') as
         | readonly ('node' | 'edge' | 'mindmap')[]
         | undefined
@@ -295,14 +227,19 @@ export const createHitRead = (input: {
           if (distance === undefined || distance > radius) {
             return
           }
-          winner = pickBetter(winner, {
-            target: {
-              kind: 'node',
-              id: record.item.id
+          winner = geometryApi.scalar.pickPreferred(
+            winner,
+            {
+              target: {
+                kind: 'node',
+                id: record.item.id
+              },
+              distance,
+              order: record.order
             },
-            distance,
-            order: record.order
-          })
+            (candidate) => candidate.distance,
+            (candidate) => candidate.order
+          )
           return
         }
         case 'edge': {
@@ -317,14 +254,19 @@ export const createHitRead = (input: {
           if (distance === undefined || distance > radius) {
             return
           }
-          winner = pickBetter(winner, {
-            target: {
-              kind: 'edge',
-              id: record.item.id
+          winner = geometryApi.scalar.pickPreferred(
+            winner,
+            {
+              target: {
+                kind: 'edge',
+                id: record.item.id
+              },
+              distance,
+              order: record.order
             },
-            distance,
-            order: record.order
-          })
+            (candidate) => candidate.distance,
+            (candidate) => candidate.order
+          )
           return
         }
         case 'mindmap': {
@@ -339,14 +281,19 @@ export const createHitRead = (input: {
           if (distance === undefined || distance > radius) {
             return
           }
-          winner = pickBetter(winner, {
-            target: {
-              kind: 'mindmap',
-              id: record.item.id
+          winner = geometryApi.scalar.pickPreferred(
+            winner,
+            {
+              target: {
+                kind: 'mindmap',
+                id: record.item.id
+              },
+              distance,
+              order: record.order
             },
-            distance,
-            order: record.order
-          })
+            (candidate) => candidate.distance,
+            (candidate) => candidate.order
+          )
         }
       }
     })
@@ -366,14 +313,19 @@ export const createHitRead = (input: {
           return
         }
 
-        winner = pickBetter(winner, {
-          target: {
-            kind: 'group',
-            id: groupId
+        winner = geometryApi.scalar.pickPreferred(
+          winner,
+          {
+            target: {
+              kind: 'group',
+              id: groupId
+            },
+            distance,
+            order: Number.MIN_SAFE_INTEGER
           },
-          distance,
-          order: Number.MIN_SAFE_INTEGER
-        })
+          (candidate) => candidate.distance,
+          (candidate) => candidate.order
+        )
       })
     }
 

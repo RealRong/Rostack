@@ -96,9 +96,7 @@ export const createMoveInteraction = (
       pointerId: input.start.pointerId,
       world: input.start.world,
       mindmap: {
-        id: ctx.projection.read.scene.mindmaps.id,
-        structure: ctx.projection.read.scene.mindmaps.structure,
-        layout: ctx.projection.read.scene.mindmaps.get
+        tree: ctx.projection.read.scene.mindmaps.tree
       },
       node: ctx.document.node
     })

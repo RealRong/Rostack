@@ -6,6 +6,11 @@ import type {
   EdgeRectHitMode
 } from '@whiteboard/core/types/edge'
 
+type EdgePathRead = {
+  points: readonly Point[]
+  segments: readonly EdgePathSegment[]
+}
+
 const toSegmentPoints = (
   segment: EdgePathSegment
 ): readonly Point[] => (
@@ -91,7 +96,7 @@ const segmentIntersectsRect = (
 }
 
 export const distanceToPath = (input: {
-  path: Pick<EdgePathResult, 'points' | 'segments'>
+  path: EdgePathRead
   point: Point
 }): number => {
   let best = Number.POSITIVE_INFINITY
@@ -129,8 +134,28 @@ export const distanceToPath = (input: {
   return best
 }
 
+export const distanceToViewPoint = (input: {
+  path?: EdgePathRead & {
+    svgPath?: string
+  }
+  point: Point
+}): number | undefined => {
+  if (!input.path?.svgPath) {
+    return undefined
+  }
+
+  const distance = distanceToPath({
+    path: input.path,
+    point: input.point
+  })
+
+  return Number.isFinite(distance)
+    ? distance
+    : undefined
+}
+
 const getPathPoints = (
-  path: Pick<EdgePathResult, 'points' | 'segments'>
+  path: EdgePathRead
 ): Point[] => {
   const points: Point[] = []
 
@@ -147,7 +172,7 @@ const getPathPoints = (
 }
 
 export const getEdgePathBounds = (
-  path: Pick<EdgePathResult, 'points' | 'segments'>
+  path: EdgePathRead
 ): Rect | undefined => {
   const points = getPathPoints(path)
   if (!points.length) {
@@ -162,7 +187,7 @@ export const matchEdgeRect = ({
   queryRect,
   mode
 }: {
-  path: Pick<EdgePathResult, 'points' | 'segments'>
+  path: EdgePathRead
   queryRect: Rect
   mode: EdgeRectHitMode
 }) => {

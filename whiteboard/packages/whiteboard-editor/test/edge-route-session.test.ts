@@ -43,7 +43,7 @@ const createDeps = () => {
                   edge
                 }
               }),
-              editable: vi.fn(() => ({
+              edit: vi.fn(() => ({
                 route: {
                   handles: []
                 }

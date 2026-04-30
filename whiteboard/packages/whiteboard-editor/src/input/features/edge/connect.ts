@@ -1,22 +1,17 @@
 import {
   edge as edgeApi,
-  resolveEdgeViewFromNodeGeometry,
   type EdgeConnectEvaluation,
   type EdgeConnectPreview,
   type EdgeConnectState
 } from '@whiteboard/core/edge'
 import type { BoardConfig } from '@whiteboard/engine/config'
 import { node as nodeApi, toSpatialNode } from '@whiteboard/core/node'
-import { geometry as geometryApi } from '@whiteboard/core/geometry'
 import type {
-  Edge,
   EdgeTemplate,
   EdgeAnchor,
-  EdgeEnd,
   EdgeId,
   NodeId,
-  EdgePatch,
-  Point
+  EdgePatch
 } from '@whiteboard/core/types'
 import type { PointerDownInput, KeyboardInput, ModifierKeys } from '@whiteboard/editor/types/input'
 import type { Tool } from '@whiteboard/editor/types/tool'
@@ -66,30 +61,6 @@ const EMPTY_MODIFIERS: ModifierKeys = {
   shift: false,
   ctrl: false,
   meta: false
-}
-
-const STRAIGHT_RECONNECT_PATCH: EdgePatch = {
-  type: 'straight',
-  route: {
-    kind: 'auto'
-  }
-}
-
-const mergeEdgePatch = (
-  base?: EdgePatch,
-  patch?: EdgePatch
-): EdgePatch | undefined => {
-  if (!base) {
-    return patch
-  }
-  if (!patch) {
-    return base
-  }
-
-  return {
-    ...base,
-    ...patch
-  }
 }
 
 const isNodeHandleConnectPick = (
@@ -325,74 +296,6 @@ export const tryStartEdgeConnect = (
   })
 }
 
-const toPreviewEdgeEnd = (
-  draft: EdgeConnectState['from']
-): EdgeEnd => (
-  draft.kind === 'node'
-    ? {
-        kind: 'node',
-        nodeId: draft.nodeId,
-        anchor: draft.anchor
-      }
-    : {
-        kind: 'point',
-        point: draft.point
-      }
-)
-
-const createPreviewEdge = (
-  state: EdgeConnectState
-): Edge | undefined => {
-  if (state.kind !== 'create' || !state.to) {
-    return undefined
-  }
-
-  return {
-    id: '__preview__',
-    source: toPreviewEdgeEnd(state.from),
-    target: toPreviewEdgeEnd(state.to),
-    type: state.edgeType,
-    style: state.style,
-    textMode: state.textMode,
-    route: { kind: 'auto' }
-  }
-}
-
-const resolveCreatePreviewPath = (
-  geometry: EdgeConnectPreviewGeometryRead,
-  state: EdgeConnectState
-): EdgeConnectPreview['path'] | undefined => {
-  const edge = createPreviewEdge(state)
-
-  if (!edge || state.kind !== 'create' || !state.to) {
-    return undefined
-  }
-
-  const view = resolveEdgeViewFromNodeGeometry({
-    edge,
-    readNodeGeometry: (nodeId) => {
-      const current = geometry.nodes.get(nodeId)
-      return current
-        ? {
-            node: current.base.node,
-            rect: current.geometry.rect,
-            bounds: current.geometry.bounds,
-            outline: current.geometry.outline.outline,
-            rotation: current.geometry.rotation
-          }
-        : undefined
-    }
-  })
-  if (!view) {
-    return undefined
-  }
-
-  return {
-    svgPath: view.path.svgPath,
-    style: edge.style
-  }
-}
-
 const hasConnectGuide = (
   evaluation: EdgeConnectEvaluation
 ) => (
@@ -421,7 +324,21 @@ const readEdgeConnectGesture = (
   const preview = edgeApi.connect.preview(
     input.state,
     input.showPreviewPath
-      ? resolveCreatePreviewPath(input.geometry, input.state)
+      ? edgeApi.connect.previewPath({
+          state: input.state,
+          readNodeGeometry: (nodeId) => {
+            const current = input.geometry.nodes.get(nodeId)
+            return current
+              ? {
+                  node: current.base.node,
+                  rect: current.geometry.rect,
+                  bounds: current.geometry.bounds,
+                  outline: current.geometry.outline.outline,
+                  rotation: current.geometry.rotation
+                }
+              : undefined
+          }
+        })
       : undefined
   )
 
@@ -439,27 +356,6 @@ const readEdgeConnectGesture = (
   }
 }
 
-const toDraftEndFromEvaluation = (
-  evaluation: EdgeConnectEvaluation
-) => edgeApi.connect.toDraftEnd(
-  evaluation.resolution.pointWorld,
-  evaluation.resolution.mode === 'free'
-    ? undefined
-    : {
-        nodeId: evaluation.resolution.nodeId,
-        anchor: evaluation.resolution.anchor,
-        pointWorld: evaluation.resolution.pointWorld
-      }
-)
-
-const applyEdgeConnectEvaluation = (input: {
-  state: EdgeConnectState
-  evaluation: EdgeConnectEvaluation
-}): EdgeConnectState => edgeApi.connect.setTarget(
-  input.state,
-  toDraftEndFromEvaluation(input.evaluation)
-)
-
 const stepEdgeConnect = (
   input: EdgeConnectStepInput
 ): {
@@ -469,7 +365,7 @@ const stepEdgeConnect = (
   const evaluation = input.snap({
     pointerWorld: input.world
   })
-  const state = applyEdgeConnectEvaluation({
+  const state = edgeApi.connect.project({
     state: input.state,
     evaluation
   })
@@ -489,77 +385,6 @@ const commitEdgeConnect = (
   state: EdgeConnectState
 ) => edgeApi.connect.toCommit(state)
 
-const readReconnectPatch = (
-  state: EdgeConnectState,
-  draftPatch?: EdgePatch
-): EdgePatch | undefined => state.kind === 'reconnect'
-  ? mergeEdgePatch(
-      edgeApi.connect.toPatch(state),
-      draftPatch
-    )
-  : undefined
-
-const readReconnectFixedPoint = (
-  ctx: Pick<EditorHostDeps, 'projection'>,
-  state: EdgeConnectState
-): Point | undefined => {
-  if (state.kind !== 'reconnect') {
-    return undefined
-  }
-
-  const resolved = ctx.projection.read.scene.edges.get(state.edgeId)
-  if (!resolved) {
-    return undefined
-  }
-
-  return state.end === 'source'
-    ? resolved.route.ends?.target.point
-    : resolved.route.ends?.source.point
-}
-
-const readReconnectDraftPatch = ({
-  state,
-  current,
-  modifiers,
-  allowLatch
-}: {
-  state: EdgeConnectState
-  current?: EdgePatch
-  modifiers: ModifierKeys
-  allowLatch: boolean
-}): EdgePatch | undefined => (
-  state.kind === 'reconnect'
-  && allowLatch
-  && modifiers.shift
-)
-  ? mergeEdgePatch(current, STRAIGHT_RECONNECT_PATCH)
-  : current
-
-const readReconnectWorld = ({
-  state,
-  world,
-  fixedPoint,
-  modifiers,
-  draftPatch
-}: {
-  state: EdgeConnectState
-  world: Point
-  fixedPoint?: Point
-  modifiers: ModifierKeys
-  draftPatch?: EdgePatch
-}): Point => (
-  state.kind === 'reconnect'
-  && modifiers.shift
-  && draftPatch?.type === 'straight'
-  && draftPatch.route?.kind === 'auto'
-  && fixedPoint
-)
-  ? geometryApi.point.quantizeOctilinear({
-      point: world,
-      origin: fixedPoint
-    })
-  : world
-
 const commitConnectState = (
   ctx: Pick<EditorHostDeps, 'write' | 'tool' | 'session'>,
   state: EdgeConnectState,
@@ -571,7 +396,10 @@ const commitConnectState = (
   }
 
   if (commit.kind === 'reconnect') {
-    const patch = readReconnectPatch(state, reconnectDraftPatch)
+    const patch = edgeApi.connect.reconnectPatch({
+      state,
+      draftPatch: reconnectDraftPatch
+    })
     ctx.write.edge.reconnectCommit({
       edgeId: commit.edgeId,
       end: commit.end,
@@ -621,7 +449,12 @@ export const createEdgeConnectSession = (
   let lastWorld = initial.to?.point ?? initial.from.point
   let lastModifiers = EMPTY_MODIFIERS
   let reconnectDraftPatch = undefined as EdgePatch | undefined
-  const reconnectFixedPoint = readReconnectFixedPoint(ctx, initial)
+  const reconnectFixedPoint = edgeApi.connect.reconnectFixedPoint({
+    state: initial,
+    ends: initial.kind === 'reconnect'
+      ? ctx.projection.read.scene.edges.get(initial.edgeId)?.route.ends
+      : undefined
+  })
   const originWorld = lastWorld
 
   const shouldShowPreviewPath = (
@@ -648,20 +481,20 @@ export const createEdgeConnectSession = (
 
     lastWorld = world
     lastModifiers = modifiers
-    reconnectDraftPatch = readReconnectDraftPatch({
+    reconnectDraftPatch = edgeApi.connect.reconnectDraftPatch({
       state,
       current: reconnectDraftPatch,
-      modifiers,
+      shift: modifiers.shift,
       allowLatch
     })
     const result = stepEdgeConnect({
       geometry: ctx.projection.read.scene,
       state,
-      world: readReconnectWorld({
+      world: edgeApi.connect.reconnectWorld({
         state,
         world,
         fixedPoint: reconnectFixedPoint,
-        modifiers,
+        shift: modifiers.shift,
         draftPatch: reconnectDraftPatch
       }),
       snap: ctx.snap.edge.connect,
@@ -675,7 +508,10 @@ export const createEdgeConnectSession = (
         ? {
             ...result.gesture,
             edgePatches: (() => {
-              const patch = readReconnectPatch(state, reconnectDraftPatch)
+              const patch = edgeApi.connect.reconnectPatch({
+                state,
+                draftPatch: reconnectDraftPatch
+              })
               return patch
                 ? [{
                     id: state.edgeId,

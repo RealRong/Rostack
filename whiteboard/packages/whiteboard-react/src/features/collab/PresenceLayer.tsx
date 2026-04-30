@@ -21,7 +21,7 @@ const PresenceNodeSelection = ({
     return null
   }
 
-  const bounds = editor.scene.query.view.screenRect(item.bounds)
+  const bounds = editor.scene.read.scene.viewport.screenRect(item.bounds)
 
   return (
     <div
@@ -57,7 +57,7 @@ const PresenceEdgeSelection = ({
     return null
   }
 
-  const screenBounds = editor.scene.query.view.screenRect(bounds)
+  const screenBounds = editor.scene.read.scene.viewport.screenRect(bounds)
 
   return (
     <div
@@ -85,7 +85,7 @@ const PresenceCursor = ({
     return null
   }
 
-  const cursor = editor.scene.query.view.screenPoint(peer.pointer.world)
+  const cursor = editor.scene.read.scene.viewport.screenPoint(peer.pointer.world)
 
   return (
     <div

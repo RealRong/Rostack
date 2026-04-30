@@ -106,7 +106,7 @@ describe('mindmap insert position', () => {
     })
 
     expect(result).toBeDefined()
-    const rootRect = editor.scene.query.node.get(result!.nodeId)?.geometry.rect
+    const rootRect = editor.scene.read.scene.nodes.get(result!.nodeId)?.geometry.rect
     expect(rootRect).toBeDefined()
     expect(rootRect!.width).toBe(132)
     expect(rootRect!.height).toBe(44)
@@ -147,7 +147,7 @@ describe('mindmap insert position', () => {
       return
     }
 
-    const beforeRoot = editor.scene.query.node.get(created.data.rootId)?.geometry.rect
+    const beforeRoot = editor.scene.read.scene.nodes.get(created.data.rootId)?.geometry.rect
     expect(beforeRoot).toBeDefined()
 
     editor.write.node.patch([created.data.rootId], {
@@ -159,7 +159,7 @@ describe('mindmap insert position', () => {
       }
     })
 
-    const afterRoot = editor.scene.query.node.get(created.data.rootId)?.geometry.rect
+    const afterRoot = editor.scene.read.scene.nodes.get(created.data.rootId)?.geometry.rect
     expect(afterRoot).toBeDefined()
     expect(afterRoot!.x).toBe(beforeRoot!.x)
     expect(afterRoot!.y).toBe(beforeRoot!.y)

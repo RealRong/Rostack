@@ -104,14 +104,6 @@ const isEdgeRoutePick = (
   && pick.part === 'path'
 )
 
-const readEditableEdgeView = (
-  input: {
-    get: EditorHostDeps['projection']['read']['scene']['edges']['get']
-    editable: EditorHostDeps['projection']['read']['scene']['edges']['editable']
-  },
-  edgeId: EdgeId
-) => input.editable(edgeId) ?? input.get(edgeId)
-
 const resolveEdgeRoutePickTarget = (
   projection: Pick<EditorHostDeps, 'projection'>['projection'],
   pick: PointerDownInput['pick']
@@ -120,10 +112,7 @@ const resolveEdgeRoutePickTarget = (
     return undefined
   }
 
-  const view = readEditableEdgeView({
-    get: projection.read.scene.edges.get,
-    editable: projection.read.scene.edges.editable
-  }, pick.id)
+  const view = projection.read.scene.edges.edit(pick.id)
   if (!view) {
     return undefined
   }
@@ -238,10 +227,7 @@ export const tryStartEdgeRoute = (input: {
   }
 
   const edge = input.edge.read.scene.edges.get(target.edgeId)?.base.edge
-  const view = readEditableEdgeView({
-    get: input.edge.read.scene.edges.get,
-    editable: input.edge.read.scene.edges.editable
-  }, target.edgeId)
+  const view = input.edge.read.scene.edges.edit(target.edgeId)
 
   if ((edge?.type === 'elbow' || edge?.type === 'fillet') && view) {
     return {
@@ -528,10 +514,7 @@ const createEdgeRouteSession = (
     }
   ) => {
     const edge = ctx.projection.read.scene.edges.get(state.edgeId)?.base.edge
-    if (!edge || !baseEdge || !readEditableEdgeView({
-      get: ctx.projection.read.scene.edges.get,
-      editable: ctx.projection.read.scene.edges.editable
-    }, state.edgeId)) {
+    if (!edge || !baseEdge || !ctx.projection.read.scene.edges.edit(state.edgeId)) {
       return CANCEL
     }
 

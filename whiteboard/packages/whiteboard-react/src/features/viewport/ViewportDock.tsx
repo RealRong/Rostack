@@ -40,7 +40,7 @@ export const ViewportDock = () => {
   const history = useStoreValue(editor.history)
 
   const fitToScreen = () => {
-    const bounds = editor.scene.query.bounds()
+    const bounds = editor.scene.read.scene.bounds()
     if (!bounds) {
       return
     }

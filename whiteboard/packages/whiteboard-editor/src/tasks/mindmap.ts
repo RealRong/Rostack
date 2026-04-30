@@ -1,11 +1,11 @@
 import { scheduler } from '@shared/core'
+import { geometry as geometryApi } from '@whiteboard/core/geometry'
 import { mindmap as mindmapApi } from '@whiteboard/core/mindmap'
 import type {
   MindmapId,
   MindmapInsertInput,
   MindmapNodeId,
-  Point,
-  Rect
+  Point
 } from '@whiteboard/core/types'
 import type {
   MindmapActions,
@@ -47,13 +47,6 @@ type MindmapEnterJob = {
   startedAt: number
   durationMs: number
 }
-
-const toRectCenter = (
-  rect: Rect
-): Point => ({
-  x: rect.x + rect.width / 2,
-  y: rect.y + rect.height / 2
-})
 
 const interpolatePoint = (
   from: Point,
@@ -125,13 +118,13 @@ const buildEnterJob = (input: {
   nodeId: MindmapNodeId
   anchorId?: MindmapNodeId
 }): MindmapEnterJob | undefined => {
-  const structure = input.graph.read.scene.mindmaps.structure(input.treeId)
+  const tree = input.graph.read.scene.mindmaps.tree(input.treeId)
   const targetRect = input.graph.read.scene.nodes.get(input.nodeId)?.geometry.rect
-  if (!structure || !targetRect) {
+  if (!tree || !targetRect) {
     return undefined
   }
 
-  const parentId = structure.tree.nodes[input.nodeId]?.parentId
+  const parentId = tree.tree.nodes[input.nodeId]?.parentId
   const anchorRect = input.graph.read.scene.nodes.get(
     input.anchorId ?? parentId ?? ''
   )?.geometry.rect
@@ -139,7 +132,7 @@ const buildEnterJob = (input: {
     return undefined
   }
 
-  const anchor = toRectCenter(anchorRect)
+  const anchor = geometryApi.rect.center(anchorRect)
 
   return {
     nodeId: input.nodeId,
@@ -298,16 +291,16 @@ export const createMindmapActions = ({
   const insertRelative: MindmapActions['insertRelative'] = (
     input
   ) => {
-    const structure = graph.read.scene.mindmaps.structure(input.id)
-    if (!structure) {
+    const tree = graph.read.scene.mindmaps.tree(input.id)
+    if (!tree) {
       return undefined
     }
 
     const insertInput = mindmapApi.plan.relativeInsertInput({
       structure: {
-        rootId: structure.rootId,
-        nodeIds: structure.nodeIds,
-        tree: structure.tree
+        rootId: tree.rootId,
+        nodeIds: tree.nodeIds as readonly MindmapNodeId[],
+        tree: tree.tree
       },
       targetNodeId: input.targetNodeId,
       relation: input.relation,

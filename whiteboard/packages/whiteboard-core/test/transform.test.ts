@@ -465,3 +465,97 @@ test('single text scale gesture keeps uniform geometry during preview', () => {
   assert.ok(Math.abs((patch.size.width / patch.size.height) - (100 / 24)) < 0.000001)
   assert.ok(Math.abs((patch.fontSize / 14) - (patch.size.width / 100)) < 0.000001)
 })
+
+test('resolveSpec gates single-node transform by capability and handle family', () => {
+  const node = createNode('text-node', {
+    data: {
+      text: 'hello world'
+    }
+  })
+  const target = {
+    id: node.id,
+    node,
+    rect: {
+      x: 0,
+      y: 0,
+      width: 100,
+      height: 24
+    }
+  }
+
+  const resize = nodeApi.transform.resolveSpec({
+    target,
+    rotation: 0,
+    handle: {
+      kind: 'resize',
+      direction: 'e'
+    },
+    pointerId: 1,
+    startScreen: {
+      x: 10,
+      y: 20
+    },
+    startWorld: {
+      x: 30,
+      y: 40
+    },
+    capability: {
+      role: 'content',
+      resize: true,
+      rotate: true
+    }
+  })
+  assert.deepEqual(resize, {
+    kind: 'single-resize',
+    pointerId: 1,
+    target,
+    handle: 'e',
+    rotation: 0,
+    startScreen: {
+      x: 10,
+      y: 20
+    }
+  })
+
+  assert.equal(nodeApi.transform.resolveSpec({
+    target,
+    rotation: 0,
+    handle: {
+      kind: 'resize',
+      direction: 'n'
+    },
+    pointerId: 1,
+    startScreen: {
+      x: 10,
+      y: 20
+    },
+    startWorld: {
+      x: 30,
+      y: 40
+    },
+    capability: {
+      role: 'content',
+      resize: true
+    }
+  }), undefined)
+
+  assert.equal(nodeApi.transform.resolveSpec({
+    target,
+    rotation: 0,
+    handle: {
+      kind: 'rotate'
+    },
+    pointerId: 1,
+    startScreen: {
+      x: 10,
+      y: 20
+    },
+    startWorld: {
+      x: 30,
+      y: 40
+    },
+    capability: {
+      rotate: false
+    }
+  }), undefined)
+})

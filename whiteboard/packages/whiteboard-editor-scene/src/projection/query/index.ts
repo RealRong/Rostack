@@ -166,6 +166,33 @@ export const createProjectionRead = (runtime: {
       ? runtime.state().graph.owners.mindmaps.get(structure.id)?.structure
       : undefined
   }
+  const readMindmapTreeByValue = (
+    value: MindmapId | NodeId | string
+  ) => {
+    const structure = readMindmapStructure({
+      document: runtime.state().document.snapshot,
+      indexes: runtime.state().indexes,
+      value
+    })
+    if (!structure) {
+      return undefined
+    }
+
+    const view = runtime.state().graph.owners.mindmaps.get(structure.id)
+    const computed = view?.tree.layout
+    if (!view || !computed) {
+      return undefined
+    }
+
+    return {
+      id: structure.id,
+      rootId: structure.rootId,
+      nodeIds: structure.nodeIds,
+      tree: structure.tree,
+      layout: structure.tree.layout,
+      computed
+    }
+  }
 
   const nodes: SceneNodes = {
     get: (id) => runtime.state().graph.nodes.get(id),
@@ -211,6 +238,20 @@ export const createProjectionRead = (runtime: {
 
   const edges: SceneEdges = {
     get: (id) => runtime.state().graph.edges.get(id),
+    edit: (edgeId) => {
+      const view = runtime.state().graph.edges.get(edgeId)
+      const capability = view
+        ? edgeApi.capability({
+            edge: view.base.edge,
+            readNodeLocked: (nodeId) => Boolean(
+              runtime.state().graph.nodes.get(nodeId)?.base.node.locked
+            )
+          })
+        : undefined
+      return capability?.editRoute
+        ? view
+        : undefined
+    },
     entries: () => runtime.state().graph.edges.entries(),
     idsInRect: (rect, options) => {
       const mode = options?.match ?? 'touch'
@@ -272,20 +313,6 @@ export const createProjectionRead = (runtime: {
               runtime.state().graph.nodes.get(nodeId)?.base.node.locked
             )
           })
-        : undefined
-    },
-    editable: (edgeId) => {
-      const view = runtime.state().graph.edges.get(edgeId)
-      const capability = view
-        ? edgeApi.capability({
-            edge: view.base.edge,
-            readNodeLocked: (nodeId) => Boolean(
-              runtime.state().graph.nodes.get(nodeId)?.base.node.locked
-            )
-          })
-        : undefined
-      return capability?.editRoute
-        ? view
         : undefined
     },
     routePoints: ({ edgeId, activeRouteIndex }) => {
@@ -359,17 +386,10 @@ export const createProjectionRead = (runtime: {
 
   const mindmaps: SceneMindmaps = {
     get: (id) => runtime.state().graph.owners.mindmaps.get(id),
+    tree: readMindmapTreeByValue,
     entries: () => runtime.state().graph.owners.mindmaps.entries(),
     id: (value) => resolveMindmapId(runtime.state(), value),
-    structure: (value) => {
-      const mindmapId = resolveMindmapId(runtime.state(), value as string)
-        ?? (runtime.state().graph.owners.mindmaps.has(value as MindmapId)
-          ? value as MindmapId
-          : undefined)
-      return mindmapId
-        ? runtime.state().graph.owners.mindmaps.get(mindmapId)?.structure
-        : undefined
-    },
+    structure: readMindmapStructureByValue,
     ofNodes: (nodeIds) => {
       const ids = [...new Set(nodeIds.flatMap((nodeId) => {
         const owner = runtime.state().indexes.ownerByNode.get(nodeId)

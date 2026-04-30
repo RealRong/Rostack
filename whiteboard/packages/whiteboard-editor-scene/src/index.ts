@@ -44,6 +44,7 @@ export type {
   InteractionInput,
   MindmapPreview,
   MindmapRenderView,
+  SceneMindmapTree,
   MindmapStructureView,
   MindmapTreeView,
   MindmapView,

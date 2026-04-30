@@ -17,6 +17,7 @@ import {
   normalizePolylinePoints
 } from '@whiteboard/core/geometry/polyline'
 import {
+  distancePointToRect,
   expandRect,
   getAABBFromPoints,
   getRectCenter,
@@ -32,7 +33,12 @@ import {
   getRotatedCorners,
   isPointInRotatedRect
 } from '@whiteboard/core/geometry/rotation'
-import { clamp, degToRad, pickNearest } from '@whiteboard/core/geometry/scalar'
+import {
+  clamp,
+  degToRad,
+  pickNearest,
+  pickPreferred
+} from '@whiteboard/core/geometry/scalar'
 import {
   distancePointToSegment,
   getSegmentBounds
@@ -67,11 +73,13 @@ export const geometry = {
   scalar: {
     clamp,
     degToRad,
-    pickNearest
+    pickNearest,
+    pickPreferred
   },
   rect: {
     center: getRectCenter,
     containsPoint: isPointInRect,
+    distanceToPoint: distancePointToRect,
     fromPoint: rectFromPoint,
     fromPoints: rectFromPoints,
     contains: rectContains,

@@ -63,11 +63,6 @@ type MarqueeSelectionEvent =
       type: 'cancel'
 }
 
-const createMarqueeRect = (
-  start: Point,
-  current: Point
-): Rect => geometryApi.rect.fromPoints(start, current)
-
 const readMatchedSelection = (
   input: {
     ctx: Pick<EditorHostDeps, 'projection'>
@@ -124,7 +119,7 @@ const toMarqueeSelectionState = (
       : input.previous
   }
 
-  const worldRect = createMarqueeRect(
+  const worldRect = geometryApi.rect.fromPoints(
     input.previous.startWorld,
     input.event.currentWorld
   )
@@ -243,7 +238,7 @@ export const createMarqueeSession = (
       minDistance: GestureTuning.dragMinDistance,
       matched: readMatchedSelection({
         ctx,
-        rect: createMarqueeRect(state.startWorld, pointer.world),
+        rect: geometryApi.rect.fromPoints(state.startWorld, pointer.world),
         match: input.action.match
       })
     })
@@ -278,7 +273,7 @@ export const createMarqueeSession = (
         minDistance: GestureTuning.dragMinDistance,
         matched: readMatchedSelection({
           ctx,
-          rect: createMarqueeRect(state.startWorld, next.world),
+          rect: geometryApi.rect.fromPoints(state.startWorld, next.world),
           match: input.action.match
         })
       })

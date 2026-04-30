@@ -7,10 +7,7 @@ import type {
 } from '../../contracts/editor'
 import type { WorkingState } from '../../contracts/working'
 import { readBackgroundView } from './background'
-import {
-  DEFAULT_HIT_THRESHOLD,
-  toRect
-} from './hit'
+import { DEFAULT_HIT_THRESHOLD } from './hit'
 
 export const createViewRead = (input: {
   state: () => WorkingState
@@ -55,7 +52,7 @@ export const createViewRead = (input: {
     const resolvedRadius = radius ?? (
       DEFAULT_HIT_THRESHOLD / Math.max(view.zoom, 0.0001)
     )
-    const rect = toRect(point, resolvedRadius)
+    const rect = geometryApi.rect.fromPoint(point, resolvedRadius)
     const candidates = input.spatial.candidates(rect, {
       kinds: kinds?.filter((kind) => kind !== 'group') as
         | readonly ('node' | 'edge' | 'mindmap')[]

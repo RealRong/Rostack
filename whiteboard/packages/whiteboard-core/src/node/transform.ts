@@ -183,6 +183,14 @@ export type TransformSpec<TNode extends Node> =
       startScreen: Point
     }
 
+export type TransformSpecHandle = Pick<TransformHandle, 'kind' | 'direction'>
+
+export type TransformSpecCapability = {
+  role?: NodeRole
+  resize?: boolean
+  rotate?: boolean
+}
+
 type TransformStateBase<TNode extends Node> = {
   pointerId: number
   patches: readonly TransformPreviewPatch[]
@@ -392,6 +400,56 @@ export const resolveSelectionTransformFamily = (
 ): TransformOperationFamily | undefined => plan.handles.find(
   (entry) => entry.id === handle && entry.enabled && entry.visible
 )?.family
+
+export const resolveTransformSpec = <
+  TNode extends Node
+>(input: {
+  target: TransformSelectionMember<TNode>
+  rotation: number
+  handle: TransformSpecHandle
+  pointerId: number
+  startScreen: Point
+  startWorld: Point
+  capability?: TransformSpecCapability
+}): TransformSpec<TNode> | undefined => {
+  switch (input.handle.kind) {
+    case 'resize': {
+      const handle = input.handle.direction
+      if (!handle) {
+        return undefined
+      }
+
+      const behavior = resolveNodeTransformBehavior(input.target.node, {
+        role: input.capability?.role,
+        resize: input.capability?.resize
+      })
+      if (!behavior || !resolveSelectionHandleFamily(behavior, handle)) {
+        return undefined
+      }
+
+      return {
+        kind: 'single-resize',
+        pointerId: input.pointerId,
+        target: input.target,
+        handle,
+        rotation: input.rotation,
+        startScreen: input.startScreen
+      }
+    }
+    case 'rotate':
+      if (input.target.node.locked || input.capability?.rotate === false) {
+        return undefined
+      }
+
+      return {
+        kind: 'single-rotate',
+        pointerId: input.pointerId,
+        target: input.target,
+        rotation: input.rotation,
+        startWorld: input.startWorld
+      }
+  }
+}
 
 export const getResizeSourceEdges = (
   handle: ResizeDirection

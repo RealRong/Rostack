@@ -13,19 +13,21 @@ import type {
   Rect
 } from '@whiteboard/core/types'
 import { pickNearest } from '@whiteboard/core/geometry/scalar'
-import { rectFromPoint } from '@whiteboard/core/geometry/rect'
+import {
+  distancePointToRect,
+  rectFromPoint
+} from '@whiteboard/core/geometry/rect'
 import { resolveScreenDistanceWorld } from '@whiteboard/core/geometry/viewport'
 import type {
   EdgeConnectCandidate,
   EdgeConnectConfig,
   EdgeConnectEvaluation,
-  EdgeConnectResult
+  EdgeConnectResult,
+  ResolvedEdgeEnds
 } from '@whiteboard/core/types/edge'
 import { getAnchorFromPoint } from '@whiteboard/core/edge/anchor'
-import {
-  getNodeAnchor,
-  projectPointToNodeOutline
-} from '@whiteboard/core/node/outline'
+import { resolveEdgeViewFromNodeGeometry, type EdgeNodeGeometryInput } from '@whiteboard/core/edge/view'
+import { quantizePointToOctilinear } from '@whiteboard/core/geometry/point'
 import { node as nodeApi } from '@whiteboard/core/node'
 
 type ScoredConnectTarget = EdgeConnectResult & {
@@ -33,15 +35,6 @@ type ScoredConnectTarget = EdgeConnectResult & {
 }
 
 export const DEFAULT_EDGE_ANCHOR_OFFSET = 0.5
-
-const distanceToRect = (
-  rect: Rect,
-  point: Point
-) => {
-  const dx = Math.max(rect.x - point.x, 0, point.x - (rect.x + rect.width))
-  const dy = Math.max(rect.y - point.y, 0, point.y - (rect.y + rect.height))
-  return Math.hypot(dx, dy)
-}
 
 export const resolveAnchorSnapMinWorld = (
   config: EdgeConnectConfig,
@@ -249,7 +242,7 @@ const resolveFocusedConnectTarget = ({
       resolveEdgeConnectThresholdWorld(config, zoom, candidate.geometry.rect),
       resolveEdgeHandleSnapWorld(config, zoom)
     )
-    const distance = distanceToRect(candidate.geometry.bounds, pointWorld)
+    const distance = distancePointToRect(pointWorld, candidate.geometry.bounds)
 
     if (distance > threshold) {
       continue
@@ -287,7 +280,7 @@ export const resolveEdgeConnectTarget = ({
       candidate.geometry.rect
     )
 
-    if (distanceToRect(candidate.geometry.bounds, pointWorld) > threshold) {
+    if (distancePointToRect(pointWorld, candidate.geometry.bounds) > threshold) {
       continue
     }
 
@@ -357,7 +350,7 @@ export const resolveEdgeConnectEvaluation = ({
       resolveEdgeHandleSnapWorld(config, zoom)
     )
 
-    if (distanceToRect(candidate.geometry.bounds, pointWorld) > coarseThreshold) {
+    if (distancePointToRect(pointWorld, candidate.geometry.bounds) > coarseThreshold) {
       continue
     }
 
@@ -601,6 +594,23 @@ export const setEdgeConnectTarget = (
   to
 })
 
+export const projectEdgeConnectState = (input: {
+  state: EdgeConnectState
+  evaluation: EdgeConnectEvaluation
+}): EdgeConnectState => setEdgeConnectTarget(
+  input.state,
+  toEdgeDraftEnd(
+    input.evaluation.resolution.pointWorld,
+    input.evaluation.resolution.mode === 'free'
+      ? undefined
+      : {
+          nodeId: input.evaluation.resolution.nodeId,
+          anchor: input.evaluation.resolution.anchor,
+          pointWorld: input.evaluation.resolution.pointWorld
+        }
+  )
+)
+
 export const toEdgeConnectPatch = (
   state: EdgeConnectState
 ): EdgePatch | undefined => {
@@ -650,6 +660,143 @@ export const toEdgeConnectCommit = (
     }
   }
 }
+
+const mergeEdgePatch = (
+  base?: EdgePatch,
+  patch?: EdgePatch
+): EdgePatch | undefined => {
+  if (!base) {
+    return patch
+  }
+  if (!patch) {
+    return base
+  }
+
+  return {
+    ...base,
+    ...patch
+  }
+}
+
+const STRAIGHT_RECONNECT_PATCH: EdgePatch = {
+  type: 'straight',
+  route: {
+    kind: 'auto'
+  }
+}
+
+const toPreviewEdgeEnd = (
+  draft: EdgeConnectState['from']
+): EdgeEnd => (
+  draft.kind === 'node'
+    ? {
+        kind: 'node',
+        nodeId: draft.nodeId,
+        anchor: draft.anchor
+      }
+    : {
+        kind: 'point',
+        point: draft.point
+      }
+)
+
+const createPreviewEdge = (
+  state: EdgeConnectState
+): Edge | undefined => {
+  if (state.kind !== 'create' || !state.to) {
+    return undefined
+  }
+
+  return {
+    id: '__preview__',
+    source: toPreviewEdgeEnd(state.from),
+    target: toPreviewEdgeEnd(state.to),
+    type: state.edgeType,
+    style: state.style,
+    textMode: state.textMode,
+    route: {
+      kind: 'auto'
+    }
+  }
+}
+
+export const resolveEdgeCreatePreviewPath = (input: {
+  state: EdgeConnectState
+  readNodeGeometry: (nodeId: NodeId) => EdgeNodeGeometryInput | undefined
+}): EdgeConnectPreview['path'] | undefined => {
+  const edge = createPreviewEdge(input.state)
+  if (!edge || input.state.kind !== 'create' || !input.state.to) {
+    return undefined
+  }
+
+  const view = resolveEdgeViewFromNodeGeometry({
+    edge,
+    readNodeGeometry: input.readNodeGeometry
+  })
+  if (!view) {
+    return undefined
+  }
+
+  return {
+    svgPath: view.path.svgPath,
+    style: edge.style
+  }
+}
+
+export const resolveReconnectFixedPoint = (input: {
+  state: EdgeConnectState
+  ends?: ResolvedEdgeEnds
+}): Point | undefined => {
+  if (input.state.kind !== 'reconnect' || !input.ends) {
+    return undefined
+  }
+
+  return input.state.end === 'source'
+    ? input.ends.target.point
+    : input.ends.source.point
+}
+
+export const resolveReconnectDraftPatch = (input: {
+  state: EdgeConnectState
+  current?: EdgePatch
+  shift: boolean
+  allowLatch: boolean
+}): EdgePatch | undefined => (
+  input.state.kind === 'reconnect'
+  && input.allowLatch
+  && input.shift
+)
+  ? mergeEdgePatch(input.current, STRAIGHT_RECONNECT_PATCH)
+  : input.current
+
+export const resolveReconnectWorld = (input: {
+  state: EdgeConnectState
+  world: Point
+  fixedPoint?: Point
+  shift: boolean
+  draftPatch?: EdgePatch
+}): Point => (
+  input.state.kind === 'reconnect'
+  && input.shift
+  && input.draftPatch?.type === 'straight'
+  && input.draftPatch.route?.kind === 'auto'
+  && input.fixedPoint
+)
+  ? quantizePointToOctilinear({
+      point: input.world,
+      origin: input.fixedPoint
+    })
+  : input.world
+
+export const toEdgeReconnectPatch = (input: {
+  state: EdgeConnectState
+  draftPatch?: EdgePatch
+}): EdgePatch | undefined => input.state.kind === 'reconnect'
+  ? mergeEdgePatch(
+      toEdgeConnectPatch(input.state),
+      input.draftPatch
+    )
+  : undefined
 
 export const resolveEdgeConnectPreview = (
   state: EdgeConnectState,

@@ -19,27 +19,26 @@ const readMindmapRootMove = (input: {
   nodeId: NodeId
 }) => {
   const directNode = input.graph.read.scene.nodes.get(input.nodeId)
-  const structure = input.graph.read.scene.mindmaps.structure(input.nodeId)
+  const tree = input.graph.read.scene.mindmaps.tree(input.nodeId)
   const rootView = directNode
     ? directNode
     : (
-      structure
-        ? input.graph.read.scene.nodes.get(structure.rootId)
+      tree
+        ? input.graph.read.scene.nodes.get(tree.rootId)
         : undefined
     )
   const node = directNode?.base.node ?? (
-    structure
-      ? input.document.node(structure.rootId)
+    tree
+      ? input.document.node(tree.rootId)
       : undefined
   )
   const mindmapId = directNode?.base.owner?.kind === 'mindmap'
     ? directNode.base.owner.id
-    : input.graph.read.scene.mindmaps.id(input.nodeId)
+    : tree?.id
 
   return {
     node,
     rootView,
-    structure,
     mindmapId
   }
 }
@@ -49,9 +48,17 @@ const readBranchScopeIds = (input: {
   id: MindmapId
   nodeIds: readonly MindmapNodeId[]
   scope?: 'node' | 'subtree'
-}) => input.scope === 'subtree'
-  ? (input.graph.read.scene.mindmaps.structure(input.id)?.nodeIds ?? input.nodeIds)
-  : input.nodeIds
+}) => {
+  if (input.scope !== 'subtree') {
+    return input.nodeIds
+  }
+
+  return (
+    input.graph.read.scene.mindmaps.tree(input.id)?.nodeIds as
+      | readonly MindmapNodeId[]
+      | undefined
+  ) ?? input.nodeIds
+}
 
 export const createMindmapActionApi = (input: {
   graph: Pick<EditorSceneApi, 'read'>

@@ -22,22 +22,11 @@ import type {
 } from '../../contracts/working'
 import { applyEntity } from '@shared/projection'
 
-const EMPTY_SIZE: Size = {
-  width: 0,
-  height: 0
-}
-
 const nodeModelCache = new WeakMap<Node, NodeModel>()
 
 const readNodePatch = (
   preview?: NodePreview
 ) => preview?.patch
-
-const readNodeSize = (
-  node: GraphNodeEntry['base']['node']
-): Size => node.size
-  ?? nodeApi.bootstrap.resolve(node)
-  ?? EMPTY_SIZE
 
 const toNodeModel = (
   node: Node
@@ -153,7 +142,10 @@ export const readProjectedNodeRotation = (
   entry: GraphNodeEntry
 ): number => {
   const patch = readNodePatch(entry.preview)
-  return patch?.rotation ?? entry.base.node.rotation ?? 0
+  return nodeApi.project.rotation({
+    node: entry.base.node,
+    patch
+  })
 }
 
 export const readProjectedNodeSize = (input: {
@@ -162,13 +154,13 @@ export const readProjectedNodeSize = (input: {
 }): Size => {
   const patch = readNodePatch(input.entry.preview)
 
-  return patch?.size
-    ?? (
-      input.draftMeasure?.kind === 'size'
-        ? input.draftMeasure.size
-        : undefined
-    )
-    ?? readNodeSize(input.entry.base.node)
+  return nodeApi.project.size({
+    node: input.entry.base.node,
+    patch,
+    measuredSize: input.draftMeasure?.kind === 'size'
+      ? input.draftMeasure.size
+      : undefined
+  })
 }
 
 export const readProjectedNodeRect = (input: {
@@ -176,23 +168,15 @@ export const readProjectedNodeRect = (input: {
   draftMeasure?: NodeDraftMeasure
   treeRect?: Rect
 }): Rect => {
-  if (input.treeRect) {
-    return input.treeRect
-  }
-
   const patch = readNodePatch(input.entry.preview)
-  const position = patch?.position ?? input.entry.base.node.position
-  const size = readProjectedNodeSize({
-    entry: input.entry,
-    draftMeasure: input.draftMeasure
+  return nodeApi.project.rect({
+    node: input.entry.base.node,
+    patch,
+    measuredSize: input.draftMeasure?.kind === 'size'
+      ? input.draftMeasure.size
+      : undefined,
+    rect: input.treeRect
   })
-
-  return {
-    x: position.x,
-    y: position.y,
-    width: size.width,
-    height: size.height
-  }
 }
 
 const buildProjectedNodeGeometry = (input: {
@@ -225,16 +209,11 @@ export const readNodeDraftMeasure = (input: {
   }
 
   const patch = readNodePatch(input.entry.preview)
-  const fallbackRect = input.treeRect ?? (() => {
-    const position = patch?.position ?? input.entry.base.node.position
-    const size = patch?.size ?? readNodeSize(input.entry.base.node)
-    return {
-      x: position.x,
-      y: position.y,
-      width: size.width,
-      height: size.height
-    }
-  })()
+  const fallbackRect = nodeApi.project.rect({
+    node: input.entry.base.node,
+    patch,
+    rect: input.treeRect
+  })
   return input.working.layout.runtime({
     kind: 'node.draft',
     nodeId: input.nodeId,

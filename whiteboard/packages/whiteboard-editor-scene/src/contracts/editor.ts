@@ -19,6 +19,7 @@ import type {
   WhiteboardLayoutService
 } from '@whiteboard/core/layout'
 import type {
+  MindmapLayoutSpec,
   MindmapRenderConnector,
   MindmapStructure,
   MindmapTree
@@ -512,6 +513,15 @@ export interface MindmapView {
   render: MindmapRenderView
 }
 
+export interface SceneMindmapTree {
+  id: MindmapId
+  rootId: NodeId
+  nodeIds: readonly NodeId[]
+  tree: MindmapTree
+  layout: MindmapLayoutSpec
+  computed: MindmapLayout
+}
+
 export interface MindmapBaseView {
   mindmap: MindmapRecord
 }
@@ -737,13 +747,13 @@ export interface SceneNodes {
 
 export interface SceneEdges {
   get(id: EdgeId): EdgeView | undefined
+  edit(id: EdgeId): EdgeView | undefined
   entries(): IterableIterator<[EdgeId, EdgeView]>
   idsInRect(rect: Rect, options?: {
     match?: 'touch' | 'contain'
   }): readonly EdgeId[]
   connectCandidates(rect: Rect): readonly EdgeConnectCandidate[]
   capability(id: EdgeId): import('@whiteboard/core/edge').EdgeCapability | undefined
-  editable(id: EdgeId): EdgeView | undefined
   routePoints(input: {
     edgeId: EdgeId
     activeRouteIndex?: number
@@ -765,6 +775,7 @@ export interface SceneEdges {
 
 export interface SceneMindmaps {
   get(id: MindmapId): MindmapView | undefined
+  tree(value: MindmapId | NodeId | string): SceneMindmapTree | undefined
   entries(): IterableIterator<[MindmapId, MindmapView]>
   id(value: MindmapId | NodeId | string): MindmapId | undefined
   structure(value: MindmapId | NodeId | string): MindmapView['structure'] | undefined

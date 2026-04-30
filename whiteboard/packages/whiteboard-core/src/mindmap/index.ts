@@ -57,6 +57,11 @@ import {
   instantiateMindmapTemplate
 } from '@whiteboard/core/mindmap/template'
 import { buildMindmapTextNodeStyle } from '@whiteboard/core/mindmap/types'
+import {
+  applySubtreeMovePreview,
+  equalMindmapLayout,
+  resolveProjectedMindmapLayout
+} from '@whiteboard/core/mindmap/project'
 
 export const mindmap = {
   tree: {
@@ -94,6 +99,11 @@ export const mindmap = {
     tidy: layoutMindmapTidy,
     translate: translateMindmapLayout,
     anchor: anchorMindmapLayout
+  },
+  project: {
+    layout: resolveProjectedMindmapLayout,
+    previewSubtree: applySubtreeMovePreview,
+    equalLayout: equalMindmapLayout
   },
   op: {
     create: createMindmapOp

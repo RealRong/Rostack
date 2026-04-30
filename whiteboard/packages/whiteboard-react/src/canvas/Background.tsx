@@ -12,7 +12,7 @@ export const Background = () => {
   const viewport = useStoreValue(editor.state.viewport)
   void background
   void viewport
-  const view = editor.scene.query.view.background()
+  const view = editor.scene.read.scene.viewport.background()
 
   const style = useMemo<CSSProperties>(() => {
     if (view.type === 'none') {

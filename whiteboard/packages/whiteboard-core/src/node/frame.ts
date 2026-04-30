@@ -26,33 +26,6 @@ export interface FrameCandidate {
 
 const area = (rect: Rect) => rect.width * rect.height
 
-const pick = (
-  current: {
-    id: NodeId
-    area: number
-    order: number
-  } | undefined,
-  next: {
-    id: NodeId
-    area: number
-    order: number
-  }
-) => {
-  if (!current) {
-    return next
-  }
-  if (next.area < current.area) {
-    return next
-  }
-  if (next.area > current.area) {
-    return current
-  }
-
-  return next.order > current.order
-    ? next
-    : current
-}
-
 const contains = (
   outer: Rect,
   inner: Rect
@@ -98,11 +71,16 @@ export const frameAt = <TNode extends FrameNodeLike>({
       continue
     }
 
-    best = pick(best, {
-      id: frame.node.id,
-      area: area(frame.rect),
-      order: frame.index
-    })
+    best = geometryApi.scalar.pickPreferred(
+      best,
+      {
+        id: frame.node.id,
+        area: area(frame.rect),
+        order: frame.index
+      },
+      (candidate) => candidate.area,
+      (candidate) => candidate.order
+    )
   }
 
   return best?.id
@@ -138,11 +116,16 @@ export const frameParent = <TNode extends FrameNodeLike>({
       continue
     }
 
-    best = pick(best, {
-      id: frame.node.id,
-      area: area(frame.rect),
-      order: frame.index
-    })
+    best = geometryApi.scalar.pickPreferred(
+      best,
+      {
+        id: frame.node.id,
+        area: area(frame.rect),
+        order: frame.index
+      },
+      (candidate) => candidate.area,
+      (candidate) => candidate.order
+    )
   }
 
   return best?.id
@@ -282,11 +265,16 @@ export const pickFrame = (input: {
       return
     }
 
-    best = pick(best, {
-      id: candidate.id,
-      area: area(candidate.rect),
-      order: candidate.order
-    })
+    best = geometryApi.scalar.pickPreferred(
+      best,
+      {
+        id: candidate.id,
+        area: area(candidate.rect),
+        order: candidate.order
+      },
+      (entry) => entry.area,
+      (entry) => entry.order
+    )
   })
 
   return best?.id
@@ -312,11 +300,16 @@ export const pickFrameParent = (input: {
       return
     }
 
-    best = pick(best, {
-      id: candidate.id,
-      area: area(candidate.rect),
-      order: candidate.order
-    })
+    best = geometryApi.scalar.pickPreferred(
+      best,
+      {
+        id: candidate.id,
+        area: area(candidate.rect),
+        order: candidate.order
+      },
+      (entry) => entry.area,
+      (entry) => entry.order
+    )
   })
 
   return best?.id

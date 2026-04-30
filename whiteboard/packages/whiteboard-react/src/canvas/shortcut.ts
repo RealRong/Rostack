@@ -171,7 +171,7 @@ export const runShortcut = (
         return false
       }
 
-      const structure = editor.scene.query.mindmap.structure(activeMindmap.treeId)
+      const structure = editor.scene.read.scene.mindmaps.structure(activeMindmap.treeId)
       const target = structure
         ? readMindmapNavigateTarget({
             tree: structure.tree,

@@ -1,6 +1,10 @@
-import type { Node, NodeId, NodeType, Rect } from '@whiteboard/core/types'
+import type { Node, NodeId, NodeModel, NodeType, Point, Rect } from '@whiteboard/core/types'
 import { geometry as geometryApi } from '@whiteboard/core/geometry'
 import { matchDrawRect } from '@whiteboard/core/node/draw'
+import {
+  containsPointInNodeOutline,
+  distanceToNodeOutline
+} from '@whiteboard/core/node/outline'
 
 export type NodeRectHitEntry = {
   node: {
@@ -25,6 +29,25 @@ export type NodeRectHitOptions = {
 
 export type NodeRectHitMatch = NonNullable<NodeRectHitOptions['match']>
 export type NodeRectHitPolicy = NonNullable<NodeRectHitOptions['policy']>
+
+export const distanceToNodePoint = (input: {
+  node: NodeModel
+  rect: Rect
+  rotation: number
+  point: Point
+}): number => containsPointInNodeOutline(
+  input.node,
+  input.rect,
+  input.rotation,
+  input.point
+)
+  ? 0
+  : distanceToNodeOutline(
+      input.node,
+      input.rect,
+      input.rotation,
+      input.point
+    )
 
 export type NodeRectQuery<TEntry extends NodeRectHitEntry> = {
   rect: Rect

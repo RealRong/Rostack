@@ -3,12 +3,10 @@ import {
   mindmap as mindmapApi,
   type MindmapLayout
 } from '@whiteboard/core/mindmap'
-import { geometry as geometryApi } from '@whiteboard/core/geometry'
 import type {
   MindmapId,
   MindmapRecord,
   NodeId,
-  Point,
   Rect
 } from '@whiteboard/core/types'
 import type { GraphPhaseDelta } from '../../contracts/delta'
@@ -28,16 +26,6 @@ import {
 } from './node'
 import { applyEntity } from '@shared/projection'
 
-const translateRect = (
-  rect: Rect,
-  delta: Point
-): Rect => ({
-  x: rect.x + delta.x,
-  y: rect.y + delta.y,
-  width: rect.width,
-  height: rect.height
-})
-
 const isMindmapRenderConnectorEqual = (
   left: MindmapView['render']['connectors'][number],
   right: MindmapView['render']['connectors'][number]
@@ -52,33 +40,6 @@ const isMindmapRenderConnectorEqual = (
   && left.style.stroke === right.style.stroke
 )
 
-const isMindmapLayoutEqual = (
-  left: MindmapLayout | undefined,
-  right: MindmapLayout | undefined
-): boolean => {
-  if (left === right) {
-    return true
-  }
-
-  if (!left || !right || !equal.sameRect(left.bbox, right.bbox)) {
-    return false
-  }
-
-  const leftNodeIds = Object.keys(left.node)
-  const rightNodeIds = Object.keys(right.node)
-  if (leftNodeIds.length !== rightNodeIds.length) {
-    return false
-  }
-
-  for (const nodeId of leftNodeIds) {
-    if (!equal.sameOptionalRect(left.node[nodeId], right.node[nodeId])) {
-      return false
-    }
-  }
-
-  return true
-}
-
 const isMindmapViewEqual = (
   left: MindmapView,
   right: MindmapView
@@ -86,7 +47,7 @@ const isMindmapViewEqual = (
   left.base.mindmap === right.base.mindmap
   && left.structure.rootId === right.structure.rootId
   && equal.sameOrder(left.structure.nodeIds, right.structure.nodeIds)
-  && isMindmapLayoutEqual(left.tree.layout, right.tree.layout)
+  && mindmapApi.project.equalLayout(left.tree.layout, right.tree.layout)
   && equal.sameOptionalRect(left.tree.bbox, right.tree.bbox)
   && equal.sameOrder(
     left.render.connectors,
@@ -101,7 +62,7 @@ const isMindmapGeometryChanged = (
 ): boolean => (
   previous === undefined
   || next === undefined
-  || !isMindmapLayoutEqual(previous.tree.layout, next.tree.layout)
+  || !mindmapApi.project.equalLayout(previous.tree.layout, next.tree.layout)
   || !equal.sameOptionalRect(previous.tree.bbox, next.tree.bbox)
   || !equal.sameOrder(
     previous.render.connectors,
@@ -116,42 +77,6 @@ const patchNodeIdOrder = (
 ): readonly NodeId[] => previous && equal.sameOrder(previous, next)
   ? previous
   : next
-
-const applySubtreeMovePreview = (input: {
-  layout: MindmapLayout
-  tree: ReturnType<typeof mindmapApi.tree.fromRecord>
-  preview: NonNullable<NonNullable<Input['runtime']['session']['preview']['mindmap']>['subtreeMove']>
-}) => {
-  const sourceRect = input.layout.node[input.preview.nodeId]
-  if (!sourceRect) {
-    return input.layout
-  }
-
-  const delta = {
-    x: input.preview.ghost.x - sourceRect.x,
-    y: input.preview.ghost.y - sourceRect.y
-  }
-  if (delta.x === 0 && delta.y === 0) {
-    return input.layout
-  }
-
-  const node = {
-    ...input.layout.node
-  }
-  mindmapApi.tree.subtreeIds(input.tree, input.preview.nodeId).forEach((nodeId) => {
-    const rect = node[nodeId]
-    if (!rect) {
-      return
-    }
-
-    node[nodeId] = translateRect(rect, delta)
-  })
-
-  return {
-    node,
-    bbox: geometryApi.rect.boundingRect(Object.values(node)) ?? input.layout.bbox
-  }
-}
 
 export const readMindmapNodeIds = (
   record: MindmapRecord | undefined
@@ -215,51 +140,43 @@ const buildMindmapEntry = (
     draftMeasure: rootDraftMeasure
   })
 
-  let layout = mindmapApi.layout.anchor({
+  const layout = mindmapApi.project.layout({
     tree,
-    computed: mindmapApi.layout.compute(
-      tree,
-      (nodeId) => {
-        const nodeEntry = readNodeEntry(
-          input,
-          working,
-          working.indexes.ownerByNode,
-          nodeId
-        )
-        return nodeEntry
-          ? readProjectedNodeSize({
+    rootRect,
+    readNodeSize: (nodeId) => {
+      const nodeEntry = readNodeEntry(
+        input,
+        working,
+        working.indexes.ownerByNode,
+        nodeId
+      )
+      return nodeEntry
+        ? readProjectedNodeSize({
+            entry: nodeEntry,
+            draftMeasure: readNodeDraftMeasure({
+              working,
               entry: nodeEntry,
-              draftMeasure: readNodeDraftMeasure({
-                working,
-                entry: nodeEntry,
-                nodeId,
-                edit: input.runtime.session.edit
-              })
+              nodeId,
+              edit: input.runtime.session.edit
             })
-          : {
-              width: 1,
-              height: 1
-            }
-      },
-      tree.layout
-    ),
-    position: {
-      x: rootRect.x,
-      y: rootRect.y
+          })
+        : {
+            width: 1,
+            height: 1
+          }
+    },
+    preview: {
+      rootDelta: preview?.rootMove?.mindmapId === mindmapId
+        ? preview.rootMove.delta
+        : undefined,
+      subtreeMove: preview?.subtreeMove?.mindmapId === mindmapId
+        ? {
+            nodeId: preview.subtreeMove.nodeId,
+            ghost: preview.subtreeMove.ghost
+          }
+        : undefined
     }
   })
-
-  if (preview?.rootMove?.mindmapId === mindmapId) {
-    layout = mindmapApi.layout.translate(layout, preview.rootMove.delta)
-  }
-
-  if (preview?.subtreeMove?.mindmapId === mindmapId) {
-    layout = applySubtreeMovePreview({
-      layout,
-      tree,
-      preview: preview.subtreeMove
-    })
-  }
 
   return {
     base: {

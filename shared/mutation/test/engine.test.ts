@@ -151,10 +151,22 @@ describe('MutationEngine current API', () => {
       id: 'item_1',
       title: 'First'
     })
-    expect(result.commit.inverse).toEqual([{
-      type: 'item.delete',
-      id: 'item_1'
+    expect(result.commit.authored).toEqual([{
+      type: 'item.create',
+      value: {
+        id: 'item_1',
+        title: 'First'
+      }
     }])
+    expect(result.commit.inverse).toEqual({
+      effects: [{
+        type: 'entity.delete',
+        entity: {
+          table: 'item',
+          id: 'item_1'
+        }
+      }]
+    })
     expect(Boolean(result.commit.delta.changes['item.create'])).toBe(true)
     expect(commits).toEqual(['apply'])
     expect(snapshots).toEqual([{
@@ -247,13 +259,15 @@ const createStructuralDocument = (): StructuralDoc => ({
   }
 })
 
-const createStructuralEngine = () => new MutationEngine<
+const createStructuralEngine = (
+  document: StructuralDoc = createStructuralDocument()
+) => new MutationEngine<
   StructuralDoc,
   MutationIntentTable,
   MutationStructuralCanonicalOperation,
   StructuralDoc
 >({
-  document: createStructuralDocument(),
+  document,
   normalize: (document) => document,
   createReader: (readDocument) => readDocument(),
   structures: {
@@ -299,15 +313,26 @@ describe('MutationEngine structural API', () => {
 
     expect(result.commit.document.ordered.items).toEqual(['a', 'c', 'b'])
     expect(result.commit.delta.changes).toEqual({})
-    expect(result.commit.inverse).toEqual([{
+    expect(result.commit.authored).toEqual([{
       type: 'structural.ordered.move',
       structure: 'canvas',
       itemId: 'c',
       to: {
-        kind: 'after',
+        kind: 'before',
         itemId: 'b'
       }
     }])
+    expect(result.commit.inverse).toEqual({
+      effects: [{
+        type: 'ordered.move',
+        structure: 'canvas',
+        itemId: 'c',
+        to: {
+          kind: 'after',
+          itemId: 'b'
+        }
+      }]
+    })
     expect(result.commit.structural).toEqual([{
       kind: 'ordered',
       action: 'move',
@@ -332,7 +357,12 @@ describe('MutationEngine structural API', () => {
   })
 
   test('applies ordered structural splice as a block and expands inverse into primitive moves', () => {
-    const engine = createStructuralEngine()
+    const engine = createStructuralEngine({
+      ...createStructuralDocument(),
+      ordered: {
+        items: ['a', 'b', 'c', 'd']
+      }
+    })
     const result = engine.apply({
       type: 'structural.ordered.splice',
       structure: 'canvas',
@@ -348,22 +378,24 @@ describe('MutationEngine structural API', () => {
     }
 
     expect(result.commit.document.ordered.items).toEqual(['b', 'd', 'a', 'c'])
-    expect(result.commit.inverse).toEqual([{
-      type: 'structural.ordered.move',
-      structure: 'canvas',
-      itemId: 'a',
-      to: {
-        kind: 'start'
-      }
-    }, {
-      type: 'structural.ordered.move',
-      structure: 'canvas',
-      itemId: 'c',
-      to: {
-        kind: 'after',
-        itemId: 'b'
-      }
-    }])
+    expect(result.commit.inverse).toEqual({
+      effects: [{
+        type: 'ordered.move',
+        structure: 'canvas',
+        itemId: 'a',
+        to: {
+          kind: 'start'
+        }
+      }, {
+        type: 'ordered.move',
+        structure: 'canvas',
+        itemId: 'c',
+        to: {
+          kind: 'after',
+          itemId: 'b'
+        }
+      }]
+    })
     expect(result.commit.structural).toEqual([{
       kind: 'ordered',
       action: 'move',
@@ -374,7 +406,8 @@ describe('MutationEngine structural API', () => {
         nextId: 'c'
       },
       to: {
-        kind: 'start'
+        kind: 'before',
+        itemId: 'd'
       }
     }, {
       kind: 'ordered',
@@ -382,7 +415,8 @@ describe('MutationEngine structural API', () => {
       structure: 'canvas',
       itemId: 'd',
       from: {
-        prevId: 'c'
+        prevId: 'c',
+        nextId: undefined
       },
       to: {
         kind: 'after',
@@ -428,7 +462,7 @@ describe('MutationEngine structural API', () => {
       previousIndex: 0
     }])
 
-    const restored = engine.apply(deleted.commit.inverse)
+    const restored = engine.applyProgram(deleted.commit.inverse)
     expect(restored.ok).toBe(true)
     if (!restored.ok) {
       return

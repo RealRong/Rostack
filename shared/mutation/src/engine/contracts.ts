@@ -3,6 +3,12 @@ import {
   json
 } from '@shared/core'
 import type {
+  MutationEffectBuilder
+} from './effect/effectBuilder'
+import type {
+  MutationEffectProgram
+} from './effect/effect'
+import type {
   ApplyCommit,
   CommitRecord,
   CommitStream,
@@ -155,16 +161,16 @@ export type MutationApplyResult<
 > =
   | {
       ok: true
-    data: {
-      document: Doc
-      forward: readonly Op[]
-      inverse: readonly Op[]
-      delta: MutationDelta
-      structural: readonly MutationStructuralFact[]
-      footprint: readonly MutationFootprint[]
-      outputs: readonly unknown[]
-      issues: readonly MutationIssue[]
-      historyMode: 'track' | 'skip' | 'neutral'
+      data: {
+        document: Doc
+        applied: MutationEffectProgram<string>
+        inverse: MutationEffectProgram<string>
+        delta: MutationDelta
+        structural: readonly MutationStructuralFact[]
+        footprint: readonly MutationFootprint[]
+        outputs: readonly unknown[]
+        issues: readonly MutationIssue[]
+        historyMode: 'track' | 'skip' | 'neutral'
       }
     }
   | MutationFailure<Code>
@@ -254,6 +260,11 @@ export interface MutationEntitySpec {
   change?: Readonly<Record<string, readonly string[]>>
 }
 
+export interface MutationStructureChangeSpec {
+  key: string
+  change?: MutationChangeInput
+}
+
 export interface MutationOrderedStructureSpec<
   Doc,
   Item = unknown
@@ -263,6 +274,7 @@ export interface MutationOrderedStructureSpec<
   identify(item: Item): string
   write(document: Doc, items: readonly Item[]): Doc
   clone?(item: Item): Item
+  change?: readonly MutationStructureChangeSpec[]
 }
 
 export interface MutationTreeStructureSpec<
@@ -273,6 +285,7 @@ export interface MutationTreeStructureSpec<
   read(document: Doc): MutationTreeSnapshot<Value>
   write(document: Doc, tree: MutationTreeSnapshot<Value>): Doc
   clone?(value: Value): Value
+  change?: readonly MutationStructureChangeSpec[]
 }
 
 export type MutationStructureSpec<
@@ -311,36 +324,20 @@ export interface MutationCustomFailure<
   path?: string
 }
 
-export interface MutationCustomReduceInput<
+export interface MutationCustomPlannerInput<
   Doc,
   Op,
   Reader,
   Services = void,
+  Tag extends string = string,
   Code extends string = string
 > {
   op: Op
   document: Doc
   reader: Reader
-  origin: Origin
   services: Services | undefined
+  effects: MutationEffectBuilder<Tag>
   fail(issue: MutationCustomFailure<Code>): never
-}
-
-export interface MutationCustomHistoryResult<Op> {
-  forward?: readonly Op[]
-  inverse: readonly Op[]
-}
-
-export interface MutationCustomReduceResult<
-  Doc,
-  Op
-> {
-  document?: Doc
-  delta?: MutationDeltaInput
-  footprint?: readonly MutationFootprint[]
-  history?: false | MutationCustomHistoryResult<Op>
-  outputs?: readonly unknown[]
-  issues?: readonly MutationIssue[]
 }
 
 export interface MutationCustomSpec<
@@ -349,11 +346,12 @@ export interface MutationCustomSpec<
   Op = CurrentOp,
   Reader = unknown,
   Services = void,
+  Tag extends string = string,
   Code extends string = string
 > {
-  reduce(
-    input: MutationCustomReduceInput<Doc, CurrentOp, Reader, Services, Code>
-  ): MutationCustomReduceResult<Doc, Op> | void
+  plan(
+    input: MutationCustomPlannerInput<Doc, CurrentOp, Reader, Services, Tag, Code>
+  ): void
 }
 
 export type MutationCustomTable<
@@ -363,6 +361,7 @@ export type MutationCustomTable<
   },
   Reader,
   Services = void,
+  Tag extends string = string,
   Code extends string = string
 > = Partial<{
   readonly [TType in Op['type']]: MutationCustomSpec<
@@ -371,9 +370,10 @@ export type MutationCustomTable<
     Op,
     Reader,
     Services,
+    Tag,
     Code
   >
-}> & Readonly<Record<string, MutationCustomSpec<Doc, Op, Op, Reader, Services, Code>>>
+}> & Readonly<Record<string, MutationCustomSpec<Doc, Op, Op, Reader, Services, Tag, Code>>>
 
 export interface MutationEngineOptions<
   Doc extends object,
@@ -391,7 +391,7 @@ export interface MutationEngineOptions<
   services?: Services
   entities?: Readonly<Record<string, MutationEntitySpec>>
   structures?: MutationStructureSource<Doc>
-  custom?: MutationCustomTable<Doc, Op, Reader, Services, Code>
+  custom?: MutationCustomTable<Doc, Op, Reader, Services, string, Code>
   compile?: MutationCompileHandlerTable<Table, Doc, Op, Reader, Services, Code>
   history?: MutationHistoryOptions | false
 }

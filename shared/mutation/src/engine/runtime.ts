@@ -1,7 +1,4 @@
 import {
-  draft
-} from '@shared/draft'
-import {
   history as historyRuntime,
   type HistoryController
 } from '../history'
@@ -60,55 +57,39 @@ import {
   type MutationStructureSource,
 } from './contracts'
 import {
-  buildEntityDelta,
-  hasDeltaFact,
   mergeMutationDeltas,
-  normalizeMutationDelta
 } from './delta'
 import {
-  applyRootWrites,
-  appendTableCreateWrites,
-  appendTableDeleteWrites,
+  applyMutationEffectProgram
+} from './effect/effectApply'
+import {
+  materializeMutationEffectProgram
+} from './effect/effectMaterialize'
+import type {
+  MutationEffect,
+  MutationEffectProgram,
+} from './effect/effect'
+import {
+  createMutationEffectBuilder
+} from './effect/effectBuilder'
+import {
   compileEntities,
-  compileEntityPatchWrites,
-  createCanonicalCreateOperation,
-  createCanonicalDeleteOperation,
-  createCanonicalPatchOperation,
-  createPatchFromWrites,
-  prefixRecordWrites,
   readCanonicalOperation,
-  readChangedPathsFromWrites,
-  readEntityAtPath,
-  readEntityIdFromValue,
-  readEntitySnapshotPaths,
-  readRequiredId,
-  readRequiredPatch,
-  readRequiredValue,
-  readSingletonPath,
-  readTableEntityPath
+  lowerCanonicalEntityOperation,
 } from './entity'
 import {
-  readStructuralOperation,
-  readStructuralOperationResult
+  lowerStructuralOperation,
+  readStructuralOperation
 } from './structural'
 import {
-  buildEntityFootprint,
   dedupeFootprints,
   mutationFootprintBatchConflicts
 } from './footprint'
 import type {
   CompiledEntitySpec,
-  MutableRecordWrite,
-  MutationEntityCanonicalOperation
+  MutationEntityCanonicalOperation,
+  MutationStructuralCanonicalOperation
 } from './contracts'
-
-const readMutationIssues = (
-  issues?: readonly MutationIssue[]
-): readonly MutationIssue[] => issues ?? EMPTY_ISSUES
-
-const readMutationOutputs = (
-  outputs?: readonly unknown[]
-): readonly unknown[] => outputs ?? EMPTY_OUTPUTS
 
 const readCustomOperationResult = <
   Doc extends object,
@@ -121,93 +102,48 @@ const readCustomOperationResult = <
 >(input: {
   document: Doc
   operation: Op
-  spec: MutationCustomSpec<Doc, Op, Op, Reader, Services, Code>
+  spec: MutationCustomSpec<Doc, Op, Op, Reader, Services, string, Code>
   createReader: MutationReaderFactory<Doc, Reader>
-  origin: Origin
+  entities: ReadonlyMap<string, CompiledEntitySpec>
+  structures?: MutationStructureSource<Doc>
   services: Services | undefined
   normalize(doc: Doc): Doc
 }): MutationApplyResult<Doc, Op, Code> => {
   try {
-    const result = input.spec.reduce({
+    const effects = createMutationEffectBuilder()
+    input.spec.plan({
       op: input.operation,
       document: input.document,
       reader: input.createReader(() => input.document),
-      origin: input.origin,
       services: input.services,
+      effects,
       fail: (issue) => {
         throw new MutationCustomReduceError(issue)
       }
     })
-
-    const next = result ?? {}
-    const hasExplicitDelta = Object.prototype.hasOwnProperty.call(next, 'delta')
-    const nextDocument = next.document === undefined
-      ? input.document
-      : input.normalize(next.document)
-    const delta = normalizeMutationDelta(next.delta)
-    const footprint = dedupeFootprints([
-      ...(next.footprint ?? [])
-    ])
-    const outputs = readMutationOutputs(next.outputs)
-    const issues = readMutationIssues(next.issues)
-    const documentChanged = !Object.is(nextDocument, input.document)
-    const hasEffects = documentChanged || hasDeltaFact(delta) || footprint.length > 0
-
-    if (hasEffects && !hasExplicitDelta) {
-      return mutationFailure(
-        'mutation_engine.custom.delta_required' as Code,
-        `Custom mutation operation "${input.operation.type}" must return delta unless it is a no-op.`
-      )
-    }
-
-    if (next.history === false) {
-      return {
-        ok: true,
-        data: {
-          document: nextDocument,
-          forward: [input.operation],
-          inverse: [],
-          delta,
-          structural: EMPTY_OUTPUTS as readonly MutationStructuralFact[],
-          footprint,
-          outputs,
-          issues,
-          historyMode: 'skip'
-        }
-      }
-    }
-
-    const forward = next.history?.forward ?? [input.operation]
-    const inverse = next.history?.inverse ?? []
-
-    if (hasEffects && inverse.length === 0) {
-      return mutationFailure(
-        'mutation_engine.custom.inverse_required' as Code,
-        `Custom mutation operation "${input.operation.type}" must return history.inverse when it produces mutation effects.`
-      )
-    }
-
-    if (inverse.length > 0 && forward.length === 0) {
-      return mutationFailure(
-        'mutation_engine.custom.forward_required' as Code,
-        `Custom mutation operation "${input.operation.type}" must return replayable history.forward when the current op cannot be replayed.`
-      )
+    const applied = applyMutationEffectProgram<Doc, Op, string, Code>({
+      document: input.document,
+      program: effects.build(),
+      entities: input.entities,
+      structures: input.structures,
+      normalize: input.normalize
+    })
+    if (!applied.ok) {
+      return applied
     }
 
     return {
       ok: true,
       data: {
-        document: nextDocument,
-        forward,
-        inverse,
-        delta,
-        structural: EMPTY_OUTPUTS as readonly MutationStructuralFact[],
-        footprint,
-        outputs,
-        issues,
-        historyMode: inverse.length > 0
-          ? 'track'
-          : 'neutral'
+        document: applied.data.document,
+        applied: effects.build(),
+        inverse: applied.data.inverse,
+        delta: applied.data.delta,
+        structural: applied.data.structural,
+        footprint: applied.data.footprint,
+        outputs: EMPTY_OUTPUTS,
+        issues: applied.data.issues,
+        historyMode: applied.data.historyMode
       }
     }
   } catch (error) {
@@ -235,396 +171,6 @@ const readCustomOperationResult = <
       error instanceof Error
         ? error.message
         : `Custom mutation operation "${input.operation.type}" failed.`
-    )
-  }
-}
-
-const readSingletonCreateResult = <
-  Doc extends object,
-  Op extends {
-    type: string
-  }
->(input: {
-  spec: CompiledEntitySpec
-  document: Doc
-  value: unknown
-  normalize(doc: Doc): Doc
-}) => {
-  if (input.spec.family === 'document') {
-    const nextDocument = input.normalize(input.value as Doc)
-    const inverse = createCanonicalCreateOperation<Op>(
-      input.spec.createType,
-      input.document
-    )
-    const changedPaths = readEntitySnapshotPaths(input.spec, nextDocument)
-    return {
-      document: nextDocument,
-      forward: [createCanonicalCreateOperation<Op>(
-        input.spec.createType,
-        input.value
-      )],
-      inverse: [inverse],
-      delta: buildEntityDelta(
-        input.spec,
-        'create',
-        undefined,
-        changedPaths
-      ),
-      structural: EMPTY_OUTPUTS as readonly MutationStructuralFact[],
-      footprint: buildEntityFootprint(
-        input.spec,
-        'create',
-        undefined,
-        changedPaths
-      ),
-      outputs: EMPTY_OUTPUTS,
-      issues: EMPTY_ISSUES,
-      historyMode: 'track' as const
-    }
-  }
-
-  const rootPath = readSingletonPath(input.spec)
-  const writes = Object.freeze({
-    [rootPath]: input.value
-  })
-  const nextDocument = applyRootWrites(input.document, writes)
-  const inverse = createCanonicalDeleteOperation<Op>(
-    input.spec.deleteType,
-    undefined
-  )
-  const changedPaths = readEntitySnapshotPaths(input.spec, input.value)
-  return {
-    document: nextDocument,
-    forward: [createCanonicalCreateOperation<Op>(
-      input.spec.createType,
-      input.value
-    )],
-    inverse: [inverse],
-    delta: buildEntityDelta(
-      input.spec,
-      'create',
-      undefined,
-      changedPaths
-    ),
-    structural: EMPTY_OUTPUTS as readonly MutationStructuralFact[],
-    footprint: buildEntityFootprint(
-      input.spec,
-      'create',
-      undefined,
-      changedPaths
-    ),
-    outputs: EMPTY_OUTPUTS,
-    issues: EMPTY_ISSUES,
-    historyMode: 'track' as const
-  }
-}
-
-const readSingletonDeleteResult = <
-  Doc extends object,
-  Op extends {
-    type: string
-  }
->(input: {
-  spec: CompiledEntitySpec
-  document: Doc
-}) => {
-  if (input.spec.family === 'document') {
-    throw new Error('document.delete is not supported.')
-  }
-
-  const current = readEntityAtPath(input.document, input.spec.rootKey)
-  if (current === undefined) {
-    throw new Error(`Mutation operation "${input.spec.family}.delete" cannot find current value.`)
-  }
-  const writes = Object.freeze({
-    [input.spec.rootKey]: undefined
-  })
-  const nextDocument = applyRootWrites(input.document, writes)
-  const inverse = createCanonicalCreateOperation<Op>(
-    input.spec.createType,
-    current
-  )
-  const changedPaths = readEntitySnapshotPaths(input.spec, current)
-  return {
-    document: nextDocument,
-    forward: [createCanonicalDeleteOperation<Op>(
-      input.spec.deleteType,
-      undefined
-    )],
-    inverse: [inverse],
-    delta: buildEntityDelta(
-      input.spec,
-      'delete',
-      undefined,
-      changedPaths
-    ),
-    structural: EMPTY_OUTPUTS as readonly MutationStructuralFact[],
-    footprint: buildEntityFootprint(
-      input.spec,
-      'delete',
-      undefined,
-      changedPaths
-    ),
-    outputs: EMPTY_OUTPUTS,
-    issues: EMPTY_ISSUES,
-    historyMode: 'track' as const
-  }
-}
-
-const readCanonicalOperationResult = <
-  Doc extends object,
-  Op extends {
-    type: string
-  }
->(input: {
-  document: Doc
-  operation: Op
-  spec: CompiledEntitySpec
-  kind: 'create' | 'patch' | 'delete'
-  normalize(doc: Doc): Doc
-}): MutationApplyResult<Doc, Op> => {
-  const operation = input.operation as MutationEntityCanonicalOperation
-  const spec = input.spec
-
-  try {
-    if (spec.kind !== 'singleton') {
-      if (input.kind === 'create') {
-        const value = readRequiredValue(spec.family, 'create', operation)
-        const id = readEntityIdFromValue(spec.family, value)
-        const entityPath = readTableEntityPath(spec, id)
-        if (readEntityAtPath(input.document, entityPath) !== undefined) {
-          throw new Error(`Mutation operation "${spec.family}.create" found an existing entity "${id}".`)
-        }
-        const writes: MutableRecordWrite = {
-          [entityPath]: value
-        }
-        appendTableCreateWrites(writes, input.document, spec, id)
-        const nextDocument = applyRootWrites(input.document, writes)
-        const changedPaths = readEntitySnapshotPaths(spec, value)
-
-        return {
-          ok: true,
-          data: {
-            document: input.normalize(nextDocument),
-            forward: [createCanonicalCreateOperation<Op>(
-              spec.createType,
-              value
-            )],
-            inverse: [createCanonicalDeleteOperation<Op>(spec.deleteType, id)],
-            delta: buildEntityDelta(
-              spec,
-              'create',
-              id,
-              changedPaths
-            ),
-            structural: EMPTY_OUTPUTS as readonly MutationStructuralFact[],
-            footprint: buildEntityFootprint(
-              spec,
-              'create',
-              id,
-              changedPaths
-            ),
-            outputs: EMPTY_OUTPUTS,
-            issues: EMPTY_ISSUES,
-            historyMode: 'track'
-          }
-        }
-      }
-
-      if (input.kind === 'delete') {
-        const id = readRequiredId(spec.family, operation)
-        const entityPath = readTableEntityPath(spec, id)
-        const current = readEntityAtPath(input.document, entityPath)
-        if (current === undefined) {
-          throw new Error(`Mutation operation "${spec.family}.delete" cannot find entity "${id}".`)
-        }
-        const writes: MutableRecordWrite = {
-          [entityPath]: undefined
-        }
-        appendTableDeleteWrites(writes, input.document, spec, id)
-        const nextDocument = applyRootWrites(input.document, writes)
-        const changedPaths = readEntitySnapshotPaths(spec, current)
-
-        return {
-          ok: true,
-          data: {
-            document: input.normalize(nextDocument),
-            forward: [createCanonicalDeleteOperation<Op>(spec.deleteType, id)],
-            inverse: [createCanonicalCreateOperation<Op>(spec.createType, current)],
-            delta: buildEntityDelta(
-              spec,
-              'delete',
-              id,
-              changedPaths
-            ),
-            structural: EMPTY_OUTPUTS as readonly MutationStructuralFact[],
-            footprint: buildEntityFootprint(
-              spec,
-              'delete',
-              id,
-              changedPaths
-            ),
-            outputs: EMPTY_OUTPUTS,
-            issues: EMPTY_ISSUES,
-            historyMode: 'track'
-          }
-        }
-      }
-
-      const id = readRequiredId(spec.family, operation)
-      const entityPath = readTableEntityPath(spec, id)
-      const current = readEntityAtPath(input.document, entityPath)
-      if (current === undefined) {
-        throw new Error(`Mutation operation "${spec.family}.patch" cannot find entity "${id}".`)
-      }
-      const patch = readRequiredPatch(spec.family, operation)
-      const entityWrites = compileEntityPatchWrites(spec, patch)
-      const changedPaths = readChangedPathsFromWrites(entityWrites)
-      if (changedPaths.length === 0) {
-        return {
-          ok: true,
-          data: {
-            document: input.document,
-            forward: [input.operation],
-            inverse: [],
-            delta: EMPTY_DELTA,
-            structural: EMPTY_OUTPUTS as readonly MutationStructuralFact[],
-            footprint: [],
-            outputs: EMPTY_OUTPUTS,
-            issues: EMPTY_ISSUES,
-            historyMode: 'neutral'
-          }
-        }
-      }
-
-      const nextEntity = draft.record.apply(current, entityWrites)
-      const inverseWrites = draft.record.inverse(current, entityWrites)
-      const rootWrites = prefixRecordWrites(entityPath, entityWrites)
-      const nextDocument = applyRootWrites(input.document, rootWrites)
-
-      return {
-        ok: true,
-        data: {
-          document: input.normalize(nextDocument),
-          forward: [input.operation],
-          inverse: Object.keys(inverseWrites).length === 0
-            ? []
-            : [createCanonicalPatchOperation<Op>(
-                spec.patchType,
-                id,
-                createPatchFromWrites(inverseWrites)
-              )],
-          delta: buildEntityDelta(
-            spec,
-            'patch',
-            id,
-            changedPaths
-          ),
-          structural: EMPTY_OUTPUTS as readonly MutationStructuralFact[],
-          footprint: buildEntityFootprint(
-            spec,
-            'patch',
-            id,
-            changedPaths
-          ),
-          outputs: EMPTY_OUTPUTS,
-          issues: EMPTY_ISSUES,
-          historyMode: Object.keys(inverseWrites).length === 0
-            ? 'neutral'
-            : 'track'
-        }
-      }
-    }
-
-    if (input.kind === 'create') {
-      const value = readRequiredValue(spec.family, 'create', operation)
-      return {
-        ok: true,
-        data: readSingletonCreateResult<Doc, Op>({
-          spec,
-          document: input.document,
-          value,
-          normalize: input.normalize
-        })
-      }
-    }
-
-    if (input.kind === 'delete') {
-      return {
-        ok: true,
-        data: readSingletonDeleteResult<Doc, Op>({
-          spec,
-          document: input.document
-        })
-      }
-    }
-
-    const patch = readRequiredPatch(spec.family, operation)
-    const entityWrites = compileEntityPatchWrites(spec, patch)
-    const changedPaths = readChangedPathsFromWrites(entityWrites)
-    if (changedPaths.length === 0) {
-      return {
-        ok: true,
-        data: {
-          document: input.document,
-          forward: [input.operation],
-          inverse: [],
-          delta: EMPTY_DELTA,
-          structural: EMPTY_OUTPUTS as readonly MutationStructuralFact[],
-          footprint: [],
-          outputs: EMPTY_OUTPUTS,
-          issues: EMPTY_ISSUES,
-          historyMode: 'neutral'
-        }
-      }
-    }
-
-    const current = readEntityAtPath(input.document, readSingletonPath(spec))
-    const nextEntity = draft.record.apply(current, entityWrites)
-    const inverseWrites = draft.record.inverse(current, entityWrites)
-    const rootWrites = prefixRecordWrites(readSingletonPath(spec), entityWrites)
-    const nextDocument = spec.family === 'document'
-      ? input.normalize(draft.record.apply(input.document, entityWrites))
-      : input.normalize(applyRootWrites(input.document, rootWrites))
-
-    return {
-      ok: true,
-      data: {
-        document: nextDocument,
-        forward: [input.operation],
-        inverse: Object.keys(inverseWrites).length === 0
-          ? []
-          : [createCanonicalPatchOperation<Op>(
-              spec.patchType,
-              undefined,
-              createPatchFromWrites(inverseWrites)
-            )],
-        delta: buildEntityDelta(
-          spec,
-          'patch',
-          undefined,
-          changedPaths
-        ),
-        structural: EMPTY_OUTPUTS as readonly MutationStructuralFact[],
-        footprint: buildEntityFootprint(
-          spec,
-          'patch',
-          undefined,
-          changedPaths
-        ),
-        outputs: EMPTY_OUTPUTS,
-        issues: EMPTY_ISSUES,
-        historyMode: Object.keys(inverseWrites).length === 0
-          ? 'neutral'
-          : 'track'
-      }
-    }
-  } catch (error) {
-    return mutationFailure(
-      'mutation_engine.apply.invalid_operation',
-      error instanceof Error
-        ? error.message
-        : 'MutationEngine.apply received an invalid canonical operation.'
     )
   }
 }
@@ -658,7 +204,7 @@ const applyConcreteOperations = <
   operations: readonly Op[]
   entities: ReadonlyMap<string, CompiledEntitySpec>
   structures?: MutationStructureSource<Doc>
-  custom?: MutationCustomTable<Doc, Op, Reader, Services, Code>
+  custom?: MutationCustomTable<Doc, Op, Reader, Services, string, Code>
   createReader: MutationReaderFactory<Doc, Reader>
   origin: Origin
   services: Services | undefined
@@ -667,8 +213,9 @@ const applyConcreteOperations = <
   let currentDocument = input.document
   let delta = EMPTY_DELTA
   const structural: MutationStructuralFact[] = []
-  const forward: Op[] = []
-  const inverse: Op[] = []
+  const authored: Op[] = []
+  const appliedEffects: MutationEffect[] = []
+  const inverseEffects: MutationEffect[] = []
   const footprint: MutationFootprint[] = []
   const outputs: unknown[] = []
   const issues: MutationIssue[] = []
@@ -680,45 +227,60 @@ const applyConcreteOperations = <
     const descriptor = readCanonicalOperation(operation.type)
     const structuralDescriptor = readStructuralOperation(operation.type)
     const customSpec = input.custom?.[operation.type]
-    const applied = structuralDescriptor
-      ? readStructuralOperationResult<Doc, Op, Code>({
-          document: currentDocument,
-          operation,
-          structures: input.structures,
-          descriptor: structuralDescriptor
-        })
-      : customSpec
+    const applied = customSpec
       ? readCustomOperationResult<Doc, Op, Reader, Services, Code>({
           document: currentDocument,
           operation,
           spec: customSpec,
           createReader: input.createReader,
-          origin: input.origin,
+          entities: input.entities,
+          structures: input.structures,
           services: input.services,
           normalize: input.normalize
         })
-      : descriptor
-        ? (() => {
-          const spec = input.entities.get(descriptor.family)
-          if (!spec) {
+      : (() => {
+        try {
+          const program = structuralDescriptor
+            ? lowerStructuralOperation(
+                operation as unknown as MutationStructuralCanonicalOperation
+              )
+            : descriptor
+            ? (() => {
+                const spec = input.entities.get(descriptor.family)
+                if (!spec) {
+                  throw new Error(`Unknown mutation operation "${operation.type}".`)
+                }
+                return lowerCanonicalEntityOperation({
+                  operation: operation as unknown as MutationEntityCanonicalOperation,
+                  spec,
+                  kind: descriptor.kind
+                })
+              })()
+            : undefined
+
+          if (!program) {
             return mutationFailure(
               'mutation_engine.apply.unknown_operation' as Code,
               `Unknown mutation operation "${operation.type}".`
             )
           }
 
-          return readCanonicalOperationResult<Doc, Op>({
+          return applyMutationEffectProgram<Doc, Op, string, Code>({
             document: currentDocument,
-            operation,
-            spec,
-            kind: descriptor.kind,
+            program,
+            entities: input.entities,
+            structures: input.structures,
             normalize: input.normalize
           })
-        })()
-        : mutationFailure(
-            'mutation_engine.apply.unknown_operation' as Code,
-            `Unknown mutation operation "${operation.type}".`
+        } catch (error) {
+          return mutationFailure(
+            'mutation_engine.apply.invalid_operation' as Code,
+            error instanceof Error
+              ? error.message
+              : 'MutationEngine.apply received an invalid operation.'
           )
+        }
+      })()
     if (!applied.ok) {
       return mutationFailure(
         applied.error.code as Code,
@@ -730,12 +292,13 @@ const applyConcreteOperations = <
     currentDocument = applied.data.document
     delta = mergeMutationDeltas(delta, applied.data.delta)
     structural.push(...applied.data.structural)
-    forward.push(...applied.data.forward)
+    authored.push(operation)
+    appliedEffects.push(...applied.data.applied.effects)
     footprint.push(...applied.data.footprint)
     outputs.push(...applied.data.outputs)
     issues.push(...applied.data.issues)
-    if (applied.data.inverse.length > 0) {
-      inverse.unshift(...applied.data.inverse)
+    if (applied.data.inverse.effects.length > 0) {
+      inverseEffects.unshift(...applied.data.inverse.effects)
     }
     if (applied.data.historyMode === 'track') {
       hasTrackedHistory = true
@@ -749,8 +312,12 @@ const applyConcreteOperations = <
     ok: true,
     data: {
       document: currentDocument,
-      forward,
-      inverse,
+      applied: {
+        effects: appliedEffects
+      },
+      inverse: {
+        effects: inverseEffects
+      },
       delta,
       structural,
       footprint: dedupeFootprints(footprint),
@@ -782,7 +349,7 @@ const compileMutationIntents = <
   services: Services | undefined
   entities: ReadonlyMap<string, CompiledEntitySpec>
   structures?: MutationStructureSource<Doc>
-  custom?: MutationCustomTable<Doc, Op, Reader, Services, Code>
+  custom?: MutationCustomTable<Doc, Op, Reader, Services, string, Code>
   createReader: MutationReaderFactory<Doc, Reader>
   normalize(doc: Doc): Doc
 }): CompileLoopResult<Doc, Op, MutationOutputOf<Table>, Code> => {
@@ -938,7 +505,7 @@ class MutationRuntime<
 > {
   readonly history: HistoryPort<
     MutationResult<void, ApplyCommit<Doc, Op, MutationFootprint, void>, Code>,
-    Op,
+    MutationEffectProgram<string>,
     MutationFootprint,
     ApplyCommit<Doc, Op, MutationFootprint, void>
   >
@@ -947,12 +514,12 @@ class MutationRuntime<
   private readonly normalize: (doc: Doc) => Doc
   private readonly entities: ReadonlyMap<string, CompiledEntitySpec>
   private readonly structures?: MutationStructureSource<Doc>
-  private readonly custom?: MutationCustomTable<Doc, Op, Reader, Services, Code>
+  private readonly custom?: MutationCustomTable<Doc, Op, Reader, Services, string, Code>
   private readonly services: Services | undefined
   private readonly compileHandlers?: MutationCompileHandlerTable<any, Doc, Op, Reader, Services, Code>
   private readonly historyOptions?: MutationHistoryOptions | false
   private readonly historyControllerRef?: HistoryController<
-    Op,
+    MutationEffectProgram<string>,
     MutationFootprint,
     ApplyCommit<Doc, Op, MutationFootprint, void>
   >
@@ -967,7 +534,7 @@ class MutationRuntime<
     createReader: MutationReaderFactory<Doc, Reader>
     entities?: Readonly<Record<string, any>>
     structures?: MutationStructureSource<Doc>
-    custom?: MutationCustomTable<Doc, Op, Reader, Services, Code>
+    custom?: MutationCustomTable<Doc, Op, Reader, Services, string, Code>
     services?: Services
     compile?: MutationCompileHandlerTable<any, Doc, Op, Reader, Services, Code>
     history?: MutationHistoryOptions | false
@@ -984,7 +551,7 @@ class MutationRuntime<
 
     if (input.history !== false) {
       this.historyControllerRef = historyRuntime.create<
-        Op,
+        MutationEffectProgram<string>,
         MutationFootprint,
         ApplyCommit<Doc, Op, MutationFootprint, void>
       >({
@@ -994,7 +561,7 @@ class MutationRuntime<
     }
 
     this.history = createHistoryPort({
-      apply: (operations, options) => this.apply(operations, options),
+      applyProgram: (program, options) => this.applyProgram(program, options),
       commits: {
         subscribe: (listener) => {
           this.commitListeners.add(listener)
@@ -1103,7 +670,8 @@ class MutationRuntime<
 
     return this.commit({
       document: applied.data.document,
-      forward: applied.data.forward,
+      authored: operations,
+      applied: applied.data.applied,
       inverse: applied.data.inverse,
       delta: applied.data.delta,
       structural: applied.data.structural,
@@ -1226,7 +794,8 @@ class MutationRuntime<
 
     const committed = this.commit({
       document: applied.data.document,
-      forward: applied.data.forward,
+      authored: planned.ops,
+      applied: applied.data.applied,
       inverse: applied.data.inverse,
       delta: applied.data.delta,
       structural: applied.data.structural,
@@ -1263,10 +832,49 @@ class MutationRuntime<
     >
   }
 
+  applyProgram(
+    program: MutationEffectProgram<string>,
+    options?: MutationOptions
+  ): MutationResult<
+    void,
+    ApplyCommit<Doc, Op, MutationFootprint, void>,
+    Code
+  > {
+    const applied = applyMutationEffectProgram<Doc, Op, string, Code>({
+      document: this.documentState,
+      program,
+      entities: this.entities,
+      structures: this.structures,
+      normalize: this.normalize
+    })
+    if (!applied.ok) {
+      return applied
+    }
+
+    return this.commit({
+      document: applied.data.document,
+      authored: materializeMutationEffectProgram<Op>({
+        program: applied.data.applied,
+        entities: this.entities
+      }),
+      applied: applied.data.applied,
+      inverse: applied.data.inverse,
+      delta: applied.data.delta,
+      structural: applied.data.structural,
+      footprint: applied.data.footprint,
+      outputs: applied.data.outputs,
+      issues: applied.data.issues,
+      historyMode: applied.data.historyMode,
+      origin: options?.origin ?? 'user',
+      data: undefined
+    })
+  }
+
   private commit<TData>(input: {
     document: Doc
-    forward: readonly Op[]
-    inverse: readonly Op[]
+    authored: readonly Op[]
+    applied: MutationEffectProgram<string>
+    inverse: MutationEffectProgram<string>
     delta: any
     structural: readonly MutationStructuralFact[]
     footprint: readonly MutationFootprint[]
@@ -1286,7 +894,8 @@ class MutationRuntime<
       at: Date.now(),
       origin: input.origin,
       document: input.document,
-      forward: input.forward,
+      authored: input.authored,
+      applied: input.applied,
       inverse: input.inverse,
       delta: input.delta,
       structural: input.structural,
@@ -1303,8 +912,8 @@ class MutationRuntime<
       this.historyControllerRef
       && shouldCaptureHistory(this.historyOptions, input.origin)
       && input.historyMode === 'track'
-      && commit.forward.length > 0
-      && commit.inverse.length > 0
+      && commit.applied.effects.length > 0
+      && commit.inverse.effects.length > 0
     ) {
       this.historyControllerRef.capture(commit)
     }
@@ -1361,7 +970,7 @@ export class MutationEngine<
 
   get history(): HistoryPort<
     MutationResult<void, ApplyCommit<Doc, Op, MutationFootprint, void>, Code>,
-    Op,
+    MutationEffectProgram<string>,
     MutationFootprint,
     ApplyCommit<Doc, Op, MutationFootprint, void>
   > {
@@ -1418,6 +1027,17 @@ export class MutationEngine<
     Code
   > {
     return this.runtime.apply(input, options)
+  }
+
+  applyProgram(
+    program: MutationEffectProgram<string>,
+    options?: MutationOptions
+  ): MutationResult<
+    void,
+    ApplyCommit<Doc, Op, MutationFootprint, void>,
+    Code
+  > {
+    return this.runtime.applyProgram(program, options)
   }
 
   replace(

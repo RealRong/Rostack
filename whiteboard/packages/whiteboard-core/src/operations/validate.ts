@@ -1,6 +1,6 @@
 import type {
   MutationOrigin
-} from '@shared/mutation/write'
+} from '@shared/mutation'
 import {
   validateLockOperations
 } from '@whiteboard/core/operations/lock'

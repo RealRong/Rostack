@@ -6,7 +6,8 @@ import type {
   MutationDelta,
   MutationDeltaInput,
   MutationEntityEffectInput,
-  MutationEntitySpec
+  MutationEntitySpec,
+  MutationStructureChangeSpec,
 } from './contracts'
 import {
   cloneValue,
@@ -455,6 +456,26 @@ export const buildEntityDelta = (
   for (let index = 0; index < inputs.length; index += 1) {
     delta = mergeMutationDeltas(delta, inputs[index])
   }
+  return delta
+}
+
+export const buildStructureDelta = (
+  changes: readonly MutationStructureChangeSpec[] | undefined
+): MutationDelta => {
+  if (!changes || changes.length === 0) {
+    return EMPTY_DELTA
+  }
+
+  let delta = EMPTY_DELTA
+  for (let index = 0; index < changes.length; index += 1) {
+    const entry = changes[index]!
+    delta = mergeMutationDeltas(delta, {
+      changes: {
+        [entry.key]: entry.change ?? true
+      }
+    })
+  }
+
   return delta
 }
 

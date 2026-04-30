@@ -3,6 +3,9 @@ import {
   type RecordWrite
 } from '@shared/draft'
 import {
+  createMutationEffectBuilder
+} from './effect/effectBuilder'
+import {
   appendPath,
   cloneValue,
   COMPILE_APPLY_FAILED_CODE,
@@ -22,6 +25,9 @@ import {
   type MutationOperationKind,
   sameJsonValue
 } from './contracts'
+import type {
+  MutationEffectProgram
+} from './effect/effect'
 
 export const collectRecordLeafPaths = (
   value: unknown,
@@ -266,6 +272,50 @@ export const readCanonicalOperation = (
   }
 
   return undefined
+}
+
+export const lowerCanonicalEntityOperation = (input: {
+  operation: MutationEntityCanonicalOperation
+  spec: CompiledEntitySpec
+  kind: MutationOperationKind
+}): MutationEffectProgram => {
+  const builder = createMutationEffectBuilder()
+
+  if (input.kind === 'create') {
+    const value = readRequiredValue(input.spec.family, 'create', input.operation)
+    builder.entity.create(
+      {
+        table: input.spec.family,
+        id: input.spec.kind === 'singleton'
+          ? input.spec.family
+          : readEntityIdFromValue(input.spec.family, value)
+      },
+      value
+    )
+    return builder.build()
+  }
+
+  if (input.kind === 'delete') {
+    builder.entity.delete({
+      table: input.spec.family,
+      id: input.spec.kind === 'singleton'
+        ? input.spec.family
+        : readRequiredId(input.spec.family, input.operation)
+    })
+    return builder.build()
+  }
+
+  const patch = readRequiredPatch(input.spec.family, input.operation)
+  builder.entity.patch(
+    {
+      table: input.spec.family,
+      id: input.spec.kind === 'singleton'
+        ? input.spec.family
+        : readRequiredId(input.spec.family, input.operation)
+    },
+    compileEntityPatchWrites(input.spec, patch)
+  )
+  return builder.build()
 }
 
 export const readRequiredId = (

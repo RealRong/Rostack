@@ -5,7 +5,8 @@ export {
   whiteboardEntities
 } from '@whiteboard/core/operations/entities'
 export {
-  whiteboardCustom
+  whiteboardCustom,
+  whiteboardStructures
 } from '@whiteboard/core/operations/custom'
 export {
   validateWhiteboardOperationBatch

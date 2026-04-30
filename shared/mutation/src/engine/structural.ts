@@ -1,5 +1,6 @@
 import type {
   MutationApplyResult,
+  MutationFailure,
   MutationFootprint,
   MutationOrderedAnchor,
   MutationOrderedSlot,
@@ -21,6 +22,9 @@ import type {
   MutationTreeSubtreeSnapshot,
 } from './contracts'
 import {
+  createMutationEffectBuilder
+} from './effect/effectBuilder'
+import {
   cloneValue,
   EMPTY_DELTA,
   EMPTY_ISSUES,
@@ -28,6 +32,15 @@ import {
   mutationFailure,
   sameJsonValue,
 } from './contracts'
+import {
+  buildStructureDelta
+} from './delta'
+import type {
+  AppliedMutationEffectProgram,
+  MutationEffectProgram,
+  MutationOrderedEffect,
+  MutationTreeEffect,
+} from './effect/effect'
 
 type StructuralDescriptor =
   | {
@@ -38,6 +51,23 @@ type StructuralDescriptor =
       kind: 'tree'
       action: 'insert' | 'move' | 'delete' | 'restore'
     }
+
+type StructuralOperationApplyResult<
+  Doc,
+  Op,
+  Code extends string = string
+> =
+  | {
+      ok: true
+      data: {
+        document: Doc
+        inverse: readonly Op[]
+        structural: readonly MutationStructuralFact[]
+        footprint: readonly MutationFootprint[]
+        historyMode: 'track' | 'skip' | 'neutral'
+      }
+    }
+  | MutationFailure<Code>
 
 const ROOT_PARENT_ID = '$root'
 
@@ -536,22 +566,18 @@ const structuralSuccess = <
   Op
 >(input: {
   document: Doc
-  forward: readonly Op[]
+  forward?: readonly Op[]
   inverse: readonly Op[]
   structural: readonly MutationStructuralFact[]
   footprint: readonly MutationFootprint[]
   historyMode?: 'track' | 'skip' | 'neutral'
-}): MutationApplyResult<Doc, Op> => ({
+}): StructuralOperationApplyResult<Doc, Op> => ({
   ok: true,
   data: {
     document: input.document,
-    forward: input.forward,
     inverse: input.inverse,
-    delta: EMPTY_DELTA,
     structural: input.structural,
     footprint: input.footprint,
-    outputs: EMPTY_OUTPUTS,
-    issues: EMPTY_ISSUES,
     historyMode: input.historyMode ?? 'track'
   }
 })
@@ -674,6 +700,74 @@ export const createStructuralTreeRestoreOperation = <Op extends { type: string }
   ...input
 }) as unknown as Op
 
+export const lowerStructuralOperation = (
+  operation: MutationStructuralCanonicalOperation
+): MutationEffectProgram => {
+  const builder = createMutationEffectBuilder()
+
+  switch (operation.type) {
+    case 'structural.ordered.insert':
+      builder.structure.ordered.insert(
+        readRequiredStructure(operation.structure),
+        readRequiredItemId(operation.itemId),
+        operation.value,
+        readRequiredOrderedAnchor(operation.to)
+      )
+      break
+    case 'structural.ordered.move':
+      builder.structure.ordered.move(
+        readRequiredStructure(operation.structure),
+        readRequiredItemId(operation.itemId),
+        readRequiredOrderedAnchor(operation.to)
+      )
+      break
+    case 'structural.ordered.splice':
+      builder.structure.ordered.splice(
+        readRequiredStructure(operation.structure),
+        readOrderedSpliceItemIds(operation.itemIds),
+        readRequiredOrderedAnchor(operation.to)
+      )
+      break
+    case 'structural.ordered.delete':
+      builder.structure.ordered.delete(
+        readRequiredStructure(operation.structure),
+        readRequiredItemId(operation.itemId)
+      )
+      break
+    case 'structural.tree.insert':
+      builder.structure.tree.insert(
+        readRequiredStructure(operation.structure),
+        readRequiredNodeId(operation.nodeId),
+        readOptionalParentId(operation.parentId),
+        readOptionalIndex(operation.index),
+        operation.value
+      )
+      break
+    case 'structural.tree.move':
+      builder.structure.tree.move(
+        readRequiredStructure(operation.structure),
+        readRequiredNodeId(operation.nodeId),
+        readOptionalParentId(operation.parentId),
+        readOptionalIndex(operation.index)
+      )
+      break
+    case 'structural.tree.delete':
+      builder.structure.tree.delete(
+        readRequiredStructure(operation.structure),
+        readRequiredNodeId(operation.nodeId)
+      )
+      break
+    case 'structural.tree.restore':
+      builder.structure.tree.restore(
+        readRequiredStructure(operation.structure),
+        readTreeSubtreeSnapshot(operation.snapshot)
+      )
+      break
+  }
+
+  return builder.build()
+}
+
 const readOrderedOperationResult = <
   Doc extends object,
   Op extends {
@@ -684,7 +778,7 @@ const readOrderedOperationResult = <
   operation: Op
   spec: Extract<MutationStructureSpec<Doc>, { kind: 'ordered' }>
   action: 'insert' | 'move' | 'splice' | 'delete'
-}): MutationApplyResult<Doc, Op> => {
+}): StructuralOperationApplyResult<Doc, Op> => {
   const operation = input.operation as unknown as MutationStructuralOrderedInsertOperation | MutationStructuralOrderedMoveOperation | MutationStructuralOrderedSpliceOperation | MutationStructuralOrderedDeleteOperation
   const structure = readRequiredStructure(operation.structure)
   const items = input.spec.read(input.document)
@@ -866,7 +960,7 @@ const readTreeOperationResult = <
   operation: Op
   spec: Extract<MutationStructureSpec<Doc>, { kind: 'tree' }>
   action: 'insert' | 'move' | 'delete' | 'restore'
-}): MutationApplyResult<Doc, Op> => {
+}): StructuralOperationApplyResult<Doc, Op> => {
   const structure = readRequiredStructure(
     (input.operation as unknown as MutationStructuralCanonicalOperation).structure
   )
@@ -1133,7 +1227,7 @@ export const readStructuralOperationResult = <
   operation: Op
   structures?: MutationStructureSource<Doc>
   descriptor: StructuralDescriptor
-}): MutationApplyResult<Doc, Op, Code> => {
+}): StructuralOperationApplyResult<Doc, Op, Code> => {
   try {
     const structureName = readRequiredStructure(
       (input.operation as unknown as MutationStructuralCanonicalOperation).structure
@@ -1159,7 +1253,7 @@ export const readStructuralOperationResult = <
         operation: input.operation,
         spec,
         action: input.descriptor.action
-      }) as MutationApplyResult<Doc, Op, Code>
+      }) as StructuralOperationApplyResult<Doc, Op, Code>
     }
 
     if (spec.kind !== 'tree') {
@@ -1174,7 +1268,7 @@ export const readStructuralOperationResult = <
       operation: input.operation,
       spec,
       action: input.descriptor.action
-    }) as MutationApplyResult<Doc, Op, Code>
+    }) as StructuralOperationApplyResult<Doc, Op, Code>
   } catch (error) {
     return mutationFailure(
       'mutation_engine.apply.invalid_operation' as Code,
@@ -1182,6 +1276,141 @@ export const readStructuralOperationResult = <
         ? error.message
         : 'MutationEngine.apply received an invalid structural operation.'
     )
+  }
+}
+
+const lowerStructuralOperationBatch = (
+  operations: readonly MutationStructuralCanonicalOperation[]
+): MutationEffectProgram => {
+  const effects = operations.flatMap((operation) => lowerStructuralOperation(operation).effects)
+  return {
+    effects
+  }
+}
+
+export const applyStructuralEffectResult = <
+  Doc extends object
+>(input: {
+  document: Doc
+  effect: MutationOrderedEffect | MutationTreeEffect
+  structures?: MutationStructureSource<Doc>
+}): AppliedMutationEffectProgram<Doc> => {
+  const operation: MutationStructuralCanonicalOperation = (() => {
+    switch (input.effect.type) {
+      case 'ordered.insert':
+        return {
+          type: 'structural.ordered.insert',
+          structure: input.effect.structure,
+          itemId: input.effect.itemId,
+          value: input.effect.value,
+          to: input.effect.to
+        }
+      case 'ordered.move':
+        return {
+          type: 'structural.ordered.move',
+          structure: input.effect.structure,
+          itemId: input.effect.itemId,
+          to: input.effect.to
+        }
+      case 'ordered.splice':
+        return {
+          type: 'structural.ordered.splice',
+          structure: input.effect.structure,
+          itemIds: input.effect.itemIds,
+          to: input.effect.to
+        }
+      case 'ordered.delete':
+        return {
+          type: 'structural.ordered.delete',
+          structure: input.effect.structure,
+          itemId: input.effect.itemId
+        }
+      case 'tree.insert':
+        return {
+          type: 'structural.tree.insert',
+          structure: input.effect.structure,
+          nodeId: input.effect.nodeId,
+          ...(input.effect.parentId === undefined
+            ? {}
+            : {
+                parentId: input.effect.parentId
+              }),
+          ...(input.effect.index === undefined
+            ? {}
+            : {
+                index: input.effect.index
+              }),
+          ...(input.effect.value === undefined
+            ? {}
+            : {
+                value: input.effect.value
+              })
+        }
+      case 'tree.move':
+        return {
+          type: 'structural.tree.move',
+          structure: input.effect.structure,
+          nodeId: input.effect.nodeId,
+          ...(input.effect.parentId === undefined
+            ? {}
+            : {
+                parentId: input.effect.parentId
+              }),
+          ...(input.effect.index === undefined
+            ? {}
+            : {
+                index: input.effect.index
+              })
+        }
+      case 'tree.delete':
+        return {
+          type: 'structural.tree.delete',
+          structure: input.effect.structure,
+          nodeId: input.effect.nodeId
+        }
+      case 'tree.restore':
+        return {
+          type: 'structural.tree.restore',
+          structure: input.effect.structure,
+          snapshot: input.effect.snapshot
+        }
+    }
+  })()
+  const descriptor = readStructuralOperation(operation.type)
+  if (!descriptor) {
+    throw new Error(`Unknown structural effect "${input.effect.type}".`)
+  }
+  const spec = resolveStructureSpec(input.structures, operation.structure)
+  if (!spec) {
+    throw new Error(`Unknown mutation structure "${operation.structure}".`)
+  }
+
+  const applied = readStructuralOperationResult<Doc, MutationStructuralCanonicalOperation>({
+    document: input.document,
+    operation,
+    structures: input.structures,
+    descriptor
+  })
+  if (!applied.ok) {
+    throw new Error(applied.error.message)
+  }
+
+  return {
+    document: applied.data.document,
+    inverse: lowerStructuralOperationBatch(
+      applied.data.inverse as readonly MutationStructuralCanonicalOperation[]
+    ),
+    delta: buildStructureDelta(
+      'change' in spec
+        ? spec.change
+        : undefined
+    ),
+    structural: applied.data.structural,
+    footprint: applied.data.footprint,
+    issues: EMPTY_ISSUES,
+    historyMode: applied.data.historyMode === 'track'
+      ? 'track'
+      : 'neutral'
   }
 }
 
@@ -1204,10 +1433,48 @@ export const applyStructuralOperation = <
     )
   }
 
-  return readStructuralOperationResult({
-    document: input.document,
-    operation: input.operation,
-    structures: input.structures,
-    descriptor
-  })
+  try {
+    const program = lowerStructuralOperation(
+      input.operation as unknown as MutationStructuralCanonicalOperation
+    )
+    const [effect] = program.effects
+    if (
+      !effect
+      || effect.type === 'semantic.tag'
+      || effect.type === 'semantic.change'
+      || effect.type === 'semantic.footprint'
+      || effect.type === 'entity.create'
+      || effect.type === 'entity.patch'
+      || effect.type === 'entity.patchMany'
+      || effect.type === 'entity.delete'
+    ) {
+      throw new Error(`Unknown structural mutation operation "${input.operation.type}".`)
+    }
+    const applied = applyStructuralEffectResult<Doc>({
+      document: input.document,
+      effect,
+      structures: input.structures
+    })
+    return {
+      ok: true,
+      data: {
+        document: applied.document,
+        applied: program,
+        inverse: applied.inverse,
+        delta: applied.delta,
+        structural: applied.structural,
+        footprint: applied.footprint,
+        outputs: EMPTY_OUTPUTS,
+        issues: applied.issues,
+        historyMode: applied.historyMode
+      }
+    }
+  } catch (error) {
+    return mutationFailure(
+      'mutation_engine.apply.invalid_operation' as Code,
+      error instanceof Error
+        ? error.message
+        : 'MutationEngine.apply received an invalid structural operation.'
+    )
+  }
 }

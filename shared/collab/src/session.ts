@@ -1,13 +1,11 @@
 import { store } from '@shared/core'
 import {
-  type HistoryPort
+  type ApplyCommit,
+  type HistoryPort,
+  type MutationCommitRecord,
+  type MutationReplaceResult,
+  type Origin
 } from '@shared/mutation'
-import type {
-  ApplyCommit,
-  MutationCommitRecord,
-  MutationReplaceResult,
-  Origin
-} from '@shared/mutation/write'
 import {
   createSyncCursor,
   normalizeSnapshot,
@@ -359,7 +357,7 @@ export const createMutationCollabSession = <
       return
     }
 
-    if (commit.forward.length === 0) {
+    if (commit.authored.length === 0) {
       return
     }
     if (options.policy?.canPublish && !options.policy.canPublish(commit as Commit)) {

@@ -1,5 +1,4 @@
 import {
-  createDeltaBuilder,
   defineEntityMutationSchema
 } from '@shared/mutation'
 import {
@@ -14,5 +13,3 @@ export const whiteboardMutationSchema = defineEntityMutationSchema({
 } as const)
 
 export type WhiteboardMutationSchema = typeof whiteboardMutationSchema
-
-export const whiteboardMutationBuilder = createDeltaBuilder(whiteboardMutationSchema)

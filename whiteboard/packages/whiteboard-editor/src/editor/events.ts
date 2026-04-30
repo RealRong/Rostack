@@ -56,7 +56,7 @@ export const createEditorEvents = ({
   const unsubscribeCommit = engine.commits.subscribe((commit) => {
     if (
       commit.kind === 'replace'
-      || commit.forward.some((op) => isCheckpointOperation(op))
+      || commit.authored.some((op) => isCheckpointOperation(op))
     ) {
       session.reset()
       resetHost()

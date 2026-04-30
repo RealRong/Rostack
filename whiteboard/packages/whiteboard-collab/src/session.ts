@@ -92,7 +92,7 @@ export const createYjsSession = ({
     },
     change: {
       create: (write, meta) => {
-        const live = readLiveOperations(write.forward)
+        const live = readLiveOperations(write.authored)
         if (live.checkpointOnly) {
           return null
         }

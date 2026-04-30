@@ -7,8 +7,10 @@
 - 最终链路应当收敛为：
 
 ```ts
-intent / authored operation
-  -> compile / planner
+intent
+  -> compile handlers
+  -> authored operation
+  -> operation planner
   -> MutationEffectProgram
   -> apply
   -> commit
@@ -32,6 +34,14 @@ intent / authored operation
   - normalized `MutationDelta`
 
 也就是说，`MutationEffectProgram` 不是 adapter，而是 mutation runtime 的真实执行语义。
+
+- `compile handlers` 不应默认直接产出最终 `MutationEffectProgram`。
+- 更长期最优的分层是：
+  - `compile handlers` 负责 intent 归一化、校验、拆分、产出 authored operation
+  - `operation planner` 负责把 authored operation lower 成 effect program
+  - `runtime` 只负责执行 effect program
+
+这样可以避免 `compile handlers` 膨胀成第二套 domain runtime，也可以保留稳定的 authored operation 边界。
 
 ---
 
@@ -226,7 +236,7 @@ export type MutationTagEffect<Tag extends string = string> = {
 
 ## 3.1 builder 是 authoring helper，不是新的一层 runtime
 
-最终建议保留一个极薄的 builder：
+最终建议保留一个极薄的 builder，并按命名空间分组：
 
 ```ts
 export interface MutationEffectBuilder<
@@ -243,19 +253,23 @@ export interface MutationEffectBuilder<
     ): void
     delete(entity: MutationEntityRef, tags?: readonly Tag[]): void
   }
-  ordered: {
-    insert(structure: string, itemId: string, to: MutationOrderedAnchor, tags?: readonly Tag[]): void
-    move(structure: string, itemId: string, to: MutationOrderedAnchor, tags?: readonly Tag[]): void
-    splice(structure: string, itemIds: readonly string[], to: MutationOrderedAnchor, tags?: readonly Tag[]): void
-    delete(structure: string, itemId: string, tags?: readonly Tag[]): void
+  structure: {
+    ordered: {
+      insert(structure: string, itemId: string, to: MutationOrderedAnchor, tags?: readonly Tag[]): void
+      move(structure: string, itemId: string, to: MutationOrderedAnchor, tags?: readonly Tag[]): void
+      splice(structure: string, itemIds: readonly string[], to: MutationOrderedAnchor, tags?: readonly Tag[]): void
+      delete(structure: string, itemId: string, tags?: readonly Tag[]): void
+    }
+    tree: {
+      insert(structure: string, nodeId: string, parentId?: string, index?: number, tags?: readonly Tag[]): void
+      move(structure: string, nodeId: string, parentId?: string, index?: number, tags?: readonly Tag[]): void
+      delete(structure: string, nodeId: string, tags?: readonly Tag[]): void
+      restore(structure: string, snapshot: MutationTreeSubtreeSnapshot, tags?: readonly Tag[]): void
+    }
   }
-  tree: {
-    insert(structure: string, nodeId: string, parentId?: string, index?: number, tags?: readonly Tag[]): void
-    move(structure: string, nodeId: string, parentId?: string, index?: number, tags?: readonly Tag[]): void
-    delete(structure: string, nodeId: string, tags?: readonly Tag[]): void
-    restore(structure: string, snapshot: MutationTreeSubtreeSnapshot, tags?: readonly Tag[]): void
+  semantic: {
+    tag(value: Tag): void
   }
-  tag(value: Tag): void
   build(): MutationEffectProgram<Doc, Tag>
 }
 ```
@@ -267,11 +281,50 @@ export interface MutationEffectBuilder<
 
 它不是 phase，不是 plan，不是 runtime context，不是二次抽象。
 
-## 3.2 custom 的最终形式
+## 3.2 compile handlers 的最终职责
+
+`compile handlers` 不应该默认直接产最终 program。
+
+最终职责应当是：
+
+1. 读取当前 `document` / `reader`
+2. 做 intent 级别的校验与归一化
+3. 必要时把一个 intent 扩展为多个 authored operation
+4. 产出 execute output
+
+也就是：
+
+```ts
+intent
+  -> compile handlers
+  -> authored operations
+```
+
+而不是：
+
+```ts
+intent
+  -> compile handlers
+  -> final MutationEffectProgram
+```
+
+原因：
+
+- 如果 `compile handlers` 直接写最终 program，这一层会逐渐吞掉 authored operation 层
+- compile table 会变成第二套领域运行时
+- history / log / replay / sync 更难保留稳定的领域语义边界
+- 多个入口会开始重复拼装相同 effects
+
+例外：
+
+- 很简单的内部桥接场景，可以在 compile 内部直接组装一个短 program
+- 但这不应成为默认架构，更不能作为公共主路径
+
+## 3.3 custom 的最终形式
 
 `custom` 不应该再是“直接改 document 的 reducer”。
 
-最终应当改成 planner：
+最终应当改成 authored operation 对应的 planner：
 
 ```ts
 export interface MutationCustomPlannerInput<
@@ -312,7 +365,28 @@ export interface MutationCustomSpec<
 - `delta`
 - `footprint`
 
-## 3.3 authored operation 不需要被迫降级成 public canonical op
+## 3.4 custom 仍然需要保留
+
+`MutationEffectProgram` 并不意味着不再需要 custom op。
+
+恰恰相反，长期最优里应该保留 custom authored operation，但把它的职责改对：
+
+- authored custom op：表达领域动作
+- custom planner：把领域动作 lower 成 effects
+- runtime：执行 effects
+
+也就是说，真正要删掉的不是 custom op，而是 custom reducer。
+
+如果完全取消 custom op，让 compile handlers 直接产 program，问题会变成：
+
+- compile 表无限膨胀
+- 领域动作失去稳定命名与边界
+- history / analytics / sync / debug 只能看到 effect，缺少领域层语义
+- 多入口容易重复实现同一段 planner 逻辑
+
+所以长期最优不是“去掉 custom op”，而是“保留 custom authored operation，去掉 custom reducer 特权”。
+
+## 3.5 authored operation 不需要被迫降级成 public canonical op
 
 这点需要明确：
 
@@ -487,7 +561,7 @@ export interface MutationCommitRecord<
 目标：
 
 - compile 完成后，不再分支进入 entity/structural/custom 三套 apply 逻辑
-- 所有 op 统一 lower 成 `MutationEffectProgram`
+- 所有 authored op 统一 lower 成 `MutationEffectProgram`
 - runtime 只执行 program
 - `delta / inverse / footprint` 全部由 program apply 结果自动产出
 

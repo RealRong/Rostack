@@ -17,6 +17,9 @@ import type {
   CommitStream,
   Origin,
 } from './write'
+import type {
+  MutationEffectProgram
+} from './engine/effect/effect'
 
 export interface HistoryPortState extends HistoryState {
   lastUpdatedAt?: number
@@ -51,9 +54,9 @@ export interface HistorySyncPort<Footprint> {
 
 export interface HistoryPort<
   Result,
-  Op = any,
+  Program = MutationEffectProgram<string>,
   Footprint = any,
-  Commit extends ApplyCommit<any, Op, Footprint, any> = ApplyCommit<any, Op, Footprint, any>
+  Commit extends ApplyCommit<any, any, Footprint, any> = ApplyCommit<any, any, Footprint, any>
 > extends ReadStore<HistoryPortState> {
   readonly sync: HistorySyncPort<Footprint>
   undo(): Result
@@ -61,26 +64,26 @@ export interface HistoryPort<
   clear(): void
   withPolicy(
     policy?: HistoryPolicy<Result>
-  ): HistoryPort<Result, Op, Footprint, Commit>
+  ): HistoryPort<Result, Program, Footprint, Commit>
 }
 
 export interface HistoryPortEngine<
   Doc,
-  Op,
+  Program,
   Footprint,
   Result extends {
     ok: boolean
   },
-  Commit extends ApplyCommit<Doc, Op, Footprint, any> = ApplyCommit<Doc, Op, Footprint, any>
+  Commit extends ApplyCommit<Doc, any, Footprint, any> = ApplyCommit<Doc, any, Footprint, any>
 > {
-  apply(
-    ops: readonly Op[],
+  applyProgram(
+    program: Program,
     options?: {
       origin?: Origin
     }
   ): Result
-  commits: CommitStream<CommitRecord<Doc, Op, Footprint, any>>
-  historyController(): HistoryController<Op, Footprint, Commit> | undefined
+  commits: CommitStream<CommitRecord<Doc, any, Footprint, any>>
+  historyController(): HistoryController<Program, Footprint, Commit> | undefined
 }
 
 const EMPTY_HISTORY_STATE: HistoryPortState = {
@@ -119,15 +122,15 @@ const readState = (
 
 export const createHistoryPort = <
   Doc,
-  Op,
+  Program,
   Footprint,
   Result extends {
     ok: boolean
   },
-  Commit extends ApplyCommit<Doc, Op, Footprint, any> = ApplyCommit<Doc, Op, Footprint, any>
+  Commit extends ApplyCommit<Doc, any, Footprint, any> = ApplyCommit<Doc, any, Footprint, any>
 >(
-  engine: HistoryPortEngine<Doc, Op, Footprint, Result, Commit>
-): HistoryPort<Result, Op, Footprint, Commit> => {
+  engine: HistoryPortEngine<Doc, Program, Footprint, Result, Commit>
+): HistoryPort<Result, Program, Footprint, Commit> => {
   const controller = engine.historyController()
   const state = createValueStore<HistoryPortState>({
     ...(controller?.state() ?? EMPTY_HISTORY_STATE),
@@ -154,10 +157,10 @@ export const createHistoryPort = <
       return readUnavailable('cannot-apply', kind, 'History cannot apply right now.', policy)
     }
 
-    const operations = kind === 'undo'
+    const program = kind === 'undo'
       ? controller.undo()
       : controller.redo()
-    if (!operations) {
+    if (!program) {
       return readUnavailable(
         'empty',
         kind,
@@ -170,7 +173,7 @@ export const createHistoryPort = <
 
     publish()
 
-    const result = engine.apply(operations, {
+    const result = engine.applyProgram(program, {
       origin: 'history'
     })
     if (!result.ok) {
@@ -212,7 +215,7 @@ export const createHistoryPort = <
     ok: boolean
   }>(
     policy?: HistoryPolicy<PolicyResult>
-  ): HistoryPort<PolicyResult, Op, Footprint, Commit> => ({
+  ): HistoryPort<PolicyResult, Program, Footprint, Commit> => ({
     get: state.get,
     subscribe: state.subscribe,
     sync,

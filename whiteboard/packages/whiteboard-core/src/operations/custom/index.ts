@@ -1,0 +1,123 @@
+import type {
+  MutationCustomTable
+} from '@shared/mutation'
+import type {
+  DocumentReader
+} from '@whiteboard/core/document/reader'
+import type {
+  WhiteboardCompileServices
+} from '@whiteboard/core/operations/compile'
+import type {
+  Document,
+  Operation
+} from '@whiteboard/core/types'
+import {
+  planCanvasOrderMove
+} from './canvas'
+import {
+  planEdgeLabelDelete,
+  planEdgeLabelInsert,
+  planEdgeLabelMove,
+  planEdgeLabelPatch,
+  planEdgeRoutePointDelete,
+  planEdgeRoutePointInsert,
+  planEdgeRoutePointMove,
+  planEdgeRoutePointPatch,
+} from './edge'
+import {
+  planMindmapBranchPatch,
+  planMindmapCreate,
+  planMindmapDelete,
+  planMindmapLayout,
+  planMindmapMove,
+  planMindmapRestore,
+  planMindmapTopicCollapse,
+  planMindmapTopicDelete,
+  planMindmapTopicInsert,
+  planMindmapTopicMove,
+  planMindmapTopicPatch,
+  planMindmapTopicRestore,
+} from './mindmap'
+import {
+  whiteboardStructures
+} from './structures'
+import type {
+  WhiteboardCustomCode
+} from './types'
+
+export {
+  whiteboardStructures
+} from './structures'
+
+export const whiteboardCustom = {
+  'canvas.order.move': {
+    plan: planCanvasOrderMove
+  },
+  'edge.label.insert': {
+    plan: planEdgeLabelInsert
+  },
+  'edge.label.delete': {
+    plan: planEdgeLabelDelete
+  },
+  'edge.label.move': {
+    plan: planEdgeLabelMove
+  },
+  'edge.label.patch': {
+    plan: planEdgeLabelPatch
+  },
+  'edge.route.point.insert': {
+    plan: planEdgeRoutePointInsert
+  },
+  'edge.route.point.delete': {
+    plan: planEdgeRoutePointDelete
+  },
+  'edge.route.point.move': {
+    plan: planEdgeRoutePointMove
+  },
+  'edge.route.point.patch': {
+    plan: planEdgeRoutePointPatch
+  },
+  'mindmap.create': {
+    plan: planMindmapCreate
+  },
+  'mindmap.restore': {
+    plan: planMindmapRestore
+  },
+  'mindmap.delete': {
+    plan: planMindmapDelete
+  },
+  'mindmap.move': {
+    plan: planMindmapMove
+  },
+  'mindmap.layout': {
+    plan: planMindmapLayout
+  },
+  'mindmap.topic.insert': {
+    plan: planMindmapTopicInsert
+  },
+  'mindmap.topic.restore': {
+    plan: planMindmapTopicRestore
+  },
+  'mindmap.topic.move': {
+    plan: planMindmapTopicMove
+  },
+  'mindmap.topic.delete': {
+    plan: planMindmapTopicDelete
+  },
+  'mindmap.topic.patch': {
+    plan: planMindmapTopicPatch
+  },
+  'mindmap.branch.patch': {
+    plan: planMindmapBranchPatch
+  },
+  'mindmap.topic.collapse': {
+    plan: planMindmapTopicCollapse
+  }
+} as const satisfies MutationCustomTable<
+  Document,
+  Operation,
+  DocumentReader,
+  WhiteboardCompileServices,
+  string,
+  WhiteboardCustomCode
+>

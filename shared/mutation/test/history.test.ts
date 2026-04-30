@@ -1,14 +1,18 @@
 import assert from 'node:assert/strict'
 import { test } from 'vitest'
 import { history } from '../src/history'
+import type {
+  MutationEffectProgram
+} from '../src/engine/effect/effect'
 
 type TestWrite = {
   rev: number
   at: number
   origin: 'user' | 'remote' | 'system' | 'history'
   doc: {}
-  forward: readonly string[]
-  inverse: readonly string[]
+  authored: readonly string[]
+  applied: MutationEffectProgram<string>
+  inverse: MutationEffectProgram<string>
   footprint: readonly string[]
   extra: {}
 }
@@ -20,8 +24,19 @@ const createWrite = (
   at: 1,
   origin: 'user',
   doc: {},
-  forward: ['forward'],
-  inverse: ['inverse'],
+  authored: ['forward'],
+  applied: {
+    effects: [{
+      type: 'semantic.tag',
+      value: 'forward'
+    }]
+  },
+  inverse: {
+    effects: [{
+      type: 'semantic.tag',
+      value: 'inverse'
+    }]
+  },
   footprint: ['a'],
   extra: {},
   ...input
@@ -43,7 +58,12 @@ test('history controller captures writes and confirms undo redo', () => {
     isApplying: false
   })
 
-  assert.deepEqual(controller.undo(), ['inverse'])
+  assert.deepEqual(controller.undo(), {
+    effects: [{
+      type: 'semantic.tag',
+      value: 'inverse'
+    }]
+  })
   assert.equal(controller.state().isApplying, true)
   controller.confirm()
   assert.deepEqual(controller.state(), {
@@ -55,7 +75,12 @@ test('history controller captures writes and confirms undo redo', () => {
     isApplying: false
   })
 
-  assert.deepEqual(controller.redo(), ['forward'])
+  assert.deepEqual(controller.redo(), {
+    effects: [{
+      type: 'semantic.tag',
+      value: 'forward'
+    }]
+  })
   controller.confirm()
   assert.deepEqual(controller.state(), {
     canUndo: true,
@@ -117,20 +142,63 @@ test('history controller trims undo stack by capacity', () => {
   })
 
   controller.capture(createWrite({
-    forward: ['f1'],
-    inverse: ['i1']
+    authored: ['f1'],
+    applied: {
+      effects: [{
+        type: 'semantic.tag',
+        value: 'f1'
+      }]
+    },
+    inverse: {
+      effects: [{
+        type: 'semantic.tag',
+        value: 'i1'
+      }]
+    }
   }))
   controller.capture(createWrite({
-    forward: ['f2'],
-    inverse: ['i2']
+    authored: ['f2'],
+    applied: {
+      effects: [{
+        type: 'semantic.tag',
+        value: 'f2'
+      }]
+    },
+    inverse: {
+      effects: [{
+        type: 'semantic.tag',
+        value: 'i2'
+      }]
+    }
   }))
   controller.capture(createWrite({
-    forward: ['f3'],
-    inverse: ['i3']
+    authored: ['f3'],
+    applied: {
+      effects: [{
+        type: 'semantic.tag',
+        value: 'f3'
+      }]
+    },
+    inverse: {
+      effects: [{
+        type: 'semantic.tag',
+        value: 'i3'
+      }]
+    }
   }))
 
   assert.equal(controller.state().undoDepth, 2)
-  assert.deepEqual(controller.undo(), ['i3'])
+  assert.deepEqual(controller.undo(), {
+    effects: [{
+      type: 'semantic.tag',
+      value: 'i3'
+    }]
+  })
   controller.confirm()
-  assert.deepEqual(controller.undo(), ['i2'])
+  assert.deepEqual(controller.undo(), {
+    effects: [{
+      type: 'semantic.tag',
+      value: 'i2'
+    }]
+  })
 })

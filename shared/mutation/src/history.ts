@@ -23,10 +23,10 @@ type HistoryClock = {
   byChangeId: Map<string, number>
 }
 
-type HistoryEntry<Op, Footprint> = {
+type HistoryEntry<Program, Footprint> = {
   id: string
-  forward: readonly Op[]
-  inverse: readonly Op[]
+  applied: Program
+  inverse: Program
   footprint: readonly Footprint[]
   baseSeq: number
   state: 'live' | 'undone' | 'invalidated'
@@ -38,15 +38,15 @@ export interface CaptureOptions<Footprint> {
 }
 
 export interface HistoryController<
-  Op,
+  Program,
   Footprint,
-  Commit extends ApplyCommit<any, Op, Footprint, any>
+  Commit extends ApplyCommit<any, any, Footprint, any>
 > {
   state(): HistoryState
   capture(commit: Commit, options?: CaptureOptions<Footprint>): boolean
   observe(changeId: string, footprint: readonly Footprint[]): boolean
-  undo(): readonly Op[] | undefined
-  redo(): readonly Op[] | undefined
+  undo(): Program | undefined
+  redo(): Program | undefined
   confirm(options?: CaptureOptions<Footprint>): boolean
   cancel(mode?: 'restore' | 'invalidate'): boolean
   clear(): boolean
@@ -86,15 +86,15 @@ const observeChange = (
   }
 }
 
-const findEntry = <Op, Footprint>(
-  entries: readonly HistoryEntry<Op, Footprint>[],
+const findEntry = <Program, Footprint>(
+  entries: readonly HistoryEntry<Program, Footprint>[],
   entryId: string
-): HistoryEntry<Op, Footprint> | undefined => entries.find((entry) => entry.id === entryId)
+): HistoryEntry<Program, Footprint> | undefined => entries.find((entry) => entry.id === entryId)
 
-const trimUndo = <Op, Footprint>(
-  entries: HistoryEntry<Op, Footprint>[],
+const trimUndo = <Program, Footprint>(
+  entries: HistoryEntry<Program, Footprint>[],
   capacity: number
-): HistoryEntry<Op, Footprint>[] => {
+): HistoryEntry<Program, Footprint>[] => {
   if (capacity <= 0) {
     return []
   }
@@ -104,13 +104,13 @@ const trimUndo = <Op, Footprint>(
   return entries.slice(entries.length - capacity)
 }
 
-const moveToInvalidated = <Op, Footprint>(input: {
-  undo: HistoryEntry<Op, Footprint>[]
-  redo: HistoryEntry<Op, Footprint>[]
-  invalidated: HistoryEntry<Op, Footprint>[]
-  entry: HistoryEntry<Op, Footprint>
+const moveToInvalidated = <Program, Footprint>(input: {
+  undo: HistoryEntry<Program, Footprint>[]
+  redo: HistoryEntry<Program, Footprint>[]
+  invalidated: HistoryEntry<Program, Footprint>[]
+  entry: HistoryEntry<Program, Footprint>
 }) => {
-  const next: HistoryEntry<Op, Footprint> = {
+  const next: HistoryEntry<Program, Footprint> = {
     ...input.entry,
     state: 'invalidated'
   }
@@ -125,9 +125,9 @@ const moveToInvalidated = <Op, Footprint>(input: {
 
 export const history = {
   create<
-    Op,
+    Program,
     Footprint,
-    Commit extends ApplyCommit<any, Op, Footprint, any>
+    Commit extends ApplyCommit<any, any, Footprint, any>
   >(input: {
     conflicts(
       left: readonly Footprint[],
@@ -135,11 +135,11 @@ export const history = {
     ): boolean
     track?(commit: Commit): boolean
     capacity?: number
-  }): HistoryController<Op, Footprint, Commit> {
+  }): HistoryController<Program, Footprint, Commit> {
     let nextEntryId = 1
-    let undo: HistoryEntry<Op, Footprint>[] = []
-    let redo: HistoryEntry<Op, Footprint>[] = []
-    let invalidated: HistoryEntry<Op, Footprint>[] = []
+    let undo: HistoryEntry<Program, Footprint>[] = []
+    let redo: HistoryEntry<Program, Footprint>[] = []
+    let invalidated: HistoryEntry<Program, Footprint>[] = []
     let pending: HistoryPending = null
     const clock: HistoryClock = {
       nextSeq: 1,
@@ -165,15 +165,18 @@ export const history = {
         if (input.track && !input.track(commit)) {
           return false
         }
-        if (!commit.forward.length || !commit.inverse.length) {
+        if (
+          commit.applied.effects.length === 0
+          || commit.inverse.effects.length === 0
+        ) {
           return false
         }
 
         const footprint = options?.footprint ?? commit.footprint
-        const entry: HistoryEntry<Op, Footprint> = {
+        const entry: HistoryEntry<Program, Footprint> = {
           id: options?.id ?? `history_${nextEntryId++}`,
-          forward: commit.forward,
-          inverse: commit.inverse,
+          applied: commit.applied as Program,
+          inverse: commit.inverse as Program,
           footprint,
           baseSeq: readObservedSeqMax(clock),
           state: 'live'
@@ -256,7 +259,7 @@ export const history = {
           kind: 'redo',
           entryId: entry.id
         }
-        return entry.forward
+        return entry.applied
       },
       confirm: (options) => {
         if (!pending) {
@@ -282,7 +285,7 @@ export const history = {
           observeChange(clock, options.id)
         }
 
-        const nextEntry: HistoryEntry<Op, Footprint> = {
+        const nextEntry: HistoryEntry<Program, Footprint> = {
           ...entry,
           id: options?.id ?? entry.id,
           footprint,

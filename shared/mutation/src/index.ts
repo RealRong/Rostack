@@ -1,4 +1,7 @@
 export type {
+  MutationEffect,
+  MutationEffectBuilder,
+  MutationEffectProgram,
   MutationCompileHandlerTable,
   MutationCustomTable,
   MutationEntitySpec,
@@ -39,12 +42,28 @@ export type {
   HistoryPort,
 } from './localHistory'
 export type {
+  ApplyCommit,
+  CommitRecord,
+  CommitStream,
+  MutationChange,
+  MutationChangeInput,
+  MutationCommit,
+  MutationCommitRecord,
   MutationDelta,
   MutationDeltaInput,
   MutationFootprint,
+  MutationOrigin,
+  Origin,
+  MutationReplaceCommit,
+  MutationReplaceResult,
 } from './write'
 export {
   createDeltaBuilder,
   createTypedMutationDelta,
   defineEntityMutationSchema,
 } from './typed'
+export {
+  assertMutationFootprint,
+  assertMutationFootprintList,
+  isMutationFootprint,
+} from './write'

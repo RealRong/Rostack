@@ -9,9 +9,7 @@ export type {
   MutationCompileResult,
   MutationCurrent,
   MutationCustomFailure,
-  MutationCustomHistoryResult,
-  MutationCustomReduceInput,
-  MutationCustomReduceResult,
+  MutationCustomPlannerInput,
   MutationReaderFactory,
   MutationCustomSpec,
   MutationCustomTable,
@@ -51,6 +49,13 @@ export type {
   MutationTreeSubtreeSnapshot,
   MutationResult
 } from './contracts'
+export type {
+  MutationEffect,
+  MutationEffectProgram
+} from './effect/effect'
+export type {
+  MutationEffectBuilder
+} from './effect/effectBuilder'
 export {
   mutationFailure
 } from './contracts'
@@ -76,6 +81,7 @@ export {
   createStructuralTreeMoveOperation,
   createStructuralTreeRestoreOperation,
   readStructuralOperation,
+  readStructuralOperationResult,
 } from './structural'
 export {
   MutationEngine

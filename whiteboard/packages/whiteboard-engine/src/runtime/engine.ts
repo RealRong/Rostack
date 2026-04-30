@@ -1,11 +1,11 @@
 import {
+  type MutationOrigin
+} from '@shared/mutation'
+import {
   MutationEngine,
   type MutationResult,
   type MutationOptions
 } from '@shared/mutation/engine'
-import type {
-  MutationOrigin
-} from '@shared/mutation/write'
 import type {
   WhiteboardCompileIds,
   WhiteboardCompileServices,
@@ -16,7 +16,8 @@ import {
   validateWhiteboardOperationBatch,
   whiteboardCompileHandlers,
   whiteboardCustom,
-  whiteboardEntities
+  whiteboardEntities,
+  whiteboardStructures
 } from '@whiteboard/core/operations'
 import {
   createDocumentReader,
@@ -130,6 +131,7 @@ export const createEngine = ({
     createReader: createDocumentReader,
     services,
     entities: whiteboardEntities,
+    structures: whiteboardStructures,
     custom: whiteboardCustom,
     compile: whiteboardCompileHandlers,
     history: {
@@ -152,7 +154,7 @@ export const createEngine = ({
       rev: commit.rev,
       doc: commit.document
     }
-    if (commit.kind === 'apply' && commit.forward.some((op) => isCheckpointOperation(op))) {
+    if (commit.kind === 'apply' && commit.authored.some((op) => isCheckpointOperation(op))) {
       core.history.clear()
     }
     if (onDocumentChange) {

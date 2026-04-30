@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict'
 import { test } from 'vitest'
-import { MutationEngine } from '@shared/mutation'
+import {
+  MutationEngine,
+  type MutationEffectProgram
+} from '@shared/mutation'
 import { node as nodeApi } from '@whiteboard/core/node'
 import { document as documentApi } from '@whiteboard/core/document'
 import { mindmap as mindmapApi } from '@whiteboard/core/mindmap'
@@ -75,8 +78,23 @@ const applyOperations = (
   })
 }
 
-const replayInverse = (doc, operations) =>
-  applyOperations(doc, operations)
+const replayInverse = (
+  doc: Document,
+  program: MutationEffectProgram<string>
+) => {
+  const engine = new MutationEngine({
+    document: doc,
+    normalize: documentApi.normalize,
+    createReader: (readDocument: () => Document) => readDocument(),
+    entities: whiteboardEntities,
+    custom: whiteboardCustom,
+    history: false
+  })
+
+  return engine.applyProgram(program, {
+    origin: 'history'
+  })
+}
 
 test('node.update reducer 为 set(path) 生成精确 inverse 并可回放', () => {
   const doc = createDocWithNode(createTextNode())
@@ -87,15 +105,18 @@ test('node.update reducer 为 set(path) 生成精确 inverse 并可回放', () =
   }))
 
   assert.ok(result.ok)
-  assert.deepEqual(result.commit.inverse, [{
-    type: 'node.patch',
-    id: 'node_1',
-    patch: {
-      data: {
-        text: 'hello'
+  assert.deepEqual(result.commit.inverse, {
+    effects: [{
+      type: 'entity.patch',
+      entity: {
+        table: 'node',
+        id: 'node_1'
+      },
+      writes: {
+        'data.text': 'hello'
       }
-    }
-  }])
+    }]
+  })
 
   const reverted = replayInverse(result.commit.document, result.commit.inverse)
   assert.ok(reverted.ok)

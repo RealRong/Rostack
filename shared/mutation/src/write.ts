@@ -1,3 +1,7 @@
+import type {
+  MutationEffectProgram
+} from './engine/effect/effect'
+
 export type MutationOrigin =
   | 'user'
   | 'remote'
@@ -248,15 +252,17 @@ export interface MutationIssue {
 export interface MutationCommit<
   Doc,
   Op,
-  Footprint = MutationFootprint
+  Footprint = MutationFootprint,
+  Tag extends string = string
 > {
   kind: 'apply'
   rev: number
   at: number
   origin: MutationOrigin
   document: Doc
-  forward: readonly Op[]
-  inverse: readonly Op[]
+  authored: readonly Op[]
+  applied: MutationEffectProgram<Tag>
+  inverse: MutationEffectProgram<Tag>
   delta: MutationDelta
   structural: readonly MutationStructuralFact[]
   footprint: readonly Footprint[]
@@ -290,8 +296,9 @@ export interface ApplyCommit<
   Doc,
   Op,
   Footprint = MutationFootprint,
-  Extra = void
-> extends MutationCommit<Doc, Op, Footprint> {
+  Extra = void,
+  Tag extends string = string
+> extends MutationCommit<Doc, Op, Footprint, Tag> {
   extra: Extra
 }
 

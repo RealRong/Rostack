@@ -240,7 +240,7 @@ describe('graph delta patching', () => {
         id: firstId
       }],
       to: {
-        kind: 'front'
+        kind: 'back'
       }
     })
     expect(reorder.ok).toBe(true)

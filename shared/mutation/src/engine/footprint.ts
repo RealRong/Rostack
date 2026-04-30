@@ -66,12 +66,17 @@ export const buildEntityFootprint = (
       continue
     }
 
+    const scopedPath = path === member.name
+      ? ''
+      : path.startsWith(`${member.name}.`)
+        ? path.slice(member.name.length + 1)
+        : path
     footprints.push({
       kind: 'record',
       family: spec.family,
       id,
       scope: member.name,
-      path
+      path: scopedPath
     })
   }
 

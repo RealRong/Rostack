@@ -57,6 +57,7 @@ import {
   type MutationResult,
   type MutationStructuralFact,
   type MutationStructureTable,
+  type MutationStructureSource,
 } from './contracts'
 import {
   buildEntityDelta,
@@ -656,7 +657,7 @@ const applyConcreteOperations = <
   document: Doc
   operations: readonly Op[]
   entities: ReadonlyMap<string, CompiledEntitySpec>
-  structures?: MutationStructureTable<Doc>
+  structures?: MutationStructureSource<Doc>
   custom?: MutationCustomTable<Doc, Op, Reader, Services, Code>
   createReader: MutationReaderFactory<Doc, Reader>
   origin: Origin
@@ -780,7 +781,7 @@ const compileMutationIntents = <
   origin: Origin
   services: Services | undefined
   entities: ReadonlyMap<string, CompiledEntitySpec>
-  structures?: MutationStructureTable<Doc>
+  structures?: MutationStructureSource<Doc>
   custom?: MutationCustomTable<Doc, Op, Reader, Services, Code>
   createReader: MutationReaderFactory<Doc, Reader>
   normalize(doc: Doc): Doc
@@ -948,7 +949,7 @@ class MutationRuntime<
   private readonly createReader: MutationReaderFactory<Doc, Reader>
   private readonly normalize: (doc: Doc) => Doc
   private readonly entities: ReadonlyMap<string, CompiledEntitySpec>
-  private readonly structures?: MutationStructureTable<Doc>
+  private readonly structures?: MutationStructureSource<Doc>
   private readonly custom?: MutationCustomTable<Doc, Op, Reader, Services, Code>
   private readonly services: Services | undefined
   private readonly compileHandlers?: MutationCompileHandlerTable<any, Doc, Op, Reader, Services, Code>
@@ -968,7 +969,7 @@ class MutationRuntime<
     normalize(doc: Doc): Doc
     createReader: MutationReaderFactory<Doc, Reader>
     entities?: Readonly<Record<string, any>>
-    structures?: MutationStructureTable<Doc>
+    structures?: MutationStructureSource<Doc>
     custom?: MutationCustomTable<Doc, Op, Reader, Services, Code>
     services?: Services
     compile?: MutationCompileHandlerTable<any, Doc, Op, Reader, Services, Code>

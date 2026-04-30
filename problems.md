@@ -18,3 +18,7 @@
   研究一下 shared/mutation现在对于whiteboard custom还能否优化，这些基础设施对于dataview-core呢，两者之间还有没有共性
 
   docuemnt reader
+
+  帮我扫一遍dataview里能否用到structural能力
+
+  帮我扫一遍dataview里除了document reader是否还需要其他reader避免过多read和write的helper

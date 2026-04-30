@@ -286,6 +286,18 @@ export type MutationStructureTable<
   Doc
 > = Readonly<Record<string, MutationStructureSpec<Doc>>>
 
+export type MutationStructureResolver<
+  Doc
+> = (
+  structure: string
+) => MutationStructureSpec<Doc> | undefined
+
+export type MutationStructureSource<
+  Doc
+> =
+  | MutationStructureTable<Doc>
+  | MutationStructureResolver<Doc>
+
 export interface MutationHistoryOptions {
   capacity?: number
   capture?: Partial<Record<Exclude<Origin, 'history'>, boolean>>
@@ -379,7 +391,7 @@ export interface MutationEngineOptions<
   createReader: MutationReaderFactory<Doc, Reader>
   services?: Services
   entities?: Readonly<Record<string, MutationEntitySpec>>
-  structures?: MutationStructureTable<Doc>
+  structures?: MutationStructureSource<Doc>
   custom?: MutationCustomTable<Doc, Op, Reader, Services, Code>
   compile?: MutationCompileHandlerTable<Table, Doc, Op, Reader, Services, Code>
   history?: MutationHistoryOptions | false

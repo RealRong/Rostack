@@ -6,6 +6,8 @@ export type {
   MutationOrderedSlot,
   MutationReaderFactory,
   MutationStructureSpec,
+  MutationStructureResolver,
+  MutationStructureSource,
   MutationStructureTable,
   MutationStructuralCanonicalOperation,
   MutationStructuralFact,

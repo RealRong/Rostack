@@ -33,6 +33,8 @@ export type {
   MutationOptions,
   MutationOutputOf,
   MutationStructureSpec,
+  MutationStructureResolver,
+  MutationStructureSource,
   MutationStructureTable,
   MutationStructuralCanonicalOperation,
   MutationStructuralFact,
@@ -63,6 +65,7 @@ export {
   mutationFootprintConflicts
 } from './footprint'
 export {
+  applyStructuralOperation,
   createStructuralOrderedDeleteOperation,
   createStructuralOrderedInsertOperation,
   createStructuralOrderedMoveOperation,

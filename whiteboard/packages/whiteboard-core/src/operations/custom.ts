@@ -8,10 +8,33 @@ import {
 import type {
   MutationDeltaInput,
   MutationCustomTable,
-  MutationFootprint
+  MutationFootprint,
+  MutationOrderedAnchor,
+  MutationStructuralOrderedDeleteOperation,
+  MutationStructuralOrderedInsertOperation,
+  MutationStructuralOrderedMoveOperation,
+  MutationStructuralTreeDeleteOperation,
+  MutationStructuralTreeInsertOperation,
+  MutationStructuralTreeMoveOperation,
+  MutationStructuralTreeRestoreOperation,
+  MutationStructureSource,
+  MutationTreeSnapshot,
+  MutationTreeSubtreeSnapshot
+} from '@shared/mutation'
+import {
+  createStructuralOrderedDeleteOperation,
+  createStructuralOrderedInsertOperation,
+  createStructuralOrderedMoveOperation,
+  createStructuralTreeDeleteOperation,
+  createStructuralTreeInsertOperation,
+  createStructuralTreeMoveOperation,
+  createStructuralTreeRestoreOperation
 } from '@shared/mutation'
 import type {
   MutationCustomReduceInput
+} from '@shared/mutation/engine'
+import {
+  applyStructuralOperation
 } from '@shared/mutation/engine'
 import {
   createEdgeLabelPatch,
@@ -89,129 +112,35 @@ type WhiteboardCustomReduceContext<
   WhiteboardCustomCode
 >
 
-type OrderedAnchor = {
-  kind: 'start'
-} | {
-  kind: 'end'
-} | {
-  kind: 'before'
-  itemId: string
-} | {
-  kind: 'after'
-  itemId: string
+type MindmapStructureValue = {
+  side?: 'left' | 'right'
+  collapsed?: boolean
+  branchStyle: MindmapRecord['members'][NodeId]['branchStyle']
 }
 
-const removeOrderedItem = <T,>(
-  items: readonly T[],
-  itemId: string,
-  getId: (item: T) => string
-): T[] => {
-  const index = items.findIndex((item) => getId(item) === itemId)
-  if (index < 0) {
-    return [...items]
-  }
-
-  return [
-    ...items.slice(0, index),
-    ...items.slice(index + 1)
-  ]
-}
-
-const insertOrderedItem = <T,>(
-  items: readonly T[],
-  item: T,
-  anchor: OrderedAnchor,
-  getId: (entry: T) => string
-): T[] => {
-  const itemId = getId(item)
-  const filtered = removeOrderedItem(items, itemId, getId)
-
-  if (anchor.kind === 'start') {
-    return [item, ...filtered]
-  }
-  if (anchor.kind === 'end') {
-    return [...filtered, item]
-  }
-
-  const anchorIndex = filtered.findIndex((entry) => getId(entry) === anchor.itemId)
-  if (anchorIndex < 0) {
-    return anchor.kind === 'before'
-      ? [item, ...filtered]
-      : [...filtered, item]
-  }
-
-  return anchor.kind === 'before'
-    ? [...filtered.slice(0, anchorIndex), item, ...filtered.slice(anchorIndex)]
-    : [...filtered.slice(0, anchorIndex + 1), item, ...filtered.slice(anchorIndex + 1)]
-}
-
-const moveOrderedItem = <T,>(
-  items: readonly T[],
-  itemId: string,
-  anchor: OrderedAnchor,
-  getId: (entry: T) => string
-): T[] => {
-  const item = items.find((entry) => getId(entry) === itemId)
-  if (!item) {
-    return [...items]
-  }
-
-  return insertOrderedItem(items, item, anchor, getId)
-}
-
-const readOrderedSlot = <T,>(
-  items: readonly T[],
-  itemId: string,
-  getId: (entry: T) => string
-): {
-  prev?: T
-  next?: T
-} | undefined => {
-  const index = items.findIndex((entry) => getId(entry) === itemId)
-  if (index < 0) {
-    return undefined
-  }
-
-  return {
-    prev: items[index - 1],
-    next: items[index + 1]
-  }
-}
-
-const insertOrderedSlot = <T,>(
-  items: readonly T[],
-  item: T,
-  slot: {
-    prev?: T
-    next?: T
-  } | undefined,
-  getId: (entry: T) => string
-): T[] => {
-  const itemId = getId(item)
-  const filtered = removeOrderedItem(items, itemId, getId)
-
-  if (!slot) {
-    return [...filtered, item]
-  }
-  if (slot.prev) {
-    return insertOrderedItem(filtered, item, {
-      kind: 'after',
-      itemId: getId(slot.prev)
-    }, getId)
-  }
-  if (slot.next) {
-    return insertOrderedItem(filtered, item, {
-      kind: 'before',
-      itemId: getId(slot.next)
-    }, getId)
-  }
-
-  return [...filtered, item]
-}
+const CANVAS_REF_SEPARATOR = '\u0000'
+const CANVAS_ORDER_STRUCTURE = 'canvas.order'
+const EDGE_LABELS_STRUCTURE_PREFIX = 'edge.labels:'
+const EDGE_ROUTE_STRUCTURE_PREFIX = 'edge.route:'
+const MINDMAP_TREE_STRUCTURE_PREFIX = 'mindmap.tree:'
 
 const canvasRefKey = (
   ref: CanvasItemRef
-): string => `${ref.kind}:${ref.id}`
+): string => `${ref.kind}${CANVAS_REF_SEPARATOR}${ref.id}`
+
+const readCanvasRefFromKey = (
+  value: string
+): CanvasItemRef => {
+  const index = value.indexOf(CANVAS_REF_SEPARATOR)
+  if (index <= 0 || index >= value.length - 1) {
+    throw new Error(`Invalid canvas ref key "${value}".`)
+  }
+
+  return {
+    kind: value.slice(0, index) as CanvasItemRef['kind'],
+    id: value.slice(index + CANVAS_REF_SEPARATOR.length)
+  }
+}
 
 const cloneCanvasRef = (
   ref: CanvasItemRef | undefined
@@ -224,9 +153,14 @@ const cloneCanvasRef = (
     : undefined
 )
 
-const toOrderedAnchor = (
+const readCanvasRefByKey = (
+  order: readonly CanvasItemRef[],
+  itemId: string
+): CanvasItemRef | undefined => order.find((entry) => canvasRefKey(entry) === itemId)
+
+const toStructuralOrderedAnchor = (
   anchor: EdgeLabelAnchor | EdgeRoutePointAnchor
-): OrderedAnchor => (
+): MutationOrderedAnchor => (
   anchor.kind === 'start' || anchor.kind === 'end'
     ? anchor
     : anchor.kind === 'before'
@@ -244,106 +178,94 @@ const toOrderedAnchor = (
         }
 )
 
-const readCanvasPreviousTo = (
+const toStructuralCanvasAnchor = (
   order: readonly CanvasItemRef[],
-  refs: readonly CanvasItemRef[]
-): CanvasOrderAnchor => {
-  const existing = refs.filter((ref) => order.some((entry) => canvasRefKey(entry) === canvasRefKey(ref)))
-  const previousIndex = order.findIndex((entry) => canvasRefKey(entry) === canvasRefKey(existing[0]!))
-  return previousIndex <= 0
-    ? {
-        kind: 'front'
-      }
-    : {
-        kind: 'after',
-        ref: cloneCanvasRef(order[previousIndex - 1])!
-      }
-}
-
-const moveCanvasOrder = (
-  order: readonly CanvasItemRef[],
-  refs: readonly CanvasItemRef[],
+  movedRefs: readonly CanvasItemRef[],
   to: CanvasOrderAnchor
-): CanvasItemRef[] => {
-  const existingRefs = refs.filter((ref) => order.some((entry) => canvasRefKey(entry) === canvasRefKey(ref)))
-  if (!existingRefs.length) {
-    return [...order]
+): MutationOrderedAnchor => {
+  if (to.kind === 'front') {
+    return {
+      kind: 'start'
+    }
+  }
+  if (to.kind === 'back') {
+    return {
+      kind: 'end'
+    }
   }
 
-  const existingKeys = new Set(existingRefs.map((ref) => canvasRefKey(ref)))
-  const filtered = order.filter((entry) => !existingKeys.has(canvasRefKey(entry)))
-  const insertAt = to.kind === 'front'
-    ? 0
-    : to.kind === 'back'
-      ? filtered.length
-      : (() => {
-          const anchorKey = canvasRefKey(to.ref)
-          const anchorIndex = filtered.findIndex((entry) => canvasRefKey(entry) === anchorKey)
-          if (anchorIndex < 0) {
-            return to.kind === 'before'
-              ? 0
-              : filtered.length
-          }
-          return to.kind === 'before'
-            ? anchorIndex
-            : anchorIndex + 1
-        })()
-
-  return [
-    ...filtered.slice(0, insertAt),
-    ...existingRefs.map((ref) => cloneCanvasRef(ref)!),
-    ...filtered.slice(insertAt)
-  ]
-}
-
-const readCanvasSlot = (
-  order: readonly CanvasItemRef[],
-  ref: CanvasItemRef
-) => {
-  const slot = readOrderedSlot(order, canvasRefKey(ref), canvasRefKey)
-  return slot
-    ? {
-        prev: cloneCanvasRef(slot.prev),
-        next: cloneCanvasRef(slot.next)
-      }
-    : undefined
-}
-
-const insertCanvasSlot = (
-  order: readonly CanvasItemRef[],
-  ref: CanvasItemRef,
-  slot?: {
-    prev?: CanvasItemRef
-    next?: CanvasItemRef
+  const movedKeys = new Set(movedRefs.map((ref) => canvasRefKey(ref)))
+  const filtered = order.filter((entry) => !movedKeys.has(canvasRefKey(entry)))
+  const anchorKey = canvasRefKey(to.ref)
+  const anchorExists = filtered.some((entry) => canvasRefKey(entry) === anchorKey)
+  if (!anchorExists) {
+    return to.kind === 'before'
+      ? {
+          kind: 'start'
+        }
+      : {
+          kind: 'end'
+        }
   }
-): CanvasItemRef[] => insertOrderedSlot(
-  order,
-  cloneCanvasRef(ref)!,
-  slot
-    ? {
-        prev: cloneCanvasRef(slot.prev),
-        next: cloneCanvasRef(slot.next)
-      }
-    : undefined,
-  canvasRefKey
+
+  return {
+    kind: to.kind,
+    itemId: anchorKey
+  }
+}
+
+const fromStructuralCanvasAnchor = (
+  order: readonly CanvasItemRef[],
+  anchor: MutationOrderedAnchor
+): CanvasOrderAnchor => {
+  if (anchor.kind === 'start') {
+    return {
+      kind: 'front'
+    }
+  }
+  if (anchor.kind === 'end') {
+    return {
+      kind: 'back'
+    }
+  }
+
+  const ref = readCanvasRefByKey(order, anchor.itemId) ?? readCanvasRefFromKey(anchor.itemId)
+  return {
+    kind: anchor.kind,
+    ref
+  }
+}
+
+const fromStructuralEdgeLabelAnchor = (
+  anchor: MutationOrderedAnchor
+): EdgeLabelAnchor => (
+  anchor.kind === 'start' || anchor.kind === 'end'
+    ? anchor
+    : anchor.kind === 'before'
+      ? {
+          kind: 'before',
+          labelId: anchor.itemId
+        }
+      : {
+          kind: 'after',
+          labelId: anchor.itemId
+        }
 )
 
-const removeCanvasRef = (
-  order: readonly CanvasItemRef[],
-  ref: CanvasItemRef
-): CanvasItemRef[] => removeOrderedItem(
-  order,
-  canvasRefKey(ref),
-  canvasRefKey
-)
-
-const appendCanvasRef = (
-  order: readonly CanvasItemRef[],
-  ref: CanvasItemRef
-): CanvasItemRef[] => (
-  order.some((entry) => canvasRefKey(entry) === canvasRefKey(ref))
-    ? [...order]
-    : [...order, cloneCanvasRef(ref)!]
+const fromStructuralEdgeRoutePointAnchor = (
+  anchor: MutationOrderedAnchor
+): EdgeRoutePointAnchor => (
+  anchor.kind === 'start' || anchor.kind === 'end'
+    ? anchor
+    : anchor.kind === 'before'
+      ? {
+          kind: 'before',
+          pointId: anchor.itemId
+        }
+      : {
+          kind: 'after',
+          pointId: anchor.itemId
+        }
 )
 
 const getLabels = (
@@ -358,46 +280,313 @@ const getManualRoutePoints = (
     : []
 )
 
-const readLabelAnchorFromIndex = (
-  labels: readonly EdgeLabel[],
-  index: number
-): EdgeLabelAnchor => index <= 0
-  ? { kind: 'start' }
-  : {
-      kind: 'after',
-      labelId: labels[index - 1]!.id
-    }
+const createMindmapStructureValue = (
+  member: MindmapRecord['members'][NodeId] | undefined,
+  nodeId: NodeId
+): MindmapStructureValue => {
+  if (!member) {
+    throw new Error(`Mindmap member ${nodeId} not found.`)
+  }
 
-const readPointAnchorFromIndex = (
-  points: readonly EdgeRoutePoint[],
-  index: number
-): EdgeRoutePointAnchor => index <= 0
-  ? { kind: 'start' }
-  : {
-      kind: 'after',
-      pointId: points[index - 1]!.id
-    }
+  return {
+    ...(member.side === undefined
+      ? {}
+      : {
+          side: member.side
+        }),
+    ...(member.collapsed === undefined
+      ? {}
+      : {
+          collapsed: member.collapsed
+        }),
+    branchStyle: clone(member.branchStyle)!
+  }
+}
 
-const toMindmapRecord = (
-  id: MindmapId,
-  tree: ReturnType<typeof mindmapApi.tree.fromRecord>
-): MindmapRecord => ({
-  id,
-  root: tree.rootNodeId,
-  members: Object.fromEntries(
-    Object.entries(tree.nodes).map(([nodeId, node]) => [
+const createMindmapTreeSnapshot = (
+  record: MindmapRecord
+): MutationTreeSnapshot<MindmapStructureValue> => ({
+  rootIds: [record.root],
+  nodes: Object.fromEntries(
+    Object.entries(record.members).map(([nodeId, member]) => [
       nodeId,
       {
-        parentId: node.parentId,
-        side: node.side,
-        collapsed: node.collapsed,
-        branchStyle: clone(node.branch)!
+        ...(member.parentId === undefined
+          ? {}
+          : {
+              parentId: member.parentId
+            }),
+        children: [...(record.children[nodeId as NodeId] ?? [])],
+        value: createMindmapStructureValue(member, nodeId as NodeId)
       }
     ])
-  ),
-  children: clone(tree.children)!,
-  layout: clone(tree.layout)!
+  )
 })
+
+const writeMindmapTreeSnapshot = (
+  document: Document,
+  id: MindmapId,
+  tree: MutationTreeSnapshot<MindmapStructureValue>
+): Document => {
+  const current = document.mindmaps[id]
+  if (!current) {
+    throw new Error(`Mindmap ${id} not found.`)
+  }
+  if (tree.rootIds.length !== 1) {
+    throw new Error(`Mindmap ${id} must contain exactly one root.`)
+  }
+
+  const rootId = tree.rootIds[0] as NodeId
+  if (!tree.nodes[rootId]) {
+    throw new Error(`Mindmap ${id} root ${rootId} not found in tree snapshot.`)
+  }
+
+  const members = Object.fromEntries(
+    Object.entries(tree.nodes).map(([nodeId, node]) => {
+      const value = node.value
+      if (!value) {
+        throw new Error(`Mindmap node ${nodeId} is missing structural value.`)
+      }
+
+      return [nodeId, {
+        ...(node.parentId === undefined
+          ? {}
+          : {
+              parentId: node.parentId
+            }),
+        ...(value.side === undefined
+          ? {}
+          : {
+              side: value.side
+            }),
+        ...(value.collapsed === undefined
+          ? {}
+          : {
+              collapsed: value.collapsed
+            }),
+        branchStyle: clone(value.branchStyle)!
+      }]
+    })
+  ) as MindmapRecord['members']
+
+  return {
+    ...document,
+    mindmaps: {
+      ...document.mindmaps,
+      [id]: {
+        ...current,
+        root: rootId,
+        members,
+        children: Object.fromEntries(
+          Object.entries(tree.nodes).map(([nodeId, node]) => [
+            nodeId,
+            [...node.children]
+          ])
+        )
+      }
+    }
+  }
+}
+
+const writeMindmapMemberSide = (
+  document: Document,
+  id: MindmapId,
+  nodeId: NodeId,
+  side: 'left' | 'right' | undefined
+): Document => {
+  const current = document.mindmaps[id]
+  const member = current?.members[nodeId]
+  if (!current || !member) {
+    throw new Error(`Mindmap topic ${nodeId} not found in ${id}.`)
+  }
+
+  if (same(member.side, side)) {
+    return document
+  }
+
+  const nextMember = side === undefined
+    ? (() => {
+        const {
+          side: _ignored,
+          ...rest
+        } = member
+        return rest
+      })()
+    : {
+        ...member,
+        side
+      }
+
+  return {
+    ...document,
+    mindmaps: {
+      ...document.mindmaps,
+      [id]: {
+        ...current,
+        members: {
+          ...current.members,
+          [nodeId]: nextMember
+        }
+      }
+    }
+  }
+}
+
+const resolveInsertedMindmapBranchStyle = (
+  record: MindmapRecord,
+  parentId: NodeId,
+  side?: 'left' | 'right'
+): MindmapRecord['members'][NodeId]['branchStyle'] => {
+  const siblings = record.children[parentId] ?? []
+  const siblingId = side
+    ? siblings.find((childId) => record.members[childId]?.side === side)
+    : siblings[0]
+  const branch = siblingId
+    ? record.members[siblingId]?.branchStyle
+    : record.members[parentId]?.branchStyle
+
+  return clone(
+    branch ?? mindmapApi.template.defaultBranchStyle
+  )!
+}
+
+const createMindmapTreeSubtreeSnapshot = (
+  current: MindmapRecord,
+  snapshot: MindmapTopicSnapshot
+): MutationTreeSubtreeSnapshot<MindmapStructureValue> => ({
+  rootId: snapshot.root,
+  parentId: snapshot.slot.parent,
+  index: snapshot.slot.prev
+    ? ((current.children[snapshot.slot.parent] ?? []).indexOf(snapshot.slot.prev) + 1)
+    : snapshot.slot.next
+      ? Math.max((current.children[snapshot.slot.parent] ?? []).indexOf(snapshot.slot.next), 0)
+      : (current.children[snapshot.slot.parent] ?? []).length,
+  nodes: Object.fromEntries(
+    Object.entries(snapshot.members).map(([nodeId, member]) => [
+      nodeId,
+      {
+        ...(member.parentId === undefined
+          ? {}
+          : {
+              parentId: member.parentId
+            }),
+        children: [...(snapshot.children[nodeId as NodeId] ?? [])],
+        value: createMindmapStructureValue(member, nodeId as NodeId)
+      }
+    ])
+  )
+})
+
+const whiteboardStructures: MutationStructureSource<Document> = (
+  structure
+) => {
+  if (structure === CANVAS_ORDER_STRUCTURE) {
+    return {
+      kind: 'ordered',
+      read: (document: Document) => document.canvas.order,
+      identify: canvasRefKey,
+      clone: (ref: CanvasItemRef) => cloneCanvasRef(ref)!,
+      write: (document: Document, items: readonly CanvasItemRef[]) => ({
+        ...document,
+        canvas: {
+          ...document.canvas,
+          order: items.map((item) => cloneCanvasRef(item)!)
+        }
+      })
+    }
+  }
+
+  if (structure.startsWith(EDGE_LABELS_STRUCTURE_PREFIX)) {
+    const edgeId = structure.slice(EDGE_LABELS_STRUCTURE_PREFIX.length) as EdgeId
+    return {
+      kind: 'ordered',
+      read: (document: Document) => {
+        const edge = document.edges[edgeId]
+        if (!edge) {
+          throw new Error(`Edge ${edgeId} not found.`)
+        }
+        return getLabels(edge)
+      },
+      identify: (label: EdgeLabel) => label.id,
+      clone: (label: EdgeLabel) => clone(label)!,
+      write: (document: Document, items: readonly EdgeLabel[]) => {
+        const edge = document.edges[edgeId]
+        if (!edge) {
+          throw new Error(`Edge ${edgeId} not found.`)
+        }
+        return {
+          ...document,
+          edges: {
+            ...document.edges,
+            [edgeId]: {
+              ...edge,
+              labels: items.map((item) => clone(item)!)
+            }
+          }
+        }
+      }
+    }
+  }
+
+  if (structure.startsWith(EDGE_ROUTE_STRUCTURE_PREFIX)) {
+    const edgeId = structure.slice(EDGE_ROUTE_STRUCTURE_PREFIX.length) as EdgeId
+    return {
+      kind: 'ordered',
+      read: (document: Document) => {
+        const edge = document.edges[edgeId]
+        if (!edge) {
+          throw new Error(`Edge ${edgeId} not found.`)
+        }
+        return getManualRoutePoints(edge)
+      },
+      identify: (point: EdgeRoutePoint) => point.id,
+      clone: (point: EdgeRoutePoint) => clone(point)!,
+      write: (document: Document, items: readonly EdgeRoutePoint[]) => {
+        const edge = document.edges[edgeId]
+        if (!edge) {
+          throw new Error(`Edge ${edgeId} not found.`)
+        }
+        return {
+          ...document,
+          edges: {
+            ...document.edges,
+            [edgeId]: {
+              ...edge,
+              route: items.length > 0
+                ? {
+                    kind: 'manual',
+                    points: items.map((item) => clone(item)!)
+                  }
+                : {
+                    kind: 'auto'
+                  }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  if (structure.startsWith(MINDMAP_TREE_STRUCTURE_PREFIX)) {
+    const mindmapId = structure.slice(MINDMAP_TREE_STRUCTURE_PREFIX.length) as MindmapId
+    return {
+      kind: 'tree',
+      read: (document: Document) => {
+        const record = document.mindmaps[mindmapId]
+        if (!record) {
+          throw new Error(`Mindmap ${mindmapId} not found.`)
+        }
+        return createMindmapTreeSnapshot(record)
+      },
+      clone: (value: MindmapStructureValue) => clone(value)!,
+      write: (document: Document, tree: MutationTreeSnapshot<MindmapStructureValue>) => (
+        writeMindmapTreeSnapshot(document, mindmapId, tree)
+      )
+    }
+  }
+
+  return undefined
+}
 
 const readMindmapLayoutRects = (
   reader: DocumentReader,
@@ -569,6 +758,88 @@ const createCanvasOrderDelta = (
   changed = true
 ): MutationDeltaInput | undefined => createFlagDelta('canvas.order', changed)
 
+const readCanvasOrderAnchorFromSlot = (
+  slot: {
+    prev?: CanvasItemRef
+    next?: CanvasItemRef
+  } | undefined
+): MutationOrderedAnchor => (
+  slot?.prev
+    ? {
+        kind: 'after',
+        itemId: canvasRefKey(slot.prev)
+      }
+    : slot?.next
+      ? {
+          kind: 'before',
+          itemId: canvasRefKey(slot.next)
+        }
+      : {
+          kind: 'end'
+        }
+)
+
+const readStructuralDocument = <TOperation extends {
+  type: string
+}>(input: {
+  document: Document
+  operation: TOperation
+  fail: WhiteboardCustomReduceContext['fail']
+}): {
+  document: Document
+  inverse: readonly TOperation[]
+  footprint: readonly MutationFootprint[]
+  historyMode: 'track' | 'skip' | 'neutral'
+} => {
+  const result = applyStructuralOperation<Document, TOperation, WhiteboardCustomCode>({
+    document: input.document,
+    operation: input.operation,
+    structures: whiteboardStructures
+  })
+  if (!result.ok) {
+    return input.fail({
+      code: 'invalid',
+      message: result.error.message
+    })
+  }
+
+  return {
+    document: result.data.document,
+    inverse: result.data.inverse,
+    footprint: result.data.footprint,
+    historyMode: result.data.historyMode
+  }
+}
+
+const insertCanvasOrderRef = (input: {
+  document: Document
+  ref: CanvasItemRef
+  to: MutationOrderedAnchor
+  fail: WhiteboardCustomReduceContext['fail']
+}) => readStructuralDocument({
+  document: input.document,
+  operation: createStructuralOrderedInsertOperation<MutationStructuralOrderedInsertOperation>({
+    structure: CANVAS_ORDER_STRUCTURE,
+    itemId: canvasRefKey(input.ref),
+    value: cloneCanvasRef(input.ref)!,
+    to: input.to
+  }),
+  fail: input.fail
+})
+
+const deleteCanvasOrderRef = (input: {
+  document: Document
+  ref: CanvasItemRef
+  fail: WhiteboardCustomReduceContext['fail']
+}) => readStructuralDocument({
+  document: input.document,
+  operation: createStructuralOrderedDeleteOperation<MutationStructuralOrderedDeleteOperation>({
+    structure: CANVAS_ORDER_STRUCTURE,
+    itemId: canvasRefKey(input.ref)
+  }),
+  fail: input.fail
+})
+
 const createEntityFootprints = (
   family: 'node' | 'edge' | 'group' | 'mindmap',
   ids: readonly string[]
@@ -657,39 +928,43 @@ const createMindmapResult = (
   input: {
     op: Extract<WhiteboardCustomOperation, { type: 'mindmap.create' }>
     document: Document
+    fail: WhiteboardCustomReduceContext['fail']
   }
 ): CustomResult => {
   const before = input.document
-  const nextBase: Document = {
-    ...before,
-    nodes: {
-      ...before.nodes,
-      ...Object.fromEntries(input.op.nodes.map((node) => [node.id, clone(node)!]))
+  const nextBase = insertCanvasOrderRef({
+    document: {
+      ...before,
+      nodes: {
+        ...before.nodes,
+        ...Object.fromEntries(input.op.nodes.map((node) => [node.id, clone(node)!]))
+      },
+      mindmaps: {
+        ...before.mindmaps,
+        [input.op.mindmap.id]: clone(input.op.mindmap)!
+      }
     },
-    mindmaps: {
-      ...before.mindmaps,
-      [input.op.mindmap.id]: clone(input.op.mindmap)!
+    ref: {
+      kind: 'mindmap',
+      id: input.op.mindmap.id
     },
-    canvas: {
-      ...before.canvas,
-      order: appendCanvasRef(before.canvas.order, {
-        kind: 'mindmap',
-        id: input.op.mindmap.id
-      })
-    }
-  }
+    to: {
+      kind: 'end'
+    },
+    fail: input.fail
+  })
 
   return createWhiteboardCustomResult({
-    document: nextBase,
+    document: nextBase.document,
     delta: mergeDelta(
       createNodeCreateDelta(input.op.nodes.map((node) => node.id)),
       createMindmapCreateDelta([input.op.mindmap.id]),
-      createCanvasOrderDelta()
+      createCanvasOrderDelta(nextBase.historyMode !== 'neutral')
     ),
     footprint: [
       ...createEntityFootprints('node', input.op.nodes.map((node) => node.id)),
       ...createEntityFootprints('mindmap', [input.op.mindmap.id]),
-      fieldKey('document', 'document', 'canvas.order')
+      ...nextBase.footprint
     ],
     history: {
       inverse: [{
@@ -704,39 +979,41 @@ const createMindmapRestoreResult = (
   input: {
     op: Extract<WhiteboardCustomOperation, { type: 'mindmap.restore' }>
     document: Document
+    fail: WhiteboardCustomReduceContext['fail']
   }
 ): CustomResult => {
   const before = input.document
-  const nextBase: Document = {
-    ...before,
-    nodes: {
-      ...before.nodes,
-      ...Object.fromEntries(input.op.snapshot.nodes.map((node) => [node.id, clone(node)!]))
+  const nextBase = insertCanvasOrderRef({
+    document: {
+      ...before,
+      nodes: {
+        ...before.nodes,
+        ...Object.fromEntries(input.op.snapshot.nodes.map((node) => [node.id, clone(node)!]))
+      },
+      mindmaps: {
+        ...before.mindmaps,
+        [input.op.snapshot.mindmap.id]: clone(input.op.snapshot.mindmap)!
+      }
     },
-    mindmaps: {
-      ...before.mindmaps,
-      [input.op.snapshot.mindmap.id]: clone(input.op.snapshot.mindmap)!
+    ref: {
+      kind: 'mindmap',
+      id: input.op.snapshot.mindmap.id
     },
-    canvas: {
-      ...before.canvas,
-      order: insertCanvasSlot(before.canvas.order, {
-        kind: 'mindmap',
-        id: input.op.snapshot.mindmap.id
-      }, input.op.snapshot.slot)
-    }
-  }
+    to: readCanvasOrderAnchorFromSlot(input.op.snapshot.slot),
+    fail: input.fail
+  })
 
   return createWhiteboardCustomResult({
-    document: nextBase,
+    document: nextBase.document,
     delta: mergeDelta(
       createNodeCreateDelta(input.op.snapshot.nodes.map((node) => node.id)),
       createMindmapCreateDelta([input.op.snapshot.mindmap.id]),
-      createCanvasOrderDelta()
+      createCanvasOrderDelta(nextBase.historyMode !== 'neutral')
     ),
     footprint: [
       ...createEntityFootprints('node', input.op.snapshot.nodes.map((node) => node.id)),
       ...createEntityFootprints('mindmap', [input.op.snapshot.mindmap.id]),
-      fieldKey('document', 'document', 'canvas.order')
+      ...nextBase.footprint
     ],
     history: {
       inverse: [{
@@ -751,6 +1028,7 @@ const createMindmapDeleteResult = (
   input: {
     op: Extract<WhiteboardCustomOperation, { type: 'mindmap.delete' }>
     document: Document
+    fail: WhiteboardCustomReduceContext['fail']
   }
 ): CustomResult | void => {
   const reader = createDocumentReader(() => input.document)
@@ -766,49 +1044,56 @@ const createMindmapDeleteResult = (
   const connectedEdges = reader.edges.connectedToNodes(nodeIds)
   const edgeIds = connectedEdges.map((edge) => edge.id)
 
-  const nextNodes = {
-    ...before.nodes
-  }
-  nodeIds.forEach((nodeId) => {
-    delete nextNodes[nodeId]
-  })
-  const nextEdges = {
-    ...before.edges
-  }
-  edgeIds.forEach((edgeId) => {
-    delete nextEdges[edgeId]
-  })
-
-  let nextOrder = removeCanvasRef(before.canvas.order, {
-    kind: 'mindmap',
-    id: input.op.id
-  })
-  edgeIds.forEach((edgeId) => {
-    nextOrder = removeCanvasRef(nextOrder, {
-      kind: 'edge',
-      id: edgeId
-    })
-  })
-
-  const next: Document = {
+  let nextBase: Document = {
     ...before,
-    nodes: nextNodes,
-    edges: nextEdges,
+    nodes: {
+      ...before.nodes,
+    },
+    edges: {
+      ...before.edges
+    },
     mindmaps: Object.fromEntries(
       Object.entries(before.mindmaps).filter(([id]) => id !== input.op.id)
-    ),
-    canvas: {
-      ...before.canvas,
-      order: nextOrder
-    }
+    )
   }
+  nodeIds.forEach((nodeId) => {
+    delete nextBase.nodes[nodeId]
+  })
+  edgeIds.forEach((edgeId) => {
+    delete nextBase.edges[edgeId]
+  })
+
+  const footprint: MutationFootprint[] = []
+  const removedMindmap = deleteCanvasOrderRef({
+    document: nextBase,
+    ref: {
+      kind: 'mindmap',
+      id: input.op.id
+    },
+    fail: input.fail
+  })
+  nextBase = removedMindmap.document
+  footprint.push(...removedMindmap.footprint)
+
+  connectedEdges.forEach((edge) => {
+    const removedEdge = deleteCanvasOrderRef({
+      document: nextBase,
+      ref: {
+        kind: 'edge',
+        id: edge.id
+      },
+      fail: input.fail
+    })
+    nextBase = removedEdge.document
+    footprint.push(...removedEdge.footprint)
+  })
 
   const inverse: Operation[] = [{
     type: 'mindmap.restore',
     snapshot
   }]
   connectedEdges.forEach((edge) => {
-    const slot = readCanvasSlot(before.canvas.order, {
+    const slot = reader.canvas.slot({
       kind: 'edge',
       id: edge.id
     })
@@ -841,18 +1126,18 @@ const createMindmapDeleteResult = (
   })
 
   return createWhiteboardCustomResult({
-    document: next,
+    document: nextBase,
     delta: mergeDelta(
       createNodeDeleteDelta([...nodeIds]),
       createEdgeDeleteDelta(edgeIds),
       createMindmapDeleteDelta([input.op.id]),
-      createCanvasOrderDelta()
+      createCanvasOrderDelta(removedMindmap.historyMode !== 'neutral' || edgeIds.length > 0)
     ),
     footprint: [
       ...createEntityFootprints('node', [...nodeIds]),
       ...createEntityFootprints('edge', edgeIds),
       ...createEntityFootprints('mindmap', [input.op.id]),
-      fieldKey('document', 'document', 'canvas.order')
+      ...footprint
     ],
     history: {
       inverse
@@ -974,39 +1259,168 @@ const createMindmapTopicInsertResult = (
     })
   }
 
-  const before = input.document
-  const tree = mindmapApi.tree.fromRecord(current)
-  const inserted = mindmapApi.tree.insertNode(tree, input.op.input, {
-    idGenerator: {
-      nodeId: () => input.op.node.id
+  const structure = `${MINDMAP_TREE_STRUCTURE_PREFIX}${input.op.id}`
+  const before = {
+    ...input.document,
+    nodes: {
+      ...input.document.nodes,
+      [input.op.node.id]: clone(input.op.node)!
     }
-  })
-  if (!inserted.ok) {
-    return input.fail({
-      code: inserted.error.code,
-      message: inserted.error.message
-    })
+  }
+  let resultDocument = before
+  const footprint: MutationFootprint[] = []
+
+  switch (input.op.input.kind) {
+    case 'child': {
+      if (!current.members[input.op.input.parentId]) {
+        return input.fail({
+          code: 'invalid',
+          message: `Parent node ${input.op.input.parentId} not found.`
+        })
+      }
+
+      const side = input.op.input.parentId === current.root
+        ? (input.op.input.options?.side ?? 'right')
+        : undefined
+      const result = readStructuralDocument({
+        document: resultDocument,
+        operation: createStructuralTreeInsertOperation<MutationStructuralTreeInsertOperation>({
+          structure,
+          nodeId: input.op.node.id,
+          parentId: input.op.input.parentId,
+          index: input.op.input.options?.index,
+          value: {
+            ...(side === undefined
+              ? {}
+              : {
+                  side
+                }),
+            branchStyle: resolveInsertedMindmapBranchStyle(current, input.op.input.parentId, side)
+          }
+        }),
+        fail: input.fail
+      })
+      resultDocument = result.document
+      footprint.push(...result.footprint)
+      break
+    }
+    case 'sibling': {
+      const target = current.members[input.op.input.nodeId]
+      const parentId = target?.parentId
+      if (!target || !parentId) {
+        return input.fail({
+          code: 'invalid',
+          message: `Node ${input.op.input.nodeId} cannot create a sibling.`
+        })
+      }
+
+      const siblings = current.children[parentId] ?? []
+      const currentIndex = siblings.indexOf(input.op.input.nodeId)
+      const side = parentId === current.root
+        ? (target.side ?? 'right')
+        : undefined
+      const result = readStructuralDocument({
+        document: resultDocument,
+        operation: createStructuralTreeInsertOperation<MutationStructuralTreeInsertOperation>({
+          structure,
+          nodeId: input.op.node.id,
+          parentId,
+          index: currentIndex < 0
+            ? undefined
+            : input.op.input.position === 'before'
+              ? currentIndex
+              : currentIndex + 1,
+          value: {
+            ...(side === undefined
+              ? {}
+              : {
+                  side
+                }),
+            branchStyle: resolveInsertedMindmapBranchStyle(current, parentId, target.side)
+          }
+        }),
+        fail: input.fail
+      })
+      resultDocument = result.document
+      footprint.push(...result.footprint)
+      break
+    }
+    case 'parent': {
+      if (input.op.input.nodeId === current.root) {
+        return input.fail({
+          code: 'invalid',
+          message: 'Root node cannot be wrapped.'
+        })
+      }
+
+      const target = current.members[input.op.input.nodeId]
+      const parentId = target?.parentId
+      if (!target || !parentId) {
+        return input.fail({
+          code: 'invalid',
+          message: `Node ${input.op.input.nodeId} not found.`
+        })
+      }
+
+      const siblingIndex = (current.children[parentId] ?? []).indexOf(input.op.input.nodeId)
+      if (siblingIndex < 0) {
+        return input.fail({
+          code: 'invalid',
+          message: `Node ${input.op.input.nodeId} is detached.`
+        })
+      }
+
+      const side = parentId === current.root
+        ? (target.side ?? input.op.input.options?.side ?? 'right')
+        : undefined
+      const insertResult = readStructuralDocument({
+        document: resultDocument,
+        operation: createStructuralTreeInsertOperation<MutationStructuralTreeInsertOperation>({
+          structure,
+          nodeId: input.op.node.id,
+          parentId,
+          index: siblingIndex,
+          value: {
+            ...(side === undefined
+              ? {}
+              : {
+                  side
+                }),
+            branchStyle: resolveInsertedMindmapBranchStyle(current, parentId, target.side)
+          }
+        }),
+        fail: input.fail
+      })
+      const moveResult = readStructuralDocument({
+        document: insertResult.document,
+        operation: createStructuralTreeMoveOperation<MutationStructuralTreeMoveOperation>({
+          structure,
+          nodeId: input.op.input.nodeId,
+          parentId: input.op.node.id,
+          index: 0
+        }),
+        fail: input.fail
+      })
+      resultDocument = writeMindmapMemberSide(
+        moveResult.document,
+        input.op.id,
+        input.op.input.nodeId,
+        undefined
+      )
+      footprint.push(...insertResult.footprint, ...moveResult.footprint)
+      break
+    }
   }
 
-  const nextBase: Document = {
-    ...before,
-    nodes: {
-      ...before.nodes,
-      [input.op.node.id]: clone(input.op.node)!
-    },
-    mindmaps: {
-      ...before.mindmaps,
-      [input.op.id]: toMindmapRecord(input.op.id, inserted.data.tree)
-    }
-  }
   return createWhiteboardCustomResult({
-    document: nextBase,
+    document: resultDocument,
     delta: mergeDelta(
       createNodeCreateDelta([input.op.node.id]),
       createMindmapStructureDelta([input.op.id])
     ),
     footprint: [
       ...createEntityFootprints('node', [input.op.node.id]),
+      ...footprint,
       fieldKey('mindmap', input.op.id, 'structure')
     ],
     history: {
@@ -1037,55 +1451,20 @@ const createMindmapTopicRestoreResult = (
     })
   }
 
-  const before = input.document
-  const nextMembers: MindmapRecord['members'] = {
-    ...current.members,
-    ...(Object.fromEntries(
-      Object.entries(input.op.snapshot.members).map(([nodeId, member]) => [
-        nodeId,
-        clone(member)!
-      ])
-    ) as MindmapRecord['members'])
-  }
-  const nextChildren = {
-    ...current.children
-  }
-  Object.entries(input.op.snapshot.children).forEach(([nodeId, children]) => {
-    nextChildren[nodeId] = [...children]
+  const restored = readStructuralDocument({
+    document: input.document,
+    operation: createStructuralTreeRestoreOperation<MutationStructuralTreeRestoreOperation>({
+      structure: `${MINDMAP_TREE_STRUCTURE_PREFIX}${input.op.id}`,
+      snapshot: createMindmapTreeSubtreeSnapshot(current, input.op.snapshot)
+    }),
+    fail: input.fail
   })
-  const siblings = [...(nextChildren[input.op.snapshot.slot.parent] ?? [])]
-  if (input.op.snapshot.slot.prev) {
-    const index = siblings.indexOf(input.op.snapshot.slot.prev)
-    if (index >= 0) {
-      siblings.splice(index + 1, 0, input.op.snapshot.root)
-    } else {
-      siblings.push(input.op.snapshot.root)
-    }
-  } else if (input.op.snapshot.slot.next) {
-    const index = siblings.indexOf(input.op.snapshot.slot.next)
-    if (index >= 0) {
-      siblings.splice(index, 0, input.op.snapshot.root)
-    } else {
-      siblings.unshift(input.op.snapshot.root)
-    }
-  } else {
-    siblings.push(input.op.snapshot.root)
-  }
-  nextChildren[input.op.snapshot.slot.parent] = siblings
 
   const nextBase: Document = {
-    ...before,
+    ...restored.document,
     nodes: {
-      ...before.nodes,
+      ...restored.document.nodes,
       ...Object.fromEntries(input.op.snapshot.nodes.map((node) => [node.id, clone(node)!]))
-    },
-    mindmaps: {
-      ...before.mindmaps,
-      [input.op.id]: {
-        ...current,
-        members: nextMembers,
-        children: nextChildren
-      }
     }
   }
   const createdNodeIds = input.op.snapshot.nodes.map((node) => node.id)
@@ -1097,6 +1476,7 @@ const createMindmapTopicRestoreResult = (
     ),
     footprint: [
       ...createEntityFootprints('node', createdNodeIds),
+      ...restored.footprint,
       fieldKey('mindmap', input.op.id, 'structure')
     ],
     history: {
@@ -1117,7 +1497,7 @@ const createMindmapTopicMoveResult = (
     document: Document
     fail: WhiteboardCustomReduceContext['fail']
   }
-): CustomResult => {
+): CustomResult | void => {
   const reader = createDocumentReader(() => input.document)
   const current = reader.mindmaps.get(input.op.id)
   if (!current) {
@@ -1127,7 +1507,6 @@ const createMindmapTopicMoveResult = (
     })
   }
 
-  const tree = mindmapApi.tree.fromRecord(current)
   const member = current.members[input.op.input.nodeId]
   if (!member?.parentId) {
     return input.fail({
@@ -1136,30 +1515,46 @@ const createMindmapTopicMoveResult = (
     })
   }
 
-  const moved = mindmapApi.tree.moveSubtree(tree, input.op.input)
-  if (!moved.ok) {
-    return input.fail({
-      code: moved.error.code,
-      message: moved.error.message
-    })
-  }
-
   const prevSiblings = current.children[member.parentId] ?? []
   const prevIndex = prevSiblings.indexOf(input.op.input.nodeId)
-  const before = input.document
-  const nextBase: Document = {
-    ...before,
-    mindmaps: {
-      ...before.mindmaps,
-      [input.op.id]: toMindmapRecord(input.op.id, moved.data.tree)
-    }
+  const nextSide = input.op.input.parentId === current.root
+    ? (input.op.input.side ?? member.side ?? 'right')
+    : undefined
+  const moved = readStructuralDocument({
+    document: input.document,
+    operation: createStructuralTreeMoveOperation<MutationStructuralTreeMoveOperation>({
+      structure: `${MINDMAP_TREE_STRUCTURE_PREFIX}${input.op.id}`,
+      nodeId: input.op.input.nodeId,
+      parentId: input.op.input.parentId,
+      index: input.op.input.index
+    }),
+    fail: input.fail
+  })
+  const nextBase = writeMindmapMemberSide(
+    moved.document,
+    input.op.id,
+    input.op.input.nodeId,
+    nextSide
+  )
+  const sideChanged = !same(member.side, nextSide)
+  if (moved.historyMode === 'neutral' && !sideChanged) {
+    return
   }
+  const inverse = moved.inverse[0]
+  const inverseParentId = inverse?.type === 'structural.tree.move'
+    ? inverse.parentId
+    : member.parentId
+  const inverseIndex = inverse?.type === 'structural.tree.move'
+    ? inverse.index
+    : (prevIndex < 0 ? undefined : prevIndex)
+
   return createWhiteboardCustomResult({
     document: nextBase,
     delta: mergeDelta(
       createMindmapStructureDelta([input.op.id])
     ),
     footprint: [
+      ...moved.footprint,
       fieldKey('mindmap', input.op.id, 'structure')
     ],
     history: {
@@ -1168,8 +1563,8 @@ const createMindmapTopicMoveResult = (
         id: input.op.id,
         input: {
           nodeId: input.op.input.nodeId,
-          parentId: member.parentId,
-          index: prevIndex < 0 ? undefined : prevIndex,
+          parentId: inverseParentId ?? member.parentId,
+          index: inverseIndex,
           side: member.side
         }
       }]
@@ -1205,53 +1600,53 @@ const createMindmapTopicDeleteResult = (
   const nodeIds = new Set(reader.mindmaps.subtreeNodeIds(input.op.id, input.op.input.nodeId))
   const connectedEdges = reader.edges.connectedToNodes(nodeIds)
   const edgeIds = connectedEdges.map((edge) => edge.id)
-  const removed = mindmapApi.tree.removeSubtree(tree, input.op.input)
-  if (!removed.ok) {
-    return input.fail({
-      code: removed.error.code,
-      message: removed.error.message
-    })
-  }
+  const removed = readStructuralDocument({
+    document: before,
+    operation: createStructuralTreeDeleteOperation<MutationStructuralTreeDeleteOperation>({
+      structure: `${MINDMAP_TREE_STRUCTURE_PREFIX}${input.op.id}`,
+      nodeId: input.op.input.nodeId
+    }),
+    fail: input.fail
+  })
 
   const nextNodes = {
-    ...before.nodes
+    ...removed.document.nodes
   }
   nodeIds.forEach((nodeId) => {
     delete nextNodes[nodeId]
   })
   const nextEdges = {
-    ...before.edges
+    ...removed.document.edges
   }
   edgeIds.forEach((edgeId) => {
     delete nextEdges[edgeId]
   })
-  let nextOrder = before.canvas.order
-  edgeIds.forEach((edgeId) => {
-    nextOrder = removeCanvasRef(nextOrder, {
-      kind: 'edge',
-      id: edgeId
-    })
-  })
-  const nextBase: Document = {
-    ...before,
+  let nextBase: Document = {
+    ...removed.document,
     nodes: nextNodes,
-    edges: nextEdges,
-    mindmaps: {
-      ...before.mindmaps,
-      [input.op.id]: toMindmapRecord(input.op.id, removed.data.tree)
-    },
-    canvas: {
-      ...before.canvas,
-      order: nextOrder
-    }
+    edges: nextEdges
   }
+  const canvasFootprint: MutationFootprint[] = []
+  connectedEdges.forEach((edge) => {
+    const removedEdge = deleteCanvasOrderRef({
+      document: nextBase,
+      ref: {
+        kind: 'edge',
+        id: edge.id
+      },
+      fail: input.fail
+    })
+    nextBase = removedEdge.document
+    canvasFootprint.push(...removedEdge.footprint)
+  })
+
   const inverse: Operation[] = [{
     type: 'mindmap.topic.restore',
     id: input.op.id,
     snapshot
   }]
   connectedEdges.forEach((edge) => {
-    const slot = readCanvasSlot(before.canvas.order, {
+    const slot = reader.canvas.slot({
       kind: 'edge',
       id: edge.id
     })
@@ -1294,10 +1689,9 @@ const createMindmapTopicDeleteResult = (
     footprint: [
       ...createEntityFootprints('node', [...nodeIds]),
       ...createEntityFootprints('edge', edgeIds),
-      fieldKey('mindmap', input.op.id, 'structure'),
-      ...(edgeIds.length > 0
-        ? [fieldKey('document', 'document', 'canvas.order')]
-        : [])
+      ...removed.footprint,
+      ...canvasFootprint,
+      fieldKey('mindmap', input.op.id, 'structure')
     ],
     history: {
       inverse
@@ -1580,30 +1974,60 @@ const reduceCanvasOrderMove = (
   >
 ): CustomResult | void => {
   const currentOrder = input.reader.canvas.order()
-  const nextOrder = moveCanvasOrder(currentOrder, input.op.refs, input.op.to)
-  if (same(nextOrder, currentOrder)) {
+  const existingRefs = input.op.refs.filter((ref) => (
+    currentOrder.some((entry) => canvasRefKey(entry) === canvasRefKey(ref))
+  ))
+  if (existingRefs.length === 0) {
+    return
+  }
+
+  let document = input.document
+  let inverseAnchor: MutationOrderedAnchor | undefined
+  let changed = false
+  const footprint: MutationFootprint[] = []
+  const firstAnchor = toStructuralCanvasAnchor(currentOrder, existingRefs, input.op.to)
+
+  existingRefs.forEach((ref, index) => {
+    const result = readStructuralDocument({
+      document,
+      operation: createStructuralOrderedMoveOperation<MutationStructuralOrderedMoveOperation>({
+        structure: CANVAS_ORDER_STRUCTURE,
+        itemId: canvasRefKey(ref),
+        to: index === 0
+          ? firstAnchor
+          : {
+              kind: 'after',
+              itemId: canvasRefKey(existingRefs[index - 1]!)
+            }
+      }),
+      fail: input.fail
+    })
+    document = result.document
+    footprint.push(...result.footprint)
+    if (result.historyMode !== 'neutral') {
+      changed = true
+      const inverse = result.inverse[0]
+      if (!inverseAnchor && inverse?.type === 'structural.ordered.move') {
+        inverseAnchor = inverse.to
+      }
+    }
+  })
+
+  if (!changed || !inverseAnchor) {
     return
   }
 
   return createWhiteboardCustomResult({
-    document: {
-      ...input.document,
-      canvas: {
-        ...input.document.canvas,
-        order: nextOrder as CanvasItemRef[]
-      }
-    },
+    document,
     delta: mergeDelta(
       createCanvasOrderDelta()
     ),
-    footprint: [
-      fieldKey('document', 'document', 'canvas.order')
-    ],
+    footprint,
     history: {
       inverse: [{
         type: 'canvas.order.move',
-        refs: input.op.refs.map((ref) => cloneCanvasRef(ref)!),
-        to: readCanvasPreviousTo(currentOrder, input.op.refs)
+        refs: existingRefs.map((ref) => cloneCanvasRef(ref)!),
+        to: fromStructuralCanvasAnchor(currentOrder, inverseAnchor)
       }]
     }
   })
@@ -1622,32 +2046,23 @@ const reduceEdgeLabelInsert = (
     })
   }
 
-  const labels = insertOrderedItem(
-    getLabels(current),
-    clone(input.op.label)!,
-    toOrderedAnchor(input.op.to),
-    (label) => label.id
-  )
-  const next: Document = {
-    ...input.document,
-    edges: {
-      ...input.document.edges,
-      [input.op.edgeId]: {
-        ...current,
-        labels: labels as EdgeLabel[]
-      }
-    }
-  }
+  const result = readStructuralDocument({
+    document: input.document,
+    operation: createStructuralOrderedInsertOperation<MutationStructuralOrderedInsertOperation>({
+      structure: `${EDGE_LABELS_STRUCTURE_PREFIX}${input.op.edgeId}`,
+      itemId: input.op.label.id,
+      value: clone(input.op.label)!,
+      to: toStructuralOrderedAnchor(input.op.to)
+    }),
+    fail: input.fail
+  })
 
   return createWhiteboardCustomResult({
-    document: next,
+    document: result.document,
     delta: mergeDelta(
       createEdgeLabelsDelta([input.op.edgeId])
     ),
-    footprint: [
-      relationKey('edge', input.op.edgeId, 'labels'),
-      relationKey('edge', input.op.edgeId, 'labels', input.op.label.id)
-    ],
+    footprint: result.footprint,
     history: {
       inverse: [{
         type: 'edge.label.delete',
@@ -1664,41 +2079,38 @@ const reduceEdgeLabelDelete = (
   >
 ): CustomResult | void => {
   const current = input.reader.edges.get(input.op.edgeId)
-  const labels = current
-    ? [...getLabels(current)]
-    : []
-  const index = labels.findIndex((label) => label.id === input.op.labelId)
-  if (!current || index < 0) {
+  if (!current || !getLabels(current).some((label) => label.id === input.op.labelId)) {
     return
   }
 
-  const label = labels[index]!
-  const next: Document = {
-    ...input.document,
-    edges: {
-      ...input.document.edges,
-      [input.op.edgeId]: {
-        ...current,
-        labels: labels.filter((entry) => entry.id !== input.op.labelId)
-      }
-    }
+  const result = readStructuralDocument({
+    document: input.document,
+    operation: createStructuralOrderedDeleteOperation<MutationStructuralOrderedDeleteOperation>({
+      structure: `${EDGE_LABELS_STRUCTURE_PREFIX}${input.op.edgeId}`,
+      itemId: input.op.labelId
+    }),
+    fail: input.fail
+  })
+  const inverse = result.inverse[0] as unknown as MutationStructuralOrderedInsertOperation | undefined
+  if (!inverse) {
+    return input.fail({
+      code: 'invalid',
+      message: 'Edge label delete inverse is invalid.'
+    })
   }
 
   return createWhiteboardCustomResult({
-    document: next,
+    document: result.document,
     delta: mergeDelta(
       createEdgeLabelsDelta([input.op.edgeId])
     ),
-    footprint: [
-      relationKey('edge', input.op.edgeId, 'labels'),
-      relationKey('edge', input.op.edgeId, 'labels', input.op.labelId)
-    ],
+    footprint: result.footprint,
     history: {
       inverse: [{
         type: 'edge.label.insert',
         edgeId: input.op.edgeId,
-        label: clone(label)!,
-        to: readLabelAnchorFromIndex(labels, index)
+        label: clone(inverse.value as EdgeLabel)!,
+        to: fromStructuralEdgeLabelAnchor(inverse.to)
       }]
     }
   })
@@ -1710,50 +2122,42 @@ const reduceEdgeLabelMove = (
   >
 ): CustomResult | void => {
   const current = input.reader.edges.get(input.op.edgeId)
-  const labels = current
-    ? [...getLabels(current)]
-    : []
-  const index = labels.findIndex((label) => label.id === input.op.labelId)
-  if (!current || index < 0) {
+  if (!current || !getLabels(current).some((label) => label.id === input.op.labelId)) {
     return
   }
 
-  const nextLabels = moveOrderedItem(
-    labels,
-    input.op.labelId,
-    toOrderedAnchor(input.op.to),
-    (label) => label.id
-  )
-  if (same(nextLabels, labels)) {
+  const result = readStructuralDocument({
+    document: input.document,
+    operation: createStructuralOrderedMoveOperation<MutationStructuralOrderedMoveOperation>({
+      structure: `${EDGE_LABELS_STRUCTURE_PREFIX}${input.op.edgeId}`,
+      itemId: input.op.labelId,
+      to: toStructuralOrderedAnchor(input.op.to)
+    }),
+    fail: input.fail
+  })
+  if (result.historyMode === 'neutral') {
     return
   }
-
-  const next: Document = {
-    ...input.document,
-    edges: {
-      ...input.document.edges,
-      [input.op.edgeId]: {
-        ...current,
-        labels: nextLabels as EdgeLabel[]
-      }
-    }
+  const inverse = result.inverse[0]
+  if (inverse?.type !== 'structural.ordered.move') {
+    return input.fail({
+      code: 'invalid',
+      message: 'Edge label move inverse is invalid.'
+    })
   }
 
   return createWhiteboardCustomResult({
-    document: next,
+    document: result.document,
     delta: mergeDelta(
       createEdgeLabelsDelta([input.op.edgeId])
     ),
-    footprint: [
-      relationKey('edge', input.op.edgeId, 'labels'),
-      relationKey('edge', input.op.edgeId, 'labels', input.op.labelId)
-    ],
+    footprint: result.footprint,
     history: {
       inverse: [{
         type: 'edge.label.move',
         edgeId: input.op.edgeId,
         labelId: input.op.labelId,
-        to: readLabelAnchorFromIndex(labels, index)
+        to: fromStructuralEdgeLabelAnchor(inverse.to)
       }]
     }
   })
@@ -1861,35 +2265,23 @@ const reduceEdgeRoutePointInsert = (
     })
   }
 
-  const points = insertOrderedItem(
-    getManualRoutePoints(current),
-    clone(input.op.point)!,
-    toOrderedAnchor(input.op.to),
-    (point) => point.id
-  )
-  const next: Document = {
-    ...input.document,
-    edges: {
-      ...input.document.edges,
-      [input.op.edgeId]: {
-        ...current,
-        route: {
-          kind: 'manual',
-          points: points as EdgeRoutePoint[]
-        }
-      }
-    }
-  }
+  const result = readStructuralDocument({
+    document: input.document,
+    operation: createStructuralOrderedInsertOperation<MutationStructuralOrderedInsertOperation>({
+      structure: `${EDGE_ROUTE_STRUCTURE_PREFIX}${input.op.edgeId}`,
+      itemId: input.op.point.id,
+      value: clone(input.op.point)!,
+      to: toStructuralOrderedAnchor(input.op.to)
+    }),
+    fail: input.fail
+  })
 
   return createWhiteboardCustomResult({
-    document: next,
+    document: result.document,
     delta: mergeDelta(
       createEdgeRouteDelta([input.op.edgeId])
     ),
-    footprint: [
-      relationKey('edge', input.op.edgeId, 'route'),
-      relationKey('edge', input.op.edgeId, 'route', input.op.point.id)
-    ],
+    footprint: result.footprint,
     history: {
       inverse: [{
         type: 'edge.route.point.delete',
@@ -1906,49 +2298,38 @@ const reduceEdgeRoutePointDelete = (
   >
 ): CustomResult | void => {
   const current = input.reader.edges.get(input.op.edgeId)
-  const points = current
-    ? [...getManualRoutePoints(current)]
-    : []
-  const index = points.findIndex((point) => point.id === input.op.pointId)
-  if (!current || index < 0) {
+  if (!current || !getManualRoutePoints(current).some((point) => point.id === input.op.pointId)) {
     return
   }
 
-  const point = points[index]!
-  const nextPoints = points.filter((entry) => entry.id !== input.op.pointId)
-  const next: Document = {
-    ...input.document,
-    edges: {
-      ...input.document.edges,
-      [input.op.edgeId]: {
-        ...current,
-        route: nextPoints.length > 0
-          ? {
-              kind: 'manual',
-              points: nextPoints
-            }
-          : {
-              kind: 'auto'
-            }
-      }
-    }
+  const result = readStructuralDocument({
+    document: input.document,
+    operation: createStructuralOrderedDeleteOperation<MutationStructuralOrderedDeleteOperation>({
+      structure: `${EDGE_ROUTE_STRUCTURE_PREFIX}${input.op.edgeId}`,
+      itemId: input.op.pointId
+    }),
+    fail: input.fail
+  })
+  const inverse = result.inverse[0] as unknown as MutationStructuralOrderedInsertOperation | undefined
+  if (!inverse) {
+    return input.fail({
+      code: 'invalid',
+      message: 'Edge route point delete inverse is invalid.'
+    })
   }
 
   return createWhiteboardCustomResult({
-    document: next,
+    document: result.document,
     delta: mergeDelta(
       createEdgeRouteDelta([input.op.edgeId])
     ),
-    footprint: [
-      relationKey('edge', input.op.edgeId, 'route'),
-      relationKey('edge', input.op.edgeId, 'route', input.op.pointId)
-    ],
+    footprint: result.footprint,
     history: {
       inverse: [{
         type: 'edge.route.point.insert',
         edgeId: input.op.edgeId,
-        point: clone(point)!,
-        to: readPointAnchorFromIndex(points, index)
+        point: clone(inverse.value as EdgeRoutePoint)!,
+        to: fromStructuralEdgeRoutePointAnchor(inverse.to)
       }]
     }
   })
@@ -1960,53 +2341,42 @@ const reduceEdgeRoutePointMove = (
   >
 ): CustomResult | void => {
   const current = input.reader.edges.get(input.op.edgeId)
-  const points = current
-    ? [...getManualRoutePoints(current)]
-    : []
-  const index = points.findIndex((point) => point.id === input.op.pointId)
-  if (!current || index < 0) {
+  if (!current || !getManualRoutePoints(current).some((point) => point.id === input.op.pointId)) {
     return
   }
 
-  const nextPoints = moveOrderedItem(
-    points,
-    input.op.pointId,
-    toOrderedAnchor(input.op.to),
-    (point) => point.id
-  )
-  if (same(nextPoints, points)) {
+  const result = readStructuralDocument({
+    document: input.document,
+    operation: createStructuralOrderedMoveOperation<MutationStructuralOrderedMoveOperation>({
+      structure: `${EDGE_ROUTE_STRUCTURE_PREFIX}${input.op.edgeId}`,
+      itemId: input.op.pointId,
+      to: toStructuralOrderedAnchor(input.op.to)
+    }),
+    fail: input.fail
+  })
+  if (result.historyMode === 'neutral') {
     return
   }
-
-  const next: Document = {
-    ...input.document,
-    edges: {
-      ...input.document.edges,
-      [input.op.edgeId]: {
-        ...current,
-        route: {
-          kind: 'manual',
-          points: nextPoints as EdgeRoutePoint[]
-        }
-      }
-    }
+  const inverse = result.inverse[0]
+  if (inverse?.type !== 'structural.ordered.move') {
+    return input.fail({
+      code: 'invalid',
+      message: 'Edge route point move inverse is invalid.'
+    })
   }
 
   return createWhiteboardCustomResult({
-    document: next,
+    document: result.document,
     delta: mergeDelta(
       createEdgeRouteDelta([input.op.edgeId])
     ),
-    footprint: [
-      relationKey('edge', input.op.edgeId, 'route'),
-      relationKey('edge', input.op.edgeId, 'route', input.op.pointId)
-    ],
+    footprint: result.footprint,
     history: {
       inverse: [{
         type: 'edge.route.point.move',
         edgeId: input.op.edgeId,
         pointId: input.op.pointId,
-        to: readPointAnchorFromIndex(points, index)
+        to: fromStructuralEdgeRoutePointAnchor(inverse.to)
       }]
     }
   })
@@ -2110,21 +2480,24 @@ export const whiteboardCustom: MutationCustomTable<
     reduce: reduceEdgeRoutePointPatch
   },
   'mindmap.create': {
-    reduce: ({ op, document }) => createMindmapResult({
+    reduce: ({ op, document, fail }) => createMindmapResult({
       op,
-      document
+      document,
+      fail
     })
   },
   'mindmap.restore': {
-    reduce: ({ op, document }) => createMindmapRestoreResult({
+    reduce: ({ op, document, fail }) => createMindmapRestoreResult({
       op,
-      document
+      document,
+      fail
     })
   },
   'mindmap.delete': {
-    reduce: ({ op, document }) => createMindmapDeleteResult({
+    reduce: ({ op, document, fail }) => createMindmapDeleteResult({
       op,
-      document
+      document,
+      fail
     })
   },
   'mindmap.move': {

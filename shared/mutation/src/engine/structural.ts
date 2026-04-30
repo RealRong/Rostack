@@ -4,6 +4,7 @@ import type {
   MutationOrderedAnchor,
   MutationOrderedSlot,
   MutationStructureSpec,
+  MutationStructureSource,
   MutationStructureTable,
   MutationStructuralCanonicalOperation,
   MutationStructuralFact,
@@ -474,6 +475,19 @@ export const readStructuralOperation = (
   }
 }
 
+const resolveStructureSpec = <Doc,>(
+  source: MutationStructureSource<Doc> | undefined,
+  structure: string
+): MutationStructureSpec<Doc> | undefined => {
+  if (!source) {
+    return undefined
+  }
+
+  return typeof source === 'function'
+    ? source(structure)
+    : source[structure]
+}
+
 export const createStructuralOrderedInsertOperation = <Op extends { type: string }>(
   input: Omit<MutationStructuralOrderedInsertOperation, 'type'>
 ): Op => ({
@@ -925,14 +939,14 @@ export const readStructuralOperationResult = <
 >(input: {
   document: Doc
   operation: Op
-  structures?: MutationStructureTable<Doc>
+  structures?: MutationStructureSource<Doc>
   descriptor: StructuralDescriptor
 }): MutationApplyResult<Doc, Op, Code> => {
   try {
     const structureName = readRequiredStructure(
       (input.operation as unknown as MutationStructuralCanonicalOperation).structure
     )
-    const spec = input.structures?.[structureName]
+    const spec = resolveStructureSpec(input.structures, structureName)
     if (!spec) {
       return mutationFailure(
         'mutation_engine.apply.unknown_structure' as Code,
@@ -977,4 +991,31 @@ export const readStructuralOperationResult = <
         : 'MutationEngine.apply received an invalid structural operation.'
     )
   }
+}
+
+export const applyStructuralOperation = <
+  Doc extends object,
+  Op extends {
+    type: string
+  },
+  Code extends string = string
+>(input: {
+  document: Doc
+  operation: Op
+  structures?: MutationStructureSource<Doc>
+}): MutationApplyResult<Doc, Op, Code> => {
+  const descriptor = readStructuralOperation(input.operation.type)
+  if (!descriptor) {
+    return mutationFailure(
+      'mutation_engine.apply.invalid_operation' as Code,
+      `Unknown structural mutation operation "${input.operation.type}".`
+    )
+  }
+
+  return readStructuralOperationResult({
+    document: input.document,
+    operation: input.operation,
+    structures: input.structures,
+    descriptor
+  })
 }

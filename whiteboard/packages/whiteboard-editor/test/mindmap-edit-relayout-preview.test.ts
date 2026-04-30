@@ -137,8 +137,8 @@ describe('mindmap edit relayout preview', () => {
       return
     }
 
-    const beforeRoot = editor.scene.read.scene.nodes.get(created.data.rootId)?.geometry.rect
-    const beforeChild = editor.scene.read.scene.nodes.get(insert.data.nodeId)?.geometry.rect
+    const beforeRoot = editor.scene.nodes.get(created.data.rootId)?.geometry.rect
+    const beforeChild = editor.scene.nodes.get(insert.data.nodeId)?.geometry.rect
 
     expect(beforeRoot).toBeDefined()
     expect(beforeChild).toBeDefined()
@@ -146,8 +146,8 @@ describe('mindmap edit relayout preview', () => {
     editor.write.edit.startNode(created.data.rootId, 'text')
     editor.write.edit.input('Central topic with much longer live width')
 
-    const liveRoot = editor.scene.read.scene.nodes.get(created.data.rootId)?.geometry.rect
-    const liveChild = editor.scene.read.scene.nodes.get(insert.data.nodeId)?.geometry.rect
+    const liveRoot = editor.scene.nodes.get(created.data.rootId)?.geometry.rect
+    const liveChild = editor.scene.nodes.get(insert.data.nodeId)?.geometry.rect
 
     expect(liveRoot).toBeDefined()
     expect(liveChild).toBeDefined()
@@ -205,8 +205,8 @@ describe('mindmap edit relayout preview', () => {
       return
     }
 
-    const beforeChild = editor.scene.read.scene.nodes.get(insert.data.nodeId)?.geometry.rect
-    const beforeScene = editor.scene.read.scene.mindmaps.get(created.data.mindmapId)?.tree.bbox
+    const beforeChild = editor.scene.nodes.get(insert.data.nodeId)?.geometry.rect
+    const beforeScene = editor.scene.mindmaps.get(created.data.mindmapId)?.tree.bbox
 
     expect(beforeChild).toBeDefined()
     expect(beforeScene).toBeDefined()
@@ -214,8 +214,8 @@ describe('mindmap edit relayout preview', () => {
     editor.write.edit.startNode(insert.data.nodeId, 'text')
     editor.write.edit.input('Child topic with much longer text')
 
-    const liveChild = editor.scene.read.scene.nodes.get(insert.data.nodeId)?.geometry.rect
-    const liveScene = editor.scene.read.scene.mindmaps.get(created.data.mindmapId)?.tree.bbox
+    const liveChild = editor.scene.nodes.get(insert.data.nodeId)?.geometry.rect
+    const liveScene = editor.scene.mindmaps.get(created.data.mindmapId)?.tree.bbox
     const session = editor.state.edit.get()
 
     expect(liveChild).toBeDefined()
@@ -312,8 +312,8 @@ describe('mindmap edit relayout preview', () => {
       return
     }
 
-    const beforeFirst = editor.scene.read.scene.nodes.get(first.data.nodeId)?.geometry.rect
-    const beforeSecond = editor.scene.read.scene.nodes.get(second.data.nodeId)?.geometry.rect
+    const beforeFirst = editor.scene.nodes.get(first.data.nodeId)?.geometry.rect
+    const beforeSecond = editor.scene.nodes.get(second.data.nodeId)?.geometry.rect
 
     expect(beforeFirst).toBeDefined()
     expect(beforeSecond).toBeDefined()
@@ -323,8 +323,8 @@ describe('mindmap edit relayout preview', () => {
     editor.write.edit.startNode(first.data.nodeId, 'text')
     editor.write.edit.input('First branch now wraps into multiple visual lines')
 
-    const liveFirst = editor.scene.read.scene.nodes.get(first.data.nodeId)?.geometry.rect
-    const liveSecond = editor.scene.read.scene.nodes.get(second.data.nodeId)?.geometry.rect
+    const liveFirst = editor.scene.nodes.get(first.data.nodeId)?.geometry.rect
+    const liveSecond = editor.scene.nodes.get(second.data.nodeId)?.geometry.rect
 
     expect(liveFirst).toBeDefined()
     expect(liveSecond).toBeDefined()
@@ -421,7 +421,7 @@ describe('mindmap edit relayout preview', () => {
       height: number
     }> = []
     const unsubscribe = editor.scene.stores.render.node.byId.subscribe(second.data.nodeId, () => {
-      const rect = editor.scene.read.scene.nodes.get(second.data.nodeId)?.geometry.rect
+      const rect = editor.scene.nodes.get(second.data.nodeId)?.geometry.rect
       if (!rect) {
         return
       }
@@ -439,7 +439,7 @@ describe('mindmap edit relayout preview', () => {
 
     expect(notifications.length).toBeGreaterThan(0)
     expect(notifications.at(-1)?.y).toBe(
-      editor.scene.read.scene.nodes.get(second.data.nodeId)?.geometry.rect.y
+      editor.scene.nodes.get(second.data.nodeId)?.geometry.rect.y
     )
   })
 })

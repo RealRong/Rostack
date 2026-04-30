@@ -4,7 +4,7 @@ import type {
   CanvasItemRef,
   GroupId
 } from '@whiteboard/core/types'
-import type { EditorSceneApi } from '@whiteboard/editor/scene/api'
+import type { EditorScene } from '@whiteboard/editor-scene'
 import type { EditorDefaults } from '@whiteboard/editor/types/defaults'
 import type {
   CanvasWrite,
@@ -24,7 +24,7 @@ export type SelectionActionHelpers = Pick<
 >
 
 type SelectionActionHelpersHost = {
-  read: Pick<EditorSceneApi, 'read'>
+  read: EditorScene
   canvas: CanvasWrite
   group: GroupWrite
   node: Pick<NodeWrite, 'create'>
@@ -150,7 +150,7 @@ const createSelectionActionHelpers = ({
   },
   order: (input, mode) => {
     const target = selectionApi.target.normalize(input)
-    const groupIds = read.read.scene.groups.exact(target)
+    const groupIds = read.groups.exact(target)
     if (groupIds.length > 0) {
       return orderGroups(group, groupIds, mode).ok
     }
@@ -178,7 +178,7 @@ const createSelectionActionHelpers = ({
   },
   ungroup: (input, options) => {
     const target = selectionApi.target.normalize(input)
-    const groupIds = [...read.read.scene.groups.exact(target)]
+    const groupIds = [...read.groups.exact(target)]
     if (!groupIds.length) {
       return false
     }
@@ -210,7 +210,7 @@ const createSelectionActionHelpers = ({
 
 export const createSelectionActions = (input: {
   document: Pick<import('@whiteboard/editor-scene').DocumentFrame, 'nodeIds' | 'edgeIds'>
-  read: Pick<EditorSceneApi, 'read'>
+  read: EditorScene
   canvas: CanvasWrite
   group: GroupWrite
   node: Pick<NodeWrite, 'create'>

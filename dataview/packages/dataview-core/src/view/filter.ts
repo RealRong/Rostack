@@ -28,6 +28,8 @@ import {
   sameFilterRule,
   writeFilterClear,
   writeFilterCreate,
+  writeFilterInsert,
+  writeFilterMove,
   writeFilterMode,
   writeFilterPatch,
   writeFilterRemove
@@ -81,6 +83,8 @@ export const filter = {
   },
   write: {
     create: writeFilterCreate,
+    insert: writeFilterInsert,
+    move: writeFilterMove,
     patch: writeFilterPatch,
     mode: writeFilterMode,
     remove: writeFilterRemove,

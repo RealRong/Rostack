@@ -70,11 +70,11 @@ const readMatchedSelection = (
     match: SelectionMarqueeAction['match']
   }
 ): SelectionTarget => ({
-  nodeIds: input.ctx.projection.read.scene.nodes.idsInRect(input.rect, {
+  nodeIds: input.ctx.projection.nodes.idsInRect(input.rect, {
     match: input.match,
     policy: 'selection-marquee'
   }),
-  edgeIds: input.ctx.projection.read.scene.edges.idsInRect(input.rect, {
+  edgeIds: input.ctx.projection.edges.idsInRect(input.rect, {
     match: input.match
   })
 })

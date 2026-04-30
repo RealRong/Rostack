@@ -105,8 +105,156 @@ export interface DataviewIntentTable extends MutationIntentTable {
       id: ViewId
     }
   }
-  'view.patch': {
-    intent: IntentOfType<'view.patch'>
+  'view.rename': {
+    intent: IntentOfType<'view.rename'>
+    output: void
+  }
+  'view.type.set': {
+    intent: IntentOfType<'view.type.set'>
+    output: void
+  }
+  'view.search.set': {
+    intent: IntentOfType<'view.search.set'>
+    output: void
+  }
+  'view.filter.create': {
+    intent: IntentOfType<'view.filter.create'>
+    output: {
+      id: string
+    }
+  }
+  'view.filter.patch': {
+    intent: IntentOfType<'view.filter.patch'>
+    output: void
+  }
+  'view.filter.move': {
+    intent: IntentOfType<'view.filter.move'>
+    output: void
+  }
+  'view.filter.mode.set': {
+    intent: IntentOfType<'view.filter.mode.set'>
+    output: void
+  }
+  'view.filter.remove': {
+    intent: IntentOfType<'view.filter.remove'>
+    output: void
+  }
+  'view.filter.clear': {
+    intent: IntentOfType<'view.filter.clear'>
+    output: void
+  }
+  'view.sort.create': {
+    intent: IntentOfType<'view.sort.create'>
+    output: {
+      id: string
+    }
+  }
+  'view.sort.patch': {
+    intent: IntentOfType<'view.sort.patch'>
+    output: void
+  }
+  'view.sort.move': {
+    intent: IntentOfType<'view.sort.move'>
+    output: void
+  }
+  'view.sort.remove': {
+    intent: IntentOfType<'view.sort.remove'>
+    output: void
+  }
+  'view.sort.clear': {
+    intent: IntentOfType<'view.sort.clear'>
+    output: void
+  }
+  'view.group.set': {
+    intent: IntentOfType<'view.group.set'>
+    output: void
+  }
+  'view.group.clear': {
+    intent: IntentOfType<'view.group.clear'>
+    output: void
+  }
+  'view.group.toggle': {
+    intent: IntentOfType<'view.group.toggle'>
+    output: void
+  }
+  'view.group.mode.set': {
+    intent: IntentOfType<'view.group.mode.set'>
+    output: void
+  }
+  'view.group.sort.set': {
+    intent: IntentOfType<'view.group.sort.set'>
+    output: void
+  }
+  'view.group.interval.set': {
+    intent: IntentOfType<'view.group.interval.set'>
+    output: void
+  }
+  'view.group.showEmpty.set': {
+    intent: IntentOfType<'view.group.showEmpty.set'>
+    output: void
+  }
+  'view.section.show': {
+    intent: IntentOfType<'view.section.show'>
+    output: void
+  }
+  'view.section.hide': {
+    intent: IntentOfType<'view.section.hide'>
+    output: void
+  }
+  'view.section.collapse': {
+    intent: IntentOfType<'view.section.collapse'>
+    output: void
+  }
+  'view.section.expand': {
+    intent: IntentOfType<'view.section.expand'>
+    output: void
+  }
+  'view.calc.set': {
+    intent: IntentOfType<'view.calc.set'>
+    output: void
+  }
+  'view.table.widths.set': {
+    intent: IntentOfType<'view.table.widths.set'>
+    output: void
+  }
+  'view.table.verticalLines.set': {
+    intent: IntentOfType<'view.table.verticalLines.set'>
+    output: void
+  }
+  'view.table.wrap.set': {
+    intent: IntentOfType<'view.table.wrap.set'>
+    output: void
+  }
+  'view.gallery.wrap.set': {
+    intent: IntentOfType<'view.gallery.wrap.set'>
+    output: void
+  }
+  'view.gallery.size.set': {
+    intent: IntentOfType<'view.gallery.size.set'>
+    output: void
+  }
+  'view.gallery.layout.set': {
+    intent: IntentOfType<'view.gallery.layout.set'>
+    output: void
+  }
+  'view.kanban.wrap.set': {
+    intent: IntentOfType<'view.kanban.wrap.set'>
+    output: void
+  }
+  'view.kanban.size.set': {
+    intent: IntentOfType<'view.kanban.size.set'>
+    output: void
+  }
+  'view.kanban.layout.set': {
+    intent: IntentOfType<'view.kanban.layout.set'>
+    output: void
+  }
+  'view.kanban.fillColor.set': {
+    intent: IntentOfType<'view.kanban.fillColor.set'>
+    output: void
+  }
+  'view.kanban.cardsPerColumn.set': {
+    intent: IntentOfType<'view.kanban.cardsPerColumn.set'>
     output: void
   }
   'view.order.move': {

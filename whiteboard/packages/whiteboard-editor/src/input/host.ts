@@ -2,7 +2,7 @@ import type {
   EditorInputHost,
   EditorState
 } from '@whiteboard/editor/types/editor'
-import type { EditorSceneApi } from '@whiteboard/editor/scene/api'
+import type { EditorScene } from '@whiteboard/editor-scene'
 import type { EditorSession } from '@whiteboard/editor/session/runtime'
 import type { ContextMenuIntent } from '@whiteboard/editor/types/input'
 import type { InteractionRuntime } from '@whiteboard/editor/input/core/types'
@@ -37,7 +37,7 @@ export const createEditorInputHost = ({
 }: {
   interaction: InteractionRuntime
   edgeHover: EdgeHoverService
-  projection: Pick<EditorSceneApi, 'read'>
+  projection: EditorScene
   session: Pick<EditorSession, 'state' | 'viewport' | 'interaction' | 'commands'>
 }): EditorInputHost => {
   const writePointer = (sample: {
@@ -97,7 +97,7 @@ export const createEditorInputHost = ({
           return readSelectionIntent(session.state.selection, input.screen)
         }
         case 'group': {
-          const target = projection.read.scene.groups.target(input.pick.id)
+          const target = projection.groups.target(input.pick.id)
           if (!target) {
             return {
               kind: 'canvas',

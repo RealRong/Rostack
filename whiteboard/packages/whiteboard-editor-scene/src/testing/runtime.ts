@@ -1,7 +1,7 @@
 import type {
+  EditorScene,
   Input,
   EditorSceneLayout,
-  EditorSceneRead,
   Result,
   Runtime
 } from '../contracts/editor'
@@ -28,7 +28,7 @@ const TEST_SCENE_VIEW = () => ({
 
 export interface EditorSceneHarness {
   runtime: Runtime
-  read: EditorSceneRead
+  scene: EditorScene
   update(input: Input): Result
   capture(): Capture
   lastTrace(): Result['trace']
@@ -52,7 +52,7 @@ export const createEditorSceneHarness = (input: {
 
   return {
     runtime,
-    read: runtime.read,
+    scene: runtime.scene,
     update: (value) => {
       const result = runtime.update(value)
       trace = result.trace

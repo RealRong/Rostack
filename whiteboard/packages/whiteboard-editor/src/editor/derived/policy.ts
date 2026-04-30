@@ -5,7 +5,7 @@ import type { EditorDefaults } from '@whiteboard/editor/types/defaults'
 import type { NodeTypeSupport } from '@whiteboard/editor/types/node'
 import type {
   EditorPolicyDerived,
-  EditorSceneApi,
+  EditorScene,
   EditorSceneDerived,
   EditorState
 } from '@whiteboard/editor/types/editor'
@@ -22,7 +22,7 @@ import {
 import { createSelectionNodeStats } from './policy-selection-stats'
 
 export const createEditorPolicyDerived = (input: {
-  scene: EditorSceneApi
+  scene: EditorScene
   state: EditorState
   sceneDerived: EditorSceneDerived
   nodeType: NodeTypeSupport
@@ -68,7 +68,7 @@ export const createEditorPolicyDerived = (input: {
         nodeType: input.nodeType,
         nodeStats: currentNodeStats,
         readMindmapStructure: (mindmapId: MindmapId) =>
-          input.scene.read.scene.mindmaps.structure(mindmapId),
+          input.scene.mindmaps.structure(mindmapId),
         defaults: input.defaults
       })
     }
@@ -118,7 +118,7 @@ export const createEditorPolicyDerived = (input: {
         edgeScope: store.read(edgeScope),
         nodeType: input.nodeType,
         readMindmapStructure: (mindmapId: MindmapId) =>
-          input.scene.read.scene.mindmaps.structure(mindmapId),
+          input.scene.mindmaps.structure(mindmapId),
         tool: store.read(input.state.tool),
         edit: store.read(input.state.edit),
         interactionChrome: interaction.chrome,

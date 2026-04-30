@@ -151,18 +151,62 @@ export const writeSortCreate = (
   sort: Sort
   id: ViewSortRuleId
 } => {
-  assertSortFieldAvailable(sort.rules, fieldId)
-
-  const id = createSortRuleId()
-  const rule: SortRule = {
-    id,
+  return writeSortInsert(sort, {
     fieldId,
     direction
+  })
+}
+
+export const writeSortInsert = (
+  sort: Sort,
+  input: {
+    id?: ViewSortRuleId
+    fieldId: FieldId
+    direction?: SortDirection
+    before?: ViewSortRuleId | null
+  }
+): {
+  sort: Sort
+  id: ViewSortRuleId
+} => {
+  assertSortFieldAvailable(sort.rules, input.fieldId)
+
+  const id = input.id ?? createSortRuleId()
+  if (sort.rules.byId[id]) {
+    throw new Error(`Sort rule already exists: ${id}`)
+  }
+
+  const rule: SortRule = {
+    id,
+    fieldId: input.fieldId,
+    direction: input.direction ?? 'asc'
+  }
+
+  const inserted = entityTable.write.put(sort.rules, rule)
+  const nextIds = inserted.ids.filter((ruleId) => ruleId !== id)
+  const beforeId = input.before ?? undefined
+
+  if (beforeId) {
+    if (!inserted.byId[beforeId]) {
+      throw new Error(`Unknown sort rule ${beforeId}`)
+    }
+
+    const beforeIndex = nextIds.indexOf(beforeId)
+    if (beforeIndex < 0) {
+      throw new Error(`Unknown sort rule ${beforeId}`)
+    }
+
+    nextIds.splice(beforeIndex, 0, id)
+  } else {
+    nextIds.push(id)
   }
 
   return {
     id,
-    sort: createSortState(entityTable.write.put(sort.rules, rule))
+    sort: createSortState({
+      byId: inserted.byId,
+      ids: nextIds
+    })
   }
 }
 

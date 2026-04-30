@@ -22,3 +22,5 @@
   帮我扫一遍dataview里能否用到structural能力
 
   帮我扫一遍dataview里除了document reader是否还需要其他reader避免过多read和write的helper
+
+  帮我研究一下whiteboard全链路，从whiteboard-core的领域算法和基于shared/mutation的operation架构，到whiteboard-engine的写入连

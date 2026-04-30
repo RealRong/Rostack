@@ -37,7 +37,7 @@ const toMoveEdgePatches = (
 const findParentFrameId = (
   ctx: Pick<EditorHostDeps, 'projection'>,
   nodeId: string
-) => ctx.projection.read.scene.frame.parent(nodeId)
+) => ctx.projection.frame.parent(nodeId)
 
 const resolveFrameHoverId = (
   ctx: Pick<EditorHostDeps, 'projection'>,
@@ -48,7 +48,7 @@ const resolveFrameHoverId = (
   }
 ) => {
   const movingIds = new Set(state.move.members.map((member) => member.id))
-  let frameId = ctx.projection.read.scene.frame.pick(pointerWorld)
+  let frameId = ctx.projection.frame.pick(pointerWorld)
 
   while (frameId && movingIds.has(frameId)) {
     frameId = findParentFrameId(ctx, frameId)
@@ -96,7 +96,7 @@ export const createMoveInteraction = (
       pointerId: input.start.pointerId,
       world: input.start.world,
       mindmap: {
-        tree: ctx.projection.read.scene.mindmaps.tree
+        tree: ctx.projection.mindmaps.tree
       },
       node: ctx.document.node
     })
@@ -115,7 +115,7 @@ export const createMoveInteraction = (
     }
   }
 
-  const moveScope = ctx.projection.read.scene.selection.move(input.target)
+  const moveScope = ctx.projection.selection.move(input.target)
   const initialState = nodeApi.move.state.start({
     nodes: moveScope.nodes,
     edges: moveScope.edges,

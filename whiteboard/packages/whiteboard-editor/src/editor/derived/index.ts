@@ -4,12 +4,12 @@ import type { EditorDefaults } from '@whiteboard/editor/types/defaults'
 import type { NodeTypeSupport } from '@whiteboard/editor/types/node'
 import type {
   EditorDerived,
-  EditorSceneApi,
+  EditorScene,
   EditorState
 } from '@whiteboard/editor/types/editor'
 
 export const createEditorDerived = (input: {
-  scene: EditorSceneApi
+  scene: EditorScene
   state: EditorState
   nodeType: NodeTypeSupport
   defaults: EditorDefaults['selection']

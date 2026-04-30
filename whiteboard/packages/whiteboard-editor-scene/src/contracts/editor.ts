@@ -598,12 +598,13 @@ export interface ChromeOverlay {
 
 export interface Runtime {
   readonly stores: RuntimeStores
-  readonly read: EditorSceneRead
+  readonly scene: EditorScene
   revision(): Revision
   state(): State
   capture(): Capture
   update(input: Input): Result
   subscribe(listener: (result: Result) => void): () => void
+  dispose(): void
 }
 
 export interface FamilyReadStore<
@@ -734,6 +735,51 @@ export type SceneViewportPick = {
     hits: number
     latency: number
   }
+}
+
+export type ScenePickRequest = {
+  client: Point
+  screen: Point
+  world: Point
+  radius?: number
+  kinds?: readonly ('node' | 'edge' | 'mindmap' | 'group')[]
+}
+
+export type ScenePickTarget =
+  | {
+      kind: 'node'
+      id: NodeId
+    }
+  | {
+      kind: 'edge'
+      id: EdgeId
+    }
+  | {
+      kind: 'mindmap'
+      id: MindmapId
+    }
+  | {
+      kind: 'group'
+      id: GroupId
+    }
+
+export type ScenePickResult = {
+  rect: Rect
+  target?: ScenePickTarget
+  stats: SceneViewportPick['stats']
+}
+
+export type ScenePickRuntimeResult = {
+  request: ScenePickRequest
+  result: ScenePickResult
+}
+
+export type ScenePickRuntime = {
+  schedule: (request: ScenePickRequest) => void
+  get: () => ScenePickRuntimeResult | undefined
+  subscribe: (listener: () => void) => store.Unsubscribe
+  clear: () => void
+  dispose: () => void
 }
 
 export interface SceneNodes {
@@ -895,11 +941,12 @@ export interface SceneSnap {
 
 export interface SceneSpatial extends SpatialRead {}
 
-export interface SceneItems {
-  all(): State['items']
-}
-
-export interface SceneRead {
+export interface EditorScene {
+  revision(): Revision
+  stores: RuntimeStores
+  pick: ScenePickRuntime
+  document: DocumentFrame
+  runtime: RuntimeFrame
   nodes: SceneNodes
   edges: SceneEdges
   mindmaps: SceneMindmaps
@@ -910,14 +957,7 @@ export interface SceneRead {
   viewport: SceneViewport
   overlay: SceneOverlay
   spatial: SceneSpatial
-  items: SceneItems
   snap: SceneSnap
+  items(): State['items']
   bounds(): Rect | undefined
-}
-
-export interface EditorSceneRead {
-  revision(): Revision
-  document: DocumentFrame
-  runtime: RuntimeFrame
-  scene: SceneRead
 }

@@ -8,6 +8,7 @@ import {
   sortRuleAccess,
   writeSortClear,
   writeSortCreate,
+  writeSortInsert,
   writeSortMove,
   writeSortPatch,
   writeSortRemove
@@ -26,6 +27,7 @@ export const sort = {
   },
   write: {
     create: writeSortCreate,
+    insert: writeSortInsert,
     patch: writeSortPatch,
     move: writeSortMove,
     remove: writeSortRemove,

@@ -7,24 +7,24 @@ import type {
 import type { EditController } from '@whiteboard/editor/action/edit'
 import type { MindmapActions } from '@whiteboard/editor/action/types'
 import { createMindmapActions as createMindmapWorkflowActions } from '@whiteboard/editor/tasks/mindmap'
-import type { EditorSceneApi } from '@whiteboard/editor/scene/api'
+import type { EditorScene } from '@whiteboard/editor-scene'
 import type { EditorSession } from '@whiteboard/editor/session/runtime'
 import type { EditorTaskRuntime } from '@whiteboard/editor/tasks/runtime'
 import type { DocumentFrame } from '@whiteboard/editor-scene'
 import type { EditorWrite } from '@whiteboard/editor/write'
 
 const readMindmapRootMove = (input: {
-  graph: Pick<EditorSceneApi, 'read'>
+  graph: EditorScene
   document: Pick<DocumentFrame, 'node'>
   nodeId: NodeId
 }) => {
-  const directNode = input.graph.read.scene.nodes.get(input.nodeId)
-  const tree = input.graph.read.scene.mindmaps.tree(input.nodeId)
+  const directNode = input.graph.nodes.get(input.nodeId)
+  const tree = input.graph.mindmaps.tree(input.nodeId)
   const rootView = directNode
     ? directNode
     : (
       tree
-        ? input.graph.read.scene.nodes.get(tree.rootId)
+        ? input.graph.nodes.get(tree.rootId)
         : undefined
     )
   const node = directNode?.base.node ?? (
@@ -44,7 +44,7 @@ const readMindmapRootMove = (input: {
 }
 
 const readBranchScopeIds = (input: {
-  graph: Pick<EditorSceneApi, 'read'>
+  graph: EditorScene
   id: MindmapId
   nodeIds: readonly MindmapNodeId[]
   scope?: 'node' | 'subtree'
@@ -54,14 +54,14 @@ const readBranchScopeIds = (input: {
   }
 
   return (
-    input.graph.read.scene.mindmaps.tree(input.id)?.nodeIds as
+    input.graph.mindmaps.tree(input.id)?.nodeIds as
       | readonly MindmapNodeId[]
       | undefined
   ) ?? input.nodeIds
 }
 
 export const createMindmapActionApi = (input: {
-  graph: Pick<EditorSceneApi, 'read'>
+  graph: EditorScene
   document: Pick<DocumentFrame, 'node'>
   session: Pick<EditorSession, 'preview'>
   tasks: EditorTaskRuntime
@@ -136,7 +136,7 @@ export const createMindmapActionApi = (input: {
         }))
       ),
       topic: (value) => {
-        const mindmapId = input.graph.read.scene.mindmaps.ofNodes(value.nodeIds)
+        const mindmapId = input.graph.mindmaps.ofNodes(value.nodeIds)
         if (!mindmapId) {
           return undefined
         }

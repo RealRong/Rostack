@@ -31,11 +31,7 @@ type PointResolveEditor = {
     selection: Pick<WhiteboardRuntime['state']['selection'], 'get'>
   }
   scene: {
-    read: {
-      scene: {
-        hit: Pick<WhiteboardRuntime['scene']['read']['scene']['hit'], 'edge'>
-      }
-    }
+    hit: Pick<WhiteboardRuntime['scene']['hit'], 'edge'>
   }
 }
 
@@ -128,7 +124,7 @@ const resolveSceneEdgePick = (
   editor: PointResolveEditor,
   world: Point
 ): EditorPick | undefined => {
-  const edgeId = editor.scene.read.scene.hit.edge({
+  const edgeId = editor.scene.hit.edge({
     point: world,
     threshold: 8 / Math.max(editor.state.viewport.get().zoom, 0.0001)
   })

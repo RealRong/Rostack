@@ -132,7 +132,7 @@ describe('mindmap enter animation', () => {
 
       await Promise.resolve()
 
-      const baseRect = editor.scene.read.scene.nodes.get(inserted.data.nodeId)?.geometry.rect
+      const baseRect = editor.scene.nodes.get(inserted.data.nodeId)?.geometry.rect
       expect(baseRect).toBeDefined()
 
       await vi.advanceTimersByTimeAsync(120)
@@ -140,7 +140,7 @@ describe('mindmap enter animation', () => {
 
       await vi.advanceTimersByTimeAsync(200)
       const endPosition = editor.scene.stores.render.node.byId.get(inserted.data.nodeId)?.presentation?.position
-      const endRect = editor.scene.read.scene.nodes.get(inserted.data.nodeId)?.geometry.rect
+      const endRect = editor.scene.nodes.get(inserted.data.nodeId)?.geometry.rect
 
       expect(midPosition).toBeDefined()
       expect(endPosition).toBeUndefined()

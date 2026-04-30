@@ -6,7 +6,7 @@ import type {
 } from '@whiteboard/core/types'
 import type { EdgeActions } from '@whiteboard/editor/action/types'
 import type { EditController } from '@whiteboard/editor/action/edit'
-import type { EditorSceneApi } from '@whiteboard/editor/scene/api'
+import type { EditorScene } from '@whiteboard/editor-scene'
 import type {
   EditorSession,
   EditorSessionSelectionCommands
@@ -15,10 +15,10 @@ import type { DocumentFrame } from '@whiteboard/editor-scene'
 import type { EditorWrite } from '@whiteboard/editor/write'
 
 const readEdgeOrThrow = (
-  graph: Pick<EditorSceneApi, 'read'>,
+  graph: EditorScene,
   edgeId: string
 ) => {
-  const edge = graph.read.scene.edges.get(edgeId)?.base.edge
+  const edge = graph.edges.get(edgeId)?.base.edge
   if (!edge) {
     throw new Error(`Edge ${edgeId} not found.`)
   }
@@ -27,7 +27,7 @@ const readEdgeOrThrow = (
 }
 
 const writeRouteFromPoint = (input: {
-  graph: Pick<EditorSceneApi, 'read'>
+  graph: EditorScene
   write: Pick<EditorWrite, 'edge'>
   edgeId: string
   resolve: (edge: ReturnType<typeof readEdgeOrThrow>) => { route?: EdgeRouteInput } | undefined
@@ -48,7 +48,7 @@ const writeRouteFromPoint = (input: {
 }
 
 export const createEdgeActions = (input: {
-  graph: Pick<EditorSceneApi, 'read'>
+  graph: EditorScene
   document: Pick<DocumentFrame, 'edge'>
   session: Pick<EditorSession, 'state'> & {
     commands: {

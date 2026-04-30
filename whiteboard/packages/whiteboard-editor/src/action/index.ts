@@ -21,7 +21,7 @@ import {
 import {
   createSelectionActions
 } from '@whiteboard/editor/action/selection'
-import type { EditorSceneApi } from '@whiteboard/editor/scene/api'
+import type { EditorScene } from '@whiteboard/editor-scene'
 import type { EditorSession } from '@whiteboard/editor/session/runtime'
 import type { ToolService } from '@whiteboard/editor/services/tool'
 import type { EditorTaskRuntime } from '@whiteboard/editor/tasks/runtime'
@@ -35,7 +35,7 @@ export type CreateEditorActionsApiDeps = {
   document: DocumentFrame
   state: Pick<EditorState, 'viewport' | 'selection'>
   session: EditorSession
-  graph: EditorSceneApi
+  graph: EditorScene
   tasks: EditorTaskRuntime
   tool: ToolService
   write: EditorWrite

@@ -1,15 +1,14 @@
 import { scheduler } from '@shared/core'
 import { geometry as geometryApi } from '@whiteboard/core/geometry'
-import type { EditorSceneRuntime as SceneRuntime } from '@whiteboard/editor-scene'
 import type {
-  EditorSceneApi,
+  EditorScene,
+  RuntimeStores,
   ScenePickRequest,
   ScenePickResult,
   ScenePickRuntime,
   ScenePickRuntimeResult
-} from '@whiteboard/editor/types/editor'
-
-export type { EditorSceneApi }
+} from '../contracts/editor'
+import type { ProjectionScene } from './query'
 
 const DEFAULT_PICK_RADIUS_SCREEN = 8
 
@@ -33,7 +32,7 @@ const isScenePickRuntimeResultEqual = (
 )
 
 const createScenePick = (input: {
-  read: SceneRuntime['read']
+  scene: ProjectionScene
 }): ScenePickRuntime => {
   const listeners = new Set<() => void>()
   let pending: ScenePickRequest | undefined
@@ -44,7 +43,7 @@ const createScenePick = (input: {
     request: ScenePickRequest
   ): ScenePickResult => {
     const startedAt = scheduler.readMonotonicNow()
-    const next = input.read.scene.viewport.pick({
+    const next = input.scene.viewport.pick({
       point: request.world,
       radius: request.radius,
       kinds: request.kinds
@@ -134,29 +133,37 @@ const createScenePick = (input: {
   }
 }
 
-export const createEditorSceneApi = ({
-  runtime
-}: {
-  runtime: Pick<SceneRuntime, 'read' | 'revision' | 'stores'>
-}): EditorSceneApi & {
-  dispose: () => void
+export const createScene = (input: {
+  read: ProjectionScene
+  stores: RuntimeStores
+}): EditorScene & {
+  dispose(): void
 } => {
-  const visible: EditorSceneApi['host']['visible'] = (options) =>
-    runtime.read.scene.viewport.visible(options)
   const pick = createScenePick({
-    read: runtime.read
+    scene: input.read
   })
 
   return {
     dispose: () => {
       pick.dispose()
     },
-    revision: runtime.revision,
-    read: runtime.read,
-    stores: runtime.stores,
-    host: {
-      pick,
-      visible
-    }
+    revision: input.read.revision,
+    stores: input.stores,
+    pick,
+    document: input.read.document,
+    runtime: input.read.runtime,
+    nodes: input.read.nodes,
+    edges: input.read.edges,
+    mindmaps: input.read.mindmaps,
+    groups: input.read.groups,
+    selection: input.read.selection,
+    frame: input.read.frame,
+    hit: input.read.hit,
+    viewport: input.read.viewport,
+    overlay: input.read.overlay,
+    spatial: input.read.spatial,
+    snap: input.read.snap,
+    items: input.read.items,
+    bounds: input.read.bounds
   }
 }

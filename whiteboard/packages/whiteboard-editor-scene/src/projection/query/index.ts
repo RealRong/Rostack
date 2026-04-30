@@ -17,7 +17,8 @@ import type {
 } from '../../contracts/capture'
 import type {
   DocumentFrame,
-  EditorSceneRead,
+  EditorScene,
+  RuntimeFrame,
   EdgeView,
   NodeCapabilityInput,
   NodeView,
@@ -26,7 +27,6 @@ import type {
   SceneGroups,
   SceneMindmaps,
   SceneNodes,
-  SceneRead,
   SceneSelection,
   SceneViewSnapshot
 } from '../../contracts/editor'
@@ -46,7 +46,7 @@ import { createHitRead } from './hit'
 import { createSelectionRead } from './selection'
 import { createViewRead } from './view'
 
-export interface EditorSceneProjectionRead extends EditorSceneRead {
+export interface ProjectionScene extends Omit<EditorScene, 'stores' | 'pick'> {
   capture: {
     documentRevision(): Revision
     graph(): GraphCapture
@@ -119,7 +119,7 @@ const createDocumentRead = (input: {
 
 const createRuntimeRead = (input: {
   state: () => WorkingState
-}): EditorSceneRead['runtime'] => ({
+}): RuntimeFrame => ({
   session: {
     tool: () => input.state().runtime.session.tool,
     selection: () => input.state().runtime.interaction.selection,
@@ -146,7 +146,7 @@ export const createProjectionRead = (runtime: {
   spatial: () => SpatialIndexState
   nodeCapability?: NodeCapabilityInput
   view: () => SceneViewSnapshot
-}): EditorSceneProjectionRead => {
+}): ProjectionScene => {
   const spatial = createSpatialRead({
     state: runtime.spatial
   })
@@ -507,42 +507,6 @@ export const createProjectionRead = (runtime: {
     view: viewport
   })
 
-  const scene: SceneRead = {
-    nodes,
-    edges,
-    mindmaps,
-    groups,
-    selection,
-    frame,
-    hit,
-    viewport,
-    overlay,
-    spatial,
-    items: {
-      all: runtime.items
-    },
-    snap: {
-      candidates: (rect: Rect) => nodeApi.snap.buildCandidates(
-        spatial.rect(rect, {
-          kinds: ['node']
-        }).flatMap((record) => {
-          if (record.item.kind !== 'node') {
-            return []
-          }
-
-          const view = runtime.state().graph.nodes.get(record.item.id)
-          return view
-            ? [{
-                id: record.item.id,
-                rect: view.geometry.rect
-              }]
-            : []
-        })
-      )
-    },
-    bounds
-  }
-
   return {
     revision: runtime.revision,
     source,
@@ -588,6 +552,36 @@ export const createProjectionRead = (runtime: {
     runtime: createRuntimeRead({
       state: runtime.state
     }),
-    scene
+    nodes,
+    edges,
+    mindmaps,
+    groups,
+    selection,
+    frame,
+    hit,
+    viewport,
+    overlay,
+    spatial,
+    items: runtime.items,
+    snap: {
+      candidates: (rect: Rect) => nodeApi.snap.buildCandidates(
+        spatial.rect(rect, {
+          kinds: ['node']
+        }).flatMap((record) => {
+          if (record.item.kind !== 'node') {
+            return []
+          }
+
+          const view = runtime.state().graph.nodes.get(record.item.id)
+          return view
+            ? [{
+                id: record.item.id,
+                rect: view.geometry.rect
+              }]
+            : []
+        })
+      )
+    },
+    bounds
   }
 }

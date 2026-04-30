@@ -3,8 +3,7 @@ import type {
   FieldOption,
   FieldId,
   Intent,
-  RecordId,
-  View
+  RecordId
 } from '@dataview/core/types'
 import type { DocumentOperation } from '@dataview/core/op'
 import {
@@ -14,7 +13,7 @@ import { createId } from '@shared/core'
 import {
   view as viewApi
 } from '@dataview/core/view'
-import { equal, order, string } from '@shared/core'
+import { string } from '@shared/core'
 import type {
   DocumentReader
 } from './document/reader'
@@ -22,6 +21,9 @@ import { validateField } from '@dataview/core/field/validate'
 import {
   createEntityPatch
 } from './compile-patch'
+import {
+  buildViewUpdateOps
+} from './compile-view-ops'
 import {
   issue,
   reportIssues,
@@ -39,15 +41,6 @@ const emitData = <T>(
   return data
 }
 
-const toViewPatch = (
-  current: View,
-  next: View
-): DocumentOperation => ({
-  type: 'view.patch',
-  id: current.id,
-  patch: createEntityPatch(current, next)
-})
-
 const toFieldPatch = (
   id: string,
   patch: Partial<Omit<CustomField, 'id'>>
@@ -56,98 +49,6 @@ const toFieldPatch = (
   id,
   patch
 })
-
-const buildViewDisplayOps = (
-  current: View,
-  next: View
-): DocumentOperation[] => {
-  if (equal.sameOrder(current.display.fields, next.display.fields)) {
-    return []
-  }
-
-  const operations: DocumentOperation[] = []
-  let working = [...current.display.fields]
-  const nextFieldSet = new Set(next.display.fields)
-
-  current.display.fields.forEach((fieldId) => {
-    if (nextFieldSet.has(fieldId)) {
-      return
-    }
-
-    operations.push({
-      type: 'view.display.hide',
-      id: current.id,
-      field: fieldId
-    })
-    working = working.filter((entry) => entry !== fieldId)
-  })
-
-  for (let index = next.display.fields.length - 1; index >= 0; index -= 1) {
-    const fieldId = next.display.fields[index]!
-    const before = next.display.fields[index + 1]
-    if (!working.includes(fieldId)) {
-      operations.push({
-        type: 'view.display.show',
-        id: current.id,
-        field: fieldId,
-        ...(before !== undefined
-          ? { before }
-          : {})
-      })
-      working = order.moveItem(working, fieldId, {
-        ...(before !== undefined
-          ? { before }
-          : {})
-      })
-      continue
-    }
-
-    const reordered = order.moveItem(working, fieldId, {
-      ...(before !== undefined
-        ? { before }
-        : {})
-    })
-    if (equal.sameOrder(working, reordered)) {
-      continue
-    }
-
-    operations.push({
-      type: 'view.display.move',
-      id: current.id,
-      field: fieldId,
-      ...(before !== undefined
-        ? { before }
-        : {})
-    })
-    working = reordered
-  }
-
-  return operations
-}
-
-const buildViewUpdateOps = (
-  current: View,
-  next: View
-): DocumentOperation[] => {
-  const displayOps = buildViewDisplayOps(current, next)
-  const displayStableCurrent = equal.sameOrder(current.display.fields, next.display.fields)
-    ? current
-    : {
-        ...current,
-        display: next.display
-      }
-  const patch = createEntityPatch(displayStableCurrent, next)
-  return [
-    ...displayOps,
-    ...(Object.keys(patch).length
-      ? [{
-          type: 'view.patch',
-          id: current.id,
-          patch
-        } satisfies DocumentOperation]
-      : [])
-  ]
-}
 
 const toRecordFieldWriteMany = (input: {
   recordIds: readonly RecordId[]

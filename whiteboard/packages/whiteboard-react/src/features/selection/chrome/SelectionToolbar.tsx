@@ -29,7 +29,7 @@ export const SelectionToolbar = ({
   void viewport
   const [activeScopeKey, setActiveScopeKey] = useState<string | null>(null)
   const worldToScreen = useCallback(
-    (point: Point) => editor.scene.read.scene.viewport.screenPoint(point),
+    (point: Point) => editor.scene.viewport.screenPoint(point),
     [editor]
   )
 

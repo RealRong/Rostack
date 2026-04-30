@@ -22,7 +22,7 @@ import type { EditorHostDeps } from '@whiteboard/editor/input/runtime'
 import { resolveNodeEditorCapability } from '@whiteboard/editor/types/node'
 
 type EdgeConnectNodeRead = Pick<EditorHostDeps, 'projection' | 'nodeType'>
-type EdgeConnectPreviewGeometryRead = Pick<EditorHostDeps['projection']['read']['scene'], 'nodes'>
+type EdgeConnectPreviewGeometryRead = Pick<EditorHostDeps['projection'], 'nodes'>
 type EdgeConnectEdgeRead = Pick<EditorHostDeps, 'projection'>
 type EdgeConnectSnap = (input: {
   pointerWorld: PointerDownInput['world']
@@ -123,7 +123,7 @@ const resolveNodeHandleStart = (input: {
     return undefined
   }
 
-  const entry = input.node.projection.read.scene.nodes.get(
+  const entry = input.node.projection.nodes.get(
     pick.id
   ) as ConnectNodeEntry | undefined
   if (!entry) {
@@ -174,7 +174,7 @@ const resolveNodeBodyStart = (input: {
     return undefined
   }
 
-  const entry = input.node.projection.read.scene.nodes.get(
+  const entry = input.node.projection.nodes.get(
     pick.id
   ) as ConnectNodeEntry | undefined
   if (!entry) {
@@ -226,14 +226,14 @@ const resolveReconnectStart = (input: {
   end: 'source' | 'target'
   pointerId: number
 }): EdgeConnectState | undefined => {
-  const edge = input.edge.projection.read.scene.edges.get(input.edgeId)?.base.edge
-  const resolved = input.edge.projection.read.scene.edges.get(input.edgeId)
+  const edge = input.edge.projection.edges.get(input.edgeId)?.base.edge
+  const resolved = input.edge.projection.edges.get(input.edgeId)
   const resolvedEnd = resolved?.route.ends?.[input.end]
   if (!edge || !resolvedEnd) {
     return undefined
   }
 
-  const capability = input.edge.projection.read.scene.edges.capability(
+  const capability = input.edge.projection.edges.capability(
     input.edgeId
   )
   if (
@@ -452,7 +452,7 @@ export const createEdgeConnectSession = (
   const reconnectFixedPoint = edgeApi.connect.reconnectFixedPoint({
     state: initial,
     ends: initial.kind === 'reconnect'
-      ? ctx.projection.read.scene.edges.get(initial.edgeId)?.route.ends
+      ? ctx.projection.edges.get(initial.edgeId)?.route.ends
       : undefined
   })
   const originWorld = lastWorld
@@ -488,7 +488,7 @@ export const createEdgeConnectSession = (
       allowLatch
     })
     const result = stepEdgeConnect({
-      geometry: ctx.projection.read.scene,
+      geometry: ctx.projection,
       state,
       world: edgeApi.connect.reconnectWorld({
         state,

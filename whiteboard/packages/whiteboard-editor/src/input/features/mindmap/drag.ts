@@ -69,7 +69,7 @@ export const tryStartMindmapDrag = (input: {
   tool: Tool
   pointer: PointerDownInput
   mindmap: {
-    tree: EditorHostDeps['projection']['read']['scene']['mindmaps']['tree']
+    tree: EditorHostDeps['projection']['mindmaps']['tree']
   }
   node: (nodeId: NodeId) => Node | undefined
   selection: Pick<store.ReadStore<SelectionSummary>, 'get'>
@@ -145,7 +145,7 @@ export const tryStartMindmapDragForNode = (input: {
   pointerId: number
   world: Point
   mindmap: {
-    tree: EditorHostDeps['projection']['read']['scene']['mindmaps']['tree']
+    tree: EditorHostDeps['projection']['mindmaps']['tree']
   }
   node: (nodeId: NodeId) => Node | undefined
 }): MindmapDragState | undefined => {
@@ -198,7 +198,7 @@ const stepMindmapDrag = (input: {
   state: MindmapDragState
   world: Point
   mindmap: {
-    tree: EditorHostDeps['projection']['read']['scene']['mindmaps']['tree']
+    tree: EditorHostDeps['projection']['mindmaps']['tree']
   }
 }): MindmapDragState => mindmapApi.drop.projectDrag({
   active: input.state,
@@ -259,7 +259,7 @@ export const createMindmapDragSession = (
       state,
       world,
       mindmap: {
-        tree: ctx.projection.read.scene.mindmaps.tree
+        tree: ctx.projection.mindmaps.tree
       }
     })
     interaction!.gesture = createGesture('mindmap-drag', {

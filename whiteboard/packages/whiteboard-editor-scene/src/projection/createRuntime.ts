@@ -57,14 +57,15 @@ export const createRuntime = (input: {
   void lastResult
 
   return {
+    scene: runtime.scene,
     stores: runtime.stores,
-    read: runtime.read,
     revision: runtime.revision,
     state: runtime.state,
     capture: runtime.capture,
     subscribe: runtime.subscribe,
     dispose: () => {
       unsubscribe()
+      runtime.dispose()
     }
   }
 }

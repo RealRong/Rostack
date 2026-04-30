@@ -48,7 +48,7 @@ export const SelectionActionMenu = ({
     editor,
     target
   })
-  const exactGroupIds = editor.scene.read.scene.groups.exact(target)
+  const exactGroupIds = editor.scene.groups.exact(target)
   const pureNodeSelection =
     nodeIds.length > 0
     && edgeIds.length === 0

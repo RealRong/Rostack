@@ -7,6 +7,7 @@ import type {
 import type { State } from '../contracts/state'
 import type { WorkingState } from '../contracts/working'
 import { createProjection } from './createProjection'
+import { createScene } from './scene'
 
 const createEditorSceneStateReader = (input: {
   state: () => WorkingState
@@ -32,15 +33,22 @@ export const createProjectionRuntime = (input: {
   view: SceneViewInput
 }): Runtime => {
   const runtime = createProjection(input)
+  const scene = createScene({
+    read: runtime.read,
+    stores: runtime.stores
+  })
   const state = createEditorSceneStateReader({
     state: runtime.state
   })
   return {
+    scene,
     stores: runtime.stores,
-    read: runtime.read,
     revision: runtime.revision,
     state,
     capture: runtime.capture,
+    dispose: () => {
+      scene.dispose()
+    },
     update: (value) => {
       const result = runtime.update(value)
       return {

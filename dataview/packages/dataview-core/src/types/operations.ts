@@ -1,13 +1,26 @@
 import type {
+  BucketSort,
   CustomField,
   CustomFieldId,
   DataRecord,
   FieldId,
   FieldOption,
+  Filter,
+  FilterRule,
+  FilterValue,
   RecordId,
+  Search,
+  SortDirection,
+  SortRule,
   StatusCategory,
+  ViewCalc,
+  ViewGroup,
+  ViewGroupBucketId,
+  ViewFilterRuleId,
   View,
-  ViewId
+  ViewId,
+  ViewSortRuleId,
+  ViewType
 } from './state'
 
 export interface RecordFieldWriteManyOperationInput {
@@ -63,9 +76,197 @@ export type DocumentOperation =
       value: View
     }
   | {
-      type: 'view.patch'
+      type: 'view.rename'
       id: ViewId
-      patch: Partial<Omit<View, 'id'>>
+      name: string
+    }
+  | {
+      type: 'view.type.set'
+      id: ViewId
+      viewType: ViewType
+    }
+  | {
+      type: 'view.search.set'
+      id: ViewId
+      search: Search
+    }
+  | {
+      type: 'view.filter.create'
+      id: ViewId
+      rule: FilterRule
+      before?: ViewFilterRuleId
+    }
+  | {
+      type: 'view.filter.patch'
+      id: ViewId
+      rule: ViewFilterRuleId
+      patch: Partial<Pick<FilterRule, 'fieldId' | 'presetId' | 'value'>>
+    }
+  | {
+      type: 'view.filter.move'
+      id: ViewId
+      rule: ViewFilterRuleId
+      before?: ViewFilterRuleId
+    }
+  | {
+      type: 'view.filter.mode.set'
+      id: ViewId
+      mode: Filter['mode']
+    }
+  | {
+      type: 'view.filter.remove'
+      id: ViewId
+      rule: ViewFilterRuleId
+    }
+  | {
+      type: 'view.filter.clear'
+      id: ViewId
+    }
+  | {
+      type: 'view.sort.create'
+      id: ViewId
+      rule: SortRule
+      before?: ViewSortRuleId
+    }
+  | {
+      type: 'view.sort.patch'
+      id: ViewId
+      rule: ViewSortRuleId
+      patch: Partial<Pick<SortRule, 'fieldId' | 'direction'>>
+    }
+  | {
+      type: 'view.sort.move'
+      id: ViewId
+      rule: ViewSortRuleId
+      before?: ViewSortRuleId
+    }
+  | {
+      type: 'view.sort.remove'
+      id: ViewId
+      rule: ViewSortRuleId
+    }
+  | {
+      type: 'view.sort.clear'
+      id: ViewId
+    }
+  | {
+      type: 'view.group.set'
+      id: ViewId
+      group: ViewGroup
+    }
+  | {
+      type: 'view.group.clear'
+      id: ViewId
+    }
+  | {
+      type: 'view.group.toggle'
+      id: ViewId
+      field: FieldId
+    }
+  | {
+      type: 'view.group.mode.set'
+      id: ViewId
+      mode: string
+    }
+  | {
+      type: 'view.group.sort.set'
+      id: ViewId
+      sort: BucketSort
+    }
+  | {
+      type: 'view.group.interval.set'
+      id: ViewId
+      interval?: ViewGroup['bucketInterval']
+    }
+  | {
+      type: 'view.group.showEmpty.set'
+      id: ViewId
+      value: boolean
+    }
+  | {
+      type: 'view.section.show'
+      id: ViewId
+      bucket: ViewGroupBucketId
+    }
+  | {
+      type: 'view.section.hide'
+      id: ViewId
+      bucket: ViewGroupBucketId
+    }
+  | {
+      type: 'view.section.collapse'
+      id: ViewId
+      bucket: ViewGroupBucketId
+    }
+  | {
+      type: 'view.section.expand'
+      id: ViewId
+      bucket: ViewGroupBucketId
+    }
+  | {
+      type: 'view.calc.set'
+      id: ViewId
+      field: FieldId
+      metric: ViewCalc[FieldId] | null
+    }
+  | {
+      type: 'view.table.widths.set'
+      id: ViewId
+      widths: Partial<Record<FieldId, number>>
+    }
+  | {
+      type: 'view.table.verticalLines.set'
+      id: ViewId
+      value: boolean
+    }
+  | {
+      type: 'view.table.wrap.set'
+      id: ViewId
+      value: boolean
+    }
+  | {
+      type: 'view.gallery.wrap.set'
+      id: ViewId
+      value: boolean
+    }
+  | {
+      type: 'view.gallery.size.set'
+      id: ViewId
+      value: View['type'] extends 'gallery'
+        ? never
+        : never
+    }
+  | {
+      type: 'view.gallery.layout.set'
+      id: ViewId
+      value: View['type'] extends 'gallery'
+        ? never
+        : never
+    }
+  | {
+      type: 'view.kanban.wrap.set'
+      id: ViewId
+      value: boolean
+    }
+  | {
+      type: 'view.kanban.size.set'
+      id: ViewId
+      value: 'sm' | 'md' | 'lg'
+    }
+  | {
+      type: 'view.kanban.layout.set'
+      id: ViewId
+      value: 'compact' | 'stacked'
+    }
+  | {
+      type: 'view.kanban.fillColor.set'
+      id: ViewId
+      value: boolean
+    }
+  | {
+      type: 'view.kanban.cardsPerColumn.set'
+      id: ViewId
+      value: 25 | 50 | 100 | 'all'
     }
   | {
       type: 'view.order.move'

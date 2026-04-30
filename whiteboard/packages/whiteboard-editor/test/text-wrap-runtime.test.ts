@@ -261,7 +261,7 @@ describe('text wrap runtime', () => {
   it('projects auto-width text rect from live edit layout before commit', () => {
     const editor = createAutoWidthTextEditor()
 
-    expect(editor.scene.read.scene.nodes.get('text-1')?.geometry.rect).toMatchObject({
+    expect(editor.scene.nodes.get('text-1')?.geometry.rect).toMatchObject({
       width: 100,
       height: 24
     })
@@ -273,7 +273,7 @@ describe('text wrap runtime', () => {
       kind: 'node',
       nodeId: 'text-1'
     })
-    expect(editor.scene.read.scene.nodes.get('text-1')?.geometry.rect).toMatchObject({
+    expect(editor.scene.nodes.get('text-1')?.geometry.rect).toMatchObject({
       width: 280,
       height: 24
     })
@@ -303,7 +303,7 @@ describe('text wrap runtime', () => {
       widthMode: 'wrap',
       wrapWidth: 180
     })
-    expect(editor.scene.read.scene.nodes.get('text-1')?.geometry.rect).toMatchObject({
+    expect(editor.scene.nodes.get('text-1')?.geometry.rect).toMatchObject({
       width: 180,
       height: 24
     })
@@ -315,7 +315,7 @@ describe('text wrap runtime', () => {
       kind: 'node',
       nodeId: 'text-1'
     })
-    expect(editor.scene.read.scene.nodes.get('text-1')?.geometry.rect).toMatchObject({
+    expect(editor.scene.nodes.get('text-1')?.geometry.rect).toMatchObject({
       width: 180,
       height: 24
     })
@@ -345,7 +345,7 @@ describe('text wrap runtime', () => {
     expect(editor.document.snapshot().nodes['text-1']?.style).toMatchObject({
       fontSize: 20
     })
-    expect(editor.scene.read.scene.nodes.get('text-1')?.geometry.rect).toMatchObject({
+    expect(editor.scene.nodes.get('text-1')?.geometry.rect).toMatchObject({
       width: 180,
       height: 48
     })
@@ -379,7 +379,7 @@ describe('text wrap runtime', () => {
     expect(editor.document.snapshot().nodes['text-1']?.style).toMatchObject({
       fontSize: 20
     })
-    expect(editor.scene.read.scene.nodes.get('text-1')?.geometry.rect).toMatchObject({
+    expect(editor.scene.nodes.get('text-1')?.geometry.rect).toMatchObject({
       width: 180,
       height: 48
     })
@@ -423,7 +423,7 @@ describe('sticky fit runtime', () => {
     expect(editor.document.snapshot().nodes['sticky-1']?.style).toMatchObject({
       fontSize: 18
     })
-    expect(editor.scene.read.scene.nodes.get('sticky-1')?.geometry.rect).toMatchObject({
+    expect(editor.scene.nodes.get('sticky-1')?.geometry.rect).toMatchObject({
       width: 100,
       height: 140
     })

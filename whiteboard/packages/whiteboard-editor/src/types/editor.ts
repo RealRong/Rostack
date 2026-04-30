@@ -19,12 +19,7 @@ import type {
   DocumentFrame,
   DrawPreview,
   EdgeGuidePreview,
-  EditorSceneRead,
-  RuntimeStores,
-  SceneRead as EditorSceneRootRead,
-  SpatialKind,
-  SpatialQueryStats,
-  SpatialRecord
+  EditorScene
 } from '@whiteboard/editor-scene'
 import type { EditorActions as EditorWrite } from '@whiteboard/editor/action/types'
 import type { EditSession } from '@whiteboard/editor/session/edit'
@@ -54,7 +49,7 @@ import type { Tool } from '@whiteboard/editor/types/tool'
 import type { IntentResult } from '@whiteboard/engine'
 import type { EngineCommit } from '@whiteboard/engine/types/engineWrite'
 
-type SceneRead = EditorSceneRootRead
+export type { EditorScene } from '@whiteboard/editor-scene'
 
 export type EditorPointerDispatchResult = {
   handled: boolean
@@ -141,84 +136,13 @@ export type EditorSelectionEdgeRead = {
 }
 
 export type EditorMarqueePreview =
-  NonNullable<ReturnType<SceneRead['overlay']['marquee']>>
+  NonNullable<ReturnType<EditorScene['overlay']['marquee']>>
 
 export type SelectedEdgeChrome =
-  NonNullable<ReturnType<SceneRead['edges']['chrome']>>
+  NonNullable<ReturnType<EditorScene['edges']['chrome']>>
 
 export type MindmapChrome = {
-  addChildTargets: ReturnType<SceneRead['mindmaps']['addChildTargets']>
-}
-
-export type ScenePickKind = Extract<
-  SpatialKind,
-  'node' | 'edge' | 'mindmap'
->
-
-export type ScenePickRequest = {
-  client: Point
-  screen: Point
-  world: Point
-  radius?: number
-  kinds?: readonly ScenePickKind[]
-}
-
-export type ScenePickTarget =
-  | {
-      kind: 'node'
-      id: NodeId
-    }
-  | {
-      kind: 'edge'
-      id: string
-    }
-  | {
-      kind: 'mindmap'
-      id: MindmapId
-    }
-  | {
-      kind: 'group'
-      id: string
-    }
-
-export type ScenePickStats = SpatialQueryStats & {
-  hits: number
-  latency: number
-}
-
-export type ScenePickCandidateResult = {
-  rect: Rect
-  records: readonly SpatialRecord[]
-  stats: SpatialQueryStats
-}
-
-export type ScenePickResult = {
-  rect: Rect
-  target?: ScenePickTarget
-  stats: ScenePickStats
-}
-
-export type ScenePickRuntimeResult = {
-  request: ScenePickRequest
-  result: ScenePickResult
-}
-
-export type ScenePickRuntime = {
-  schedule: (request: ScenePickRequest) => void
-  get: () => ScenePickRuntimeResult | undefined
-  subscribe: (listener: () => void) => store.Unsubscribe
-  clear: () => void
-  dispose: () => void
-}
-
-export type EditorSceneApi = {
-  revision: () => number
-  read: EditorSceneRead
-  stores: RuntimeStores
-  host: {
-    pick: ScenePickRuntime
-    visible: SceneRead['viewport']['visible']
-  }
+  addChildTargets: ReturnType<EditorScene['mindmaps']['addChildTargets']>
 }
 
 export type EditorSceneDerived = {
@@ -263,7 +187,7 @@ export type EditorEvents = {
 
 export type Editor = {
   document: DocumentFrame
-  scene: EditorSceneApi
+  scene: EditorScene
   state: EditorState
   derived: EditorDerived
   history: HistoryPort<IntentResult>

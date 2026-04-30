@@ -3,7 +3,7 @@ import { geometry as geometryApi } from '@whiteboard/core/geometry'
 import { selection as selectionApi } from '@whiteboard/core/selection'
 import type { MindmapId } from '@whiteboard/core/types'
 import { equal, store } from '@shared/core'
-import type { EditorSceneApi } from '@whiteboard/editor/types/editor'
+import type { EditorScene } from '@whiteboard/editor/types/editor'
 import type {
   EditorMarqueePreview,
   EditorSceneDerived,
@@ -141,10 +141,10 @@ const toSelectionViewKind = (
 )
 
 export const createEditorSceneDerived = (input: {
-  scene: EditorSceneApi
+  scene: EditorScene
   state: EditorState
 }): EditorSceneDerived => {
-  const scene = input.scene.read.scene
+  const scene = input.scene
 
   const selectionMembers = store.createDerivedStore({
     get: () => scene.selection.members(store.read(input.state.selection))

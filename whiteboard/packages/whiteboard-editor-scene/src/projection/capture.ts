@@ -1,9 +1,9 @@
 import type { Revision } from '@shared/projection'
 import type { Capture } from '../contracts/capture'
-import type { EditorSceneProjectionRead } from './query'
+import type { ProjectionScene } from './query'
 
 export const buildEditorSceneCapture = (
-  read: Pick<EditorSceneProjectionRead, 'capture'>,
+  read: Pick<ProjectionScene, 'capture'>,
   revision: Revision
 ): Capture => ({
   revision,

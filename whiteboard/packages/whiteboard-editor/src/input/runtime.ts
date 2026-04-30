@@ -14,7 +14,7 @@ import type { EditorSession } from '@whiteboard/editor/session/runtime'
 import type { ToolService } from '@whiteboard/editor/services/tool'
 import type {
   EditorInputHost,
-  EditorSceneApi,
+  EditorScene,
   EditorSceneDerived,
   EditorState
 } from '@whiteboard/editor/types/editor'
@@ -44,7 +44,7 @@ const createSessionRead = (
 export type EditorHostDeps = {
   engine: Engine
   document: DocumentFrame
-  projection: EditorSceneApi
+  projection: EditorScene
   state: EditorState
   sessionRead: SessionRead
   session: EditorSession
@@ -58,24 +58,24 @@ export type EditorHostDeps = {
 
 const createEditorSnapRuntime = (input: {
   engine: Engine
-  projection: EditorSceneApi
+  projection: EditorScene
   state: Pick<EditorState, 'viewport'>
 }) => createSnapRuntime({
   readZoom: () => input.state.viewport.get().zoom,
   node: {
     config: input.engine.config.node,
-    query: input.projection.read.scene.snap.candidates
+    query: input.projection.snap.candidates
   },
   edge: {
     config: input.engine.config.edge,
-    query: input.projection.read.scene.edges.connectCandidates
+    query: input.projection.edges.connectCandidates
   }
 })
 
 export const createEditorHost = (input: {
   engine: Engine
   document: DocumentFrame
-  projection: EditorSceneApi
+  projection: EditorScene
   state: EditorState
   session: EditorSession
   sceneDerived: EditorSceneDerived

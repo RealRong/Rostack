@@ -23,7 +23,7 @@ import {
   createNodeWrite
 } from '@whiteboard/editor/write/node'
 import type { DocumentFrame } from '@whiteboard/editor-scene'
-import type { EditorSceneApi } from '@whiteboard/editor/types/editor'
+import type { EditorScene } from '@whiteboard/editor/types/editor'
 import type { EditorWrite } from '@whiteboard/editor/write/types'
 
 export type { EditorWrite } from '@whiteboard/editor/write/types'
@@ -37,7 +37,7 @@ export const createEditorWrite = ({
   engine: Engine
   history: HistoryPort<IntentResult>
   document: DocumentFrame
-  projection: EditorSceneApi
+  projection: EditorScene
 }): EditorWrite => {
   const historyWrite = createHistoryWrite(history)
   const documentWrite = createDocumentWrite(engine)
@@ -53,7 +53,7 @@ export const createEditorWrite = ({
     engine,
     read: {
       document,
-      readEdge: (edgeId) => projection.read.scene.edges.get(edgeId)?.base.edge
+      readEdge: (edgeId) => projection.edges.get(edgeId)?.base.edge
     }
   })
   const mindmap = createMindmapWrite({

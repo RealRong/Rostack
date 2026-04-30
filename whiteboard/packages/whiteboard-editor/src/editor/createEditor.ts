@@ -7,7 +7,6 @@ import { createEditorEvents } from '@whiteboard/editor/editor/events'
 import { createEditorState } from '@whiteboard/editor/editor/state'
 import { createEditorHost } from '@whiteboard/editor/input/runtime'
 import { createRuntime as createSceneRuntime } from '@whiteboard/editor-scene'
-import { createEditorSceneApi } from '@whiteboard/editor/scene/api'
 import { createEditorSceneBinding } from '@whiteboard/editor/scene/binding'
 import { createToolService } from '@whiteboard/editor/services/tool'
 import {
@@ -68,10 +67,8 @@ export const createEditor = (input: {
       capability: (node) => resolveNodeEditorCapability(node, nodeType)
     }
   })
-  const scene = createEditorSceneApi({
-    runtime: sceneRuntime
-  })
-  const document = scene.read.document
+  const scene = sceneRuntime.scene
+  const document = scene.document
 
   const state = createEditorState(session)
 
@@ -137,7 +134,6 @@ export const createEditor = (input: {
       events.dispose()
       tasks.dispose()
       host.cancel()
-      scene.dispose()
       sceneRuntime.dispose()
       sceneBinding.dispose()
       session.reset()

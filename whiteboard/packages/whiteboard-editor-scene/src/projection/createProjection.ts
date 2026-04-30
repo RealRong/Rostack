@@ -37,7 +37,7 @@ import { resetSpatialDelta } from '../model/spatial/update'
 import { patchUiState } from '../model/ui/patch'
 import {
   createProjectionRead,
-  type EditorSceneProjectionRead
+  type ProjectionScene
 } from './query'
 import { buildEditorSceneCapture } from './capture'
 import {
@@ -63,7 +63,7 @@ type EditorSceneProjectionDirty = ProjectionDirty & {
 }
 
 const readProjectionDirty = (
-  context: ProjectionContext<Input, WorkingState, EditorSceneProjectionRead, EditorScenePhaseName>
+  context: ProjectionContext<Input, WorkingState, ProjectionScene, EditorScenePhaseName>
 ): EditorSceneProjectionDirty => context.dirty as EditorSceneProjectionDirty
 
 const resetGraphPhaseDelta = (
@@ -115,7 +115,7 @@ export const createProjection = (input: {
 }) => createSharedProjection<
   Input,
   WorkingState,
-  EditorSceneProjectionRead,
+  ProjectionScene,
   Capture,
   EditorScenePhaseName,
   typeof editorSceneStores
@@ -328,7 +328,7 @@ export const createProjection = (input: {
   } satisfies ProjectionPhaseTable<
     Input,
     WorkingState,
-    EditorSceneProjectionRead,
+    ProjectionScene,
     EditorScenePhaseName
   >
 })

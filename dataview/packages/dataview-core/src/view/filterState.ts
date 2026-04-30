@@ -186,15 +186,64 @@ export const writeFilterCreate = (
   filter: Filter
   id: ViewFilterRuleId
 } => {
+  return writeFilterInsert(filter, field, {})
+}
+
+export const writeFilterInsert = (
+  filter: Filter,
+  field: Field,
+  input: {
+    id?: ViewFilterRuleId
+    presetId?: string
+    value?: FilterRule['value']
+    before?: ViewFilterRuleId | null
+  }
+): {
+  filter: Filter
+  id: ViewFilterRuleId
+} => {
   assertFilterFieldAvailable(filter.rules, field.id)
 
-  const id = createFilterRuleId()
-  const rule = createDefaultFilterRule(id, field)
+  const id = input.id ?? createFilterRuleId()
+  if (filter.rules.byId[id]) {
+    throw new Error(`Filter rule already exists: ${id}`)
+  }
+
+  let rule = createDefaultFilterRule(id, field)
+  if (input.presetId !== undefined) {
+    rule = applyFilterPreset(field, rule, input.presetId)
+  }
+  if (Object.prototype.hasOwnProperty.call(input, 'value')) {
+    rule = setFilterRuleValue(field, rule, input.value)
+  }
+
+  const inserted = entityTable.write.put(filter.rules, rule)
+  const nextIds = inserted.ids.filter((ruleId) => ruleId !== id)
+  const beforeId = input.before ?? undefined
+
+  if (beforeId !== undefined) {
+    if (!inserted.byId[beforeId]) {
+      throw new Error(`Unknown filter rule ${beforeId}`)
+    }
+
+    const beforeIndex = nextIds.indexOf(beforeId)
+    if (beforeIndex < 0) {
+      throw new Error(`Unknown filter rule ${beforeId}`)
+    }
+
+    nextIds.splice(beforeIndex, 0, id)
+  } else {
+    nextIds.push(id)
+  }
+
   return {
     id,
     filter: {
       mode: filter.mode,
-      rules: entityTable.write.put(filter.rules, rule)
+      rules: {
+        byId: inserted.byId,
+        ids: nextIds
+      }
     }
   }
 }
@@ -269,6 +318,42 @@ export const writeFilterRemove = (
     mode: filter.mode,
     rules: nextRules
   }
+}
+
+export const writeFilterMove = (
+  filter: Filter,
+  id: ViewFilterRuleId,
+  beforeId?: ViewFilterRuleId | null
+): Filter => {
+  if (!filter.rules.byId[id]) {
+    throw new Error(`Unknown filter rule ${id}`)
+  }
+  if (beforeId && !filter.rules.byId[beforeId]) {
+    throw new Error(`Unknown filter rule ${beforeId}`)
+  }
+
+  const nextIds = filter.rules.ids.filter((ruleId) => ruleId !== id)
+  if (beforeId) {
+    const beforeIndex = nextIds.indexOf(beforeId)
+    if (beforeIndex < 0) {
+      throw new Error(`Unknown filter rule ${beforeId}`)
+    }
+    nextIds.splice(beforeIndex, 0, id)
+  } else {
+    nextIds.push(id)
+  }
+
+  return nextIds.every((ruleId, index) => ruleId === filter.rules.ids[index])
+    ? filter
+    : {
+        mode: filter.mode,
+        rules: {
+          byId: {
+            ...filter.rules.byId
+          },
+          ids: nextIds
+        }
+      }
 }
 
 export const writeFilterClear = (

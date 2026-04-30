@@ -100,6 +100,10 @@ test('mindmap relayout stays in projection while root moves still report node ge
     Array.isArray(geometryIds)
       ? [...geometryIds].sort()
       : geometryIds,
-    [childId, created.data.rootId].sort()
+    [created.data.rootId]
+  )
+  assert.deepEqual(
+    moved.commit.delta.changes['mindmap.layout']?.ids,
+    [created.data.mindmapId]
   )
 })

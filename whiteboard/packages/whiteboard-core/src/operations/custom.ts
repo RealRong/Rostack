@@ -460,17 +460,119 @@ const readMindmapLayoutChangedNodeIds = (input: {
   ) as readonly NodeId[]
 }
 
-const createNodeGeometryDelta = (
-  nodeIds: readonly NodeId[]
-): MutationDeltaInput | undefined => nodeIds.length
-  ? whiteboardMutationBuilder.ids('node.geometry', nodeIds) as MutationDeltaInput
+type WhiteboardIdsDeltaKey = Parameters<typeof whiteboardMutationBuilder.ids>[0]
+type WhiteboardFlagDeltaKey = Parameters<typeof whiteboardMutationBuilder.flag>[0]
+
+const createIdsDelta = <TKey extends WhiteboardIdsDeltaKey>(
+  key: TKey,
+  ids: readonly string[]
+): MutationDeltaInput | undefined => ids.length
+  ? whiteboardMutationBuilder.ids(key, ids as never) as MutationDeltaInput
   : undefined
 
-const mergeNodeTouchIds = (
-  ...groups: readonly (readonly NodeId[] | undefined)[]
-): readonly NodeId[] => uniqueSorted(
-  groups.flatMap((group) => group ?? [])
-) as readonly NodeId[]
+const createFlagDelta = <TKey extends WhiteboardFlagDeltaKey>(
+  key: TKey,
+  enabled = true
+): MutationDeltaInput | undefined => enabled
+  ? whiteboardMutationBuilder.flag(key) as MutationDeltaInput
+  : undefined
+
+const mergeDelta = (
+  ...inputs: readonly (MutationDeltaInput | undefined)[]
+): MutationDeltaInput => whiteboardMutationBuilder.merge(...inputs) as MutationDeltaInput
+
+const createNodeGeometryDelta = (
+  nodeIds: readonly NodeId[]
+): MutationDeltaInput | undefined => createIdsDelta('node.geometry', nodeIds)
+
+const createNodeOwnerDelta = (
+  nodeIds: readonly NodeId[]
+): MutationDeltaInput | undefined => createIdsDelta('node.owner', nodeIds)
+
+const createNodeContentDelta = (
+  nodeIds: readonly NodeId[]
+): MutationDeltaInput | undefined => createIdsDelta('node.content', nodeIds)
+
+const createNodeCreateDelta = (
+  nodeIds: readonly NodeId[]
+): MutationDeltaInput => mergeDelta(
+  createIdsDelta('node.create', nodeIds),
+  createNodeGeometryDelta(nodeIds),
+  createNodeOwnerDelta(nodeIds),
+  createNodeContentDelta(nodeIds)
+)
+
+const createNodeDeleteDelta = (
+  nodeIds: readonly NodeId[]
+): MutationDeltaInput => mergeDelta(
+  createIdsDelta('node.delete', nodeIds),
+  createNodeGeometryDelta(nodeIds),
+  createNodeOwnerDelta(nodeIds),
+  createNodeContentDelta(nodeIds)
+)
+
+const createEdgeLabelsDelta = (
+  edgeIds: readonly EdgeId[]
+): MutationDeltaInput | undefined => createIdsDelta('edge.labels', edgeIds)
+
+const createEdgeRouteDelta = (
+  edgeIds: readonly EdgeId[]
+): MutationDeltaInput | undefined => createIdsDelta('edge.route', edgeIds)
+
+const createEdgeCreateDelta = (
+  edgeIds: readonly EdgeId[]
+): MutationDeltaInput => mergeDelta(
+  createIdsDelta('edge.create', edgeIds),
+  createIdsDelta('edge.endpoints', edgeIds),
+  createEdgeRouteDelta(edgeIds),
+  createIdsDelta('edge.style', edgeIds),
+  createEdgeLabelsDelta(edgeIds),
+  createIdsDelta('edge.data', edgeIds)
+)
+
+const createEdgeDeleteDelta = (
+  edgeIds: readonly EdgeId[]
+): MutationDeltaInput => mergeDelta(
+  createIdsDelta('edge.delete', edgeIds),
+  createIdsDelta('edge.endpoints', edgeIds),
+  createEdgeRouteDelta(edgeIds),
+  createIdsDelta('edge.style', edgeIds),
+  createEdgeLabelsDelta(edgeIds),
+  createIdsDelta('edge.data', edgeIds)
+)
+
+const createMindmapStructureDelta = (
+  mindmapIds: readonly MindmapId[]
+): MutationDeltaInput | undefined => createIdsDelta('mindmap.structure', mindmapIds)
+
+const createMindmapLayoutDelta = (
+  mindmapIds: readonly MindmapId[]
+): MutationDeltaInput | undefined => createIdsDelta('mindmap.layout', mindmapIds)
+
+const createMindmapCreateDelta = (
+  mindmapIds: readonly MindmapId[]
+): MutationDeltaInput => mergeDelta(
+  createIdsDelta('mindmap.create', mindmapIds),
+  createMindmapStructureDelta(mindmapIds),
+  createMindmapLayoutDelta(mindmapIds)
+)
+
+const createMindmapDeleteDelta = (
+  mindmapIds: readonly MindmapId[]
+): MutationDeltaInput => mergeDelta(
+  createIdsDelta('mindmap.delete', mindmapIds),
+  createMindmapStructureDelta(mindmapIds),
+  createMindmapLayoutDelta(mindmapIds)
+)
+
+const createCanvasOrderDelta = (
+  changed = true
+): MutationDeltaInput | undefined => createFlagDelta('canvas.order', changed)
+
+const createEntityFootprints = (
+  family: 'node' | 'edge' | 'group' | 'mindmap',
+  ids: readonly string[]
+): MutationFootprint[] => ids.map((id) => entityKey(family, id))
 
 const createMindmapSnapshot = (
   reader: DocumentReader,
@@ -578,17 +680,17 @@ const createMindmapResult = (
   }
 
   return createWhiteboardCustomResult({
-    before,
     document: nextBase,
-    effects: {
-      canvasOrder: true,
-      nodes: {
-        created: input.op.nodes.map((node) => node.id)
-      },
-      mindmaps: {
-        created: [input.op.mindmap.id]
-      }
-    },
+    delta: mergeDelta(
+      createNodeCreateDelta(input.op.nodes.map((node) => node.id)),
+      createMindmapCreateDelta([input.op.mindmap.id]),
+      createCanvasOrderDelta()
+    ),
+    footprint: [
+      ...createEntityFootprints('node', input.op.nodes.map((node) => node.id)),
+      ...createEntityFootprints('mindmap', [input.op.mindmap.id]),
+      fieldKey('document', 'document', 'canvas.order')
+    ],
     history: {
       inverse: [{
         type: 'mindmap.delete',
@@ -625,17 +727,17 @@ const createMindmapRestoreResult = (
   }
 
   return createWhiteboardCustomResult({
-    before,
     document: nextBase,
-    effects: {
-      canvasOrder: true,
-      nodes: {
-        created: input.op.snapshot.nodes.map((node) => node.id)
-      },
-      mindmaps: {
-        created: [input.op.snapshot.mindmap.id]
-      }
-    },
+    delta: mergeDelta(
+      createNodeCreateDelta(input.op.snapshot.nodes.map((node) => node.id)),
+      createMindmapCreateDelta([input.op.snapshot.mindmap.id]),
+      createCanvasOrderDelta()
+    ),
+    footprint: [
+      ...createEntityFootprints('node', input.op.snapshot.nodes.map((node) => node.id)),
+      ...createEntityFootprints('mindmap', [input.op.snapshot.mindmap.id]),
+      fieldKey('document', 'document', 'canvas.order')
+    ],
     history: {
       inverse: [{
         type: 'mindmap.delete',
@@ -739,20 +841,19 @@ const createMindmapDeleteResult = (
   })
 
   return createWhiteboardCustomResult({
-    before,
     document: next,
-    effects: {
-      canvasOrder: true,
-      nodes: {
-        deleted: [...nodeIds]
-      },
-      edges: {
-        deleted: edgeIds
-      },
-      mindmaps: {
-        deleted: [input.op.id]
-      }
-    },
+    delta: mergeDelta(
+      createNodeDeleteDelta([...nodeIds]),
+      createEdgeDeleteDelta(edgeIds),
+      createMindmapDeleteDelta([input.op.id]),
+      createCanvasOrderDelta()
+    ),
+    footprint: [
+      ...createEntityFootprints('node', [...nodeIds]),
+      ...createEntityFootprints('edge', edgeIds),
+      ...createEntityFootprints('mindmap', [input.op.id]),
+      fieldKey('document', 'document', 'canvas.order')
+    ],
     history: {
       inverse
     }
@@ -789,23 +890,14 @@ const createMindmapMoveResult = (
       }
     }
   }
-  const relayoutNodeIds = readMindmapLayoutChangedNodeIds({
-    before,
-    after: nextBase,
-    id: input.op.id
-  })
-
   return createWhiteboardCustomResult({
-    before,
     document: nextBase,
-    effects: {
-      nodes: {
-        touched: mergeNodeTouchIds([root.id], relayoutNodeIds)
-      }
-    },
-    extraDelta: createNodeGeometryDelta(relayoutNodeIds),
-    footprintEffects: {},
-    extraFootprint: [
+    delta: mergeDelta(
+      createNodeGeometryDelta([root.id]),
+      createMindmapLayoutDelta([input.op.id])
+    ),
+    footprint: [
+      fieldKey('node', root.id, 'position'),
       fieldKey('mindmap', input.op.id, 'layout')
     ],
     history: {
@@ -848,26 +940,12 @@ const createMindmapLayoutResult = (
       }
     }
   }
-  const relayoutNodeIds = readMindmapLayoutChangedNodeIds({
-    before,
-    after: nextBase,
-    id: input.op.id
-  })
-
   return createWhiteboardCustomResult({
-    before,
     document: nextBase,
-    effects: {
-      nodes: {
-        touched: relayoutNodeIds
-      },
-      mindmaps: {
-        touched: [input.op.id]
-      }
-    },
-    extraDelta: createNodeGeometryDelta(relayoutNodeIds),
-    footprintEffects: {},
-    extraFootprint: [
+    delta: mergeDelta(
+      createMindmapLayoutDelta([input.op.id])
+    ),
+    footprint: [
       fieldKey('mindmap', input.op.id, 'layout')
     ],
     history: {
@@ -921,32 +999,14 @@ const createMindmapTopicInsertResult = (
       [input.op.id]: toMindmapRecord(input.op.id, inserted.data.tree)
     }
   }
-  const relayoutNodeIds = readMindmapLayoutChangedNodeIds({
-    before,
-    after: nextBase,
-    id: input.op.id,
-    exclude: [input.op.node.id]
-  })
-
   return createWhiteboardCustomResult({
-    before,
     document: nextBase,
-    effects: {
-      nodes: {
-        created: [input.op.node.id],
-        touched: relayoutNodeIds
-      },
-      mindmaps: {
-        touched: [input.op.id]
-      }
-    },
-    extraDelta: createNodeGeometryDelta(relayoutNodeIds),
-    footprintEffects: {
-      nodes: {
-        created: [input.op.node.id]
-      }
-    },
-    extraFootprint: [
+    delta: mergeDelta(
+      createNodeCreateDelta([input.op.node.id]),
+      createMindmapStructureDelta([input.op.id])
+    ),
+    footprint: [
+      ...createEntityFootprints('node', [input.op.node.id]),
       fieldKey('mindmap', input.op.id, 'structure')
     ],
     history: {
@@ -1029,32 +1089,14 @@ const createMindmapTopicRestoreResult = (
     }
   }
   const createdNodeIds = input.op.snapshot.nodes.map((node) => node.id)
-  const relayoutNodeIds = readMindmapLayoutChangedNodeIds({
-    before,
-    after: nextBase,
-    id: input.op.id,
-    exclude: createdNodeIds
-  })
-
   return createWhiteboardCustomResult({
-    before,
     document: nextBase,
-    effects: {
-      nodes: {
-        created: createdNodeIds,
-        touched: relayoutNodeIds
-      },
-      mindmaps: {
-        touched: [input.op.id]
-      }
-    },
-    extraDelta: createNodeGeometryDelta(relayoutNodeIds),
-    footprintEffects: {
-      nodes: {
-        created: createdNodeIds
-      }
-    },
-    extraFootprint: [
+    delta: mergeDelta(
+      createNodeCreateDelta(createdNodeIds),
+      createMindmapStructureDelta([input.op.id])
+    ),
+    footprint: [
+      ...createEntityFootprints('node', createdNodeIds),
       fieldKey('mindmap', input.op.id, 'structure')
     ],
     history: {
@@ -1112,26 +1154,12 @@ const createMindmapTopicMoveResult = (
       [input.op.id]: toMindmapRecord(input.op.id, moved.data.tree)
     }
   }
-  const relayoutNodeIds = readMindmapLayoutChangedNodeIds({
-    before,
-    after: nextBase,
-    id: input.op.id
-  })
-
   return createWhiteboardCustomResult({
-    before,
     document: nextBase,
-    effects: {
-      nodes: {
-        touched: relayoutNodeIds
-      },
-      mindmaps: {
-        touched: [input.op.id]
-      }
-    },
-    extraDelta: createNodeGeometryDelta(relayoutNodeIds),
-    footprintEffects: {},
-    extraFootprint: [
+    delta: mergeDelta(
+      createMindmapStructureDelta([input.op.id])
+    ),
+    footprint: [
       fieldKey('mindmap', input.op.id, 'structure')
     ],
     history: {
@@ -1217,13 +1245,6 @@ const createMindmapTopicDeleteResult = (
       order: nextOrder
     }
   }
-  const relayoutNodeIds = readMindmapLayoutChangedNodeIds({
-    before,
-    after: nextBase,
-    id: input.op.id,
-    exclude: nodeIds
-  })
-
   const inverse: Operation[] = [{
     type: 'mindmap.topic.restore',
     id: input.op.id,
@@ -1263,32 +1284,20 @@ const createMindmapTopicDeleteResult = (
   })
 
   return createWhiteboardCustomResult({
-    before,
     document: nextBase,
-    effects: {
-      canvasOrder: edgeIds.length > 0,
-      nodes: {
-        deleted: [...nodeIds],
-        touched: relayoutNodeIds
-      },
-      edges: {
-        deleted: edgeIds
-      },
-      mindmaps: {
-        touched: [input.op.id]
-      }
-    },
-    extraDelta: createNodeGeometryDelta(relayoutNodeIds),
-    footprintEffects: {
-      nodes: {
-        deleted: [...nodeIds]
-      },
-      edges: {
-        deleted: edgeIds
-      }
-    },
-    extraFootprint: [
-      fieldKey('mindmap', input.op.id, 'structure')
+    delta: mergeDelta(
+      createNodeDeleteDelta([...nodeIds]),
+      createEdgeDeleteDelta(edgeIds),
+      createMindmapStructureDelta([input.op.id]),
+      createCanvasOrderDelta(edgeIds.length > 0)
+    ),
+    footprint: [
+      ...createEntityFootprints('node', [...nodeIds]),
+      ...createEntityFootprints('edge', edgeIds),
+      fieldKey('mindmap', input.op.id, 'structure'),
+      ...(edgeIds.length > 0
+        ? [fieldKey('document', 'document', 'canvas.order')]
+        : [])
     ],
     history: {
       inverse
@@ -1342,9 +1351,14 @@ const createMindmapTopicPatchResult = (
     id: input.op.id
   })
 
-  const footprint: MutationFootprint[] = [
-    entityKey('mindmap', input.op.id)
-  ]
+  const footprint: MutationFootprint[] = relayoutNodeIds.length > 0
+    ? [
+        entityKey('mindmap', input.op.id),
+        fieldKey('mindmap', input.op.id, 'layout')
+      ]
+    : [
+        entityKey('mindmap', input.op.id)
+      ]
   Object.keys(update.fields ?? {}).forEach((field) => {
     footprint.push(fieldKey('node', input.op.topicId, field))
   })
@@ -1364,20 +1378,22 @@ const createMindmapTopicPatchResult = (
     }
   })
 
+  const topicDelta = mergeDelta(
+    (hasOwn(update.fields ?? {}, 'size') || hasOwn(update.fields ?? {}, 'rotation'))
+      ? createNodeGeometryDelta([input.op.topicId])
+      : undefined,
+    (hasOwn(update.fields ?? {}, 'locked') || Object.keys(update.record ?? {}).length > 0)
+      ? createNodeContentDelta([input.op.topicId])
+      : undefined,
+    relayoutNodeIds.length > 0
+      ? createMindmapLayoutDelta([input.op.id])
+      : undefined
+  )
+
   return createWhiteboardCustomResult({
-    before,
     document: nextBase,
-    effects: {
-      nodes: {
-        touched: mergeNodeTouchIds([
-          input.op.topicId,
-          ...relayoutNodeIds
-        ])
-      }
-    },
-    extraDelta: createNodeGeometryDelta(relayoutNodeIds),
-    footprintEffects: {},
-    extraFootprint: footprint,
+    delta: topicDelta,
+    footprint,
     history: {
       inverse: [{
         type: 'mindmap.topic.patch',
@@ -1467,26 +1483,12 @@ const createMindmapBranchPatchResult = (
       }
     }
   }
-  const relayoutNodeIds = readMindmapLayoutChangedNodeIds({
-    before,
-    after: nextBase,
-    id: input.op.id
-  })
-
   return createWhiteboardCustomResult({
-    before,
     document: nextBase,
-    effects: {
-      nodes: {
-        touched: relayoutNodeIds
-      },
-      mindmaps: {
-        touched: [input.op.id]
-      }
-    },
-    extraDelta: createNodeGeometryDelta(relayoutNodeIds),
-    footprintEffects: {},
-    extraFootprint: Object.keys(input.op.patch).map((field) => (
+    delta: mergeDelta(
+      createMindmapStructureDelta([input.op.id])
+    ),
+    footprint: Object.keys(input.op.patch).map((field) => (
       fieldKey('mindmap', input.op.id, `branch.${input.op.topicId}.${field}`)
     )),
     history: {
@@ -1553,27 +1555,13 @@ const createMindmapTopicCollapseResult = (
       }
     }
   }
-  const relayoutNodeIds = readMindmapLayoutChangedNodeIds({
-    before,
-    after: nextBase,
-    id: input.op.id
-  })
-
   return createWhiteboardCustomResult({
-    before,
     document: nextBase,
-    effects: {
-      nodes: {
-        touched: relayoutNodeIds
-      },
-      mindmaps: {
-        touched: [input.op.id]
-      }
-    },
-    extraDelta: createNodeGeometryDelta(relayoutNodeIds),
-    footprintEffects: {},
-    extraFootprint: [
-      fieldKey('mindmap', input.op.id, 'layout')
+    delta: mergeDelta(
+      createMindmapStructureDelta([input.op.id])
+    ),
+    footprint: [
+      fieldKey('mindmap', input.op.id, 'structure')
     ],
     history: {
       inverse: [{
@@ -1598,7 +1586,6 @@ const reduceCanvasOrderMove = (
   }
 
   return createWhiteboardCustomResult({
-    before: input.document,
     document: {
       ...input.document,
       canvas: {
@@ -1606,11 +1593,10 @@ const reduceCanvasOrderMove = (
         order: nextOrder as CanvasItemRef[]
       }
     },
-    effects: {
-      canvasOrder: true
-    },
-    footprintEffects: {},
-    extraFootprint: [
+    delta: mergeDelta(
+      createCanvasOrderDelta()
+    ),
+    footprint: [
       fieldKey('document', 'document', 'canvas.order')
     ],
     history: {
@@ -1654,15 +1640,11 @@ const reduceEdgeLabelInsert = (
   }
 
   return createWhiteboardCustomResult({
-    before: input.document,
     document: next,
-    effects: {
-      edges: {
-        touched: [input.op.edgeId]
-      }
-    },
-    footprintEffects: {},
-    extraFootprint: [
+    delta: mergeDelta(
+      createEdgeLabelsDelta([input.op.edgeId])
+    ),
+    footprint: [
       relationKey('edge', input.op.edgeId, 'labels'),
       relationKey('edge', input.op.edgeId, 'labels', input.op.label.id)
     ],
@@ -1703,15 +1685,11 @@ const reduceEdgeLabelDelete = (
   }
 
   return createWhiteboardCustomResult({
-    before: input.document,
     document: next,
-    effects: {
-      edges: {
-        touched: [input.op.edgeId]
-      }
-    },
-    footprintEffects: {},
-    extraFootprint: [
+    delta: mergeDelta(
+      createEdgeLabelsDelta([input.op.edgeId])
+    ),
+    footprint: [
       relationKey('edge', input.op.edgeId, 'labels'),
       relationKey('edge', input.op.edgeId, 'labels', input.op.labelId)
     ],
@@ -1762,15 +1740,11 @@ const reduceEdgeLabelMove = (
   }
 
   return createWhiteboardCustomResult({
-    before: input.document,
     document: next,
-    effects: {
-      edges: {
-        touched: [input.op.edgeId]
-      }
-    },
-    footprintEffects: {},
-    extraFootprint: [
+    delta: mergeDelta(
+      createEdgeLabelsDelta([input.op.edgeId])
+    ),
+    footprint: [
       relationKey('edge', input.op.edgeId, 'labels'),
       relationKey('edge', input.op.edgeId, 'labels', input.op.labelId)
     ],
@@ -1848,15 +1822,11 @@ const reduceEdgeLabelPatch = (
   }
 
   return createWhiteboardCustomResult({
-    before: input.document,
     document: next,
-    effects: {
-      edges: {
-        touched: [input.op.edgeId]
-      }
-    },
-    footprintEffects: {},
-    extraFootprint: [
+    delta: mergeDelta(
+      createEdgeLabelsDelta([input.op.edgeId])
+    ),
+    footprint: [
       relationKey('edge', input.op.edgeId, 'labels'),
       relationKey('edge', input.op.edgeId, 'labels', input.op.labelId)
     ],
@@ -1912,15 +1882,11 @@ const reduceEdgeRoutePointInsert = (
   }
 
   return createWhiteboardCustomResult({
-    before: input.document,
     document: next,
-    effects: {
-      edges: {
-        touched: [input.op.edgeId]
-      }
-    },
-    footprintEffects: {},
-    extraFootprint: [
+    delta: mergeDelta(
+      createEdgeRouteDelta([input.op.edgeId])
+    ),
+    footprint: [
       relationKey('edge', input.op.edgeId, 'route'),
       relationKey('edge', input.op.edgeId, 'route', input.op.point.id)
     ],
@@ -1969,15 +1935,11 @@ const reduceEdgeRoutePointDelete = (
   }
 
   return createWhiteboardCustomResult({
-    before: input.document,
     document: next,
-    effects: {
-      edges: {
-        touched: [input.op.edgeId]
-      }
-    },
-    footprintEffects: {},
-    extraFootprint: [
+    delta: mergeDelta(
+      createEdgeRouteDelta([input.op.edgeId])
+    ),
+    footprint: [
       relationKey('edge', input.op.edgeId, 'route'),
       relationKey('edge', input.op.edgeId, 'route', input.op.pointId)
     ],
@@ -2031,15 +1993,11 @@ const reduceEdgeRoutePointMove = (
   }
 
   return createWhiteboardCustomResult({
-    before: input.document,
     document: next,
-    effects: {
-      edges: {
-        touched: [input.op.edgeId]
-      }
-    },
-    footprintEffects: {},
-    extraFootprint: [
+    delta: mergeDelta(
+      createEdgeRouteDelta([input.op.edgeId])
+    ),
+    footprint: [
       relationKey('edge', input.op.edgeId, 'route'),
       relationKey('edge', input.op.edgeId, 'route', input.op.pointId)
     ],
@@ -2099,15 +2057,11 @@ const reduceEdgeRoutePointPatch = (
   }
 
   return createWhiteboardCustomResult({
-    before: input.document,
     document: next,
-    effects: {
-      edges: {
-        touched: [input.op.edgeId]
-      }
-    },
-    footprintEffects: {},
-    extraFootprint: [
+    delta: mergeDelta(
+      createEdgeRouteDelta([input.op.edgeId])
+    ),
+    footprint: [
       relationKey('edge', input.op.edgeId, 'route', input.op.pointId)
     ],
     history: {

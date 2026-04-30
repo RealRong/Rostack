@@ -2,23 +2,11 @@ import {
   json
 } from '@shared/core'
 import type {
-  MutationDelta,
   MutationDeltaInput,
   MutationFootprint
 } from '@shared/mutation'
-import {
-  compileMutationEntityEffects
-} from '@shared/mutation/engine'
-import {
-  whiteboardMutationBuilder
-} from '../mutation'
-import { whiteboardEntities } from '@whiteboard/core/operations/entities'
 import type {
   Document,
-  EdgeId,
-  GroupId,
-  MindmapId,
-  NodeId,
   Operation,
   ResultCode
 } from '@whiteboard/core/types'
@@ -50,20 +38,6 @@ export type CustomResult = {
   delta: MutationDeltaInput
   footprint: readonly MutationFootprint[]
   history: CustomHistory
-}
-
-export type EntityDeltaInput<TId extends string = string> = {
-  created?: readonly TId[]
-  deleted?: readonly TId[]
-  touched?: readonly TId[]
-}
-
-type WhiteboardCustomEffects = {
-  canvasOrder?: boolean
-  nodes?: EntityDeltaInput<NodeId>
-  edges?: EntityDeltaInput<EdgeId>
-  groups?: EntityDeltaInput<GroupId>
-  mindmaps?: EntityDeltaInput<MindmapId>
 }
 
 export const clone = <T,>(
@@ -123,79 +97,15 @@ export const relationKey = (
 })
 
 export const createWhiteboardCustomResult = (input: {
-  before: Document
   document: Document
+  delta?: MutationDeltaInput
+  footprint?: readonly MutationFootprint[]
   history: CustomHistory
-  effects?: WhiteboardCustomEffects
-  extraDelta?: MutationDeltaInput | MutationDelta
-  footprintEffects?: WhiteboardCustomEffects
-  extraFootprint?: readonly MutationFootprint[]
 }): CustomResult => {
-  const readEntityEffects = (
-    effects: WhiteboardCustomEffects | undefined
-  ) => [
-    ...(effects?.nodes
-      ? [{
-          family: 'node',
-          ...effects.nodes
-        }]
-      : []),
-    ...(effects?.edges
-      ? [{
-          family: 'edge',
-          ...effects.edges
-        }]
-      : []),
-    ...(effects?.groups
-      ? [{
-          family: 'group',
-          ...effects.groups
-        }]
-      : []),
-    ...(effects?.mindmaps
-      ? [{
-          family: 'mindmap',
-          ...effects.mindmaps
-        }]
-      : [])
-  ]
-
-  const entityEffects = [
-    ...readEntityEffects(input.effects)
-  ]
-
-  const extraDelta = (
-    input.extraDelta
-    || input.effects?.canvasOrder
-  )
-    ? whiteboardMutationBuilder.merge(
-        input.extraDelta,
-        input.effects?.canvasOrder
-          ? whiteboardMutationBuilder.flag('canvas.order')
-          : undefined
-      ) as MutationDeltaInput
-    : undefined
-
-  const compiledDelta = compileMutationEntityEffects({
-    entities: whiteboardEntities,
-    before: input.before,
-    after: input.document,
-    effects: entityEffects,
-    extraDelta,
-    extraFootprint: []
-  })
-  const compiledFootprint = compileMutationEntityEffects({
-    entities: whiteboardEntities,
-    before: input.before,
-    after: input.document,
-    effects: readEntityEffects(input.footprintEffects ?? input.effects),
-    extraFootprint: input.extraFootprint
-  })
-
   return {
     document: input.document,
-    delta: compiledDelta.delta,
-    footprint: compiledFootprint.footprint,
+    delta: input.delta ?? {},
+    footprint: input.footprint ?? [],
     history: input.history
   }
 }

@@ -198,10 +198,7 @@ describe('mindmap drag preview', () => {
       x: beforeRoot!.x + 60,
       y: beforeRoot!.y + 40
     })
-    expect(afterChild).toEqual({
-      x: beforeChild!.x + 60,
-      y: beforeChild!.y + 40
-    })
+    expect(afterChild).toEqual(beforeChild)
   })
 
   it('updates root and child render rects during root drag preview', async () => {

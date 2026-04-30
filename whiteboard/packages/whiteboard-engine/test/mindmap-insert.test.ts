@@ -35,3 +35,71 @@ test('engine exposes created mindmap roots through committed document and delta'
   assert.deepEqual(result.commit.delta.changes['node.create']?.ids, [rootId])
   assert.deepEqual(result.commit.delta.changes['mindmap.create']?.ids, [mindmapId])
 })
+
+test('mindmap relayout stays in projection while root moves still report node geometry changes', () => {
+  const engine = createEngine({
+    document: documentApi.create('doc_mindmap_projection_layout'),
+    layout: createTestLayout()
+  })
+
+  const created = engine.execute({
+    type: 'mindmap.create',
+    input: {
+      template: product.mindmap.template.build({
+        preset: 'mindmap.capsule-outline'
+      })
+    }
+  })
+
+  assert.equal(created.ok, true)
+  if (!created.ok) {
+    return
+  }
+
+  const inserted = engine.execute({
+    type: 'mindmap.topic.insert',
+    id: created.data.mindmapId,
+    input: {
+      kind: 'child',
+      parentId: created.data.rootId
+    }
+  })
+
+  assert.equal(inserted.ok, true)
+  if (!inserted.ok) {
+    return
+  }
+
+  const childId = inserted.data.nodeId
+  assert.deepEqual(
+    engine.current().doc.nodes[childId]?.position,
+    { x: 0, y: 0 }
+  )
+
+  const moved = engine.execute({
+    type: 'mindmap.move',
+    id: created.data.mindmapId,
+    position: {
+      x: 240,
+      y: 80
+    }
+  })
+
+  assert.equal(moved.ok, true)
+  if (!moved.ok) {
+    return
+  }
+
+  assert.deepEqual(
+    moved.commit.document.nodes[childId]?.position,
+    { x: 0, y: 0 }
+  )
+
+  const geometryIds = moved.commit.delta.changes['node.geometry']?.ids
+  assert.deepEqual(
+    Array.isArray(geometryIds)
+      ? [...geometryIds].sort()
+      : geometryIds,
+    [childId, created.data.rootId].sort()
+  )
+})

@@ -2,6 +2,7 @@ import {
   json
 } from '@shared/core'
 import type {
+  MutationDelta,
   MutationDeltaInput,
   MutationFootprint
 } from '@shared/mutation'
@@ -126,6 +127,7 @@ export const createWhiteboardCustomResult = (input: {
   document: Document
   history: CustomHistory
   effects?: WhiteboardCustomEffects
+  extraDelta?: MutationDeltaInput | MutationDelta
   footprintEffects?: WhiteboardCustomEffects
   extraFootprint?: readonly MutationFootprint[]
 }): CustomResult => {
@@ -162,14 +164,24 @@ export const createWhiteboardCustomResult = (input: {
     ...readEntityEffects(input.effects)
   ]
 
+  const extraDelta = (
+    input.extraDelta
+    || input.effects?.canvasOrder
+  )
+    ? whiteboardMutationBuilder.merge(
+        input.extraDelta,
+        input.effects?.canvasOrder
+          ? whiteboardMutationBuilder.flag('canvas.order')
+          : undefined
+      ) as MutationDeltaInput
+    : undefined
+
   const compiledDelta = compileMutationEntityEffects({
     entities: whiteboardEntities,
     before: input.before,
     after: input.document,
     effects: entityEffects,
-    extraDelta: input.effects?.canvasOrder
-      ? whiteboardMutationBuilder.flag('canvas.order')
-      : undefined,
+    extraDelta,
     extraFootprint: []
   })
   const compiledFootprint = compileMutationEntityEffects({

@@ -6,6 +6,7 @@ import {
   type RecordWrite
 } from '@shared/draft'
 import type {
+  MutationDeltaInput,
   MutationCustomTable,
   MutationFootprint
 } from '@shared/mutation'
@@ -21,6 +22,9 @@ import {
   createMindmapTopicPatch,
   readMindmapTopicUpdateFromPatch
 } from '@whiteboard/core/mindmap/ops'
+import {
+  whiteboardMutationBuilder
+} from '@whiteboard/core/mutation'
 import { node as nodeApi } from '@whiteboard/core/node'
 import type {
   WhiteboardCompileServices
@@ -427,28 +431,19 @@ const toMindmapRecord = (
   layout: clone(tree.layout)!
 })
 
-const reconcileMindmap = (
+const readMindmapLayoutRects = (
   document: Document,
   id: MindmapId
-): {
-  document: Document
-  nodeIds: readonly NodeId[]
-} => {
+): ReturnType<typeof mindmapApi.layout.anchor>['node'] | undefined => {
   const record = readMindmap(document, id)
   const tree = readMindmapTree(document, id)
   if (!record || !tree) {
-    return {
-      document,
-      nodeIds: []
-    }
+    return undefined
   }
 
   const root = readNode(document, record.root)
   if (!root) {
-    return {
-      document,
-      nodeIds: []
-    }
+    return undefined
   }
 
   const computed = mindmapApi.layout.compute(
@@ -462,54 +457,46 @@ const reconcileMindmap = (
     },
     tree.layout
   )
-  const anchored = mindmapApi.layout.anchor({
+  return mindmapApi.layout.anchor({
     tree,
     computed,
     position: root.position
-  })
-
-  let nodes = document.nodes
-  let changed = false
-
-  ;(Object.entries(anchored.node) as [NodeId, (typeof anchored.node)[NodeId]][]).forEach(([nodeId, rect]) => {
-    const node = nodes[nodeId]
-    if (!node) {
-      return
-    }
-
-    if (
-      node.position.x === rect.x
-      && node.position.y === rect.y
-    ) {
-      return
-    }
-
-    if (!changed) {
-      nodes = {
-        ...document.nodes
-      }
-      changed = true
-    }
-
-    nodes[nodeId] = {
-      ...node,
-      position: {
-        x: rect.x,
-        y: rect.y
-      }
-    }
-  })
-
-  return {
-    document: changed
-      ? {
-          ...document,
-          nodes
-        }
-      : document,
-    nodeIds: Object.keys(anchored.node) as readonly NodeId[]
-  }
+  }).node
 }
+
+const readMindmapLayoutChangedNodeIds = (input: {
+  before: Document
+  after: Document
+  id: MindmapId
+  exclude?: Iterable<NodeId>
+}): readonly NodeId[] => {
+  const beforeRects = readMindmapLayoutRects(input.before, input.id) ?? {}
+  const afterRects = readMindmapLayoutRects(input.after, input.id) ?? {}
+  const excluded = new Set(input.exclude ?? [])
+  const nodeIds = new Set<NodeId>([
+    ...Object.keys(beforeRects) as NodeId[],
+    ...Object.keys(afterRects) as NodeId[]
+  ])
+
+  return uniqueSorted(
+    [...nodeIds].filter((nodeId) => (
+      !excluded.has(nodeId)
+      && !same(beforeRects[nodeId], afterRects[nodeId])
+    ))
+  ) as readonly NodeId[]
+}
+
+const createNodeGeometryDelta = (
+  nodeIds: readonly NodeId[]
+): MutationDeltaInput | undefined => nodeIds.length
+  ? whiteboardMutationBuilder.ids('node.geometry', nodeIds) as MutationDeltaInput
+  : undefined
+
+const mergeNodeTouchIds = (
+  ...groups: readonly (readonly NodeId[] | undefined)[]
+): readonly NodeId[] => uniqueSorted(
+  groups.flatMap((group) => group ?? [])
+) as readonly NodeId[]
 
 const createMindmapSnapshot = (
   document: Document,
@@ -615,11 +602,10 @@ const createMindmapResult = (
       })
     }
   }
-  const next = reconcileMindmap(nextBase, input.op.mindmap.id).document
 
   return createWhiteboardCustomResult({
     before,
-    document: next,
+    document: nextBase,
     effects: {
       canvasOrder: true,
       nodes: {
@@ -663,11 +649,10 @@ const createMindmapRestoreResult = (
       }, input.op.snapshot.slot)
     }
   }
-  const next = reconcileMindmap(nextBase, input.op.snapshot.mindmap.id).document
 
   return createWhiteboardCustomResult({
     before,
-    document: next,
+    document: nextBase,
     effects: {
       canvasOrder: true,
       nodes: {
@@ -828,16 +813,21 @@ const createMindmapMoveResult = (
       }
     }
   }
-  const relayout = reconcileMindmap(nextBase, input.op.id)
+  const relayoutNodeIds = readMindmapLayoutChangedNodeIds({
+    before,
+    after: nextBase,
+    id: input.op.id
+  })
 
   return createWhiteboardCustomResult({
     before,
-    document: relayout.document,
+    document: nextBase,
     effects: {
       nodes: {
-        touched: relayout.nodeIds
+        touched: mergeNodeTouchIds([root.id], relayoutNodeIds)
       }
     },
+    extraDelta: createNodeGeometryDelta(relayoutNodeIds),
     footprintEffects: {},
     extraFootprint: [
       fieldKey('mindmap', input.op.id, 'layout')
@@ -881,19 +871,24 @@ const createMindmapLayoutResult = (
       }
     }
   }
-  const relayout = reconcileMindmap(nextBase, input.op.id)
+  const relayoutNodeIds = readMindmapLayoutChangedNodeIds({
+    before,
+    after: nextBase,
+    id: input.op.id
+  })
 
   return createWhiteboardCustomResult({
     before,
-    document: relayout.document,
+    document: nextBase,
     effects: {
       nodes: {
-        touched: relayout.nodeIds
+        touched: relayoutNodeIds
       },
       mindmaps: {
         touched: [input.op.id]
       }
     },
+    extraDelta: createNodeGeometryDelta(relayoutNodeIds),
     footprintEffects: {},
     extraFootprint: [
       fieldKey('mindmap', input.op.id, 'layout')
@@ -948,20 +943,26 @@ const createMindmapTopicInsertResult = (
       [input.op.id]: toMindmapRecord(input.op.id, inserted.data.tree)
     }
   }
-  const relayout = reconcileMindmap(nextBase, input.op.id)
+  const relayoutNodeIds = readMindmapLayoutChangedNodeIds({
+    before,
+    after: nextBase,
+    id: input.op.id,
+    exclude: [input.op.node.id]
+  })
 
   return createWhiteboardCustomResult({
     before,
-    document: relayout.document,
+    document: nextBase,
     effects: {
       nodes: {
         created: [input.op.node.id],
-        touched: relayout.nodeIds
+        touched: relayoutNodeIds
       },
       mindmaps: {
         touched: [input.op.id]
       }
     },
+    extraDelta: createNodeGeometryDelta(relayoutNodeIds),
     footprintEffects: {
       nodes: {
         created: [input.op.node.id]
@@ -1048,23 +1049,30 @@ const createMindmapTopicRestoreResult = (
       }
     }
   }
-  const relayout = reconcileMindmap(nextBase, input.op.id)
+  const createdNodeIds = input.op.snapshot.nodes.map((node) => node.id)
+  const relayoutNodeIds = readMindmapLayoutChangedNodeIds({
+    before,
+    after: nextBase,
+    id: input.op.id,
+    exclude: createdNodeIds
+  })
 
   return createWhiteboardCustomResult({
     before,
-    document: relayout.document,
+    document: nextBase,
     effects: {
       nodes: {
-        created: input.op.snapshot.nodes.map((node) => node.id),
-        touched: relayout.nodeIds
+        created: createdNodeIds,
+        touched: relayoutNodeIds
       },
       mindmaps: {
         touched: [input.op.id]
       }
     },
+    extraDelta: createNodeGeometryDelta(relayoutNodeIds),
     footprintEffects: {
       nodes: {
-        created: input.op.snapshot.nodes.map((node) => node.id)
+        created: createdNodeIds
       }
     },
     extraFootprint: [
@@ -1124,19 +1132,24 @@ const createMindmapTopicMoveResult = (
       [input.op.id]: toMindmapRecord(input.op.id, moved.data.tree)
     }
   }
-  const relayout = reconcileMindmap(nextBase, input.op.id)
+  const relayoutNodeIds = readMindmapLayoutChangedNodeIds({
+    before,
+    after: nextBase,
+    id: input.op.id
+  })
 
   return createWhiteboardCustomResult({
     before,
-    document: relayout.document,
+    document: nextBase,
     effects: {
       nodes: {
-        touched: relayout.nodeIds
+        touched: relayoutNodeIds
       },
       mindmaps: {
         touched: [input.op.id]
       }
     },
+    extraDelta: createNodeGeometryDelta(relayoutNodeIds),
     footprintEffects: {},
     extraFootprint: [
       fieldKey('mindmap', input.op.id, 'structure')
@@ -1223,7 +1236,12 @@ const createMindmapTopicDeleteResult = (
       order: nextOrder
     }
   }
-  const relayout = reconcileMindmap(nextBase, input.op.id)
+  const relayoutNodeIds = readMindmapLayoutChangedNodeIds({
+    before,
+    after: nextBase,
+    id: input.op.id,
+    exclude: nodeIds
+  })
 
   const inverse: Operation[] = [{
     type: 'mindmap.topic.restore',
@@ -1265,12 +1283,12 @@ const createMindmapTopicDeleteResult = (
 
   return createWhiteboardCustomResult({
     before,
-    document: relayout.document,
+    document: nextBase,
     effects: {
       canvasOrder: edgeIds.length > 0,
       nodes: {
         deleted: [...nodeIds],
-        touched: relayout.nodeIds
+        touched: relayoutNodeIds
       },
       edges: {
         deleted: edgeIds
@@ -1279,6 +1297,7 @@ const createMindmapTopicDeleteResult = (
         touched: [input.op.id]
       }
     },
+    extraDelta: createNodeGeometryDelta(relayoutNodeIds),
     footprintEffects: {
       nodes: {
         deleted: [...nodeIds]
@@ -1335,7 +1354,11 @@ const createMindmapTopicPatchResult = (
       [input.op.topicId]: applied.next
     }
   }
-  const relayout = reconcileMindmap(nextBase, input.op.id)
+  const relayoutNodeIds = readMindmapLayoutChangedNodeIds({
+    before,
+    after: nextBase,
+    id: input.op.id
+  })
 
   const footprint: MutationFootprint[] = [
     entityKey('mindmap', input.op.id)
@@ -1361,15 +1384,16 @@ const createMindmapTopicPatchResult = (
 
   return createWhiteboardCustomResult({
     before,
-    document: relayout.document,
+    document: nextBase,
     effects: {
       nodes: {
-        touched: uniqueSorted([
+        touched: mergeNodeTouchIds([
           input.op.topicId,
-          ...relayout.nodeIds
+          ...relayoutNodeIds
         ])
       }
     },
+    extraDelta: createNodeGeometryDelta(relayoutNodeIds),
     footprintEffects: {},
     extraFootprint: footprint,
     history: {
@@ -1460,19 +1484,24 @@ const createMindmapBranchPatchResult = (
       }
     }
   }
-  const relayout = reconcileMindmap(nextBase, input.op.id)
+  const relayoutNodeIds = readMindmapLayoutChangedNodeIds({
+    before,
+    after: nextBase,
+    id: input.op.id
+  })
 
   return createWhiteboardCustomResult({
     before,
-    document: relayout.document,
+    document: nextBase,
     effects: {
       nodes: {
-        touched: relayout.nodeIds
+        touched: relayoutNodeIds
       },
       mindmaps: {
         touched: [input.op.id]
       }
     },
+    extraDelta: createNodeGeometryDelta(relayoutNodeIds),
     footprintEffects: {},
     extraFootprint: Object.keys(input.op.patch).map((field) => (
       fieldKey('mindmap', input.op.id, `branch.${input.op.topicId}.${field}`)
@@ -1540,19 +1569,24 @@ const createMindmapTopicCollapseResult = (
       }
     }
   }
-  const relayout = reconcileMindmap(nextBase, input.op.id)
+  const relayoutNodeIds = readMindmapLayoutChangedNodeIds({
+    before,
+    after: nextBase,
+    id: input.op.id
+  })
 
   return createWhiteboardCustomResult({
     before,
-    document: relayout.document,
+    document: nextBase,
     effects: {
       nodes: {
-        touched: relayout.nodeIds
+        touched: relayoutNodeIds
       },
       mindmaps: {
         touched: [input.op.id]
       }
     },
+    extraDelta: createNodeGeometryDelta(relayoutNodeIds),
     footprintEffects: {},
     extraFootprint: [
       fieldKey('mindmap', input.op.id, 'layout')

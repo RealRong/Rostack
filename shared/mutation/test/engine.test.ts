@@ -231,12 +231,42 @@ type StructuralDoc = {
   ordered: {
     items: string[]
   }
+  cards: {
+    items: {
+      id: string
+      title: string
+      meta?: {
+        color?: string
+      }
+    }[]
+  }
   tree: MutationTreeSnapshot<string>
+  stateTree: MutationTreeSnapshot<{
+    collapsed?: boolean
+    branchStyle: {
+      color: string
+    }
+  }>
 }
 
 const createStructuralDocument = (): StructuralDoc => ({
   ordered: {
     items: ['a', 'b', 'c']
+  },
+  cards: {
+    items: [{
+      id: 'card_a',
+      title: 'A',
+      meta: {
+        color: 'red'
+      }
+    }, {
+      id: 'card_b',
+      title: 'B',
+      meta: {
+        color: 'blue'
+      }
+    }]
   },
   tree: {
     rootIds: ['root'],
@@ -254,6 +284,29 @@ const createStructuralDocument = (): StructuralDoc => ({
         parentId: 'root',
         children: [],
         value: 'right'
+      }
+    }
+  },
+  stateTree: {
+    rootIds: ['root'],
+    nodes: {
+      root: {
+        children: ['child'],
+        value: {
+          branchStyle: {
+            color: 'black'
+          }
+        }
+      },
+      child: {
+        parentId: 'root',
+        children: [],
+        value: {
+          collapsed: false,
+          branchStyle: {
+            color: 'green'
+          }
+        }
       }
     }
   }
@@ -282,12 +335,31 @@ const createStructuralEngine = (
         }
       })
     },
+    cards: {
+      kind: 'ordered',
+      read: (document) => document.cards.items,
+      identify: (item) => item.id,
+      write: (document, items) => ({
+        ...document,
+        cards: {
+          items: [...items]
+        }
+      })
+    },
     outline: {
       kind: 'tree',
       read: (document) => document.tree,
       write: (document, tree) => ({
         ...document,
         tree
+      })
+    },
+    stateTree: {
+      kind: 'tree',
+      read: (document) => document.stateTree,
+      write: (document, tree) => ({
+        ...document,
+        stateTree: tree
       })
     }
   }
@@ -477,5 +549,121 @@ describe('MutationEngine structural API', () => {
       parentId: 'root',
       index: 0
     }])
+  })
+
+  test('applies ordered structural patch and restores the previous item through inverse patch', () => {
+    const engine = createStructuralEngine()
+    const patched = engine.apply({
+      type: 'structural.ordered.patch',
+      structure: 'cards',
+      itemId: 'card_a',
+      patch: {
+        title: 'A2',
+        meta: {
+          color: 'orange'
+        }
+      }
+    })
+
+    expect(patched.ok).toBe(true)
+    if (!patched.ok) {
+      return
+    }
+
+    expect(patched.commit.document.cards.items[0]).toEqual({
+      id: 'card_a',
+      title: 'A2',
+      meta: {
+        color: 'orange'
+      }
+    })
+    expect(patched.commit.inverse).toEqual({
+      effects: [{
+        type: 'ordered.patch',
+        structure: 'cards',
+        itemId: 'card_a',
+        patch: {
+          title: 'A',
+          'meta.color': 'red'
+        }
+      }]
+    })
+    expect(patched.commit.structural).toEqual([{
+      kind: 'ordered',
+      action: 'patch',
+      structure: 'cards',
+      itemId: 'card_a'
+    }])
+
+    const restored = engine.applyProgram(patched.commit.inverse)
+    expect(restored.ok).toBe(true)
+    if (!restored.ok) {
+      return
+    }
+
+    expect(restored.commit.document.cards.items[0]).toEqual({
+      id: 'card_a',
+      title: 'A',
+      meta: {
+        color: 'red'
+      }
+    })
+  })
+
+  test('applies tree node patch and restores the previous node value through inverse patch', () => {
+    const engine = createStructuralEngine()
+    const patched = engine.apply({
+      type: 'structural.tree.node.patch',
+      structure: 'stateTree',
+      nodeId: 'child',
+      patch: {
+        collapsed: true,
+        branchStyle: {
+          color: 'purple'
+        }
+      }
+    })
+
+    expect(patched.ok).toBe(true)
+    if (!patched.ok) {
+      return
+    }
+
+    expect(patched.commit.document.stateTree.nodes.child?.value).toEqual({
+      collapsed: true,
+      branchStyle: {
+        color: 'purple'
+      }
+    })
+    expect(patched.commit.inverse).toEqual({
+      effects: [{
+        type: 'tree.node.patch',
+        structure: 'stateTree',
+        nodeId: 'child',
+        patch: {
+          collapsed: false,
+          'branchStyle.color': 'green'
+        }
+      }]
+    })
+    expect(patched.commit.structural).toEqual([{
+      kind: 'tree',
+      action: 'patch',
+      structure: 'stateTree',
+      nodeId: 'child'
+    }])
+
+    const restored = engine.applyProgram(patched.commit.inverse)
+    expect(restored.ok).toBe(true)
+    if (!restored.ok) {
+      return
+    }
+
+    expect(restored.commit.document.stateTree.nodes.child?.value).toEqual({
+      collapsed: false,
+      branchStyle: {
+        color: 'green'
+      }
+    })
   })
 })

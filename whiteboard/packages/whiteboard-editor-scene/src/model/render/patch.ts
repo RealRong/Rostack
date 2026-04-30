@@ -4,8 +4,8 @@ import {
   resetRenderPhaseDelta
 } from '../../contracts/delta'
 import type { Input } from '../../contracts/editor'
-import type { EditorScenePlan } from '../../contracts/plan'
 import type { WorkingState } from '../../contracts/working'
+import { createRenderFacts } from '../facts'
 import { patchRenderActive } from './active'
 import { patchRenderChrome } from './chrome'
 import { createRenderContext } from './context'
@@ -17,12 +17,14 @@ import { patchRenderStatics } from './statics'
 
 export const patchRenderState = (input: {
   current: Input
-  plan: EditorScenePlan
   working: WorkingState
   reset: boolean
 }): number => {
   resetRenderPhaseDelta(input.working.phase.render)
-  const context = createRenderContext(input)
+  const context = createRenderContext({
+    ...input,
+    facts: createRenderFacts(input)
+  })
 
   if (
     !context.reset

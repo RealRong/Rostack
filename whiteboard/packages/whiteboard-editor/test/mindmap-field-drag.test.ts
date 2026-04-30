@@ -76,43 +76,36 @@ describe('mindmap field drag', () => {
         edgeIds: vi.fn(() => []),
       },
       projection: {
-        read: {
-          scene: {
-            frame: {
-              pick: vi.fn(() => undefined),
-              parent: vi.fn()
+        frame: {
+          pick: vi.fn(() => undefined),
+          parent: vi.fn()
+        },
+        mindmaps: {
+          tree: vi.fn(() => ({
+            id: 'mind-1',
+            rootId: 'root-1',
+            nodeIds: ['root-1'],
+            tree: {
+              ...structure.tree,
+              rootNodeId: 'root-1'
             },
-            mindmaps: {
-              id: vi.fn(() => 'mind-1'),
-              structure: vi.fn(() => structure),
-              get: () => ({
-                structure: {
-                  nodeIds: ['root-1']
-                },
-                tree: {
-                  layout: {
-                    node: {
-                      'root-1': {
-                        x: 100,
-                        y: 120,
-                        width: 144,
-                        height: 44
-                      }
-                    },
-                    bbox: {
-                      x: 100,
-                      y: 120,
-                      width: 144,
-                      height: 44
-                    }
-                  }
-                },
-                render: {
-                  connectors: []
+            computed: {
+              node: {
+                'root-1': {
+                  x: 100,
+                  y: 120,
+                  width: 144,
+                  height: 44
                 }
-              })
+              },
+              bbox: {
+                x: 100,
+                y: 120,
+                width: 144,
+                height: 44
+              }
             }
-          }
+          }))
         }
       },
       sessionRead: {
@@ -120,9 +113,11 @@ describe('mindmap field drag', () => {
           is: () => true
         }
       },
-      actions: {
-        selection: {
-          replace: vi.fn()
+      session: {
+        commands: {
+          selection: {
+            replace: vi.fn()
+          }
         }
       },
       write: {

@@ -12,15 +12,20 @@ import type {
   MutationStructuralOrderedDeleteOperation,
   MutationStructuralOrderedInsertOperation,
   MutationStructuralOrderedMoveOperation,
+  MutationStructuralOrderedPatchOperation,
   MutationStructuralOrderedSpliceOperation,
   MutationStructuralTreeDeleteOperation,
   MutationStructuralTreeInsertOperation,
   MutationStructuralTreeMoveOperation,
+  MutationStructuralTreeNodePatchOperation,
   MutationStructuralTreeRestoreOperation,
   MutationTreeNodeSnapshot,
   MutationTreeSnapshot,
   MutationTreeSubtreeSnapshot,
 } from './contracts'
+import {
+  draft
+} from '@shared/draft'
 import {
   createMutationEffectBuilder
 } from './effect/effectBuilder'
@@ -45,11 +50,11 @@ import type {
 type StructuralDescriptor =
   | {
       kind: 'ordered'
-      action: 'insert' | 'move' | 'splice' | 'delete'
+      action: 'insert' | 'move' | 'splice' | 'delete' | 'patch'
     }
   | {
       kind: 'tree'
-      action: 'insert' | 'move' | 'delete' | 'restore'
+      action: 'insert' | 'move' | 'delete' | 'restore' | 'patch'
     }
 
 type StructuralOperationApplyResult<
@@ -80,6 +85,56 @@ const cloneOrderedItem = <TItem,>(
   ? spec.clone(item)
   : cloneValue(item)
 
+const isRecordObject = (
+  value: unknown
+): value is Record<string, unknown> => (
+  typeof value === 'object'
+  && value !== null
+  && !Array.isArray(value)
+)
+
+const applyPatchedValue = <TValue, TPatch>(
+  input: {
+    current: TValue
+    patch: TPatch
+    apply?: (value: TValue, patch: TPatch) => TValue
+    label: string
+  }
+): TValue => {
+  if (input.apply) {
+    return input.apply(input.current, input.patch)
+  }
+  if (!isRecordObject(input.current) || !isRecordObject(input.patch)) {
+    throw new Error(`${input.label} requires a structure patch() implementation.`)
+  }
+
+  return draft.record.apply(
+    input.current,
+    input.patch
+  ) as TValue
+}
+
+const readPatchDiff = <TValue, TPatch>(
+  input: {
+    before: TValue
+    after: TValue
+    diff?: (before: TValue, after: TValue) => TPatch
+    label: string
+  }
+): TPatch => {
+  if (input.diff) {
+    return input.diff(input.before, input.after)
+  }
+  if (!isRecordObject(input.before) || !isRecordObject(input.after)) {
+    throw new Error(`${input.label} requires a structure diff() implementation.`)
+  }
+
+  return draft.record.diff(
+    input.before,
+    input.after
+  ) as TPatch
+}
+
 const readRequiredStructure = (
   value: unknown
 ): string => {
@@ -98,6 +153,17 @@ const readRequiredItemId = (
   }
 
   return value
+}
+
+const readRequiredPatch = (
+  value: unknown,
+  label: string
+): unknown => {
+  if (value === undefined) {
+    throw new Error(`${label} requires a patch.`)
+  }
+
+  return cloneValue(value)
 }
 
 const readRequiredNodeId = (
@@ -606,6 +672,11 @@ export const readStructuralOperation = (
         kind: 'ordered',
         action: 'delete'
       }
+    case 'structural.ordered.patch':
+      return {
+        kind: 'ordered',
+        action: 'patch'
+      }
     case 'structural.tree.insert':
       return {
         kind: 'tree',
@@ -625,6 +696,11 @@ export const readStructuralOperation = (
       return {
         kind: 'tree',
         action: 'restore'
+      }
+    case 'structural.tree.node.patch':
+      return {
+        kind: 'tree',
+        action: 'patch'
       }
     default:
       return undefined
@@ -672,6 +748,13 @@ export const createStructuralOrderedDeleteOperation = <Op extends { type: string
   ...input
 }) as unknown as Op
 
+export const createStructuralOrderedPatchOperation = <Op extends { type: string }>(
+  input: Omit<MutationStructuralOrderedPatchOperation, 'type'>
+): Op => ({
+  type: 'structural.ordered.patch',
+  ...input
+}) as unknown as Op
+
 export const createStructuralTreeInsertOperation = <Op extends { type: string }>(
   input: Omit<MutationStructuralTreeInsertOperation, 'type'>
 ): Op => ({
@@ -697,6 +780,13 @@ export const createStructuralTreeRestoreOperation = <Op extends { type: string }
   input: Omit<MutationStructuralTreeRestoreOperation, 'type'>
 ): Op => ({
   type: 'structural.tree.restore',
+  ...input
+}) as unknown as Op
+
+export const createStructuralTreeNodePatchOperation = <Op extends { type: string }>(
+  input: Omit<MutationStructuralTreeNodePatchOperation, 'type'>
+): Op => ({
+  type: 'structural.tree.node.patch',
   ...input
 }) as unknown as Op
 
@@ -734,6 +824,16 @@ export const lowerStructuralOperation = (
         readRequiredItemId(operation.itemId)
       )
       break
+    case 'structural.ordered.patch':
+      builder.structure.ordered.patch(
+        readRequiredStructure(operation.structure),
+        readRequiredItemId(operation.itemId),
+        readRequiredPatch(
+          operation.patch,
+          'Structural ordered patch operation'
+        )
+      )
+      break
     case 'structural.tree.insert':
       builder.structure.tree.insert(
         readRequiredStructure(operation.structure),
@@ -763,6 +863,16 @@ export const lowerStructuralOperation = (
         readTreeSubtreeSnapshot(operation.snapshot)
       )
       break
+    case 'structural.tree.node.patch':
+      builder.structure.tree.patch(
+        readRequiredStructure(operation.structure),
+        readRequiredNodeId(operation.nodeId),
+        readRequiredPatch(
+          operation.patch,
+          'Structural tree node patch operation'
+        )
+      )
+      break
   }
 
   return builder.build()
@@ -777,9 +887,13 @@ const readOrderedOperationResult = <
   document: Doc
   operation: Op
   spec: Extract<MutationStructureSpec<Doc>, { kind: 'ordered' }>
-  action: 'insert' | 'move' | 'splice' | 'delete'
+  action: 'insert' | 'move' | 'splice' | 'delete' | 'patch'
 }): StructuralOperationApplyResult<Doc, Op> => {
-  const operation = input.operation as unknown as MutationStructuralOrderedInsertOperation | MutationStructuralOrderedMoveOperation | MutationStructuralOrderedSpliceOperation | MutationStructuralOrderedDeleteOperation
+  const operation = input.operation as unknown as MutationStructuralOrderedInsertOperation
+    | MutationStructuralOrderedMoveOperation
+    | MutationStructuralOrderedSpliceOperation
+    | MutationStructuralOrderedDeleteOperation
+    | MutationStructuralOrderedPatchOperation
   const structure = readRequiredStructure(operation.structure)
   const items = input.spec.read(input.document)
   const identify = input.spec.identify
@@ -874,6 +988,70 @@ const readOrderedOperationResult = <
     })
   }
 
+  if (input.action === 'patch') {
+    const patchOperation = operation as MutationStructuralOrderedPatchOperation
+    const itemId = readRequiredItemId(patchOperation.itemId)
+    const currentIndex = itemIds.indexOf(itemId)
+    if (currentIndex < 0) {
+      return mutationFailure(
+        'mutation_engine.apply.invalid_operation',
+        `Structural ordered patch cannot find item "${itemId}" in "${structure}".`
+      )
+    }
+
+    const current = items[currentIndex]!
+    const patch = readRequiredPatch(
+      patchOperation.patch,
+      'Structural ordered patch operation'
+    )
+    const next = applyPatchedValue({
+      current,
+      patch,
+      apply: input.spec.patch,
+      label: 'Structural ordered patch operation'
+    })
+    if (identify(next) !== itemId) {
+      return mutationFailure(
+        'mutation_engine.apply.invalid_operation',
+        `Structural ordered patch cannot change item id "${itemId}".`
+      )
+    }
+    if (sameJsonValue(next, current)) {
+      return structuralSuccess({
+        document: input.document,
+        inverse: [],
+        structural: [],
+        footprint: [],
+        historyMode: 'neutral'
+      })
+    }
+
+    const inversePatch = readPatchDiff({
+      before: next,
+      after: current,
+      diff: input.spec.diff,
+      label: 'Structural ordered patch operation'
+    })
+    const nextItems = [...items]
+    nextItems[currentIndex] = cloneOrderedItem(next, input.spec)
+
+    return structuralSuccess({
+      document: input.spec.write(input.document, nextItems),
+      inverse: [createStructuralOrderedPatchOperation<Op>({
+        structure,
+        itemId,
+        patch: inversePatch
+      })],
+      structural: [{
+        kind: 'ordered',
+        action: 'patch',
+        structure,
+        itemId
+      }],
+      footprint: orderedFootprint(structure, itemId)
+    })
+  }
+
   const itemId = readRequiredItemId(
     (operation as MutationStructuralOrderedMoveOperation | MutationStructuralOrderedDeleteOperation).itemId
   )
@@ -959,7 +1137,7 @@ const readTreeOperationResult = <
   document: Doc
   operation: Op
   spec: Extract<MutationStructureSpec<Doc>, { kind: 'tree' }>
-  action: 'insert' | 'move' | 'delete' | 'restore'
+  action: 'insert' | 'move' | 'delete' | 'restore' | 'patch'
 }): StructuralOperationApplyResult<Doc, Op> => {
   const structure = readRequiredStructure(
     (input.operation as unknown as MutationStructuralCanonicalOperation).structure
@@ -1082,6 +1260,79 @@ const readTreeOperationResult = <
         index: nextIndex
       }],
       footprint: treeFootprint(structure, snapshot.rootId, snapshot.parentId)
+    })
+  }
+
+  if (input.action === 'patch') {
+    const operation = input.operation as unknown as MutationStructuralTreeNodePatchOperation
+    const nodeId = readRequiredNodeId(operation.nodeId)
+    const currentNode = currentTree.nodes[nodeId]
+    if (!currentNode) {
+      return mutationFailure(
+        'mutation_engine.apply.invalid_operation',
+        `Structural tree node patch cannot find node "${nodeId}" in "${structure}".`
+      )
+    }
+    if (currentNode.value === undefined) {
+      return mutationFailure(
+        'mutation_engine.apply.invalid_operation',
+        `Structural tree node patch cannot patch missing value for "${nodeId}" in "${structure}".`
+      )
+    }
+
+    const patch = readRequiredPatch(
+      operation.patch,
+      'Structural tree node patch operation'
+    )
+    const nextValue = applyPatchedValue({
+      current: currentNode.value,
+      patch,
+      apply: input.spec.patch,
+      label: 'Structural tree node patch operation'
+    })
+    if (sameJsonValue(nextValue, currentNode.value)) {
+      return structuralSuccess({
+        document: input.document,
+        inverse: [],
+        structural: [],
+        footprint: [],
+        historyMode: 'neutral'
+      })
+    }
+
+    const inversePatch = readPatchDiff({
+      before: nextValue,
+      after: currentNode.value,
+      diff: input.spec.diff,
+      label: 'Structural tree node patch operation'
+    })
+    const nextTree: MutationTreeSnapshot = {
+      ...currentTree,
+      nodes: {
+        ...currentTree.nodes,
+        [nodeId]: {
+          ...currentNode,
+          value: input.spec.clone
+            ? input.spec.clone(nextValue)
+            : cloneValue(nextValue)
+        }
+      }
+    }
+
+    return structuralSuccess({
+      document: input.spec.write(input.document, nextTree),
+      inverse: [createStructuralTreeNodePatchOperation<Op>({
+        structure,
+        nodeId,
+        patch: inversePatch
+      })],
+      structural: [{
+        kind: 'tree',
+        action: 'patch',
+        structure,
+        nodeId
+      }],
+      footprint: treeFootprint(structure, nodeId, currentNode.parentId)
     })
   }
 
@@ -1325,6 +1576,13 @@ export const applyStructuralEffectResult = <
           structure: input.effect.structure,
           itemId: input.effect.itemId
         }
+      case 'ordered.patch':
+        return {
+          type: 'structural.ordered.patch',
+          structure: input.effect.structure,
+          itemId: input.effect.itemId,
+          patch: input.effect.patch
+        }
       case 'tree.insert':
         return {
           type: 'structural.tree.insert',
@@ -1373,6 +1631,13 @@ export const applyStructuralEffectResult = <
           type: 'structural.tree.restore',
           structure: input.effect.structure,
           snapshot: input.effect.snapshot
+        }
+      case 'tree.node.patch':
+        return {
+          type: 'structural.tree.node.patch',
+          structure: input.effect.structure,
+          nodeId: input.effect.nodeId,
+          patch: input.effect.patch
         }
     }
   })()

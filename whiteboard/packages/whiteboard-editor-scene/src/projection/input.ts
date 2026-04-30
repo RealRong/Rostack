@@ -13,10 +13,10 @@ import type {
 } from '../contracts/editor'
 import type {
   EditorSceneRuntimeDelta
-} from '../contracts/plan'
+} from '../contracts/facts'
 import {
   createEmptyEditorSceneRuntimeDelta
-} from '../contracts/plan'
+} from '../contracts/facts'
 import {
   createWhiteboardMutationDelta
 } from '@whiteboard/engine/mutation'

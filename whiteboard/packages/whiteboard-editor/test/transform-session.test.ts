@@ -103,21 +103,21 @@ const createTransformContext = ({
 
   return {
     projection: {
-      read: {
-        document: {
-          node: () => node
-        },
-        scene: {
-          nodes: {
-            get: (nodeId: string) => nodeId === node.id
-              ? {
-                  geometry: {
-                    rect: geometryRect
-                  }
-                }
-              : undefined
-          }
-        }
+      document: {
+        node: () => node
+      },
+      nodes: {
+        get: (nodeId: string) => nodeId === node.id
+          ? {
+              base: {
+                node
+              },
+              geometry: {
+                rect: geometryRect,
+                rotation: 0
+              }
+            }
+          : undefined
       }
     },
     sessionRead: {

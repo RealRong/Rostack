@@ -15,8 +15,8 @@ import {
   sceneItemKey
 } from '../src/contracts/delta'
 import {
-  createEmptyEditorScenePlan
-} from '../src/contracts/plan'
+  createEmptyEditorSceneFacts
+} from '../src/contracts/facts'
 import { patchRenderState } from '../src/model/render/patch'
 import { createWorking } from '../src/projection/state'
 import { createEmptyInput } from '../src/testing/input'
@@ -130,7 +130,7 @@ const setEdgeItems = (
 const resetPhaseDeltas = (
   working: ReturnType<typeof createWorking>
 ) => {
-  working.plan = createEmptyEditorScenePlan()
+  working.facts = createEmptyEditorSceneFacts()
   working.delta.items = 'skip'
 }
 
@@ -139,10 +139,7 @@ const markRenderEdges = (
   ...edgeIds: readonly EdgeId[]
 ) => {
   const touched = new Set(edgeIds)
-  working.plan.render.edgeStatics = new Set(touched)
-  working.plan.render.edgeActive = new Set(touched)
-  working.plan.render.edgeLabels = new Set(touched)
-  working.plan.render.edgeMasks = new Set(touched)
+  working.facts.graph.edge.entity = new Set(touched)
 }
 
 const markUiEdge = (
@@ -150,12 +147,8 @@ const markUiEdge = (
   ...edgeIds: readonly EdgeId[]
 ) => {
   const touched = new Set(edgeIds)
-  working.plan.render.edgeLabels = new Set([
-    ...working.plan.render.edgeLabels as ReadonlySet<EdgeId>,
-    ...touched
-  ])
-  working.plan.render.edgeActive = new Set([
-    ...working.plan.render.edgeActive as ReadonlySet<EdgeId>,
+  working.facts.ui.edge = new Set([
+    ...working.facts.ui.edge as ReadonlySet<EdgeId>,
     ...touched
   ])
 }
@@ -189,7 +182,6 @@ describe('render delta patching', () => {
     patchRenderState({
       working,
       current: createCurrentInput(),
-      plan: working.plan,
       reset: false
     })
 
@@ -208,7 +200,6 @@ describe('render delta patching', () => {
     patchRenderState({
       working,
       current: createCurrentInput(),
-      plan: working.plan,
       reset: false
     })
 
@@ -240,7 +231,6 @@ describe('render delta patching', () => {
     patchRenderState({
       working,
       current: createCurrentInput(),
-      plan: working.plan,
       reset: false
     })
 
@@ -251,12 +241,11 @@ describe('render delta patching', () => {
     working.delta.items = {
       ids: working.items.ids
     }
-    working.plan.render.edgeStatics = new Set([edgeA, edgeB])
+    working.facts.items.touched = new Set(working.items.ids)
 
     patchRenderState({
       working,
       current: createCurrentInput(),
-      plan: working.plan,
       reset: false
     })
 
@@ -310,7 +299,6 @@ describe('render delta patching', () => {
     patchRenderState({
       working,
       current: createCurrentInput(),
-      plan: working.plan,
       reset: false
     })
 
@@ -329,7 +317,6 @@ describe('render delta patching', () => {
     patchRenderState({
       working,
       current: createCurrentInput(),
-      plan: working.plan,
       reset: false
     })
 
@@ -373,7 +360,6 @@ describe('render delta patching', () => {
     patchRenderState({
       working,
       current: createCurrentInput(),
-      plan: working.plan,
       reset: false
     })
 
@@ -399,7 +385,6 @@ describe('render delta patching', () => {
     patchRenderState({
       working,
       current: createCurrentInput(),
-      plan: working.plan,
       reset: false
     })
 

@@ -96,10 +96,12 @@ const isStructuralEffect = (
   || effect.type === 'ordered.move'
   || effect.type === 'ordered.splice'
   || effect.type === 'ordered.delete'
+  || effect.type === 'ordered.patch'
   || effect.type === 'tree.insert'
   || effect.type === 'tree.move'
   || effect.type === 'tree.delete'
   || effect.type === 'tree.restore'
+  || effect.type === 'tree.node.patch'
 )
 
 const applyEntityCreateEffect = <

@@ -74,6 +74,13 @@ export type MutationOrderedEffect<
       itemId: string
       tags?: readonly Tag[]
     }
+  | {
+      type: 'ordered.patch'
+      structure: string
+      itemId: string
+      patch: unknown
+      tags?: readonly Tag[]
+    }
 
 export type MutationTreeEffect<
   Tag extends string = string
@@ -105,6 +112,13 @@ export type MutationTreeEffect<
       type: 'tree.restore'
       structure: string
       snapshot: MutationTreeSubtreeSnapshot
+      tags?: readonly Tag[]
+    }
+  | {
+      type: 'tree.node.patch'
+      structure: string
+      nodeId: string
+      patch: unknown
       tags?: readonly Tag[]
     }
 

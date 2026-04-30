@@ -2,7 +2,9 @@ import {
   compileFamilyChangeFromIdDelta,
   resetGraphPhaseDelta
 } from '../../contracts/delta'
+import type { EditorSceneInputFacts } from '../../contracts/facts'
 import type { WorkingState } from '../../contracts/working'
+import { createGraphFacts } from '../facts'
 import { patchIndexState } from '../index/update'
 import { createGraphContext, hasGraphTargets } from './context'
 import { patchGraphEdges } from './edges'
@@ -14,7 +16,7 @@ import { seedGraphFanout, seedGraphQueue } from './queue'
 export const patchGraphState = (input: {
   revision: number
   current: Parameters<typeof createGraphContext>[0]['current']
-  plan: Parameters<typeof createGraphContext>[0]['plan']
+  facts: EditorSceneInputFacts
   working: WorkingState
   reset?: boolean
   previousDocument?: WorkingState['document']['snapshot']
@@ -27,6 +29,11 @@ export const patchGraphState = (input: {
 
   resetGraphPhaseDelta(graphDelta)
   if (!hasGraphTargets(context)) {
+    context.working.facts.graph = createGraphFacts({
+      current: context.current,
+      working: context.working,
+      reset: false
+    })
     context.working.delta.graph.node = 'skip'
     context.working.delta.graph.edge = 'skip'
     context.working.delta.graph.mindmap = 'skip'
@@ -64,6 +71,12 @@ export const patchGraphState = (input: {
     + patchGraphEdges(context)
     + patchGraphGroups(context)
   )
+
+  context.working.facts.graph = createGraphFacts({
+    current: context.current,
+    working: context.working,
+    reset: context.reset
+  })
 
   context.working.revision.document = context.current.document.rev
   context.working.delta.graph.node = compileFamilyChangeFromIdDelta({

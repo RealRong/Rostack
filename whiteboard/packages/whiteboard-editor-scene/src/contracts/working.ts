@@ -1,6 +1,6 @@
 import type {
-  EditorScenePlan
-} from './plan'
+  EditorSceneFacts
+} from './facts'
 import type {
   DeltaState,
   DocumentDelta,
@@ -32,7 +32,7 @@ export type {
 
 export interface WorkingState extends State {
   layout?: EditorSceneLayout
-  plan: EditorScenePlan
+  facts: EditorSceneFacts
   draft: {
     node: Map<NodeId, NodeDraftMeasure>
   }

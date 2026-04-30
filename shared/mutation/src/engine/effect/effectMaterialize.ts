@@ -11,10 +11,12 @@ import {
   createStructuralOrderedDeleteOperation,
   createStructuralOrderedInsertOperation,
   createStructuralOrderedMoveOperation,
+  createStructuralOrderedPatchOperation,
   createStructuralOrderedSpliceOperation,
   createStructuralTreeDeleteOperation,
   createStructuralTreeInsertOperation,
   createStructuralTreeMoveOperation,
+  createStructuralTreeNodePatchOperation,
   createStructuralTreeRestoreOperation,
 } from '../structural'
 import type {
@@ -120,6 +122,13 @@ export const materializeMutationEffectProgram = <
           itemId: effect.itemId
         }))
         return
+      case 'ordered.patch':
+        operations.push(createStructuralOrderedPatchOperation<Op>({
+          structure: effect.structure,
+          itemId: effect.itemId,
+          patch: effect.patch
+        }))
+        return
       case 'tree.insert':
         operations.push(createStructuralTreeInsertOperation<Op>({
           structure: effect.structure,
@@ -167,6 +176,13 @@ export const materializeMutationEffectProgram = <
         operations.push(createStructuralTreeRestoreOperation<Op>({
           structure: effect.structure,
           snapshot: effect.snapshot
+        }))
+        return
+      case 'tree.node.patch':
+        operations.push(createStructuralTreeNodePatchOperation<Op>({
+          structure: effect.structure,
+          nodeId: effect.nodeId,
+          patch: effect.patch
         }))
         return
       case 'semantic.tag':

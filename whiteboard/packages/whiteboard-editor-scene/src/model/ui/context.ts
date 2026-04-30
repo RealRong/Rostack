@@ -4,8 +4,8 @@ import type {
 } from '@whiteboard/core/types'
 import type { Input } from '../../contracts/editor'
 import type {
-  EditorScenePlan
-} from '../../contracts/plan'
+  EditorSceneUiFacts
+} from '../../contracts/facts'
 import type { WorkingState } from '../../contracts/working'
 import {
   resolveScope
@@ -13,7 +13,7 @@ import {
 
 export interface UiContext {
   current: Input
-  plan: EditorScenePlan
+  facts: EditorSceneUiFacts
   reset: boolean
   working: WorkingState
   touched: {
@@ -25,19 +25,19 @@ export interface UiContext {
 
 export const createUiContext = (input: {
   current: Input
-  plan: EditorScenePlan
+  facts: EditorSceneUiFacts
   working: WorkingState
   reset: boolean
 }): UiContext => {
   return {
     current: input.current,
-    plan: input.plan,
+    facts: input.facts,
     reset: input.reset,
     working: input.working,
     touched: {
-      node: resolveScope(input.plan.ui.node, () => input.working.graph.nodes.keys()) as ReadonlySet<NodeId>,
-      edge: resolveScope(input.plan.ui.edge, () => input.working.graph.edges.keys()) as ReadonlySet<EdgeId>,
-      chrome: input.plan.ui.chrome
+      node: resolveScope(input.facts.node, () => input.working.graph.nodes.keys()) as ReadonlySet<NodeId>,
+      edge: resolveScope(input.facts.edge, () => input.working.graph.edges.keys()) as ReadonlySet<EdgeId>,
+      chrome: input.facts.chrome
     }
   }
 }

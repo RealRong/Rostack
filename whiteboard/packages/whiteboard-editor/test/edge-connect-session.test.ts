@@ -12,38 +12,34 @@ const createInteractionDeps = () => {
     reconnectCommit,
     ctx: {
       projection: {
-        read: {
-          scene: {
-            edges: {
-              get: () => ({
-                route: {
-                  ends: {
-                    source: {
-                      end: {
-                        kind: 'point',
-                        point: { x: 0, y: 0 }
-                      },
-                      point: { x: 0, y: 0 }
-                    },
-                    target: {
-                      end: {
-                        kind: 'point',
-                        point: { x: 10, y: 0 }
-                      },
-                      point: { x: 10, y: 0 }
-                    }
-                  }
+        edges: {
+          get: () => ({
+            route: {
+              ends: {
+                source: {
+                  end: {
+                    kind: 'point',
+                    point: { x: 0, y: 0 }
+                  },
+                  point: { x: 0, y: 0 }
+                },
+                target: {
+                  end: {
+                    kind: 'point',
+                    point: { x: 10, y: 0 }
+                  },
+                  point: { x: 10, y: 0 }
                 }
-              }),
-              capability: vi.fn(() => ({
-                reconnectSource: true,
-                reconnectTarget: true
-              }))
-            },
-            nodes: {
-              get: vi.fn(() => undefined)
+              }
             }
-          }
+          }),
+          capability: vi.fn(() => ({
+            reconnectSource: true,
+            reconnectTarget: true
+          }))
+        },
+        nodes: {
+          get: vi.fn(() => undefined)
         }
       },
       sessionRead: {

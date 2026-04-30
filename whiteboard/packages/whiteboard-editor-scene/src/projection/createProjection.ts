@@ -27,11 +27,13 @@ import type {
 } from '../contracts/working'
 import {
   sceneScopeHasAny
-} from '../contracts/plan'
+} from '../contracts/facts'
 import { patchGraphState } from '../model/graph/patch'
 import { patchDocumentState } from '../model/document/patch'
+import { createEmptyEditorSceneFacts } from '../contracts/facts'
 import { patchItemsState } from '../model/items/patch'
 import { patchRenderState } from '../model/render/patch'
+import { createInputFacts } from '../model/facts'
 import { patchSpatial } from '../model/spatial/update'
 import { resetSpatialDelta } from '../model/spatial/update'
 import { patchUiState } from '../model/ui/patch'
@@ -40,13 +42,6 @@ import {
   type ProjectionScene
 } from './query'
 import { buildEditorSceneCapture } from './capture'
-import {
-  createEditorScenePlan,
-  refreshEditorScenePlanAfterGraph,
-  refreshEditorScenePlanAfterItems,
-  refreshEditorScenePlanAfterUi,
-  refreshEditorScenePlanForRender
-} from './plan'
 import { editorSceneStores } from './stores'
 import { createWorking } from './state'
 
@@ -145,13 +140,14 @@ export const createProjection = (input: {
       dirty.previousDocument = ctx.read.document.snapshot()
       resetDocumentPhaseDelta(ctx.state)
       ctx.state.runtime = ctx.input.runtime
+      ctx.state.facts = createEmptyEditorSceneFacts()
+      ctx.state.facts.input = createInputFacts(ctx.input)
 
       patchDocumentState({
         current: ctx.input,
         working: ctx.state,
         reset: ctx.dirty.reset
       })
-      ctx.state.plan = createEditorScenePlan(ctx.input)
 
       if (
         ctx.revision === 1
@@ -179,20 +175,15 @@ export const createProjection = (input: {
       after: ['document'],
       run: (ctx) => {
         const dirty = readProjectionDirty(ctx)
+        const reset = ctx.revision === 1 || ctx.state.facts.input.reset
 
         const result = patchGraphState({
           revision: ctx.revision,
           current: ctx.input,
-          plan: ctx.state.plan,
+          facts: ctx.state.facts.input,
           working: ctx.state,
-          reset: ctx.revision === 1 || ctx.state.plan.reset,
+          reset,
           previousDocument: dirty.previousDocument
-        })
-        refreshEditorScenePlanAfterGraph({
-          current: ctx.input,
-          working: ctx.state,
-          plan: ctx.state.plan,
-          reset: ctx.revision === 1 || ctx.state.plan.reset
         })
         if (!result.ran) {
           resetGraphPhaseDelta(ctx.state)
@@ -212,15 +203,21 @@ export const createProjection = (input: {
     spatial: {
       after: ['graph'],
       run: (ctx) => {
+        const reset = ctx.revision === 1 || ctx.state.facts.input.reset
+        const graphFacts = ctx.state.facts.graph
         if (
           !(
             ctx.revision === 1
-            || ctx.state.plan.reset
-            || ctx.state.plan.spatial.order
-            || sceneScopeHasAny(ctx.state.plan.spatial.node)
-            || sceneScopeHasAny(ctx.state.plan.spatial.edge)
-            || sceneScopeHasAny(ctx.state.plan.spatial.mindmap)
-            || sceneScopeHasAny(ctx.state.plan.spatial.group)
+            || reset
+            || ctx.state.facts.input.order
+            || sceneScopeHasAny(graphFacts.node.entity)
+            || sceneScopeHasAny(graphFacts.node.geometry)
+            || sceneScopeHasAny(graphFacts.edge.entity)
+            || sceneScopeHasAny(graphFacts.edge.geometry)
+            || sceneScopeHasAny(graphFacts.mindmap.entity)
+            || sceneScopeHasAny(graphFacts.mindmap.geometry)
+            || sceneScopeHasAny(graphFacts.group.entity)
+            || sceneScopeHasAny(graphFacts.group.geometry)
           )
         ) {
           resetSpatialDelta(ctx.state.phase.spatial)
@@ -233,7 +230,7 @@ export const createProjection = (input: {
           snapshot: toDocumentSnapshot(ctx.input.document),
           graphDelta: ctx.state.phase.graph,
           state: ctx.state.spatial,
-          reset: ctx.revision === 1 || ctx.state.plan.reset,
+          reset,
           delta: ctx.state.phase.spatial
         })
 
@@ -245,16 +242,17 @@ export const createProjection = (input: {
     items: {
       after: ['graph'],
       run: (ctx) => {
+        const reset = ctx.revision === 1 || ctx.state.facts.input.reset
         if (
           !(
             ctx.revision === 1
-            || ctx.state.plan.reset
-            || ctx.state.plan.order
-            || sceneScopeHasAny(ctx.state.plan.items)
+            || reset
+            || ctx.state.facts.input.order
+            || ctx.state.facts.graph.hasLifecycleChange
           )
         ) {
           resetItemsPhaseDelta(ctx.state)
-          ctx.state.plan.items = new Set()
+          ctx.state.facts.items.touched = new Set()
           return
         }
 
@@ -262,35 +260,23 @@ export const createProjection = (input: {
           revision: ctx.revision,
           snapshot: toDocumentSnapshot(ctx.input.document),
           working: ctx.state,
-          reset: ctx.revision === 1 || ctx.state.plan.reset
+          reset
         })
 
         if (!result.changed) {
-          ctx.state.plan.items = new Set()
           return
         }
-
-        refreshEditorScenePlanAfterItems({
-          working: ctx.state,
-          plan: ctx.state.plan,
-          reset: ctx.revision === 1 || ctx.state.plan.reset
-        })
         ctx.phase.items.changed = true
       }
     },
     ui: {
       after: ['graph'],
       run: (ctx) => {
+        const reset = ctx.revision === 1 || ctx.state.facts.input.reset
         const count = patchUiState({
           current: ctx.input,
-          plan: ctx.state.plan,
           working: ctx.state,
-          reset: ctx.revision === 1 || ctx.state.plan.reset
-        })
-        refreshEditorScenePlanAfterUi({
-          working: ctx.state,
-          plan: ctx.state.plan,
-          reset: ctx.revision === 1 || ctx.state.plan.reset
+          reset
         })
 
         if (count > 0) {
@@ -304,17 +290,11 @@ export const createProjection = (input: {
     render: {
       after: ['graph', 'items', 'ui'],
       run: (ctx) => {
-        refreshEditorScenePlanForRender({
-          current: ctx.input,
-          working: ctx.state,
-          plan: ctx.state.plan,
-          reset: ctx.revision === 1 || ctx.state.plan.reset
-        })
+        const reset = ctx.revision === 1 || ctx.state.facts.input.reset
         const count = patchRenderState({
           current: ctx.input,
-          plan: ctx.state.plan,
           working: ctx.state,
-          reset: ctx.revision === 1 || ctx.state.plan.reset
+          reset
         })
 
         if (count > 0) {

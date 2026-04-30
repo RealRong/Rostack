@@ -61,7 +61,7 @@ import { store } from '@shared/core'
 import type { WhiteboardMutationDelta } from '@whiteboard/engine/mutation'
 import type { Capture } from './capture'
 import type { IdDelta, SceneItemKey } from './delta'
-import type { EditorSceneRuntimeDelta } from './plan'
+import type { EditorSceneRuntimeDelta } from './facts'
 import type {
   EdgeActiveView,
   ChromeRenderView,

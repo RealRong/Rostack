@@ -31,7 +31,7 @@ export interface EditorSceneRuntimeDelta {
   }
 }
 
-export interface EditorScenePlan {
+export interface EditorSceneInputFacts {
   reset: boolean
   order: boolean
   graph: {
@@ -40,28 +40,58 @@ export interface EditorScenePlan {
     mindmap: SceneScope<MindmapId>
     group: SceneScope<GroupId>
   }
-  spatial: {
-    node: SceneScope<NodeId>
-    edge: SceneScope<EdgeId>
-    mindmap: SceneScope<MindmapId>
-    group: SceneScope<GroupId>
-    order: boolean
+}
+
+export interface EditorSceneGraphFacts {
+  node: {
+    entity: SceneScope<NodeId>
+    geometry: SceneScope<NodeId>
+    content: SceneScope<NodeId>
+    owner: SceneScope<NodeId>
   }
-  items: SceneScope<SceneItemKey>
-  ui: {
-    node: SceneScope<NodeId>
-    edge: SceneScope<EdgeId>
-    chrome: boolean
+  edge: {
+    entity: SceneScope<EdgeId>
+    geometry: SceneScope<EdgeId>
+    content: SceneScope<EdgeId>
   }
-  render: {
-    node: SceneScope<NodeId>
-    edgeStatics: SceneScope<EdgeId>
-    edgeActive: SceneScope<EdgeId>
-    edgeLabels: SceneScope<EdgeId>
-    edgeMasks: SceneScope<EdgeId>
-    chromeScene: boolean
-    chromeEdge: boolean
+  mindmap: {
+    entity: SceneScope<MindmapId>
+    geometry: SceneScope<MindmapId>
+    owner: SceneScope<MindmapId>
   }
+  group: {
+    entity: SceneScope<GroupId>
+    geometry: SceneScope<GroupId>
+    owner: SceneScope<GroupId>
+  }
+  hasLifecycleChange: boolean
+}
+
+export interface EditorSceneItemsFacts {
+  touched: SceneScope<SceneItemKey>
+}
+
+export interface EditorSceneUiFacts {
+  node: SceneScope<NodeId>
+  edge: SceneScope<EdgeId>
+  chrome: boolean
+}
+
+export interface EditorSceneRenderFacts {
+  node: SceneScope<NodeId>
+  edgeStatics: SceneScope<EdgeId>
+  edgeActive: SceneScope<EdgeId>
+  edgeLabels: SceneScope<EdgeId>
+  edgeMasks: SceneScope<EdgeId>
+  chromeScene: boolean
+  chromeEdge: boolean
+}
+
+export interface EditorSceneFacts {
+  input: EditorSceneInputFacts
+  graph: EditorSceneGraphFacts
+  items: EditorSceneItemsFacts
+  ui: EditorSceneUiFacts
 }
 
 const createEmptyScope = <TId extends string>(): SceneScope<TId> => new Set<TId>()
@@ -88,36 +118,48 @@ export const createEmptyEditorSceneRuntimeDelta = (): EditorSceneRuntimeDelta =>
   }
 })
 
-export const createEmptyEditorScenePlan = (): EditorScenePlan => ({
-  reset: false,
-  order: false,
+export const createEmptyEditorSceneFacts = (): EditorSceneFacts => ({
+  input: {
+    reset: false,
+    order: false,
+    graph: {
+      node: createEmptyScope<NodeId>(),
+      edge: createEmptyScope<EdgeId>(),
+      mindmap: createEmptyScope<MindmapId>(),
+      group: createEmptyScope<GroupId>()
+    }
+  },
   graph: {
-    node: createEmptyScope<NodeId>(),
-    edge: createEmptyScope<EdgeId>(),
-    mindmap: createEmptyScope<MindmapId>(),
-    group: createEmptyScope<GroupId>()
+    node: {
+      entity: createEmptyScope<NodeId>(),
+      geometry: createEmptyScope<NodeId>(),
+      content: createEmptyScope<NodeId>(),
+      owner: createEmptyScope<NodeId>()
+    },
+    edge: {
+      entity: createEmptyScope<EdgeId>(),
+      geometry: createEmptyScope<EdgeId>(),
+      content: createEmptyScope<EdgeId>()
+    },
+    mindmap: {
+      entity: createEmptyScope<MindmapId>(),
+      geometry: createEmptyScope<MindmapId>(),
+      owner: createEmptyScope<MindmapId>()
+    },
+    group: {
+      entity: createEmptyScope<GroupId>(),
+      geometry: createEmptyScope<GroupId>(),
+      owner: createEmptyScope<GroupId>()
+    },
+    hasLifecycleChange: false
   },
-  spatial: {
-    node: createEmptyScope<NodeId>(),
-    edge: createEmptyScope<EdgeId>(),
-    mindmap: createEmptyScope<MindmapId>(),
-    group: createEmptyScope<GroupId>(),
-    order: false
+  items: {
+    touched: createEmptyScope<SceneItemKey>()
   },
-  items: createEmptyScope<SceneItemKey>(),
   ui: {
     node: createEmptyScope<NodeId>(),
     edge: createEmptyScope<EdgeId>(),
     chrome: false
-  },
-  render: {
-    node: createEmptyScope<NodeId>(),
-    edgeStatics: createEmptyScope<EdgeId>(),
-    edgeActive: createEmptyScope<EdgeId>(),
-    edgeLabels: createEmptyScope<EdgeId>(),
-    edgeMasks: createEmptyScope<EdgeId>(),
-    chromeScene: false,
-    chromeEdge: false
   }
 })
 

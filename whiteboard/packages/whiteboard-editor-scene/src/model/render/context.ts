@@ -4,8 +4,8 @@ import type {
 } from '@whiteboard/core/types'
 import type { Input } from '../../contracts/editor'
 import type {
-  EditorScenePlan
-} from '../../contracts/plan'
+  EditorSceneRenderFacts
+} from '../../contracts/facts'
 import type { WorkingState } from '../../contracts/working'
 import {
   resolveScope
@@ -13,7 +13,7 @@ import {
 
 export interface RenderContext {
   current: Input
-  plan: EditorScenePlan
+  facts: EditorSceneRenderFacts
   reset: boolean
   working: WorkingState
   active: ReadonlySet<EdgeId>
@@ -32,38 +32,38 @@ export interface RenderContext {
 
 export const createRenderContext = (input: {
   current: Input
-  plan: EditorScenePlan
+  facts: EditorSceneRenderFacts
   working: WorkingState
   reset: boolean
 }): RenderContext => {
   return {
     current: input.current,
-    plan: input.plan,
+    facts: input.facts,
     reset: input.reset,
     working: input.working,
     active: input.current.runtime.facts.activeEdgeIds,
     touched: {
-      node: resolveScope(input.plan.render.node, () => input.working.graph.nodes.keys()) as ReadonlySet<NodeId>,
+      node: resolveScope(input.facts.node, () => input.working.graph.nodes.keys()) as ReadonlySet<NodeId>,
       edge: {
         statics: resolveScope(
-          input.plan.render.edgeStatics,
+          input.facts.edgeStatics,
           () => input.working.graph.edges.keys()
         ) as ReadonlySet<EdgeId>,
         active: resolveScope(
-          input.plan.render.edgeActive,
+          input.facts.edgeActive,
           () => input.working.graph.edges.keys()
         ) as ReadonlySet<EdgeId>,
         labels: resolveScope(
-          input.plan.render.edgeLabels,
+          input.facts.edgeLabels,
           () => input.working.graph.edges.keys()
         ) as ReadonlySet<EdgeId>,
         masks: resolveScope(
-          input.plan.render.edgeMasks,
+          input.facts.edgeMasks,
           () => input.working.graph.edges.keys()
         ) as ReadonlySet<EdgeId>
       },
-      overlay: input.plan.render.chromeEdge,
-      chrome: input.plan.render.chromeScene
+      overlay: input.facts.chromeEdge,
+      chrome: input.facts.chromeScene
     }
   }
 }

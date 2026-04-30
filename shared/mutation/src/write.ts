@@ -85,7 +85,7 @@ export interface MutationTreeSubtreeSnapshot<
 export type MutationStructuralFact =
   | {
       kind: 'ordered'
-      action: 'insert' | 'move' | 'delete'
+      action: 'insert' | 'move' | 'delete' | 'patch'
       structure: string
       itemId: string
       from?: MutationOrderedSlot
@@ -93,7 +93,7 @@ export type MutationStructuralFact =
     }
   | {
       kind: 'tree'
-      action: 'insert' | 'move' | 'delete' | 'restore'
+      action: 'insert' | 'move' | 'delete' | 'restore' | 'patch'
       structure: string
       nodeId: string
       parentId?: string

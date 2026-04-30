@@ -15,8 +15,8 @@ import {
   createUiPhaseDeltaState
 } from '../contracts/delta'
 import {
-  createEmptyEditorScenePlan
-} from '../contracts/plan'
+  createEmptyEditorSceneFacts
+} from '../contracts/facts'
 import type {
   EdgeStateView,
   EdgeUiView,
@@ -73,7 +73,7 @@ export const createWorking = (input: {
 
   return {
     layout: input.layout,
-    plan: createEmptyEditorScenePlan(),
+    facts: createEmptyEditorSceneFacts(),
     draft: {
       node: new Map()
     },

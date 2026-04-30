@@ -8,7 +8,7 @@ import { createWhiteboardMutationDelta } from '@whiteboard/engine/mutation'
 import type { Input } from '../contracts/editor'
 import {
   createEmptyEditorSceneRuntimeDelta
-} from '../contracts/plan'
+} from '../contracts/facts'
 import { createRuntimeFacts } from '../projection/runtimeFacts'
 import { createEmptyDocumentSnapshot } from '../projection/state'
 

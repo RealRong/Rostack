@@ -9,7 +9,7 @@ import type {
   PreviewInput,
   SceneRuntimeFacts
 } from '../contracts/editor'
-import type { EditorSceneRuntimeDelta } from '../contracts/plan'
+import type { EditorSceneRuntimeDelta } from '../contracts/facts'
 
 const readEditedEdgeIds = (
   edit: EditSession | null

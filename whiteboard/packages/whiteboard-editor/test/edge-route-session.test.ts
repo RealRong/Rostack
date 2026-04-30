@@ -35,24 +35,20 @@ const createDeps = () => {
     updateRoute,
     ctx: {
       projection: {
-        read: {
-          scene: {
-            edges: {
-              get: () => ({
-                base: {
-                  edge
-                }
-              }),
-              edit: vi.fn(() => ({
-                route: {
-                  handles: []
-                }
-              }))
-            },
-            nodes: {
-              get: vi.fn(() => undefined)
+        edges: {
+          get: () => ({
+            base: {
+              edge
             }
-          }
+          }),
+          edit: vi.fn(() => ({
+            route: {
+              handles: []
+            }
+          }))
+        },
+        nodes: {
+          get: vi.fn(() => undefined)
         }
       },
       sessionRead: {

@@ -5,7 +5,7 @@ import type {
 } from '@whiteboard/core/types'
 import type { SceneItemKey } from '../contracts/delta'
 import { sceneItemKey } from '../contracts/delta'
-import type { SceneScope } from '../contracts/plan'
+import type { SceneScope } from '../contracts/facts'
 import type { WorkingState } from '../contracts/working'
 
 export const appendIds = <TId extends string>(

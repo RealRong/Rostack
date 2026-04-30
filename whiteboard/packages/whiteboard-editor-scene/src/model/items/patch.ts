@@ -10,6 +10,7 @@ import {
 } from '../../contracts/delta'
 import type { SceneItem } from '../../contracts/editor'
 import type { WorkingState } from '../../contracts/working'
+import { createItemsFacts } from '../facts'
 
 type DocumentSnapshot = {
   revision: Revision
@@ -61,6 +62,10 @@ export const patchItemsState = (input: {
   input.working.delta.items = compileFamilyChangeFromEntityDelta({
     snapshot: next,
     delta: change
+  })
+  input.working.facts.items = createItemsFacts({
+    working: input.working,
+    reset: input.reset
   })
 
   if (input.reset || change) {

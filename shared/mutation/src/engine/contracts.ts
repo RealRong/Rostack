@@ -267,24 +267,30 @@ export interface MutationStructureChangeSpec {
 
 export interface MutationOrderedStructureSpec<
   Doc,
-  Item = unknown
+  Item = unknown,
+  Patch = unknown
 > {
   kind: 'ordered'
   read(document: Doc): readonly Item[]
   identify(item: Item): string
   write(document: Doc, items: readonly Item[]): Doc
   clone?(item: Item): Item
+  patch?(item: Item, patch: Patch): Item
+  diff?(before: Item, after: Item): Patch
   change?: readonly MutationStructureChangeSpec[]
 }
 
 export interface MutationTreeStructureSpec<
   Doc,
-  Value = unknown
+  Value = unknown,
+  Patch = unknown
 > {
   kind: 'tree'
   read(document: Doc): MutationTreeSnapshot<Value>
   write(document: Doc, tree: MutationTreeSnapshot<Value>): Doc
   clone?(value: Value): Value
+  patch?(value: Value, patch: Patch): Value
+  diff?(before: Value, after: Value): Patch
   change?: readonly MutationStructureChangeSpec[]
 }
 
@@ -441,6 +447,13 @@ export type MutationStructuralOrderedDeleteOperation = {
   itemId: string
 }
 
+export type MutationStructuralOrderedPatchOperation = {
+  type: 'structural.ordered.patch'
+  structure: string
+  itemId: string
+  patch: unknown
+}
+
 export type MutationStructuralTreeInsertOperation = {
   type: 'structural.tree.insert'
   structure: string
@@ -470,15 +483,24 @@ export type MutationStructuralTreeRestoreOperation = {
   snapshot: MutationTreeSubtreeSnapshot
 }
 
+export type MutationStructuralTreeNodePatchOperation = {
+  type: 'structural.tree.node.patch'
+  structure: string
+  nodeId: string
+  patch: unknown
+}
+
 export type MutationStructuralCanonicalOperation =
   | MutationStructuralOrderedInsertOperation
   | MutationStructuralOrderedMoveOperation
   | MutationStructuralOrderedSpliceOperation
   | MutationStructuralOrderedDeleteOperation
+  | MutationStructuralOrderedPatchOperation
   | MutationStructuralTreeInsertOperation
   | MutationStructuralTreeMoveOperation
   | MutationStructuralTreeDeleteOperation
   | MutationStructuralTreeRestoreOperation
+  | MutationStructuralTreeNodePatchOperation
 
 export type MutationCanonicalOperation =
   | MutationEntityCanonicalOperation

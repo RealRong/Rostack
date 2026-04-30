@@ -61,6 +61,12 @@ export interface MutationEffectBuilder<
         itemId: string,
         tags?: readonly Tag[]
       ): void
+      patch(
+        structure: string,
+        itemId: string,
+        patch: unknown,
+        tags?: readonly Tag[]
+      ): void
     }
     tree: {
       insert(
@@ -86,6 +92,12 @@ export interface MutationEffectBuilder<
       restore(
         structure: string,
         snapshot: MutationTreeSubtreeSnapshot,
+        tags?: readonly Tag[]
+      ): void
+      patch(
+        structure: string,
+        nodeId: string,
+        patch: unknown,
         tags?: readonly Tag[]
       ): void
     }
@@ -174,6 +186,15 @@ export const createMutationEffectBuilder = <
             itemId,
             ...(tags === undefined ? {} : { tags })
           })
+        },
+        patch: (structure, itemId, patch, tags) => {
+          effects.push({
+            type: 'ordered.patch',
+            structure,
+            itemId,
+            patch,
+            ...(tags === undefined ? {} : { tags })
+          })
         }
       },
       tree: {
@@ -211,6 +232,15 @@ export const createMutationEffectBuilder = <
             type: 'tree.restore',
             structure,
             snapshot,
+            ...(tags === undefined ? {} : { tags })
+          })
+        },
+        patch: (structure, nodeId, patch, tags) => {
+          effects.push({
+            type: 'tree.node.patch',
+            structure,
+            nodeId,
+            patch,
             ...(tags === undefined ? {} : { tags })
           })
         }

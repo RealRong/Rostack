@@ -1,3 +1,9 @@
+import type {
+  MutationTreeEffect
+} from '@shared/mutation'
+import {
+  readStructuralEffectResult
+} from '@shared/mutation/engine'
 import { mindmap as mindmapApi } from '@whiteboard/core/mindmap'
 import {
   readMindmapTopicUpdateFromPatch
@@ -16,16 +22,36 @@ import {
 } from './common'
 import {
   CANVAS_ORDER_STRUCTURE,
-  MINDMAP_TREE_STRUCTURE_PREFIX,
   canvasRefKey,
   createMindmapTreeSubtreeSnapshot,
+  mindmapTreeStructure,
   readCanvasOrderAnchorFromSlot,
   readMindmapLayoutChangedNodeIds,
   resolveInsertedMindmapBranchStyle,
+  whiteboardStructures,
 } from './structures'
 import type {
   WhiteboardCustomPlanContext
 } from './types'
+
+const previewTreeEffect = (
+  input: WhiteboardCustomPlanContext,
+  effect: MutationTreeEffect
+): boolean => {
+  const result = readStructuralEffectResult({
+    document: input.document,
+    effect,
+    structures: whiteboardStructures
+  })
+  if (!result.ok) {
+    return input.fail({
+      code: 'invalid',
+      message: result.error.message
+    })
+  }
+
+  return result.data.historyMode !== 'neutral'
+}
 
 export const planMindmapCreate = (
   input: WhiteboardCustomPlanContext<
@@ -210,7 +236,7 @@ export const planMindmapTopicInsert = (
     table: 'node',
     id: input.op.node.id
   }, input.op.node)
-  const structure = `${MINDMAP_TREE_STRUCTURE_PREFIX}${input.op.id}`
+  const structure = mindmapTreeStructure(input.op.id)
 
   switch (input.op.input.kind) {
     case 'child': {
@@ -312,12 +338,13 @@ export const planMindmapTopicInsert = (
         0
       )
       if (target.side !== undefined) {
-        input.effects.entity.patch({
-          table: 'mindmap',
-          id: input.op.id
-        }, {
-          [`members.${input.op.input.nodeId}.side`]: undefined
-        })
+        input.effects.structure.tree.patch(
+          structure,
+          input.op.input.nodeId,
+          {
+            side: undefined
+          }
+        )
       }
     }
   }
@@ -343,7 +370,7 @@ export const planMindmapTopicRestore = (
     }, node)
   })
   input.effects.structure.tree.restore(
-    `${MINDMAP_TREE_STRUCTURE_PREFIX}${input.op.id}`,
+    mindmapTreeStructure(input.op.id),
     createMindmapTreeSubtreeSnapshot(
       current,
       input.op.snapshot
@@ -375,19 +402,34 @@ export const planMindmapTopicMove = (
   const nextSide = input.op.input.parentId === current.root
     ? (input.op.input.side ?? member.side ?? 'right')
     : undefined
-  input.effects.structure.tree.move(
-    `${MINDMAP_TREE_STRUCTURE_PREFIX}${input.op.id}`,
-    input.op.input.nodeId,
-    input.op.input.parentId,
-    input.op.input.index
-  )
+  const structure = mindmapTreeStructure(input.op.id)
+  const effect: MutationTreeEffect = {
+    type: 'tree.move',
+    structure,
+    nodeId: input.op.input.nodeId,
+    parentId: input.op.input.parentId,
+    ...(input.op.input.index === undefined
+      ? {}
+      : {
+          index: input.op.input.index
+        })
+  }
+  if (previewTreeEffect(input, effect)) {
+    input.effects.structure.tree.move(
+      effect.structure,
+      effect.nodeId,
+      effect.parentId,
+      effect.index
+    )
+  }
   if (!same(member.side, nextSide)) {
-    input.effects.entity.patch({
-      table: 'mindmap',
-      id: input.op.id
-    }, {
-      [`members.${input.op.input.nodeId}.side`]: nextSide
-    })
+    input.effects.structure.tree.patch(
+      structure,
+      input.op.input.nodeId,
+      {
+        side: nextSide
+      }
+    )
   }
 }
 
@@ -416,7 +458,7 @@ export const planMindmapTopicDelete = (
   const edgeIds = connectedEdges.map((edge) => edge.id)
 
   input.effects.structure.tree.delete(
-    `${MINDMAP_TREE_STRUCTURE_PREFIX}${input.op.id}`,
+    mindmapTreeStructure(input.op.id),
     input.op.input.nodeId
   )
   connectedEdges.forEach((edge) => {
@@ -539,12 +581,13 @@ export const planMindmapBranchPatch = (
     return
   }
 
-  input.effects.entity.patch({
-    table: 'mindmap',
-    id: input.op.id
-  }, {
-    [`members.${input.op.topicId}.branchStyle`]: nextBranchStyle
-  })
+  input.effects.structure.tree.patch(
+    mindmapTreeStructure(input.op.id),
+    input.op.topicId,
+    {
+      branchStyle: nextBranchStyle
+    }
+  )
 }
 
 export const planMindmapTopicCollapse = (
@@ -573,10 +616,11 @@ export const planMindmapTopicCollapse = (
     return
   }
 
-  input.effects.entity.patch({
-    table: 'mindmap',
-    id: input.op.id
-  }, {
-    [`members.${input.op.topicId}.collapsed`]: nextCollapsed
-  })
+  input.effects.structure.tree.patch(
+    mindmapTreeStructure(input.op.id),
+    input.op.topicId,
+    {
+      collapsed: nextCollapsed
+    }
+  )
 }

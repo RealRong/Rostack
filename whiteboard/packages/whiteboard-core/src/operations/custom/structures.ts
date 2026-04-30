@@ -5,6 +5,13 @@ import type {
   MutationTreeSubtreeSnapshot
 } from '@shared/mutation'
 import {
+  draft
+} from '@shared/draft'
+import {
+  createEdgeLabelPatch,
+  readEdgeLabelUpdateFromPatch
+} from '@whiteboard/core/edge/update'
+import {
   createDocumentReader,
   type DocumentReader
 } from '@whiteboard/core/document/reader'
@@ -16,6 +23,8 @@ import type {
   Edge,
   EdgeId,
   EdgeLabel,
+  EdgeLabelFieldPatch,
+  EdgeLabelPatch,
   EdgeLabelAnchor,
   EdgeRoutePoint,
   EdgeRoutePointAnchor,
@@ -43,6 +52,18 @@ export const EDGE_LABELS_STRUCTURE_PREFIX = 'edge.labels:'
 export const EDGE_ROUTE_STRUCTURE_PREFIX = 'edge.route:'
 export const MINDMAP_TREE_STRUCTURE_PREFIX = 'mindmap.tree:'
 
+export const edgeLabelsStructure = (
+  edgeId: EdgeId
+): string => `${EDGE_LABELS_STRUCTURE_PREFIX}${edgeId}`
+
+export const edgeRoutePointsStructure = (
+  edgeId: EdgeId
+): string => `${EDGE_ROUTE_STRUCTURE_PREFIX}${edgeId}`
+
+export const mindmapTreeStructure = (
+  mindmapId: MindmapId
+): string => `${MINDMAP_TREE_STRUCTURE_PREFIX}${mindmapId}`
+
 export const canvasRefKey = (
   ref: CanvasItemRef
 ): string => `${ref.kind}${CANVAS_REF_SEPARATOR}${ref.id}`
@@ -57,6 +78,61 @@ const cloneCanvasRef = (
       }
     : undefined
 )
+
+const applyEdgeLabelPatch = (
+  label: EdgeLabel,
+  patch: EdgeLabelPatch
+): EdgeLabel => {
+  const update = readEdgeLabelUpdateFromPatch(patch)
+  let next = clone(label)!
+
+  if (update.fields) {
+    if ('text' in update.fields) {
+      next.text = clone(update.fields.text)
+    }
+    if ('t' in update.fields) {
+      next.t = clone(update.fields.t)
+    }
+    if ('offset' in update.fields) {
+      next.offset = clone(update.fields.offset)
+    }
+  }
+  if (update.record) {
+    next = draft.record.apply(next, update.record)
+  }
+
+  return next
+}
+
+const diffEdgeLabelPatch = (
+  before: EdgeLabel,
+  after: EdgeLabel
+): EdgeLabelPatch => {
+  const writes = draft.record.diff(before, after)
+  const fields: EdgeLabelFieldPatch = {}
+  const record: Record<string, unknown> = {}
+
+  Object.entries(writes).forEach(([path, value]) => {
+    if (path === 'text' || path === 't' || path === 'offset') {
+      fields[path] = clone(value) as never
+      return
+    }
+    record[path] = clone(value)
+  })
+
+  return createEdgeLabelPatch({
+    ...(Object.keys(fields).length === 0
+      ? {}
+      : {
+          fields
+        }),
+    ...(Object.keys(record).length === 0
+      ? {}
+      : {
+          record
+        })
+  })
+}
 
 export const toStructuralOrderedAnchor = (
   anchor: EdgeLabelAnchor | EdgeRoutePointAnchor
@@ -337,6 +413,8 @@ export const whiteboardStructures: MutationStructureSource<Document> = (
       },
       identify: (label: EdgeLabel) => label.id,
       clone: (label: EdgeLabel) => clone(label)!,
+      patch: applyEdgeLabelPatch,
+      diff: diffEdgeLabelPatch,
       write: (document: Document, items: readonly EdgeLabel[]) => {
         const edge = document.edges[edgeId]
         if (!edge) {

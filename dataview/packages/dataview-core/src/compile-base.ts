@@ -4,12 +4,14 @@ import type {
   Intent,
   RecordId
 } from '@dataview/core/types'
-import type { DocumentOperation } from '@dataview/core/op'
 import type { MutationCompileHandlerInput } from '@shared/mutation/engine'
 import { string } from '@shared/core'
 import {
   type DocumentReader
 } from './document/reader'
+import {
+  type DataviewProgramWriter
+} from './programWriter'
 import type {
   ValidationCode,
   ValidationIssue,
@@ -22,7 +24,7 @@ export type DataviewCompileInput<
 > = MutationCompileHandlerInput<
   DataDoc,
   TIntent,
-  DocumentOperation,
+  DataviewProgramWriter,
   TOutput,
   DocumentReader,
   void,

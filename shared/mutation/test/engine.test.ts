@@ -99,21 +99,21 @@ const createEngine = () => new MutationEngine<
   entities,
   compile: {
     'item.add': ({ intent, program, output }) => {
-      program.append({
-        type: 'item.create',
-        value: {
-          id: intent.id,
-          title: intent.title
-        }
+      program.entity.create({
+        table: 'item',
+        id: intent.id
+      }, {
+        id: intent.id,
+        title: intent.title
       })
       output(intent.id)
     },
     'item.open': ({ intent, program, output }) => {
-      program.append({
-        type: 'document.patch',
-        patch: {
-          activeItemId: intent.id
-        }
+      program.entity.patch({
+        table: 'document',
+        id: 'document'
+      }, {
+        activeItemId: intent.id
       })
       output(intent.id)
     }

@@ -16,7 +16,6 @@ import type {
   ViewId,
   ViewSortRuleId
 } from '@dataview/core/types'
-import type { DocumentOperation } from '@dataview/core/op'
 import type {
   GalleryOptions,
   KanbanOptions,
@@ -50,25 +49,20 @@ import {
 } from './compile-base'
 import type { DocumentReader } from './document/reader'
 import {
+  documentViews
+} from './document/views'
+import {
+  writeViewUpdate
+} from './compile-view-ops'
+import {
+  applyRecordOrder,
+  reorderRecordIds,
+  spliceRecordIds
+} from './view/order'
+import {
   resolveDefaultKanbanGroup,
   setViewType
 } from './view/update'
-
-const emitOps = (
-  input: DataviewCompileInput,
-  ...operations: readonly DocumentOperation[]
-) => {
-  input.program.append(...operations)
-}
-
-const emitData = <T,>(
-  input: DataviewCompileInput,
-  data: T,
-  ...operations: readonly DocumentOperation[]
-): T => {
-  emitOps(input, ...operations)
-  return data
-}
 
 const readErrorMessage = (
   error: unknown,
@@ -551,17 +545,18 @@ const emitValidatedViewUpdate = <T,>(
   reader: DocumentReader,
   current: View,
   next: View,
-  operations: readonly DocumentOperation[],
   data?: T
 ) => {
-  if (!operations.length || equal.sameJsonValue(current, next)) {
+  if (equal.sameJsonValue(current, next)) {
     return undefined
   }
 
   reportIssues(input, ...validateView(reader, input.source, next))
-  return data === undefined
-    ? emitOps(input, ...operations)
-    : emitData(input, data, ...operations)
+  writeViewUpdate(input.program, current, next)
+  if (data !== undefined) {
+    input.output(data)
+  }
+  return data
 }
 
 const requireView = (
@@ -697,24 +692,15 @@ const lowerViewCreate = (
 
   const view = finalizeView(reader, created)
   reportIssues(input, ...validateView(reader, input.source, view))
-  return emitData(
-    input,
-    {
-      id: view.id
-    },
-    {
-      type: 'view.create',
-      value: view
-    },
-    ...(reader.document().activeViewId === undefined
-      ? [{
-          type: 'document.patch',
-          patch: {
-            activeViewId: view.id
-          }
-        } satisfies DocumentOperation]
-      : [])
-  )
+  input.program.view.create(view)
+  if (reader.document().activeViewId === undefined) {
+    input.program.document.patch({
+      activeViewId: view.id
+    })
+  }
+  input.output({
+    id: view.id
+  })
 }
 
 const lowerViewRename = (
@@ -737,11 +723,7 @@ const lowerViewRename = (
     ...view,
     name
   })
-  return emitValidatedViewUpdate(input, reader, view, nextView, [{
-    type: 'view.rename',
-    id: view.id,
-    name: nextView.name
-  }])
+  return emitValidatedViewUpdate(input, reader, view, nextView)
 }
 
 const lowerViewTypeSet = (
@@ -765,11 +747,7 @@ const lowerViewTypeSet = (
   }
 
   const nextView = finalizeView(reader, nextCandidate)
-  return emitValidatedViewUpdate(input, reader, view, nextView, [{
-    type: 'view.type.set',
-    id: view.id,
-    viewType: nextView.type
-  }])
+  return emitValidatedViewUpdate(input, reader, view, nextView)
 }
 
 const lowerViewSearchSet = (
@@ -786,11 +764,7 @@ const lowerViewSearchSet = (
     ...view,
     search: viewApi.search.state.clone(intent.search)
   })
-  return emitValidatedViewUpdate(input, reader, view, nextView, [{
-    type: 'view.search.set',
-    id: view.id,
-    search: viewApi.search.state.clone(nextView.search)
-  }])
+  return emitValidatedViewUpdate(input, reader, view, nextView)
 }
 
 const lowerViewFilterCreate = (
@@ -837,23 +811,9 @@ const lowerViewFilterCreate = (
       return
     }
 
-    return emitValidatedViewUpdate(
-      input,
-      reader,
-      view,
-      nextView,
-      [{
-        type: 'view.filter.create',
-        id: view.id,
-        rule: cloneFilterRuleForOperation(rule),
-        ...(intent.before !== undefined
-          ? { before: intent.before }
-          : {})
-      }],
-      {
-        id: created.id
-      }
-    )
+    return emitValidatedViewUpdate(input, reader, view, nextView, {
+      id: created.id
+    })
   } catch (error) {
     reportSemanticError(input, error, 'input')
   }
@@ -892,20 +852,7 @@ const lowerViewFilterPatch = (
       ...view,
       filter: nextFilter
     })
-    return emitValidatedViewUpdate(input, reader, view, nextView, [{
-      type: 'view.filter.patch',
-      id: view.id,
-      rule: intent.rule,
-      patch: {
-        fieldId: nextView.filter.rules.byId[intent.rule]!.fieldId,
-        presetId: nextView.filter.rules.byId[intent.rule]!.presetId,
-        ...(Object.prototype.hasOwnProperty.call(nextView.filter.rules.byId[intent.rule]!, 'value')
-          ? {
-              value: cloneFilterValueForOperation(nextView.filter.rules.byId[intent.rule]!.value)
-            }
-          : {})
-      }
-    }])
+    return emitValidatedViewUpdate(input, reader, view, nextView)
   } catch (error) {
     reportSemanticError(input, error, 'patch')
   }
@@ -931,14 +878,7 @@ const lowerViewFilterMove = (
       ...view,
       filter: nextFilter
     })
-    return emitValidatedViewUpdate(input, reader, view, nextView, [{
-      type: 'view.filter.move',
-      id: view.id,
-      rule: intent.rule,
-      ...(intent.before !== undefined
-        ? { before: intent.before }
-        : {})
-    }])
+    return emitValidatedViewUpdate(input, reader, view, nextView)
   } catch (error) {
     reportSemanticError(input, error, 'rule')
   }
@@ -958,11 +898,7 @@ const lowerViewFilterModeSet = (
     ...view,
     filter: viewApi.filter.write.mode(view.filter, intent.mode)
   })
-  return emitValidatedViewUpdate(input, reader, view, nextView, [{
-    type: 'view.filter.mode.set',
-    id: view.id,
-    mode: nextView.filter.mode
-  }])
+  return emitValidatedViewUpdate(input, reader, view, nextView)
 }
 
 const lowerViewFilterRemove = (
@@ -980,11 +916,7 @@ const lowerViewFilterRemove = (
       ...view,
       filter: viewApi.filter.write.remove(view.filter, intent.rule)
     })
-    return emitValidatedViewUpdate(input, reader, view, nextView, [{
-      type: 'view.filter.remove',
-      id: view.id,
-      rule: intent.rule
-    }])
+    return emitValidatedViewUpdate(input, reader, view, nextView)
   } catch (error) {
     reportSemanticError(input, error, 'rule')
   }
@@ -1004,10 +936,7 @@ const lowerViewFilterClear = (
     ...view,
     filter: viewApi.filter.write.clear(view.filter)
   })
-  return emitValidatedViewUpdate(input, reader, view, nextView, [{
-    type: 'view.filter.clear',
-    id: view.id
-  }])
+  return emitValidatedViewUpdate(input, reader, view, nextView)
 }
 
 const lowerViewSortCreate = (
@@ -1055,23 +984,9 @@ const lowerViewSortCreate = (
       return
     }
 
-    return emitValidatedViewUpdate(
-      input,
-      reader,
-      view,
-      nextView,
-      [{
-        type: 'view.sort.create',
-        id: view.id,
-        rule: cloneSortRuleForOperation(rule),
-        ...(intent.before !== undefined
-          ? { before: intent.before }
-          : {})
-      }],
-      {
-        id: created.id
-      }
-    )
+    return emitValidatedViewUpdate(input, reader, view, nextView, {
+      id: created.id
+    })
   } catch (error) {
     reportSemanticError(input, error, 'input')
   }
@@ -1107,15 +1022,7 @@ const lowerViewSortPatch = (
       return
     }
 
-    return emitValidatedViewUpdate(input, reader, view, nextView, [{
-      type: 'view.sort.patch',
-      id: view.id,
-      rule: intent.rule,
-      patch: {
-        fieldId: rule.fieldId,
-        direction: rule.direction
-      }
-    }])
+    return emitValidatedViewUpdate(input, reader, view, nextView)
   } catch (error) {
     reportSemanticError(input, error, 'patch')
   }
@@ -1141,14 +1048,7 @@ const lowerViewSortMove = (
       ...view,
       sort: nextSort
     })
-    return emitValidatedViewUpdate(input, reader, view, nextView, [{
-      type: 'view.sort.move',
-      id: view.id,
-      rule: intent.rule,
-      ...(intent.before !== undefined
-        ? { before: intent.before }
-        : {})
-    }])
+    return emitValidatedViewUpdate(input, reader, view, nextView)
   } catch (error) {
     reportSemanticError(input, error, 'rule')
   }
@@ -1169,11 +1069,7 @@ const lowerViewSortRemove = (
       ...view,
       sort: viewApi.sort.write.remove(view.sort, intent.rule)
     })
-    return emitValidatedViewUpdate(input, reader, view, nextView, [{
-      type: 'view.sort.remove',
-      id: view.id,
-      rule: intent.rule
-    }])
+    return emitValidatedViewUpdate(input, reader, view, nextView)
   } catch (error) {
     reportSemanticError(input, error, 'rule')
   }
@@ -1193,10 +1089,7 @@ const lowerViewSortClear = (
     ...view,
     sort: viewApi.sort.write.clear(view.sort)
   })
-  return emitValidatedViewUpdate(input, reader, view, nextView, [{
-    type: 'view.sort.clear',
-    id: view.id
-  }])
+  return emitValidatedViewUpdate(input, reader, view, nextView)
 }
 
 const lowerViewGroupSet = (
@@ -1213,11 +1106,7 @@ const lowerViewGroupSet = (
     ...view,
     group: viewApi.group.state.clone(intent.group)
   } as View)
-  return emitValidatedViewUpdate(input, reader, view, nextView, [{
-    type: 'view.group.set',
-    id: view.id,
-    group: viewApi.group.state.clone(nextView.group)!
-  }])
+  return emitValidatedViewUpdate(input, reader, view, nextView)
 }
 
 const lowerViewGroupClear = (
@@ -1234,10 +1123,7 @@ const lowerViewGroupClear = (
     ...view,
     group: viewApi.group.clear(view.group)
   } as View)
-  return emitValidatedViewUpdate(input, reader, view, nextView, [{
-    type: 'view.group.clear',
-    id: view.id
-  }])
+  return emitValidatedViewUpdate(input, reader, view, nextView)
 }
 
 const lowerViewGroupToggle = (
@@ -1255,11 +1141,7 @@ const lowerViewGroupToggle = (
     ...view,
     group: viewApi.group.toggle(view.group, field)
   } as View)
-  return emitValidatedViewUpdate(input, reader, view, nextView, [{
-    type: 'view.group.toggle',
-    id: view.id,
-    field: intent.field
-  }])
+  return emitValidatedViewUpdate(input, reader, view, nextView)
 }
 
 const lowerViewGroupModeSet = (
@@ -1289,11 +1171,7 @@ const lowerViewGroupModeSet = (
     ...view,
     group: nextGroup
   })
-  return emitValidatedViewUpdate(input, reader, view, nextView, [{
-    type: 'view.group.mode.set',
-    id: view.id,
-    mode: nextView.group!.mode
-  }])
+  return emitValidatedViewUpdate(input, reader, view, nextView)
 }
 
 const lowerViewGroupSortSet = (
@@ -1323,11 +1201,7 @@ const lowerViewGroupSortSet = (
     ...view,
     group: nextGroup
   })
-  return emitValidatedViewUpdate(input, reader, view, nextView, [{
-    type: 'view.group.sort.set',
-    id: view.id,
-    sort: nextView.group!.bucketSort
-  }])
+  return emitValidatedViewUpdate(input, reader, view, nextView)
 }
 
 const lowerViewGroupIntervalSet = (
@@ -1357,13 +1231,7 @@ const lowerViewGroupIntervalSet = (
     ...view,
     group: nextGroup
   })
-  return emitValidatedViewUpdate(input, reader, view, nextView, [{
-    type: 'view.group.interval.set',
-    id: view.id,
-    ...(nextView.group!.bucketInterval !== undefined
-      ? { interval: nextView.group!.bucketInterval }
-      : {})
-  }])
+  return emitValidatedViewUpdate(input, reader, view, nextView)
 }
 
 const lowerViewGroupShowEmptySet = (
@@ -1393,11 +1261,7 @@ const lowerViewGroupShowEmptySet = (
     ...view,
     group: nextGroup
   })
-  return emitValidatedViewUpdate(input, reader, view, nextView, [{
-    type: 'view.group.showEmpty.set',
-    id: view.id,
-    value: nextView.group?.showEmpty ?? false
-  }])
+  return emitValidatedViewUpdate(input, reader, view, nextView)
 }
 
 const lowerViewSectionVisibility = (
@@ -1446,11 +1310,7 @@ const lowerViewSectionVisibility = (
     ...view,
     group: nextGroup
   })
-  return emitValidatedViewUpdate(input, reader, view, nextView, [{
-    type: intent.type,
-    id: view.id,
-    bucket: intent.bucket
-  }])
+  return emitValidatedViewUpdate(input, reader, view, nextView)
 }
 
 const lowerViewCalcSet = (
@@ -1471,12 +1331,7 @@ const lowerViewCalcSet = (
     ...view,
     calc: viewApi.calc.set(view.calc, intent.field, intent.metric ?? null)
   })
-  return emitValidatedViewUpdate(input, reader, view, nextView, [{
-    type: 'view.calc.set',
-    id: view.id,
-    field: intent.field,
-    metric: nextView.calc[intent.field] ?? null
-  }])
+  return emitValidatedViewUpdate(input, reader, view, nextView)
 }
 
 const lowerViewTableWidthsSet = (
@@ -1503,13 +1358,7 @@ const lowerViewTableWidthsSet = (
     compileIssue(input, 'view.invalidProjection', 'view.table.widths.set produced a non-table view', 'id')
     return
   }
-  return emitValidatedViewUpdate(input, reader, view, nextView, [{
-    type: 'view.table.widths.set',
-    id: view.id,
-    widths: {
-      ...nextView.options.widths
-    }
-  }])
+  return emitValidatedViewUpdate(input, reader, view, nextView)
 }
 
 const lowerViewTableVerticalLinesSet = (
@@ -1536,11 +1385,7 @@ const lowerViewTableVerticalLinesSet = (
     compileIssue(input, 'view.invalidProjection', 'view.table.verticalLines.set produced a non-table view', 'id')
     return
   }
-  return emitValidatedViewUpdate(input, reader, view, nextView, [{
-    type: 'view.table.verticalLines.set',
-    id: view.id,
-    value: nextView.options.showVerticalLines
-  }])
+  return emitValidatedViewUpdate(input, reader, view, nextView)
 }
 
 const lowerViewTableWrapSet = (
@@ -1567,11 +1412,7 @@ const lowerViewTableWrapSet = (
     compileIssue(input, 'view.invalidProjection', 'view.table.wrap.set produced a non-table view', 'id')
     return
   }
-  return emitValidatedViewUpdate(input, reader, view, nextView, [{
-    type: 'view.table.wrap.set',
-    id: view.id,
-    value: nextView.options.wrap
-  }])
+  return emitValidatedViewUpdate(input, reader, view, nextView)
 }
 
 const lowerViewGalleryWrapSet = (
@@ -1600,11 +1441,7 @@ const lowerViewGalleryWrapSet = (
     compileIssue(input, 'view.invalidProjection', 'view.gallery.wrap.set produced a non-gallery view', 'id')
     return
   }
-  return emitValidatedViewUpdate(input, reader, view, nextView, [{
-    type: 'view.gallery.wrap.set',
-    id: view.id,
-    value: nextView.options.card.wrap
-  }])
+  return emitValidatedViewUpdate(input, reader, view, nextView)
 }
 
 const lowerViewGallerySizeSet = (
@@ -1633,11 +1470,7 @@ const lowerViewGallerySizeSet = (
     compileIssue(input, 'view.invalidProjection', 'view.gallery.size.set produced a non-gallery view', 'id')
     return
   }
-  return emitValidatedViewUpdate(input, reader, view, nextView, [{
-    type: 'view.gallery.size.set',
-    id: view.id,
-    value: nextView.options.card.size
-  }])
+  return emitValidatedViewUpdate(input, reader, view, nextView)
 }
 
 const lowerViewGalleryLayoutSet = (
@@ -1666,11 +1499,7 @@ const lowerViewGalleryLayoutSet = (
     compileIssue(input, 'view.invalidProjection', 'view.gallery.layout.set produced a non-gallery view', 'id')
     return
   }
-  return emitValidatedViewUpdate(input, reader, view, nextView, [{
-    type: 'view.gallery.layout.set',
-    id: view.id,
-    value: nextView.options.card.layout
-  }])
+  return emitValidatedViewUpdate(input, reader, view, nextView)
 }
 
 const lowerViewKanbanWrapSet = (
@@ -1699,11 +1528,7 @@ const lowerViewKanbanWrapSet = (
     compileIssue(input, 'view.invalidProjection', 'view.kanban.wrap.set produced a non-kanban view', 'id')
     return
   }
-  return emitValidatedViewUpdate(input, reader, view, nextView, [{
-    type: 'view.kanban.wrap.set',
-    id: view.id,
-    value: nextView.options.card.wrap
-  }])
+  return emitValidatedViewUpdate(input, reader, view, nextView)
 }
 
 const lowerViewKanbanSizeSet = (
@@ -1732,11 +1557,7 @@ const lowerViewKanbanSizeSet = (
     compileIssue(input, 'view.invalidProjection', 'view.kanban.size.set produced a non-kanban view', 'id')
     return
   }
-  return emitValidatedViewUpdate(input, reader, view, nextView, [{
-    type: 'view.kanban.size.set',
-    id: view.id,
-    value: nextView.options.card.size
-  }])
+  return emitValidatedViewUpdate(input, reader, view, nextView)
 }
 
 const lowerViewKanbanLayoutSet = (
@@ -1765,11 +1586,7 @@ const lowerViewKanbanLayoutSet = (
     compileIssue(input, 'view.invalidProjection', 'view.kanban.layout.set produced a non-kanban view', 'id')
     return
   }
-  return emitValidatedViewUpdate(input, reader, view, nextView, [{
-    type: 'view.kanban.layout.set',
-    id: view.id,
-    value: nextView.options.card.layout
-  }])
+  return emitValidatedViewUpdate(input, reader, view, nextView)
 }
 
 const lowerViewKanbanFillColorSet = (
@@ -1796,11 +1613,7 @@ const lowerViewKanbanFillColorSet = (
     compileIssue(input, 'view.invalidProjection', 'view.kanban.fillColor.set produced a non-kanban view', 'id')
     return
   }
-  return emitValidatedViewUpdate(input, reader, view, nextView, [{
-    type: 'view.kanban.fillColor.set',
-    id: view.id,
-    value: nextView.options.fillColumnColor
-  }])
+  return emitValidatedViewUpdate(input, reader, view, nextView)
 }
 
 const lowerViewKanbanCardsPerColumnSet = (
@@ -1827,11 +1640,7 @@ const lowerViewKanbanCardsPerColumnSet = (
     compileIssue(input, 'view.invalidProjection', 'view.kanban.cardsPerColumn.set produced a non-kanban view', 'id')
     return
   }
-  return emitValidatedViewUpdate(input, reader, view, nextView, [{
-    type: 'view.kanban.cardsPerColumn.set',
-    id: view.id,
-    value: nextView.options.cardsPerColumn
-  }])
+  return emitValidatedViewUpdate(input, reader, view, nextView)
 }
 
 const lowerViewOpen = (
@@ -1844,9 +1653,8 @@ const lowerViewOpen = (
     return
   }
 
-  emitOps(input, {
-    type: 'view.open',
-    id: view.id
+  input.program.document.patch({
+    activeViewId: view.id
   })
 }
 
@@ -1855,7 +1663,8 @@ const lowerViewOrderMove = (
   input: DataviewCompileInput,
   reader: DocumentReader
 ) => {
-  if (!requireView(input, reader, intent.id)) {
+  const view = requireView(input, reader, intent.id)
+  if (!view) {
     return
   }
 
@@ -1875,14 +1684,21 @@ const lowerViewOrderMove = (
     return
   }
 
-  emitOps(input, {
-    type: 'view.order.move',
-    id: intent.id,
-    record: recordId,
-    ...(beforeRecordId !== undefined && beforeRecordId !== recordId
-      ? { before: beforeRecordId }
-      : {})
+  const currentOrder = applyRecordOrder(
+    reader.records.list().map((record) => record.id),
+    view.orders
+  )
+  const nextView = finalizeView(reader, {
+    ...view,
+    orders: reorderRecordIds(currentOrder, recordId, {
+      ...(beforeRecordId !== undefined && beforeRecordId !== recordId
+        ? {
+            beforeRecordId
+          }
+        : {})
+    })
   })
+  return emitValidatedViewUpdate(input, reader, view, nextView)
 }
 
 const lowerViewOrderSplice = (
@@ -1890,7 +1706,8 @@ const lowerViewOrderSplice = (
   input: DataviewCompileInput,
   reader: DocumentReader
 ) => {
-  if (!requireView(input, reader, intent.id)) {
+  const view = requireView(input, reader, intent.id)
+  if (!view) {
     return
   }
 
@@ -1915,14 +1732,21 @@ const lowerViewOrderSplice = (
     return
   }
 
-  emitOps(input, {
-    type: 'view.order.splice',
-    id: intent.id,
-    records: recordIds,
-    ...(beforeRecordId !== undefined
-      ? { before: beforeRecordId }
-      : {})
+  const currentOrder = applyRecordOrder(
+    reader.records.list().map((record) => record.id),
+    view.orders
+  )
+  const nextView = finalizeView(reader, {
+    ...view,
+    orders: spliceRecordIds(currentOrder, recordIds, {
+      ...(beforeRecordId !== undefined
+        ? {
+            beforeRecordId
+          }
+        : {})
+    })
   })
+  return emitValidatedViewUpdate(input, reader, view, nextView)
 }
 
 const lowerViewDisplayMove = (
@@ -1938,14 +1762,15 @@ const lowerViewDisplayMove = (
     return
   }
 
-  emitOps(input, {
-    type: 'view.display.move',
-    id: intent.id,
-    field: intent.field,
-    ...(intent.before !== undefined && intent.before !== intent.field
-      ? { before: intent.before }
-      : {})
-  })
+  input.program.view.display.move(
+    intent.id,
+    intent.field,
+    intent.before !== undefined && intent.before !== intent.field
+      ? {
+          before: intent.before
+        }
+      : undefined
+  )
 }
 
 const lowerViewDisplaySplice = (
@@ -1968,14 +1793,15 @@ const lowerViewDisplaySplice = (
     return
   }
 
-  emitOps(input, {
-    type: 'view.display.splice',
-    id: intent.id,
-    fields: fieldIds,
-    ...(intent.before !== undefined
-      ? { before: intent.before }
-      : {})
-  })
+  input.program.view.display.splice(
+    intent.id,
+    fieldIds,
+    intent.before !== undefined
+      ? {
+          before: intent.before
+        }
+      : undefined
+  )
 }
 
 const lowerViewDisplayShow = (
@@ -1991,14 +1817,34 @@ const lowerViewDisplayShow = (
     return
   }
 
-  emitOps(input, {
-    type: 'view.display.show',
-    id: intent.id,
-    field: intent.field,
-    ...(intent.before !== undefined && intent.before !== intent.field
-      ? { before: intent.before }
-      : {})
+  const view = requireView(input, reader, intent.id)
+  if (!view) {
+    return
+  }
+
+  const nextFields = view.display.fields.includes(intent.field)
+    ? viewApi.display.move(
+        view.display,
+        [intent.field],
+        intent.before !== undefined && intent.before !== intent.field
+          ? intent.before
+          : undefined
+      ).fields
+    : viewApi.display.show(
+        view.display,
+        intent.field,
+        intent.before !== undefined && intent.before !== intent.field
+          ? intent.before
+          : undefined
+      ).fields
+
+  const nextView = finalizeView(reader, {
+    ...view,
+    display: {
+      fields: nextFields
+    }
   })
+  return emitValidatedViewUpdate(input, reader, view, nextView)
 }
 
 const lowerViewDisplayHide = (
@@ -2014,11 +1860,7 @@ const lowerViewDisplayHide = (
     return
   }
 
-  emitOps(input, {
-    type: 'view.display.hide',
-    id: intent.id,
-    field: intent.field
-  })
+  input.program.view.display.delete(intent.id, intent.field)
 }
 
 const lowerViewDisplayClear = (
@@ -2026,13 +1868,13 @@ const lowerViewDisplayClear = (
   input: DataviewCompileInput,
   reader: DocumentReader
 ) => {
-  if (!requireView(input, reader, intent.id)) {
+  const view = requireView(input, reader, intent.id)
+  if (!view) {
     return
   }
 
-  emitOps(input, {
-    type: 'view.display.clear',
-    id: intent.id
+  view.display.fields.forEach((fieldId) => {
+    input.program.view.display.delete(view.id, fieldId)
   })
 }
 
@@ -2046,10 +1888,13 @@ const lowerViewRemove = (
     return
   }
 
-  emitOps(input, {
-    type: 'view.remove',
-    id: view.id
-  })
+  const nextDocument = documentViews.remove(reader.document(), view.id)
+  input.program.view.delete(view.id)
+  if (reader.document().activeViewId !== nextDocument.activeViewId) {
+    input.program.document.patch({
+      activeViewId: nextDocument.activeViewId
+    })
+  }
 }
 
 export const compileViewIntent = (

@@ -20,10 +20,10 @@ test('external version bump does not create undo history', () => {
     document: createEmptyDocument()
   })
 
-  const result = engine.apply([{
+  const result = engine.execute({
     type: 'external.version.bump',
     source: 'test'
-  }])
+  })
 
   assert.equal(result.ok, true)
   assert.equal(engine.history.get().canUndo, false)

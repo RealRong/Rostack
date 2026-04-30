@@ -2,19 +2,16 @@ import type {
   CustomField,
   FieldOption,
   FieldId,
-  Intent,
-  RecordId,
-  View
+  Intent
 } from '@dataview/core/types'
-import type { DocumentOperation } from '@dataview/core/op'
+import { TITLE_FIELD_ID } from '@dataview/core/types'
 import {
   field as fieldApi
 } from '@dataview/core/field'
-import { createId, equal } from '@shared/core'
+import { createId, equal, string } from '@shared/core'
 import {
   view as viewApi
 } from '@dataview/core/view'
-import { string } from '@shared/core'
 import type {
   DocumentReader
 } from './document/reader'
@@ -23,88 +20,16 @@ import {
   createEntityPatch
 } from './compile-patch'
 import {
-  buildViewUpdateOps
-} from './compile-view-ops'
-import {
   issue,
   reportIssues,
   type DataviewCompileInput
 } from './compile-base'
+import {
+  writeViewDisplayInsert,
+  writeViewUpdate
+} from './compile-view-ops'
 
 const DEFAULT_OPTION_NAME = 'Option'
-
-const emitData = <T>(
-  input: DataviewCompileInput,
-  data: T,
-  ...operations: readonly DocumentOperation[]
-): T => {
-  input.program.append(...operations)
-  return data
-}
-
-const toFieldPatch = (
-  id: string,
-  patch: Partial<Omit<CustomField, 'id'>>
-): DocumentOperation => ({
-  type: 'field.patch',
-  id,
-  patch
-})
-
-const toRecordFieldWriteMany = (input: {
-  recordIds: readonly RecordId[]
-  set?: Partial<Record<FieldId, unknown>>
-  clear?: readonly FieldId[]
-}): DocumentOperation => ({
-  type: 'record.values.writeMany',
-  recordIds: input.recordIds,
-  ...(input.set && Object.keys(input.set).length
-    ? { set: input.set }
-    : {}),
-  ...(input.clear?.length
-    ? { clear: input.clear }
-    : {})
-})
-
-const toSingleRecordFieldWrite = (
-  recordId: RecordId,
-  fieldId: FieldId,
-  value: unknown | undefined
-): DocumentOperation => value === undefined
-  ? toRecordFieldWriteMany({
-      recordIds: [recordId],
-      clear: [fieldId]
-    })
-  : toRecordFieldWriteMany({
-      recordIds: [recordId],
-      set: {
-        [fieldId]: value
-      }
-    })
-
-const buildRemovedFieldViewOps = (
-  views: readonly View[],
-  fieldId: string
-): DocumentOperation[] => (
-  views.flatMap((view) => {
-    const nextView = viewApi.repair.field.removed(view, fieldId)
-    return nextView === view
-      ? []
-      : buildViewUpdateOps(view, nextView)
-  })
-)
-
-const buildConvertedFieldViewOps = (
-  views: readonly View[],
-  field: CustomField
-): DocumentOperation[] => (
-  views.flatMap((view) => {
-    const nextView = viewApi.repair.field.converted(view, field)
-    return nextView === view
-      ? []
-      : buildViewUpdateOps(view, nextView)
-  })
-)
 
 const createOptionName = (
   options: Extract<CustomField, { kind: 'select' | 'multiSelect' | 'status' }>['options']
@@ -214,10 +139,8 @@ const lowerFieldCreate = (
   })
 
   reportIssues(input, ...validateField(document, input.source, field, 'input'))
-  return emitData(input, { id: field.id }, {
-    type: 'field.create',
-    value: field
-  })
+  input.program.field.create(field)
+  input.output({ id: field.id })
 }
 
 const lowerFieldPatch = (
@@ -243,7 +166,7 @@ const lowerFieldPatch = (
 
   const nextField = applyFieldPatch(field, intent.patch)
   reportIssues(input, ...validateField(document, input.source, nextField, 'patch'))
-  input.program.append(toFieldPatch(intent.id, intent.patch))
+  input.program.field.patch(intent.id, intent.patch)
 }
 
 const lowerFieldReplace = (
@@ -267,11 +190,7 @@ const lowerFieldReplace = (
     return
   }
 
-  input.program.append({
-    type: 'field.patch',
-    id: intent.id,
-    patch: createEntityPatch(current, field)
-  })
+  input.program.field.patch(intent.id, createEntityPatch(current, field))
 }
 
 const lowerFieldSetKind = (
@@ -290,10 +209,13 @@ const lowerFieldSetKind = (
   const patch = createEntityPatch(field, nextField)
   reportIssues(input, ...validateField(document, input.source, nextField, 'kind'))
 
-  input.program.append(
-    toFieldPatch(intent.id, patch),
-    ...buildConvertedFieldViewOps(views, nextField)
-  )
+  input.program.field.patch(intent.id, patch)
+  views.forEach((view) => {
+    const nextView = viewApi.repair.field.converted(view, nextField)
+    if (nextView !== view) {
+      writeViewUpdate(input.program, view, nextView)
+    }
+  })
 }
 
 const lowerFieldDuplicate = (
@@ -320,61 +242,42 @@ const lowerFieldDuplicate = (
   } satisfies CustomField
 
   reportIssues(input, ...validateField(document, input.source, nextField, 'field'))
+  input.program.field.create(nextField)
 
-  const recordOps: DocumentOperation[] = records.flatMap((record) => (
-    Object.prototype.hasOwnProperty.call(record.values, sourceField.id)
-      ? [toSingleRecordFieldWrite(
-          record.id,
-          nextFieldId,
-          structuredClone(record.values[sourceField.id])
-        )]
-      : []
-  ))
-
-  const viewOps: DocumentOperation[] = views.flatMap((view) => {
-    const sourceFieldIds = view.display.fields
-    const currentFieldIds = view.type === 'table' && !sourceFieldIds.includes(nextFieldId)
-      ? [...sourceFieldIds, nextFieldId]
-      : sourceFieldIds
-    const sourceIndex = sourceFieldIds.indexOf(sourceField.id)
-    const createdIndex = currentFieldIds.indexOf(nextFieldId)
-
-    if (sourceIndex === -1) {
-      if (createdIndex === -1) {
-        return []
-      }
-
-      return buildViewUpdateOps(view, {
-        ...view,
-        display: {
-          fields: currentFieldIds.filter((fieldId) => fieldId !== nextFieldId)
-        }
-      })
+  records.forEach((record) => {
+    if (!Object.prototype.hasOwnProperty.call(record.values, sourceField.id)) {
+      return
     }
 
-    const withoutCreated = currentFieldIds.filter((fieldId) => fieldId !== nextFieldId)
-    const nextFieldIds = [...withoutCreated]
-    nextFieldIds.splice(Math.min(sourceIndex + 1, nextFieldIds.length), 0, nextFieldId)
-    return buildViewUpdateOps(view, {
-      ...view,
-      display: {
-        fields: nextFieldIds
+    input.program.record.value.writeMany({
+      recordIds: [record.id],
+      set: {
+        [nextFieldId]: structuredClone(record.values[sourceField.id])
       }
     })
   })
 
-  return emitData(
-    input,
-    {
-      id: nextField.id
-    },
-    {
-      type: 'field.create',
-      value: nextField
-    },
-    ...recordOps,
-    ...viewOps
-  )
+  views.forEach((view) => {
+    if (view.type !== 'table' || view.display.fields.includes(nextFieldId)) {
+      return
+    }
+
+    const sourceIndex = view.display.fields.indexOf(sourceField.id)
+    if (sourceIndex === -1) {
+      return
+    }
+
+    writeViewDisplayInsert(
+      input.program,
+      view.id,
+      nextFieldId,
+      view.display.fields[sourceIndex + 1]
+    )
+  })
+
+  input.output({
+    id: nextField.id
+  })
 }
 
 const lowerFieldOptionCreate = (
@@ -406,11 +309,8 @@ const lowerFieldOptionCreate = (
     options: context.options,
     name: explicitName ?? createOptionName(context.options)
   })
-  return emitData(input, { id: nextOption.id }, {
-    type: 'field.option.insert',
-    field: intent.field,
-    option: nextOption
-  })
+  input.program.field.option.insert(intent.field, nextOption)
+  input.output({ id: nextOption.id })
 }
 
 const lowerFieldOptionMove = (
@@ -433,8 +333,8 @@ const lowerFieldOptionMove = (
     )
     return
   }
-
-  if (!context.options.some((option: FieldOption) => option.id === optionId)) {
+  const currentOption = context.options.find((option) => option.id === optionId)
+  if (!currentOption) {
     issue(
       input,
       'field.invalid',
@@ -444,42 +344,28 @@ const lowerFieldOptionMove = (
     return
   }
 
-  const beforeOptionId = string.trimToUndefined(intent.before)
-  if (
-    beforeOptionId !== undefined
-    && beforeOptionId !== optionId
-    && !context.options.some((option: FieldOption) => option.id === beforeOptionId)
-  ) {
-    issue(
-      input,
-      'field.invalid',
-      `Unknown field option: ${beforeOptionId}`,
-      'before'
-    )
-    return
+  const before = intent.before === optionId
+    ? undefined
+    : intent.before
+
+  if (context.field.kind === 'status' && intent.category !== undefined) {
+    const category = fieldApi.status.category.get(context.field, optionId)
+    if (category !== intent.category) {
+      input.program.field.option.patch(intent.field, optionId, {
+        category: intent.category
+      })
+    }
   }
 
-  if (intent.category !== undefined && context.field.kind !== 'status') {
-    issue(
-      input,
-      'field.invalid',
-      'Only status fields support option category moves',
-      'category'
-    )
-    return
-  }
-
-  input.program.append({
-    type: 'field.option.move',
-    field: intent.field,
-    option: optionId,
-    ...(beforeOptionId !== undefined && beforeOptionId !== optionId
-      ? { before: beforeOptionId }
-      : {}),
-    ...(intent.category !== undefined
-      ? { category: intent.category }
-      : {})
-  })
+  input.program.field.option.move(
+    intent.field,
+    optionId,
+    before === undefined
+      ? undefined
+      : {
+          before
+        }
+  )
 }
 
 const lowerFieldOptionPatch = (
@@ -503,8 +389,8 @@ const lowerFieldOptionPatch = (
     return
   }
 
-  const target = context.options.find((option) => option.id === optionId)
-  if (!target) {
+  const currentOption = context.options.find((option) => option.id === optionId)
+  if (!currentOption) {
     issue(
       input,
       'field.invalid',
@@ -514,59 +400,16 @@ const lowerFieldOptionPatch = (
     return
   }
 
-  const nextName = string.trimToUndefined(intent.patch.name)
-  if (intent.patch.name !== undefined) {
-    if (!nextName) {
-      issue(
-        input,
-        'field.invalid',
-        'Field option name must be a non-empty string',
-        'patch.name'
-      )
-      return
-    }
-
-    const conflicting = fieldApi.option.read.findByName(context.options, nextName)
-    if (conflicting && conflicting.id !== optionId) {
-      issue(
-        input,
-        'field.invalid',
-        `Duplicate field option name: ${nextName}`,
-        'patch.name'
-      )
-      return
-    }
-  }
-
-  const nextColor = intent.patch.color === undefined
-    ? undefined
-    : string.trimToUndefined(intent.patch.color) ?? null
-  const nextOption = fieldApi.option.spec.get(context.field).updateOption({
-    field: context.field,
-    option: target,
-    patch: {
-      ...(nextName !== undefined
-        ? { name: nextName }
-        : {}),
-      ...(nextColor !== undefined
-        ? { color: nextColor }
-        : {}),
-      ...(intent.patch.category !== undefined
-        ? { category: intent.patch.category }
-        : {})
-    }
-  })
-
-  if (equal.sameJsonValue(nextOption, target)) {
+  const nextOption = {
+    ...structuredClone(currentOption),
+    ...intent.patch,
+    id: optionId
+  } satisfies FieldOption
+  if (equal.sameJsonValue(currentOption, nextOption)) {
     return
   }
 
-  const patch = fieldApi.option.write.replace(
-    context.field,
-    context.options.map((option) => option.id === optionId ? nextOption : option)
-  )
-
-  input.program.append(toFieldPatch(intent.field, patch as Partial<Omit<CustomField, 'id'>>))
+  input.program.field.option.patch(intent.field, optionId, intent.patch)
 }
 
 const lowerFieldOptionRemove = (
@@ -574,7 +417,6 @@ const lowerFieldOptionRemove = (
   input: DataviewCompileInput,
   reader: DocumentReader
 ) => {
-  const records = reader.records.list()
   const context = requireOptionField(input, reader, intent.field)
   if (!context) {
     return
@@ -600,13 +442,38 @@ const lowerFieldOptionRemove = (
     return
   }
 
-  void records
+  const optionSpec = fieldApi.option.spec.get(context.field)
+  reader.records.list().forEach((record) => {
+    const nextValue = optionSpec.projectValueWithoutOption({
+      field: context.field,
+      value: record.values[context.field.id],
+      optionId
+    })
+    if (nextValue.kind === 'keep') {
+      return
+    }
 
-  input.program.append({
-    type: 'field.option.delete',
-    field: intent.field,
-    option: optionId
+    input.program.record.value.writeMany({
+      recordIds: [record.id],
+      ...(nextValue.kind === 'clear'
+        ? {
+            clear: [context.field.id]
+          }
+        : {
+            set: {
+              [context.field.id]: nextValue.value
+            }
+          })
+    })
   })
+
+  if (context.field.kind === 'status' && context.field.defaultOptionId === optionId) {
+    input.program.field.patch(context.field.id, {
+      defaultOptionId: null
+    })
+  }
+
+  input.program.field.option.delete(intent.field, optionId)
 }
 
 const lowerFieldRemove = (
@@ -615,17 +482,30 @@ const lowerFieldRemove = (
   reader: DocumentReader
 ) => {
   const views = reader.views.list()
-  if (!requireCustomField(input, reader, intent.id, 'id')) {
+  const field = requireCustomField(input, reader, intent.id, 'id')
+  if (!field) {
     return
   }
 
-  input.program.append(
-    ...buildRemovedFieldViewOps(views, intent.id),
-    {
-      type: 'field.remove',
-      id: intent.id
+  reader.records.list().forEach((record) => {
+    if (!Object.prototype.hasOwnProperty.call(record.values, field.id)) {
+      return
     }
-  )
+
+    input.program.record.value.writeMany({
+      recordIds: [record.id],
+      clear: [field.id]
+    })
+  })
+
+  views.forEach((view) => {
+    const nextView = viewApi.repair.field.removed(view, intent.id)
+    if (nextView !== view) {
+      writeViewUpdate(input.program, view, nextView)
+    }
+  })
+
+  input.program.field.delete(intent.id)
 }
 
 export const compileFieldIntent = (

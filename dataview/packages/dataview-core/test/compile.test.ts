@@ -31,7 +31,8 @@ test('MutationEngine.compile lowers field.create into executable operations', ()
     normalize: document => document,
     createReader: createDocumentReader,
     entities,
-    compile: compile.handlers
+    compile: compile.handlers,
+    createProgram: compile.createProgram
   })
   const result = mutation.execute([{
     type: 'field.create',

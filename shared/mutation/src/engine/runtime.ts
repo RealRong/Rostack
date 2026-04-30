@@ -10,6 +10,7 @@ import type {
   ApplyCommit,
   CommitRecord,
   MutationCommitRecord,
+  MutationDelta,
   MutationIssue,
   MutationReplaceCommit,
   Origin,
@@ -19,7 +20,6 @@ import {
   COMPILE_APPLY_FAILED_CODE,
   COMPILE_BLOCKED_CODE,
   COMPILE_EMPTY_CODE,
-  type CompileLoopResult,
   EXECUTE_EMPTY_CODE,
   EMPTY_COMPILE_ISSUES,
   EMPTY_DELTA,
@@ -33,6 +33,8 @@ import {
   normalizeCompileIssue,
   readFirstOutput,
   type MutationApplyResult,
+  type MutationCompileIssue,
+  type MutationCompileProgramFactory,
   type MutationCompileHandlerInput,
   type MutationCompileHandlerTable,
   type MutationCurrent,
@@ -510,39 +512,58 @@ const applyConcreteOperations = <
   }
 }
 
+type CompiledIntentProgramResult<
+  Doc,
+  Output,
+  Code extends string = string
+> = {
+  document: Doc
+  applied: MutationProgram<string>
+  inverse: MutationProgram<string>
+  delta: MutationDelta
+  structural: readonly MutationStructuralFact[]
+  footprint: readonly MutationFootprint[]
+  outputs: readonly Output[]
+  issues?: readonly MutationCompileIssue<Code>[]
+  historyMode: 'track' | 'skip' | 'neutral'
+}
+
 const compileMutationIntents = <
   Doc extends object,
   Table extends MutationIntentTable,
-  Op extends {
-    type: string
-  },
+  Program,
   Reader,
   Services,
   Code extends string = string
 >(input: {
   document: Doc
   intents: readonly MutationIntentOf<Table>[]
-  handlers: MutationCompileHandlerTable<Table, Doc, Op, Reader, Services, Code>
-  origin: Origin
+  handlers: MutationCompileHandlerTable<Table, Doc, Program, Reader, Services, Code>
+  createProgram?: MutationCompileProgramFactory<Program>
   services: Services | undefined
   entities: ReadonlyMap<string, CompiledEntitySpec>
   structures?: MutationStructureSource<Doc>
-  custom?: MutationCustomTable<Doc, Op, Reader, Services, string, Code>
   createReader: MutationReaderFactory<Doc, Reader>
   normalize(doc: Doc): Doc
-}): CompileLoopResult<Doc, Op, MutationOutputOf<Table>, Code> => {
-  const ops: Op[] = []
+}): CompiledIntentProgramResult<Doc, MutationOutputOf<Table>, Code> => {
+  const appliedSteps: MutationProgramStep[] = []
+  const inverseSteps: MutationProgramStep[] = []
   const outputs: MutationOutputOf<Table>[] = []
-  const issues = []
+  const issues: MutationCompileIssue<Code>[] = []
+  let delta = EMPTY_DELTA
+  const structural: MutationStructuralFact[] = []
+  const footprint: MutationFootprint[] = []
+  let hasTrackedHistory = false
+  let skipHistory = false
   let workingDocument = input.document
 
   for (let index = 0; index < input.intents.length; index += 1) {
     const intent = input.intents[index]!
-    const pendingOps: Op[] = []
     const pendingOutputs: MutationOutputOf<Table>[] = []
-    const pendingIssues: ReturnType<typeof normalizeCompileIssue<Code>>[] = []
+    const pendingIssues: MutationCompileIssue<Code>[] = []
     let shouldStop = false
     let blocked = false
+    const baseProgram = createMutationProgramWriter<string>()
 
     const handler = input.handlers[intent.type as MutationIntentKind<Table>]
     if (!handler) {
@@ -560,7 +581,7 @@ const compileMutationIntents = <
     const controls: MutationCompileHandlerInput<
       Doc,
       MutationIntentOf<Table>,
-      Op,
+      Program,
       MutationOutputOf<Table>,
       Reader,
       Services,
@@ -574,13 +595,9 @@ const compileMutationIntents = <
       document: workingDocument,
       reader: input.createReader(() => workingDocument),
       services: input.services,
-      program: {
-        append: (...nextOps) => {
-          for (let opIndex = 0; opIndex < nextOps.length; opIndex += 1) {
-            pendingOps.push(nextOps[opIndex]!)
-          }
-        }
-      },
+      program: (input.createProgram
+        ? input.createProgram(baseProgram)
+        : baseProgram as unknown as Program),
       output: (value) => {
         pendingOutputs.push(value)
       },
@@ -631,19 +648,16 @@ const compileMutationIntents = <
       break
     }
 
-    if (pendingOps.length === 0) {
+    const pendingProgram = baseProgram.build()
+    if (pendingProgram.steps.length === 0) {
       continue
     }
 
-    const applied = applyConcreteOperations<Doc, Op, Reader, Services, Code>({
+    const applied = applyMutationProgram<Doc, never, string, Code>({
       document: workingDocument,
-      operations: pendingOps,
+      program: pendingProgram,
       entities: input.entities,
       structures: input.structures,
-      custom: input.custom,
-      createReader: input.createReader,
-      origin: input.origin,
-      services: input.services,
       normalize: input.normalize
     })
     if (!applied.ok) {
@@ -660,15 +674,60 @@ const compileMutationIntents = <
     }
 
     workingDocument = applied.data.document
-    ops.push(...pendingOps)
+    appliedSteps.push(...applied.data.applied.steps)
+    if (applied.data.inverse.steps.length > 0) {
+      inverseSteps.unshift(...applied.data.inverse.steps)
+    }
+    delta = mergeMutationDeltas(delta, applied.data.delta)
+    structural.push(...applied.data.structural)
+    footprint.push(...applied.data.footprint)
+    issues.push(...applied.data.issues.map((issue) => ({
+      code: issue.code as Code,
+      message: issue.message,
+      severity: issue.severity,
+      ...(issue.path === undefined
+        ? {}
+        : {
+            path: issue.path
+          }),
+      ...(issue.details === undefined
+        ? {}
+        : {
+            details: issue.details
+          }),
+      source: {
+        index,
+        type: intent.type
+      }
+    })))
+    if (applied.data.historyMode === 'track') {
+      hasTrackedHistory = true
+    }
+    if (applied.data.historyMode === 'skip') {
+      skipHistory = true
+    }
   }
 
   return {
-    ops,
+    document: workingDocument,
+    applied: {
+      steps: appliedSteps
+    },
+    inverse: {
+      steps: inverseSteps
+    },
+    delta,
+    structural,
+    footprint: dedupeFootprints(footprint),
     outputs,
+    historyMode: skipHistory
+      ? 'skip'
+      : hasTrackedHistory
+        ? 'track'
+        : 'neutral',
     ...(issues.length > 0
       ? {
-          issues
+        issues
         }
       : {})
   }
@@ -681,7 +740,8 @@ class MutationRuntime<
   },
   Reader,
   Services,
-  Code extends string = string
+  Code extends string = string,
+  Program = MutationProgramWriter<string>
 > {
   readonly history: HistoryPort<
     MutationResult<void, ApplyCommit<Doc, Op, MutationFootprint, void>, Code>,
@@ -696,7 +756,8 @@ class MutationRuntime<
   private readonly structures?: MutationStructureSource<Doc>
   private readonly custom?: MutationCustomTable<Doc, Op, Reader, Services, string, Code>
   private readonly services: Services | undefined
-  private readonly compileHandlers?: MutationCompileHandlerTable<any, Doc, Op, Reader, Services, Code>
+  private readonly compileHandlers?: MutationCompileHandlerTable<any, Doc, Program, Reader, Services, Code>
+  private readonly compileProgramFactory?: MutationCompileProgramFactory<Program>
   private readonly historyOptions?: MutationHistoryOptions | false
   private readonly historyControllerRef?: HistoryController<
     MutationProgram<string>,
@@ -716,7 +777,8 @@ class MutationRuntime<
     structures?: MutationStructureSource<Doc>
     custom?: MutationCustomTable<Doc, Op, Reader, Services, string, Code>
     services?: Services
-    compile?: MutationCompileHandlerTable<any, Doc, Op, Reader, Services, Code>
+    compile?: MutationCompileHandlerTable<any, Doc, Program, Reader, Services, Code>
+    createProgram?: MutationCompileProgramFactory<Program>
     history?: MutationHistoryOptions | false
   }) {
     this.createReader = input.createReader
@@ -726,6 +788,7 @@ class MutationRuntime<
     this.custom = input.custom
     this.services = input.services
     this.compileHandlers = input.compile
+    this.compileProgramFactory = input.createProgram
     this.historyOptions = input.history
     this.documentState = this.normalize(input.document)
 
@@ -899,21 +962,20 @@ class MutationRuntime<
       >
     }
 
-    const planned = compileMutationIntents<Doc, Table, Op, Reader, Services, Code>({
+    const planned = compileMutationIntents<Doc, Table, Program, Reader, Services, Code>({
       document: this.documentState,
       intents,
       handlers: this.compileHandlers,
-      origin: options?.origin ?? 'user',
+      createProgram: this.compileProgramFactory,
       services: this.services,
       entities: this.entities,
       structures: this.structures,
-      custom: this.custom,
       createReader: this.createReader,
       normalize: this.normalize
     })
     const issues = (planned.issues ?? EMPTY_COMPILE_ISSUES).map(normalizeCompileIssue)
-    const canApply = planned.canApply ?? (
-      planned.ops.length > 0
+    const canApply = (
+      planned.applied.steps.length > 0
       && !hasCompileErrors(issues)
     )
 
@@ -932,10 +994,10 @@ class MutationRuntime<
       >
     }
 
-    if (planned.ops.length === 0) {
+    if (planned.applied.steps.length === 0) {
       return mutationFailure(
         COMPILE_EMPTY_CODE as Code,
-        'MutationEngine.execute produced no operations.',
+        'MutationEngine.execute produced no program steps.',
         {
           issues
         }
@@ -947,47 +1009,20 @@ class MutationRuntime<
       >
     }
 
-    const applied = applyConcreteOperations<Doc, Op, Reader, Services, Code>({
-      document: this.documentState,
-      operations: planned.ops,
-      entities: this.entities,
-      structures: this.structures,
-      custom: this.custom,
-      createReader: this.createReader,
-      origin: options?.origin ?? 'user',
-      services: this.services,
-      normalize: this.normalize
-    })
-    if (!applied.ok) {
-      return mutationFailure(
-        COMPILE_APPLY_FAILED_CODE as Code,
-        applied.error.message,
-        applied.error.details
-      ) as MutationExecuteResultOfInput<
-        Table,
-        ApplyCommit<Doc, Op, MutationFootprint, void>,
-        Input,
-        Code
-      >
-    }
-
     const committed = this.commit({
-      document: applied.data.document,
-      authored: planned.ops,
-      applied: applied.data.applied,
-      inverse: applied.data.inverse,
-      delta: applied.data.delta,
-      structural: applied.data.structural,
-      footprint: applied.data.footprint,
-      outputs: [
-        ...planned.outputs,
-        ...applied.data.outputs
-      ],
-      issues: [
-        ...issues,
-        ...applied.data.issues
-      ],
-      historyMode: applied.data.historyMode,
+      document: planned.document,
+      authored: materializeMutationProgram<Op>({
+        program: planned.applied,
+        entities: this.entities
+      }),
+      applied: planned.applied,
+      inverse: planned.inverse,
+      delta: planned.delta,
+      structural: planned.structural,
+      footprint: planned.footprint,
+      outputs: planned.outputs,
+      issues,
+      historyMode: planned.historyMode,
       origin: options?.origin ?? 'user',
       data: (
         Array.isArray(input)
@@ -1129,11 +1164,12 @@ export class MutationEngine<
   },
   Reader,
   Services = void,
-  Code extends string = string
+  Code extends string = string,
+  Program = MutationProgramWriter<string>
 > {
-  private readonly runtime: MutationRuntime<Doc, Op, Reader, Services, Code>
+  private readonly runtime: MutationRuntime<Doc, Op, Reader, Services, Code, Program>
 
-  constructor(input: MutationEngineOptions<Doc, Table, Op, Reader, Services, Code>) {
+  constructor(input: MutationEngineOptions<Doc, Table, Op, Reader, Services, Code, Program>) {
     this.runtime = new MutationRuntime({
       document: input.document,
       normalize: input.normalize,
@@ -1143,6 +1179,7 @@ export class MutationEngine<
       custom: input.custom,
       services: input.services,
       compile: input.compile,
+      createProgram: input.createProgram,
       history: input.history
     })
   }

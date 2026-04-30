@@ -31,6 +31,10 @@ export const publishSummaries = (input: {
   reader: DocumentReader
   view: View
 }): ReadonlyMap<SectionId, CalculationCollection> => {
+  if (input.previous && input.previousSummary === input.summary) {
+    return input.previous
+  }
+
   const calcFields = readCalcFields(input.view)
   const sectionIds = [...input.summary.bySection.keys()]
   const previousKeys = input.previous

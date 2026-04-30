@@ -5,6 +5,7 @@ export type {
   MutationProgram,
   MutationProgramStep,
   MutationProgramWriter,
+  MutationCompileProgramFactory,
   MutationOrderedProgramStep,
   MutationSemanticProgramStep,
   MutationCompileHandlerTable,

@@ -9,11 +9,12 @@ import type {
   Intent
 } from './types'
 import type {
-  DocumentOperation
-} from './op'
-import type {
   DocumentReader
 } from './document/reader'
+import {
+  createDataviewProgramWriter,
+  type DataviewProgramWriter
+} from './programWriter'
 import {
   issue,
   type DataviewCompileInput
@@ -67,16 +68,13 @@ const compileExternalBump = (
     )
   }
 
-  input.program.append({
-    type: 'external.version.bump',
-    source: input.intent.source
-  })
+  input.program.semantic.change('external.version')
 }
 
 export const dataviewIntentHandlers: MutationCompileHandlerTable<
   DataviewCompileTable,
   DataDoc,
-  DocumentOperation,
+  DataviewProgramWriter,
   DocumentReader,
   void,
   ValidationCode
@@ -146,7 +144,8 @@ export const dataviewIntentHandlers: MutationCompileHandlerTable<
 }
 
 export const compile = {
-  handlers: dataviewIntentHandlers
+  handlers: dataviewIntentHandlers,
+  createProgram: createDataviewProgramWriter
 } as const
 
 export type {

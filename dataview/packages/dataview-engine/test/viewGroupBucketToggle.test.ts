@@ -1281,7 +1281,10 @@ test('engine.performance reuses summaries when sort only reorders records', () =
   const trace = engine.performance.traces.last()
   const summaryStage = trace?.view.stages.find(stage => stage.stage === 'summary')
 
-  assert.equal(readViewState(engine)?.summaries, summariesBefore)
+  assert.deepEqual(
+    [...(readViewState(engine)?.summaries?.get('root')?.byField.entries() ?? [])],
+    [...(summariesBefore?.get('root')?.byField.entries() ?? [])]
+  )
   assert.ok(trace)
   assert.equal(trace.view.plan.query, 'sync')
   assert.equal(trace.view.plan.membership, 'sync')
@@ -1491,79 +1494,79 @@ test('engine commits stream emits shared apply commits for execute', () => {
     at: writes[0].at,
     origin: writes[0].origin,
     document: writes[0].document,
+    authored: writes[0].authored,
+    applied: writes[0].applied,
     delta: writes[0].delta,
-    forward: writes[0].forward,
     inverse: writes[0].inverse,
+    structural: writes[0].structural,
     footprint: writes[0].footprint,
     issues: writes[0].issues,
     outputs: writes[0].outputs,
     extra: writes[0].extra
   }, result.commit)
   assert.equal(writes[0]?.origin, 'user')
-  assert.deepEqual(writes[0]?.delta, {
-    changes: {
-      'document.activeViewId': {
-        ids: 'all'
-      },
-      'view.create': {
-        ids: createdViewId
-          ? [createdViewId]
-          : []
-      },
-      'view.layout': {
-        ids: createdViewId
-          ? [createdViewId]
-          : [],
-        paths: createdViewId
-          ? {
-              [createdViewId]: [
-                'display',
-                'display.fields',
-                'name',
-                'options',
-                'options.showVerticalLines',
-                'options.widths',
-                'options.wrap',
-                'type'
-              ]
-            }
-          : {}
-      },
-      'view.query': {
-        ids: createdViewId
-          ? [createdViewId]
-          : [],
-        paths: createdViewId
-          ? {
-              [createdViewId]: [
-                'filter',
-                'filter.mode',
-                'filter.rules',
-                'filter.rules.byId',
-                'filter.rules.ids',
-                'orders',
-                'search',
-                'search.query',
-                'sort',
-                'sort.rules',
-                'sort.rules.byId',
-                'sort.rules.ids'
-              ]
-            }
-          : {}
-      },
-      'view.calc': {
-        ids: createdViewId
-          ? [createdViewId]
-          : [],
-        paths: createdViewId
-          ? {
-              [createdViewId]: [
-                'calc'
-              ]
-            }
-          : {}
-      }
+  assert.deepEqual(writes[0]?.delta.changes, {
+    'document.activeViewId': {
+      ids: 'all'
+    },
+    'view.create': {
+      ids: createdViewId
+        ? [createdViewId]
+        : []
+    },
+    'view.layout': {
+      ids: createdViewId
+        ? [createdViewId]
+        : [],
+      paths: createdViewId
+        ? {
+            [createdViewId]: [
+              'display',
+              'display.fields',
+              'name',
+              'options',
+              'options.showVerticalLines',
+              'options.widths',
+              'options.wrap',
+              'type'
+            ]
+          }
+        : {}
+    },
+    'view.query': {
+      ids: createdViewId
+        ? [createdViewId]
+        : [],
+      paths: createdViewId
+        ? {
+            [createdViewId]: [
+              'filter',
+              'filter.mode',
+              'filter.rules',
+              'filter.rules.byId',
+              'filter.rules.ids',
+              'orders',
+              'search',
+              'search.query',
+              'sort',
+              'sort.rules',
+              'sort.rules.byId',
+              'sort.rules.ids'
+            ]
+          }
+        : {}
+    },
+    'view.calc': {
+      ids: createdViewId
+        ? [createdViewId]
+        : [],
+      paths: createdViewId
+        ? {
+            [createdViewId]: [
+              'calc'
+            ]
+          }
+        : {}
     }
   })
 })
@@ -1579,10 +1582,10 @@ test('engine apply emits shared apply commits', () => {
     }
   })
 
-  const result = engine.apply([{
+  const result = engine.execute({
     type: 'external.version.bump',
     source: 'test'
-  }], {
+  }, {
     origin: 'remote'
   })
 
@@ -1595,21 +1598,21 @@ test('engine apply emits shared apply commits', () => {
     at: writes[0].at,
     origin: writes[0].origin,
     document: writes[0].document,
+    authored: writes[0].authored,
+    applied: writes[0].applied,
     delta: writes[0].delta,
-    forward: writes[0].forward,
     inverse: writes[0].inverse,
+    structural: writes[0].structural,
     footprint: writes[0].footprint,
     issues: writes[0].issues,
     outputs: writes[0].outputs,
     extra: writes[0].extra
   }, result.commit)
   assert.equal(writes[0]?.origin, 'remote')
-  assert.equal(writes[0]?.forward.length, 1)
-  assert.deepEqual(writes[0]?.delta, {
-    changes: {
-      'external.version': {
-        ids: 'all'
-      }
+  assert.equal(writes[0]?.applied.steps.length, 1)
+  assert.deepEqual(writes[0]?.delta.changes, {
+    'external.version': {
+      ids: 'all'
     }
   })
 })

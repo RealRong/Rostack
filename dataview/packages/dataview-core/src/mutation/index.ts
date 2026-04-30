@@ -23,7 +23,9 @@ export interface DataviewViewQueryPath {
 
 export const dataviewFieldPathCodec: MutationPathCodec<string> = {
   parse: (path) => path
-    ? path
+    ? path.startsWith('values.')
+      ? path.slice('values.'.length)
+      : path
     : undefined,
   format: (path) => path
 }

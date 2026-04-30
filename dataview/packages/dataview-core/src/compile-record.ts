@@ -7,15 +7,11 @@ import type {
 import {
   TITLE_FIELD_ID
 } from '@dataview/core/types'
-import type { DocumentOperation } from '@dataview/core/op'
 import { field as fieldApi } from '@dataview/core/field'
 import {
   fieldSpec
 } from '@dataview/core/field/spec'
-import { createId } from '@shared/core'
-import {
-  string
-} from '@shared/core'
+import { createId, string } from '@shared/core'
 import type {
   DocumentReader
 } from './document/reader'
@@ -24,15 +20,9 @@ import {
   resolveTarget,
   type DataviewCompileInput
 } from './compile-base'
-
-const emitData = <T>(
-  input: DataviewCompileInput,
-  data: T,
-  ...operations: readonly DocumentOperation[]
-): T => {
-  input.program.append(...operations)
-  return data
-}
+import {
+  writeViewUpdate
+} from './compile-view-ops'
 
 const resolveDefaultRecordType = (
   reader: DocumentReader
@@ -168,16 +158,10 @@ const lowerRecordCreate = (
     meta: intent.input.meta
   } satisfies DataRecord
 
-  return emitData(
-    input,
-    {
-      id: record.id
-    },
-    {
-      type: 'record.create',
-      value: record
-    }
-  )
+  input.program.record.create(record)
+  input.output({
+    id: record.id
+  })
 }
 
 const lowerRecordPatch = (
@@ -207,11 +191,9 @@ const lowerRecordPatch = (
     )
   }
 
-  input.program.append(...recordIds.map((recordId): DocumentOperation => ({
-    type: 'record.patch',
-    id: recordId,
-    patch: intent.patch
-  })))
+  recordIds.forEach((recordId) => {
+    input.program.record.patch(recordId, intent.patch)
+  })
 }
 
 const lowerRecordRemove = (
@@ -224,9 +206,21 @@ const lowerRecordRemove = (
     return
   }
 
-  input.program.append({
-    type: 'record.remove',
-    recordIds: [...recordIds]
+  const removedRecordIds = new Set(recordIds)
+  reader.views.list().forEach((view) => {
+    const nextOrders = view.orders.filter((recordId) => !removedRecordIds.has(recordId))
+    if (nextOrders.length === view.orders.length) {
+      return
+    }
+
+    writeViewUpdate(input.program, view, {
+      ...view,
+      orders: nextOrders
+    })
+  })
+
+  recordIds.forEach((recordId) => {
+    input.program.record.delete(recordId)
   })
 }
 
@@ -260,40 +254,30 @@ const lowerRecordFieldsWriteMany = (
     nextClear.add(fieldId)
   })
 
-  Object.keys(nextSet).forEach((fieldId) => {
-    if (!nextClear.has(fieldId)) {
-      return
-    }
-
-    issue(
-      input,
-      'record.fields.overlap',
-      `record.fields.writeMany cannot set and clear the same field: ${fieldId}`,
-      'input'
-    )
-  })
-
-  if (!Object.keys(nextSet).length && !nextClear.size) {
-    issue(
-      input,
-      'record.fields.emptyWrite',
-      'record.fields.writeMany requires at least one field write',
-      'input'
-    )
-  }
-
   if (!recordIds) {
     return
   }
 
-  input.program.append({
-    type: 'record.values.writeMany',
+  if (!Object.keys(nextSet).length && nextClear.size === 0) {
+    issue(
+      input,
+      'record.fields.emptyWrite',
+      'record.fields.writeMany requires at least one set or clear entry'
+    )
+    return
+  }
+
+  input.program.record.value.writeMany({
     recordIds,
     ...(Object.keys(nextSet).length
-      ? { set: nextSet }
+      ? {
+          set: nextSet
+        }
       : {}),
     ...(nextClear.size
-      ? { clear: Array.from(nextClear) }
+      ? {
+          clear: [...nextClear]
+        }
       : {})
   })
 }

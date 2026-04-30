@@ -74,16 +74,10 @@ export type MutationCompileControl<Code extends string = string> =
       issue: MutationCompileIssue<Code>
     }
 
-export interface MutationCompileProgram<
-  Step
-> {
-  append(...steps: readonly Step[]): void
-}
-
 export interface MutationCompileHandlerInput<
   Doc,
   Intent,
-  Op,
+  Program,
   Output,
   Reader,
   Services = void,
@@ -94,7 +88,7 @@ export interface MutationCompileHandlerInput<
   document: Doc
   reader: Reader
   services: Services | undefined
-  program: MutationCompileProgram<Op>
+  program: Program
   output(value: Output): void
   issue(issue: MutationCompileIssue<Code>): void
   stop(): {
@@ -113,13 +107,13 @@ export interface MutationCompileHandlerInput<
 export type MutationCompileHandler<
   Doc,
   Intent,
-  Op,
+  Program,
   Output,
   Reader,
   Services = void,
   Code extends string = string
 > = (
-  input: MutationCompileHandlerInput<Doc, Intent, Op, Output, Reader, Services, Code>
+  input: MutationCompileHandlerInput<Doc, Intent, Program, Output, Reader, Services, Code>
 ) => void | MutationCompileControl<Code>
 
 export interface MutationCompileInput<
@@ -128,17 +122,6 @@ export interface MutationCompileInput<
 > {
   doc: Doc
   intents: readonly Intent[]
-}
-
-export interface MutationCompileResult<
-  Op,
-  Output = void,
-  Code extends string = string
-> {
-  ops: readonly Op[]
-  outputs: readonly Output[]
-  issues?: readonly MutationCompileIssue<Code>[]
-  canApply?: boolean
 }
 
 export interface MutationError<Code extends string = string> {
@@ -216,7 +199,7 @@ export type MutationOutputOf<
 export type MutationCompileHandlerTable<
   Table extends MutationIntentTable,
   Doc,
-  Op,
+  Program,
   Reader,
   Services = void,
   Code extends string = string
@@ -224,13 +207,19 @@ export type MutationCompileHandlerTable<
   [K in MutationIntentKind<Table>]: MutationCompileHandler<
     Doc,
     MutationIntentOf<Table, K>,
-    Op,
+    Program,
     MutationOutputOf<Table, K>,
     Reader,
     Services,
     Code
   >
 }
+
+export type MutationCompileProgramFactory<
+  Program
+> = (
+  program: MutationProgramWriter<string>
+) => Program
 
 export type MutationExecuteResult<
   T extends MutationIntentTable,
@@ -395,7 +384,8 @@ export interface MutationEngineOptions<
   },
   Reader,
   Services = void,
-  Code extends string = string
+  Code extends string = string,
+  Program = MutationProgramWriter<string>
 > {
   document: Doc
   normalize(doc: Doc): Doc
@@ -404,7 +394,8 @@ export interface MutationEngineOptions<
   entities?: Readonly<Record<string, MutationEntitySpec>>
   structures?: MutationStructureSource<Doc>
   custom?: MutationCustomTable<Doc, Op, Reader, Services, string, Code>
-  compile?: MutationCompileHandlerTable<Table, Doc, Op, Reader, Services, Code>
+  compile?: MutationCompileHandlerTable<Table, Doc, Program, Reader, Services, Code>
+  createProgram?: MutationCompileProgramFactory<Program>
   history?: MutationHistoryOptions | false
 }
 
@@ -546,13 +537,6 @@ export type DeltaAccumulatorEntry = {
   order: boolean
   extra: Record<string, unknown>
 }
-
-export type CompileLoopResult<
-  Doc,
-  Op,
-  Output,
-  Code extends string = string
-> = MutationCompileResult<Op, Output, Code>
 
 export interface MutationEntityEffectInput {
   family: string

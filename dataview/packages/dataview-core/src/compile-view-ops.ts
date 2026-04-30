@@ -1,24 +1,22 @@
 import type {
-  BucketState,
   FieldId,
   FilterRule,
+  RecordId,
   SortRule,
-  View,
-  ViewCalc,
-  ViewFilterRuleId,
-  ViewGroupBucketId,
-  ViewSortRuleId
+  View
 } from '@dataview/core/types'
-import type {
-  DocumentOperation
-} from '@dataview/core/op'
 import {
   view as viewApi
 } from '@dataview/core/view'
 import {
-  equal,
-  order
+  equal
 } from '@shared/core'
+import type {
+  DataviewProgramWriter,
+  DataviewFilterRulePatch,
+  DataviewSortRulePatch,
+  DataviewViewPatch
+} from './programWriter'
 
 const insertBefore = <T,>(
   items: readonly T[],
@@ -42,7 +40,7 @@ const insertBefore = <T,>(
   ]
 }
 
-const cloneFilterRuleOperationValue = (
+const cloneFilterValue = (
   value: FilterRule['value']
 ): FilterRule['value'] => {
   if (
@@ -60,7 +58,7 @@ const cloneFilterRuleOperationValue = (
   return structuredClone(value)
 }
 
-const cloneFilterRuleForOperation = (
+const cloneFilterRule = (
   rule: FilterRule
 ): FilterRule => ({
   id: rule.id,
@@ -68,12 +66,44 @@ const cloneFilterRuleForOperation = (
   presetId: rule.presetId,
   ...(Object.prototype.hasOwnProperty.call(rule, 'value')
     ? {
-        value: cloneFilterRuleOperationValue(rule.value)
+        value: cloneFilterValue(rule.value)
       }
     : {})
 })
 
-const cloneSortRuleForOperation = (
+const createFilterRulePatch = (
+  current: FilterRule | undefined,
+  next: FilterRule
+): DataviewFilterRulePatch | undefined => {
+  if (!current) {
+    return undefined
+  }
+
+  const patch: DataviewFilterRulePatch = {}
+  if (current.fieldId !== next.fieldId) {
+    patch.fieldId = next.fieldId
+  }
+  if (current.presetId !== next.presetId) {
+    patch.presetId = next.presetId
+  }
+
+  const hasCurrentValue = Object.prototype.hasOwnProperty.call(current, 'value')
+  const hasNextValue = Object.prototype.hasOwnProperty.call(next, 'value')
+  if (
+    hasCurrentValue !== hasNextValue
+    || (hasCurrentValue && hasNextValue && !equal.sameJsonValue(current.value, next.value))
+  ) {
+    patch.value = hasNextValue
+      ? cloneFilterValue(next.value)
+      : undefined
+  }
+
+  return Object.keys(patch).length
+    ? patch
+    : undefined
+}
+
+const cloneSortRule = (
   rule: SortRule
 ): SortRule => ({
   id: rule.id,
@@ -81,85 +111,62 @@ const cloneSortRuleForOperation = (
   direction: rule.direction
 })
 
-export const buildViewDisplayOps = (
-  current: View,
-  next: View
-): DocumentOperation[] => {
-  if (equal.sameOrder(current.display.fields, next.display.fields)) {
-    return []
+const createSortRulePatch = (
+  current: SortRule | undefined,
+  next: SortRule
+): DataviewSortRulePatch | undefined => {
+  if (!current) {
+    return undefined
   }
 
-  const operations: DocumentOperation[] = []
-  let working = [...current.display.fields]
-  const nextFieldSet = new Set(next.display.fields)
-
-  current.display.fields.forEach((fieldId) => {
-    if (nextFieldSet.has(fieldId)) {
-      return
-    }
-
-    operations.push({
-      type: 'view.display.hide',
-      id: current.id,
-      field: fieldId
-    })
-    working = working.filter((entry) => entry !== fieldId)
-  })
-
-  for (let index = next.display.fields.length - 1; index >= 0; index -= 1) {
-    const fieldId = next.display.fields[index]!
-    const before = next.display.fields[index + 1]
-    if (!working.includes(fieldId)) {
-      operations.push({
-        type: 'view.display.show',
-        id: current.id,
-        field: fieldId,
-        ...(before !== undefined
-          ? { before }
-          : {})
-      })
-      working = order.moveItem(working, fieldId, {
-        ...(before !== undefined
-          ? { before }
-          : {})
-      })
-      continue
-    }
-
-    const reordered = order.moveItem(working, fieldId, {
-      ...(before !== undefined
-        ? { before }
-        : {})
-    })
-    if (equal.sameOrder(working, reordered)) {
-      continue
-    }
-
-    operations.push({
-      type: 'view.display.move',
-      id: current.id,
-      field: fieldId,
-      ...(before !== undefined
-        ? { before }
-        : {})
-    })
-    working = reordered
+  const patch: DataviewSortRulePatch = {}
+  if (current.fieldId !== next.fieldId) {
+    patch.fieldId = next.fieldId
+  }
+  if (current.direction !== next.direction) {
+    patch.direction = next.direction
   }
 
-  return operations
+  return Object.keys(patch).length
+    ? patch
+    : undefined
 }
 
-const buildViewFilterOps = (
+const sameViewOptions = (
   current: View,
   next: View
-): DocumentOperation[] => {
-  const operations: DocumentOperation[] = []
+): boolean => {
+  if (current.type !== next.type) {
+    return false
+  }
 
+  switch (current.type) {
+    case 'table':
+      return next.type === 'table'
+        ? viewApi.options.same('table', current.options, next.options)
+        : false
+    case 'gallery':
+      return next.type === 'gallery'
+        ? viewApi.options.same('gallery', current.options, next.options)
+        : false
+    case 'kanban':
+      return next.type === 'kanban'
+        ? viewApi.options.same('kanban', current.options, next.options)
+        : false
+  }
+}
+
+const writeViewFilter = (
+  writer: DataviewProgramWriter,
+  current: View,
+  next: View
+) => {
   if (current.filter.mode !== next.filter.mode) {
-    operations.push({
-      type: 'view.filter.mode.set',
-      id: current.id,
-      mode: next.filter.mode
+    writer.view.patch(current.id, {
+      filter: {
+        ...structuredClone(current.filter),
+        mode: next.filter.mode
+      }
     })
   }
 
@@ -171,11 +178,7 @@ const buildViewFilterOps = (
       return
     }
 
-    operations.push({
-      type: 'view.filter.remove',
-      id: current.id,
-      rule: ruleId
-    })
+    writer.view.filter.delete(current.id, ruleId)
     workingIds = workingIds.filter((entry) => entry !== ruleId)
   })
 
@@ -186,55 +189,45 @@ const buildViewFilterOps = (
     const currentRule = current.filter.rules.byId[ruleId]
 
     if (!workingIds.includes(ruleId)) {
-      operations.push({
-        type: 'view.filter.create',
-        id: current.id,
-        rule: cloneFilterRuleForOperation(nextRule),
-        ...(before !== undefined
-          ? { before }
-          : {})
-      })
+      writer.view.filter.insert(
+        current.id,
+        cloneFilterRule(nextRule),
+        before === undefined
+          ? undefined
+          : {
+              before
+            }
+      )
       workingIds = [...insertBefore(workingIds, ruleId, before)]
       continue
     }
 
-    if (!currentRule || !viewApi.filter.rule.same(currentRule, nextRule)) {
-      operations.push({
-        type: 'view.filter.patch',
-        id: current.id,
-        rule: ruleId,
-        patch: {
-          fieldId: nextRule.fieldId,
-          presetId: nextRule.presetId,
-          ...(Object.prototype.hasOwnProperty.call(nextRule, 'value')
-            ? { value: structuredClone(nextRule.value) }
-            : {})
-        }
-      })
+    const patch = createFilterRulePatch(currentRule, nextRule)
+    if (patch) {
+      writer.view.filter.patch(current.id, ruleId, patch)
     }
 
     const reordered = insertBefore(workingIds, ruleId, before)
     if (!equal.sameOrder(workingIds, reordered)) {
-      operations.push({
-        type: 'view.filter.move',
-        id: current.id,
-        rule: ruleId,
-        ...(before !== undefined
-          ? { before }
-          : {})
-      })
+      writer.view.filter.move(
+        current.id,
+        ruleId,
+        before === undefined
+          ? undefined
+          : {
+              before
+            }
+      )
       workingIds = [...reordered]
     }
   }
-
-  return operations
 }
 
-const buildViewSortOps = (
+const writeViewSort = (
+  writer: DataviewProgramWriter,
   current: View,
   next: View
-): DocumentOperation[] => {
-  const operations: DocumentOperation[] = []
+) => {
   let workingIds = [...current.sort.rules.ids]
   const nextSet = new Set(next.sort.rules.ids)
 
@@ -243,11 +236,7 @@ const buildViewSortOps = (
       return
     }
 
-    operations.push({
-      type: 'view.sort.remove',
-      id: current.id,
-      rule: ruleId
-    })
+    writer.view.sort.delete(current.id, ruleId)
     workingIds = workingIds.filter((entry) => entry !== ruleId)
   })
 
@@ -258,305 +247,214 @@ const buildViewSortOps = (
     const currentRule = current.sort.rules.byId[ruleId]
 
     if (!workingIds.includes(ruleId)) {
-      operations.push({
-        type: 'view.sort.create',
-        id: current.id,
-        rule: cloneSortRuleForOperation(nextRule),
-        ...(before !== undefined
-          ? { before }
-          : {})
-      })
+      writer.view.sort.insert(
+        current.id,
+        cloneSortRule(nextRule),
+        before === undefined
+          ? undefined
+          : {
+              before
+            }
+      )
       workingIds = [...insertBefore(workingIds, ruleId, before)]
       continue
     }
 
-    if (
-      !currentRule
-      || currentRule.fieldId !== nextRule.fieldId
-      || currentRule.direction !== nextRule.direction
-    ) {
-      operations.push({
-        type: 'view.sort.patch',
-        id: current.id,
-        rule: ruleId,
-        patch: {
-          fieldId: nextRule.fieldId,
-          direction: nextRule.direction
-        }
-      })
+    const patch = createSortRulePatch(currentRule, nextRule)
+    if (patch) {
+      writer.view.sort.patch(current.id, ruleId, patch)
     }
 
     const reordered = insertBefore(workingIds, ruleId, before)
     if (!equal.sameOrder(workingIds, reordered)) {
-      operations.push({
-        type: 'view.sort.move',
-        id: current.id,
-        rule: ruleId,
-        ...(before !== undefined
-          ? { before }
-          : {})
-      })
+      writer.view.sort.move(
+        current.id,
+        ruleId,
+        before === undefined
+          ? undefined
+          : {
+              before
+            }
+      )
       workingIds = [...reordered]
     }
   }
-
-  return operations
 }
 
-const readBucketState = (
-  buckets: Readonly<Record<ViewGroupBucketId, BucketState>> | undefined,
-  bucketId: ViewGroupBucketId
-): BucketState | undefined => buckets?.[bucketId]
-
-const buildViewGroupOps = (
+const writeViewDisplay = (
+  writer: DataviewProgramWriter,
   current: View,
   next: View
-): DocumentOperation[] => {
-  if (viewApi.group.state.same(current.group, next.group)) {
-    return []
-  }
-  if (!next.group) {
-    return current.group
-      ? [{
-          type: 'view.group.clear',
-          id: current.id
-        }]
-      : []
-  }
-  if (!current.group || current.group.fieldId !== next.group.fieldId) {
-    return [{
-      type: 'view.group.set',
-      id: current.id,
-      group: viewApi.group.state.clone(next.group)!
-    }]
-  }
+) => {
+  let working = [...current.display.fields]
+  const nextFieldSet = new Set(next.display.fields)
 
-  const operations: DocumentOperation[] = []
-
-  if (current.group.mode !== next.group.mode) {
-    operations.push({
-      type: 'view.group.mode.set',
-      id: current.id,
-      mode: next.group.mode
-    })
-  }
-  if (current.group.bucketSort !== next.group.bucketSort) {
-    operations.push({
-      type: 'view.group.sort.set',
-      id: current.id,
-      sort: next.group.bucketSort
-    })
-  }
-  if (current.group.bucketInterval !== next.group.bucketInterval) {
-    operations.push({
-      type: 'view.group.interval.set',
-      id: current.id,
-      ...(next.group.bucketInterval !== undefined
-        ? { interval: next.group.bucketInterval }
-        : {})
-    })
-  }
-  if ((current.group.showEmpty ?? false) !== (next.group.showEmpty ?? false)) {
-    operations.push({
-      type: 'view.group.showEmpty.set',
-      id: current.id,
-      value: next.group.showEmpty ?? false
-    })
-  }
-
-  const bucketIds = new Set<ViewGroupBucketId>([
-    ...Object.keys(current.group.buckets ?? {}) as ViewGroupBucketId[],
-    ...Object.keys(next.group.buckets ?? {}) as ViewGroupBucketId[]
-  ])
-  bucketIds.forEach((bucketId) => {
-    const currentBucket = readBucketState(current.group?.buckets, bucketId)
-    const nextBucket = readBucketState(next.group?.buckets, bucketId)
-    const currentHidden = currentBucket?.hidden === true
-    const nextHidden = nextBucket?.hidden === true
-    const currentCollapsed = currentBucket?.collapsed === true
-    const nextCollapsed = nextBucket?.collapsed === true
-
-    if (currentHidden !== nextHidden) {
-      operations.push({
-        type: nextHidden
-          ? 'view.section.hide'
-          : 'view.section.show',
-        id: current.id,
-        bucket: bucketId
-      })
-    }
-    if (currentCollapsed !== nextCollapsed) {
-      operations.push({
-        type: nextCollapsed
-          ? 'view.section.collapse'
-          : 'view.section.expand',
-        id: current.id,
-        bucket: bucketId
-      })
-    }
-  })
-
-  return operations
-}
-
-const buildViewCalcOps = (
-  current: View,
-  next: View
-): DocumentOperation[] => {
-  const operations: DocumentOperation[] = []
-  const fieldIds = new Set<FieldId>([
-    ...Object.keys(current.calc) as FieldId[],
-    ...Object.keys(next.calc) as FieldId[]
-  ])
-
-  fieldIds.forEach((fieldId) => {
-    const currentMetric = current.calc[fieldId]
-    const nextMetric = next.calc[fieldId]
-    if (currentMetric === nextMetric) {
+  current.display.fields.forEach((fieldId) => {
+    if (nextFieldSet.has(fieldId)) {
       return
     }
 
-    operations.push({
-      type: 'view.calc.set',
-      id: current.id,
-      field: fieldId,
-      metric: nextMetric ?? null
-    })
+    writer.view.display.delete(current.id, fieldId)
+    working = working.filter((entry) => entry !== fieldId)
   })
 
-  return operations
-}
+  for (let index = next.display.fields.length - 1; index >= 0; index -= 1) {
+    const fieldId = next.display.fields[index]!
+    const before = next.display.fields[index + 1]
+    if (!working.includes(fieldId)) {
+      writer.view.display.insert(
+        current.id,
+        fieldId,
+        before === undefined
+          ? undefined
+          : {
+              before
+            }
+      )
+      working = [...insertBefore(working, fieldId, before)]
+      continue
+    }
 
-const buildViewLayoutOps = (
-  current: View,
-  next: View
-): DocumentOperation[] => {
-  const operations: DocumentOperation[] = []
+    const reordered = insertBefore(working, fieldId, before)
+    if (equal.sameOrder(working, reordered)) {
+      continue
+    }
 
-  if (current.type !== next.type) {
-    operations.push({
-      type: 'view.type.set',
-      id: current.id,
-      viewType: next.type
-    })
-  }
-
-  switch (next.type) {
-    case 'table':
-      if (
-        current.type !== 'table'
-        || !equal.sameShallowRecord(current.type === 'table' ? current.options.widths : {}, next.options.widths)
-      ) {
-        operations.push({
-          type: 'view.table.widths.set',
-          id: current.id,
-          widths: {
-            ...next.options.widths
+    writer.view.display.move(
+      current.id,
+      fieldId,
+      before === undefined
+        ? undefined
+        : {
+            before
           }
-        })
-      }
-      if (current.type !== 'table' || current.options.showVerticalLines !== next.options.showVerticalLines) {
-        operations.push({
-          type: 'view.table.verticalLines.set',
-          id: current.id,
-          value: next.options.showVerticalLines
-        })
-      }
-      if (current.type !== 'table' || current.options.wrap !== next.options.wrap) {
-        operations.push({
-          type: 'view.table.wrap.set',
-          id: current.id,
-          value: next.options.wrap
-        })
-      }
-      break
-    case 'gallery':
-      if (current.type !== 'gallery' || current.options.card.wrap !== next.options.card.wrap) {
-        operations.push({
-          type: 'view.gallery.wrap.set',
-          id: current.id,
-          value: next.options.card.wrap
-        })
-      }
-      if (current.type !== 'gallery' || current.options.card.size !== next.options.card.size) {
-        operations.push({
-          type: 'view.gallery.size.set',
-          id: current.id,
-          value: next.options.card.size
-        })
-      }
-      if (current.type !== 'gallery' || current.options.card.layout !== next.options.card.layout) {
-        operations.push({
-          type: 'view.gallery.layout.set',
-          id: current.id,
-          value: next.options.card.layout
-        })
-      }
-      break
-    case 'kanban':
-      if (current.type !== 'kanban' || current.options.card.wrap !== next.options.card.wrap) {
-        operations.push({
-          type: 'view.kanban.wrap.set',
-          id: current.id,
-          value: next.options.card.wrap
-        })
-      }
-      if (current.type !== 'kanban' || current.options.card.size !== next.options.card.size) {
-        operations.push({
-          type: 'view.kanban.size.set',
-          id: current.id,
-          value: next.options.card.size
-        })
-      }
-      if (current.type !== 'kanban' || current.options.card.layout !== next.options.card.layout) {
-        operations.push({
-          type: 'view.kanban.layout.set',
-          id: current.id,
-          value: next.options.card.layout
-        })
-      }
-      if (current.type !== 'kanban' || current.options.fillColumnColor !== next.options.fillColumnColor) {
-        operations.push({
-          type: 'view.kanban.fillColor.set',
-          id: current.id,
-          value: next.options.fillColumnColor
-        })
-      }
-      if (current.type !== 'kanban' || current.options.cardsPerColumn !== next.options.cardsPerColumn) {
-        operations.push({
-          type: 'view.kanban.cardsPerColumn.set',
-          id: current.id,
-          value: next.options.cardsPerColumn
-        })
-      }
-      break
+    )
+    working = [...reordered]
   }
-
-  return operations
 }
 
-export const buildViewUpdateOps = (
+const writeViewOrder = (
+  writer: DataviewProgramWriter,
   current: View,
   next: View
-): DocumentOperation[] => [
-  ...(current.name !== next.name
-    ? [{
-        type: 'view.rename',
-        id: current.id,
-        name: next.name
-      } satisfies DocumentOperation]
-    : []),
-  ...(!viewApi.search.state.same(current.search, next.search)
-    ? [{
-        type: 'view.search.set',
-        id: current.id,
-        search: viewApi.search.state.clone(next.search)
-      } satisfies DocumentOperation]
-    : []),
-  ...buildViewFilterOps(current, next),
-  ...buildViewSortOps(current, next),
-  ...buildViewCalcOps(current, next),
-  ...buildViewLayoutOps(current, next),
-  ...buildViewGroupOps(current, next),
-  ...buildViewDisplayOps(current, next)
-]
+) => {
+  let working = [...current.orders]
+  const nextRecordSet = new Set(next.orders)
+
+  current.orders.forEach((recordId) => {
+    if (nextRecordSet.has(recordId)) {
+      return
+    }
+
+    writer.view.order.delete(current.id, recordId)
+    working = working.filter((entry) => entry !== recordId)
+  })
+
+  for (let index = next.orders.length - 1; index >= 0; index -= 1) {
+    const recordId = next.orders[index]!
+    const before = next.orders[index + 1]
+    if (!working.includes(recordId)) {
+      writer.view.order.insert(
+        current.id,
+        recordId,
+        before === undefined
+          ? undefined
+          : {
+              before
+            }
+      )
+      working = [...insertBefore(working, recordId, before)]
+      continue
+    }
+
+    const reordered = insertBefore(working, recordId, before)
+    if (equal.sameOrder(working, reordered)) {
+      continue
+    }
+
+    writer.view.order.move(
+      current.id,
+      recordId,
+      before === undefined
+        ? undefined
+        : {
+            before
+          }
+    )
+    working = [...reordered]
+  }
+}
+
+export const writeViewUpdate = (
+  writer: DataviewProgramWriter,
+  current: View,
+  next: View
+) => {
+  const patch: DataviewViewPatch = {}
+
+  if (current.name !== next.name) {
+    patch.name = next.name
+  }
+  if (current.type !== next.type) {
+    patch.type = next.type
+  }
+  if (!viewApi.search.state.same(current.search, next.search)) {
+    patch.search = viewApi.search.state.clone(next.search)
+  }
+  if (!viewApi.group.state.same(current.group, next.group)) {
+    patch.group = next.group
+      ? viewApi.group.state.clone(next.group)!
+      : undefined
+  }
+  if (!viewApi.calc.same(current.calc, next.calc)) {
+    patch.calc = structuredClone(next.calc)
+  }
+  if (!sameViewOptions(current, next)) {
+    patch.options = structuredClone(next.options)
+  }
+  if (current.filter.mode !== next.filter.mode) {
+    patch.filter = {
+      ...structuredClone(current.filter),
+      mode: next.filter.mode
+    }
+  }
+
+  if (Object.keys(patch).length) {
+    writer.view.patch(current.id, patch)
+  }
+
+  writeViewFilter(writer, current, next)
+  writeViewSort(writer, current, next)
+  writeViewDisplay(writer, current, next)
+  writeViewOrder(writer, current, next)
+}
+
+export const writeViewDisplayInsert = (
+  writer: DataviewProgramWriter,
+  viewId: string,
+  fieldId: FieldId,
+  before?: FieldId
+) => writer.view.display.insert(
+  viewId,
+  fieldId,
+  before === undefined
+    ? undefined
+    : {
+        before
+      }
+)
+
+export const writeViewOrderInsert = (
+  writer: DataviewProgramWriter,
+  viewId: string,
+  recordId: RecordId,
+  before?: RecordId
+) => writer.view.order.insert(
+  viewId,
+  recordId,
+  before === undefined
+    ? undefined
+    : {
+        before
+      }
+)

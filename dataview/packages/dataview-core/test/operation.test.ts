@@ -4,11 +4,15 @@ import { entityTable } from '@shared/core'
 import { MutationEngine } from '@shared/mutation'
 import type { DataDoc } from '@dataview/core/types'
 import {
-  custom
-} from '@dataview/core/custom'
+  compile
+} from '@dataview/core/compile'
 import {
   entities
 } from '@dataview/core/entities'
+import {
+  createDataviewProgramWriter,
+  type DataviewProgramWriter
+} from '@dataview/core/programWriter'
 import {
   document as documentApi
 } from '@dataview/core/document'
@@ -16,6 +20,9 @@ import {
   createDocumentReader,
   type DocumentReader
 } from '@dataview/core/document/reader'
+import type {
+  Intent
+} from '@dataview/core/intent'
 import type {
   DocumentOperation
 } from '@dataview/core/op'
@@ -45,8 +52,31 @@ const createMutation = () => new MutationEngine<
   document: createEmptyDocument(),
   normalize: documentApi.normalize,
   createReader: createDocumentReader,
+  entities
+})
+
+const createExecuteMutation = () => new MutationEngine<
+  DataDoc,
+  {
+    'external.version.bump': {
+      intent: Extract<Intent, { type: 'external.version.bump' }>
+      output: void
+    }
+  },
+  DocumentOperation,
+  DocumentReader,
+  void,
+  string,
+  DataviewProgramWriter
+>({
+  document: createEmptyDocument(),
+  normalize: documentApi.normalize,
+  createReader: createDocumentReader,
   entities,
-  custom
+  compile: {
+    'external.version.bump': compile.handlers['external.version.bump']
+  },
+  createProgram: createDataviewProgramWriter
 })
 
 test('MutationEngine applies canonical field.create with shared inverse', () => {
@@ -66,22 +96,22 @@ test('MutationEngine applies canonical field.create with shared inverse', () => 
   }
 
   assert.ok(result.commit.document.fields.byId.field_notes)
-  assert.equal(result.commit.inverse[0]?.type, 'field.delete')
+  assert.equal(result.commit.inverse.steps[0]?.type, 'entity.delete')
   assert.ok(Boolean(result.commit.delta.changes['field.create']))
 })
 
-test('custom external.version.bump skips history and emits delta', () => {
-  const mutation = createMutation()
-  const result = mutation.apply([{
+test('external.version.bump compiles to semantic delta without history', () => {
+  const mutation = createExecuteMutation()
+  const result = mutation.execute({
     type: 'external.version.bump',
     source: 'remote'
-  }])
+  })
 
   assert.equal(result.ok, true)
   if (!result.ok) {
     return
   }
 
-  assert.equal(result.commit.inverse.length, 0)
+  assert.equal(result.commit.inverse.steps.length, 0)
   assert.ok(Boolean(result.commit.delta.changes['external.version']))
 })

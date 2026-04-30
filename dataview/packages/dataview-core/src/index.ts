@@ -1,5 +1,4 @@
 export { compile } from '@dataview/core/compile'
-export { custom } from '@dataview/core/custom'
 export { entities } from '@dataview/core/entities'
 export { createDataviewProgramWriter } from '@dataview/core/programWriter'
 export * from '@dataview/core/mutation'

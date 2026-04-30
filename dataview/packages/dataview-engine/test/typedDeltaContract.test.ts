@@ -89,13 +89,10 @@ test('engine commit keeps typed record value paths without structural record chu
   unsubscribe()
 
   assert.equal(writes.length, 1)
-  assert.deepEqual(writes[0]?.delta, {
-    changes: {
-      'record.values': {
-        paths: {
-          rec_1: [FIELD_STATUS]
-        }
-      }
+  assert.deepEqual(writes[0]?.delta.changes['record.values'], {
+    ids: ['rec_1'],
+    paths: {
+      rec_1: [`values.${FIELD_STATUS}`]
     }
   })
 })

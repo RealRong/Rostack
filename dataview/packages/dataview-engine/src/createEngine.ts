@@ -12,6 +12,12 @@ import {
   entities
 } from '@dataview/core/entities'
 import {
+  createDataviewProgramWriter
+} from '@dataview/core/programWriter'
+import {
+  dataviewStructures as structures
+} from '@dataview/core/structures'
+import {
   MutationEngine
 } from '@shared/mutation'
 import type {
@@ -50,6 +56,9 @@ import {
   type DocumentReader
 } from '@dataview/core/document/reader'
 import type {
+  DataviewProgramWriter
+} from '@dataview/core/programWriter'
+import type {
   DataviewIntentTable,
   DataviewErrorCode
 } from '@dataview/engine/types/intent'
@@ -78,13 +87,16 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
     DocumentOperation,
     DocumentReader,
     void,
-    DataviewErrorCode
+    DataviewErrorCode,
+    DataviewProgramWriter
   >({
     document: options.document,
     normalize: documentApi.normalize,
     createReader: createDocumentReader,
     entities,
+    structures,
     compile: compile.handlers,
+    createProgram: createDataviewProgramWriter,
     history: historyConfig.enabled
       ? {
           capacity: historyConfig.capacity,

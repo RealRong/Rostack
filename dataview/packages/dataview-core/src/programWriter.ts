@@ -57,9 +57,13 @@ export type DataviewDocumentPatch = Partial<Pick<
 >>
 
 export type DataviewRecordPatch = Partial<Omit<DataRecord, 'id'>>
-export type DataviewFieldPatch = Partial<Omit<CustomField, 'id'>>
+export type DataviewFieldPatch =
+  | Partial<Omit<CustomField, 'id'>>
+  | Readonly<Record<string, unknown>>
 export type DataviewViewPatch = Partial<Omit<View, 'id'>>
-export type DataviewFieldOptionPatch = Partial<Omit<FieldOption, 'id'>>
+export type DataviewFieldOptionPatch =
+  | Partial<Omit<FieldOption, 'id'>>
+  | Readonly<Record<string, unknown>>
 export type DataviewFilterRulePatch = Partial<Omit<FilterRule, 'id'>>
 export type DataviewSortRulePatch = Partial<Omit<SortRule, 'id'>>
 
@@ -71,6 +75,14 @@ export interface DataviewProgramWriter {
     create(value: DataRecord, tags?: DataviewTags): void
     patch(id: RecordId, patch: DataviewRecordPatch, tags?: DataviewTags): void
     delete(id: RecordId, tags?: DataviewTags): void
+    value: {
+      writeMany(input: {
+        recordIds: readonly RecordId[]
+        set?: Partial<Record<FieldId, unknown>>
+        clear?: readonly FieldId[]
+        tags?: DataviewTags
+      }): void
+    }
   }
   field: {
     create(value: CustomField, tags?: DataviewTags): void
@@ -261,6 +273,46 @@ export const createDataviewProgramWriter = (
         table: 'record',
         id
       }, tags)
+    },
+    value: {
+      writeMany: ({ recordIds, set, clear, tags }) => {
+        const clearKeys = new Set(clear ?? [])
+        const setEntries = Object.entries(set ?? {})
+        const updates = recordIds.map((id) => {
+          const writes: Record<string, unknown> = {}
+
+          setEntries.forEach(([fieldId, value]) => {
+            if (fieldId === 'title') {
+              writes.title = value
+              return
+            }
+            writes[`values.${fieldId}`] = value
+          })
+
+          clearKeys.forEach((fieldId) => {
+            if (fieldId === 'title') {
+              writes.title = ''
+              return
+            }
+            writes[`values.${fieldId}`] = undefined
+          })
+
+          return {
+            id,
+            writes
+          }
+        }).filter((entry) => Object.keys(entry.writes).length > 0)
+
+        if (updates.length === 0) {
+          return
+        }
+
+        writer.entity.patchMany(
+          'record',
+          updates,
+          tags
+        )
+      }
     }
   },
   field: {

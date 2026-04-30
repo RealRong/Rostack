@@ -13,7 +13,7 @@ import type { PointerDownInput } from '@whiteboard/editor/types/input'
 import type { Tool } from '@whiteboard/editor/types/tool'
 import type { MindmapPreviewState } from '@whiteboard/editor/session/preview/types'
 import type { EditorHostDeps } from '@whiteboard/editor/input/runtime'
-import type { Query } from '@whiteboard/editor-scene'
+import type { EditorSceneRead } from '@whiteboard/editor-scene'
 import type { Node } from '@whiteboard/core/types'
 
 export type MindmapDragState = CoreMindmapDragState
@@ -42,9 +42,9 @@ export type MindmapDragCommit =
     }
 
 type MindmapQuery = {
-  resolve: Query['scene']['query']['mindmap']['resolve']
-  structure: Query['scene']['query']['mindmap']['structure']
-  layout: Query['scene']['mindmap']
+  id: EditorSceneRead['scene']['mindmaps']['id']
+  structure: EditorSceneRead['scene']['mindmaps']['structure']
+  layout: EditorSceneRead['scene']['mindmaps']['get']
 }
 
 const previewMindmapDrag = (
@@ -74,7 +74,7 @@ const previewMindmapDrag = (
 
 const readMindmapTreeView = (
   mindmap: {
-    id: MindmapQuery['resolve']
+    id: MindmapQuery['id']
     structure: MindmapQuery['structure']
     layout: MindmapQuery['layout']
   },
@@ -100,7 +100,7 @@ export const tryStartMindmapDrag = (input: {
   tool: Tool
   pointer: PointerDownInput
   mindmap: {
-    id: MindmapQuery['resolve']
+    id: MindmapQuery['id']
     structure: MindmapQuery['structure']
     layout: MindmapQuery['layout']
   }
@@ -181,7 +181,7 @@ export const tryStartMindmapDragForNode = (input: {
   pointerId: number
   world: Point
   mindmap: {
-    id: MindmapQuery['resolve']
+    id: MindmapQuery['id']
     structure: MindmapQuery['structure']
     layout: MindmapQuery['layout']
   }
@@ -239,7 +239,7 @@ const stepMindmapDrag = (input: {
   state: MindmapDragState
   world: Point
   mindmap: {
-    id: MindmapQuery['resolve']
+    id: MindmapQuery['id']
     structure: MindmapQuery['structure']
     layout: MindmapQuery['layout']
   }
@@ -302,9 +302,9 @@ export const createMindmapDragSession = (
       state,
       world,
       mindmap: {
-        id: ctx.projection.query.scene.query.mindmap.resolve,
-        structure: ctx.projection.query.scene.query.mindmap.structure,
-        layout: ctx.projection.query.scene.mindmap
+        id: ctx.projection.read.scene.mindmaps.id,
+        structure: ctx.projection.read.scene.mindmaps.structure,
+        layout: ctx.projection.read.scene.mindmaps.get
       }
     })
     interaction!.gesture = createGesture('mindmap-drag', {

@@ -26,7 +26,7 @@ import {
 const DEFAULT_MINDMAP_ENTER_DURATION_MS = 220
 
 type MindmapActionDeps = {
-  graph: Pick<EditorSceneApi, 'query'>
+  graph: Pick<EditorSceneApi, 'read'>
   session: Pick<EditorSession, 'preview'>
   tasks: EditorTaskRuntime
   write: Pick<EditorWrite, 'mindmap'>
@@ -120,19 +120,19 @@ const readInsertAnchorId = (
 }
 
 const buildEnterJob = (input: {
-  graph: Pick<EditorSceneApi, 'query'>
+  graph: Pick<EditorSceneApi, 'read'>
   treeId: MindmapId
   nodeId: MindmapNodeId
   anchorId?: MindmapNodeId
 }): MindmapEnterJob | undefined => {
-  const structure = input.graph.query.scene.query.mindmap.structure(input.treeId)
-  const targetRect = input.graph.query.scene.node(input.nodeId)?.geometry.rect
+  const structure = input.graph.read.scene.mindmaps.structure(input.treeId)
+  const targetRect = input.graph.read.scene.nodes.get(input.nodeId)?.geometry.rect
   if (!structure || !targetRect) {
     return undefined
   }
 
   const parentId = structure.tree.nodes[input.nodeId]?.parentId
-  const anchorRect = input.graph.query.scene.node(
+  const anchorRect = input.graph.read.scene.nodes.get(
     input.anchorId ?? parentId ?? ''
   )?.geometry.rect
   if (!anchorRect) {
@@ -157,7 +157,7 @@ const buildEnterJob = (input: {
 }
 
 const resolveEnterJob = async (input: {
-  graph: Pick<EditorSceneApi, 'query'>
+  graph: Pick<EditorSceneApi, 'read'>
   treeId: MindmapId
   nodeId: MindmapNodeId
   anchorId?: MindmapNodeId
@@ -298,7 +298,7 @@ export const createMindmapActions = ({
   const insertRelative: MindmapActions['insertRelative'] = (
     input
   ) => {
-    const structure = graph.query.scene.query.mindmap.structure(input.id)
+    const structure = graph.read.scene.mindmaps.structure(input.id)
     if (!structure) {
       return undefined
     }

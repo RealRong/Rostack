@@ -11,7 +11,7 @@ import type {
   EditorSession,
   EditorSessionSelectionCommands
 } from '@whiteboard/editor/session/runtime'
-import type { DocumentQuery } from '@whiteboard/editor-scene'
+import type { DocumentFrame } from '@whiteboard/editor-scene'
 import type { EditorWrite } from '@whiteboard/editor/write'
 
 const toEdgeUpdateInput = (
@@ -63,10 +63,10 @@ const toEdgeLabelUpdateInput = (
 })
 
 const readEdgeOrThrow = (
-  graph: Pick<EditorSceneApi, 'query'>,
+  graph: Pick<EditorSceneApi, 'read'>,
   edgeId: string
 ) => {
-  const edge = graph.query.scene.edge(edgeId)?.base.edge
+  const edge = graph.read.scene.edges.get(edgeId)?.base.edge
   if (!edge) {
     throw new Error(`Edge ${edgeId} not found.`)
   }
@@ -75,7 +75,7 @@ const readEdgeOrThrow = (
 }
 
 const writeRouteFromPoint = (input: {
-  graph: Pick<EditorSceneApi, 'query'>
+  graph: Pick<EditorSceneApi, 'read'>
   write: Pick<EditorWrite, 'edge'>
   edgeId: string
   resolve: (edge: ReturnType<typeof readEdgeOrThrow>) => { route?: EdgeRouteInput } | undefined
@@ -96,8 +96,8 @@ const writeRouteFromPoint = (input: {
 }
 
 export const createEdgeActions = (input: {
-  graph: Pick<EditorSceneApi, 'query'>
-  document: Pick<DocumentQuery, 'edge'>
+  graph: Pick<EditorSceneApi, 'read'>
+  document: Pick<DocumentFrame, 'edge'>
   session: Pick<EditorSession, 'state'> & {
     commands: {
       selection: Pick<EditorSessionSelectionCommands, 'replace'>

@@ -7,7 +7,7 @@ import {
   startEdgeLabelEdit as startEdgeLabelSession,
   startNodeEdit as startNodeSession
 } from '@whiteboard/editor/edit/runtime'
-import type { DocumentQuery } from '@whiteboard/editor-scene'
+import type { DocumentFrame } from '@whiteboard/editor-scene'
 import type { EditField } from '@whiteboard/editor/session/edit'
 import type {
   EditorSession,
@@ -70,7 +70,7 @@ export const createEditController = (input: {
       selection: EditorSessionSelectionCommands
     }
   }
-  document: Pick<DocumentQuery, 'node' | 'edge'>
+  document: Pick<DocumentFrame, 'node' | 'edge'>
   nodeType: Pick<NodeTypeSupport, 'edit'>
   write: Pick<EditorWrite, 'node' | 'edge'>
 }): EditController => {

@@ -10,21 +10,21 @@ import { createMindmapActions as createMindmapWorkflowActions } from '@whiteboar
 import type { EditorSceneApi } from '@whiteboard/editor/scene/api'
 import type { EditorSession } from '@whiteboard/editor/session/runtime'
 import type { EditorTaskRuntime } from '@whiteboard/editor/tasks/runtime'
-import type { DocumentQuery } from '@whiteboard/editor-scene'
+import type { DocumentFrame } from '@whiteboard/editor-scene'
 import type { EditorWrite } from '@whiteboard/editor/write'
 
 const readMindmapRootMove = (input: {
-  graph: Pick<EditorSceneApi, 'query'>
-  document: Pick<DocumentQuery, 'node'>
+  graph: Pick<EditorSceneApi, 'read'>
+  document: Pick<DocumentFrame, 'node'>
   nodeId: NodeId
 }) => {
-  const directNode = input.graph.query.scene.node(input.nodeId)
-  const structure = input.graph.query.scene.query.mindmap.structure(input.nodeId)
+  const directNode = input.graph.read.scene.nodes.get(input.nodeId)
+  const structure = input.graph.read.scene.mindmaps.structure(input.nodeId)
   const rootView = directNode
     ? directNode
     : (
       structure
-        ? input.graph.query.scene.node(structure.rootId)
+        ? input.graph.read.scene.nodes.get(structure.rootId)
         : undefined
     )
   const node = directNode?.base.node ?? (
@@ -34,7 +34,7 @@ const readMindmapRootMove = (input: {
   )
   const mindmapId = directNode?.base.owner?.kind === 'mindmap'
     ? directNode.base.owner.id
-    : input.graph.query.scene.query.mindmap.resolve(input.nodeId)
+    : input.graph.read.scene.mindmaps.id(input.nodeId)
 
   return {
     node,
@@ -45,17 +45,17 @@ const readMindmapRootMove = (input: {
 }
 
 const readBranchScopeIds = (input: {
-  graph: Pick<EditorSceneApi, 'query'>
+  graph: Pick<EditorSceneApi, 'read'>
   id: MindmapId
   nodeIds: readonly MindmapNodeId[]
   scope?: 'node' | 'subtree'
 }) => input.scope === 'subtree'
-  ? (input.graph.query.scene.query.mindmap.structure(input.id)?.nodeIds ?? input.nodeIds)
+  ? (input.graph.read.scene.mindmaps.structure(input.id)?.nodeIds ?? input.nodeIds)
   : input.nodeIds
 
 export const createMindmapActionApi = (input: {
-  graph: Pick<EditorSceneApi, 'query'>
-  document: Pick<DocumentQuery, 'node'>
+  graph: Pick<EditorSceneApi, 'read'>
+  document: Pick<DocumentFrame, 'node'>
   session: Pick<EditorSession, 'preview'>
   tasks: EditorTaskRuntime
   write: Pick<EditorWrite, 'mindmap'>
@@ -129,7 +129,7 @@ export const createMindmapActionApi = (input: {
         }))
       ),
       topic: (value) => {
-        const mindmapId = input.graph.query.scene.query.mindmap.ofNodes(value.nodeIds)
+        const mindmapId = input.graph.read.scene.mindmaps.ofNodes(value.nodeIds)
         if (!mindmapId) {
           return undefined
         }

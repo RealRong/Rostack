@@ -9,7 +9,11 @@ import type {
   Point,
   Rect
 } from '@whiteboard/core/types'
-import type { SceneQuery } from '../../contracts/editor'
+import type {
+  SceneHit,
+  SceneHitItem,
+  SceneSpatial
+} from '../../contracts/editor'
 import type { WorkingState } from '../../contracts/working'
 
 export const DEFAULT_HIT_THRESHOLD = 8
@@ -42,26 +46,8 @@ const readRectDistance = (
   return Math.hypot(dx, dy)
 }
 
-type HitTarget =
-  | {
-      kind: 'node'
-      id: NodeId
-    }
-  | {
-      kind: 'edge'
-      id: EdgeId
-    }
-  | {
-      kind: 'mindmap'
-      id: MindmapId
-    }
-  | {
-      kind: 'group'
-      id: GroupId
-    }
-
 type HitWinner = {
-  target: HitTarget
+  target: SceneHitItem
   distance: number
   order: number
 }
@@ -166,12 +152,16 @@ const readGroupDistance = (input: {
 
 export const createHitRead = (input: {
   state: () => WorkingState
-  spatial: SceneQuery['spatial']
-}): SceneQuery['hit'] => ({
+  spatial: SceneSpatial
+}): SceneHit => ({
   node: ({
     point,
     threshold,
     excludeIds
+  }: {
+    point: Point
+    threshold?: number
+    excludeIds?: readonly NodeId[]
   }) => {
     const radius = threshold ?? DEFAULT_HIT_THRESHOLD
     const exclude = excludeIds?.length
@@ -218,6 +208,10 @@ export const createHitRead = (input: {
     point,
     threshold,
     excludeIds
+  }: {
+    point: Point
+    threshold?: number
+    excludeIds?: readonly EdgeId[]
   }) => {
     const radius = threshold ?? DEFAULT_HIT_THRESHOLD
     const exclude = excludeIds?.length
@@ -265,6 +259,16 @@ export const createHitRead = (input: {
     threshold,
     kinds,
     exclude
+  }: {
+    point: Point
+    threshold?: number
+    kinds?: readonly ('node' | 'edge' | 'mindmap' | 'group')[]
+    exclude?: Partial<{
+      node: readonly NodeId[]
+      edge: readonly EdgeId[]
+      mindmap: readonly MindmapId[]
+      group: readonly GroupId[]
+    }>
   }) => {
     const radius = threshold ?? DEFAULT_HIT_THRESHOLD
     const kindSet = kinds

@@ -1,7 +1,7 @@
 import { geometry as geometryApi } from '@whiteboard/core/geometry'
 import { node as nodeApi } from '@whiteboard/core/node'
 import type { NodeId, Rect } from '@whiteboard/core/types'
-import type { SceneQuery } from '../../contracts/editor'
+import type { SceneFrame, SceneSpatial } from '../../contracts/editor'
 import type { WorkingState } from '../../contracts/working'
 
 const isFrameView = (
@@ -21,7 +21,7 @@ const readFrameRect = (
 
 const readFrameCandidates = (input: {
   state: WorkingState
-  records: ReturnType<SceneQuery['spatial']['point']> | ReturnType<SceneQuery['spatial']['rect']>
+  records: ReturnType<SceneSpatial['point']> | ReturnType<SceneSpatial['rect']>
 }): readonly {
   id: NodeId
   rect: Rect
@@ -43,8 +43,8 @@ const readFrameCandidates = (input: {
 
 export const createFrameRead = (input: {
   state: () => WorkingState
-  spatial: SceneQuery['spatial']
-}): SceneQuery['frame'] => ({
+  spatial: SceneSpatial
+}): SceneFrame => ({
   point: (point) => input.spatial.point(point, {
     kinds: ['node']
   }).flatMap((record) => record.item.kind === 'node' && isFrameView(input.state(), record.item.id)

@@ -588,7 +588,7 @@ export interface ChromeOverlay {
 
 export interface Runtime {
   readonly stores: RuntimeStores
-  readonly query: Query
+  readonly read: EditorSceneRead
   revision(): Revision
   state(): State
   capture(): Capture
@@ -641,7 +641,7 @@ export interface Result {
   trace?: ProjectionTrace
 }
 
-export interface DocumentQuery {
+export interface DocumentFrame {
   snapshot(): WhiteboardDocument
   background(): WhiteboardDocument['background'] | undefined
   node(id: NodeId): Node | undefined
@@ -666,7 +666,7 @@ export interface DocumentQuery {
   }): SliceExportResult | undefined
 }
 
-export interface RuntimeQuery {
+export interface RuntimeFrame {
   session: {
     tool(): ToolState
     selection(): SelectionTarget
@@ -686,206 +686,227 @@ export interface RuntimeQuery {
   }
 }
 
-export interface SceneQuery {
-  relatedEdgeIds(nodeIds: Iterable<NodeId>): readonly EdgeId[]
-  descendants(nodeIds: readonly NodeId[]): readonly NodeId[]
-  mindmapStructure(value: MindmapId | NodeId | string): MindmapView['structure'] | undefined
-  ownerByNode(nodeId: NodeId): OwnerRef | undefined
-  spatial: SpatialRead
-  snap(rect: Rect): readonly import('@whiteboard/core/node').SnapCandidate[]
-  bounds(): Rect | undefined
-  node: {
-    idsInRect(rect: Rect, options?: NodeRectHitOptions): readonly NodeId[]
-  }
-  edge: {
-    idsInRect(rect: Rect, options?: {
-      match?: 'touch' | 'contain'
-    }): readonly EdgeId[]
-    connectCandidates(rect: Rect): readonly EdgeConnectCandidate[]
-    capability(edgeId: EdgeId): import('@whiteboard/core/edge').EdgeCapability | undefined
-    editable(edgeId: EdgeId): EdgeView | undefined
-    routePoints(input: {
-      edgeId: EdgeId
-      activeRouteIndex?: number
-    }): readonly import('@whiteboard/core/edge').EdgeRoutePoint[]
-    box(edgeId: EdgeId): import('@whiteboard/core/edge').EdgeBox | undefined
-    chrome(input: {
-      edgeId: EdgeId
-      activeRouteIndex?: number
-      tool: {
-        type: string
-      }
-      interaction: {
-        chrome: boolean
-        editingEdge: boolean
-      }
-      edit: EditSession | null
-    }): {
-      edgeId: EdgeId
-      ends: ResolvedEdgeEnds
-      canReconnectSource: boolean
-      canReconnectTarget: boolean
-      canEditRoute: boolean
-      showEditHandles: boolean
-      routePoints: readonly import('@whiteboard/core/edge').EdgeRoutePoint[]
-    } | undefined
-  }
-  selection: {
-    members(target: SelectionTarget): SelectionMembersView
-    summary(target: SelectionTarget): SelectionSummary
-    affordance(target: SelectionTarget): SelectionAffordance
-    selected: {
-      node(target: SelectionTarget, nodeId: NodeId): boolean
-      edge(target: SelectionTarget, edgeId: EdgeId): boolean
-    }
-    move(target: import('@whiteboard/core/selection').SelectionTarget): {
-      nodes: readonly Node[]
-      edges: readonly Edge[]
-    }
-    bounds(target: import('@whiteboard/core/selection').SelectionTarget): Rect | undefined
-  }
-  overlay: {
-    marquee(): {
-      rect: Rect
-      match: SelectionMarqueeMatch
-    } | undefined
-    draw(): DrawPreview | null
-    guides(): readonly Guide[]
-    edgeGuide(): EdgeGuidePreview | undefined
-  }
-  mindmap: {
-    resolve(value: string): MindmapId | undefined
-    structure(value: MindmapId | NodeId): MindmapView['structure'] | undefined
-    ofNodes(nodeIds: readonly NodeId[]): MindmapId | undefined
-    addChildTargets(input: {
-      mindmapId: MindmapId
-      selection: SelectionTarget
-      edit: EditSession | null
-    }): readonly {
-      targetNodeId: NodeId
-      x: number
-      y: number
-      placement: 'left' | 'right'
-    }[]
-    navigate(input: {
-      id: MindmapId
-      fromNodeId: NodeId
-      direction: 'parent' | 'first-child' | 'prev-sibling' | 'next-sibling'
-    }): NodeId | undefined
-  }
-  group: {
-    ofNode(nodeId: NodeId): GroupId | undefined
-    ofEdge(edgeId: EdgeId): GroupId | undefined
-    target(targetId: GroupId): import('@whiteboard/core/selection').SelectionTarget | undefined
-    exact(target: import('@whiteboard/core/selection').SelectionTarget): readonly GroupId[]
-  }
-  frame: {
-    point(point: Point): readonly NodeId[]
-    rect(rect: Rect): readonly NodeId[]
-    pick(point: Point, options?: {
-      excludeIds?: readonly NodeId[]
-    }): NodeId | undefined
-    parent(nodeId: NodeId, options?: {
-      excludeIds?: readonly NodeId[]
-    }): NodeId | undefined
-  }
-  hit: {
-    node(input: {
-      point: Point
-      threshold?: number
-      excludeIds?: readonly NodeId[]
-    }): NodeId | undefined
-    edge(input: {
-      point: Point
-      threshold?: number
-      excludeIds?: readonly EdgeId[]
-    }): EdgeId | undefined
-    item(input: {
-      point: Point
-      threshold?: number
-      kinds?: readonly ('node' | 'edge' | 'mindmap' | 'group')[]
-      exclude?: Partial<{
-        node: readonly NodeId[]
-        edge: readonly EdgeId[]
-        mindmap: readonly MindmapId[]
-        group: readonly GroupId[]
-      }>
-    }): {
+export type EdgeChromeView = {
+  edgeId: EdgeId
+  ends: ResolvedEdgeEnds
+  canReconnectSource: boolean
+  canReconnectTarget: boolean
+  canEditRoute: boolean
+  showEditHandles: boolean
+  routePoints: readonly import('@whiteboard/core/edge').EdgeRoutePoint[]
+}
+
+export type SceneHitItem =
+  | {
       kind: 'node'
       id: NodeId
-    } | {
+    }
+  | {
       kind: 'edge'
       id: EdgeId
-    } | {
+    }
+  | {
       kind: 'mindmap'
       id: MindmapId
-    } | {
+    }
+  | {
       kind: 'group'
       id: GroupId
-    } | undefined
-  }
-  viewport: {
-    zoom(): number
-    center(): Point
-    worldRect(): Rect
-    screenPoint(point: Point): Point
-    screenRect(rect: Rect): Rect
-    background(): SceneBackgroundView
-    visible(
-      options?: Parameters<SpatialRead['rect']>[1]
-    ): ReturnType<SpatialRead['rect']>
-    pick(input: {
-      point: Point
-      radius?: number
-      kinds?: readonly ('node' | 'edge' | 'mindmap' | 'group')[]
-      exclude?: Partial<{
-        node: readonly NodeId[]
-        edge: readonly EdgeId[]
-        mindmap: readonly MindmapId[]
-        group: readonly GroupId[]
-      }>
-    }): {
-      rect: Rect
-      target?: {
-        kind: 'node'
-        id: NodeId
-      } | {
-        kind: 'edge'
-        id: EdgeId
-      } | {
-        kind: 'mindmap'
-        id: MindmapId
-      } | {
-        kind: 'group'
-        id: GroupId
-      }
-      stats: {
-        cells: number
-        candidates: number
-        oversized: number
-        hits: number
-        latency: number
-      }
     }
+
+export type SceneViewportPick = {
+  rect: Rect
+  target?: SceneHitItem
+  stats: {
+    cells: number
+    candidates: number
+    oversized: number
+    hits: number
+    latency: number
   }
-  items(): State['items']
 }
 
-export interface SceneProjectionQuery {
-  node(id: NodeId): NodeView | undefined
-  edge(id: EdgeId): EdgeView | undefined
-  mindmap(id: MindmapId): MindmapView | undefined
-  group(id: GroupId): GroupView | undefined
-  nodes(): IterableIterator<[NodeId, NodeView]>
-  edges(): IterableIterator<[EdgeId, EdgeView]>
-  mindmaps(): IterableIterator<[MindmapId, MindmapView]>
-  groups(): IterableIterator<[GroupId, GroupView]>
-  query: SceneQuery
+export interface SceneNodes {
+  get(id: NodeId): NodeView | undefined
+  entries(): IterableIterator<[NodeId, NodeView]>
+  idsInRect(rect: Rect, options?: NodeRectHitOptions): readonly NodeId[]
+  descendants(nodeIds: readonly NodeId[]): readonly NodeId[]
+  relatedEdgeIds(nodeIds: Iterable<NodeId>): readonly EdgeId[]
+  owner(id: NodeId): OwnerRef | undefined
 }
 
-export interface Query {
+export interface SceneEdges {
+  get(id: EdgeId): EdgeView | undefined
+  entries(): IterableIterator<[EdgeId, EdgeView]>
+  idsInRect(rect: Rect, options?: {
+    match?: 'touch' | 'contain'
+  }): readonly EdgeId[]
+  connectCandidates(rect: Rect): readonly EdgeConnectCandidate[]
+  capability(id: EdgeId): import('@whiteboard/core/edge').EdgeCapability | undefined
+  editable(id: EdgeId): EdgeView | undefined
+  routePoints(input: {
+    edgeId: EdgeId
+    activeRouteIndex?: number
+  }): readonly import('@whiteboard/core/edge').EdgeRoutePoint[]
+  box(id: EdgeId): import('@whiteboard/core/edge').EdgeBox | undefined
+  chrome(input: {
+    edgeId: EdgeId
+    activeRouteIndex?: number
+    tool: {
+      type: string
+    }
+    interaction: {
+      chrome: boolean
+      editingEdge: boolean
+    }
+    edit: EditSession | null
+  }): EdgeChromeView | undefined
+}
+
+export interface SceneMindmaps {
+  get(id: MindmapId): MindmapView | undefined
+  entries(): IterableIterator<[MindmapId, MindmapView]>
+  id(value: MindmapId | NodeId | string): MindmapId | undefined
+  structure(value: MindmapId | NodeId | string): MindmapView['structure'] | undefined
+  ofNodes(nodeIds: readonly NodeId[]): MindmapId | undefined
+  addChildTargets(input: {
+    mindmapId: MindmapId
+    selection: SelectionTarget
+    edit: EditSession | null
+  }): readonly {
+    targetNodeId: NodeId
+    x: number
+    y: number
+    placement: 'left' | 'right'
+  }[]
+  navigate(input: {
+    id: MindmapId
+    fromNodeId: NodeId
+    direction: 'parent' | 'first-child' | 'prev-sibling' | 'next-sibling'
+  }): NodeId | undefined
+}
+
+export interface SceneGroups {
+  get(id: GroupId): GroupView | undefined
+  entries(): IterableIterator<[GroupId, GroupView]>
+  ofNode(nodeId: NodeId): GroupId | undefined
+  ofEdge(edgeId: EdgeId): GroupId | undefined
+  target(groupId: GroupId): SelectionTarget | undefined
+  exact(target: SelectionTarget): readonly GroupId[]
+}
+
+export interface SceneSelection {
+  members(target: SelectionTarget): SelectionMembersView
+  summary(target: SelectionTarget): SelectionSummary
+  affordance(target: SelectionTarget): SelectionAffordance
+  selected: {
+    node(target: SelectionTarget, nodeId: NodeId): boolean
+    edge(target: SelectionTarget, edgeId: EdgeId): boolean
+  }
+  move(target: SelectionTarget): {
+    nodes: readonly Node[]
+    edges: readonly Edge[]
+  }
+  bounds(target: SelectionTarget): Rect | undefined
+}
+
+export interface SceneFrame {
+  point(point: Point): readonly NodeId[]
+  rect(rect: Rect): readonly NodeId[]
+  pick(point: Point, options?: {
+    excludeIds?: readonly NodeId[]
+  }): NodeId | undefined
+  parent(nodeId: NodeId, options?: {
+    excludeIds?: readonly NodeId[]
+  }): NodeId | undefined
+}
+
+export interface SceneHit {
+  node(input: {
+    point: Point
+    threshold?: number
+    excludeIds?: readonly NodeId[]
+  }): NodeId | undefined
+  edge(input: {
+    point: Point
+    threshold?: number
+    excludeIds?: readonly EdgeId[]
+  }): EdgeId | undefined
+  item(input: {
+    point: Point
+    threshold?: number
+    kinds?: readonly ('node' | 'edge' | 'mindmap' | 'group')[]
+    exclude?: Partial<{
+      node: readonly NodeId[]
+      edge: readonly EdgeId[]
+      mindmap: readonly MindmapId[]
+      group: readonly GroupId[]
+    }>
+  }): SceneHitItem | undefined
+}
+
+export interface SceneViewport {
+  zoom(): number
+  center(): Point
+  worldRect(): Rect
+  screenPoint(point: Point): Point
+  screenRect(rect: Rect): Rect
+  background(): SceneBackgroundView
+  visible(
+    options?: Parameters<SpatialRead['rect']>[1]
+  ): ReturnType<SpatialRead['rect']>
+  pick(input: {
+    point: Point
+    radius?: number
+    kinds?: readonly ('node' | 'edge' | 'mindmap' | 'group')[]
+    exclude?: Partial<{
+      node: readonly NodeId[]
+      edge: readonly EdgeId[]
+      mindmap: readonly MindmapId[]
+      group: readonly GroupId[]
+    }>
+  }): SceneViewportPick
+}
+
+export interface SceneOverlay {
+  marquee(): {
+    rect: Rect
+    match: SelectionMarqueeMatch
+  } | undefined
+  draw(): DrawPreview | null
+  guides(): readonly Guide[]
+  edgeGuide(): EdgeGuidePreview | undefined
+}
+
+export interface SceneSnap {
+  candidates(rect: Rect): readonly import('@whiteboard/core/node').SnapCandidate[]
+}
+
+export interface SceneSpatial extends SpatialRead {}
+
+export interface SceneItems {
+  all(): State['items']
+}
+
+export interface SceneRead {
+  nodes: SceneNodes
+  edges: SceneEdges
+  mindmaps: SceneMindmaps
+  groups: SceneGroups
+  selection: SceneSelection
+  frame: SceneFrame
+  hit: SceneHit
+  viewport: SceneViewport
+  overlay: SceneOverlay
+  spatial: SceneSpatial
+  items: SceneItems
+  snap: SceneSnap
+  bounds(): Rect | undefined
+}
+
+export interface EditorSceneRead {
   revision(): Revision
-  document: DocumentQuery
-  runtime: RuntimeQuery
-  scene: SceneProjectionQuery
+  document: DocumentFrame
+  runtime: RuntimeFrame
+  scene: SceneRead
 }

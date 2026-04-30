@@ -1,10 +1,10 @@
-import type { SceneQuery } from '../../contracts/editor'
+import type { SceneOverlay, SceneViewport } from '../../contracts/editor'
 import type { WorkingState } from '../../contracts/working'
 
 export const createChromeRead = (input: {
   state: () => WorkingState
-  view: SceneQuery['viewport']
-}): SceneQuery['overlay'] => ({
+  view: SceneViewport
+}): SceneOverlay => ({
   marquee: () => {
     const marquee = input.state().graph.state.chrome.preview.marquee
 

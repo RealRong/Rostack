@@ -58,7 +58,7 @@ export const createRuntime = (input: {
 
   return {
     stores: runtime.stores,
-    query: runtime.query,
+    read: runtime.read,
     revision: runtime.revision,
     state: runtime.state,
     capture: runtime.capture,

@@ -46,7 +46,7 @@ const isScenePickRuntimeResultEqual = (
 )
 
 const createScenePick = (input: {
-  query: SceneRuntime['query']
+  read: SceneRuntime['read']
 }): ScenePickRuntime => {
   const listeners = new Set<() => void>()
   let pending: ScenePickRequest | undefined
@@ -57,7 +57,7 @@ const createScenePick = (input: {
     request: ScenePickRequest
   ): ScenePickResult => {
     const startedAt = scheduler.readMonotonicNow()
-    const next = input.query.scene.query.viewport.pick({
+    const next = input.read.scene.viewport.pick({
       point: request.world,
       radius: request.radius,
       kinds: request.kinds
@@ -147,14 +147,14 @@ const createScenePick = (input: {
 export const createEditorSceneApi = ({
   runtime
 }: {
-  runtime: Pick<SceneRuntime, 'query' | 'revision' | 'stores'>
+  runtime: Pick<SceneRuntime, 'read' | 'revision' | 'stores'>
 }): EditorSceneApi & {
   dispose: () => void
 } => {
   const visible: EditorSceneApi['host']['visible'] = (options) =>
-    runtime.query.scene.query.viewport.visible(options)
+    runtime.read.scene.viewport.visible(options)
   const pick = createScenePick({
-    query: runtime.query
+    read: runtime.read
   })
 
   return {
@@ -162,7 +162,7 @@ export const createEditorSceneApi = ({
       pick.dispose()
     },
     revision: runtime.revision,
-    query: runtime.query,
+    read: runtime.read,
     stores: runtime.stores,
     host: {
       pick,

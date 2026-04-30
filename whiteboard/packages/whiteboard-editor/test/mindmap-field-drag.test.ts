@@ -76,40 +76,42 @@ describe('mindmap field drag', () => {
         edgeIds: vi.fn(() => []),
       },
       projection: {
-        query: {
-          frame: {
-            pick: vi.fn(() => undefined),
-            parent: vi.fn()
-          },
-          mindmap: {
-            resolve: vi.fn(() => 'mind-1'),
-            structure: vi.fn(() => structure),
-            get: () => ({
-              structure: {
-                nodeIds: ['root-1']
-              },
-              tree: {
-                layout: {
-                  node: {
-                    'root-1': {
+        read: {
+          scene: {
+            frame: {
+              pick: vi.fn(() => undefined),
+              parent: vi.fn()
+            },
+            mindmaps: {
+              id: vi.fn(() => 'mind-1'),
+              structure: vi.fn(() => structure),
+              get: () => ({
+                structure: {
+                  nodeIds: ['root-1']
+                },
+                tree: {
+                  layout: {
+                    node: {
+                      'root-1': {
+                        x: 100,
+                        y: 120,
+                        width: 144,
+                        height: 44
+                      }
+                    },
+                    bbox: {
                       x: 100,
                       y: 120,
                       width: 144,
                       height: 44
                     }
-                  },
-                  bbox: {
-                    x: 100,
-                    y: 120,
-                    width: 144,
-                    height: 44
                   }
+                },
+                render: {
+                  connectors: []
                 }
-              },
-              render: {
-                connectors: []
-              }
-            })
+              })
+            }
           }
         }
       },

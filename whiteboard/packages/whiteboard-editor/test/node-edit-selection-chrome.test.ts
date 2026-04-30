@@ -391,7 +391,7 @@ describe('node edit selection chrome', () => {
       nodeIds: ['shape-1']
     })
 
-    const beforeRect = editor.scene.query.scene.node('shape-1')?.geometry.rect
+    const beforeRect = editor.scene.read.scene.nodes.get('shape-1')?.geometry.rect
     expect(beforeRect).toBeDefined()
 
     editor.input.pointerDown(createPointerInput({
@@ -429,7 +429,7 @@ describe('node edit selection chrome', () => {
       x: 128,
       y: 152
     })
-    expect(editor.scene.query.scene.node('shape-1')?.geometry.rect).toMatchObject({
+    expect(editor.scene.read.scene.nodes.get('shape-1')?.geometry.rect).toMatchObject({
       x: 128,
       y: 152
     })
@@ -448,7 +448,7 @@ describe('node edit selection chrome', () => {
       stroke: '#ef4444',
       strokeWidth: 3
     })
-    expect(editor.scene.query.scene.node('shape-1')?.base.node.style).toMatchObject({
+    expect(editor.scene.read.scene.nodes.get('shape-1')?.base.node.style).toMatchObject({
       fill: '#22c55e',
       stroke: '#ef4444',
       strokeWidth: 3
@@ -462,7 +462,7 @@ describe('node edit selection chrome', () => {
       nodeIds: ['root-1']
     })
 
-    const beforeRect = editor.scene.query.scene.node('root-1')?.geometry.rect
+    const beforeRect = editor.scene.read.scene.nodes.get('root-1')?.geometry.rect
     expect(beforeRect).toBeDefined()
 
     editor.input.pointerDown(createPointerInput({
@@ -500,7 +500,7 @@ describe('node edit selection chrome', () => {
       x: 248,
       y: 212
     })
-    expect(editor.scene.query.scene.node('root-1')?.geometry.rect).toMatchObject({
+    expect(editor.scene.read.scene.nodes.get('root-1')?.geometry.rect).toMatchObject({
       x: 248,
       y: 212
     })
@@ -536,7 +536,7 @@ describe('node edit selection chrome', () => {
       strokeWidth: 3,
       fill: '#22c55e'
     })
-    expect(editor.scene.query.scene.node('root-1')?.base.node.style).toMatchObject({
+    expect(editor.scene.read.scene.nodes.get('root-1')?.base.node.style).toMatchObject({
       frameKind: 'underline',
       stroke: '#ef4444',
       strokeWidth: 3,
@@ -546,7 +546,7 @@ describe('node edit selection chrome', () => {
 
   it('updates node hovered from idle pointer hover and clears it on leave', () => {
     const editor = createShapeEditor()
-    const view = editor.scene.query.scene.node('shape-1')
+    const view = editor.scene.read.scene.nodes.get('shape-1')
 
     expect(editor.scene.stores.graph.state.node.byId.get('shape-1')?.hovered).toBe(false)
 

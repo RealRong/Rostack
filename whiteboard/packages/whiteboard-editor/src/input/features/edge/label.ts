@@ -45,7 +45,7 @@ const isSingleSelectedEdge = (
 const canEditEdgeLabel = (
   projection: Pick<EditorHostDeps, 'projection'>['projection'],
   edgeId: EdgeId
-) => projection.query.scene.query.edge.capability(edgeId)?.editLabel ?? false
+) => projection.read.scene.edges.capability(edgeId)?.editLabel ?? false
 
 const readEdgeLabelMetrics = (
   projection: Pick<EditorHostDeps, 'projection'>['projection'],
@@ -53,7 +53,7 @@ const readEdgeLabelMetrics = (
     edgeId: EdgeId
     labelId: string
   }
-) => projection.query.scene.edge(ref.edgeId)?.route.labels
+) => projection.read.scene.edges.get(ref.edgeId)?.route.labels
   .find((entry) => entry.labelId === ref.labelId)?.size
 
 const readEdgeLabelPatch = (
@@ -185,8 +185,8 @@ const createEdgeLabelDragState = (
     pointerId: number
   }
 ): EdgeLabelDragState | null => {
-  const edge = ctx.projection.query.scene.edge(input.edgeId)?.base.edge
-  const view = ctx.projection.query.scene.edge(input.edgeId)
+  const edge = ctx.projection.read.scene.edges.get(input.edgeId)?.base.edge
+  const view = ctx.projection.read.scene.edges.get(input.edgeId)
   if (
     !edge
     || !view
@@ -285,7 +285,7 @@ export const startEdgeLabelPress = (
     return 'handled'
   }
 
-  const edge = ctx.projection.query.scene.edge(pointer.pick.id)?.base.edge
+  const edge = ctx.projection.read.scene.edges.get(pointer.pick.id)?.base.edge
   if (!edge || !canEditEdgeLabel(ctx.projection, pointer.pick.id)) {
     return 'handled'
   }

@@ -763,10 +763,10 @@ const tryStartSelectionPress = (
           ? resolveNodeEditorCapability(node, ctx.nodeType).enter
           : false
       },
-      groupId: ctx.projection.query.scene.query.group.ofNode
+      groupId: ctx.projection.read.scene.groups.ofNode
     },
     group: {
-      target: (groupId) => ctx.projection.query.scene.query.group.target(groupId)
+      target: (groupId) => ctx.projection.read.scene.groups.target(groupId)
     }
   }
   const mode = resolveSelectionPressMode(input.modifiers)

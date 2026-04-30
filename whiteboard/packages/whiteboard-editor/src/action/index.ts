@@ -27,12 +27,12 @@ import type { ToolService } from '@whiteboard/editor/services/tool'
 import type { EditorTaskRuntime } from '@whiteboard/editor/tasks/runtime'
 import type { EditorDefaults } from '@whiteboard/editor/types/defaults'
 import type { EditorState } from '@whiteboard/editor/types/editor'
-import type { DocumentQuery } from '@whiteboard/editor-scene'
+import type { DocumentFrame } from '@whiteboard/editor-scene'
 import type { NodeTypeSupport } from '@whiteboard/editor/types/node'
 import type { EditorWrite } from '@whiteboard/editor/write'
 
 export type CreateEditorActionsApiDeps = {
-  document: DocumentQuery
+  document: DocumentFrame
   state: Pick<EditorState, 'viewport' | 'selection'>
   session: EditorSession
   graph: EditorSceneApi

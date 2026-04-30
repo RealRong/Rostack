@@ -133,8 +133,8 @@ describe('mindmap layout preview runtime', () => {
         nodeIds: [created.data.rootId]
       })
 
-      const beforeRoot = editor.scene.query.scene.node(created.data.rootId)?.geometry.rect
-      const beforeChild = editor.scene.query.scene.node(inserted.data.nodeId)?.geometry.rect
+      const beforeRoot = editor.scene.read.scene.nodes.get(created.data.rootId)?.geometry.rect
+      const beforeChild = editor.scene.read.scene.nodes.get(inserted.data.nodeId)?.geometry.rect
 
       expect(beforeRoot).toBeDefined()
       expect(beforeChild).toBeDefined()
@@ -162,12 +162,12 @@ describe('mindmap layout preview runtime', () => {
         }
       }))
 
-      expect(editor.scene.query.scene.node(created.data.rootId)?.geometry.rect).toEqual({
+      expect(editor.scene.read.scene.nodes.get(created.data.rootId)?.geometry.rect).toEqual({
         ...beforeRoot!,
         x: beforeRoot!.x + 60,
         y: beforeRoot!.y + 40
       })
-      expect(editor.scene.query.scene.node(inserted.data.nodeId)?.geometry.rect).toEqual({
+      expect(editor.scene.read.scene.nodes.get(inserted.data.nodeId)?.geometry.rect).toEqual({
         ...beforeChild!,
         x: beforeChild!.x + 60,
         y: beforeChild!.y + 40

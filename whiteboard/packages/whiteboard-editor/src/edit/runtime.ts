@@ -1,12 +1,12 @@
 import type { EdgeLabel, EdgeId, NodeId } from '@whiteboard/core/types'
-import type { DocumentQuery } from '@whiteboard/editor-scene'
+import type { DocumentFrame } from '@whiteboard/editor-scene'
 import type { EditCaret, EditField } from '@whiteboard/editor/session/edit'
 import type { EditorSession } from '@whiteboard/editor/session/runtime'
 import type { NodeTypeSupport } from '@whiteboard/editor/types/node'
 
 export const startNodeEdit = (input: {
   session: Pick<EditorSession, 'mutate'>
-  document: Pick<DocumentQuery, 'node'>
+  document: Pick<DocumentFrame, 'node'>
   nodeType: Pick<NodeTypeSupport, 'edit'>
   nodeId: NodeId
   field: EditField
@@ -35,7 +35,7 @@ export const startNodeEdit = (input: {
 
 export const startEdgeLabelEdit = (input: {
   session: Pick<EditorSession, 'mutate'>
-  document: Pick<DocumentQuery, 'edge'>
+  document: Pick<DocumentFrame, 'edge'>
   edgeId: EdgeId
   labelId: string
   caret?: EditCaret

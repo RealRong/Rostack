@@ -37,7 +37,7 @@ const toSpatialSelectionPlan = (
 ) => ({
   ...plan,
   members: plan.members.flatMap((member) => {
-    const geometry = ctx.projection.query.scene.node(member.id)
+    const geometry = ctx.projection.read.scene.nodes.get(member.id)
     return geometry
       ? [{
           ...member,
@@ -57,7 +57,7 @@ const readNodeTransformSpec = (
   handle: TransformPickHandle,
   input: PointerDownInput
 ): RuntimeTransformSpec | undefined => {
-  const geometry = ctx.projection.query.scene.node(nodeId)
+  const geometry = ctx.projection.read.scene.nodes.get(nodeId)
   if (!geometry || geometry.base.node.locked) {
     return undefined
   }
@@ -199,8 +199,8 @@ export const createTransformSession = (
     const nextPatches = ctx.layout.runtime({
       kind: 'node.transform',
       patches: result.state.patches,
-      readNode: ctx.projection.query.document.node,
-      readRect: (nodeId) => ctx.projection.query.scene.node(nodeId)?.geometry.rect
+      readNode: ctx.projection.read.document.node,
+      readRect: (nodeId) => ctx.projection.read.scene.nodes.get(nodeId)?.geometry.rect
     }).patches
     state = {
       ...result.state,

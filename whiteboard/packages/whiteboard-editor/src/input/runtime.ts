@@ -1,6 +1,6 @@
 import type { Engine } from '@whiteboard/engine'
 import type { WhiteboardLayoutService } from '@whiteboard/core/layout'
-import type { DocumentQuery } from '@whiteboard/editor-scene'
+import type { DocumentFrame } from '@whiteboard/editor-scene'
 import { createInteractionRuntime } from '@whiteboard/editor/input/core/runtime'
 import { createSnapRuntime, type SnapRuntime } from '@whiteboard/editor/input/core/snap'
 import { createDrawBinding } from '@whiteboard/editor/input/features/draw'
@@ -43,7 +43,7 @@ const createSessionRead = (
 
 export type EditorHostDeps = {
   engine: Engine
-  document: DocumentQuery
+  document: DocumentFrame
   projection: EditorSceneApi
   state: EditorState
   sessionRead: SessionRead
@@ -64,17 +64,17 @@ const createEditorSnapRuntime = (input: {
   readZoom: () => input.state.viewport.get().zoom,
   node: {
     config: input.engine.config.node,
-    query: input.projection.query.scene.query.snap
+    query: input.projection.read.scene.snap.candidates
   },
   edge: {
     config: input.engine.config.edge,
-    query: input.projection.query.scene.query.edge.connectCandidates
+    query: input.projection.read.scene.edges.connectCandidates
   }
 })
 
 export const createEditorHost = (input: {
   engine: Engine
-  document: DocumentQuery
+  document: DocumentFrame
   projection: EditorSceneApi
   state: EditorState
   session: EditorSession

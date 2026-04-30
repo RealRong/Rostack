@@ -9,7 +9,7 @@ import type {
   EdgeUpdateInput
 } from '@whiteboard/core/types'
 import type { Engine } from '@whiteboard/engine'
-import type { DocumentQuery } from '@whiteboard/editor-scene'
+import type { DocumentFrame } from '@whiteboard/editor-scene'
 import type { EdgeWrite } from '@whiteboard/editor/write/types'
 import {
   createEdgeLabelWrite
@@ -24,7 +24,7 @@ const readEdge = (
 ) => read(edgeId)
 
 const readCommittedEdge = (
-  read: Pick<DocumentQuery, 'edge'>,
+  read: Pick<DocumentFrame, 'edge'>,
   edgeId: EdgeId
 ) => read.edge(edgeId)
 
@@ -53,7 +53,7 @@ const updateEdges = (
 }
 
 const updateExistingEdges = (
-  read: Pick<DocumentQuery, 'edge'>,
+  read: Pick<DocumentFrame, 'edge'>,
   engine: Engine,
   edgeIds: readonly EdgeId[],
   input: EdgeUpdateInput
@@ -113,7 +113,7 @@ export const createEdgeWrite = ({
 }: {
   engine: Engine
   read: {
-    document: Pick<DocumentQuery, 'edge'>
+    document: Pick<DocumentFrame, 'edge'>
     readEdge: (edgeId: EdgeId) => Edge | undefined
   }
 }): EdgeWrite => ({

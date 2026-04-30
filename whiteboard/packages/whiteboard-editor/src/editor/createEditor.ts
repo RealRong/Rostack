@@ -71,7 +71,7 @@ export const createEditor = (input: {
   const scene = createEditorSceneApi({
     runtime: sceneRuntime
   })
-  const document = scene.query.document
+  const document = scene.read.document
 
   const state = createEditorState(session)
 

@@ -138,25 +138,31 @@ const createActions = (edge = createEdge()) => {
     }
   } as never
   const graph = {
-    query: {
-      node: {
-        get: vi.fn(() => undefined)
-      },
-      edge: {
-        get: vi.fn((edgeId: string) => (
-          edgeId === edge.id
-            ? {
-                base: {
-                  edge
+    read: {
+      scene: {
+        nodes: {
+          get: vi.fn(() => undefined)
+        },
+        edges: {
+          get: vi.fn((edgeId: string) => (
+            edgeId === edge.id
+              ? {
+                  base: {
+                    edge
+                  }
                 }
-              }
-            : undefined
-        ))
-      },
-      mindmap: {
-        get: vi.fn(() => undefined),
-        resolve: vi.fn(() => undefined),
-        structure: vi.fn(() => undefined)
+              : undefined
+          ))
+        },
+        mindmaps: {
+          get: vi.fn(() => undefined),
+          id: vi.fn(() => undefined),
+          structure: vi.fn(() => undefined)
+        },
+        groups: {
+          exact: vi.fn(() => []),
+          target: vi.fn(() => undefined)
+        }
       }
     }
   } as never

@@ -144,19 +144,19 @@ export const createEditorSceneDerived = (input: {
   scene: EditorSceneApi
   state: EditorState
 }): EditorSceneDerived => {
-  const query = input.scene.query.scene.query
+  const scene = input.scene.read.scene
 
   const selectionMembers = store.createDerivedStore({
-    get: () => query.selection.members(store.read(input.state.selection))
+    get: () => scene.selection.members(store.read(input.state.selection))
   })
 
   const selectionSummary = store.createDerivedStore({
-    get: () => query.selection.summary(store.read(input.state.selection)),
+    get: () => scene.selection.summary(store.read(input.state.selection)),
     isEqual: selectionApi.derive.summaryEqual
   })
 
   const selectionAffordance = store.createDerivedStore({
-    get: () => query.selection.affordance(store.read(input.state.selection)),
+    get: () => scene.selection.affordance(store.read(input.state.selection)),
     isEqual: selectionApi.derive.affordanceEqual
   })
 
@@ -221,7 +221,7 @@ export const createEditorSceneDerived = (input: {
 
       const interaction = store.read(input.state.interaction)
 
-      return query.edge.chrome({
+      return scene.edges.chrome({
         edgeId: selectedEdgeId,
         activeRouteIndex: store.read(
           input.scene.stores.graph.state.edge.byId,
@@ -239,31 +239,31 @@ export const createEditorSceneDerived = (input: {
   })
 
   const marquee = store.createDerivedStore({
-    get: () => query.overlay.marquee(),
+    get: () => scene.overlay.marquee(),
     isEqual: isChromeMarqueeEqual
   })
 
   const draw = store.createDerivedStore({
-    get: () => query.overlay.draw()
+    get: () => scene.overlay.draw()
   })
 
   const snap = store.createDerivedStore({
-    get: () => query.overlay.guides()
+    get: () => scene.overlay.guides()
   })
 
   const edgeGuide = store.createDerivedStore({
-    get: () => query.overlay.edgeGuide() ?? EMPTY_EDGE_GUIDE,
+    get: () => scene.overlay.edgeGuide() ?? EMPTY_EDGE_GUIDE,
     isEqual: isEdgeGuideEqual
   })
 
   const mindmapChrome = store.createKeyedDerivedStore<MindmapId, MindmapChrome | undefined>({
     get: (mindmapId: MindmapId) => {
-      if (!input.scene.query.scene.mindmap(mindmapId)) {
+      if (!scene.mindmaps.get(mindmapId)) {
         return undefined
       }
 
       return {
-        addChildTargets: query.mindmap.addChildTargets({
+        addChildTargets: scene.mindmaps.addChildTargets({
           mindmapId,
           selection: store.read(input.state.selection),
           edit: store.read(input.state.edit)

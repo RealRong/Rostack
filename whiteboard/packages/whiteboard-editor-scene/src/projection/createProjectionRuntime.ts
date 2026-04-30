@@ -37,7 +37,7 @@ export const createProjectionRuntime = (input: {
   })
   return {
     stores: runtime.stores,
-    query: runtime.read,
+    read: runtime.read,
     revision: runtime.revision,
     state,
     capture: runtime.capture,

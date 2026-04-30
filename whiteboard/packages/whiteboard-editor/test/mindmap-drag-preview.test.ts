@@ -234,8 +234,8 @@ describe('mindmap drag preview', () => {
       nodeIds: [created.data.rootId]
     })
 
-    const beforeRoot = editor.scene.query.scene.node(created.data.rootId)?.geometry.rect
-    const beforeChild = editor.scene.query.scene.node(insert.data.nodeId)?.geometry.rect
+    const beforeRoot = editor.scene.read.scene.nodes.get(created.data.rootId)?.geometry.rect
+    const beforeChild = editor.scene.read.scene.nodes.get(insert.data.nodeId)?.geometry.rect
 
     expect(beforeRoot).toBeDefined()
     expect(beforeChild).toBeDefined()
@@ -266,8 +266,8 @@ describe('mindmap drag preview', () => {
     await Promise.resolve()
     await Promise.resolve()
 
-    const liveRoot = editor.scene.query.scene.node(created.data.rootId)?.geometry.rect
-    const liveChild = editor.scene.query.scene.node(insert.data.nodeId)?.geometry.rect
+    const liveRoot = editor.scene.read.scene.nodes.get(created.data.rootId)?.geometry.rect
+    const liveChild = editor.scene.read.scene.nodes.get(insert.data.nodeId)?.geometry.rect
 
     expect(editor.state.interaction.get().busy).toBe(true)
     expect(editor.state.interaction.get().selecting).toBe(true)
@@ -328,8 +328,8 @@ describe('mindmap drag preview', () => {
       nodeIds: [first.data.nodeId]
     })
 
-    const beforeBranch = editor.scene.query.scene.node(first.data.nodeId)?.geometry.rect
-    const beforeLeaf = editor.scene.query.scene.node(second.data.nodeId)?.geometry.rect
+    const beforeBranch = editor.scene.read.scene.nodes.get(first.data.nodeId)?.geometry.rect
+    const beforeLeaf = editor.scene.read.scene.nodes.get(second.data.nodeId)?.geometry.rect
 
     expect(beforeBranch).toBeDefined()
     expect(beforeLeaf).toBeDefined()
@@ -360,8 +360,8 @@ describe('mindmap drag preview', () => {
     await Promise.resolve()
     await Promise.resolve()
 
-    const liveBranch = editor.scene.query.scene.node(first.data.nodeId)?.geometry.rect
-    const liveLeaf = editor.scene.query.scene.node(second.data.nodeId)?.geometry.rect
+    const liveBranch = editor.scene.read.scene.nodes.get(first.data.nodeId)?.geometry.rect
+    const liveLeaf = editor.scene.read.scene.nodes.get(second.data.nodeId)?.geometry.rect
 
     expect(editor.state.interaction.get().busy).toBe(true)
     expect(editor.state.interaction.get().selecting).toBe(true)

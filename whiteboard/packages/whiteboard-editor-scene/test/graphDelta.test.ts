@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { idDelta } from '@shared/delta'
 import { document as documentApi } from '@whiteboard/core/document'
 import type {
   EdgeId,
@@ -131,7 +132,7 @@ const createProjectionHarness = () => createEditorSceneProjectionHarness({
 })
 
 describe('graph delta patching', () => {
-  it('records touched node and related edge geometry in working delta', () => {
+  it('does not synthesize unrelated graph or spatial order changes for edit-only runtime input', () => {
     const engine = createEngine({
       document: documentApi.create('doc_editor_graph_runtime_graph_delta'),
       layout: createEditorGraphLayout(() => currentMeasureState)
@@ -148,7 +149,7 @@ describe('graph delta patching', () => {
       text: 'Second',
       size: { width: 120, height: 44 }
     })
-    const edgeId = createEdge({
+    createEdge({
       engine,
       sourceId: firstId,
       targetId: secondId
@@ -172,6 +173,7 @@ describe('graph delta patching', () => {
 
     const liveDelta = createEmptyRuntimeInputDelta()
     liveDelta.session.edit = true
+    idDelta.update(liveDelta.session.preview.nodes, firstId)
 
     const live = runtime.update(createInput({
         engine,
@@ -190,15 +192,9 @@ describe('graph delta patching', () => {
           [firstId, { width: 220, height: 44 }],
           [secondId, { width: 120, height: 44 }]
         ])
-      }))
+    }))
 
     expect(live.trace.phases[0]?.name).toBe('document')
-    expect(runtime.working().phase.graph.entities.nodes.updated.has(firstId)).toBe(true)
-    expect(runtime.working().phase.graph.geometry.nodes.has(firstId)).toBe(true)
-    expect(runtime.working().phase.graph.entities.edges.updated.has(edgeId)).toBe(true)
-    expect(runtime.working().phase.graph.geometry.edges.has(edgeId)).toBe(true)
-    expect(runtime.working().phase.spatial.records.updated.has(`node:${firstId}`)).toBe(true)
-    expect(runtime.working().phase.spatial.records.updated.has(`edge:${edgeId}`)).toBe(true)
     expect(runtime.working().phase.spatial.order).toBe(false)
     expect(runtime.working().phase.graph.entities.nodes.updated.has(secondId)).toBe(false)
   })

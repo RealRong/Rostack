@@ -1,6 +1,6 @@
 import { equal } from '@shared/core'
 import { isCheckpointOperation } from '@whiteboard/core/operations'
-import type { DocumentQuery } from '@whiteboard/editor-scene'
+import type { DocumentFrame } from '@whiteboard/editor-scene'
 import type { Engine } from '@whiteboard/engine'
 import type { EditorSession } from '@whiteboard/editor/session/runtime'
 import type { EditorEvents } from '@whiteboard/editor/types/editor'
@@ -12,7 +12,7 @@ export type EditorEventRuntime = {
 
 const reconcileSessionAfterWrite = (
   session: Pick<EditorSession, 'state' | 'mutate'>,
-  document: Pick<DocumentQuery, 'node' | 'edge'>
+  document: Pick<DocumentFrame, 'node' | 'edge'>
 ) => {
   const selection = session.state.selection.get()
   const nextNodeIds = selection.nodeIds.filter((id) => Boolean(document.node(id)))
@@ -49,7 +49,7 @@ export const createEditorEvents = ({
 }: {
   engine: Engine
   session: EditorSession
-  document: Pick<DocumentQuery, 'node' | 'edge'>
+  document: Pick<DocumentFrame, 'node' | 'edge'>
   resetHost: () => void
 }): EditorEventRuntime => {
   const disposeListeners = new Set<() => void>()

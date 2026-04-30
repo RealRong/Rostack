@@ -3,7 +3,7 @@ import {
 } from '@shared/draft'
 import type { Node, NodeId } from '@whiteboard/core/types'
 import type { Engine } from '@whiteboard/engine'
-import type { DocumentQuery } from '@whiteboard/editor-scene'
+import type { DocumentFrame } from '@whiteboard/editor-scene'
 import type {
   NodeLockWrite,
   NodeShapeWrite,
@@ -65,7 +65,7 @@ const createNodeContext = ({
   textCommit
 }: {
   read: {
-    document: Pick<DocumentQuery, 'node'>
+    document: Pick<DocumentFrame, 'node'>
   }
   update: NodeUpdateWrite
   textCommit: (input: NodeTextCommitInput) => ReturnType<NodeTextWrite['commit']>
@@ -192,7 +192,7 @@ export const createNodeWrite = ({
 }: {
   engine: Engine
   read: {
-    document: Pick<DocumentQuery, 'node'>
+    document: Pick<DocumentFrame, 'node'>
   }
 }): NodeWrite => {
   const update = createNodeUpdateWrite(engine)

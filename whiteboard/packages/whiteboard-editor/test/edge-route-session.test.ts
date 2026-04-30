@@ -35,16 +35,23 @@ const createDeps = () => {
     updateRoute,
     ctx: {
       projection: {
-        query: {
-          edge: {
-            get: () => ({
-              base: {
-                edge
-              }
-            })
-          },
-          node: {
-            get: vi.fn(() => undefined)
+        read: {
+          scene: {
+            edges: {
+              get: () => ({
+                base: {
+                  edge
+                }
+              }),
+              editable: vi.fn(() => ({
+                route: {
+                  handles: []
+                }
+              }))
+            },
+            nodes: {
+              get: vi.fn(() => undefined)
+            }
           }
         }
       },

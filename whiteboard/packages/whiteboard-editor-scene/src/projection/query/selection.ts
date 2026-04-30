@@ -4,7 +4,8 @@ import { selection as selectionApi, type SelectionTarget } from '@whiteboard/cor
 import type { Edge, NodeId } from '@whiteboard/core/types'
 import type {
   NodeCapabilityInput,
-  SceneQuery,
+  SceneSelection,
+  SceneSpatial,
   SelectionMembersView
 } from '../../contracts/editor'
 import type { WorkingState } from '../../contracts/working'
@@ -13,7 +14,7 @@ import { readRelatedEdgeIds } from '../../model/index/read'
 const expandMoveNodeIds = (input: {
   target: SelectionTarget
   state: WorkingState
-  spatial: SceneQuery['spatial']
+  spatial: SceneSpatial
 }) => {
   const normalized = selectionApi.target.normalize(input.target)
   const expandedNodeIds = new Set(normalized.nodeIds)
@@ -65,9 +66,9 @@ const readSelectionMembersKey = (
 
 export const createSelectionRead = (input: {
   state: () => WorkingState
-  spatial: SceneQuery['spatial']
+  spatial: SceneSpatial
   nodeCapability?: NodeCapabilityInput
-}): SceneQuery['selection'] => {
+}): SceneSelection => {
   const readMembers = (
     target: SelectionTarget
   ): SelectionMembersView => {

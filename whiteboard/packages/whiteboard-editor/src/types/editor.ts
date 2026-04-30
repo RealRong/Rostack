@@ -16,11 +16,12 @@ import type {
   Viewport
 } from '@whiteboard/core/types'
 import type {
-  DocumentQuery,
+  DocumentFrame,
   DrawPreview,
   EdgeGuidePreview,
-  Query,
+  EditorSceneRead,
   RuntimeStores,
+  SceneRead as EditorSceneRootRead,
   SpatialKind,
   SpatialQueryStats,
   SpatialRecord
@@ -53,7 +54,7 @@ import type { Tool } from '@whiteboard/editor/types/tool'
 import type { IntentResult } from '@whiteboard/engine'
 import type { EngineCommit } from '@whiteboard/engine/types/engineWrite'
 
-type SceneQuery = Query['scene']['query']
+type SceneRead = EditorSceneRootRead
 
 export type EditorPointerDispatchResult = {
   handled: boolean
@@ -140,13 +141,13 @@ export type EditorSelectionEdgeRead = {
 }
 
 export type EditorMarqueePreview =
-  NonNullable<ReturnType<SceneQuery['overlay']['marquee']>>
+  NonNullable<ReturnType<SceneRead['overlay']['marquee']>>
 
 export type SelectedEdgeChrome =
-  NonNullable<ReturnType<SceneQuery['edge']['chrome']>>
+  NonNullable<ReturnType<SceneRead['edges']['chrome']>>
 
 export type MindmapChrome = {
-  addChildTargets: ReturnType<SceneQuery['mindmap']['addChildTargets']>
+  addChildTargets: ReturnType<SceneRead['mindmaps']['addChildTargets']>
 }
 
 export type ScenePickKind = Extract<
@@ -212,11 +213,11 @@ export type ScenePickRuntime = {
 
 export type EditorSceneApi = {
   revision: () => number
-  query: Query
+  read: EditorSceneRead
   stores: RuntimeStores
   host: {
     pick: ScenePickRuntime
-    visible: SceneQuery['viewport']['visible']
+    visible: SceneRead['viewport']['visible']
   }
 }
 
@@ -261,7 +262,7 @@ export type EditorEvents = {
 }
 
 export type Editor = {
-  document: DocumentQuery
+  document: DocumentFrame
   scene: EditorSceneApi
   state: EditorState
   derived: EditorDerived
@@ -272,5 +273,5 @@ export type Editor = {
   dispose: () => void
 }
 
-export type ClipboardDocumentSource = Pick<DocumentQuery, 'slice'>
+export type ClipboardDocumentSource = Pick<DocumentFrame, 'slice'>
 export type EditorSliceResult = SliceExportResult | undefined

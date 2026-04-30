@@ -11,7 +11,10 @@ import type {
   MindmapPreview,
   NodePreview
 } from '@whiteboard/editor-scene'
-import type { Engine } from '@whiteboard/engine'
+import type {
+  Engine,
+  EngineCurrent
+} from '@whiteboard/engine'
 import type {
   HoverState as EditorHoverState
 } from '@whiteboard/editor/input/hover/store'
@@ -167,7 +170,7 @@ const readDrawPreview = (
 }
 
 const readMindmapPreview = (
-  engine: ReturnType<Engine['current']>,
+  engine: EngineCurrent,
   preview: EditorInputPreviewState['mindmap']['preview']
 ): MindmapPreview | null => {
   if (!preview) {
@@ -200,7 +203,7 @@ const readMindmapPreview = (
 }
 
 const readDragState = (
-  engine: ReturnType<Engine['current']>,
+  engine: EngineCurrent,
   session: Pick<EditorSession, 'state' | 'interaction' | 'preview'>
 ): DragState => {
   const mode = store.read(session.interaction.read.mode)
@@ -279,7 +282,7 @@ export const createEditorSceneBinding = ({
   engine,
   session
 }: {
-  engine: Pick<Engine, 'current' | 'commits'>
+  engine: Pick<Engine, 'doc' | 'rev' | 'commits'>
   session: Pick<EditorSession, 'state' | 'interaction' | 'preview' | 'viewport'>
 }): EditorSceneBinding => {
   const listeners = new Set<(change: EditorSceneSourceChange) => void>()
@@ -296,14 +299,17 @@ export const createEditorSceneBinding = ({
   }
 
   const get = (): EditorSceneSourceSnapshot => {
-    const publish = engine.current()
     const preview = store.read(session.preview.state)
     const viewport = session.viewport.read.get()
+    const current = {
+      rev: engine.rev(),
+      doc: engine.doc()
+    }
 
     return {
       document: {
-        rev: publish.rev,
-        doc: publish.doc
+        rev: current.rev,
+        doc: current.doc
       },
       session: {
         selection: store.read(session.state.selection),
@@ -335,7 +341,7 @@ export const createEditorSceneBinding = ({
               : undefined,
             guides: preview.selection.guides
           },
-          mindmap: readMindmapPreview(publish, preview.mindmap.preview)
+          mindmap: readMindmapPreview(current, preview.mindmap.preview)
         },
         tool: store.read(session.state.tool)
       },
@@ -343,7 +349,7 @@ export const createEditorSceneBinding = ({
         hover: readInteractionHover(
           store.read(session.interaction.read.hover)
         ),
-        drag: readDragState(publish, session),
+        drag: readDragState(current, session),
         chrome: store.read(session.interaction.read.chrome),
         editingEdge: readInteractionEditingEdge(
           store.read(session.interaction.read.mode)

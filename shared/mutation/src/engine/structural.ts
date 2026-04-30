@@ -1414,6 +1414,32 @@ export const applyStructuralEffectResult = <
   }
 }
 
+export const readStructuralEffectResult = <
+  Doc extends object,
+  Code extends string = string
+>(input: {
+  document: Doc
+  effect: MutationOrderedEffect | MutationTreeEffect
+  structures?: MutationStructureSource<Doc>
+}): {
+  ok: true
+  data: AppliedMutationEffectProgram<Doc>
+} | MutationFailure<Code> => {
+  try {
+    return {
+      ok: true,
+      data: applyStructuralEffectResult(input)
+    }
+  } catch (error) {
+    return mutationFailure(
+      'mutation_engine.apply.invalid_operation' as Code,
+      error instanceof Error
+        ? error.message
+        : 'MutationEngine.apply received an invalid structural effect.'
+    )
+  }
+}
+
 export const applyStructuralOperation = <
   Doc extends object,
   Op extends {

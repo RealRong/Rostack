@@ -195,7 +195,7 @@ test('node.text.commit routes mindmap topic text and size through mindmap operat
     }
   })
   const engineWithLayout = createEngine({
-    document: engine.current().doc,
+    document: engine.doc(),
     layout
   })
 

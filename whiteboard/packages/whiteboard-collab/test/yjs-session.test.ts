@@ -15,7 +15,7 @@ const createTestEngine = (id = 'doc_test') =>
 
 const readDocument = (
   engine: ReturnType<typeof createTestEngine>
-) => engine.current().doc
+) => engine.doc()
 
 const createStore = (
   doc: Y.Doc

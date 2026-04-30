@@ -113,8 +113,8 @@ const createInput = (input: {
       : undefined
   }
   const value = createEmptyInput()
-  value.document.rev = input.engine.current().rev
-  value.document.doc = input.engine.current().doc
+  value.document.rev = input.engine.rev()
+  value.document.doc = input.engine.doc()
   value.runtime.session.edit = input.edit ?? null
   value.runtime.delta = input.delta
   value.delta = createWhiteboardMutationDelta(

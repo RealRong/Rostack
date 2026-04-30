@@ -2,60 +2,144 @@ import {
   record as draftRecord
 } from '@shared/draft'
 import {
-  createStructuralOrderedDeleteOperation,
-  createStructuralOrderedInsertOperation,
-  createStructuralOrderedMoveOperation,
-  type MutationStructuralOrderedDeleteOperation,
-  type MutationStructuralOrderedInsertOperation,
-  type MutationStructuralOrderedMoveOperation,
-} from '@shared/mutation'
-import {
   readEdgeLabelUpdateFromPatch
 } from '@whiteboard/core/edge/update'
 import type {
+  EdgeId,
+  EdgeLabel,
+  EdgeRoutePoint,
   Operation
 } from '@whiteboard/core/types'
 import {
-  clone,
-  same
+  clone
 } from './common'
-import {
-  emitEntityPatch,
-  emitStructuralOperation
-} from './effects'
 import {
   EDGE_LABELS_STRUCTURE_PREFIX,
   EDGE_ROUTE_STRUCTURE_PREFIX,
   getLabels,
   getManualRoutePoints,
-  readStructuralDocument,
-  toStructuralOrderedAnchor,
 } from './structures'
 import type {
   WhiteboardCustomPlanContext
 } from './types'
+import {
+  planOrderedDelete,
+  planOrderedInsert,
+  planOrderedMove,
+  planOrderedPatch,
+  type OrderedEdgeCollectionConfig
+} from './orderedEdge'
+
+const edgeLabels = {
+  structure: (edgeId: EdgeId) => `${EDGE_LABELS_STRUCTURE_PREFIX}${edgeId}`,
+  readItems: getLabels,
+  itemId: (label: EdgeLabel) => label.id,
+  readInsert: (op: Extract<Operation, { type: 'edge.label.insert' }>) => ({
+    edgeId: op.edgeId,
+    item: op.label,
+    to: op.to
+  }),
+  readDelete: (op: Extract<Operation, { type: 'edge.label.delete' }>) => ({
+    edgeId: op.edgeId,
+    itemId: op.labelId
+  }),
+  readMove: (op: Extract<Operation, { type: 'edge.label.move' }>) => ({
+    edgeId: op.edgeId,
+    itemId: op.labelId,
+    to: op.to
+  }),
+  readPatch: (op: Extract<Operation, { type: 'edge.label.patch' }>) => ({
+    edgeId: op.edgeId,
+    itemId: op.labelId
+  }),
+  patchItem: (
+    label: EdgeLabel,
+    op: Extract<Operation, { type: 'edge.label.patch' }>
+  ): EdgeLabel => {
+    const update = readEdgeLabelUpdateFromPatch(op.patch)
+    let nextLabel = clone(label)!
+    if (update.fields) {
+      if ('text' in update.fields) {
+        nextLabel.text = clone(update.fields.text)
+      }
+      if ('t' in update.fields) {
+        nextLabel.t = clone(update.fields.t)
+      }
+      if ('offset' in update.fields) {
+        nextLabel.offset = clone(update.fields.offset)
+      }
+    }
+    if (update.record) {
+      nextLabel = draftRecord.apply(nextLabel, update.record)
+    }
+    return nextLabel
+  },
+  writePatch: (items: readonly EdgeLabel[]) => ({
+    labels: items.map((entry) => clone(entry)!)
+  }),
+  missingItemMessage: (itemId: string) => `Edge label ${itemId} not found.`
+} satisfies OrderedEdgeCollectionConfig<
+  EdgeLabel,
+  Extract<Operation, { type: 'edge.label.insert' }>,
+  Extract<Operation, { type: 'edge.label.delete' }>,
+  Extract<Operation, { type: 'edge.label.move' }>,
+  Extract<Operation, { type: 'edge.label.patch' }>
+>
+
+const edgeRoutePoints = {
+  structure: (edgeId: EdgeId) => `${EDGE_ROUTE_STRUCTURE_PREFIX}${edgeId}`,
+  readItems: getManualRoutePoints,
+  itemId: (point: EdgeRoutePoint) => point.id,
+  readInsert: (op: Extract<Operation, { type: 'edge.route.point.insert' }>) => ({
+    edgeId: op.edgeId,
+    item: op.point,
+    to: op.to
+  }),
+  readDelete: (op: Extract<Operation, { type: 'edge.route.point.delete' }>) => ({
+    edgeId: op.edgeId,
+    itemId: op.pointId
+  }),
+  readMove: (op: Extract<Operation, { type: 'edge.route.point.move' }>) => ({
+    edgeId: op.edgeId,
+    itemId: op.pointId,
+    to: op.to
+  }),
+  readPatch: (op: Extract<Operation, { type: 'edge.route.point.patch' }>) => ({
+    edgeId: op.edgeId,
+    itemId: op.pointId
+  }),
+  patchItem: (
+    point: EdgeRoutePoint,
+    op: Extract<Operation, { type: 'edge.route.point.patch' }>
+  ): EdgeRoutePoint => ({
+    ...point,
+    ...clone(op.patch)
+  }),
+  writePatch: (items: readonly EdgeRoutePoint[]) => ({
+    route: items.length > 0
+      ? {
+          kind: 'manual' as const,
+          points: items.map((entry) => clone(entry)!)
+        }
+      : {
+          kind: 'auto' as const
+        }
+  }),
+  missingItemMessage: (itemId: string) => `Edge route point ${itemId} not found.`
+} satisfies OrderedEdgeCollectionConfig<
+  EdgeRoutePoint,
+  Extract<Operation, { type: 'edge.route.point.insert' }>,
+  Extract<Operation, { type: 'edge.route.point.delete' }>,
+  Extract<Operation, { type: 'edge.route.point.move' }>,
+  Extract<Operation, { type: 'edge.route.point.patch' }>
+>
 
 export const planEdgeLabelInsert = (
   input: WhiteboardCustomPlanContext<
     Extract<Operation, { type: 'edge.label.insert' }>
   >
 ): void => {
-  if (!input.reader.edges.get(input.op.edgeId)) {
-    return input.fail({
-      code: 'invalid',
-      message: `Edge ${input.op.edgeId} not found.`
-    })
-  }
-
-  emitStructuralOperation(
-    input,
-    createStructuralOrderedInsertOperation<MutationStructuralOrderedInsertOperation>({
-      structure: `${EDGE_LABELS_STRUCTURE_PREFIX}${input.op.edgeId}`,
-      itemId: input.op.label.id,
-      value: clone(input.op.label)!,
-      to: toStructuralOrderedAnchor(input.op.to)
-    })
-  )
+  planOrderedInsert(input, edgeLabels, (item) => clone(item)!)
 }
 
 export const planEdgeLabelDelete = (
@@ -63,18 +147,7 @@ export const planEdgeLabelDelete = (
     Extract<Operation, { type: 'edge.label.delete' }>
   >
 ): void => {
-  const current = input.reader.edges.get(input.op.edgeId)
-  if (!current || !getLabels(current).some((label) => label.id === input.op.labelId)) {
-    return
-  }
-
-  emitStructuralOperation(
-    input,
-    createStructuralOrderedDeleteOperation<MutationStructuralOrderedDeleteOperation>({
-      structure: `${EDGE_LABELS_STRUCTURE_PREFIX}${input.op.edgeId}`,
-      itemId: input.op.labelId
-    })
-  )
+  planOrderedDelete(input, edgeLabels)
 }
 
 export const planEdgeLabelMove = (
@@ -82,26 +155,7 @@ export const planEdgeLabelMove = (
     Extract<Operation, { type: 'edge.label.move' }>
   >
 ): void => {
-  const current = input.reader.edges.get(input.op.edgeId)
-  if (!current || !getLabels(current).some((label) => label.id === input.op.labelId)) {
-    return
-  }
-
-  const operation = createStructuralOrderedMoveOperation<MutationStructuralOrderedMoveOperation>({
-    structure: `${EDGE_LABELS_STRUCTURE_PREFIX}${input.op.edgeId}`,
-    itemId: input.op.labelId,
-    to: toStructuralOrderedAnchor(input.op.to)
-  })
-  const result = readStructuralDocument({
-    document: input.document,
-    operation,
-    fail: input.fail
-  })
-  if (result.historyMode === 'neutral') {
-    return
-  }
-
-  emitStructuralOperation(input, operation)
+  planOrderedMove(input, edgeLabels)
 }
 
 export const planEdgeLabelPatch = (
@@ -109,43 +163,7 @@ export const planEdgeLabelPatch = (
     Extract<Operation, { type: 'edge.label.patch' }>
   >
 ): void => {
-  const current = input.reader.edges.get(input.op.edgeId)
-  const labels = current
-    ? [...getLabels(current)]
-    : []
-  const index = labels.findIndex((label) => label.id === input.op.labelId)
-  if (!current || index < 0) {
-    return input.fail({
-      code: 'invalid',
-      message: `Edge label ${input.op.labelId} not found.`
-    })
-  }
-
-  const label = labels[index]!
-  const update = readEdgeLabelUpdateFromPatch(input.op.patch)
-  let nextLabel = clone(label)!
-  if (update.fields) {
-    if ('text' in update.fields) {
-      nextLabel.text = clone(update.fields.text)
-    }
-    if ('t' in update.fields) {
-      nextLabel.t = clone(update.fields.t)
-    }
-    if ('offset' in update.fields) {
-      nextLabel.offset = clone(update.fields.offset)
-    }
-  }
-  if (update.record) {
-    nextLabel = draftRecord.apply(nextLabel, update.record)
-  }
-  if (same(nextLabel, label)) {
-    return
-  }
-
-  labels[index] = nextLabel
-  emitEntityPatch(input, 'edge', input.op.edgeId, {
-    labels: labels.map((entry) => clone(entry)!)
-  })
+  planOrderedPatch(input, edgeLabels)
 }
 
 export const planEdgeRoutePointInsert = (
@@ -153,22 +171,7 @@ export const planEdgeRoutePointInsert = (
     Extract<Operation, { type: 'edge.route.point.insert' }>
   >
 ): void => {
-  if (!input.reader.edges.get(input.op.edgeId)) {
-    return input.fail({
-      code: 'invalid',
-      message: `Edge ${input.op.edgeId} not found.`
-    })
-  }
-
-  emitStructuralOperation(
-    input,
-    createStructuralOrderedInsertOperation<MutationStructuralOrderedInsertOperation>({
-      structure: `${EDGE_ROUTE_STRUCTURE_PREFIX}${input.op.edgeId}`,
-      itemId: input.op.point.id,
-      value: clone(input.op.point)!,
-      to: toStructuralOrderedAnchor(input.op.to)
-    })
-  )
+  planOrderedInsert(input, edgeRoutePoints, (item) => clone(item)!)
 }
 
 export const planEdgeRoutePointDelete = (
@@ -176,18 +179,7 @@ export const planEdgeRoutePointDelete = (
     Extract<Operation, { type: 'edge.route.point.delete' }>
   >
 ): void => {
-  const current = input.reader.edges.get(input.op.edgeId)
-  if (!current || !getManualRoutePoints(current).some((point) => point.id === input.op.pointId)) {
-    return
-  }
-
-  emitStructuralOperation(
-    input,
-    createStructuralOrderedDeleteOperation<MutationStructuralOrderedDeleteOperation>({
-      structure: `${EDGE_ROUTE_STRUCTURE_PREFIX}${input.op.edgeId}`,
-      itemId: input.op.pointId
-    })
-  )
+  planOrderedDelete(input, edgeRoutePoints)
 }
 
 export const planEdgeRoutePointMove = (
@@ -195,26 +187,7 @@ export const planEdgeRoutePointMove = (
     Extract<Operation, { type: 'edge.route.point.move' }>
   >
 ): void => {
-  const current = input.reader.edges.get(input.op.edgeId)
-  if (!current || !getManualRoutePoints(current).some((point) => point.id === input.op.pointId)) {
-    return
-  }
-
-  const operation = createStructuralOrderedMoveOperation<MutationStructuralOrderedMoveOperation>({
-    structure: `${EDGE_ROUTE_STRUCTURE_PREFIX}${input.op.edgeId}`,
-    itemId: input.op.pointId,
-    to: toStructuralOrderedAnchor(input.op.to)
-  })
-  const result = readStructuralDocument({
-    document: input.document,
-    operation,
-    fail: input.fail
-  })
-  if (result.historyMode === 'neutral') {
-    return
-  }
-
-  emitStructuralOperation(input, operation)
+  planOrderedMove(input, edgeRoutePoints)
 }
 
 export const planEdgeRoutePointPatch = (
@@ -222,32 +195,5 @@ export const planEdgeRoutePointPatch = (
     Extract<Operation, { type: 'edge.route.point.patch' }>
   >
 ): void => {
-  const current = input.reader.edges.get(input.op.edgeId)
-  const points = current
-    ? [...getManualRoutePoints(current)]
-    : []
-  const index = points.findIndex((point) => point.id === input.op.pointId)
-  if (!current || index < 0) {
-    return input.fail({
-      code: 'invalid',
-      message: `Edge route point ${input.op.pointId} not found.`
-    })
-  }
-
-  const point = points[index]!
-  const nextPoint = {
-    ...point,
-    ...clone(input.op.patch)
-  }
-  if (same(nextPoint, point)) {
-    return
-  }
-
-  points[index] = nextPoint
-  emitEntityPatch(input, 'edge', input.op.edgeId, {
-    route: {
-      kind: 'manual',
-      points: points.map((entry) => clone(entry)!)
-    }
-  })
+  planOrderedPatch(input, edgeRoutePoints)
 }

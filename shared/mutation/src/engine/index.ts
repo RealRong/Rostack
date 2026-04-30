@@ -50,8 +50,14 @@ export type {
   MutationResult
 } from './contracts'
 export type {
+  AppliedMutationEffectProgram,
+  MutationEntityEffect,
+  MutationEntityRef,
   MutationEffect,
-  MutationEffectProgram
+  MutationEffectProgram,
+  MutationOrderedEffect,
+  MutationTagEffect,
+  MutationTreeEffect,
 } from './effect/effect'
 export type {
   MutationEffectBuilder
@@ -80,6 +86,7 @@ export {
   createStructuralTreeInsertOperation,
   createStructuralTreeMoveOperation,
   createStructuralTreeRestoreOperation,
+  readStructuralEffectResult,
   readStructuralOperation,
   readStructuralOperationResult,
 } from './structural'

@@ -1,20 +1,5 @@
-import {
-  createStructuralOrderedDeleteOperation,
-  createStructuralOrderedInsertOperation,
-  createStructuralTreeDeleteOperation,
-  createStructuralTreeInsertOperation,
-  createStructuralTreeMoveOperation,
-  createStructuralTreeRestoreOperation,
-  type MutationStructuralOrderedDeleteOperation,
-  type MutationStructuralOrderedInsertOperation,
-  type MutationStructuralTreeDeleteOperation,
-  type MutationStructuralTreeInsertOperation,
-  type MutationStructuralTreeMoveOperation,
-  type MutationStructuralTreeRestoreOperation,
-} from '@shared/mutation'
 import { mindmap as mindmapApi } from '@whiteboard/core/mindmap'
 import {
-  createMindmapTopicPatch,
   readMindmapTopicUpdateFromPatch
 } from '@whiteboard/core/mindmap/ops'
 import { node as nodeApi } from '@whiteboard/core/node'
@@ -29,14 +14,6 @@ import {
   entityKey,
   same
 } from './common'
-import {
-  emitEntityCreate,
-  emitEntityDelete,
-  emitEntityPatch,
-  emitSemanticChange,
-  emitSemanticFootprint,
-  emitStructuralOperation
-} from './effects'
 import {
   CANVAS_ORDER_STRUCTURE,
   MINDMAP_TREE_STRUCTURE_PREFIX,
@@ -55,27 +32,30 @@ export const planMindmapCreate = (
     Extract<Operation, { type: 'mindmap.create' }>
   >
 ): void => {
-  emitStructuralOperation(
-    input,
-    createStructuralOrderedInsertOperation<MutationStructuralOrderedInsertOperation>({
-      structure: CANVAS_ORDER_STRUCTURE,
-      itemId: canvasRefKey({
-        kind: 'mindmap',
-        id: input.op.mindmap.id
-      }),
-      value: {
-        kind: 'mindmap',
-        id: input.op.mindmap.id
-      } satisfies CanvasItemRef,
-      to: {
-        kind: 'end'
-      }
-    })
+  input.effects.structure.ordered.insert(
+    CANVAS_ORDER_STRUCTURE,
+    canvasRefKey({
+      kind: 'mindmap',
+      id: input.op.mindmap.id
+    }),
+    {
+      kind: 'mindmap',
+      id: input.op.mindmap.id
+    } satisfies CanvasItemRef,
+    {
+      kind: 'end'
+    }
   )
   input.op.nodes.forEach((node) => {
-    emitEntityCreate(input, 'node', node.id, node)
+    input.effects.entity.create({
+      table: 'node',
+      id: node.id
+    }, node)
   })
-  emitEntityCreate(input, 'mindmap', input.op.mindmap.id, input.op.mindmap)
+  input.effects.entity.create({
+    table: 'mindmap',
+    id: input.op.mindmap.id
+  }, input.op.mindmap)
 }
 
 export const planMindmapRestore = (
@@ -83,25 +63,28 @@ export const planMindmapRestore = (
     Extract<Operation, { type: 'mindmap.restore' }>
   >
 ): void => {
-  emitStructuralOperation(
-    input,
-    createStructuralOrderedInsertOperation<MutationStructuralOrderedInsertOperation>({
-      structure: CANVAS_ORDER_STRUCTURE,
-      itemId: canvasRefKey({
-        kind: 'mindmap',
-        id: input.op.snapshot.mindmap.id
-      }),
-      value: {
-        kind: 'mindmap',
-        id: input.op.snapshot.mindmap.id
-      } satisfies CanvasItemRef,
-      to: readCanvasOrderAnchorFromSlot(input.op.snapshot.slot)
-    })
+  input.effects.structure.ordered.insert(
+    CANVAS_ORDER_STRUCTURE,
+    canvasRefKey({
+      kind: 'mindmap',
+      id: input.op.snapshot.mindmap.id
+    }),
+    {
+      kind: 'mindmap',
+      id: input.op.snapshot.mindmap.id
+    } satisfies CanvasItemRef,
+    readCanvasOrderAnchorFromSlot(input.op.snapshot.slot)
   )
   input.op.snapshot.nodes.forEach((node) => {
-    emitEntityCreate(input, 'node', node.id, node)
+    input.effects.entity.create({
+      table: 'node',
+      id: node.id
+    }, node)
   })
-  emitEntityCreate(input, 'mindmap', input.op.snapshot.mindmap.id, input.op.snapshot.mindmap)
+  input.effects.entity.create({
+    table: 'mindmap',
+    id: input.op.snapshot.mindmap.id
+  }, input.op.snapshot.mindmap)
 }
 
 export const planMindmapDelete = (
@@ -119,35 +102,38 @@ export const planMindmapDelete = (
   const connectedEdges = input.reader.edges.connectedToNodes(new Set(nodeIds))
   const edgeIds = connectedEdges.map((edge) => edge.id)
 
-  emitStructuralOperation(
-    input,
-    createStructuralOrderedDeleteOperation<MutationStructuralOrderedDeleteOperation>({
-      structure: CANVAS_ORDER_STRUCTURE,
-      itemId: canvasRefKey({
-        kind: 'mindmap',
-        id: input.op.id
-      })
+  input.effects.structure.ordered.delete(
+    CANVAS_ORDER_STRUCTURE,
+    canvasRefKey({
+      kind: 'mindmap',
+      id: input.op.id
     })
   )
   connectedEdges.forEach((edge) => {
-    emitStructuralOperation(
-      input,
-      createStructuralOrderedDeleteOperation<MutationStructuralOrderedDeleteOperation>({
-        structure: CANVAS_ORDER_STRUCTURE,
-        itemId: canvasRefKey({
-          kind: 'edge',
-          id: edge.id
-        })
+    input.effects.structure.ordered.delete(
+      CANVAS_ORDER_STRUCTURE,
+      canvasRefKey({
+        kind: 'edge',
+        id: edge.id
       })
     )
   })
   edgeIds.forEach((edgeId) => {
-    emitEntityDelete(input, 'edge', edgeId)
+    input.effects.entity.delete({
+      table: 'edge',
+      id: edgeId
+    })
   })
   nodeIds.forEach((nodeId) => {
-    emitEntityDelete(input, 'node', nodeId)
+    input.effects.entity.delete({
+      table: 'node',
+      id: nodeId
+    })
   })
-  emitEntityDelete(input, 'mindmap', input.op.id)
+  input.effects.entity.delete({
+    table: 'mindmap',
+    id: input.op.id
+  })
 }
 
 export const planMindmapMove = (
@@ -169,10 +155,13 @@ export const planMindmapMove = (
     return
   }
 
-  emitEntityPatch(input, 'node', root.id, {
+  input.effects.entity.patch({
+    table: 'node',
+    id: root.id
+  }, {
     position: clone(input.op.position)!
   })
-  emitSemanticChange(input, 'mindmap.layout', [input.op.id])
+  input.effects.semantic.change('mindmap.layout', [input.op.id])
 }
 
 export const planMindmapLayout = (
@@ -196,7 +185,10 @@ export const planMindmapLayout = (
     return
   }
 
-  emitEntityPatch(input, 'mindmap', input.op.id, {
+  input.effects.entity.patch({
+    table: 'mindmap',
+    id: input.op.id
+  }, {
     layout: nextLayout
   })
 }
@@ -214,7 +206,10 @@ export const planMindmapTopicInsert = (
     })
   }
 
-  emitEntityCreate(input, 'node', input.op.node.id, input.op.node)
+  input.effects.entity.create({
+    table: 'node',
+    id: input.op.node.id
+  }, input.op.node)
   const structure = `${MINDMAP_TREE_STRUCTURE_PREFIX}${input.op.id}`
 
   switch (input.op.input.kind) {
@@ -229,18 +224,15 @@ export const planMindmapTopicInsert = (
       const side = input.op.input.parentId === current.root
         ? (input.op.input.options?.side ?? 'right')
         : undefined
-      emitStructuralOperation(
-        input,
-        createStructuralTreeInsertOperation<MutationStructuralTreeInsertOperation>({
-          structure,
-          nodeId: input.op.node.id,
-          parentId: input.op.input.parentId,
-          index: input.op.input.options?.index,
-          value: {
-            ...(side === undefined ? {} : { side }),
-            branchStyle: resolveInsertedMindmapBranchStyle(current, input.op.input.parentId, side)
-          }
-        })
+      input.effects.structure.tree.insert(
+        structure,
+        input.op.node.id,
+        input.op.input.parentId,
+        input.op.input.options?.index,
+        {
+          ...(side === undefined ? {} : { side }),
+          branchStyle: resolveInsertedMindmapBranchStyle(current, input.op.input.parentId, side)
+        }
       )
       return
     }
@@ -259,22 +251,19 @@ export const planMindmapTopicInsert = (
       const side = parentId === current.root
         ? (target.side ?? 'right')
         : undefined
-      emitStructuralOperation(
-        input,
-        createStructuralTreeInsertOperation<MutationStructuralTreeInsertOperation>({
-          structure,
-          nodeId: input.op.node.id,
-          parentId,
-          index: currentIndex < 0
-            ? undefined
-            : input.op.input.position === 'before'
-              ? currentIndex
-              : currentIndex + 1,
-          value: {
-            ...(side === undefined ? {} : { side }),
-            branchStyle: resolveInsertedMindmapBranchStyle(current, parentId, target.side)
-          }
-        })
+      input.effects.structure.tree.insert(
+        structure,
+        input.op.node.id,
+        parentId,
+        currentIndex < 0
+          ? undefined
+          : input.op.input.position === 'before'
+            ? currentIndex
+            : currentIndex + 1,
+        {
+          ...(side === undefined ? {} : { side }),
+          branchStyle: resolveInsertedMindmapBranchStyle(current, parentId, target.side)
+        }
       )
       return
     }
@@ -306,30 +295,27 @@ export const planMindmapTopicInsert = (
       const side = parentId === current.root
         ? (target.side ?? input.op.input.options?.side ?? 'right')
         : undefined
-      emitStructuralOperation(
-        input,
-        createStructuralTreeInsertOperation<MutationStructuralTreeInsertOperation>({
-          structure,
-          nodeId: input.op.node.id,
-          parentId,
-          index: siblingIndex,
-          value: {
-            ...(side === undefined ? {} : { side }),
-            branchStyle: resolveInsertedMindmapBranchStyle(current, parentId, target.side)
-          }
-        })
+      input.effects.structure.tree.insert(
+        structure,
+        input.op.node.id,
+        parentId,
+        siblingIndex,
+        {
+          ...(side === undefined ? {} : { side }),
+          branchStyle: resolveInsertedMindmapBranchStyle(current, parentId, target.side)
+        }
       )
-      emitStructuralOperation(
-        input,
-        createStructuralTreeMoveOperation<MutationStructuralTreeMoveOperation>({
-          structure,
-          nodeId: input.op.input.nodeId,
-          parentId: input.op.node.id,
-          index: 0
-        })
+      input.effects.structure.tree.move(
+        structure,
+        input.op.input.nodeId,
+        input.op.node.id,
+        0
       )
       if (target.side !== undefined) {
-        emitEntityPatch(input, 'mindmap', input.op.id, {
+        input.effects.entity.patch({
+          table: 'mindmap',
+          id: input.op.id
+        }, {
           [`members.${input.op.input.nodeId}.side`]: undefined
         })
       }
@@ -351,17 +337,17 @@ export const planMindmapTopicRestore = (
   }
 
   input.op.snapshot.nodes.forEach((node) => {
-    emitEntityCreate(input, 'node', node.id, node)
+    input.effects.entity.create({
+      table: 'node',
+      id: node.id
+    }, node)
   })
-  emitStructuralOperation(
-    input,
-    createStructuralTreeRestoreOperation<MutationStructuralTreeRestoreOperation>({
-      structure: `${MINDMAP_TREE_STRUCTURE_PREFIX}${input.op.id}`,
-      snapshot: createMindmapTreeSubtreeSnapshot(
-        current,
-        input.op.snapshot
-      )
-    })
+  input.effects.structure.tree.restore(
+    `${MINDMAP_TREE_STRUCTURE_PREFIX}${input.op.id}`,
+    createMindmapTreeSubtreeSnapshot(
+      current,
+      input.op.snapshot
+    )
   )
 }
 
@@ -389,17 +375,17 @@ export const planMindmapTopicMove = (
   const nextSide = input.op.input.parentId === current.root
     ? (input.op.input.side ?? member.side ?? 'right')
     : undefined
-  emitStructuralOperation(
-    input,
-    createStructuralTreeMoveOperation<MutationStructuralTreeMoveOperation>({
-      structure: `${MINDMAP_TREE_STRUCTURE_PREFIX}${input.op.id}`,
-      nodeId: input.op.input.nodeId,
-      parentId: input.op.input.parentId,
-      index: input.op.input.index
-    })
+  input.effects.structure.tree.move(
+    `${MINDMAP_TREE_STRUCTURE_PREFIX}${input.op.id}`,
+    input.op.input.nodeId,
+    input.op.input.parentId,
+    input.op.input.index
   )
   if (!same(member.side, nextSide)) {
-    emitEntityPatch(input, 'mindmap', input.op.id, {
+    input.effects.entity.patch({
+      table: 'mindmap',
+      id: input.op.id
+    }, {
       [`members.${input.op.input.nodeId}.side`]: nextSide
     })
   }
@@ -429,30 +415,30 @@ export const planMindmapTopicDelete = (
   const connectedEdges = input.reader.edges.connectedToNodes(new Set(nodeIds))
   const edgeIds = connectedEdges.map((edge) => edge.id)
 
-  emitStructuralOperation(
-    input,
-    createStructuralTreeDeleteOperation<MutationStructuralTreeDeleteOperation>({
-      structure: `${MINDMAP_TREE_STRUCTURE_PREFIX}${input.op.id}`,
-      nodeId: input.op.input.nodeId
-    })
+  input.effects.structure.tree.delete(
+    `${MINDMAP_TREE_STRUCTURE_PREFIX}${input.op.id}`,
+    input.op.input.nodeId
   )
   connectedEdges.forEach((edge) => {
-    emitStructuralOperation(
-      input,
-      createStructuralOrderedDeleteOperation<MutationStructuralOrderedDeleteOperation>({
-        structure: CANVAS_ORDER_STRUCTURE,
-        itemId: canvasRefKey({
-          kind: 'edge',
-          id: edge.id
-        })
+    input.effects.structure.ordered.delete(
+      CANVAS_ORDER_STRUCTURE,
+      canvasRefKey({
+        kind: 'edge',
+        id: edge.id
       })
     )
   })
   edgeIds.forEach((edgeId) => {
-    emitEntityDelete(input, 'edge', edgeId)
+    input.effects.entity.delete({
+      table: 'edge',
+      id: edgeId
+    })
   })
   nodeIds.forEach((nodeId) => {
-    emitEntityDelete(input, 'node', nodeId)
+    input.effects.entity.delete({
+      table: 'node',
+      id: nodeId
+    })
   })
 }
 
@@ -489,8 +475,11 @@ export const planMindmapTopicPatch = (
     return
   }
 
-  emitEntityPatch(input, 'node', input.op.topicId, writes)
-  emitSemanticFootprint(input, [
+  input.effects.entity.patch({
+    table: 'node',
+    id: input.op.topicId
+  }, writes)
+  input.effects.semantic.footprint([
     entityKey('mindmap', input.op.id)
   ])
 
@@ -506,7 +495,7 @@ export const planMindmapTopicPatch = (
     id: input.op.id
   })
   if (relayoutNodeIds.length > 0) {
-    emitSemanticChange(input, 'mindmap.layout', [input.op.id])
+    input.effects.semantic.change('mindmap.layout', [input.op.id])
   }
 }
 
@@ -550,7 +539,10 @@ export const planMindmapBranchPatch = (
     return
   }
 
-  emitEntityPatch(input, 'mindmap', input.op.id, {
+  input.effects.entity.patch({
+    table: 'mindmap',
+    id: input.op.id
+  }, {
     [`members.${input.op.topicId}.branchStyle`]: nextBranchStyle
   })
 }
@@ -581,7 +573,10 @@ export const planMindmapTopicCollapse = (
     return
   }
 
-  emitEntityPatch(input, 'mindmap', input.op.id, {
+  input.effects.entity.patch({
+    table: 'mindmap',
+    id: input.op.id
+  }, {
     [`members.${input.op.topicId}.collapsed`]: nextCollapsed
   })
 }

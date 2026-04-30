@@ -11,9 +11,7 @@ describe('document engine snapshot', () => {
       layout: createTestLayout()
     })
 
-    const current = engine.current()
-
-    expect(current.rev).toBe(0)
-    expect(current.doc).toBe(doc)
+    expect(engine.rev()).toBe(0)
+    expect(engine.doc()).toBe(doc)
   })
 })

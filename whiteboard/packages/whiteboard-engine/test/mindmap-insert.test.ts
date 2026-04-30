@@ -26,12 +26,12 @@ test('engine exposes created mindmap roots through committed document and delta'
   }
 
   const { mindmapId, rootId } = result.data
-  const current = engine.current()
-  assert.equal(current.doc.nodes[rootId]?.type, 'text')
-  assert.equal(current.doc.nodes[rootId]?.owner?.kind, 'mindmap')
-  assert.equal(current.doc.nodes[rootId]?.owner?.id, mindmapId)
-  assert.equal(current.doc.mindmaps[mindmapId]?.root, rootId)
-  assert.ok(Boolean(current.doc.mindmaps[mindmapId]?.members[rootId]))
+  const document = engine.doc()
+  assert.equal(document.nodes[rootId]?.type, 'text')
+  assert.equal(document.nodes[rootId]?.owner?.kind, 'mindmap')
+  assert.equal(document.nodes[rootId]?.owner?.id, mindmapId)
+  assert.equal(document.mindmaps[mindmapId]?.root, rootId)
+  assert.ok(Boolean(document.mindmaps[mindmapId]?.members[rootId]))
   assert.deepEqual(result.commit.delta.changes['node.create']?.ids, [rootId])
   assert.deepEqual(result.commit.delta.changes['mindmap.create']?.ids, [mindmapId])
 })
@@ -72,7 +72,7 @@ test('mindmap relayout stays in projection while root moves still report node ge
 
   const childId = inserted.data.nodeId
   assert.deepEqual(
-    engine.current().doc.nodes[childId]?.position,
+    engine.doc().nodes[childId]?.position,
     { x: 0, y: 0 }
   )
 

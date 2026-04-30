@@ -1,24 +1,9 @@
-import {
-  record as draftRecord,
-  type RecordWrite
-} from '@shared/draft'
 import type {
-  MutationFootprint,
   MutationOrderedAnchor,
-  MutationStructuralCanonicalOperation,
-  MutationStructuralOrderedDeleteOperation,
-  MutationStructuralOrderedInsertOperation,
-  MutationStructuralOrderedMoveOperation,
   MutationStructureSource,
   MutationTreeSnapshot,
   MutationTreeSubtreeSnapshot
 } from '@shared/mutation'
-import {
-  createStructuralOrderedDeleteOperation,
-  createStructuralOrderedInsertOperation,
-  readStructuralOperation,
-  readStructuralOperationResult
-} from '@shared/mutation/engine'
 import {
   createDocumentReader,
   type DocumentReader
@@ -45,10 +30,6 @@ import {
   same,
   uniqueSorted
 } from './common'
-import type {
-  WhiteboardCustomCode,
-  WhiteboardCustomPlanContext
-} from './types'
 
 type MindmapStructureValue = {
   side?: 'left' | 'right'
@@ -66,20 +47,6 @@ export const canvasRefKey = (
   ref: CanvasItemRef
 ): string => `${ref.kind}${CANVAS_REF_SEPARATOR}${ref.id}`
 
-const readCanvasRefFromKey = (
-  value: string
-): CanvasItemRef => {
-  const index = value.indexOf(CANVAS_REF_SEPARATOR)
-  if (index <= 0 || index >= value.length - 1) {
-    throw new Error(`Invalid canvas ref key "${value}".`)
-  }
-
-  return {
-    kind: value.slice(0, index) as CanvasItemRef['kind'],
-    id: value.slice(index + CANVAS_REF_SEPARATOR.length)
-  }
-}
-
 const cloneCanvasRef = (
   ref: CanvasItemRef | undefined
 ): CanvasItemRef | undefined => (
@@ -90,11 +57,6 @@ const cloneCanvasRef = (
       }
     : undefined
 )
-
-const readCanvasRefByKey = (
-  order: readonly CanvasItemRef[],
-  itemId: string
-): CanvasItemRef | undefined => order.find((entry) => canvasRefKey(entry) === itemId)
 
 export const toStructuralOrderedAnchor = (
   anchor: EdgeLabelAnchor | EdgeRoutePointAnchor
@@ -151,94 +113,6 @@ export const toStructuralCanvasAnchor = (
     itemId: anchorKey
   }
 }
-
-const readNextIdFromCanvasOrder = (
-  current: readonly CanvasItemRef[],
-  itemId: string
-): string | undefined => {
-  const index = current.findIndex((entry) => canvasRefKey(entry) === itemId)
-  return index >= 0
-    ? current[index + 1]
-      ? canvasRefKey(current[index + 1]!)
-      : undefined
-    : undefined
-}
-
-export const applyCanvasOrderMove = (
-  current: readonly CanvasItemRef[],
-  ref: CanvasItemRef,
-  to: CanvasOrderAnchor
-): readonly CanvasItemRef[] => {
-  const itemId = canvasRefKey(ref)
-  const currentIds = current.map((entry) => canvasRefKey(entry))
-  const nextIds = currentIds.includes(itemId)
-    ? [...currentIds]
-    : currentIds
-
-  const without = nextIds.filter((entryId) => entryId !== itemId)
-  let insertIndex = without.length
-  if (to.kind === 'before') {
-    insertIndex = Math.max(without.indexOf(canvasRefKey(to.ref)), 0)
-  } else if (to.kind === 'after') {
-    const nextId = readNextIdFromCanvasOrder(current, canvasRefKey(to.ref))
-    insertIndex = nextId
-      ? Math.max(without.indexOf(nextId), 0)
-      : without.length
-  } else if (to.kind === 'front') {
-    insertIndex = 0
-  }
-
-  without.splice(insertIndex, 0, itemId)
-  return without.map((entryId) => (
-    readCanvasRefByKey(current, entryId) ?? readCanvasRefFromKey(entryId)
-  ))
-}
-
-export const fromStructuralCanvasAnchor = (
-  order: readonly CanvasItemRef[],
-  anchor: MutationOrderedAnchor
-): CanvasOrderAnchor => (
-  anchor.kind === 'start'
-    ? { kind: 'front' }
-    : anchor.kind === 'end'
-      ? { kind: 'back' }
-      : {
-          kind: anchor.kind,
-          ref: readCanvasRefByKey(order, anchor.itemId) ?? readCanvasRefFromKey(anchor.itemId)
-        }
-)
-
-export const fromStructuralEdgeLabelAnchor = (
-  anchor: MutationOrderedAnchor
-): EdgeLabelAnchor => (
-  anchor.kind === 'start' || anchor.kind === 'end'
-    ? anchor
-    : anchor.kind === 'before'
-      ? {
-          kind: 'before',
-          labelId: anchor.itemId
-        }
-      : {
-          kind: 'after',
-          labelId: anchor.itemId
-        }
-)
-
-export const fromStructuralEdgeRoutePointAnchor = (
-  anchor: MutationOrderedAnchor
-): EdgeRoutePointAnchor => (
-  anchor.kind === 'start' || anchor.kind === 'end'
-    ? anchor
-    : anchor.kind === 'before'
-      ? {
-          kind: 'before',
-          pointId: anchor.itemId
-        }
-      : {
-          kind: 'after',
-          pointId: anchor.itemId
-        }
-)
 
 export const getLabels = (
   edge: Edge
@@ -628,90 +502,6 @@ export const readCanvasOrderAnchorFromSlot = (
           itemId: canvasRefKey(slot.next)
         }
       : {
-          kind: 'end'
-        }
+        kind: 'end'
+      }
 )
-
-export const readStructuralDocument = <TOperation extends {
-  type: string
-}>(input: {
-  document: Document
-  operation: TOperation
-  fail: WhiteboardCustomPlanContext['fail']
-}): {
-  document: Document
-  inverse: readonly TOperation[]
-  footprint: readonly MutationFootprint[]
-  historyMode: 'track' | 'skip' | 'neutral'
-} => {
-  const descriptor = readStructuralOperation(input.operation.type)
-  if (!descriptor) {
-    return input.fail({
-      code: 'invalid',
-      message: `Unknown structural operation "${input.operation.type}".`
-    })
-  }
-
-  const result = readStructuralOperationResult<Document, TOperation, WhiteboardCustomCode>({
-    document: input.document,
-    operation: input.operation,
-    structures: whiteboardStructures,
-    descriptor
-  })
-  if (!result.ok) {
-    return input.fail({
-      code: 'invalid',
-      message: result.error.message
-    })
-  }
-
-  return {
-    document: result.data.document,
-    inverse: result.data.inverse,
-    footprint: result.data.footprint,
-    historyMode: result.data.historyMode
-  }
-}
-
-export const insertCanvasOrderRef = (input: {
-  document: Document
-  ref: CanvasItemRef
-  to: MutationOrderedAnchor
-  fail: WhiteboardCustomPlanContext['fail']
-}) => readStructuralDocument({
-  document: input.document,
-  operation: createStructuralOrderedInsertOperation<MutationStructuralOrderedInsertOperation>({
-    structure: CANVAS_ORDER_STRUCTURE,
-    itemId: canvasRefKey(input.ref),
-    value: cloneCanvasRef(input.ref)!,
-    to: input.to
-  }),
-  fail: input.fail
-})
-
-export const deleteCanvasOrderRef = (input: {
-  document: Document
-  ref: CanvasItemRef
-  fail: WhiteboardCustomPlanContext['fail']
-}) => readStructuralDocument({
-  document: input.document,
-  operation: createStructuralOrderedDeleteOperation<MutationStructuralOrderedDeleteOperation>({
-    structure: CANVAS_ORDER_STRUCTURE,
-    itemId: canvasRefKey(input.ref)
-  }),
-  fail: input.fail
-})
-
-export const createEntityFootprints = (
-  family: 'node' | 'edge' | 'group' | 'mindmap',
-  ids: readonly string[]
-): MutationFootprint[] => ids.map((id) => ({
-  kind: 'entity',
-  family,
-  id
-}))
-
-export const writeRecord = <T extends object>(
-  current: T,
-  record: RecordWrite
-): T => draftRecord.apply(current, record)

@@ -143,25 +143,20 @@ export const createEngine = ({
       }
     }
   })
-  let current: ReturnType<Engine['current']> = {
-    rev: 0,
-    doc: core.document()
-  }
-  const currentListeners = new Set<(current: ReturnType<Engine['current']>) => void>()
 
   core.subscribe((commit) => {
-    current = {
-      rev: commit.rev,
-      doc: commit.document
-    }
     if (commit.kind === 'apply' && commit.authored.some((op) => isCheckpointOperation(op))) {
       core.history.clear()
     }
     if (onDocumentChange) {
       onDocumentChange(commit.document)
     }
-    currentListeners.forEach((listener) => {
-      listener(current)
+  })
+
+  const subscribeCurrent: Engine['subscribe'] = (listener) => core.subscribe((commit) => {
+    listener({
+      rev: commit.rev,
+      doc: commit.document
     })
   })
 
@@ -172,13 +167,8 @@ export const createEngine = ({
     },
     history: core.history,
     doc: () => core.document(),
-    current: () => current,
-    subscribe: (listener) => {
-      currentListeners.add(listener)
-      return () => {
-        currentListeners.delete(listener)
-      }
-    },
+    rev: () => core.current().rev,
+    subscribe: subscribeCurrent,
     execute: <TIntent extends Intent>(
       intent: TIntent,
       options?: MutationOptions

@@ -1,18 +1,15 @@
 import {
-  createStructuralOrderedMoveOperation,
-  createStructuralOrderedSpliceOperation,
-  type MutationStructuralOrderedMoveOperation,
-  type MutationStructuralOrderedSpliceOperation,
+  type MutationOrderedEffect
 } from '@shared/mutation'
+import {
+  readStructuralEffectResult
+} from '@shared/mutation/engine'
 import {
   CANVAS_ORDER_STRUCTURE,
   canvasRefKey,
-  readStructuralDocument,
+  whiteboardStructures,
   toStructuralCanvasAnchor,
 } from './structures'
-import {
-  emitStructuralOperation
-} from './effects'
 import type {
   WhiteboardCustomPlanContext
 } from './types'
@@ -31,25 +28,46 @@ export const planCanvasOrderMove = (
   }
 
   const anchor = toStructuralCanvasAnchor(currentOrder, existingRefs, input.op.to)
-  const operation = existingRefs.length === 1
-    ? createStructuralOrderedMoveOperation<MutationStructuralOrderedMoveOperation>({
+  const effect: MutationOrderedEffect = existingRefs.length === 1
+    ? {
+        type: 'ordered.move',
         structure: CANVAS_ORDER_STRUCTURE,
         itemId: canvasRefKey(existingRefs[0]!),
         to: anchor
-      })
-    : createStructuralOrderedSpliceOperation<MutationStructuralOrderedSpliceOperation>({
+      }
+    : {
+        type: 'ordered.splice',
         structure: CANVAS_ORDER_STRUCTURE,
         itemIds: existingRefs.map((ref) => canvasRefKey(ref)),
         to: anchor
-      })
-  const result = readStructuralDocument({
+      }
+  const result = readStructuralEffectResult({
     document: input.document,
-    operation,
-    fail: input.fail
+    effect,
+    structures: whiteboardStructures
   })
-  if (result.historyMode === 'neutral') {
+  if (!result.ok) {
+    return input.fail({
+      code: 'invalid',
+      message: result.error.message
+    })
+  }
+  if (result.data.historyMode === 'neutral') {
     return
   }
 
-  emitStructuralOperation(input, operation)
+  if (effect.type === 'ordered.move') {
+    input.effects.structure.ordered.move(
+      effect.structure,
+      effect.itemId,
+      effect.to
+    )
+    return
+  }
+
+  input.effects.structure.ordered.splice(
+    effect.structure,
+    effect.itemIds,
+    effect.to
+  )
 }

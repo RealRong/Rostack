@@ -1,7 +1,12 @@
 export type {
+  AppliedMutationEffectProgram,
+  MutationEntityEffect,
+  MutationEntityRef,
   MutationEffect,
   MutationEffectBuilder,
   MutationEffectProgram,
+  MutationOrderedEffect,
+  MutationTagEffect,
   MutationCompileHandlerTable,
   MutationCustomTable,
   MutationEntitySpec,
@@ -22,6 +27,7 @@ export type {
   MutationStructuralTreeInsertOperation,
   MutationStructuralTreeMoveOperation,
   MutationStructuralTreeRestoreOperation,
+  MutationTreeEffect,
   MutationTreeNodeSnapshot,
   MutationTreeSnapshot,
   MutationTreeSubtreeSnapshot,
@@ -36,6 +42,7 @@ export {
   createStructuralTreeInsertOperation,
   createStructuralTreeMoveOperation,
   createStructuralTreeRestoreOperation,
+  readStructuralEffectResult,
   MutationEngine
 } from './engine'
 export type {

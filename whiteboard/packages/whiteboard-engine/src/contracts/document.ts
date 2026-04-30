@@ -44,7 +44,7 @@ export interface Engine {
     EngineApplyCommit
   >
   doc(): Document
-  current(): EngineCurrent
+  rev(): Revision
   subscribe(listener: (current: EngineCurrent) => void): () => void
   execute<TIntent extends Intent>(
     intent: TIntent,

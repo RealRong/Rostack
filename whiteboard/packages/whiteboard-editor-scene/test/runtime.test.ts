@@ -105,8 +105,8 @@ const createInput = (
   })
 
   const value = createEmptyInput()
-  value.document.rev = engine.current().rev
-  value.document.doc = engine.current().doc
+  value.document.rev = engine.rev()
+  value.document.doc = engine.doc()
   value.runtime.session.edit = options.edit ?? null
   value.runtime.session.preview.draw = options.draw ?? null
   value.runtime.session.preview.edgeGuide = options.edgeGuide

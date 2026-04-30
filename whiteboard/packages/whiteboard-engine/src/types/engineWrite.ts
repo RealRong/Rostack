@@ -5,13 +5,15 @@ import type {
   MutationReplaceCommit
 } from '@shared/mutation'
 import type {
-  Document,
-  Operation
+  WhiteboardInternalOperation
+} from '@whiteboard/core/operations'
+import type {
+  Document
 } from '@whiteboard/core/types'
 
 export type EngineApplyCommit = MutationCommit<
   Document,
-  Operation,
+  WhiteboardInternalOperation,
   MutationFootprint
 > & {
   extra: void
@@ -19,7 +21,7 @@ export type EngineApplyCommit = MutationCommit<
 
 export type EngineCommit = MutationCommitRecord<
   Document,
-  Operation,
+  WhiteboardInternalOperation,
   MutationFootprint
 >
 

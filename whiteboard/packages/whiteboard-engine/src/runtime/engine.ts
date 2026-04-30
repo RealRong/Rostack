@@ -8,6 +8,7 @@ import {
 } from '@shared/mutation/engine'
 import type {
   WhiteboardCompileIds,
+  WhiteboardInternalOperation,
   WhiteboardCompileServices,
   WhiteboardMutationTable
 } from '@whiteboard/core/operations'
@@ -121,7 +122,7 @@ export const createEngine = ({
   const core = new MutationEngine<
     Document,
     WhiteboardMutationTable,
-    Operation,
+    WhiteboardInternalOperation,
     DocumentReader,
     WhiteboardCompileServices,
     ResultCode

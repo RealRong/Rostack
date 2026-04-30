@@ -25,6 +25,9 @@ import type {
 import type {
   WhiteboardInternalOperation
 } from '@whiteboard/core/operations/internal'
+export type {
+  WhiteboardInternalOperation
+} from '@whiteboard/core/operations/internal'
 import type {
   WhiteboardIntent,
   WhiteboardIntentKind,

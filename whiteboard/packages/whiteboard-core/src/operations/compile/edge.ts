@@ -40,6 +40,7 @@ import type {
   EdgeLabelFieldPatch,
   EdgePatch,
   EdgeRoutePoint,
+  EdgeRoutePointAnchor,
   EdgeUpdateInput,
   Point
 } from '@whiteboard/core/types'
@@ -229,7 +230,7 @@ const emitEdgeRouteDiffOps = (
   }
 
   if (currentMiddle.length === 0) {
-    let to = prefix === 0
+    let to: EdgeRoutePointAnchor = prefix === 0
       ? { kind: 'start' }
       : {
           kind: 'after',
@@ -294,7 +295,7 @@ const emitEdgeRouteDiffOps = (
     }))
   })
 
-  let to = { kind: 'start' } as const
+  let to: EdgeRoutePointAnchor = { kind: 'start' }
   nextPoints.forEach((point) => {
     const routePoint: EdgeRoutePoint = {
       id: readCompileServices(ctx).ids.edgeRoutePoint(),

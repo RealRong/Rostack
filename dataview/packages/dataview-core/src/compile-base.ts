@@ -29,10 +29,6 @@ export type DataviewCompileInput<
   ValidationCode
 >
 
-export const createCompileReader = (
-  input: DataviewCompileInput
-): DocumentReader => input.reader
-
 export const emitMany = (
   input: DataviewCompileInput,
   ...operations: readonly DocumentOperation[]

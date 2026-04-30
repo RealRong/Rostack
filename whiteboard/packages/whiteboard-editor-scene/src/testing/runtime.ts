@@ -7,7 +7,6 @@ import type {
 } from '../contracts/editor'
 import type { Capture } from '../contracts/capture'
 import type { WorkingState } from '../contracts/working'
-import { createEditorSceneCaptureReader } from '../projection/capture'
 import { createProjection } from '../projection/createProjection'
 import {
   createProjectionRuntime
@@ -71,14 +70,10 @@ export const createEditorSceneProjectionHarness = (input: {
     layout: input.layout,
     view: TEST_SCENE_VIEW
   })
-  const capture = createEditorSceneCaptureReader({
-    state: runtime.state,
-    revision: runtime.revision
-  })
   let trace: Result['trace']
 
   return {
-    capture,
+    capture: runtime.capture,
     working: () => runtime.state(),
     update: (value) => {
       const result = runtime.update(value)

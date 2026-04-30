@@ -1,5 +1,5 @@
 import { document as documentApi } from '@whiteboard/core/document'
-import { getNodeMindmapId, isMindmapRoot } from '@whiteboard/core/mindmap/ops'
+import { getNodeMindmapId } from '@whiteboard/core/mindmap/ops'
 import { node as nodeApi } from '@whiteboard/core/node'
 import type {
   WhiteboardCompileContext,
@@ -35,7 +35,7 @@ export const compileCanvasDelete = (
 ) => {
   const document = ctx.document
   const decision = resolveLockDecision({
-    document,
+    reader: ctx.reader,
     target: {
       kind: 'refs',
       refs,
@@ -62,7 +62,7 @@ export const compileCanvasDelete = (
       return
     }
 
-    const node = document.nodes[ref.id]
+    const node = ctx.reader.nodes.get(ref.id)
     const mindmapId = getNodeMindmapId(node)
     if (!mindmapId) {
       ctx.emit({
@@ -73,7 +73,7 @@ export const compileCanvasDelete = (
     }
 
     ctx.emit(
-      isMindmapRoot(document, node)
+      ctx.reader.mindmaps.isRoot(ref.id)
         ? {
             type: 'mindmap.delete',
             id: mindmapId
@@ -95,7 +95,7 @@ export const compileCanvasDuplicate = (
 ) => {
   const document = ctx.document
   const decision = resolveLockDecision({
-    document,
+    reader: ctx.reader,
     target: {
       kind: 'refs',
       refs,
@@ -114,7 +114,7 @@ export const compileCanvasDuplicate = (
   }
 
   const nodeIds = refs.filter((ref) => ref.kind === 'node').map((ref) => ref.id)
-  if (nodeIds.some((nodeId) => getNodeMindmapId(document.nodes[nodeId]))) {
+  if (nodeIds.some((nodeId) => ctx.reader.mindmaps.byNode(nodeId))) {
     return failInvalid(ctx, 'Mindmap duplication must use dedicated mindmap commands.')
   }
 
@@ -159,20 +159,21 @@ const compileCanvasSelectionMove = (
     intent,
     document
   } = ctx
+  const reader = ctx.reader
 
   for (const nodeId of new Set(intent.nodeIds)) {
-    if (!document.nodes[nodeId]) {
+    if (!reader.nodes.has(nodeId)) {
       return failInvalid(ctx, `Node ${nodeId} not found.`)
     }
   }
   for (const edgeId of new Set(intent.edgeIds)) {
-    if (!document.edges[edgeId]) {
+    if (!reader.edges.has(edgeId)) {
       return failInvalid(ctx, `Edge ${edgeId} not found.`)
     }
   }
 
-  const nodes = Object.values(document.nodes)
-  const edges = Object.values(document.edges)
+  const nodes = reader.nodes.list()
+  const edges = reader.edges.list()
   const move = nodeApi.move.buildSet({
     nodes,
     ids: intent.nodeIds
@@ -195,7 +196,7 @@ const compileCanvasSelectionMove = (
   }).edges
 
   const nodeDecision = resolveLockDecision({
-    document,
+    reader,
     target: {
       kind: 'nodes',
       nodeIds: movedNodeIds
@@ -210,7 +211,7 @@ const compileCanvasSelectionMove = (
     ...followEffect.edges.map((entry) => entry.id)
   ]
   const edgeDecision = resolveLockDecision({
-    document,
+    reader,
     target: {
       kind: 'edge-ids',
       edgeIds: touchedEdgeIds
@@ -225,7 +226,7 @@ const compileCanvasSelectionMove = (
   const positions = nodeApi.move.projectPositions(move.members, intent.delta)
 
   for (const entry of positions) {
-    const node = document.nodes[entry.id]
+    const node = reader.nodes.get(entry.id)
     if (!node) {
       continue
     }
@@ -245,7 +246,7 @@ const compileCanvasSelectionMove = (
       continue
     }
 
-    const rootId = document.mindmaps[mindmapId]?.root
+    const rootId = reader.mindmaps.get(mindmapId)?.root
     if (!rootId) {
       throw new Error(`Mindmap ${mindmapId} root missing.`)
     }
@@ -270,7 +271,7 @@ const compileCanvasSelectionMove = (
   }
 
   selectedEdgeChanges.forEach((entry) => {
-    const edge = document.edges[entry.id]
+    const edge = reader.edges.get(entry.id)
     if (!edge) {
       return
     }
@@ -278,7 +279,7 @@ const compileCanvasSelectionMove = (
   })
 
   followEffect.edges.forEach((entry) => {
-    const edge = document.edges[entry.id]
+    const edge = reader.edges.get(entry.id)
     if (!edge) {
       return
     }
@@ -307,7 +308,7 @@ export const canvasIntentHandlers: CanvasIntentHandlers = {
   },
   'canvas.selection.move': (ctx) => compileCanvasSelectionMove(ctx),
   'canvas.order.move': (ctx) => {
-    const current = ctx.document.canvas.order
+    const current = ctx.reader.canvas.order()
     const target = reorderCanvasRefs(current, ctx.intent.refs, ctx.intent.mode)
     createCanvasOrderMoveOps(current, target).forEach((op) => ctx.emit(op))
   }

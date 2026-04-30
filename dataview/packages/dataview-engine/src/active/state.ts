@@ -3,10 +3,12 @@ import type {
   FieldReducerState
 } from '@dataview/core/view'
 import type {
+  DataDoc,
   Field,
   FieldId,
   RecordId
 } from '@dataview/core/types'
+import type { DocumentReader } from '@dataview/core/document/reader'
 import type {
   DataviewActiveSpec
 } from '@dataview/engine/active/frame'
@@ -155,6 +157,10 @@ export interface DataviewActiveState {
 
 export interface DataviewState {
   revision: Revision
+  document?: {
+    current: DataDoc
+    reader: DocumentReader
+  }
   active: DataviewActiveState
 }
 

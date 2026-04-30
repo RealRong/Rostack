@@ -15,7 +15,6 @@ import type {
   DocumentReader
 } from './document/reader'
 import {
-  createCompileReader,
   issue,
   type DataviewCompileInput
 } from './compile-base'
@@ -43,7 +42,7 @@ const runCompileIntent = (
     reader: DocumentReader
   ) => unknown
 ) => {
-  const result = compileIntent(input.intent, input, createCompileReader(input))
+  const result = compileIntent(input.intent, input, input.reader)
   if (result !== undefined) {
     input.output(result)
   }

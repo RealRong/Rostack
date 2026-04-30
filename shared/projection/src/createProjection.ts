@@ -44,10 +44,12 @@ export interface ProjectionContext<
     delta: MutationDelta
   },
   TState,
+  TRead,
   TPhaseName extends string = string
 > {
   input: TInput
   state: TState
+  read: TRead
   revision: Revision
   dirty: ProjectionDirty
   phase: Record<TPhaseName, ProjectionPhaseStatus>
@@ -122,9 +124,10 @@ export type ProjectionPhase<
     delta: MutationDelta
   },
   TState,
+  TRead,
   TPhaseName extends string
 > = (
-  context: ProjectionContext<TInput, TState, TPhaseName>
+  context: ProjectionContext<TInput, TState, TRead, TPhaseName>
 ) => void
 
 export type ProjectionPhaseSpec<
@@ -132,12 +135,13 @@ export type ProjectionPhaseSpec<
     delta: MutationDelta
   },
   TState,
+  TRead,
   TPhaseName extends string
 > =
-  | ProjectionPhase<TInput, TState, TPhaseName>
+  | ProjectionPhase<TInput, TState, TRead, TPhaseName>
   | {
       after?: readonly TPhaseName[]
-      run: ProjectionPhase<TInput, TState, TPhaseName>
+      run: ProjectionPhase<TInput, TState, TRead, TPhaseName>
     }
 
 export type ProjectionPhaseTable<
@@ -145,8 +149,9 @@ export type ProjectionPhaseTable<
     delta: MutationDelta
   },
   TState,
+  TRead,
   TPhaseName extends string
-> = Record<TPhaseName, ProjectionPhaseSpec<TInput, TState, TPhaseName>>
+> = Record<TPhaseName, ProjectionPhaseSpec<TInput, TState, TRead, TPhaseName>>
 
 export interface ProjectionPlan<TPhaseName extends string> {
   phases?: readonly TPhaseName[]
@@ -180,7 +185,7 @@ export interface ProjectionCreateOptions<
     read: TRead
     revision: Revision
   }) => ProjectionPlan<TPhaseName>
-  phases: ProjectionPhaseTable<TInput, TState, TPhaseName>
+  phases: ProjectionPhaseTable<TInput, TState, TRead, TPhaseName>
 }
 
 export interface ProjectionRuntime<
@@ -330,12 +335,13 @@ const toPhaseSpec = <
     delta: MutationDelta
   },
   TState,
+  TRead,
   TPhaseName extends string
 >(
-  spec: ProjectionPhaseSpec<TInput, TState, TPhaseName>
+  spec: ProjectionPhaseSpec<TInput, TState, TRead, TPhaseName>
 ): {
   after?: readonly TPhaseName[]
-  run: ProjectionPhase<TInput, TState, TPhaseName>
+  run: ProjectionPhase<TInput, TState, TRead, TPhaseName>
 } => typeof spec === 'function'
   ? {
       run: spec
@@ -377,13 +383,13 @@ export const createProjection = <
   const compiledPhases = Object.fromEntries(
     Object.entries(model.phases).map(([phaseName, spec]) => [
       phaseName,
-      toPhaseSpec(spec as ProjectionPhaseSpec<TInput, TState, TPhaseName>)
+      toPhaseSpec(spec as ProjectionPhaseSpec<TInput, TState, TRead, TPhaseName>)
     ])
   ) as Record<
     TPhaseName,
     {
       after?: readonly TPhaseName[]
-      run: ProjectionPhase<TInput, TState, TPhaseName>
+      run: ProjectionPhase<TInput, TState, TRead, TPhaseName>
     }
   >
   const graph = createPhaseGraph(compiledPhases)
@@ -430,9 +436,10 @@ export const createProjection = <
           }
         ])
       ) as Record<TPhaseName, ProjectionPhaseStatus>
-      const context: ProjectionContext<TInput, TState, TPhaseName> = {
+      const context: ProjectionContext<TInput, TState, TRead, TPhaseName> = {
         input,
         state,
+        read,
         revision,
         dirty: {
           reset: input.delta.reset === true,

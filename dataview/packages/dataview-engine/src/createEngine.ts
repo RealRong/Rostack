@@ -124,7 +124,7 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
     return {
       rev: current.rev,
       doc: current.document,
-      active: projection.read.active(),
+      active: projection.read.active.snapshot(),
       docActiveViewId: context.activeViewId,
       docActiveView: context.activeView
     }
@@ -141,10 +141,10 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
       startedAt: nextCommit.at,
       commit: nextCommit,
       index: {
-        trace: projection.read.indexTrace()
+        trace: projection.read.index.trace()
       },
       active: {
-        trace: projection.read.activeTrace(projectionResult.trace.totalMs)
+        trace: projection.read.publish.activeTrace(projectionResult.trace.totalMs)
       },
       outputMs: 0
     })

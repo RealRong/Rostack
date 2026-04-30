@@ -9,7 +9,6 @@ import type {
 import type {
   WhiteboardCompileIds,
   WhiteboardCompileServices,
-  WhiteboardMutationReader,
   WhiteboardMutationTable
 } from '@whiteboard/core/operations'
 import {
@@ -20,7 +19,11 @@ import {
   whiteboardEntities
 } from '@whiteboard/core/operations'
 import {
+  createDocumentReader,
   normalizeDocument
+} from '@whiteboard/core/document'
+import type {
+  DocumentReader
 } from '@whiteboard/core/document'
 import { createRegistries } from '@whiteboard/core/registry'
 import { createId } from '@shared/core'
@@ -118,13 +121,13 @@ export const createEngine = ({
     Document,
     WhiteboardMutationTable,
     Operation,
-    WhiteboardMutationReader,
+    DocumentReader,
     WhiteboardCompileServices,
     ResultCode
   >({
     document,
     normalize: normalizeDocument,
-    createReader: (readDocument) => readDocument(),
+    createReader: createDocumentReader,
     services,
     entities: whiteboardEntities,
     custom: whiteboardCustom,

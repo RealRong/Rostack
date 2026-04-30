@@ -281,7 +281,7 @@ const createProjectionSelectorSubscription = (
 ): SubscribeSource<ViewState | undefined> => (
   listener
 ) => projection.subscribe(() => {
-  listener(projection.read.active())
+  listener(projection.read.active.snapshot())
 })
 
 export const createEngineSource = (input: {
@@ -294,7 +294,7 @@ export const createEngineSource = (input: {
     listener(commit.document)
   })
   const projectionSubscribe = createProjectionSelectorSubscription(input.projection)
-  const currentActive = () => input.projection.read.active()
+  const currentActive = () => input.projection.read.active.snapshot()
 
   const documentRecords = createSelectedEntitySource({
     current: currentDocument,

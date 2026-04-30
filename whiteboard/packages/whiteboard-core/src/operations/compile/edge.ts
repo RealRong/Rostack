@@ -445,9 +445,8 @@ export const edgeIntentHandlers: EdgeIntentHandlers = {
     })
   },
   'edge.update': (ctx) => {
-    const document = ctx.document
     const decision = resolveLockDecision({
-      document,
+      reader: ctx.reader,
       target: {
         kind: 'edge-ids',
         edgeIds: ctx.intent.updates.map((entry) => entry.id)
@@ -458,7 +457,7 @@ export const edgeIntentHandlers: EdgeIntentHandlers = {
     }
 
     ctx.intent.updates.forEach((entry) => {
-      const edge = ctx.document.edges[entry.id]
+      const edge = ctx.reader.edges.get(entry.id)
       if (!edge) {
         return
       }
@@ -466,12 +465,9 @@ export const edgeIntentHandlers: EdgeIntentHandlers = {
     })
   },
   'edge.move': (ctx) => {
-    const {
-      intent,
-      document
-    } = ctx
+    const { intent } = ctx
     const decision = resolveLockDecision({
-      document,
+      reader: ctx.reader,
       target: {
         kind: 'edge-ids',
         edgeIds: intent.ids
@@ -482,7 +478,7 @@ export const edgeIntentHandlers: EdgeIntentHandlers = {
     }
 
     intent.ids.forEach((edgeId) => {
-      const edge = ctx.document.edges[edgeId]
+      const edge = ctx.reader.edges.get(edgeId)
       const patch = edge ? edgeApi.edit.move(edge, intent.delta) : undefined
       if (!edge || !patch) {
         return
@@ -491,12 +487,9 @@ export const edgeIntentHandlers: EdgeIntentHandlers = {
     })
   },
   'edge.reconnect.commit': (ctx) => {
-    const {
-      intent,
-      document
-    } = ctx
+    const { intent } = ctx
     const currentDecision = resolveLockDecision({
-      document,
+      reader: ctx.reader,
       target: {
         kind: 'edge-ids',
         edgeIds: [intent.edgeId]
@@ -507,7 +500,7 @@ export const edgeIntentHandlers: EdgeIntentHandlers = {
     }
 
     const targetDecision = resolveLockDecision({
-      document,
+      reader: ctx.reader,
       target: {
         kind: 'edge-ends',
         ends: [intent.target]
@@ -517,7 +510,7 @@ export const edgeIntentHandlers: EdgeIntentHandlers = {
       return failLockedEdgeModification(ctx, targetDecision.reason)
     }
 
-    const edge = ctx.document.edges[intent.edgeId]
+    const edge = ctx.reader.edges.get(intent.edgeId)
     if (!edge) {
       return
     }
@@ -539,9 +532,8 @@ export const edgeIntentHandlers: EdgeIntentHandlers = {
     }, ctx)
   },
   'edge.delete': (ctx) => {
-    const document = ctx.document
     const decision = resolveLockDecision({
-      document,
+      reader: ctx.reader,
       target: {
         kind: 'edge-ids',
         edgeIds: ctx.intent.ids

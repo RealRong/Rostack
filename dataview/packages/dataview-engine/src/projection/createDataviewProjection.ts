@@ -3,6 +3,10 @@ import type {
   ViewId
 } from '@dataview/core/types'
 import {
+  createDocumentReader,
+  type DocumentReader
+} from '@dataview/core/document/reader'
+import {
   createProjection,
   type ProjectionStoreTree
 } from '@shared/projection'
@@ -29,6 +33,7 @@ import type {
   DataviewMutationDelta
 } from '@dataview/engine/mutation/delta'
 import type {
+  IndexTrace,
   SnapshotTrace,
   ViewTrace
 } from '@dataview/engine/contracts/performance'
@@ -46,6 +51,31 @@ export interface DataviewProjectionInput {
 export interface DataviewProjectionOutput {
   activeId?: ViewId
   active?: ViewState
+}
+
+export interface DataviewProjectionRead {
+  document: {
+    current(): DataDoc | undefined
+    reader(): DocumentReader | undefined
+  }
+  active: {
+    id(): ViewId | undefined
+    state(): DataviewState['active']
+    snapshot(): ViewState | undefined
+  }
+  index: {
+    state(): DataviewState['active']['index']
+    trace(): IndexTrace | undefined
+  }
+  publish: {
+    snapshotTrace(): SnapshotTrace
+    viewTrace(totalMs?: number): ViewTrace
+    activeTrace(totalMs?: number): {
+      view: ViewTrace
+      snapshot: SnapshotTrace
+      snapshotMs: number
+    }
+  }
 }
 
 const EMPTY_SNAPSHOT_TRACE: SnapshotTrace = {
@@ -129,13 +159,23 @@ const didActiveChange = (
   || state.active.changes.items !== 'skip'
   || state.active.changes.summaries !== 'skip'
 
-export const createDataviewProjection = () => createProjection({
-  createState,
-  createRead: (runtime) => ({
-    activeId: () => runtime.state().active.spec?.id,
-    active: () => runtime.state().active.snapshot,
-    indexState: () => runtime.state().active.index?.state,
-    indexTrace: () => runtime.state().active.index?.trace,
+export const createDataviewProjectionRead = (runtime: {
+  state: () => DataviewState
+}): DataviewProjectionRead => ({
+  document: {
+    current: () => runtime.state().document?.current,
+    reader: () => runtime.state().document?.reader
+  },
+  active: {
+    id: () => runtime.state().active.spec?.id,
+    state: () => runtime.state().active,
+    snapshot: () => runtime.state().active.snapshot
+  },
+  index: {
+    state: () => runtime.state().active.index,
+    trace: () => runtime.state().active.index?.trace
+  },
+  publish: {
     snapshotTrace: () => runtime.state().active.trace.snapshot,
     viewTrace: (totalMs = 0) => buildViewTrace({
       state: runtime.state(),
@@ -149,10 +189,15 @@ export const createDataviewProjection = () => createProjection({
       snapshot: runtime.state().active.trace.snapshot,
       snapshotMs: runtime.state().active.trace.publish.publishMs
     })
-  }),
-  capture: ({ state }) => ({
-    activeId: state.active.spec?.id,
-    active: state.active.snapshot
+  }
+})
+
+export const createDataviewProjection = () => createProjection({
+  createState,
+  createRead: createDataviewProjectionRead,
+  capture: ({ read }) => ({
+    activeId: read.active.id(),
+    active: read.active.snapshot()
   }),
   stores: {
     active: {
@@ -186,6 +231,11 @@ export const createDataviewProjection = () => createProjection({
   }),
   phases: ({
     active: (ctx) => {
+      const reader = createDocumentReader(() => ctx.input.document)
+      ctx.state.document = {
+        current: ctx.input.document,
+        reader
+      }
       const frame = createDataviewFrame({
         revision: ctx.revision,
         document: ctx.input.document,
@@ -193,17 +243,17 @@ export const createDataviewProjection = () => createProjection({
       })
       const index = ensureDataviewIndex({
         frame,
-        previous: ctx.state.active.index
+        previous: ctx.read.index.state()
       })
       const nextActive = runDataviewActive({
         frame,
         plan: createDataviewActivePlan({
           frame,
-          previous: ctx.state.active,
+          previous: ctx.read.active.state(),
           index
         }),
         index,
-        previous: ctx.state.active
+        previous: ctx.read.active.state()
       })
 
       ctx.state.revision = ctx.revision
@@ -215,6 +265,7 @@ export const createDataviewProjection = () => createProjection({
   }) satisfies ProjectionPhaseTable<
     DataviewProjectionInput,
     DataviewState,
+    DataviewProjectionRead,
     DataviewProjectionPhaseName
   >
 })

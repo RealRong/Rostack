@@ -1,3 +1,4 @@
+import { document as documentApi, type DocumentReader } from '@whiteboard/core/document'
 import { edge as edgeApi } from '@whiteboard/core/edge'
 import { mindmap as mindmapApi } from '@whiteboard/core/mindmap'
 import { node as nodeApi } from '@whiteboard/core/node'
@@ -10,12 +11,19 @@ import type {
 } from '@whiteboard/core/types'
 import type { Revision } from '@shared/projection'
 import type {
+  GraphCapture,
+  RenderCapture,
+  UiCapture
+} from '../../contracts/capture'
+import type {
+  EdgeView,
   NodeCapabilityInput,
+  NodeView,
+  OwnerRef,
   Query,
   SceneViewSnapshot
 } from '../../contracts/editor'
 import type { WorkingState } from '../../contracts/working'
-import { createDocumentResolver } from '../../model/document/resolver'
 import { readGroupSignatureFromTarget } from '../../model/graph/group'
 import { readRelatedEdgeIds } from '../../model/index/read'
 import { createSpatialRead } from '../../model/spatial/query'
@@ -26,6 +34,25 @@ import { createFrameRead } from './frame'
 import { createHitRead } from './hit'
 import { createSelectionRead } from './selection'
 import { createViewRead } from './view'
+
+export interface EditorSceneProjectionRead extends Query {
+  source: DocumentReader
+  graph: {
+    node(id: NodeId): NodeView | undefined
+    edge(id: EdgeId): EdgeView | undefined
+  }
+  index: {
+    ownerByNode(nodeId: NodeId): OwnerRef | undefined
+    relatedEdgeIds(nodeIds: Iterable<NodeId>): readonly EdgeId[]
+  }
+  capture: {
+    documentRevision(): Revision
+    graph(): GraphCapture
+    render(): RenderCapture
+    items(): WorkingState['items']
+    ui(): UiCapture
+  }
+}
 
 const resolveMindmapId = (
   state: WorkingState,
@@ -55,20 +82,18 @@ const toGroupTarget = (
     : [])
 })
 
-export const createQuery = (runtime: {
+export const createProjectionRead = (runtime: {
   revision: () => Revision
   state: () => WorkingState
   items: () => WorkingState['items']
   spatial: () => SpatialIndexState
   nodeCapability?: NodeCapabilityInput
   view: () => SceneViewSnapshot
-}): Query => {
+}): EditorSceneProjectionRead => {
   const spatial = createSpatialRead({
     state: runtime.spatial
   })
-  const document = createDocumentResolver({
-    state: runtime.state
-  })
+  const source = documentApi.reader(() => runtime.state().document.snapshot)
   const frame = createFrameRead({
     state: runtime.state,
     spatial
@@ -98,15 +123,69 @@ export const createQuery = (runtime: {
 
   return {
     revision: runtime.revision,
+    source,
+    graph: {
+      node: (id) => runtime.state().graph.nodes.get(id),
+      edge: (id) => runtime.state().graph.edges.get(id)
+    },
+    index: {
+      ownerByNode: (nodeId) => runtime.state().indexes.ownerByNode.get(nodeId),
+      relatedEdgeIds: (nodeIds) => readRelatedEdgeIds(runtime.state().indexes, nodeIds)
+    },
+    capture: {
+      documentRevision: () => runtime.state().revision.document,
+      graph: () => ({
+        nodes: runtime.state().graph.nodes,
+        edges: runtime.state().graph.edges,
+        owners: {
+          mindmaps: runtime.state().graph.owners.mindmaps,
+          groups: runtime.state().graph.owners.groups
+        }
+      }),
+      render: () => ({
+        edge: {
+          statics: {
+            ids: runtime.state().render.statics.ids,
+            byId: runtime.state().render.statics.byId
+          },
+          active: runtime.state().render.active,
+          labels: {
+            ids: runtime.state().render.labels.ids,
+            byId: runtime.state().render.labels.byId
+          },
+          masks: {
+            ids: runtime.state().render.masks.ids,
+            byId: runtime.state().render.masks.byId
+          },
+          overlay: runtime.state().render.overlay
+        }
+      }),
+      items: () => runtime.state().items,
+      ui: () => ({
+        chrome: runtime.state().ui.chrome,
+        nodes: runtime.state().ui.nodes,
+        edges: runtime.state().ui.edges
+      })
+    },
     bounds,
     document: {
       get: () => runtime.state().document.snapshot,
       background: () => runtime.state().document.background,
-      node: document.node,
-      edge: document.edge,
-      nodeIds: document.nodeIds,
-      edgeIds: document.edgeIds,
-      slice: document.slice
+      node: source.nodes.get,
+      edge: source.edges.get,
+      nodeIds: source.nodes.ids,
+      edgeIds: source.edges.ids,
+      slice: ({ nodeIds, edgeIds }) => {
+        const exported = documentApi.slice.export.selection({
+          doc: runtime.state().document.snapshot,
+          nodeIds,
+          edgeIds
+        })
+
+        return exported.ok
+          ? exported.data
+          : undefined
+      }
     },
     node: {
       get: (id) => runtime.state().graph.nodes.get(id),

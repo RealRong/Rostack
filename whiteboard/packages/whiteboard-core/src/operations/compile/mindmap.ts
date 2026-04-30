@@ -176,7 +176,7 @@ export const mindmapIntentHandlers: MindmapIntentHandlers = {
     const {
       intent
     } = ctx
-    const mindmap = ctx.document.mindmaps[intent.id]
+    const mindmap = ctx.reader.mindmaps.get(intent.id)
     if (!mindmap) {
       return failInvalid(ctx, `Mindmap ${intent.id} not found.`)
     }
@@ -190,12 +190,11 @@ export const mindmapIntentHandlers: MindmapIntentHandlers = {
       return failInvalid(ctx, `Topic ${intent.input.nodeId} cannot be cloned.`)
     }
 
-    const document = ctx.document
     const map: Record<NodeId, NodeId> = {}
     const walk = (sourceId: NodeId) => {
       const nextId = readCompileServices(ctx).ids.node()
       map[sourceId] = nextId
-      const sourceNode = document.nodes[sourceId]
+      const sourceNode = ctx.reader.nodes.get(sourceId)
       const parentId = sourceId === intent.input.nodeId
         ? targetParentId
         : map[mindmap.members[sourceId]?.parentId ?? '']

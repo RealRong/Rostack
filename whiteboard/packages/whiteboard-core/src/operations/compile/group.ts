@@ -8,17 +8,6 @@ import {
   reorderCanvasRefs
 } from '@whiteboard/core/operations/compile/helpers'
 
-const listGroupCanvasRefs = (
-  document: Pick<import('@whiteboard/core/types').Document, 'canvas' | 'nodes' | 'edges'>,
-  groupId: string
-) => document.canvas.order.filter((ref) => (
-  ref.kind === 'node'
-    ? document.nodes[ref.id]?.groupId === groupId
-    : ref.kind === 'edge'
-      ? document.edges[ref.id]?.groupId === groupId
-      : false
-))
-
 type GroupIntentHandlers = Pick<
   WhiteboardCompileHandlerTable,
   'group.merge'
@@ -57,9 +46,9 @@ export const groupIntentHandlers: GroupIntentHandlers = {
   },
   'group.order.move': (ctx) => {
     const refs = ctx.intent.ids.flatMap((groupId) =>
-      listGroupCanvasRefs(ctx.document, groupId)
+      ctx.reader.canvas.groupRefs(groupId)
     )
-    const current = ctx.document.canvas.order
+    const current = ctx.reader.canvas.order()
     const target = reorderCanvasRefs(current, refs, ctx.intent.mode)
     createCanvasOrderMoveOps(current, target).forEach((op) => ctx.emit(op))
   },
@@ -69,7 +58,7 @@ export const groupIntentHandlers: GroupIntentHandlers = {
     const edgeIds: string[] = []
 
     ctx.intent.ids.forEach((groupId) => {
-      const refs = listGroupCanvasRefs(document, groupId)
+      const refs = ctx.reader.canvas.groupRefs(groupId)
       ctx.emit({
         type: 'group.delete',
         id: groupId

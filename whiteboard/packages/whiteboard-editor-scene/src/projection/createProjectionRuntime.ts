@@ -6,7 +6,6 @@ import type {
 } from '../contracts/editor'
 import type { State } from '../contracts/state'
 import type { WorkingState } from '../contracts/working'
-import { createEditorSceneCaptureReader } from './capture'
 import { createProjection } from './createProjection'
 
 const createEditorSceneStateReader = (input: {
@@ -35,17 +34,12 @@ export const createProjectionRuntime = (input: {
   const state = createEditorSceneStateReader({
     state: runtime.state
   })
-  const capture = createEditorSceneCaptureReader({
-    state: runtime.state,
-    revision: runtime.revision
-  })
-
   return {
     stores: runtime.stores,
     query: runtime.read,
     revision: runtime.revision,
     state,
-    capture,
+    capture: runtime.capture,
     update: (value) => {
       const result = runtime.update(value)
       return {

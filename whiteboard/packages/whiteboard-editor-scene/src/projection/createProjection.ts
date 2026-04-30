@@ -1,6 +1,6 @@
 import {
   createProjection as createSharedProjection,
-  type ProjectionContext,
+  type ProjectionContext
 } from '@shared/projection'
 import type {
   ProjectionDirty,
@@ -12,6 +12,7 @@ import type {
   SceneViewInput,
   EditorSceneLayout
 } from '../contracts/editor'
+import type { Capture } from '../contracts/capture'
 import {
   compileValueChange,
   resetRenderPhaseDelta as resetRenderPhaseState,
@@ -34,7 +35,10 @@ import { patchRenderState } from '../model/render/patch'
 import { patchSpatial } from '../model/spatial/update'
 import { resetSpatialDelta } from '../model/spatial/update'
 import { patchUiState } from '../model/ui/patch'
-import { createQuery } from './query'
+import {
+  createProjectionRead,
+  type EditorSceneProjectionRead
+} from './query'
 import { buildEditorSceneCapture } from './capture'
 import {
   createEditorScenePlan,
@@ -59,7 +63,7 @@ type EditorSceneProjectionDirty = ProjectionDirty & {
 }
 
 const readProjectionDirty = (
-  context: ProjectionContext<Input, WorkingState, EditorScenePhaseName>
+  context: ProjectionContext<Input, WorkingState, EditorSceneProjectionRead, EditorScenePhaseName>
 ): EditorSceneProjectionDirty => context.dirty as EditorSceneProjectionDirty
 
 const resetGraphPhaseDelta = (
@@ -108,11 +112,18 @@ export const createProjection = (input: {
   layout?: EditorSceneLayout
   nodeCapability?: NodeCapabilityInput
   view: SceneViewInput
-}) => createSharedProjection({
+}) => createSharedProjection<
+  Input,
+  WorkingState,
+  EditorSceneProjectionRead,
+  Capture,
+  EditorScenePhaseName,
+  typeof editorSceneStores
+>({
   createState: () => createWorking({
     layout: input.layout
   }),
-  createRead: (runtime) => createQuery({
+  createRead: (runtime) => createProjectionRead({
     revision: runtime.revision,
     state: runtime.state,
     items: () => runtime.state().items,
@@ -120,18 +131,18 @@ export const createProjection = (input: {
     nodeCapability: input.nodeCapability,
     view: input.view
   }),
-  capture: ({ state, revision }) => buildEditorSceneCapture(
-    state,
+  capture: ({ read, revision }) => buildEditorSceneCapture(
+    read,
     revision
   ),
   stores: editorSceneStores,
   phases: {
     document: (ctx) => {
       const dirty = readProjectionDirty(ctx)
-      const previousDocumentRevision = ctx.state.revision.document
-      const previousBackground = ctx.state.document.background
+      const previousDocumentRevision = ctx.read.capture.documentRevision()
+      const previousBackground = ctx.read.document.background()
 
-      dirty.previousDocument = ctx.state.document.snapshot
+      dirty.previousDocument = ctx.read.document.get()
       resetDocumentPhaseDelta(ctx.state)
 
       patchDocumentState({
@@ -316,6 +327,7 @@ export const createProjection = (input: {
   } satisfies ProjectionPhaseTable<
     Input,
     WorkingState,
+    EditorSceneProjectionRead,
     EditorScenePhaseName
   >
 })

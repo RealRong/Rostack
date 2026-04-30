@@ -17,6 +17,10 @@ import {
   createEdgeLabelPatch,
   readEdgeLabelUpdateFromPatch
 } from '@whiteboard/core/edge/update'
+import {
+  createDocumentReader,
+  type DocumentReader
+} from '@whiteboard/core/document/reader'
 import { mindmap as mindmapApi } from '@whiteboard/core/mindmap'
 import {
   createMindmapTopicPatch,
@@ -27,8 +31,7 @@ import {
 } from '@whiteboard/core/mutation'
 import { node as nodeApi } from '@whiteboard/core/node'
 import type {
-  WhiteboardCompileServices,
-  WhiteboardMutationReader
+  WhiteboardCompileServices
 } from '@whiteboard/core/operations/compile'
 import type {
   CanvasItemRef,
@@ -81,7 +84,7 @@ type WhiteboardCustomReduceContext<
 > = MutationCustomReduceInput<
   Document,
   TOp,
-  WhiteboardMutationReader,
+  DocumentReader,
   WhiteboardCompileServices,
   WhiteboardCustomCode
 >
@@ -375,52 +378,6 @@ const readPointAnchorFromIndex = (
       pointId: points[index - 1]!.id
     }
 
-const readNode = (
-  document: Document,
-  id: NodeId
-): Node | undefined => document.nodes[id]
-
-const readEdge = (
-  document: Document,
-  id: EdgeId
-): Edge | undefined => document.edges[id]
-
-const readMindmap = (
-  document: Document,
-  id: MindmapId
-): MindmapRecord | undefined => document.mindmaps[id]
-
-const readMindmapTree = (
-  document: Document,
-  id: MindmapId
-) => {
-  const record = readMindmap(document, id)
-  return record
-    ? mindmapApi.tree.fromRecord(record)
-    : undefined
-}
-
-const readMindmapSubtreeNodeIds = (
-  document: Document,
-  id: MindmapId,
-  rootId?: NodeId
-): readonly NodeId[] => {
-  const tree = readMindmapTree(document, id)
-  const record = readMindmap(document, id)
-  if (!tree || !record) {
-    return []
-  }
-  return mindmapApi.tree.subtreeIds(tree, rootId ?? record.root)
-}
-
-const collectConnectedEdges = (
-  document: Document,
-  nodeIds: ReadonlySet<NodeId>
-): readonly Edge[] => Object.values(document.edges).filter((edge) => (
-  (edge.source.kind === 'node' && nodeIds.has(edge.source.nodeId))
-  || (edge.target.kind === 'node' && nodeIds.has(edge.target.nodeId))
-))
-
 const toMindmapRecord = (
   id: MindmapId,
   tree: ReturnType<typeof mindmapApi.tree.fromRecord>
@@ -443,16 +400,16 @@ const toMindmapRecord = (
 })
 
 const readMindmapLayoutRects = (
-  document: Document,
+  reader: DocumentReader,
   id: MindmapId
 ): ReturnType<typeof mindmapApi.layout.anchor>['node'] | undefined => {
-  const record = readMindmap(document, id)
-  const tree = readMindmapTree(document, id)
+  const record = reader.mindmaps.get(id)
+  const tree = reader.mindmaps.tree(id)
   if (!record || !tree) {
     return undefined
   }
 
-  const root = readNode(document, record.root)
+  const root = reader.nodes.get(record.root)
   if (!root) {
     return undefined
   }
@@ -460,7 +417,7 @@ const readMindmapLayoutRects = (
   const computed = mindmapApi.layout.compute(
     tree,
     (nodeId) => {
-      const node = readNode(document, nodeId)
+      const node = reader.nodes.get(nodeId)
       return {
         width: Math.max(node?.size?.width ?? 1, 1),
         height: Math.max(node?.size?.height ?? 1, 1)
@@ -481,8 +438,14 @@ const readMindmapLayoutChangedNodeIds = (input: {
   id: MindmapId
   exclude?: Iterable<NodeId>
 }): readonly NodeId[] => {
-  const beforeRects = readMindmapLayoutRects(input.before, input.id) ?? {}
-  const afterRects = readMindmapLayoutRects(input.after, input.id) ?? {}
+  const beforeRects = readMindmapLayoutRects(
+    createDocumentReader(() => input.before),
+    input.id
+  ) ?? {}
+  const afterRects = readMindmapLayoutRects(
+    createDocumentReader(() => input.after),
+    input.id
+  ) ?? {}
   const excluded = new Set(input.exclude ?? [])
   const nodeIds = new Set<NodeId>([
     ...Object.keys(beforeRects) as NodeId[],
@@ -510,25 +473,25 @@ const mergeNodeTouchIds = (
 ) as readonly NodeId[]
 
 const createMindmapSnapshot = (
-  document: Document,
+  reader: DocumentReader,
   id: MindmapId
 ): MindmapSnapshot => {
-  const mindmap = readMindmap(document, id)
-  const tree = readMindmapTree(document, id)
+  const mindmap = reader.mindmaps.get(id)
+  const tree = reader.mindmaps.tree(id)
   if (!mindmap || !tree) {
     throw new Error(`Mindmap ${id} not found.`)
   }
 
-  const nodeIds = new Set(mindmapApi.tree.subtreeIds(tree, tree.rootNodeId))
+  const nodeIds = new Set(reader.mindmaps.subtreeNodeIds(id, tree.rootNodeId))
   return {
     mindmap: clone(mindmap)!,
     nodes: [...nodeIds].flatMap((nodeId) => {
-      const node = readNode(document, nodeId)
+      const node = reader.nodes.get(nodeId)
       return node
         ? [clone(node)!]
         : []
     }),
-    slot: readCanvasSlot(document.canvas.order, {
+    slot: reader.canvas.slot({
       kind: 'mindmap',
       id
     })
@@ -536,12 +499,12 @@ const createMindmapSnapshot = (
 }
 
 const createMindmapTopicSnapshot = (
-  document: Document,
+  reader: DocumentReader,
   id: MindmapId,
   rootId: NodeId
 ): MindmapTopicSnapshot => {
-  const current = readMindmap(document, id)
-  const tree = readMindmapTree(document, id)
+  const current = reader.mindmaps.get(id)
+  const tree = reader.mindmaps.tree(id)
   if (!current || !tree) {
     throw new Error(`Mindmap ${id} not found.`)
   }
@@ -554,7 +517,7 @@ const createMindmapTopicSnapshot = (
 
   const siblings = current.children[parentId] ?? []
   const index = siblings.indexOf(rootId)
-  const nodeIds = new Set(mindmapApi.tree.subtreeIds(tree, rootId))
+  const nodeIds = new Set(reader.mindmaps.subtreeNodeIds(id, rootId))
 
   return {
     root: rootId,
@@ -568,7 +531,7 @@ const createMindmapTopicSnapshot = (
         : undefined
     },
     nodes: [...nodeIds].flatMap((nodeId) => {
-      const node = readNode(document, nodeId)
+      const node = reader.nodes.get(nodeId)
       return node
         ? [clone(node)!]
         : []
@@ -688,16 +651,17 @@ const createMindmapDeleteResult = (
     document: Document
   }
 ): CustomResult | void => {
-  const current = readMindmap(input.document, input.op.id)
-  const tree = readMindmapTree(input.document, input.op.id)
+  const reader = createDocumentReader(() => input.document)
+  const current = reader.mindmaps.get(input.op.id)
+  const tree = reader.mindmaps.tree(input.op.id)
   if (!current || !tree) {
     return
   }
 
   const before = input.document
-  const snapshot = createMindmapSnapshot(before, input.op.id)
-  const nodeIds = new Set(mindmapApi.tree.subtreeIds(tree, tree.rootNodeId))
-  const connectedEdges = collectConnectedEdges(before, nodeIds)
+  const snapshot = createMindmapSnapshot(reader, input.op.id)
+  const nodeIds = new Set(reader.mindmaps.subtreeNodeIds(input.op.id, tree.rootNodeId))
+  const connectedEdges = reader.edges.connectedToNodes(nodeIds)
   const edgeIds = connectedEdges.map((edge) => edge.id)
 
   const nextNodes = {
@@ -802,9 +766,10 @@ const createMindmapMoveResult = (
     fail: WhiteboardCustomReduceContext['fail']
   }
 ): CustomResult => {
-  const current = readMindmap(input.document, input.op.id)
+  const reader = createDocumentReader(() => input.document)
+  const current = reader.mindmaps.get(input.op.id)
   const root = current
-    ? readNode(input.document, current.root)
+    ? reader.nodes.get(current.root)
     : undefined
   if (!current || !root) {
     return input.fail({
@@ -860,7 +825,8 @@ const createMindmapLayoutResult = (
     fail: WhiteboardCustomReduceContext['fail']
   }
 ): CustomResult => {
-  const current = readMindmap(input.document, input.op.id)
+  const reader = createDocumentReader(() => input.document)
+  const current = reader.mindmaps.get(input.op.id)
   if (!current) {
     return input.fail({
       code: 'invalid',
@@ -921,7 +887,8 @@ const createMindmapTopicInsertResult = (
     fail: WhiteboardCustomReduceContext['fail']
   }
 ): CustomResult => {
-  const current = readMindmap(input.document, input.op.id)
+  const reader = createDocumentReader(() => input.document)
+  const current = reader.mindmaps.get(input.op.id)
   if (!current) {
     return input.fail({
       code: 'invalid',
@@ -1001,7 +968,8 @@ const createMindmapTopicRestoreResult = (
     fail: WhiteboardCustomReduceContext['fail']
   }
 ): CustomResult => {
-  const current = readMindmap(input.document, input.op.id)
+  const reader = createDocumentReader(() => input.document)
+  const current = reader.mindmaps.get(input.op.id)
   if (!current) {
     return input.fail({
       code: 'invalid',
@@ -1108,7 +1076,8 @@ const createMindmapTopicMoveResult = (
     fail: WhiteboardCustomReduceContext['fail']
   }
 ): CustomResult => {
-  const current = readMindmap(input.document, input.op.id)
+  const reader = createDocumentReader(() => input.document)
+  const current = reader.mindmaps.get(input.op.id)
   if (!current) {
     return input.fail({
       code: 'invalid',
@@ -1187,8 +1156,9 @@ const createMindmapTopicDeleteResult = (
     fail: WhiteboardCustomReduceContext['fail']
   }
 ): CustomResult => {
-  const current = readMindmap(input.document, input.op.id)
-  const tree = readMindmapTree(input.document, input.op.id)
+  const reader = createDocumentReader(() => input.document)
+  const current = reader.mindmaps.get(input.op.id)
+  const tree = reader.mindmaps.tree(input.op.id)
   if (!current || !tree) {
     return input.fail({
       code: 'invalid',
@@ -1203,9 +1173,9 @@ const createMindmapTopicDeleteResult = (
   }
 
   const before = input.document
-  const snapshot = createMindmapTopicSnapshot(before, input.op.id, input.op.input.nodeId)
-  const nodeIds = new Set(mindmapApi.tree.subtreeIds(tree, input.op.input.nodeId))
-  const connectedEdges = collectConnectedEdges(before, nodeIds)
+  const snapshot = createMindmapTopicSnapshot(reader, input.op.id, input.op.input.nodeId)
+  const nodeIds = new Set(reader.mindmaps.subtreeNodeIds(input.op.id, input.op.input.nodeId))
+  const connectedEdges = reader.edges.connectedToNodes(nodeIds)
   const edgeIds = connectedEdges.map((edge) => edge.id)
   const removed = mindmapApi.tree.removeSubtree(tree, input.op.input)
   if (!removed.ok) {
@@ -1333,7 +1303,8 @@ const createMindmapTopicPatchResult = (
     fail: WhiteboardCustomReduceContext['fail']
   }
 ): CustomResult => {
-  const current = readNode(input.document, input.op.topicId)
+  const reader = createDocumentReader(() => input.document)
+  const current = reader.nodes.get(input.op.topicId)
   if (!current) {
     return input.fail({
       code: 'invalid',
@@ -1425,7 +1396,8 @@ const createMindmapBranchPatchResult = (
     fail: WhiteboardCustomReduceContext['fail']
   }
 ): CustomResult | void => {
-  const current = readMindmap(input.document, input.op.id)
+  const reader = createDocumentReader(() => input.document)
+  const current = reader.mindmaps.get(input.op.id)
   if (!current) {
     return input.fail({
       code: 'invalid',
@@ -1535,7 +1507,8 @@ const createMindmapTopicCollapseResult = (
     fail: WhiteboardCustomReduceContext['fail']
   }
 ): CustomResult => {
-  const current = readMindmap(input.document, input.op.id)
+  const reader = createDocumentReader(() => input.document)
+  const current = reader.mindmaps.get(input.op.id)
   if (!current) {
     return input.fail({
       code: 'invalid',
@@ -1618,8 +1591,9 @@ const reduceCanvasOrderMove = (
     Extract<WhiteboardCustomOperation, { type: 'canvas.order.move' }>
   >
 ): CustomResult | void => {
-  const nextOrder = moveCanvasOrder(input.document.canvas.order, input.op.refs, input.op.to)
-  if (same(nextOrder, input.document.canvas.order)) {
+  const currentOrder = input.reader.canvas.order()
+  const nextOrder = moveCanvasOrder(currentOrder, input.op.refs, input.op.to)
+  if (same(nextOrder, currentOrder)) {
     return
   }
 
@@ -1643,7 +1617,7 @@ const reduceCanvasOrderMove = (
       inverse: [{
         type: 'canvas.order.move',
         refs: input.op.refs.map((ref) => cloneCanvasRef(ref)!),
-        to: readCanvasPreviousTo(input.document.canvas.order, input.op.refs)
+        to: readCanvasPreviousTo(currentOrder, input.op.refs)
       }]
     }
   })
@@ -1654,7 +1628,7 @@ const reduceEdgeLabelInsert = (
     Extract<WhiteboardCustomOperation, { type: 'edge.label.insert' }>
   >
 ): CustomResult => {
-  const current = readEdge(input.document, input.op.edgeId)
+  const current = input.reader.edges.get(input.op.edgeId)
   if (!current) {
     return input.fail({
       code: 'invalid',
@@ -1707,7 +1681,7 @@ const reduceEdgeLabelDelete = (
     Extract<WhiteboardCustomOperation, { type: 'edge.label.delete' }>
   >
 ): CustomResult | void => {
-  const current = readEdge(input.document, input.op.edgeId)
+  const current = input.reader.edges.get(input.op.edgeId)
   const labels = current
     ? [...getLabels(current)]
     : []
@@ -1757,7 +1731,7 @@ const reduceEdgeLabelMove = (
     Extract<WhiteboardCustomOperation, { type: 'edge.label.move' }>
   >
 ): CustomResult | void => {
-  const current = readEdge(input.document, input.op.edgeId)
+  const current = input.reader.edges.get(input.op.edgeId)
   const labels = current
     ? [...getLabels(current)]
     : []
@@ -1816,7 +1790,7 @@ const reduceEdgeLabelPatch = (
     Extract<WhiteboardCustomOperation, { type: 'edge.label.patch' }>
   >
 ): CustomResult => {
-  const current = readEdge(input.document, input.op.edgeId)
+  const current = input.reader.edges.get(input.op.edgeId)
   const labels = current
     ? [...getLabels(current)]
     : []
@@ -1909,7 +1883,7 @@ const reduceEdgeRoutePointInsert = (
     Extract<WhiteboardCustomOperation, { type: 'edge.route.point.insert' }>
   >
 ): CustomResult => {
-  const current = readEdge(input.document, input.op.edgeId)
+  const current = input.reader.edges.get(input.op.edgeId)
   if (!current) {
     return input.fail({
       code: 'invalid',
@@ -1965,7 +1939,7 @@ const reduceEdgeRoutePointDelete = (
     Extract<WhiteboardCustomOperation, { type: 'edge.route.point.delete' }>
   >
 ): CustomResult | void => {
-  const current = readEdge(input.document, input.op.edgeId)
+  const current = input.reader.edges.get(input.op.edgeId)
   const points = current
     ? [...getManualRoutePoints(current)]
     : []
@@ -2023,7 +1997,7 @@ const reduceEdgeRoutePointMove = (
     Extract<WhiteboardCustomOperation, { type: 'edge.route.point.move' }>
   >
 ): CustomResult | void => {
-  const current = readEdge(input.document, input.op.edgeId)
+  const current = input.reader.edges.get(input.op.edgeId)
   const points = current
     ? [...getManualRoutePoints(current)]
     : []
@@ -2085,7 +2059,7 @@ const reduceEdgeRoutePointPatch = (
     Extract<WhiteboardCustomOperation, { type: 'edge.route.point.patch' }>
   >
 ): CustomResult => {
-  const current = readEdge(input.document, input.op.edgeId)
+  const current = input.reader.edges.get(input.op.edgeId)
   const points = current
     ? [...getManualRoutePoints(current)]
     : []
@@ -2150,7 +2124,7 @@ const reduceEdgeRoutePointPatch = (
 export const whiteboardCustom: MutationCustomTable<
   Document,
   Operation,
-  WhiteboardMutationReader,
+  DocumentReader,
   WhiteboardCompileServices,
   WhiteboardCustomCode
 > = {

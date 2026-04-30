@@ -1,9 +1,11 @@
 import {
   emitMindmapTopicUpdateOps,
-  getNodeMindmapId,
-  isMindmapRoot
+  getNodeMindmapId
 } from '@whiteboard/core/mindmap/ops'
 import { node as nodeApi } from '@whiteboard/core/node'
+import type {
+  DocumentReader
+} from '@whiteboard/core/document/reader'
 import type {
   WhiteboardCompileContext,
   WhiteboardCompileHandlerTable
@@ -16,7 +18,6 @@ import {
 } from '@whiteboard/core/operations/compile/helpers'
 import { resolveLockDecision } from '@whiteboard/core/operations/lock'
 import type {
-  Document,
   NodeId,
   NodeUpdateInput,
   Operation
@@ -43,11 +44,11 @@ const readErrorDetails = (
 )
 
 const compileMindmapTopicUpdate = (
-  document: Document,
+  reader: DocumentReader,
   nodeId: NodeId,
   update: NodeUpdateInput
 ) => {
-  const node = document.nodes[nodeId]
+  const node = reader.nodes.get(nodeId)
   if (!node) {
     return ok([] as Operation[])
   }
@@ -59,7 +60,7 @@ const compileMindmapTopicUpdate = (
 
   const ops: Operation[] = []
   const fields = update.fields
-  const isRoot = isMindmapRoot(document, node)
+  const isRoot = reader.mindmaps.isRoot(node.id)
 
   if (fields?.position) {
     if (!isRoot) {
@@ -114,10 +115,10 @@ const compileNodeTextCommit = (
   ctx: WhiteboardCompileContext<'node.text.commit'>
 ) => {
   const {
-    intent,
-    document
+    intent
   } = ctx
-  const node = document.nodes[intent.nodeId]
+  const reader = ctx.reader
+  const node = reader.nodes.get(intent.nodeId)
   if (!node) {
     return
   }
@@ -137,7 +138,7 @@ const compileNodeTextCommit = (
   }
 
   const decision = resolveLockDecision({
-    document,
+    reader,
     target: {
       kind: 'nodes',
       nodeIds: [intent.nodeId]
@@ -166,7 +167,7 @@ const compileNodeTextCommit = (
     return
   }
 
-  const planned = compileMindmapTopicUpdate(document, intent.nodeId, input)
+  const planned = compileMindmapTopicUpdate(reader, intent.nodeId, input)
   if (!planned.ok) {
     return failInvalid(ctx, planned.error.message, readErrorDetails(planned.error))
   }
@@ -211,9 +212,9 @@ export const nodeIntentHandlers: NodeIntentHandlers = {
     })
   },
   'node.update': (ctx) => {
-    const document = ctx.document
+    const reader = ctx.reader
     const decision = resolveLockDecision({
-      document,
+      reader,
       target: {
         kind: 'nodes',
         nodeIds: ctx.intent.updates.map((entry) => entry.id)
@@ -231,7 +232,7 @@ export const nodeIntentHandlers: NodeIntentHandlers = {
     }
 
     for (const entry of ctx.intent.updates) {
-      const current = document.nodes[entry.id]
+      const current = reader.nodes.get(entry.id)
       const update = current
         ? readCompileServices(ctx).layout.commit({
             kind: 'node.update',
@@ -241,7 +242,7 @@ export const nodeIntentHandlers: NodeIntentHandlers = {
             origin: ctx.intent.origin
           }).update
         : entry.input
-      const planned = compileMindmapTopicUpdate(document, entry.id, update)
+      const planned = compileMindmapTopicUpdate(reader, entry.id, update)
       if (!planned.ok) {
         return failInvalid(ctx, planned.error.message, readErrorDetails(planned.error))
       }
@@ -249,12 +250,10 @@ export const nodeIntentHandlers: NodeIntentHandlers = {
     }
   },
   'node.move': (ctx) => {
-    const {
-      intent,
-      document
-    } = ctx
+    const { intent } = ctx
+    const reader = ctx.reader
     const decision = resolveLockDecision({
-      document,
+      reader,
       target: {
         kind: 'nodes',
         nodeIds: intent.ids
@@ -272,7 +271,7 @@ export const nodeIntentHandlers: NodeIntentHandlers = {
     }
 
     for (const id of intent.ids) {
-      const node = document.nodes[id]
+      const node = reader.nodes.get(id)
       if (!node) {
         return failInvalid(ctx, `Node ${id} not found.`)
       }
@@ -288,7 +287,7 @@ export const nodeIntentHandlers: NodeIntentHandlers = {
         continue
       }
 
-      if (!isMindmapRoot(document, node)) {
+      if (!reader.mindmaps.isRoot(id)) {
         return failInvalid(ctx, 'Mindmap member move must use mindmap drag.')
       }
 

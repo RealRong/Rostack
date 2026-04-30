@@ -5,6 +5,9 @@ import type {
 import type {
   MutationCompileHandlerInput
 } from '@shared/mutation/engine'
+import type {
+  DocumentReader
+} from '@whiteboard/core/document/reader'
 import type { WhiteboardLayoutService } from '@whiteboard/core/layout'
 import type {
   CanvasItemRef,
@@ -46,8 +49,6 @@ export type WhiteboardCompileServices = {
   layout: WhiteboardLayoutService
 }
 
-export type WhiteboardMutationReader = Document
-
 export type WhiteboardCompileContext<
   K extends WhiteboardIntentKind = WhiteboardIntentKind
 > = MutationCompileHandlerInput<
@@ -55,7 +56,7 @@ export type WhiteboardCompileContext<
   WhiteboardIntent<K>,
   Operation,
   WhiteboardIntentOutput<K>,
-  WhiteboardMutationReader,
+  DocumentReader,
   WhiteboardCompileServices,
   WhiteboardCompileCode
 >
@@ -64,7 +65,7 @@ export type WhiteboardCompileHandlerTable = MutationCompileHandlerTable<
   WhiteboardMutationTable,
   Document,
   Operation,
-  WhiteboardMutationReader,
+  DocumentReader,
   WhiteboardCompileServices,
   WhiteboardCompileCode
 >
@@ -106,7 +107,7 @@ export const failCancelled = (
 export const requireNode = (
   input: WhiteboardCompileContext,
   id: NodeId
-): Node | undefined => input.require(input.document.nodes[id], {
+): Node | undefined => input.require(input.reader.nodes.get(id), {
   code: 'invalid',
   message: `Node ${id} not found.`
 })
@@ -114,7 +115,7 @@ export const requireNode = (
 export const requireEdge = (
   input: WhiteboardCompileContext,
   id: EdgeId
-): Edge | undefined => input.require(input.document.edges[id], {
+): Edge | undefined => input.require(input.reader.edges.get(id), {
   code: 'invalid',
   message: `Edge ${id} not found.`
 })
@@ -122,7 +123,7 @@ export const requireEdge = (
 export const requireGroup = (
   input: WhiteboardCompileContext,
   id: GroupId
-): Group | undefined => input.require(input.document.groups[id], {
+): Group | undefined => input.require(input.reader.groups.get(id), {
   code: 'invalid',
   message: `Group ${id} not found.`
 })
@@ -130,7 +131,7 @@ export const requireGroup = (
 export const requireMindmap = (
   input: WhiteboardCompileContext,
   id: MindmapId
-): MindmapRecord | undefined => input.require(input.document.mindmaps[id], {
+): MindmapRecord | undefined => input.require(input.reader.mindmaps.get(id), {
   code: 'invalid',
   message: `Mindmap ${id} not found.`
 })

@@ -27,7 +27,8 @@ import {
 } from '@whiteboard/core/mutation'
 import { node as nodeApi } from '@whiteboard/core/node'
 import type {
-  WhiteboardCompileServices
+  WhiteboardCompileServices,
+  WhiteboardMutationReader
 } from '@whiteboard/core/operations/compile'
 import type {
   CanvasItemRef,
@@ -74,6 +75,16 @@ const same = (
   left: unknown,
   right: unknown
 ): boolean => equal.sameJsonValue(left, right)
+
+type WhiteboardCustomReduceContext<
+  TOp extends WhiteboardCustomOperation = WhiteboardCustomOperation
+> = MutationCustomReduceInput<
+  Document,
+  TOp,
+  WhiteboardMutationReader,
+  WhiteboardCompileServices,
+  WhiteboardCustomCode
+>
 
 type OrderedAnchor = {
   kind: 'start'
@@ -788,7 +799,7 @@ const createMindmapMoveResult = (
   input: {
     op: Extract<WhiteboardCustomOperation, { type: 'mindmap.move' }>
     document: Document
-    fail: MutationCustomReduceInput<Document, WhiteboardCustomOperation, WhiteboardCompileServices, WhiteboardCustomCode>['fail']
+    fail: WhiteboardCustomReduceContext['fail']
   }
 ): CustomResult => {
   const current = readMindmap(input.document, input.op.id)
@@ -846,7 +857,7 @@ const createMindmapLayoutResult = (
   input: {
     op: Extract<WhiteboardCustomOperation, { type: 'mindmap.layout' }>
     document: Document
-    fail: MutationCustomReduceInput<Document, WhiteboardCustomOperation, WhiteboardCompileServices, WhiteboardCustomCode>['fail']
+    fail: WhiteboardCustomReduceContext['fail']
   }
 ): CustomResult => {
   const current = readMindmap(input.document, input.op.id)
@@ -907,7 +918,7 @@ const createMindmapTopicInsertResult = (
   input: {
     op: Extract<WhiteboardCustomOperation, { type: 'mindmap.topic.insert' }>
     document: Document
-    fail: MutationCustomReduceInput<Document, WhiteboardCustomOperation, WhiteboardCompileServices, WhiteboardCustomCode>['fail']
+    fail: WhiteboardCustomReduceContext['fail']
   }
 ): CustomResult => {
   const current = readMindmap(input.document, input.op.id)
@@ -987,7 +998,7 @@ const createMindmapTopicRestoreResult = (
   input: {
     op: Extract<WhiteboardCustomOperation, { type: 'mindmap.topic.restore' }>
     document: Document
-    fail: MutationCustomReduceInput<Document, WhiteboardCustomOperation, WhiteboardCompileServices, WhiteboardCustomCode>['fail']
+    fail: WhiteboardCustomReduceContext['fail']
   }
 ): CustomResult => {
   const current = readMindmap(input.document, input.op.id)
@@ -1094,7 +1105,7 @@ const createMindmapTopicMoveResult = (
   input: {
     op: Extract<WhiteboardCustomOperation, { type: 'mindmap.topic.move' }>
     document: Document
-    fail: MutationCustomReduceInput<Document, WhiteboardCustomOperation, WhiteboardCompileServices, WhiteboardCustomCode>['fail']
+    fail: WhiteboardCustomReduceContext['fail']
   }
 ): CustomResult => {
   const current = readMindmap(input.document, input.op.id)
@@ -1173,7 +1184,7 @@ const createMindmapTopicDeleteResult = (
   input: {
     op: Extract<WhiteboardCustomOperation, { type: 'mindmap.topic.delete' }>
     document: Document
-    fail: MutationCustomReduceInput<Document, WhiteboardCustomOperation, WhiteboardCompileServices, WhiteboardCustomCode>['fail']
+    fail: WhiteboardCustomReduceContext['fail']
   }
 ): CustomResult => {
   const current = readMindmap(input.document, input.op.id)
@@ -1319,7 +1330,7 @@ const createMindmapTopicPatchResult = (
   input: {
     op: Extract<WhiteboardCustomOperation, { type: 'mindmap.topic.patch' }>
     document: Document
-    fail: MutationCustomReduceInput<Document, WhiteboardCustomOperation, WhiteboardCompileServices, WhiteboardCustomCode>['fail']
+    fail: WhiteboardCustomReduceContext['fail']
   }
 ): CustomResult => {
   const current = readNode(input.document, input.op.topicId)
@@ -1411,7 +1422,7 @@ const createMindmapBranchPatchResult = (
   input: {
     op: Extract<WhiteboardCustomOperation, { type: 'mindmap.branch.patch' }>
     document: Document
-    fail: MutationCustomReduceInput<Document, WhiteboardCustomOperation, WhiteboardCompileServices, WhiteboardCustomCode>['fail']
+    fail: WhiteboardCustomReduceContext['fail']
   }
 ): CustomResult | void => {
   const current = readMindmap(input.document, input.op.id)
@@ -1521,7 +1532,7 @@ const createMindmapTopicCollapseResult = (
   input: {
     op: Extract<WhiteboardCustomOperation, { type: 'mindmap.topic.collapse' }>
     document: Document
-    fail: MutationCustomReduceInput<Document, WhiteboardCustomOperation, WhiteboardCompileServices, WhiteboardCustomCode>['fail']
+    fail: WhiteboardCustomReduceContext['fail']
   }
 ): CustomResult => {
   const current = readMindmap(input.document, input.op.id)
@@ -1603,11 +1614,8 @@ const createMindmapTopicCollapseResult = (
 }
 
 const reduceCanvasOrderMove = (
-  input: MutationCustomReduceInput<
-    Document,
-    Extract<WhiteboardCustomOperation, { type: 'canvas.order.move' }>,
-    WhiteboardCompileServices,
-    WhiteboardCustomCode
+  input: WhiteboardCustomReduceContext<
+    Extract<WhiteboardCustomOperation, { type: 'canvas.order.move' }>
   >
 ): CustomResult | void => {
   const nextOrder = moveCanvasOrder(input.document.canvas.order, input.op.refs, input.op.to)
@@ -1642,11 +1650,8 @@ const reduceCanvasOrderMove = (
 }
 
 const reduceEdgeLabelInsert = (
-  input: MutationCustomReduceInput<
-    Document,
-    Extract<WhiteboardCustomOperation, { type: 'edge.label.insert' }>,
-    WhiteboardCompileServices,
-    WhiteboardCustomCode
+  input: WhiteboardCustomReduceContext<
+    Extract<WhiteboardCustomOperation, { type: 'edge.label.insert' }>
   >
 ): CustomResult => {
   const current = readEdge(input.document, input.op.edgeId)
@@ -1698,11 +1703,8 @@ const reduceEdgeLabelInsert = (
 }
 
 const reduceEdgeLabelDelete = (
-  input: MutationCustomReduceInput<
-    Document,
-    Extract<WhiteboardCustomOperation, { type: 'edge.label.delete' }>,
-    WhiteboardCompileServices,
-    WhiteboardCustomCode
+  input: WhiteboardCustomReduceContext<
+    Extract<WhiteboardCustomOperation, { type: 'edge.label.delete' }>
   >
 ): CustomResult | void => {
   const current = readEdge(input.document, input.op.edgeId)
@@ -1751,11 +1753,8 @@ const reduceEdgeLabelDelete = (
 }
 
 const reduceEdgeLabelMove = (
-  input: MutationCustomReduceInput<
-    Document,
-    Extract<WhiteboardCustomOperation, { type: 'edge.label.move' }>,
-    WhiteboardCompileServices,
-    WhiteboardCustomCode
+  input: WhiteboardCustomReduceContext<
+    Extract<WhiteboardCustomOperation, { type: 'edge.label.move' }>
   >
 ): CustomResult | void => {
   const current = readEdge(input.document, input.op.edgeId)
@@ -1813,11 +1812,8 @@ const reduceEdgeLabelMove = (
 }
 
 const reduceEdgeLabelPatch = (
-  input: MutationCustomReduceInput<
-    Document,
-    Extract<WhiteboardCustomOperation, { type: 'edge.label.patch' }>,
-    WhiteboardCompileServices,
-    WhiteboardCustomCode
+  input: WhiteboardCustomReduceContext<
+    Extract<WhiteboardCustomOperation, { type: 'edge.label.patch' }>
   >
 ): CustomResult => {
   const current = readEdge(input.document, input.op.edgeId)
@@ -1909,11 +1905,8 @@ const reduceEdgeLabelPatch = (
 }
 
 const reduceEdgeRoutePointInsert = (
-  input: MutationCustomReduceInput<
-    Document,
-    Extract<WhiteboardCustomOperation, { type: 'edge.route.point.insert' }>,
-    WhiteboardCompileServices,
-    WhiteboardCustomCode
+  input: WhiteboardCustomReduceContext<
+    Extract<WhiteboardCustomOperation, { type: 'edge.route.point.insert' }>
   >
 ): CustomResult => {
   const current = readEdge(input.document, input.op.edgeId)
@@ -1968,11 +1961,8 @@ const reduceEdgeRoutePointInsert = (
 }
 
 const reduceEdgeRoutePointDelete = (
-  input: MutationCustomReduceInput<
-    Document,
-    Extract<WhiteboardCustomOperation, { type: 'edge.route.point.delete' }>,
-    WhiteboardCompileServices,
-    WhiteboardCustomCode
+  input: WhiteboardCustomReduceContext<
+    Extract<WhiteboardCustomOperation, { type: 'edge.route.point.delete' }>
   >
 ): CustomResult | void => {
   const current = readEdge(input.document, input.op.edgeId)
@@ -2029,11 +2019,8 @@ const reduceEdgeRoutePointDelete = (
 }
 
 const reduceEdgeRoutePointMove = (
-  input: MutationCustomReduceInput<
-    Document,
-    Extract<WhiteboardCustomOperation, { type: 'edge.route.point.move' }>,
-    WhiteboardCompileServices,
-    WhiteboardCustomCode
+  input: WhiteboardCustomReduceContext<
+    Extract<WhiteboardCustomOperation, { type: 'edge.route.point.move' }>
   >
 ): CustomResult | void => {
   const current = readEdge(input.document, input.op.edgeId)
@@ -2094,11 +2081,8 @@ const reduceEdgeRoutePointMove = (
 }
 
 const reduceEdgeRoutePointPatch = (
-  input: MutationCustomReduceInput<
-    Document,
-    Extract<WhiteboardCustomOperation, { type: 'edge.route.point.patch' }>,
-    WhiteboardCompileServices,
-    WhiteboardCustomCode
+  input: WhiteboardCustomReduceContext<
+    Extract<WhiteboardCustomOperation, { type: 'edge.route.point.patch' }>
   >
 ): CustomResult => {
   const current = readEdge(input.document, input.op.edgeId)
@@ -2166,6 +2150,7 @@ const reduceEdgeRoutePointPatch = (
 export const whiteboardCustom: MutationCustomTable<
   Document,
   Operation,
+  WhiteboardMutationReader,
   WhiteboardCompileServices,
   WhiteboardCustomCode
 > = {

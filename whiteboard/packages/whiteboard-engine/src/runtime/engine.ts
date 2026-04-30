@@ -9,6 +9,7 @@ import type {
 import type {
   WhiteboardCompileIds,
   WhiteboardCompileServices,
+  WhiteboardMutationReader,
   WhiteboardMutationTable
 } from '@whiteboard/core/operations'
 import {
@@ -117,11 +118,13 @@ export const createEngine = ({
     Document,
     WhiteboardMutationTable,
     Operation,
+    WhiteboardMutationReader,
     WhiteboardCompileServices,
     ResultCode
   >({
     document,
     normalize: normalizeDocument,
+    createReader: (readDocument) => readDocument(),
     services,
     entities: whiteboardEntities,
     custom: whiteboardCustom,

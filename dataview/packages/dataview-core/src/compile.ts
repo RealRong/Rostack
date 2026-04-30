@@ -11,6 +11,9 @@ import type {
 import type {
   DocumentOperation
 } from './op'
+import type {
+  DocumentReader
+} from './document/reader'
 import {
   createCompileReader,
   issue,
@@ -37,7 +40,7 @@ const runCompileIntent = (
   compileIntent: (
     intent: Intent,
     input: DataviewCompileInput,
-    reader: ReturnType<typeof createCompileReader>
+    reader: DocumentReader
   ) => unknown
 ) => {
   const result = compileIntent(input.intent, input, createCompileReader(input))
@@ -71,6 +74,7 @@ export const dataviewIntentHandlers: MutationCompileHandlerTable<
   DataviewCompileTable,
   DataDoc,
   DocumentOperation,
+  DocumentReader,
   void,
   ValidationCode
 > = {

@@ -1,281 +1,439 @@
-# Mutation / Custom / Shared 最终设计
+# Shared Reader / Mutation / Projection 最终 API 与实施方案
 
-## 目标
+## 范围
 
-本文只定义长期最优终态，不讨论兼容、过渡或双轨保留。
+本文只定义长期最优终态：
 
-最终目标固定为：
+- 只保留最终 API 设计。
+- 只保留分阶段实施方案。
+- 不讨论兼容、过渡、双轨或备选方案。
 
-- `shared/mutation` 成为 mutation 语义层唯一基础设施。
-- `canonical op` 不再依赖“从 document diff 反推 delta”。
+## 总目标
+
+- `shared/mutation` 成为唯一 mutation 基础设施。
+- `shared/projection` 成为唯一 projection 基础设施。
 - `delta` 只表达 mutation 语义事实，不承接 projection 派生几何。
-- `projection` 自己根据 mutation semantic delta 推导 graph / geometry / spatial invalidation。
-- `whiteboard`、`dataview` 不再各自维护一套 app-local custom result 组装系统。
-- 能 canonical 的一律 canonical。
-- 不能退化成 entity patch 的结构语义，上收为 canonical structural op，而不是长期留在 app-local custom reducer。
+- 下游读取统一 reader-first。
+- app 包不再在 shared 之上重建第二套读写基础设施。
+- API 命名保持最小、清晰、可长期稳定。
 
-## 核心结论
+## 最终归属
 
-## 1. “从 document diff 推导 delta” 不是正确基础模型
+## 1. reader 不归属于 `shared/mutation`
 
-这条结论必须固定。
+reader 同时被 mutation 和 projection 消费，所以不应归属于其中任何一个包。
 
-`delta` 的本质应该是：
+最终归属固定为：
 
-- 本次 mutation 明确声明了什么语义变化
+- source reader 的具体实现归 app core 包。
+- projection read 的具体实现归 app projection 包。
+- `shared/mutation` 只消费 source reader。
+- `shared/projection` 只消费 projection read。
 
-而不是：
+## 2. 不新增第二套 shared reader 框架
 
-- 事后拿 `before/after document` 去猜本次到底改了什么
+长期最优里，不单独设计一个复杂的 `shared/read` 基础包。
 
-原因很直接：
+shared 只提供注入点，不提供一整套 reader 平台：
 
-- 同一个语义变化，不一定对应稳定的 document path diff。
-- 很多结构 op 的语义远强于字段改写。
-- `projection derived state` 根本不应该倒灌回 document，再靠 diff 偷渡语义。
+- `shared/mutation` 接收 `createReader`
+- `shared/projection` 接收 `createRead`
 
-所以长期最优里：
+具体 reader 结构由各 app 自己定义。
 
-- `delta` 是显式 semantic facts
-- 不是 snapshot diff 产物
+## 命名规则
 
-## 2. canonical op 不需要依赖 document diff
+最终命名固定为：
 
-`canonical` 的成立条件不是“最终能从 diff 推导”。
+- source 侧统一使用 `Reader`
+- projection 侧统一使用 `Read`
+- app core 中具体实现使用 `DocumentReader`
+- projection 中具体实现使用 `ProjectionRead`
+- 工厂函数统一使用 `createXxxReader` 或 `createXxxRead`
 
-`canonical` 的成立条件是：
+避免以下命名：
 
-- op 语义稳定
-- apply 规则稳定
-- history / collab / conflict 边界稳定
-- delta / footprint 可以由 op 本身直接声明
+- `resolver`
+- `accessor`
+- `helper bag`
+- `context helper`
+- `readDocument callback`
 
-例如：
+这些命名要么太弱，要么会把稳定 API 和临时 helper 混在一起。
 
-- `node.patch` 天然知道改了哪些 field/path
-- `node.create` / `node.delete` 天然知道 lifecycle 事实
-- `canvas.order.move` 天然知道改了 `canvas.order`
-- `mindmap.topic.move` 天然知道改了 `mindmap.structure`
-- `mindmap.move` 天然知道改了 owner anchor，并触发 owner layout 语义变化
-- `external.version.bump` 天然就是一个 signal
+## 最终分层
 
-这些都不需要通过 document diff 才能成立。
+## 1. app core
 
-## 3. derived geometry 不属于 mutation delta
+职责：
 
-这条边界必须和上一条一起固定。
+- 定义 canonical `Document`
+- 定义 `DocumentReader`
+- 提供 document normalize / patch / canonical op / compile helper
 
-`mutation delta` 表达的是 document / op 语义层事实。
+不负责：
 
-`derived geometry` 属于 projection 下游派生：
+- graph / spatial / render / selection 这类 projection 派生读模型
 
-- 哪些 `NodeView.geometry` 要重算
-- 哪些 `EdgeView.route` 要重算
-- 哪些 `MindmapView.tree.layout` 要重算
-- 哪些 spatial record 要刷新
+## 2. `shared/mutation`
 
-这些都不该作为 `shared/mutation` 的底层通道继续向上膨胀。
-
-否则 shared 会被迫同时承担：
-
-- document semantic delta
-- derived geometry delta
-- runtime invalidation delta
-
-底层会变重，而且边界会越来越乱。
-
-正确模型是：
-
-- mutation 层只发 semantic delta
-- projection 层自己把 semantic delta 展开成 geometry / graph invalidation
-
-## 4. 不是所有 custom op 都应该降成 entity patch
-
-这条结论继续成立。
-
-以下这类不是“batch canonical entity patch”能正确表达的：
-
-- `mindmap.topic.move`
-- `mindmap.topic.delete`
-- `canvas.order.move`
-- `edge.label.move`
-- `edge.route.point.move`
-
-原因不是实现问题，而是语义问题：
-
-- 它们依赖 apply-time 当前结构
-- 它们的冲突粒度是结构粒度
-- 它们经常触发 owner 结构和顺序变化
-
-长期目标不是“全部变 patch”，而是：
-
-- 纯字段/记录写入进入 canonical entity op
-- 树 / 顺序 / 插入 / 移动 / 删除进入 canonical structural op
-- 真正剩余无法共享化的少数语义，才保留 custom reducer
-
-## 最终架构
-
-## 1. Intent 层
-
-`intent` 是产品 / UI 语义：
-
-- 面向 editor 交互
-- 面向业务命令
-- 不要求直接可回放
-
-例如：
-
-- `mindmap.topic.clone`
-- `canvas.selection.move`
-- `view.open`
-
-## 2. Canonical op 层
-
-`canonical op` 是 mutation 引擎真正 apply 的稳定语义层。
-
-最终只保留两类：
-
-- canonical entity op
-- canonical structural op
-
-### canonical entity op
-
-典型例子：
-
-- `node.create`
-- `node.patch`
-- `node.delete`
-- `record.patch`
-- `field.create`
-- `view.patch`
-
-### canonical structural op
-
-典型例子：
-
-- `canvas.order.move`
-- `mindmap.topic.insert`
-- `mindmap.topic.move`
-- `mindmap.topic.delete`
-- `edge.label.insert`
-- `edge.label.move`
-- `edge.route.point.move`
-
-这些 op 仍然是 canonical，不应被视为“非 canonical custom”。
-
-## 3. Apply 层
-
-每个 canonical op 在 apply 时，直接产出：
-
-- `document`
-- `delta`
-- `footprint`
-- `history`
-
-这里的 `delta` 是显式语义结果，不是 diff 推导结果。
-
-## 4. Projection 层
-
-`projection` 只消费 mutation semantic delta 和 runtime overlay。
-
-它的职责是把：
-
-- mutation semantic delta
-- preview patch
-- draft measure
-- runtime session state
-
-展开成：
-
-- graph patch
-- geometry recompute
-- spatial invalidation
-- render / hit / selection 需要的最终视图
-
-也就是说：
-
-- `mindmap.layout` touched
-  -> projection 决定整棵树哪些 node rect 变化
-- `mindmap.structure` touched
-  -> projection 决定哪些 node / connector / bbox 变化
-- `node.geometry` touched
-  -> projection 决定这个 node 和相关 edge 如何刷新
-
-这部分不属于 `shared/mutation`。
-
-## Shared / Mutation 的最终职责
-
-## 1. shared/mutation 只负责 mutation 语义层
-
-最终 `shared/mutation` 负责：
+职责：
 
 - compile intent 到 op
 - apply op
-- merge delta
-- merge footprint
+- 合并 delta
+- 合并 footprint
 - 管理 history
-- 管理 commit / publish / replay 所需的稳定 mutation 结果
+- 暴露稳定 mutation runtime
 
-它不负责：
+不负责：
 
-- projection geometry 扩散
-- graph invalidation fanout
-- spatial 索引更新
+- 定义具体 document reader shape
+- 推导 projection invalidation
+- 承接 derived geometry
 
-## 2. delta 的来源应该是 op / write，而不是 document diff
+## 3. app projection
 
-shared 最终允许两种稳定来源：
+职责：
 
-### 1. canonical write-set / patch-set 直接生成 semantic delta
+- 定义 projection state
+- 定义 `ProjectionRead`
+- 定义 plan / phase / capture / public query
+
+## 4. `shared/projection`
+
+职责：
+
+- 提供 projection runtime
+- 驱动 phase 执行
+- 管理 projection store surface
+- 注入 app projection 的 `read`
+
+不负责：
+
+- 定义具体 projection read shape
+- 定义 app-specific graph / index / spatial 结构
+
+## 最终 API 设计
+
+## 1. app core source reader
+
+每个 app core 都必须提供稳定 source reader。
+
+最小要求：
+
+```ts
+interface DocumentReader {
+  document(): Document
+}
+```
+
+真正可用的 reader 应继续按业务模型扩展。
+
+### dataview
+
+dataview 维持当前方向，`DocumentReader` 继续作为 source reader：
+
+- `records`
+- `values`
+- `fields`
+- `views`
+- `views.active`
+
+### whiteboard
+
+whiteboard 最终需要补齐正式 `DocumentReader`，最小推荐形态：
+
+```ts
+interface WhiteboardDocumentReader {
+  document(): Document
+  nodes: EntityReader<NodeId, Node>
+  edges: EntityReader<EdgeId, Edge>
+  groups: EntityReader<GroupId, Group>
+  mindmaps: {
+    ids(): readonly MindmapId[]
+    get(id: MindmapId): MindmapRecord | undefined
+    has(id: MindmapId): boolean
+    tree(id: MindmapId): MindmapTree | undefined
+    subtreeNodeIds(id: MindmapId, rootId?: NodeId): readonly NodeId[]
+  }
+  canvas: {
+    order(): readonly CanvasItemRef[]
+    slot(ref: CanvasItemRef): {
+      prev?: CanvasItemRef
+      next?: CanvasItemRef
+    } | undefined
+  }
+}
+```
+
+这个 reader 负责 source 语义读取，不负责 projection geometry / hit / spatial。
+
+## 2. `shared/mutation` 最终 API
+
+### `MutationEngineOptions`
+
+```ts
+interface MutationEngineOptions<
+  Doc extends object,
+  Table extends MutationIntentTable,
+  Op extends { type: string },
+  Reader,
+  Services = void,
+  Code extends string = string
+> {
+  document: Doc
+  normalize(doc: Doc): Doc
+  createReader(readDocument: () => Doc): Reader
+  services?: Services
+  entities?: Readonly<Record<string, MutationEntitySpec>>
+  custom?: MutationCustomTable<Doc, Op, Reader, Services, Code>
+  compile?: MutationCompileHandlerTable<Table, Doc, Op, Reader, Services, Code>
+  history?: MutationHistoryOptions | false
+}
+```
+
+规则：
+
+- `createReader` 只负责把当前 document 适配为 source reader。
+- reader 具体类型由 app 决定。
+- `shared/mutation` 不定义 app-specific reader shape。
+
+### `MutationCompileHandlerInput`
+
+```ts
+interface MutationCompileHandlerInput<
+  Doc,
+  Intent,
+  Op,
+  Output,
+  Reader,
+  Services = void,
+  Code extends string = string
+> {
+  intent: Intent
+  source: MutationCompileSource<string>
+  document: Doc
+  reader: Reader
+  services: Services | undefined
+  emit(op: Op): void
+  emitMany(...ops: readonly Op[]): void
+  output(value: Output): void
+  issue(issue: MutationCompileIssue<Code>): void
+  stop(): { kind: 'stop' }
+  fail(issue: MutationCompileIssue<Code>): {
+    kind: 'block'
+    issue: MutationCompileIssue<Code>
+  }
+  require<T>(
+    value: T | undefined,
+    issue: MutationCompileIssue<Code>
+  ): T | undefined
+}
+```
+
+规则：
+
+- compile handler 默认走 `reader`
+- `document` 只保留给少数写结构或直连 snapshot 的底层场景
+
+### `MutationCustomReduceInput`
+
+```ts
+interface MutationCustomReduceInput<
+  Doc,
+  Op,
+  Reader,
+  Services = void,
+  Code extends string = string
+> {
+  op: Op
+  document: Doc
+  reader: Reader
+  origin: Origin
+  services: Services | undefined
+  fail(issue: MutationCustomFailure<Code>): never
+}
+```
+
+最终删除：
+
+- `read<T>(reader: (document: Doc) => T): T`
+
+原因很简单：
+
+- 这不是 typed reader
+- 这只是在 raw document 上包 callback
+
+### mutation runtime
+
+```ts
+interface MutationRuntime<
+  Doc,
+  Reader
+> {
+  document(): Doc
+  reader(): Reader
+}
+```
+
+最终 public API 直接提供 `reader()`，不再把 `read((document) => ...)` 当成主接口。
+
+## 3. `shared/projection` 最终 API
+
+### `ProjectionCreateOptions`
+
+```ts
+interface ProjectionCreateOptions<
+  TInput extends { delta: MutationDelta },
+  TState,
+  TRead,
+  TCapture,
+  TStores extends ProjectionStoreTree<TState>,
+  TPhaseName extends string
+> {
+  createState(): TState
+  createRead(runtime: {
+    state: () => TState
+    revision: () => Revision
+    capture: () => TCapture
+  }): TRead
+  capture(input: {
+    state: TState
+    read: TRead
+    revision: Revision
+  }): TCapture
+  stores: TStores
+  plan?: (input: {
+    input: TInput
+    state: TState
+    read: TRead
+    revision: Revision
+  }) => ProjectionPlan<TPhaseName>
+  phases: ProjectionPhaseTable<TInput, TState, TRead, TPhaseName>
+}
+```
+
+### `ProjectionContext`
+
+```ts
+interface ProjectionContext<
+  TInput extends { delta: MutationDelta },
+  TState,
+  TRead,
+  TPhaseName extends string = string
+> {
+  input: TInput
+  state: TState
+  read: TRead
+  revision: Revision
+  dirty: ProjectionDirty
+  phase: Record<TPhaseName, ProjectionPhaseStatus>
+}
+```
+
+### `ProjectionPhase`
+
+```ts
+type ProjectionPhase<
+  TInput extends { delta: MutationDelta },
+  TState,
+  TRead,
+  TPhaseName extends string
+> = (
+  context: ProjectionContext<TInput, TState, TRead, TPhaseName>
+) => void
+```
+
+规则：
+
+- plan 用 `read`
+- phase 用 `read`
+- capture 用 `read`
+- public runtime 暴露 `read`
+- phase 不再自己拼零散 resolver
+
+## 4. projection read 的最终形态
+
+每个 projection 包都必须有自己的 read root。
+
+### whiteboard
+
+whiteboard projection read 最终应统一到一个 root：
+
+```ts
+interface WhiteboardProjectionRead {
+  document: WhiteboardDocumentReader
+  graph: {
+    node(id: NodeId): NodeView | undefined
+    edge(id: EdgeId): EdgeView | undefined
+  }
+  index: {
+    ownerByNode(nodeId: NodeId): OwnerRef | undefined
+    relatedEdgeIds(nodeIds: Iterable<NodeId>): readonly EdgeId[]
+  }
+  spatial: SpatialRead
+  hit: HitRead
+  selection: SelectionRead
+  bounds: BoundsRead
+  frame: FrameRead
+  view: ViewRead
+  chrome: ChromeRead
+}
+```
+
+最终替换零散读取入口：
+
+- `createDocumentResolver`
+- `createSpatialRead`
+- `createFrameRead`
+- `createHitRead`
+- `createSelectionRead`
+
+这些能力不删除，但收口到一个 `createProjectionRead(...)`。
+
+### dataview
+
+dataview projection / engine read 继续保持 context-first，但入口统一为一个 read root：
+
+```ts
+interface DataviewProjectionRead {
+  document: DocumentReader
+  active: ActiveRead
+  index: IndexRead
+  publish: PublishRead
+}
+```
+
+`IndexReadContext`、`DocumentReadContext` 这类 enrich context 可以保留，但属于 app 内部实现，不再成为 shared contract 缺口的补丁。
+
+## 5. delta / footprint 最终 API
+
+### delta
+
+最终规则：
+
+- `delta` 只表达 mutation semantic facts
+- 不表达 projection derived geometry
 
 例如：
 
-- `node.patch` 已知字段和 record write
-- `record.patch` 已知 path write
-- `document.patch` 已知字段赋值
-
-这种场景 shared 可以从 write-set 编译 semantic delta。
-
-注意这里是：
-
-- 从 canonical write-set 编译
-
-不是：
-
-- 从完整 `before/after document` diff 反推
-
-### 2. structural / custom op 显式返回 semantic delta
-
-例如：
-
-- `canvas.order.move`
-- `mindmap.topic.move`
-- `external.version.bump`
-
-这些 op 直接返回它们的 semantic delta。
-
-## 3. footprint 同样是语义层事实
-
-`footprint` 也不应该依赖 document diff 作为唯一模型。
-
-最终来源同样分两类：
-
-- shared 从 canonical write-set 自动生成标准 footprint
-- structural/custom op 显式补充 coarse semantic footprint
-
-例如：
-
+- `node.geometry`
 - `mindmap.structure`
-- dataview 的 cross-family relation footprint
-- 顺序结构冲突 key
+- `mindmap.layout`
+- `canvas.order`
+- `external.version`
 
-## Custom Reducer 的最终 contract
+### footprint
 
-## 1. 最终 contract 要最小化
+最终规则：
 
-长期最优里，custom reducer 不需要再返回一堆“帮 shared 补洞”的中间态。
+- `footprint` 只表达语义冲突边界
+- 不依赖 document diff 作为基础模型
 
-最终 contract 应该固定为：
+## 6. custom reducer 最终 API
+
+最终 contract 固定为：
 
 ```ts
 interface MutationCustomReduceResult<Doc, Op> {
@@ -288,219 +446,174 @@ interface MutationCustomReduceResult<Doc, Op> {
 }
 ```
 
-shared runtime 负责：
+最终禁止保留第二套 effect DSL。
 
-- normalize `document`
-- 合并 `delta`
-- 合并 `footprint`
-- 校验 `history`
+删除：
 
-但 shared 不应该要求 reducer 额外返回：
-
-- entity effect bag
-- footprint effect bag
-- extra delta channel
-- extra footprint channel
-
-这些都是错误分层留下来的补丁。
-
-## 2. 不要再设计第二套 effect DSL
-
-长期最优里，不建议继续扩展：
-
-- `entityEffects`
-- `footprintEffects`
-- `extraDelta`
-- `extraFootprint`
-
-原因很简单：
-
-- 这会把 shared 再次做成一个“解释很多中间语义”的平台
-- app 包仍然要学习一套 mutation 结果 DSL
-- 复杂度从“直接返回 semantic delta / footprint”变成“先描述 effect，再让 shared 猜怎么落”
-
-这不是简化。
-
-最终应该是：
-
-- reducer / op 直接返回最终 semantic `delta`
-- reducer / op 直接返回最终 semantic `footprint`
-
-shared 只做 merge / normalize / verify。
-
-## `createWhiteboardCustomResult` 的最终结论
-
-## 1. 当前膨胀的根因
-
-当前形态：
-
-```ts
-createWhiteboardCustomResult({
-  before,
-  document,
-  history,
-  effects?,
-  extraDelta?,
-  footprintEffects?,
-  extraFootprint?
-})
-```
-
-它之所以这么大，不是因为 whiteboard 业务天然复杂，而是因为：
-
-- shared 还在要求一部分 delta / footprint 通过 effect + diff 侧向推导
-- 另一部分又只能 direct 返回
-- 所以 helper 被迫同时兼容两套模式
-
-这不是最终设计。
-
-## 2. 最终不应该保留这些参数
-
-长期最优里，这些都不该存在：
-
-- `before`
 - `effects`
-- `extraDelta`
 - `footprintEffects`
+- `extraDelta`
 - `extraFootprint`
+- `before` 驱动的 helper 推导逻辑
 
-原因：
+`createWhiteboardCustomResult(...)` 最终只允许两种结果：
 
-- `before` 只有在“从 diff 推导结果”时才重要
-- 其余几个只是 effect DSL 的补丁入口
+- 删除
+- 或薄封装成 `document + delta + footprint + history`
 
-如果结果是显式 semantic delta / footprint，那么 helper 根本不需要知道 `before`。
+## 7. canonical op 最终收口
 
-## 3. 如果临时保留 helper，最小形态应该是
+最终只保留两类 canonical op：
 
-如果还保留一个 app helper，它的最终最小形态只应当是：
+- canonical entity op
+- canonical structural op
 
-```ts
-createCustomResult({
-  document,
-  delta,
-  footprint,
-  history
-})
-```
+whiteboard 中以下结构最终上收为 canonical structural op：
 
-也就是说：
+- `canvas.order.move`
+- `mindmap.topic.insert`
+- `mindmap.topic.move`
+- `mindmap.topic.delete`
+- `edge.label.insert`
+- `edge.label.move`
+- `edge.route.point.insert`
+- `edge.route.point.move`
+- `edge.route.point.delete`
 
-- helper 只是薄封装
-- 不再负责推导语义
-- 不再解释 effect
+不能长期停留在 app-local custom reducer 中。
 
-更优终态则是 helper 直接删除，reducer 返回 shared 官方结果结构。
+## 分阶段实施方案
 
-## Whiteboard 的最终落点
+实施原则固定为：
 
-## 1. `mindmap` 的正确边界
+- 每个阶段直接落最终 API
+- 不做兼容层
+- 不保留旧入口
+- 同阶段内一次性更新所有调用方
 
-删除 `reconcileMindmap` 之后，正确模型已经明确：
+## 阶段 1：`shared/mutation` reader 化
 
-- root `position` 是 committed anchor input
-- child topic committed `position` 不再是正式真值
-- child 最终 rect 只存在于 projection
-- `mindmap` mutation 只发 semantic delta
-- projection 自己展开整棵树的 geometry 更新
+### 目标
 
-因此最终不应该再让 mutation 层发“child `node.geometry` 全量 touched”这种 derived geometry delta。
+让 mutation compile / custom / runtime 全部拿到 typed reader。
 
-最终应该发的是：
+### 工作项
 
-- `mindmap.structure`
-- `mindmap.layout`
-- 必要时 root `node.geometry`
+- 给 `MutationEngineOptions` 增加 `createReader`
+- 所有 mutation 泛型补上 `Reader`
+- 给 `MutationCompileHandlerInput` 增加 `reader`
+- 给 `MutationCustomReduceInput` 增加 `reader`
+- 删除 `MutationCustomReduceInput.read(...)`
+- runtime public API 增加 `reader()`
+- 删除以 raw document callback 为中心的 read API
 
-然后 projection 负责把这些 owner 语义扩散成具体 node / edge 刷新。
+### 完成标准
 
-## 2. `node.geometry` 的最终语义
+- compile handler 不再自己构造 reader
+- custom reducer 不再调用 `input.read((document) => ...)`
+- mutation runtime 对外有稳定 `reader()`
 
-`node.geometry` 在 mutation 层只表示：
+## 阶段 2：dataview 直接接入 shared reader contract
 
-- node committed geometry input 直接变化
+### 目标
 
-例如：
+让 dataview 成为第一批完全 reader-first 的接入方。
 
-- `position`
-- `size`
-- `rotation`
+### 工作项
 
-它不表示：
+- `dataview-core` 继续保留 `DocumentReader`
+- compile handler 直接使用 `input.reader`
+- 删除 `createCompileReader(...)`
+- 保留 `DocumentReadContext` 作为 app 内部 enrich context
+- engine / active / index / publish 继续复用同一套 source reader
 
-- owner relayout 造成的派生 rect 变化
+### 完成标准
 
-后者属于 projection。
+- `compile-base.ts` 不再创建 reader
+- compile 入口不再有 app-local reader glue
+- dataview source 读路径统一为 `DocumentReader`
 
-## 3. `canvas.order.move`
+## 阶段 3：whiteboard 建立正式 source reader 并迁移 core
 
-这是 canonical structural op，不该长期留在 whiteboard custom runtime。
+### 目标
 
-shared 最终应提供共享顺序结构 op。
+把 whiteboard 从 raw document helper 模式迁移到正式 source reader。
 
-## 4. `edge.label.*` / `edge.route.point.*`
+### 工作项
 
-这两组最终也应该上收：
+- 新增 `whiteboard-core/document/reader.ts`
+- 把 `custom.ts` 内本地 read helper 迁入 reader
+- compile helpers 改成 reader-first
+- custom reducers 改成 reader-first
+- lock / selection / structural helper 改成 reader-first
+- 只在直接写 document 时保留 raw `document`
 
-- 要么变成 shared structural op
-- 要么先做数据模型正规化，再进入 entity canonical
+### 完成标准
 
-但都不该永久停留在 app-local custom reducer。
+- `whiteboard-core/src/operations/custom.ts` 不再自带一组本地 document read API
+- compile / custom / lock 默认走 `reader`
+- source 读取 contract 稳定落在 `whiteboard-core/document/reader.ts`
 
-## Dataview 的最终落点
+## 阶段 4：`shared/projection` read contract 收口
 
-## 1. `record.values.writeMany`
+### 目标
 
-它的本质不是“需要 effect DSL”，而是：
+让 projection 的 plan / phase / capture / public query 共用同一个 read root。
 
-- 它直接知道自己改了哪些 semantic paths
-- 它直接知道需要哪些 relation footprint
+### 工作项
 
-所以正确模式就是：
+- `ProjectionContext` 增加 `read`
+- `ProjectionPhaseTable` 泛型补上 `TRead`
+- 所有 phase 改成从 `context.read` 读取
+- `plan(...)` / `capture(...)` / runtime public `read` 保持同一个 read root
+- whiteboard 收口为 `createProjectionRead(...)`
+- dataview 收口为统一 projection / engine read root
 
-- 直接返回 typed semantic delta
-- 直接返回 semantic footprint
+### 完成标准
 
-## 2. `external.version.bump`
+- phase 不再通过零散闭包或 resolver 读取稳定数据
+- projection runtime 的读取入口只有一个 root
+- app projection 读模型边界清晰，不再散落
 
-这是最纯粹的 signal-only mutation。
+## 阶段 5：清理 custom DSL，完成 canonical 收口
 
-它证明了：
+### 目标
 
-- mutation semantic delta 不要求一定对应 document diff
+让 mutation semantic contract 和 structural op 收口到最终形态。
 
-这不是特殊情况，而是正确模型。
+### 工作项
 
-## 最终收口规则
+- custom reducer 只返回 `document / delta / footprint / history`
+- 删除 `effects` / `extraDelta` / `extraFootprint`
+- 删除依赖 `before + diff` 推导 delta 的 helper
+- `createWhiteboardCustomResult(...)` 删除或薄化
+- whiteboard structural op 全部上收为 canonical structural op
+- projection 只消费 semantic delta，不再消费 derived geometry delta
 
-必须同时满足以下条件：
+### 完成标准
 
-- `delta` 是显式 semantic facts，不是 document diff 推导结果
-- `footprint` 是显式语义冲突边界，不是 document diff 副产品
-- canonical op 直接声明自己的 semantic delta / footprint
-- shared 对 entity patch 只允许从 canonical write-set 推导，不允许把 snapshot diff 当基础模型
-- projection invalidation 与 mutation delta 严格分层
-- derived geometry 不进入 mutation 底层 contract
-- app 包不再维护第二套 custom result 组装 DSL
-- `createWhiteboardCustomResult(...)` 这类 helper 最终删除或极薄化
-- 能 canonical 的一律上收为 shared canonical op
-- 真正剩余的 custom reducer 数量保持最小
+- app 包不再维护第二套 custom result DSL
+- shared 内不存在“从 document diff 反推 semantic delta”的主路径
+- whiteboard / dataview 的 mutation 结果都直接是 semantic delta + footprint
 
-## 最终判断
+## 最终落地检查表
 
-上一版里“shared 必须同时支持 direct semantic delta / derived geometry delta / external signal delta”这个表述不对。
+- `shared/mutation` 只消费 source reader，不拥有 reader 实现
+- `shared/projection` 只消费 projection read，不拥有 projection read 实现
+- app core 提供 `DocumentReader`
+- app projection 提供 `ProjectionRead`
+- compile / custom / projection 全部 reader-first
+- raw `document` 只用于写入和 snapshot 承载
+- `delta` 只表达 mutation 语义
+- derived geometry 不进入 mutation contract
+- custom reducer 没有第二套 effect DSL
+- structural op 不长期停留在 app-local custom reducer
 
-最终正确设计是：
+## 最终一句话
 
-- shared/mutation 只支持 mutation semantic delta
-- external signal delta 属于 semantic delta 的一种
-- derived geometry 不属于 mutation delta，而属于 projection invalidation
+长期最优的终态不是让 shared 拥有 reader，而是：
 
-因此真正的长期最优不是把 shared 做得更像一个“万能 delta 推导平台”，而是把边界切得更干净：
-
-- mutation 负责语义事实
-- projection 负责派生几何
-- canonical op 直接声明变化
-- custom reducer 只返回最终 semantic result
-
-这才是长期最优终态。
+- app 定义自己的 source reader 和 projection read
+- `shared/mutation`、`shared/projection` 只消费它们
+- compile / custom / projection 统一 reader-first
+- mutation 和 projection 边界保持严格干净

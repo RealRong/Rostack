@@ -8,7 +8,6 @@ import type { DocumentOperation } from '@dataview/core/op'
 import type { MutationCompileHandlerInput } from '@shared/mutation/engine'
 import { string } from '@shared/core'
 import {
-  createDocumentReader,
   type DocumentReader
 } from './document/reader'
 import type {
@@ -25,13 +24,14 @@ export type DataviewCompileInput<
   TIntent,
   DocumentOperation,
   TOutput,
+  DocumentReader,
   void,
   ValidationCode
 >
 
 export const createCompileReader = (
   input: DataviewCompileInput
-): DocumentReader => createDocumentReader(() => input.document)
+): DocumentReader => input.reader
 
 export const emitMany = (
   input: DataviewCompileInput,

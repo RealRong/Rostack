@@ -12,6 +12,10 @@ import {
 import {
   document as documentApi
 } from '@dataview/core/document'
+import {
+  createDocumentReader,
+  type DocumentReader
+} from '@dataview/core/document/reader'
 import type {
   DocumentOperation
 } from '@dataview/core/op'
@@ -35,10 +39,12 @@ const createMutation = () => new MutationEngine<
       output: void
     }
   },
-  DocumentOperation
+  DocumentOperation,
+  DocumentReader
 >({
   document: createEmptyDocument(),
   normalize: documentApi.normalize,
+  createReader: createDocumentReader,
   entities,
   custom
 })

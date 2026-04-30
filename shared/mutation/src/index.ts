@@ -2,6 +2,7 @@ export type {
   MutationCompileHandlerTable,
   MutationCustomTable,
   MutationEntitySpec,
+  MutationReaderFactory,
 } from './engine'
 export {
   MutationEngine

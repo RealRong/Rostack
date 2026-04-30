@@ -88,10 +88,12 @@ const createDocument = (): TestDoc => ({
 const createEngine = () => new MutationEngine<
   TestDoc,
   TestIntentTable,
-  TestOp
+  TestOp,
+  TestDoc
 >({
   document: createDocument(),
   normalize: (document) => document,
+  createReader: (readDocument) => readDocument(),
   entities,
   compile: {
     'item.add': ({ intent, emit, output }) => {
@@ -158,6 +160,7 @@ describe('MutationEngine current API', () => {
       document: result.commit.document
     }])
     expect(engine.history.get().undoDepth).toBe(1)
+    expect(engine.reader()).toEqual(result.commit.document)
   })
 
   test('executes typed intents through compile handlers and returns outputs', () => {

@@ -53,6 +53,7 @@ const applyOperations = (
   const engine = new MutationEngine({
     document: doc,
     normalize: documentApi.normalize,
+    createReader: (readDocument: () => Document) => readDocument(),
     entities: whiteboardEntities,
     custom: whiteboardCustom,
     history: false

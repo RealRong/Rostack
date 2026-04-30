@@ -39,6 +39,7 @@ import {
   type MutationCompileHandlerInput,
   type MutationCompileHandlerTable,
   type MutationCurrent,
+  type MutationReaderFactory,
   type MutationCustomSpec,
   type MutationCustomTable,
   type MutationEngineOptions,
@@ -107,12 +108,14 @@ const readCustomOperationResult = <
   Op extends {
     type: string
   },
+  Reader,
   Services,
   Code extends string = string
 >(input: {
   document: Doc
   operation: Op
-  spec: MutationCustomSpec<Doc, Op, Op, Services, Code>
+  spec: MutationCustomSpec<Doc, Op, Op, Reader, Services, Code>
+  createReader: MutationReaderFactory<Doc, Reader>
   origin: Origin
   services: Services | undefined
   normalize(doc: Doc): Doc
@@ -121,9 +124,9 @@ const readCustomOperationResult = <
     const result = input.spec.reduce({
       op: input.operation,
       document: input.document,
+      reader: input.createReader(() => input.document),
       origin: input.origin,
       services: input.services,
-      read: (reader) => reader(input.document),
       fail: (issue) => {
         throw new MutationCustomReduceError(issue)
       }
@@ -629,13 +632,15 @@ const applyConcreteOperations = <
   Op extends {
     type: string
   },
+  Reader,
   Services,
   Code extends string = string
 >(input: {
   document: Doc
   operations: readonly Op[]
   entities: ReadonlyMap<string, CompiledEntitySpec>
-  custom?: MutationCustomTable<Doc, Op, Services, Code>
+  custom?: MutationCustomTable<Doc, Op, Reader, Services, Code>
+  createReader: MutationReaderFactory<Doc, Reader>
   origin: Origin
   services: Services | undefined
   normalize(doc: Doc): Doc
@@ -655,10 +660,11 @@ const applyConcreteOperations = <
     const customSpec = input.custom?.[operation.type]
     const descriptor = readCanonicalOperation(operation.type)
     const applied = customSpec
-      ? readCustomOperationResult<Doc, Op, Services, Code>({
+      ? readCustomOperationResult<Doc, Op, Reader, Services, Code>({
           document: currentDocument,
           operation,
           spec: customSpec,
+          createReader: input.createReader,
           origin: input.origin,
           services: input.services,
           normalize: input.normalize
@@ -735,16 +741,18 @@ const compileMutationIntents = <
   Op extends {
     type: string
   },
+  Reader,
   Services,
   Code extends string = string
 >(input: {
   document: Doc
   intents: readonly MutationIntentOf<Table>[]
-  handlers: MutationCompileHandlerTable<Table, Doc, Op, Services, Code>
+  handlers: MutationCompileHandlerTable<Table, Doc, Op, Reader, Services, Code>
   origin: Origin
   services: Services | undefined
   entities: ReadonlyMap<string, CompiledEntitySpec>
-  custom?: MutationCustomTable<Doc, Op, Services, Code>
+  custom?: MutationCustomTable<Doc, Op, Reader, Services, Code>
+  createReader: MutationReaderFactory<Doc, Reader>
   normalize(doc: Doc): Doc
 }): CompileLoopResult<Doc, Op, MutationOutputOf<Table>, Code> => {
   const ops: Op[] = []
@@ -778,6 +786,7 @@ const compileMutationIntents = <
       MutationIntentOf<Table>,
       Op,
       MutationOutputOf<Table>,
+      Reader,
       Services,
       Code
     > = {
@@ -787,6 +796,7 @@ const compileMutationIntents = <
         type: intent.type
       },
       document: workingDocument,
+      reader: input.createReader(() => workingDocument),
       services: input.services,
       emit: (operation) => {
         pendingOps.push(operation)
@@ -850,11 +860,12 @@ const compileMutationIntents = <
       continue
     }
 
-    const applied = applyConcreteOperations<Doc, Op, Services, Code>({
+    const applied = applyConcreteOperations<Doc, Op, Reader, Services, Code>({
       document: workingDocument,
       operations: pendingOps,
       entities: input.entities,
       custom: input.custom,
+      createReader: input.createReader,
       origin: input.origin,
       services: input.services,
       normalize: input.normalize
@@ -892,6 +903,7 @@ class MutationRuntime<
   Op extends {
     type: string
   },
+  Reader,
   Services,
   Code extends string = string
 > {
@@ -902,11 +914,12 @@ class MutationRuntime<
     ApplyCommit<Doc, Op, MutationFootprint, void>
   >
 
+  private readonly createReader: MutationReaderFactory<Doc, Reader>
   private readonly normalize: (doc: Doc) => Doc
   private readonly entities: ReadonlyMap<string, CompiledEntitySpec>
-  private readonly custom?: MutationCustomTable<Doc, Op, Services, Code>
+  private readonly custom?: MutationCustomTable<Doc, Op, Reader, Services, Code>
   private readonly services: Services | undefined
-  private readonly compileHandlers?: MutationCompileHandlerTable<any, Doc, Op, Services, Code>
+  private readonly compileHandlers?: MutationCompileHandlerTable<any, Doc, Op, Reader, Services, Code>
   private readonly historyOptions?: MutationHistoryOptions | false
   private readonly historyControllerRef?: HistoryController<
     Op,
@@ -921,12 +934,14 @@ class MutationRuntime<
   constructor(input: {
     document: Doc
     normalize(doc: Doc): Doc
+    createReader: MutationReaderFactory<Doc, Reader>
     entities?: Readonly<Record<string, any>>
-    custom?: MutationCustomTable<Doc, Op, Services, Code>
+    custom?: MutationCustomTable<Doc, Op, Reader, Services, Code>
     services?: Services
-    compile?: MutationCompileHandlerTable<any, Doc, Op, Services, Code>
+    compile?: MutationCompileHandlerTable<any, Doc, Op, Reader, Services, Code>
     history?: MutationHistoryOptions | false
   }) {
+    this.createReader = input.createReader
     this.normalize = input.normalize
     this.entities = compileEntities(input.entities)
     this.custom = input.custom
@@ -964,10 +979,8 @@ class MutationRuntime<
     return this.documentState
   }
 
-  read<T>(
-    reader: (document: Doc) => T
-  ): T {
-    return reader(this.documentState)
+  reader(): Reader {
+    return this.createReader(() => this.documentState)
   }
 
   current(): MutationCurrent<Doc> {
@@ -1040,11 +1053,12 @@ class MutationRuntime<
       )
     }
 
-    const applied = applyConcreteOperations<Doc, Op, Services, Code>({
+    const applied = applyConcreteOperations<Doc, Op, Reader, Services, Code>({
       document: this.documentState,
       operations,
       entities: this.entities,
       custom: this.custom,
+      createReader: this.createReader,
       origin: options?.origin ?? 'user',
       services: this.services,
       normalize: this.normalize
@@ -1103,7 +1117,7 @@ class MutationRuntime<
       >
     }
 
-    const planned = compileMutationIntents<Doc, Table, Op, Services, Code>({
+    const planned = compileMutationIntents<Doc, Table, Op, Reader, Services, Code>({
       document: this.documentState,
       intents,
       handlers: this.compileHandlers,
@@ -1111,6 +1125,7 @@ class MutationRuntime<
       services: this.services,
       entities: this.entities,
       custom: this.custom,
+      createReader: this.createReader,
       normalize: this.normalize
     })
     const issues = (planned.issues ?? EMPTY_COMPILE_ISSUES).map(normalizeCompileIssue)
@@ -1149,11 +1164,12 @@ class MutationRuntime<
       >
     }
 
-    const applied = applyConcreteOperations<Doc, Op, Services, Code>({
+    const applied = applyConcreteOperations<Doc, Op, Reader, Services, Code>({
       document: this.documentState,
       operations: planned.ops,
       entities: this.entities,
       custom: this.custom,
+      createReader: this.createReader,
       origin: options?.origin ?? 'user',
       services: this.services,
       normalize: this.normalize
@@ -1283,15 +1299,17 @@ export class MutationEngine<
   Op extends {
     type: string
   },
+  Reader,
   Services = void,
   Code extends string = string
 > {
-  private readonly runtime: MutationRuntime<Doc, Op, Services, Code>
+  private readonly runtime: MutationRuntime<Doc, Op, Reader, Services, Code>
 
-  constructor(input: MutationEngineOptions<Doc, Table, Op, Services, Code>) {
+  constructor(input: MutationEngineOptions<Doc, Table, Op, Reader, Services, Code>) {
     this.runtime = new MutationRuntime({
       document: input.document,
       normalize: input.normalize,
+      createReader: input.createReader,
       entities: input.entities,
       custom: input.custom,
       services: input.services,
@@ -1317,10 +1335,8 @@ export class MutationEngine<
     return this.runtime.document()
   }
 
-  read<T>(
-    reader: (document: Doc) => T
-  ): T {
-    return this.runtime.read(reader)
+  reader(): Reader {
+    return this.runtime.reader()
   }
 
   execute<K extends MutationIntentKind<Table>>(

@@ -29,7 +29,8 @@ export type {
   WhiteboardCompileContext,
   WhiteboardCompileHandlerTable,
   WhiteboardCompileIds,
-  WhiteboardCompileServices
+  WhiteboardCompileServices,
+  WhiteboardMutationReader
 } from '@whiteboard/core/operations/compile'
 export type {
   CanvasIntent,

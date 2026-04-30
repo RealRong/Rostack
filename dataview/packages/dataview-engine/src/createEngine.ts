@@ -48,7 +48,9 @@ import {
 } from '@dataview/engine/source/createEngineSource'
 import { createPerformanceRuntime } from '@dataview/engine/runtime/performance'
 import {
-  createDocumentReadContext
+  createDocumentReadContext,
+  createDocumentReader,
+  type DocumentReader
 } from '@dataview/core/document/reader'
 import type {
   DataviewIntentTable,
@@ -77,11 +79,13 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
     DataDoc,
     DataviewIntentTable,
     DocumentOperation,
+    DocumentReader,
     void,
     DataviewErrorCode
   >({
     document: options.document,
     normalize: documentApi.normalize,
+    createReader: createDocumentReader,
     entities,
     custom,
     compile: compile.handlers,

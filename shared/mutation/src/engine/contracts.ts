@@ -26,6 +26,10 @@ export type {
 
 export type MutableRecordWrite = Record<string, unknown>
 
+export type MutationReaderFactory<Doc, Reader> = (
+  readDocument: () => Doc
+) => Reader
+
 export interface MutationCompileIssue<
   Code extends string = string,
   TType extends string = string
@@ -59,12 +63,14 @@ export interface MutationCompileHandlerInput<
   Intent,
   Op,
   Output,
+  Reader,
   Services = void,
   Code extends string = string
 > {
   intent: Intent
   source: MutationCompileSource<string>
   document: Doc
+  reader: Reader
   services: Services | undefined
   emit(op: Op): void
   emitMany(...ops: readonly Op[]): void
@@ -88,10 +94,11 @@ export type MutationCompileHandler<
   Intent,
   Op,
   Output,
+  Reader,
   Services = void,
   Code extends string = string
 > = (
-  input: MutationCompileHandlerInput<Doc, Intent, Op, Output, Services, Code>
+  input: MutationCompileHandlerInput<Doc, Intent, Op, Output, Reader, Services, Code>
 ) => void | MutationCompileControl<Code>
 
 export interface MutationCompileInput<
@@ -188,6 +195,7 @@ export type MutationCompileHandlerTable<
   Table extends MutationIntentTable,
   Doc,
   Op,
+  Reader,
   Services = void,
   Code extends string = string
 > = {
@@ -196,6 +204,7 @@ export type MutationCompileHandlerTable<
     MutationIntentOf<Table, K>,
     Op,
     MutationOutputOf<Table, K>,
+    Reader,
     Services,
     Code
   >
@@ -252,14 +261,15 @@ export interface MutationCustomFailure<
 export interface MutationCustomReduceInput<
   Doc,
   Op,
+  Reader,
   Services = void,
   Code extends string = string
 > {
   op: Op
   document: Doc
+  reader: Reader
   origin: Origin
   services: Services | undefined
-  read<T>(reader: (document: Doc) => T): T
   fail(issue: MutationCustomFailure<Code>): never
 }
 
@@ -284,11 +294,12 @@ export interface MutationCustomSpec<
   Doc,
   CurrentOp,
   Op = CurrentOp,
+  Reader = unknown,
   Services = void,
   Code extends string = string
 > {
   reduce(
-    input: MutationCustomReduceInput<Doc, CurrentOp, Services, Code>
+    input: MutationCustomReduceInput<Doc, CurrentOp, Reader, Services, Code>
   ): MutationCustomReduceResult<Doc, Op> | void
 }
 
@@ -297,6 +308,7 @@ export type MutationCustomTable<
   Op extends {
     type: string
   },
+  Reader,
   Services = void,
   Code extends string = string
 > = Partial<{
@@ -304,10 +316,11 @@ export type MutationCustomTable<
     Doc,
     Extract<Op, { type: TType }>,
     Op,
+    Reader,
     Services,
     Code
   >
-}> & Readonly<Record<string, MutationCustomSpec<Doc, Op, Op, Services, Code>>>
+}> & Readonly<Record<string, MutationCustomSpec<Doc, Op, Op, Reader, Services, Code>>>
 
 export interface MutationEngineOptions<
   Doc extends object,
@@ -315,15 +328,17 @@ export interface MutationEngineOptions<
   Op extends {
     type: string
   },
+  Reader,
   Services = void,
   Code extends string = string
 > {
   document: Doc
   normalize(doc: Doc): Doc
+  createReader: MutationReaderFactory<Doc, Reader>
   services?: Services
   entities?: Readonly<Record<string, MutationEntitySpec>>
-  custom?: MutationCustomTable<Doc, Op, Services, Code>
-  compile?: MutationCompileHandlerTable<Table, Doc, Op, Services, Code>
+  custom?: MutationCustomTable<Doc, Op, Reader, Services, Code>
+  compile?: MutationCompileHandlerTable<Table, Doc, Op, Reader, Services, Code>
   history?: MutationHistoryOptions | false
 }
 

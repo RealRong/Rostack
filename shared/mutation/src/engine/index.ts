@@ -12,6 +12,7 @@ export type {
   MutationCustomHistoryResult,
   MutationCustomReduceInput,
   MutationCustomReduceResult,
+  MutationReaderFactory,
   MutationCustomSpec,
   MutationCustomTable,
   MutationEngineOptions,

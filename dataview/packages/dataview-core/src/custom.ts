@@ -18,6 +18,9 @@ import type {
   FieldId,
   RecordId
 } from '@dataview/core/types'
+import type {
+  DocumentReader
+} from '@dataview/core/document/reader'
 import {
   TITLE_FIELD_ID
 } from '@dataview/core/types'
@@ -368,6 +371,7 @@ const createExternalVersionResult = (
 export const dataviewCustom: MutationCustomTable<
   DataDoc,
   DocumentOperation,
+  DocumentReader,
   void
 > = {
   'record.remove': {

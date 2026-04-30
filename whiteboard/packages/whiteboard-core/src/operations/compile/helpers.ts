@@ -46,6 +46,8 @@ export type WhiteboardCompileServices = {
   layout: WhiteboardLayoutService
 }
 
+export type WhiteboardMutationReader = Document
+
 export type WhiteboardCompileContext<
   K extends WhiteboardIntentKind = WhiteboardIntentKind
 > = MutationCompileHandlerInput<
@@ -53,6 +55,7 @@ export type WhiteboardCompileContext<
   WhiteboardIntent<K>,
   Operation,
   WhiteboardIntentOutput<K>,
+  WhiteboardMutationReader,
   WhiteboardCompileServices,
   WhiteboardCompileCode
 >
@@ -61,6 +64,7 @@ export type WhiteboardCompileHandlerTable = MutationCompileHandlerTable<
   WhiteboardMutationTable,
   Document,
   Operation,
+  WhiteboardMutationReader,
   WhiteboardCompileServices,
   WhiteboardCompileCode
 >

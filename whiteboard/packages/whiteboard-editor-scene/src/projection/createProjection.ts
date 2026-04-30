@@ -142,8 +142,9 @@ export const createProjection = (input: {
       const previousDocumentRevision = ctx.read.capture.documentRevision()
       const previousBackground = ctx.read.document.background()
 
-      dirty.previousDocument = ctx.read.document.get()
+      dirty.previousDocument = ctx.read.document.snapshot()
       resetDocumentPhaseDelta(ctx.state)
+      ctx.state.runtime = ctx.input.runtime
 
       patchDocumentState({
         current: ctx.input,

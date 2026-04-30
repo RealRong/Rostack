@@ -1,4 +1,3 @@
-import { idDelta } from '@shared/delta'
 import type {
   EdgeId,
   GroupId,
@@ -56,41 +55,6 @@ const hasGraphEntityLifecycle = (
     || entities.groups.removed.size > 0
   )
 }
-
-const readRuntimeTouch = (
-  current: Input
-) => ({
-  node: new Set<NodeId>([
-    ...idDelta.touched(current.runtime.delta.session.preview.nodes),
-    ...(current.runtime.session.edit?.kind === 'node'
-      ? [current.runtime.session.edit.nodeId]
-      : [])
-  ]),
-  edge: new Set<EdgeId>([
-    ...idDelta.touched(current.runtime.delta.session.draft.edges),
-    ...idDelta.touched(current.runtime.delta.session.preview.edges),
-    ...(current.runtime.session.edit?.kind === 'edge-label'
-      ? [current.runtime.session.edit.edgeId]
-      : [])
-  ]),
-  mindmap: new Set<MindmapId>([
-    ...idDelta.touched(current.runtime.delta.session.preview.mindmaps)
-  ]),
-  ui: Boolean(
-    current.runtime.delta.session.tool
-    || current.runtime.delta.session.selection
-    || current.runtime.delta.session.hover
-    || current.runtime.delta.session.edit
-    || current.runtime.delta.session.interaction
-    || current.runtime.delta.session.preview.marquee
-    || current.runtime.delta.session.preview.guides
-    || current.runtime.delta.session.preview.draw
-    || current.runtime.delta.session.preview.edgeGuide
-    || current.runtime.delta.session.preview.mindmaps.added.size > 0
-    || current.runtime.delta.session.preview.mindmaps.updated.size > 0
-    || current.runtime.delta.session.preview.mindmaps.removed.size > 0
-  )
-})
 
 const readGraphTouch = (input: {
   current: Input
@@ -163,22 +127,6 @@ const readGraphTouch = (input: {
   }
 }
 
-const readActiveEdgeIds = (
-  current: Input
-): ReadonlySet<EdgeId> => {
-  const edgeIds = new Set<EdgeId>()
-  current.runtime.interaction.selection.edgeIds.forEach((edgeId) => {
-    edgeIds.add(edgeId)
-  })
-  if (current.runtime.interaction.hover.kind === 'edge') {
-    edgeIds.add(current.runtime.interaction.hover.edgeId)
-  }
-  if (current.runtime.session.edit?.kind === 'edge-label') {
-    edgeIds.add(current.runtime.session.edit.edgeId)
-  }
-  return edgeIds
-}
-
 const collectItemChangeScope = (
   working: WorkingState
 ): SceneScope<SceneItemKey> => {
@@ -197,7 +145,7 @@ export const createEditorScenePlan = (
   input: Input
 ): EditorScenePlan => {
   const plan = createEmptyEditorScenePlan()
-  const runtimeTouch = readRuntimeTouch(input)
+  const runtimeFacts = input.runtime.facts
   const nodeTargets = sceneScopeUnion(
     input.delta.node.create.touchedIds(),
     input.delta.node.delete.touchedIds(),
@@ -246,9 +194,9 @@ export const createEditorScenePlan = (
   const mindmapTargetIds = copyScope(mindmapTargets)
   const groupTargetIds = copyScope(groupTargets)
 
-  appendIds(edgeTargetIds, runtimeTouch.edge)
-  appendIds(nodeTargetIds, runtimeTouch.node)
-  appendIds(mindmapTargetIds, runtimeTouch.mindmap)
+  appendIds(edgeTargetIds, runtimeFacts.touchedEdgeIds)
+  appendIds(nodeTargetIds, runtimeFacts.touchedNodeIds)
+  appendIds(mindmapTargetIds, runtimeFacts.touchedMindmapIds)
 
   appendIds(edgeTargetIds, input.runtime.session.draft.edges.keys())
   appendIds(nodeTargetIds, input.runtime.session.preview.nodes.keys())
@@ -278,7 +226,7 @@ export const refreshEditorScenePlanAfterGraph = (input: {
   reset: boolean
 }) => {
   const graphTouch = readGraphTouch(input)
-  const runtimeTouch = readRuntimeTouch(input.current)
+  const runtimeFacts = input.current.runtime.facts
 
   input.plan.graph = {
     node: graphTouch.node.entity,
@@ -308,7 +256,7 @@ export const refreshEditorScenePlanAfterGraph = (input: {
 
   const node = new Set<NodeId>()
   const edge = new Set<EdgeId>()
-  let chrome = runtimeTouch.ui
+  let chrome = runtimeFacts.uiChanged
 
   appendIds(node, graphTouch.node.entity as ReadonlySet<NodeId>)
   appendIds(node, graphTouch.node.geometry as ReadonlySet<NodeId>)
@@ -332,15 +280,15 @@ export const refreshEditorScenePlanAfterGraph = (input: {
     scope: graphTouch.mindmap.owner,
     working: input.working
   })
-  appendIds(node, runtimeTouch.node)
-  appendIds(edge, runtimeTouch.edge)
+  appendIds(node, runtimeFacts.touchedNodeIds)
+  appendIds(edge, runtimeFacts.touchedEdgeIds)
   appendMindmapNodeIds({
     target: node,
-    mindmapIds: runtimeTouch.mindmap,
+    mindmapIds: runtimeFacts.touchedMindmapIds,
     working: input.working
   })
 
-  if (runtimeTouch.ui) {
+  if (runtimeFacts.uiChanged) {
     const runtimeUiTouch = collectUiRuntimeTouch({
       current: input.current,
       working: input.working
@@ -405,13 +353,13 @@ export const refreshEditorScenePlanForRender = (input: {
   }
 
   const graphTouch = readGraphTouch(input)
-  const runtimeTouch = readRuntimeTouch(input.current)
+  const runtimeFacts = input.current.runtime.facts
   const node = new Set<NodeId>()
   const edgeStatics = new Set<EdgeId>()
   const edgeLabels = new Set<EdgeId>()
   const edgeMasks = new Set<EdgeId>()
   const edgeActive = new Set<EdgeId>([
-    ...readActiveEdgeIds(input.current),
+    ...runtimeFacts.activeEdgeIds,
     ...input.working.render.active.keys()
   ])
 
@@ -437,7 +385,7 @@ export const refreshEditorScenePlanForRender = (input: {
     scope: graphTouch.mindmap.owner,
     working: input.working
   })
-  appendIds(node, runtimeTouch.node)
+  appendIds(node, runtimeFacts.touchedNodeIds)
 
   appendIds(edgeStatics, graphTouch.edge.entity as ReadonlySet<EdgeId>)
   appendIds(edgeStatics, graphTouch.edge.geometry as ReadonlySet<EdgeId>)
@@ -474,7 +422,7 @@ export const refreshEditorScenePlanForRender = (input: {
     edgeMasks: toScope(edgeMasks),
     chromeScene: input.plan.ui.chrome,
     chromeEdge: (
-      runtimeTouch.ui
+      runtimeFacts.uiChanged
       || input.plan.ui.chrome
       || sceneScopeHasAny(input.plan.ui.edge)
       || sceneScopeHasAny(graphTouch.edge.entity)

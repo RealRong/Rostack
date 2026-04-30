@@ -295,7 +295,7 @@ describe('editor scene runtime', () => {
     expect(capture.graph.nodes.ids.length).toBe(1)
     expect(capture.items.ids.length).toBe(1)
     expect(capture.documentRevision).toBe(1)
-    expect(runtime.query.node.get(nodeId)).toBe(capture.graph.nodes.byId.get(nodeId))
+    expect(runtime.query.scene.node(nodeId)).toBe(capture.graph.nodes.byId.get(nodeId))
     expect(capture.render.edge.statics.ids).toBeDefined()
     expect(result.trace?.phases.map((phase) => phase.name)).toEqual([
       'document',
@@ -362,8 +362,8 @@ describe('editor scene runtime', () => {
 
     expect(harness.runtime.capture()).toBe(capture)
     expect(harness.lastTrace()).toEqual(result.trace)
-    expect(query.node.get(nodeId)).toBe(capture.graph.nodes.byId.get(nodeId))
-    expect(query.spatial.get(`node:${nodeId}`)).toEqual(expect.objectContaining({
+    expect(query.scene.node(nodeId)).toBe(capture.graph.nodes.byId.get(nodeId))
+    expect(query.scene.query.spatial.get(`node:${nodeId}`)).toEqual(expect.objectContaining({
       key: `node:${nodeId}`,
       kind: 'node',
       item: {
@@ -371,18 +371,18 @@ describe('editor scene runtime', () => {
         id: nodeId
       }
     }))
-    expect(query.spatial.rect({
+    expect(query.scene.query.spatial.rect({
       x: -100,
       y: -100,
       width: 400,
       height: 400
     }).some((record) => record.key === `node:${nodeId}`)).toBe(true)
-    const spatialRecord = query.spatial.get(`node:${nodeId}`)!
-    expect(query.spatial.point({
+    const spatialRecord = query.scene.query.spatial.get(`node:${nodeId}`)!
+    expect(query.scene.query.spatial.point({
       x: spatialRecord.bounds.x + spatialRecord.bounds.width / 2,
       y: spatialRecord.bounds.y + spatialRecord.bounds.height / 2
     }).some((record) => record.key === spatialRecord.key)).toBe(true)
-    expect(query.items()).toBe(capture.items)
+    expect(query.scene.query.items()).toBe(capture.items)
     expect(harness.runtime.state().ui.chrome).toBe(capture.ui.chrome)
   })
 
@@ -440,7 +440,7 @@ describe('editor scene runtime', () => {
     expect(baselineMindmap?.tree.layout).toBeDefined()
     expect(liveMindmap?.tree.layout).toBeDefined()
     expect(liveRootUi?.editing).toBe(true)
-    expect(runtime.query.node.get(childId)).toBe(liveCapture.graph.nodes.byId.get(childId))
+    expect(runtime.query.scene.node(childId)).toBe(liveCapture.graph.nodes.byId.get(childId))
   })
 
   it('builds renderer-ready edge, chrome, and spatial state in the render pipeline', () => {
@@ -645,7 +645,7 @@ describe('editor scene runtime', () => {
       expect.objectContaining({ kind: 'edge', id: edgeId })
     ]))
     expect(
-      runtime.query.spatial.rect({
+      runtime.query.scene.query.spatial.rect({
         x: 0,
         y: 0,
         width: 700,
@@ -657,7 +657,7 @@ describe('editor scene runtime', () => {
       `edge:${edgeId}`
     ]))
     expect(
-      runtime.query.spatial.rect({
+      runtime.query.scene.query.spatial.rect({
         x: 0,
         y: 0,
         width: 700,
@@ -666,7 +666,7 @@ describe('editor scene runtime', () => {
     ).toBe(false)
   })
 
-  it('derives viewport-backed screen projection and background view from query.view', () => {
+  it('derives viewport-backed screen projection and background view from query.scene.query.viewport', () => {
     const document = documentApi.create('doc_editor_scene_runtime_viewport')
     document.background = {
       type: 'dot',
@@ -698,14 +698,14 @@ describe('editor scene runtime', () => {
       documentDelta: DOCUMENT_DELTA
     }))
 
-    expect(runtime.query.view.screenPoint({
+    expect(runtime.query.scene.query.viewport.screenPoint({
       x: 14,
       y: 9
     })).toEqual({
       x: 8,
       y: 8
     })
-    expect(runtime.query.view.screenRect({
+    expect(runtime.query.scene.query.viewport.screenRect({
       x: 14,
       y: 9,
       width: 6,
@@ -716,7 +716,7 @@ describe('editor scene runtime', () => {
       width: 12,
       height: 8
     })
-    expect(runtime.query.view.background()).toEqual({
+    expect(runtime.query.scene.query.viewport.background()).toEqual({
       type: 'dot',
       color: '#123456',
       step: 48,
@@ -731,7 +731,7 @@ describe('editor scene runtime', () => {
       zoom: 0.25
     }
 
-    expect(runtime.query.view.background()).toEqual({
+    expect(runtime.query.scene.query.viewport.background()).toEqual({
       type: 'dot',
       color: '#123456',
       step: 24,

@@ -4,7 +4,7 @@ import { geometry as geometryApi } from '@whiteboard/core/geometry'
 import type { EdgeHandle } from '@whiteboard/core/types/edge'
 import type { Edge, EdgeId, NodeId } from '@whiteboard/core/types'
 import type { EdgeOverlayRoutePoint, EdgeOverlayView, EdgeStaticView } from '../../contracts/render'
-import { patchValue } from './family'
+import { applyValue } from '@shared/projection'
 import type { RenderContext } from './context'
 
 const EMPTY_ENDPOINT_HANDLES: EdgeOverlayView['endpointHandles'] = []
@@ -253,7 +253,7 @@ export const patchRenderOverlay = (
     return 0
   }
 
-  return patchValue({
+  return applyValue({
     previous: context.working.render.overlay,
     next: buildOverlayView(context),
     equal: isOverlayViewEqual,

@@ -125,14 +125,14 @@ const buildEnterJob = (input: {
   nodeId: MindmapNodeId
   anchorId?: MindmapNodeId
 }): MindmapEnterJob | undefined => {
-  const structure = input.graph.query.mindmap.structure(input.treeId)
-  const targetRect = input.graph.query.node.get(input.nodeId)?.geometry.rect
+  const structure = input.graph.query.scene.query.mindmap.structure(input.treeId)
+  const targetRect = input.graph.query.scene.node(input.nodeId)?.geometry.rect
   if (!structure || !targetRect) {
     return undefined
   }
 
   const parentId = structure.tree.nodes[input.nodeId]?.parentId
-  const anchorRect = input.graph.query.node.get(
+  const anchorRect = input.graph.query.scene.node(
     input.anchorId ?? parentId ?? ''
   )?.geometry.rect
   if (!anchorRect) {
@@ -298,7 +298,7 @@ export const createMindmapActions = ({
   const insertRelative: MindmapActions['insertRelative'] = (
     input
   ) => {
-    const structure = graph.query.mindmap.structure(input.id)
+    const structure = graph.query.scene.query.mindmap.structure(input.id)
     if (!structure) {
       return undefined
     }

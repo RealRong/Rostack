@@ -1,6 +1,6 @@
 import { geometry as geometryApi } from '@whiteboard/core/geometry'
 import type {
-  Query,
+  SceneQuery,
   SceneViewSnapshot
 } from '../../contracts/editor'
 import type { WorkingState } from '../../contracts/working'
@@ -13,9 +13,9 @@ import {
 export const createViewRead = (input: {
   state: () => WorkingState
   view: () => SceneViewSnapshot
-  hit: Query['hit']
-  spatial: Query['spatial']
-}): Query['view'] => ({
+  hit: SceneQuery['hit']
+  spatial: SceneQuery['spatial']
+}): SceneQuery['viewport'] => ({
   zoom: () => input.view().zoom,
   center: () => input.view().center,
   worldRect: () => input.view().worldRect,

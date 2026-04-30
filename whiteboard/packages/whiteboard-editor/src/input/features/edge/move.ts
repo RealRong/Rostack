@@ -38,9 +38,9 @@ const readMovableEdge = (
   projection: Pick<EditorHostDeps, 'projection'>['projection'],
   edgeId: EdgeId
 ) => {
-  const current = projection.query.edge.get(edgeId)?.base.edge
+  const current = projection.query.scene.edge(edgeId)?.base.edge
 
-  return current && projection.query.edge.capability(edgeId)?.move
+  return current && projection.query.scene.query.edge.capability(edgeId)?.move
     ? current
     : undefined
 }

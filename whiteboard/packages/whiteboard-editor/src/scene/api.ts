@@ -57,7 +57,7 @@ const createScenePick = (input: {
     request: ScenePickRequest
   ): ScenePickResult => {
     const startedAt = scheduler.readMonotonicNow()
-    const next = input.query.view.pick({
+    const next = input.query.scene.query.viewport.pick({
       point: request.world,
       radius: request.radius,
       kinds: request.kinds
@@ -152,7 +152,7 @@ export const createEditorSceneApi = ({
   dispose: () => void
 } => {
   const visible: EditorSceneApi['host']['visible'] = (options) =>
-    runtime.query.view.visible(options)
+    runtime.query.scene.query.viewport.visible(options)
   const pick = createScenePick({
     query: runtime.query
   })

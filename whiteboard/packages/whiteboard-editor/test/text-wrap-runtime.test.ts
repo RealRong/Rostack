@@ -261,7 +261,7 @@ describe('text wrap runtime', () => {
   it('projects auto-width text rect from live edit layout before commit', () => {
     const editor = createAutoWidthTextEditor()
 
-    expect(editor.scene.query.node.get('text-1')?.geometry.rect).toMatchObject({
+    expect(editor.scene.query.scene.node('text-1')?.geometry.rect).toMatchObject({
       width: 100,
       height: 24
     })
@@ -273,11 +273,11 @@ describe('text wrap runtime', () => {
       kind: 'node',
       nodeId: 'text-1'
     })
-    expect(editor.scene.query.node.get('text-1')?.geometry.rect).toMatchObject({
+    expect(editor.scene.query.scene.node('text-1')?.geometry.rect).toMatchObject({
       width: 280,
       height: 24
     })
-    expect(editor.document.get().nodes['text-1']?.size).toMatchObject({
+    expect(editor.document.snapshot().nodes['text-1']?.size).toMatchObject({
       width: 100,
       height: 24
     })
@@ -299,11 +299,11 @@ describe('text wrap runtime', () => {
       }
     })
 
-    expect(editor.document.get().nodes['text-1']?.data).toMatchObject({
+    expect(editor.document.snapshot().nodes['text-1']?.data).toMatchObject({
       widthMode: 'wrap',
       wrapWidth: 180
     })
-    expect(editor.scene.query.node.get('text-1')?.geometry.rect).toMatchObject({
+    expect(editor.scene.query.scene.node('text-1')?.geometry.rect).toMatchObject({
       width: 180,
       height: 24
     })
@@ -315,7 +315,7 @@ describe('text wrap runtime', () => {
       kind: 'node',
       nodeId: 'text-1'
     })
-    expect(editor.scene.query.node.get('text-1')?.geometry.rect).toMatchObject({
+    expect(editor.scene.query.scene.node('text-1')?.geometry.rect).toMatchObject({
       width: 180,
       height: 24
     })
@@ -342,10 +342,10 @@ describe('text wrap runtime', () => {
       value: 20
     })
 
-    expect(editor.document.get().nodes['text-1']?.style).toMatchObject({
+    expect(editor.document.snapshot().nodes['text-1']?.style).toMatchObject({
       fontSize: 20
     })
-    expect(editor.scene.query.node.get('text-1')?.geometry.rect).toMatchObject({
+    expect(editor.scene.query.scene.node('text-1')?.geometry.rect).toMatchObject({
       width: 180,
       height: 48
     })
@@ -376,10 +376,10 @@ describe('text wrap runtime', () => {
       }
     )
 
-    expect(editor.document.get().nodes['text-1']?.style).toMatchObject({
+    expect(editor.document.snapshot().nodes['text-1']?.style).toMatchObject({
       fontSize: 20
     })
-    expect(editor.scene.query.node.get('text-1')?.geometry.rect).toMatchObject({
+    expect(editor.scene.query.scene.node('text-1')?.geometry.rect).toMatchObject({
       width: 180,
       height: 48
     })
@@ -399,8 +399,8 @@ describe('sticky fit runtime', () => {
       }
     )
 
-    expect(editor.document.get().nodes['sticky-1']?.rotation).toBe(45)
-    expect(editor.document.get().nodes['sticky-1']?.style).toMatchObject({
+    expect(editor.document.snapshot().nodes['sticky-1']?.rotation).toBe(45)
+    expect(editor.document.snapshot().nodes['sticky-1']?.style).toMatchObject({
       fontSize: 28
     })
   })
@@ -420,10 +420,10 @@ describe('sticky fit runtime', () => {
       }
     )
 
-    expect(editor.document.get().nodes['sticky-1']?.style).toMatchObject({
+    expect(editor.document.snapshot().nodes['sticky-1']?.style).toMatchObject({
       fontSize: 18
     })
-    expect(editor.scene.query.node.get('sticky-1')?.geometry.rect).toMatchObject({
+    expect(editor.scene.query.scene.node('sticky-1')?.geometry.rect).toMatchObject({
       width: 100,
       height: 140
     })
@@ -441,10 +441,10 @@ describe('sticky fit runtime', () => {
       }
     )
 
-    expect(editor.document.get().nodes['sticky-1']?.data).toMatchObject({
+    expect(editor.document.snapshot().nodes['sticky-1']?.data).toMatchObject({
       fontMode: 'fixed'
     })
-    expect(editor.document.get().nodes['sticky-1']?.style).toMatchObject({
+    expect(editor.document.snapshot().nodes['sticky-1']?.style).toMatchObject({
       fontSize: 32
     })
   })

@@ -3,7 +3,7 @@ import { idDelta } from '@shared/delta'
 import { geometry as geometryApi } from '@whiteboard/core/geometry'
 import type { NodeId } from '@whiteboard/core/types'
 import type { EdgeLabelView, NodeRenderView } from '../../contracts/render'
-import { patchFamilyReset, patchFamilyTouched } from './family'
+import { applyFamilyReset, applyFamilyTouched } from '@shared/projection'
 import type { RenderContext } from './context'
 
 const isEditCaretEqual = (
@@ -103,7 +103,7 @@ export const patchRenderNodes = (
   }
 
   if (context.reset) {
-    return patchFamilyReset({
+    return applyFamilyReset({
       previous: context.working.render.node,
       ids: context.working.graph.nodes.keys(),
       build: (nodeId) => buildNodeRenderView(context, nodeId),
@@ -122,7 +122,7 @@ export const patchRenderNodes = (
     })
   }
 
-  return patchFamilyTouched({
+  return applyFamilyTouched({
     state: context.working.render.node,
     ids: context.touched.node,
     build: (nodeId) => buildNodeRenderView(context, nodeId),

@@ -84,6 +84,54 @@ export const createWorking = (input: {
       snapshot: snapshot.document,
       background: snapshot.document.background
     },
+    runtime: {
+      session: {
+        edit: null,
+        draft: {
+          edges: new Map()
+        },
+        preview: {
+          nodes: new Map(),
+          edges: new Map(),
+          draw: null,
+          selection: {
+            guides: []
+          },
+          mindmap: null
+        },
+        tool: {
+          type: 'select'
+        }
+      },
+      interaction: {
+        selection: {
+          nodeIds: [],
+          edgeIds: []
+        },
+        hover: {
+          kind: 'none'
+        },
+        drag: {
+          kind: 'idle'
+        },
+        chrome: false,
+        editingEdge: false
+      },
+      view: {
+        zoom: 1,
+        center: { x: 0, y: 0 },
+        worldRect: { x: 0, y: 0, width: 0, height: 0 }
+      },
+      facts: {
+        touchedNodeIds: new Set(),
+        touchedEdgeIds: new Set(),
+        touchedMindmapIds: new Set(),
+        activeEdgeIds: new Set(),
+        uiChanged: false,
+        overlayChanged: false,
+        chromeChanged: false
+      }
+    },
     graph: {
       nodes: graphNodes,
       edges: graphEdges,

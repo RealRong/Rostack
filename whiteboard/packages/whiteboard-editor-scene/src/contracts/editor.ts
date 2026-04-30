@@ -86,6 +86,7 @@ export interface Input {
     session: SessionInput
     interaction: InteractionInput
     view: SceneViewSnapshot
+    facts: SceneRuntimeFacts
     delta: EditorSceneRuntimeDelta
   }
   delta: WhiteboardMutationDelta
@@ -329,6 +330,16 @@ export interface InteractionInput {
   drag: DragState
   chrome: boolean
   editingEdge: boolean
+}
+
+export interface SceneRuntimeFacts {
+  touchedNodeIds: ReadonlySet<NodeId>
+  touchedEdgeIds: ReadonlySet<EdgeId>
+  touchedMindmapIds: ReadonlySet<MindmapId>
+  activeEdgeIds: ReadonlySet<EdgeId>
+  uiChanged: boolean
+  overlayChanged: boolean
+  chromeChanged: boolean
 }
 
 export interface SelectionState {
@@ -631,30 +642,62 @@ export interface Result {
 }
 
 export interface DocumentQuery {
-  get(): WhiteboardDocument
+  snapshot(): WhiteboardDocument
   background(): WhiteboardDocument['background'] | undefined
   node(id: NodeId): Node | undefined
   edge(id: EdgeId): Edge | undefined
+  group(id: GroupId): Group | undefined
+  mindmap(id: MindmapId): MindmapRecord | undefined
   nodeIds(): readonly NodeId[]
   edgeIds(): readonly EdgeId[]
+  groupIds(): readonly GroupId[]
+  mindmapIds(): readonly MindmapId[]
+  canvas: {
+    order(): readonly import('@whiteboard/core/types').CanvasItemRef[]
+    slot(ref: import('@whiteboard/core/types').CanvasItemRef): {
+      prev?: import('@whiteboard/core/types').CanvasItemRef
+      next?: import('@whiteboard/core/types').CanvasItemRef
+    } | undefined
+    groupRefs(groupId: GroupId): readonly import('@whiteboard/core/types').CanvasItemRef[]
+  }
   slice(input: {
     nodeIds?: readonly NodeId[]
     edgeIds?: readonly EdgeId[]
   }): SliceExportResult | undefined
 }
 
-export interface Query {
-  revision(): Revision
+export interface RuntimeQuery {
+  session: {
+    tool(): ToolState
+    selection(): SelectionTarget
+    hover(): HoverState
+    edit(): EditSession | null
+    interaction(): InteractionInput
+    preview(): PreviewInput
+  }
+  facts: {
+    touchedNodeIds(): ReadonlySet<NodeId>
+    touchedEdgeIds(): ReadonlySet<EdgeId>
+    touchedMindmapIds(): ReadonlySet<MindmapId>
+    activeEdgeIds(): ReadonlySet<EdgeId>
+    uiChanged(): boolean
+    overlayChanged(): boolean
+    chromeChanged(): boolean
+  }
+}
+
+export interface SceneQuery {
+  relatedEdgeIds(nodeIds: Iterable<NodeId>): readonly EdgeId[]
+  descendants(nodeIds: readonly NodeId[]): readonly NodeId[]
+  mindmapStructure(value: MindmapId | NodeId | string): MindmapView['structure'] | undefined
+  ownerByNode(nodeId: NodeId): OwnerRef | undefined
+  spatial: SpatialRead
+  snap(rect: Rect): readonly import('@whiteboard/core/node').SnapCandidate[]
   bounds(): Rect | undefined
-  document: DocumentQuery
   node: {
-    get(id: NodeId): NodeView | undefined
-    draft(id: NodeId): NodeDraftMeasure | undefined
     idsInRect(rect: Rect, options?: NodeRectHitOptions): readonly NodeId[]
   }
   edge: {
-    get(id: EdgeId): EdgeView | undefined
-    related(nodeIds: Iterable<NodeId>): readonly EdgeId[]
     idsInRect(rect: Rect, options?: {
       match?: 'touch' | 'contain'
     }): readonly EdgeId[]
@@ -701,7 +744,7 @@ export interface Query {
     }
     bounds(target: import('@whiteboard/core/selection').SelectionTarget): Rect | undefined
   }
-  chrome: {
+  overlay: {
     marquee(): {
       rect: Rect
       match: SelectionMarqueeMatch
@@ -711,7 +754,6 @@ export interface Query {
     edgeGuide(): EdgeGuidePreview | undefined
   }
   mindmap: {
-    get(id: MindmapId): MindmapView | undefined
     resolve(value: string): MindmapId | undefined
     structure(value: MindmapId | NodeId): MindmapView['structure'] | undefined
     ofNodes(nodeIds: readonly NodeId[]): MindmapId | undefined
@@ -732,14 +774,11 @@ export interface Query {
     }): NodeId | undefined
   }
   group: {
-    get(id: GroupId): GroupView | undefined
     ofNode(nodeId: NodeId): GroupId | undefined
     ofEdge(edgeId: EdgeId): GroupId | undefined
     target(targetId: GroupId): import('@whiteboard/core/selection').SelectionTarget | undefined
     exact(target: import('@whiteboard/core/selection').SelectionTarget): readonly GroupId[]
   }
-  spatial: SpatialRead
-  snap(rect: Rect): readonly import('@whiteboard/core/node').SnapCandidate[]
   frame: {
     point(point: Point): readonly NodeId[]
     rect(rect: Rect): readonly NodeId[]
@@ -749,7 +788,6 @@ export interface Query {
     parent(nodeId: NodeId, options?: {
       excludeIds?: readonly NodeId[]
     }): NodeId | undefined
-    descendants(nodeIds: readonly NodeId[]): readonly NodeId[]
   }
   hit: {
     node(input: {
@@ -786,7 +824,7 @@ export interface Query {
       id: GroupId
     } | undefined
   }
-  view: {
+  viewport: {
     zoom(): number
     center(): Point
     worldRect(): Rect
@@ -831,4 +869,23 @@ export interface Query {
     }
   }
   items(): State['items']
+}
+
+export interface SceneProjectionQuery {
+  node(id: NodeId): NodeView | undefined
+  edge(id: EdgeId): EdgeView | undefined
+  mindmap(id: MindmapId): MindmapView | undefined
+  group(id: GroupId): GroupView | undefined
+  nodes(): IterableIterator<[NodeId, NodeView]>
+  edges(): IterableIterator<[EdgeId, EdgeView]>
+  mindmaps(): IterableIterator<[MindmapId, MindmapView]>
+  groups(): IterableIterator<[GroupId, GroupView]>
+  query: SceneQuery
+}
+
+export interface Query {
+  revision(): Revision
+  document: DocumentQuery
+  runtime: RuntimeQuery
+  scene: SceneProjectionQuery
 }

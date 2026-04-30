@@ -9,6 +9,7 @@ import type { Input } from '../contracts/editor'
 import {
   createEmptyEditorSceneRuntimeDelta
 } from '../contracts/plan'
+import { createRuntimeFacts } from '../projection/runtimeFacts'
 import { createEmptyDocumentSnapshot } from '../projection/state'
 
 const EMPTY_MUTATION_CHANGES = Object.freeze(
@@ -19,61 +20,72 @@ export const createEmptyRuntimeInputDelta = (): Input['runtime']['delta'] => (
   createEmptyEditorSceneRuntimeDelta()
 )
 
-export const createEmptyInput = (): Input => ({
-  document: {
-    rev: 0,
-    doc: createEmptyDocumentSnapshot().document
-  },
-  runtime: {
-    session: {
-      edit: null,
-      draft: {
-        edges: new Map()
-      },
-      preview: {
-        nodes: new Map(),
-        edges: new Map(),
-        edgeGuide: undefined,
-        draw: null,
-        selection: {
-          guides: []
-        },
-        mindmap: null
-      },
-      tool: {
-        type: 'select'
-      }
+export const createEmptyInput = (): Input => {
+  const session: Input['runtime']['session'] = {
+    edit: null,
+    draft: {
+      edges: new Map()
     },
-    interaction: {
+    preview: {
+      nodes: new Map(),
+      edges: new Map(),
+      edgeGuide: undefined,
+      draw: null,
       selection: {
-        nodeIds: [],
-        edgeIds: []
+        guides: []
       },
-      hover: {
-        kind: 'none'
-      },
-      drag: {
-        kind: 'idle'
-      },
-      chrome: false,
-      editingEdge: false
+      mindmap: null
     },
-    view: {
-      zoom: 1,
-      center: {
-        x: 0,
-        y: 0
-      },
-      worldRect: {
-        x: 0,
-        y: 0,
-        width: 0,
-        height: 0
-      }
+    tool: {
+      type: 'select'
+    }
+  }
+  const interaction: Input['runtime']['interaction'] = {
+    selection: {
+      nodeIds: [],
+      edgeIds: []
     },
-    delta: createEmptyRuntimeInputDelta()
-  },
-  delta: createWhiteboardMutationDelta({
-    changes: EMPTY_MUTATION_CHANGES
-  })
-})
+    hover: {
+      kind: 'none'
+    },
+    drag: {
+      kind: 'idle'
+    },
+    chrome: false,
+    editingEdge: false
+  }
+  const delta = createEmptyRuntimeInputDelta()
+
+  return {
+    document: {
+      rev: 0,
+      doc: createEmptyDocumentSnapshot().document
+    },
+    runtime: {
+      session,
+      interaction,
+      view: {
+        zoom: 1,
+        center: {
+          x: 0,
+          y: 0
+        },
+        worldRect: {
+          x: 0,
+          y: 0,
+          width: 0,
+          height: 0
+        }
+      },
+      facts: createRuntimeFacts({
+        session,
+        interaction,
+        delta
+      }),
+      delta
+    },
+    delta: createWhiteboardMutationDelta({
+      changes: EMPTY_MUTATION_CHANGES
+    })
+  }
+}

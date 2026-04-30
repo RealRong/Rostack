@@ -127,7 +127,7 @@ const createPickEditor = () => {
 describe('scene pick', () => {
   it('resolves edge targets from rect candidates and precise hit', () => {
     const editor = createPickEditor()
-    const geometry = editor.scene.query.edge.get('edge-1')
+    const geometry = editor.scene.query.scene.edge('edge-1')
 
     expect(geometry).toBeDefined()
     if (!geometry) {
@@ -143,10 +143,10 @@ describe('scene pick', () => {
       width: 32,
       height: 32
     }
-    const candidates = editor.scene.query.spatial.candidates(rect, {
+    const candidates = editor.scene.query.scene.query.spatial.candidates(rect, {
       kinds: ['edge']
     })
-    const resolved = editor.scene.query.hit.item({
+    const resolved = editor.scene.query.scene.query.hit.item({
       point,
       threshold: 16,
       kinds: ['edge']

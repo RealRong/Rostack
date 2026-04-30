@@ -1,9 +1,8 @@
 import { geometry as geometryApi } from '@whiteboard/core/geometry'
 import { node as nodeApi } from '@whiteboard/core/node'
 import type { NodeId, Rect } from '@whiteboard/core/types'
-import type { Query } from '../../contracts/editor'
+import type { SceneQuery } from '../../contracts/editor'
 import type { WorkingState } from '../../contracts/working'
-import { readTreeDescendants } from '../../model/index/read'
 
 const isFrameView = (
   state: WorkingState,
@@ -22,7 +21,7 @@ const readFrameRect = (
 
 const readFrameCandidates = (input: {
   state: WorkingState
-  records: ReturnType<Query['spatial']['point']> | ReturnType<Query['spatial']['rect']>
+  records: ReturnType<SceneQuery['spatial']['point']> | ReturnType<SceneQuery['spatial']['rect']>
 }): readonly {
   id: NodeId
   rect: Rect
@@ -44,8 +43,8 @@ const readFrameCandidates = (input: {
 
 export const createFrameRead = (input: {
   state: () => WorkingState
-  spatial: Query['spatial']
-}): Query['frame'] => ({
+  spatial: SceneQuery['spatial']
+}): SceneQuery['frame'] => ({
   point: (point) => input.spatial.point(point, {
     kinds: ['node']
   }).flatMap((record) => record.item.kind === 'node' && isFrameView(input.state(), record.item.id)
@@ -94,6 +93,5 @@ export const createFrameRead = (input: {
         ? new Set(options.excludeIds)
         : undefined
     })
-  },
-  descendants: (nodeIds) => readTreeDescendants(input.state().indexes, nodeIds)
+  }
 })

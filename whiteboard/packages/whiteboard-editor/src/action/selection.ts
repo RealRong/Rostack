@@ -142,7 +142,7 @@ const createSelectionActionHelpers = ({
   },
   order: (input, mode) => {
     const target = selectionApi.target.normalize(input)
-    const groupIds = read.query.group.exact(target)
+    const groupIds = read.query.scene.query.group.exact(target)
     if (groupIds.length > 0) {
       return orderGroups(group, groupIds, mode).ok
     }
@@ -170,7 +170,7 @@ const createSelectionActionHelpers = ({
   },
   ungroup: (input, options) => {
     const target = selectionApi.target.normalize(input)
-    const groupIds = [...read.query.group.exact(target)]
+    const groupIds = [...read.query.scene.query.group.exact(target)]
     if (!groupIds.length) {
       return false
     }

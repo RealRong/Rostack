@@ -156,7 +156,7 @@ describe('transactional create layout', () => {
       return
     }
 
-    expect(editor.document.get().nodes[result.data.nodeId]?.size).toEqual({
+    expect(editor.document.snapshot().nodes[result.data.nodeId]?.size).toEqual({
       width: 132,
       height: 44
     })
@@ -187,7 +187,7 @@ describe('transactional create layout', () => {
       return
     }
 
-    expect(editor.document.get().nodes[result.data.nodeId]?.style?.fontSize).toBe(18)
+    expect(editor.document.snapshot().nodes[result.data.nodeId]?.style?.fontSize).toBe(18)
   })
 
   it('measures mindmap root and inserted child before commit', () => {
@@ -204,7 +204,7 @@ describe('transactional create layout', () => {
       return
     }
 
-    expect(editor.document.get().nodes[created.data.rootId]?.size).toEqual({
+    expect(editor.document.snapshot().nodes[created.data.rootId]?.size).toEqual({
       width: 132,
       height: 44
     })
@@ -225,7 +225,7 @@ describe('transactional create layout', () => {
       return
     }
 
-    expect(editor.document.get().nodes[inserted.data.nodeId]?.size).toEqual({
+    expect(editor.document.snapshot().nodes[inserted.data.nodeId]?.size).toEqual({
       width: 132,
       height: 44
     })

@@ -20,7 +20,7 @@ import type {
   WorkingState
 } from '../../contracts/working'
 import { geometry as geometryApi } from '@whiteboard/core/geometry'
-import { patchGraphEntity } from './entity'
+import { applyEntity } from '@shared/projection'
 
 const readEdgePatch = (
   entry: GraphEdgeEntry
@@ -424,7 +424,7 @@ export const patchEdge = (input: {
       })
     : undefined
 
-  return patchGraphEntity({
+  return applyEntity({
     id: input.edgeId,
     previous,
     next,

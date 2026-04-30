@@ -1,10 +1,10 @@
 import { geometry as geometryApi } from '@whiteboard/core/geometry'
-import type { Query } from '../../contracts/editor'
+import type { SceneQuery } from '../../contracts/editor'
 import type { WorkingState } from '../../contracts/working'
 
 export const createBoundsRead = (input: {
   state: () => WorkingState
-}): Query['bounds'] => () => {
+}): SceneQuery['bounds'] => () => {
   const state = input.state()
   return geometryApi.rect.boundingRect([
     ...[...state.graph.nodes.values()].map((node) => node.geometry.bounds),

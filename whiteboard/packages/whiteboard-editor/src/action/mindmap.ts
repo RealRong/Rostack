@@ -18,23 +18,23 @@ const readMindmapRootMove = (input: {
   document: Pick<DocumentQuery, 'node'>
   nodeId: NodeId
 }) => {
-  const directNode = input.graph.query.node.get(input.nodeId)?.base.node
-  const structure = input.graph.query.mindmap.structure(input.nodeId)
+  const directNode = input.graph.query.scene.node(input.nodeId)
+  const structure = input.graph.query.scene.query.mindmap.structure(input.nodeId)
   const rootView = directNode
-    ? input.graph.query.node.get(input.nodeId)
+    ? directNode
     : (
       structure
-        ? input.graph.query.node.get(structure.rootId)
+        ? input.graph.query.scene.node(structure.rootId)
         : undefined
     )
-  const node = directNode ?? (
+  const node = directNode?.base.node ?? (
     structure
       ? input.document.node(structure.rootId)
       : undefined
   )
-  const mindmapId = directNode?.owner?.kind === 'mindmap'
-    ? directNode.owner.id
-    : input.graph.query.mindmap.resolve(input.nodeId)
+  const mindmapId = directNode?.base.owner?.kind === 'mindmap'
+    ? directNode.base.owner.id
+    : input.graph.query.scene.query.mindmap.resolve(input.nodeId)
 
   return {
     node,
@@ -50,7 +50,7 @@ const readBranchScopeIds = (input: {
   nodeIds: readonly MindmapNodeId[]
   scope?: 'node' | 'subtree'
 }) => input.scope === 'subtree'
-  ? (input.graph.query.mindmap.structure(input.id)?.nodeIds ?? input.nodeIds)
+  ? (input.graph.query.scene.query.mindmap.structure(input.id)?.nodeIds ?? input.nodeIds)
   : input.nodeIds
 
 export const createMindmapActionApi = (input: {
@@ -129,7 +129,7 @@ export const createMindmapActionApi = (input: {
         }))
       ),
       topic: (value) => {
-        const mindmapId = input.graph.query.mindmap.ofNodes(value.nodeIds)
+        const mindmapId = input.graph.query.scene.query.mindmap.ofNodes(value.nodeIds)
         if (!mindmapId) {
           return undefined
         }

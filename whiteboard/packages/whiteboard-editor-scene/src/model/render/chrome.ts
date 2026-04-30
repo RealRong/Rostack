@@ -1,6 +1,6 @@
 import { equal } from '@shared/core'
 import type { ChromeRenderView } from '../../contracts/render'
-import { patchValue } from './family'
+import { applyValue } from '@shared/projection'
 import type { RenderContext } from './context'
 import { isOverlayViewEqual } from './overlay'
 
@@ -33,7 +33,7 @@ export const patchRenderChrome = (
     return 0
   }
 
-  return patchValue({
+  return applyValue({
     previous: context.working.render.chrome,
     next: buildChromeRenderView(context),
     equal: isChromeRenderViewEqual,

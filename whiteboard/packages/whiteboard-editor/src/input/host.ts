@@ -97,7 +97,7 @@ export const createEditorInputHost = ({
           return readSelectionIntent(session.state.selection, input.screen)
         }
         case 'group': {
-          const target = projection.query.group.target(input.pick.id)
+          const target = projection.query.scene.query.group.target(input.pick.id)
           if (!target) {
             return {
               kind: 'canvas',

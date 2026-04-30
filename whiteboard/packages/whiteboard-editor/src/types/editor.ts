@@ -53,6 +53,8 @@ import type { Tool } from '@whiteboard/editor/types/tool'
 import type { IntentResult } from '@whiteboard/engine'
 import type { EngineCommit } from '@whiteboard/engine/types/engineWrite'
 
+type SceneQuery = Query['scene']['query']
+
 export type EditorPointerDispatchResult = {
   handled: boolean
   continuePointer: boolean
@@ -138,13 +140,13 @@ export type EditorSelectionEdgeRead = {
 }
 
 export type EditorMarqueePreview =
-  NonNullable<ReturnType<Query['chrome']['marquee']>>
+  NonNullable<ReturnType<SceneQuery['overlay']['marquee']>>
 
 export type SelectedEdgeChrome =
-  NonNullable<ReturnType<Query['edge']['chrome']>>
+  NonNullable<ReturnType<SceneQuery['edge']['chrome']>>
 
 export type MindmapChrome = {
-  addChildTargets: ReturnType<Query['mindmap']['addChildTargets']>
+  addChildTargets: ReturnType<SceneQuery['mindmap']['addChildTargets']>
 }
 
 export type ScenePickKind = Extract<
@@ -214,9 +216,7 @@ export type EditorSceneApi = {
   stores: RuntimeStores
   host: {
     pick: ScenePickRuntime
-    visible: (
-      options?: Parameters<Query['spatial']['rect']>[1]
-    ) => ReturnType<Query['spatial']['rect']>
+    visible: SceneQuery['viewport']['visible']
   }
 }
 

@@ -26,7 +26,7 @@ import {
   readProjectedNodeRect,
   readProjectedNodeSize
 } from './node'
-import { patchGraphEntity } from './entity'
+import { applyEntity } from '@shared/projection'
 
 const translateRect = (
   rect: Rect,
@@ -380,7 +380,7 @@ export const patchMindmap = (input: {
     next
   })
 
-  const result = patchGraphEntity({
+  const result = applyEntity({
     id: input.mindmapId,
     previous,
     next,

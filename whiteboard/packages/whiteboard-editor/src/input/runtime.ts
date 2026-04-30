@@ -64,11 +64,11 @@ const createEditorSnapRuntime = (input: {
   readZoom: () => input.state.viewport.get().zoom,
   node: {
     config: input.engine.config.node,
-    query: input.projection.query.snap
+    query: input.projection.query.scene.query.snap
   },
   edge: {
     config: input.engine.config.edge,
-    query: input.projection.query.edge.connectCandidates
+    query: input.projection.query.scene.query.edge.connectCandidates
   }
 })
 

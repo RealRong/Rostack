@@ -11,22 +11,6 @@ import {
   resolveScope
 } from '../scope'
 
-const readActiveEdgeIds = (
-  current: Input
-): ReadonlySet<EdgeId> => {
-  const edgeIds = new Set<EdgeId>()
-  current.runtime.interaction.selection.edgeIds.forEach((edgeId) => {
-    edgeIds.add(edgeId)
-  })
-  if (current.runtime.interaction.hover.kind === 'edge') {
-    edgeIds.add(current.runtime.interaction.hover.edgeId)
-  }
-  if (current.runtime.session.edit?.kind === 'edge-label') {
-    edgeIds.add(current.runtime.session.edit.edgeId)
-  }
-  return edgeIds
-}
-
 export interface RenderContext {
   current: Input
   plan: EditorScenePlan
@@ -57,7 +41,7 @@ export const createRenderContext = (input: {
     plan: input.plan,
     reset: input.reset,
     working: input.working,
-    active: readActiveEdgeIds(input.current),
+    active: input.current.runtime.facts.activeEdgeIds,
     touched: {
       node: resolveScope(input.plan.render.node, () => input.working.graph.nodes.keys()) as ReadonlySet<NodeId>,
       edge: {

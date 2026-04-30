@@ -10,6 +10,12 @@ export type {
 export {
   createProjection
 } from './createProjection'
+export {
+  applyEntity,
+  applyFamilyReset,
+  applyFamilyTouched,
+  applyValue
+} from './apply'
 export type {
   Revision
 } from './core'

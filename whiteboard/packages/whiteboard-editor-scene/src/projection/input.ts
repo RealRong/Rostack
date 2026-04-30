@@ -20,6 +20,7 @@ import {
 import {
   createWhiteboardMutationDelta
 } from '@whiteboard/engine/mutation'
+import { createRuntimeFacts } from './runtimeFacts'
 import type {
   EditorSceneSourceChange,
   EditorSceneSourceSnapshot
@@ -295,30 +296,40 @@ export const createSceneInput = (input: {
   source: EditorSceneSourceSnapshot
   delta: MutationDelta
   runtimeDelta: EditorSceneRuntimeDelta
-}): Input => ({
-  document: {
-    rev: input.source.document.rev,
-    doc: input.source.document.doc
-  },
-  runtime: {
-    session: {
-      edit: input.source.session.edit,
-      draft: input.source.session.draft,
-      preview: input.source.session.preview,
-      tool: input.source.session.tool
+}): Input => {
+  const session = {
+    edit: input.source.session.edit,
+    draft: input.source.session.draft,
+    preview: input.source.session.preview,
+    tool: input.source.session.tool
+  }
+  const interaction = {
+    selection: input.source.session.selection,
+    hover: input.source.interaction.hover,
+    drag: input.source.interaction.drag,
+    chrome: input.source.interaction.chrome,
+    editingEdge: input.source.interaction.editingEdge
+  }
+
+  return {
+    document: {
+      rev: input.source.document.rev,
+      doc: input.source.document.doc
     },
-    interaction: {
-      selection: input.source.session.selection,
-      hover: input.source.interaction.hover,
-      drag: input.source.interaction.drag,
-      chrome: input.source.interaction.chrome,
-      editingEdge: input.source.interaction.editingEdge
+    runtime: {
+      session,
+      interaction,
+      view: input.source.view,
+      facts: createRuntimeFacts({
+        session,
+        interaction,
+        delta: input.runtimeDelta
+      }),
+      delta: input.runtimeDelta
     },
-    view: input.source.view,
-    delta: input.runtimeDelta
-  },
-  delta: createWhiteboardMutationDelta(input.delta)
-})
+    delta: createWhiteboardMutationDelta(input.delta)
+  }
+}
 
 export const readSourceMutationDelta = (
   change: EditorSceneSourceChange

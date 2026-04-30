@@ -41,7 +41,11 @@ export type MindmapDragCommit =
       layout: MindmapLayoutSpec
     }
 
-type MindmapQuery = Pick<Query['mindmap'], 'resolve' | 'structure' | 'get'>
+type MindmapQuery = {
+  resolve: Query['scene']['query']['mindmap']['resolve']
+  structure: Query['scene']['query']['mindmap']['structure']
+  layout: Query['scene']['mindmap']
+}
 
 const previewMindmapDrag = (
   state: MindmapDragState
@@ -72,7 +76,7 @@ const readMindmapTreeView = (
   mindmap: {
     id: MindmapQuery['resolve']
     structure: MindmapQuery['structure']
-    layout: MindmapQuery['get']
+    layout: MindmapQuery['layout']
   },
   treeId: NodeId
 ) => {
@@ -98,7 +102,7 @@ export const tryStartMindmapDrag = (input: {
   mindmap: {
     id: MindmapQuery['resolve']
     structure: MindmapQuery['structure']
-    layout: MindmapQuery['get']
+    layout: MindmapQuery['layout']
   }
   node: (nodeId: NodeId) => Node | undefined
   selection: Pick<store.ReadStore<SelectionSummary>, 'get'>
@@ -179,7 +183,7 @@ export const tryStartMindmapDragForNode = (input: {
   mindmap: {
     id: MindmapQuery['resolve']
     structure: MindmapQuery['structure']
-    layout: MindmapQuery['get']
+    layout: MindmapQuery['layout']
   }
   node: (nodeId: NodeId) => Node | undefined
 }): MindmapDragState | undefined => {
@@ -237,7 +241,7 @@ const stepMindmapDrag = (input: {
   mindmap: {
     id: MindmapQuery['resolve']
     structure: MindmapQuery['structure']
-    layout: MindmapQuery['get']
+    layout: MindmapQuery['layout']
   }
 }): MindmapDragState => mindmapApi.drop.projectDrag({
   active: input.state,
@@ -298,9 +302,9 @@ export const createMindmapDragSession = (
       state,
       world,
       mindmap: {
-        id: ctx.projection.query.mindmap.resolve,
-        structure: ctx.projection.query.mindmap.structure,
-        layout: ctx.projection.query.mindmap.get
+        id: ctx.projection.query.scene.query.mindmap.resolve,
+        structure: ctx.projection.query.scene.query.mindmap.structure,
+        layout: ctx.projection.query.scene.mindmap
       }
     })
     interaction!.gesture = createGesture('mindmap-drag', {

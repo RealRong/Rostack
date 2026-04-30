@@ -16,7 +16,7 @@ import type {
   WorkingState
 } from '../../contracts/working'
 import { geometry as geometryApi } from '@whiteboard/core/geometry'
-import { patchGraphEntity } from './entity'
+import { applyEntity } from '@shared/projection'
 
 const SIGNATURE_SEPARATOR = '\u0001'
 const SIGNATURE_SECTION = '\u0002'
@@ -165,7 +165,7 @@ export const patchGroup = (input: {
       })
     : undefined
 
-  return patchGraphEntity({
+  return applyEntity({
     id: input.groupId,
     previous,
     next,

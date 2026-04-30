@@ -66,7 +66,7 @@ const readEdgeOrThrow = (
   graph: Pick<EditorSceneApi, 'query'>,
   edgeId: string
 ) => {
-  const edge = graph.query.edge.get(edgeId)?.base.edge
+  const edge = graph.query.scene.edge(edgeId)?.base.edge
   if (!edge) {
     throw new Error(`Edge ${edgeId} not found.`)
   }

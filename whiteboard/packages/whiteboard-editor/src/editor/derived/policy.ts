@@ -67,7 +67,8 @@ export const createEditorPolicyDerived = (input: {
         primaryNode: members.primaryNode,
         nodeType: input.nodeType,
         nodeStats: currentNodeStats,
-        readMindmapStructure: (mindmapId: MindmapId) => input.scene.query.mindmap.structure(mindmapId),
+        readMindmapStructure: (mindmapId: MindmapId) =>
+          input.scene.query.scene.query.mindmap.structure(mindmapId),
         defaults: input.defaults
       })
     }
@@ -116,7 +117,8 @@ export const createEditorPolicyDerived = (input: {
         nodeScope: store.read(nodeScope),
         edgeScope: store.read(edgeScope),
         nodeType: input.nodeType,
-        readMindmapStructure: (mindmapId: MindmapId) => input.scene.query.mindmap.structure(mindmapId),
+        readMindmapStructure: (mindmapId: MindmapId) =>
+          input.scene.query.scene.query.mindmap.structure(mindmapId),
         tool: store.read(input.state.tool),
         edit: store.read(input.state.edit),
         interactionChrome: interaction.chrome,

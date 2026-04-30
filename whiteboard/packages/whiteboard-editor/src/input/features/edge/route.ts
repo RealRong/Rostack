@@ -105,22 +105,12 @@ const isEdgeRoutePick = (
 )
 
 const readEditableEdgeView = (
-  projection: Pick<EditorHostDeps, 'projection'>['projection']
-    | Pick<EditorHostDeps, 'projection'>['projection']['query']
-    | {
-        edge: {
-          editable?: (edgeId: EdgeId) => ReturnType<EditorHostDeps['projection']['query']['edge']['get']>
-          get: (edgeId: EdgeId) => ReturnType<EditorHostDeps['projection']['query']['edge']['get']>
-        }
-      },
+  input: {
+    readView: Pick<EditorHostDeps['projection']['query']['scene'], 'edge'>['edge']
+    editable?: Pick<EditorHostDeps['projection']['query']['scene']['query']['edge'], 'editable'>['editable']
+  },
   edgeId: EdgeId
-) => {
-  const query = 'query' in projection
-    ? projection.query
-    : projection
-
-  return query.edge.editable?.(edgeId) ?? query.edge.get(edgeId)
-}
+) => input.editable?.(edgeId) ?? input.readView(edgeId)
 
 const resolveEdgeRoutePickTarget = (
   projection: Pick<EditorHostDeps, 'projection'>['projection'],
@@ -130,7 +120,10 @@ const resolveEdgeRoutePickTarget = (
     return undefined
   }
 
-  const view = readEditableEdgeView(projection, pick.id)
+  const view = readEditableEdgeView({
+    readView: projection.query.scene.edge,
+    editable: projection.query.scene.query.edge.editable
+  }, pick.id)
   if (!view) {
     return undefined
   }
@@ -244,8 +237,11 @@ export const tryStartEdgeRoute = (input: {
     }
   }
 
-  const edge = input.edge.query.edge.get(target.edgeId)?.base.edge
-  const view = readEditableEdgeView(input.edge.query, target.edgeId)
+  const edge = input.edge.query.scene.edge(target.edgeId)?.base.edge
+  const view = readEditableEdgeView({
+    readView: input.edge.query.scene.edge,
+    editable: input.edge.query.scene.query.edge.editable
+  }, target.edgeId)
 
   if ((edge?.type === 'elbow' || edge?.type === 'fillet') && view) {
     return {
@@ -283,7 +279,7 @@ export const removeEdgeRoutePoint = (
   edgeId: EdgeId,
   index: number
 ) => {
-  const edge = ctx.projection.query.edge.get(edgeId)?.base.edge
+  const edge = ctx.projection.query.scene.edge(edgeId)?.base.edge
   if (!edge) {
     throw new Error(`Edge ${edgeId} not found.`)
   }
@@ -508,7 +504,7 @@ const submitEdgeRouteCommit = (
     return
   }
 
-  const edge = ctx.projection.query.edge.get(commit.edgeId)?.base.edge
+  const edge = ctx.projection.query.scene.edge(commit.edgeId)?.base.edge
   const pointId = edge
     ? readRoutePointIdAtIndex(edge, commit.index)
     : undefined
@@ -523,7 +519,7 @@ const createEdgeRouteSession = (
 ): InteractionSession => {
   let state = initial
   let interaction = null as InteractionSession | null
-  const baseEdge = ctx.projection.query.edge.get(initial.edgeId)?.base.edge
+  const baseEdge = ctx.projection.query.scene.edge(initial.edgeId)?.base.edge
 
   const step = (
     pointer: {
@@ -531,8 +527,11 @@ const createEdgeRouteSession = (
       clientY: number
     }
   ) => {
-    const edge = ctx.projection.query.edge.get(state.edgeId)?.base.edge
-    if (!edge || !baseEdge || !readEditableEdgeView(ctx.projection, state.edgeId)) {
+    const edge = ctx.projection.query.scene.edge(state.edgeId)?.base.edge
+    if (!edge || !baseEdge || !readEditableEdgeView({
+      readView: ctx.projection.query.scene.edge,
+      editable: ctx.projection.query.scene.query.edge.editable
+    }, state.edgeId)) {
       return CANCEL
     }
 
@@ -606,7 +605,7 @@ const commitInsertedRoute = (
   ctx: Pick<EditorHostDeps, 'projection' | 'write'>,
   input: Extract<EdgeRouteStart, { kind: 'insert' }>
 ) => {
-  const edge = ctx.projection.query.edge.get(input.edgeId)?.base.edge
+  const edge = ctx.projection.query.scene.edge(input.edgeId)?.base.edge
   if (!edge) {
     return null
   }

@@ -21,11 +21,16 @@ import type {
   NodeView,
   OwnerRef,
   Query,
+  SceneQuery,
   SceneViewSnapshot
 } from '../../contracts/editor'
 import type { WorkingState } from '../../contracts/working'
 import { readGroupSignatureFromTarget } from '../../model/graph/group'
-import { readRelatedEdgeIds } from '../../model/index/read'
+import {
+  readMindmapStructure,
+  readRelatedEdgeIds,
+  readTreeDescendants
+} from '../../model/index/read'
 import { createSpatialRead } from '../../model/spatial/query'
 import type { SpatialIndexState } from '../../model/spatial/state'
 import { createBoundsRead } from './bounds'
@@ -36,15 +41,6 @@ import { createSelectionRead } from './selection'
 import { createViewRead } from './view'
 
 export interface EditorSceneProjectionRead extends Query {
-  source: DocumentReader
-  graph: {
-    node(id: NodeId): NodeView | undefined
-    edge(id: EdgeId): EdgeView | undefined
-  }
-  index: {
-    ownerByNode(nodeId: NodeId): OwnerRef | undefined
-    relatedEdgeIds(nodeIds: Iterable<NodeId>): readonly EdgeId[]
-  }
   capture: {
     documentRevision(): Revision
     graph(): GraphCapture
@@ -52,6 +48,7 @@ export interface EditorSceneProjectionRead extends Query {
     items(): WorkingState['items']
     ui(): UiCapture
   }
+  source: DocumentReader
 }
 
 const resolveMindmapId = (
@@ -82,6 +79,60 @@ const toGroupTarget = (
     : [])
 })
 
+const createDocumentQuery = (input: {
+  state: () => WorkingState
+  source: DocumentReader
+}): Query['document'] => ({
+  snapshot: () => input.state().document.snapshot,
+  background: () => input.state().document.background,
+  node: input.source.nodes.get,
+  edge: input.source.edges.get,
+  group: input.source.groups.get,
+  mindmap: input.source.mindmaps.get,
+  nodeIds: input.source.nodes.ids,
+  edgeIds: input.source.edges.ids,
+  groupIds: input.source.groups.ids,
+  mindmapIds: input.source.mindmaps.ids,
+  canvas: {
+    order: input.source.canvas.order,
+    slot: input.source.canvas.slot,
+    groupRefs: input.source.canvas.groupRefs
+  },
+  slice: ({ nodeIds, edgeIds }) => {
+    const exported = documentApi.slice.export.selection({
+      doc: input.state().document.snapshot,
+      nodeIds,
+      edgeIds
+    })
+
+    return exported.ok
+      ? exported.data
+      : undefined
+  }
+})
+
+const createRuntimeQuery = (input: {
+  state: () => WorkingState
+}): Query['runtime'] => ({
+  session: {
+    tool: () => input.state().runtime.session.tool,
+    selection: () => input.state().runtime.interaction.selection,
+    hover: () => input.state().runtime.interaction.hover,
+    edit: () => input.state().runtime.session.edit,
+    interaction: () => input.state().runtime.interaction,
+    preview: () => input.state().runtime.session.preview
+  },
+  facts: {
+    touchedNodeIds: () => input.state().runtime.facts.touchedNodeIds,
+    touchedEdgeIds: () => input.state().runtime.facts.touchedEdgeIds,
+    touchedMindmapIds: () => input.state().runtime.facts.touchedMindmapIds,
+    activeEdgeIds: () => input.state().runtime.facts.activeEdgeIds,
+    uiChanged: () => input.state().runtime.facts.uiChanged,
+    overlayChanged: () => input.state().runtime.facts.overlayChanged,
+    chromeChanged: () => input.state().runtime.facts.chromeChanged
+  }
+})
+
 export const createProjectionRead = (runtime: {
   revision: () => Revision
   state: () => WorkingState
@@ -107,89 +158,57 @@ export const createProjectionRead = (runtime: {
     state: runtime.state,
     spatial
   })
-  const view = createViewRead({
+  const viewport = createViewRead({
     state: runtime.state,
     view: runtime.view,
     hit,
     spatial
   })
-  const chrome = createChromeRead({
+  const overlay = createChromeRead({
     state: runtime.state,
-    view
+    view: viewport
   })
   const bounds = createBoundsRead({
     state: runtime.state
   })
+  const readMindmapStructureByValue = (
+    value: MindmapId | NodeId | string
+  ) => {
+    const structure = readMindmapStructure({
+      document: runtime.state().document.snapshot,
+      indexes: runtime.state().indexes,
+      value
+    })
+    return structure
+      ? runtime.state().graph.owners.mindmaps.get(structure.id)?.structure
+      : undefined
+  }
 
-  return {
-    revision: runtime.revision,
-    source,
-    graph: {
-      node: (id) => runtime.state().graph.nodes.get(id),
-      edge: (id) => runtime.state().graph.edges.get(id)
-    },
-    index: {
-      ownerByNode: (nodeId) => runtime.state().indexes.ownerByNode.get(nodeId),
-      relatedEdgeIds: (nodeIds) => readRelatedEdgeIds(runtime.state().indexes, nodeIds)
-    },
-    capture: {
-      documentRevision: () => runtime.state().revision.document,
-      graph: () => ({
-        nodes: runtime.state().graph.nodes,
-        edges: runtime.state().graph.edges,
-        owners: {
-          mindmaps: runtime.state().graph.owners.mindmaps,
-          groups: runtime.state().graph.owners.groups
+  const sceneQuery: SceneQuery = {
+    relatedEdgeIds: (nodeIds) => readRelatedEdgeIds(runtime.state().indexes, nodeIds),
+    descendants: (nodeIds) => readTreeDescendants(runtime.state().indexes, nodeIds),
+    mindmapStructure: readMindmapStructureByValue,
+    ownerByNode: (nodeId) => runtime.state().indexes.ownerByNode.get(nodeId),
+    spatial,
+    snap: (rect: Rect) => nodeApi.snap.buildCandidates(
+      spatial.rect(rect, {
+        kinds: ['node']
+      }).flatMap((record) => {
+        if (record.item.kind !== 'node') {
+          return []
         }
-      }),
-      render: () => ({
-        edge: {
-          statics: {
-            ids: runtime.state().render.statics.ids,
-            byId: runtime.state().render.statics.byId
-          },
-          active: runtime.state().render.active,
-          labels: {
-            ids: runtime.state().render.labels.ids,
-            byId: runtime.state().render.labels.byId
-          },
-          masks: {
-            ids: runtime.state().render.masks.ids,
-            byId: runtime.state().render.masks.byId
-          },
-          overlay: runtime.state().render.overlay
-        }
-      }),
-      items: () => runtime.state().items,
-      ui: () => ({
-        chrome: runtime.state().ui.chrome,
-        nodes: runtime.state().ui.nodes,
-        edges: runtime.state().ui.edges
+
+        const view = runtime.state().graph.nodes.get(record.item.id)
+        return view
+          ? [{
+              id: record.item.id,
+              rect: view.geometry.rect
+            }]
+          : []
       })
-    },
+    ),
     bounds,
-    document: {
-      get: () => runtime.state().document.snapshot,
-      background: () => runtime.state().document.background,
-      node: source.nodes.get,
-      edge: source.edges.get,
-      nodeIds: source.nodes.ids,
-      edgeIds: source.edges.ids,
-      slice: ({ nodeIds, edgeIds }) => {
-        const exported = documentApi.slice.export.selection({
-          doc: runtime.state().document.snapshot,
-          nodeIds,
-          edgeIds
-        })
-
-        return exported.ok
-          ? exported.data
-          : undefined
-      }
-    },
     node: {
-      get: (id) => runtime.state().graph.nodes.get(id),
-      draft: (id) => runtime.state().draft.node.get(id),
       idsInRect: (rect, options) => {
         const match = options?.match ?? 'touch'
         const policy = options?.policy ?? 'default'
@@ -226,8 +245,6 @@ export const createProjectionRead = (runtime: {
       }
     },
     edge: {
-      get: (id) => runtime.state().graph.edges.get(id),
-      related: (nodeIds) => readRelatedEdgeIds(runtime.state().indexes, nodeIds),
       idsInRect: (rect, options) => {
         const mode = options?.match ?? 'touch'
         return spatial.rect(rect, {
@@ -367,17 +384,14 @@ export const createProjectionRead = (runtime: {
       }
     },
     selection,
-    chrome,
+    overlay,
     mindmap: {
-      get: (id) => runtime.state().graph.owners.mindmaps.get(id),
       resolve: (value) => resolveMindmapId(runtime.state(), value),
       structure: (value) => {
-        const mindmapId = resolveMindmapId(
-          runtime.state(),
-          value as string
-        ) ?? (runtime.state().graph.owners.mindmaps.has(value as MindmapId)
-          ? value as MindmapId
-          : undefined)
+        const mindmapId = resolveMindmapId(runtime.state(), value as string)
+          ?? (runtime.state().graph.owners.mindmaps.has(value as MindmapId)
+            ? value as MindmapId
+            : undefined)
         return mindmapId
           ? runtime.state().graph.owners.mindmaps.get(mindmapId)?.structure
           : undefined
@@ -462,7 +476,6 @@ export const createProjectionRead = (runtime: {
       }
     },
     group: {
-      get: (id) => runtime.state().graph.owners.groups.get(id),
       ofNode: (nodeId) => runtime.state().graph.nodes.get(nodeId)?.base.node.groupId,
       ofEdge: (edgeId) => runtime.state().graph.edges.get(edgeId)?.base.edge.groupId,
       target: (groupId) => {
@@ -477,27 +490,67 @@ export const createProjectionRead = (runtime: {
         return runtime.state().indexes.groupIdsBySignature.get(signature) ?? []
       }
     },
-    spatial,
-    snap: (rect: Rect) => nodeApi.snap.buildCandidates(
-      spatial.rect(rect, {
-        kinds: ['node']
-      }).flatMap((record) => {
-        if (record.item.kind !== 'node') {
-          return []
-        }
-
-        const view = runtime.state().graph.nodes.get(record.item.id)
-        return view
-          ? [{
-              id: record.item.id,
-              rect: view.geometry.rect
-            }]
-          : []
-      })
-    ),
     frame,
     hit,
-    view,
+    viewport,
     items: runtime.items
+  }
+
+  return {
+    revision: runtime.revision,
+    source,
+    capture: {
+      documentRevision: () => runtime.state().revision.document,
+      graph: () => ({
+        nodes: runtime.state().graph.nodes,
+        edges: runtime.state().graph.edges,
+        owners: {
+          mindmaps: runtime.state().graph.owners.mindmaps,
+          groups: runtime.state().graph.owners.groups
+        }
+      }),
+      render: () => ({
+        edge: {
+          statics: {
+            ids: runtime.state().render.statics.ids,
+            byId: runtime.state().render.statics.byId
+          },
+          active: runtime.state().render.active,
+          labels: {
+            ids: runtime.state().render.labels.ids,
+            byId: runtime.state().render.labels.byId
+          },
+          masks: {
+            ids: runtime.state().render.masks.ids,
+            byId: runtime.state().render.masks.byId
+          },
+          overlay: runtime.state().render.overlay
+        }
+      }),
+      items: () => runtime.state().items,
+      ui: () => ({
+        chrome: runtime.state().ui.chrome,
+        nodes: runtime.state().ui.nodes,
+        edges: runtime.state().ui.edges
+      })
+    },
+    document: createDocumentQuery({
+      state: runtime.state,
+      source
+    }),
+    runtime: createRuntimeQuery({
+      state: runtime.state
+    }),
+    scene: {
+      node: (id) => runtime.state().graph.nodes.get(id),
+      edge: (id) => runtime.state().graph.edges.get(id),
+      mindmap: (id) => runtime.state().graph.owners.mindmaps.get(id),
+      group: (id) => runtime.state().graph.owners.groups.get(id),
+      nodes: () => runtime.state().graph.nodes.entries(),
+      edges: () => runtime.state().graph.edges.entries(),
+      mindmaps: () => runtime.state().graph.owners.mindmaps.entries(),
+      groups: () => runtime.state().graph.owners.groups.entries(),
+      query: sceneQuery
+    }
   }
 }

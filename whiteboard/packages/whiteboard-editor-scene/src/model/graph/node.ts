@@ -20,7 +20,7 @@ import type {
   GraphNodeEntry,
   WorkingState
 } from '../../contracts/working'
-import { patchGraphEntity } from './entity'
+import { applyEntity } from '@shared/projection'
 
 const EMPTY_SIZE: Size = {
   width: 0,
@@ -349,7 +349,7 @@ export const patchNode = (input: {
     }
   }
 
-  const result = patchGraphEntity({
+  const result = applyEntity({
     id: input.nodeId,
     previous,
     next,

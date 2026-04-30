@@ -16,6 +16,7 @@ const createEditorSceneStateReader = (input: {
   return {
     revision: state.revision,
     document: state.document,
+    runtime: state.runtime,
     graph: state.graph,
     indexes: state.indexes,
     spatial: state.spatial,

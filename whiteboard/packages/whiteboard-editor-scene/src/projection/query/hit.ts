@@ -9,7 +9,7 @@ import type {
   Point,
   Rect
 } from '@whiteboard/core/types'
-import type { Query } from '../../contracts/editor'
+import type { SceneQuery } from '../../contracts/editor'
 import type { WorkingState } from '../../contracts/working'
 
 export const DEFAULT_HIT_THRESHOLD = 8
@@ -166,8 +166,8 @@ const readGroupDistance = (input: {
 
 export const createHitRead = (input: {
   state: () => WorkingState
-  spatial: Query['spatial']
-}): Query['hit'] => ({
+  spatial: SceneQuery['spatial']
+}): SceneQuery['hit'] => ({
   node: ({
     point,
     threshold,

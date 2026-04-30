@@ -53,7 +53,7 @@ export const createEditorWrite = ({
     engine,
     read: {
       document,
-      readEdge: (edgeId) => projection.query.edge.get(edgeId)?.base.edge
+      readEdge: (edgeId) => projection.query.scene.edge(edgeId)?.base.edge
     }
   })
   const mindmap = createMindmapWrite({

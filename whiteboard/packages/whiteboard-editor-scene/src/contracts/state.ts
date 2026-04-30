@@ -51,12 +51,20 @@ export interface State {
     document: Revision
   }
   document: DocumentState
+  runtime: RuntimeState
   graph: GraphState
   indexes: IndexState
   spatial: SpatialIndexState
   ui: UiState
   render: RenderState
   items: SceneItemsState
+}
+
+export interface RuntimeState {
+  session: import('./editor').SessionInput
+  interaction: import('./editor').InteractionInput
+  view: import('./editor').SceneViewSnapshot
+  facts: import('./editor').SceneRuntimeFacts
 }
 
 export interface SceneItemsState {

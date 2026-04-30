@@ -1,7 +1,8 @@
-import { family } from '@shared/core'
-import type { MutableFamilyState } from '@shared/core'
+import { family } from '../../core/src/index'
+import type { MutableFamilyState } from '../../core/src/index'
+import { idDelta, type IdDelta } from '@shared/delta'
 
-export const patchValue = <TValue,>(input: {
+export const applyValue = <TValue,>(input: {
   previous: TValue
   next: TValue
   equal: (left: TValue, right: TValue) => boolean
@@ -18,7 +19,7 @@ export const patchValue = <TValue,>(input: {
   return changed ? 1 : 0
 }
 
-export const patchFamilyReset = <TId extends string, TValue>(input: {
+export const applyFamilyReset = <TId extends string, TValue>(input: {
   previous: MutableFamilyState<TId, TValue>
   ids: Iterable<TId>
   build: (id: TId, previous: TValue | undefined) => TValue | undefined
@@ -59,7 +60,7 @@ export const patchFamilyReset = <TId extends string, TValue>(input: {
   return count
 }
 
-export const patchFamilyTouched = <TId extends string, TValue>(input: {
+export const applyFamilyTouched = <TId extends string, TValue>(input: {
   state: MutableFamilyState<TId, TValue>
   ids: Iterable<TId>
   build: (id: TId, previous: TValue | undefined) => TValue | undefined
@@ -92,4 +93,65 @@ export const patchFamilyTouched = <TId extends string, TValue>(input: {
   }
 
   return count
+}
+
+export const applyEntity = <TId extends string, TValue>(input: {
+  id: TId
+  previous: TValue | undefined
+  next: TValue | undefined
+  equal: (left: TValue, right: TValue) => boolean
+  geometryChanged: (previous: TValue, next: TValue) => boolean
+  write(next: TValue | undefined): void
+  entityDelta: IdDelta<TId>
+  geometryDelta: Set<TId>
+}): {
+  changed: boolean
+  geometryChanged: boolean
+} => {
+  if (input.next === undefined) {
+    if (input.previous === undefined) {
+      return {
+        changed: false,
+        geometryChanged: false
+      }
+    }
+
+    input.write(undefined)
+    idDelta.remove(input.entityDelta, input.id)
+    input.geometryDelta.add(input.id)
+    return {
+      changed: true,
+      geometryChanged: true
+    }
+  }
+
+  if (input.previous === undefined) {
+    input.write(input.next)
+    idDelta.add(input.entityDelta, input.id)
+    input.geometryDelta.add(input.id)
+    return {
+      changed: true,
+      geometryChanged: true
+    }
+  }
+
+  if (input.equal(input.previous, input.next)) {
+    return {
+      changed: false,
+      geometryChanged: false
+    }
+  }
+
+  input.write(input.next)
+  idDelta.update(input.entityDelta, input.id)
+
+  const geometryChanged = input.geometryChanged(input.previous, input.next)
+  if (geometryChanged) {
+    input.geometryDelta.add(input.id)
+  }
+
+  return {
+    changed: true,
+    geometryChanged
+  }
 }

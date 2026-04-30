@@ -129,7 +129,7 @@ describe('mindmap root render', () => {
       nodeIds: [created.data.rootId]
     })
 
-    const rootNode = editor.scene.query.node.get(created.data.rootId)?.base.node
+    const rootNode = editor.scene.query.scene.node(created.data.rootId)?.base.node
     const rootCapability = rootNode
       ? resolveNodeEditorCapability(rootNode, createNodeTypeSupport(nodes))
       : undefined

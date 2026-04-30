@@ -2,7 +2,8 @@ import type {
   MutationEntitySpec
 } from './engine'
 import {
-  mergeMutationDeltas
+  mergeMutationDeltas,
+  normalizeMutationDelta
 } from './engine'
 import type {
   MutationChange,
@@ -627,26 +628,22 @@ export const coerceMutationDelta = (
   input?: MutationDelta | MutationDeltaInput
 ): MutationDelta => {
   if (!input) {
-    return {
-      changes: EMPTY_MUTATION_CHANGES
-    }
+    return normalizeMutationDelta()
   }
 
-  const normalized: Record<string, MutationChange> = {}
+  const changes: Record<string, MutationChangeInput> = {}
   Object.entries(input.changes ?? {}).forEach(([key, change]) => {
-    normalized[key] = coerceMutationChange(change)
+    changes[key] = coerceMutationChange(change)
   })
 
-  return {
+  return normalizeMutationDelta({
     ...(input.reset
       ? {
           reset: true
         }
       : {}),
-    changes: Object.keys(normalized).length > 0
-      ? normalized
-      : EMPTY_MUTATION_CHANGES
-  }
+    changes
+  })
 }
 
 export const createTypedMutationDelta = <

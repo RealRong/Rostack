@@ -3,8 +3,8 @@ import {
   type RecordWrite
 } from '@shared/draft'
 import {
-  createMutationEffectBuilder
-} from './effect/effectBuilder'
+  createMutationProgramWriter
+} from './program/writer'
 import {
   appendPath,
   cloneValue,
@@ -26,8 +26,8 @@ import {
   sameJsonValue
 } from './contracts'
 import type {
-  MutationEffectProgram
-} from './effect/effect'
+  MutationProgram
+} from './program/program'
 
 export const collectRecordLeafPaths = (
   value: unknown,
@@ -278,8 +278,8 @@ export const lowerCanonicalEntityOperation = (input: {
   operation: MutationEntityCanonicalOperation
   spec: CompiledEntitySpec
   kind: MutationOperationKind
-}): MutationEffectProgram => {
-  const builder = createMutationEffectBuilder()
+}): MutationProgram => {
+  const builder = createMutationProgramWriter()
 
   if (input.kind === 'create') {
     const value = readRequiredValue(input.spec.family, 'create', input.operation)

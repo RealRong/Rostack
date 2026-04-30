@@ -166,8 +166,8 @@ export const history = {
           return false
         }
         if (
-          commit.applied.effects.length === 0
-          || commit.inverse.effects.length === 0
+          commit.applied.steps.length === 0
+          || commit.inverse.steps.length === 0
         ) {
           return false
         }

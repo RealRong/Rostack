@@ -58,7 +58,7 @@ const emitOps = (
   input: DataviewCompileInput,
   ...operations: readonly DocumentOperation[]
 ) => {
-  input.emit(...operations)
+  input.program.append(...operations)
 }
 
 const emitData = <T,>(

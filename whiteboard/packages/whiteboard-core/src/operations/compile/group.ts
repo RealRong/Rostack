@@ -16,7 +16,7 @@ type GroupIntentHandlers = Pick<
 export const groupIntentHandlers: GroupIntentHandlers = {
   'group.merge': (ctx) => {
     const groupId = readCompileServices(ctx).ids.group()
-    ctx.emit({
+    ctx.program.append({
       type: 'group.create',
       value: {
         id: groupId
@@ -24,12 +24,12 @@ export const groupIntentHandlers: GroupIntentHandlers = {
     })
 
     ctx.intent.target.nodeIds?.forEach((nodeId) => {
-      ctx.emit(...nodeApi.update.createFieldsOperation(nodeId, {
+      ctx.program.append(...nodeApi.update.createFieldsOperation(nodeId, {
         groupId
       }))
     })
     ctx.intent.target.edgeIds?.forEach((edgeId) => {
-      ctx.emit({
+      ctx.program.append({
         type: 'edge.patch',
         id: edgeId,
         patch: {
@@ -46,7 +46,7 @@ export const groupIntentHandlers: GroupIntentHandlers = {
     const refs = ctx.intent.ids.flatMap((groupId) =>
       ctx.reader.canvas.groupRefs(groupId)
     )
-    ctx.emit({
+    ctx.program.append({
       type: 'canvas.order.move',
       refs,
       to: ctx.intent.to
@@ -59,7 +59,7 @@ export const groupIntentHandlers: GroupIntentHandlers = {
 
     ctx.intent.ids.forEach((groupId) => {
       const refs = ctx.reader.canvas.groupRefs(groupId)
-      ctx.emit({
+      ctx.program.append({
         type: 'group.delete',
         id: groupId
       })
@@ -67,14 +67,14 @@ export const groupIntentHandlers: GroupIntentHandlers = {
       refs.forEach((ref) => {
         if (ref.kind === 'node') {
           nodeIds.push(ref.id)
-          ctx.emit(...nodeApi.update.createFieldsOperation(ref.id, {
+          ctx.program.append(...nodeApi.update.createFieldsOperation(ref.id, {
             groupId: undefined
           }))
           return
         }
 
         edgeIds.push(ref.id)
-        ctx.emit({
+        ctx.program.append({
           type: 'edge.patch',
           id: ref.id,
           patch: {

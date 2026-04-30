@@ -27,8 +27,8 @@ import {
   draft
 } from '@shared/draft'
 import {
-  createMutationEffectBuilder
-} from './effect/effectBuilder'
+  createMutationProgramWriter
+} from './program/writer'
 import {
   cloneValue,
   EMPTY_DELTA,
@@ -41,11 +41,11 @@ import {
   buildStructureDelta
 } from './delta'
 import type {
-  AppliedMutationEffectProgram,
-  MutationEffectProgram,
-  MutationOrderedEffect,
-  MutationTreeEffect,
-} from './effect/effect'
+  AppliedMutationProgram,
+  MutationOrderedProgramStep,
+  MutationProgram,
+  MutationTreeProgramStep,
+} from './program/program'
 
 type StructuralDescriptor =
   | {
@@ -792,8 +792,8 @@ export const createStructuralTreeNodePatchOperation = <Op extends { type: string
 
 export const lowerStructuralOperation = (
   operation: MutationStructuralCanonicalOperation
-): MutationEffectProgram => {
-  const builder = createMutationEffectBuilder()
+): MutationProgram => {
+  const builder = createMutationProgramWriter()
 
   switch (operation.type) {
     case 'structural.ordered.insert':
@@ -1532,10 +1532,10 @@ export const readStructuralOperationResult = <
 
 const lowerStructuralOperationBatch = (
   operations: readonly MutationStructuralCanonicalOperation[]
-): MutationEffectProgram => {
-  const effects = operations.flatMap((operation) => lowerStructuralOperation(operation).effects)
+): MutationProgram => {
+  const steps = operations.flatMap((operation) => lowerStructuralOperation(operation).steps)
   return {
-    effects
+    steps
   }
 }
 
@@ -1543,9 +1543,9 @@ export const applyStructuralEffectResult = <
   Doc extends object
 >(input: {
   document: Doc
-  effect: MutationOrderedEffect | MutationTreeEffect
+  effect: MutationOrderedProgramStep | MutationTreeProgramStep
   structures?: MutationStructureSource<Doc>
-}): AppliedMutationEffectProgram<Doc> => {
+}): AppliedMutationProgram<Doc> => {
   const operation: MutationStructuralCanonicalOperation = (() => {
     switch (input.effect.type) {
       case 'ordered.insert':
@@ -1684,11 +1684,11 @@ export const readStructuralEffectResult = <
   Code extends string = string
 >(input: {
   document: Doc
-  effect: MutationOrderedEffect | MutationTreeEffect
+  effect: MutationOrderedProgramStep | MutationTreeProgramStep
   structures?: MutationStructureSource<Doc>
 }): {
   ok: true
-  data: AppliedMutationEffectProgram<Doc>
+  data: AppliedMutationProgram<Doc>
 } | MutationFailure<Code> => {
   try {
     return {
@@ -1728,7 +1728,7 @@ export const applyStructuralOperation = <
     const program = lowerStructuralOperation(
       input.operation as unknown as MutationStructuralCanonicalOperation
     )
-    const [effect] = program.effects
+    const [effect] = program.steps
     if (
       !effect
       || effect.type === 'semantic.tag'

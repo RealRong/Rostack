@@ -20,8 +20,8 @@ import {
   createStructuralTreeRestoreOperation,
 } from '../structural'
 import type {
-  MutationEffectProgram
-} from './effect'
+  MutationProgram
+} from './program'
 
 const readEntitySpec = (
   entities: ReadonlyMap<string, CompiledEntitySpec>,
@@ -35,17 +35,17 @@ const readEntitySpec = (
   return spec
 }
 
-export const materializeMutationEffectProgram = <
+export const materializeMutationProgram = <
   Op extends {
     type: string
   }
 >(input: {
-  program: MutationEffectProgram<string>
+  program: MutationProgram<string>
   entities: ReadonlyMap<string, CompiledEntitySpec>
 }): readonly Op[] => {
   const operations: Op[] = []
 
-  input.program.effects.forEach((effect) => {
+  input.program.steps.forEach((effect) => {
     switch (effect.type) {
       case 'entity.create': {
         const spec = readEntitySpec(input.entities, effect.entity.table)

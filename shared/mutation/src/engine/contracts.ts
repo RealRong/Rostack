@@ -3,11 +3,11 @@ import {
   json
 } from '@shared/core'
 import type {
-  MutationEffectBuilder
-} from './effect/effectBuilder'
+  MutationProgramWriter
+} from './program/writer'
 import type {
-  MutationEffectProgram
-} from './effect/effect'
+  MutationProgram
+} from './program/program'
 import type {
   ApplyCommit,
   CommitRecord,
@@ -74,6 +74,12 @@ export type MutationCompileControl<Code extends string = string> =
       issue: MutationCompileIssue<Code>
     }
 
+export interface MutationCompileProgram<
+  Step
+> {
+  append(...steps: readonly Step[]): void
+}
+
 export interface MutationCompileHandlerInput<
   Doc,
   Intent,
@@ -88,7 +94,7 @@ export interface MutationCompileHandlerInput<
   document: Doc
   reader: Reader
   services: Services | undefined
-  emit(...ops: readonly Op[]): void
+  program: MutationCompileProgram<Op>
   output(value: Output): void
   issue(issue: MutationCompileIssue<Code>): void
   stop(): {
@@ -163,8 +169,8 @@ export type MutationApplyResult<
       ok: true
       data: {
         document: Doc
-        applied: MutationEffectProgram<string>
-        inverse: MutationEffectProgram<string>
+        applied: MutationProgram<string>
+        inverse: MutationProgram<string>
         delta: MutationDelta
         structural: readonly MutationStructuralFact[]
         footprint: readonly MutationFootprint[]
@@ -342,7 +348,7 @@ export interface MutationCustomPlannerInput<
   document: Doc
   reader: Reader
   services: Services | undefined
-  effects: MutationEffectBuilder<Tag>
+  program: MutationProgramWriter<Tag>
   fail(issue: MutationCustomFailure<Code>): never
 }
 
@@ -565,8 +571,16 @@ export const EMPTY_MUTATION_CHANGES = Object.freeze(
   Object.create(null)
 ) as MutationDelta['changes']
 
+export const EMPTY_MUTATION_IDS = Object.freeze(
+  new Set<string>()
+) as ReadonlySet<string>
+
 export const EMPTY_DELTA: MutationDelta = {
-  changes: EMPTY_MUTATION_CHANGES
+  changes: EMPTY_MUTATION_CHANGES,
+  has: () => false,
+  changed: () => false,
+  ids: () => EMPTY_MUTATION_IDS,
+  paths: () => undefined
 }
 export const EMPTY_ISSUES: readonly MutationIssue[] = []
 export const EMPTY_COMPILE_ISSUES: readonly MutationCompileIssue[] = []
@@ -647,7 +661,7 @@ export const mutationFailure = <Code extends string>(
   }
 })
 
-export class MutationCustomReduceError<
+export class MutationCustomPlanError<
   Code extends string = string
 > extends Error {
   readonly issue: MutationCustomFailure<Code>

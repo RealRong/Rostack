@@ -9,6 +9,9 @@ export {
   whiteboardStructures
 } from '@whiteboard/core/operations/custom'
 export {
+  createWhiteboardProgramWriter
+} from '@whiteboard/core/operations/programWriter'
+export {
   validateWhiteboardOperationBatch
 } from '@whiteboard/core/operations/validate'
 export {
@@ -25,6 +28,10 @@ export type {
   LockOperationViolation,
   LockTarget
 } from '@whiteboard/core/operations/lock'
+export type {
+  WhiteboardProgramWriter,
+  WhiteboardRoutePointPatch,
+} from '@whiteboard/core/operations/programWriter'
 export type {
   WhiteboardCompileCode,
   WhiteboardCompileContext,

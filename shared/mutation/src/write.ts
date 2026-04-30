@@ -1,6 +1,6 @@
 import type {
-  MutationEffectProgram
-} from './engine/effect/effect'
+  MutationProgram
+} from './engine/program/program'
 
 export type MutationOrigin =
   | 'user'
@@ -30,6 +30,10 @@ export interface MutationChange {
 export interface MutationDelta {
   reset?: true
   changes: Readonly<Record<string, MutationChange>>
+  has(key: string): boolean
+  changed(key: string, id?: string): boolean
+  ids(key: string): ReadonlySet<string> | 'all'
+  paths(key: string, id: string): readonly string[] | 'all' | undefined
 }
 
 export interface MutationDeltaInput {
@@ -261,8 +265,8 @@ export interface MutationCommit<
   origin: MutationOrigin
   document: Doc
   authored: readonly Op[]
-  applied: MutationEffectProgram<Tag>
-  inverse: MutationEffectProgram<Tag>
+  applied: MutationProgram<Tag>
+  inverse: MutationProgram<Tag>
   delta: MutationDelta
   structural: readonly MutationStructuralFact[]
   footprint: readonly Footprint[]

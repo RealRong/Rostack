@@ -10,10 +10,10 @@ import {
 } from '@whiteboard/core/operations/compile/helpers'
 
 const emitOps = (
-  ctx: Pick<WhiteboardCompileContext, 'emit'>,
+  ctx: Pick<WhiteboardCompileContext, 'program'>,
   ops: readonly import('@whiteboard/core/types').Operation[]
 ) => {
-  ctx.emit(...ops)
+  ctx.program.append(...ops)
 }
 
 type DocumentIntentHandlers = Pick<
@@ -26,7 +26,7 @@ type DocumentIntentHandlers = Pick<
 export const documentIntentHandlers: DocumentIntentHandlers = {
   'document.replace': (ctx) => {
     const intent = ctx.intent
-    ctx.emit({
+    ctx.program.append({
       type: 'document.create',
       value: normalizeDocument(documentApi.assert(intent.document))
     })
@@ -58,7 +58,7 @@ export const documentIntentHandlers: DocumentIntentHandlers = {
     })
   },
   'document.background.set': (ctx) => {
-    ctx.emit({
+    ctx.program.append({
       type: 'document.patch',
       patch: {
         background: ctx.intent.background

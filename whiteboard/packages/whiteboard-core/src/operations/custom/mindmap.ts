@@ -32,7 +32,7 @@ export const planMindmapCreate = (
     Extract<Operation, { type: 'mindmap.create' }>
   >
 ): void => {
-  input.effects.structure.ordered.insert(
+  input.program.structure.ordered.insert(
     CANVAS_ORDER_STRUCTURE,
     canvasRefKey({
       kind: 'mindmap',
@@ -47,12 +47,12 @@ export const planMindmapCreate = (
     }
   )
   input.op.nodes.forEach((node) => {
-    input.effects.entity.create({
+    input.program.entity.create({
       table: 'node',
       id: node.id
     }, node)
   })
-  input.effects.entity.create({
+  input.program.entity.create({
     table: 'mindmap',
     id: input.op.mindmap.id
   }, input.op.mindmap)
@@ -63,7 +63,7 @@ export const planMindmapRestore = (
     Extract<Operation, { type: 'mindmap.restore' }>
   >
 ): void => {
-  input.effects.structure.ordered.insert(
+  input.program.structure.ordered.insert(
     CANVAS_ORDER_STRUCTURE,
     canvasRefKey({
       kind: 'mindmap',
@@ -76,12 +76,12 @@ export const planMindmapRestore = (
     readCanvasOrderAnchorFromSlot(input.op.snapshot.slot)
   )
   input.op.snapshot.nodes.forEach((node) => {
-    input.effects.entity.create({
+    input.program.entity.create({
       table: 'node',
       id: node.id
     }, node)
   })
-  input.effects.entity.create({
+  input.program.entity.create({
     table: 'mindmap',
     id: input.op.snapshot.mindmap.id
   }, input.op.snapshot.mindmap)
@@ -102,7 +102,7 @@ export const planMindmapDelete = (
   const connectedEdges = input.reader.edges.connectedToNodes(new Set(nodeIds))
   const edgeIds = connectedEdges.map((edge) => edge.id)
 
-  input.effects.structure.ordered.delete(
+  input.program.structure.ordered.delete(
     CANVAS_ORDER_STRUCTURE,
     canvasRefKey({
       kind: 'mindmap',
@@ -110,7 +110,7 @@ export const planMindmapDelete = (
     })
   )
   connectedEdges.forEach((edge) => {
-    input.effects.structure.ordered.delete(
+    input.program.structure.ordered.delete(
       CANVAS_ORDER_STRUCTURE,
       canvasRefKey({
         kind: 'edge',
@@ -119,18 +119,18 @@ export const planMindmapDelete = (
     )
   })
   edgeIds.forEach((edgeId) => {
-    input.effects.entity.delete({
+    input.program.entity.delete({
       table: 'edge',
       id: edgeId
     })
   })
   nodeIds.forEach((nodeId) => {
-    input.effects.entity.delete({
+    input.program.entity.delete({
       table: 'node',
       id: nodeId
     })
   })
-  input.effects.entity.delete({
+  input.program.entity.delete({
     table: 'mindmap',
     id: input.op.id
   })
@@ -155,13 +155,13 @@ export const planMindmapMove = (
     return
   }
 
-  input.effects.entity.patch({
+  input.program.entity.patch({
     table: 'node',
     id: root.id
   }, {
     position: clone(input.op.position)!
   })
-  input.effects.semantic.change('mindmap.layout', [input.op.id])
+  input.program.semantic.change('mindmap.layout', [input.op.id])
 }
 
 export const planMindmapLayout = (
@@ -185,7 +185,7 @@ export const planMindmapLayout = (
     return
   }
 
-  input.effects.entity.patch({
+  input.program.entity.patch({
     table: 'mindmap',
     id: input.op.id
   }, {
@@ -206,7 +206,7 @@ export const planMindmapTopicInsert = (
     })
   }
 
-  input.effects.entity.create({
+  input.program.entity.create({
     table: 'node',
     id: input.op.node.id
   }, input.op.node)
@@ -224,7 +224,7 @@ export const planMindmapTopicInsert = (
       const side = input.op.input.parentId === current.root
         ? (input.op.input.options?.side ?? 'right')
         : undefined
-      input.effects.structure.tree.insert(
+      input.program.structure.tree.insert(
         structure,
         input.op.node.id,
         input.op.input.parentId,
@@ -251,7 +251,7 @@ export const planMindmapTopicInsert = (
       const side = parentId === current.root
         ? (target.side ?? 'right')
         : undefined
-      input.effects.structure.tree.insert(
+      input.program.structure.tree.insert(
         structure,
         input.op.node.id,
         parentId,
@@ -295,7 +295,7 @@ export const planMindmapTopicInsert = (
       const side = parentId === current.root
         ? (target.side ?? input.op.input.options?.side ?? 'right')
         : undefined
-      input.effects.structure.tree.insert(
+      input.program.structure.tree.insert(
         structure,
         input.op.node.id,
         parentId,
@@ -305,14 +305,14 @@ export const planMindmapTopicInsert = (
           branchStyle: resolveInsertedMindmapBranchStyle(current, parentId, target.side)
         }
       )
-      input.effects.structure.tree.move(
+      input.program.structure.tree.move(
         structure,
         input.op.input.nodeId,
         input.op.node.id,
         0
       )
       if (target.side !== undefined) {
-        input.effects.structure.tree.patch(
+        input.program.structure.tree.patch(
           structure,
           input.op.input.nodeId,
           {
@@ -338,12 +338,12 @@ export const planMindmapTopicRestore = (
   }
 
   input.op.snapshot.nodes.forEach((node) => {
-    input.effects.entity.create({
+    input.program.entity.create({
       table: 'node',
       id: node.id
     }, node)
   })
-  input.effects.structure.tree.restore(
+  input.program.structure.tree.restore(
     mindmapTreeStructure(input.op.id),
     createMindmapTreeSubtreeSnapshot(
       current,
@@ -377,14 +377,14 @@ export const planMindmapTopicMove = (
     ? (input.op.input.side ?? member.side ?? 'right')
     : undefined
   const structure = mindmapTreeStructure(input.op.id)
-  input.effects.structure.tree.move(
+  input.program.structure.tree.move(
     structure,
     input.op.input.nodeId,
     input.op.input.parentId,
     input.op.input.index
   )
   if (!same(member.side, nextSide)) {
-    input.effects.structure.tree.patch(
+    input.program.structure.tree.patch(
       structure,
       input.op.input.nodeId,
       {
@@ -418,12 +418,12 @@ export const planMindmapTopicDelete = (
   const connectedEdges = input.reader.edges.connectedToNodes(new Set(nodeIds))
   const edgeIds = connectedEdges.map((edge) => edge.id)
 
-  input.effects.structure.tree.delete(
+  input.program.structure.tree.delete(
     mindmapTreeStructure(input.op.id),
     input.op.input.nodeId
   )
   connectedEdges.forEach((edge) => {
-    input.effects.structure.ordered.delete(
+    input.program.structure.ordered.delete(
       CANVAS_ORDER_STRUCTURE,
       canvasRefKey({
         kind: 'edge',
@@ -432,13 +432,13 @@ export const planMindmapTopicDelete = (
     )
   })
   edgeIds.forEach((edgeId) => {
-    input.effects.entity.delete({
+    input.program.entity.delete({
       table: 'edge',
       id: edgeId
     })
   })
   nodeIds.forEach((nodeId) => {
-    input.effects.entity.delete({
+    input.program.entity.delete({
       table: 'node',
       id: nodeId
     })
@@ -478,11 +478,11 @@ export const planMindmapTopicPatch = (
     return
   }
 
-  input.effects.entity.patch({
+  input.program.entity.patch({
     table: 'node',
     id: input.op.topicId
   }, writes)
-  input.effects.semantic.footprint([
+  input.program.semantic.footprint([
     entityKey('mindmap', input.op.id)
   ])
 
@@ -498,7 +498,7 @@ export const planMindmapTopicPatch = (
     id: input.op.id
   })
   if (relayoutNodeIds.length > 0) {
-    input.effects.semantic.change('mindmap.layout', [input.op.id])
+    input.program.semantic.change('mindmap.layout', [input.op.id])
   }
 }
 
@@ -542,7 +542,7 @@ export const planMindmapBranchPatch = (
     return
   }
 
-  input.effects.structure.tree.patch(
+  input.program.structure.tree.patch(
     mindmapTreeStructure(input.op.id),
     input.op.topicId,
     {
@@ -577,7 +577,7 @@ export const planMindmapTopicCollapse = (
     return
   }
 
-  input.effects.structure.tree.patch(
+  input.program.structure.tree.patch(
     mindmapTreeStructure(input.op.id),
     input.op.topicId,
     {

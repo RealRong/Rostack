@@ -243,7 +243,7 @@ const emitEdgeRouteDiffOps = (
         x: point.x,
         y: point.y
       }
-      ctx.emit(createStructuralOrderedInsertOperation<MutationStructuralCanonicalOperation>({
+      ctx.program.append(createStructuralOrderedInsertOperation<MutationStructuralCanonicalOperation>({
         structure,
         itemId: routePoint.id,
         value: routePoint,
@@ -259,7 +259,7 @@ const emitEdgeRouteDiffOps = (
 
   if (nextMiddle.length === 0) {
     currentMiddle.forEach((point) => {
-      ctx.emit(createStructuralOrderedDeleteOperation<MutationStructuralCanonicalOperation>({
+      ctx.program.append(createStructuralOrderedDeleteOperation<MutationStructuralCanonicalOperation>({
         structure,
         itemId: point.id
       }))
@@ -278,7 +278,7 @@ const emitEdgeRouteDiffOps = (
         fields.y = nextPoint.y
       }
       if (Object.keys(fields).length) {
-        ctx.emit(createStructuralOrderedPatchOperation<MutationStructuralCanonicalOperation>({
+        ctx.program.append(createStructuralOrderedPatchOperation<MutationStructuralCanonicalOperation>({
           structure,
           itemId: point.id,
           patch: fields
@@ -289,7 +289,7 @@ const emitEdgeRouteDiffOps = (
   }
 
   currentPoints.forEach((point) => {
-    ctx.emit(createStructuralOrderedDeleteOperation<MutationStructuralCanonicalOperation>({
+    ctx.program.append(createStructuralOrderedDeleteOperation<MutationStructuralCanonicalOperation>({
       structure,
       itemId: point.id
     }))
@@ -302,7 +302,7 @@ const emitEdgeRouteDiffOps = (
       x: point.x,
       y: point.y
     }
-    ctx.emit(createStructuralOrderedInsertOperation<MutationStructuralCanonicalOperation>({
+    ctx.program.append(createStructuralOrderedInsertOperation<MutationStructuralCanonicalOperation>({
       structure,
       itemId: routePoint.id,
       value: routePoint,
@@ -326,7 +326,7 @@ const emitEdgeUpdateInputOps = (
     return
   }
 
-  ctx.emit({
+  ctx.program.append({
     type: 'edge.patch',
     id: edge.id,
     patch: createEdgePatch({
@@ -397,7 +397,7 @@ const compileEdgeRouteDelete = (
     return failInvalid(ctx, `Edge ${edge.id} route point not found.`)
   }
 
-  ctx.emit(createStructuralOrderedDeleteOperation<MutationStructuralCanonicalOperation>({
+  ctx.program.append(createStructuralOrderedDeleteOperation<MutationStructuralCanonicalOperation>({
     structure: edgeRoutePointsStructure(edge.id),
     itemId: pointId
   }))
@@ -448,7 +448,7 @@ export const edgeIntentHandlers: EdgeIntentHandlers = {
       return failInvalid(ctx, built.error.message, built.error.details)
     }
 
-    ctx.emit(built.data.operation)
+    ctx.program.append(built.data.operation)
     ctx.output({
       edgeId: built.data.edgeId
     })
@@ -553,7 +553,7 @@ export const edgeIntentHandlers: EdgeIntentHandlers = {
     }
 
     ctx.intent.ids.forEach((id) => {
-      ctx.emit({
+      ctx.program.append({
         type: 'edge.delete',
         id
       })
@@ -574,7 +574,7 @@ export const edgeIntentHandlers: EdgeIntentHandlers = {
       ...(ctx.intent.label.style !== undefined ? { style: ctx.intent.label.style } : {}),
       ...(ctx.intent.label.data !== undefined ? { data: ctx.intent.label.data } : {})
     }
-    ctx.emit(createStructuralOrderedInsertOperation<MutationStructuralCanonicalOperation>({
+    ctx.program.append(createStructuralOrderedInsertOperation<MutationStructuralCanonicalOperation>({
       structure: edgeLabelsStructure(edge.id),
       itemId: label.id,
       value: label,
@@ -601,7 +601,7 @@ export const edgeIntentHandlers: EdgeIntentHandlers = {
       return
     }
 
-    ctx.emit(createStructuralOrderedPatchOperation<MutationStructuralCanonicalOperation>({
+    ctx.program.append(createStructuralOrderedPatchOperation<MutationStructuralCanonicalOperation>({
       structure: edgeLabelsStructure(edge.id),
       itemId: label.id,
       patch: createEdgeLabelPatch({
@@ -611,14 +611,14 @@ export const edgeIntentHandlers: EdgeIntentHandlers = {
     }))
   },
   'edge.label.move': (ctx) => {
-    ctx.emit(createStructuralOrderedMoveOperation<MutationStructuralCanonicalOperation>({
+    ctx.program.append(createStructuralOrderedMoveOperation<MutationStructuralCanonicalOperation>({
       structure: edgeLabelsStructure(ctx.intent.edgeId),
       itemId: ctx.intent.labelId,
       to: toStructuralOrderedAnchor(ctx.intent.to)
     }))
   },
   'edge.label.delete': (ctx) => {
-    ctx.emit(createStructuralOrderedDeleteOperation<MutationStructuralCanonicalOperation>({
+    ctx.program.append(createStructuralOrderedDeleteOperation<MutationStructuralCanonicalOperation>({
       structure: edgeLabelsStructure(ctx.intent.edgeId),
       itemId: ctx.intent.labelId
     }))
@@ -630,7 +630,7 @@ export const edgeIntentHandlers: EdgeIntentHandlers = {
     }
 
     const pointId = readCompileServices(ctx).ids.edgeRoutePoint()
-    ctx.emit(createStructuralOrderedInsertOperation<MutationStructuralCanonicalOperation>({
+    ctx.program.append(createStructuralOrderedInsertOperation<MutationStructuralCanonicalOperation>({
       structure: edgeRoutePointsStructure(edge.id),
       itemId: pointId,
       value: {
@@ -668,7 +668,7 @@ export const edgeIntentHandlers: EdgeIntentHandlers = {
       return
     }
 
-    ctx.emit(createStructuralOrderedPatchOperation<MutationStructuralCanonicalOperation>({
+    ctx.program.append(createStructuralOrderedPatchOperation<MutationStructuralCanonicalOperation>({
       structure: edgeRoutePointsStructure(edge.id),
       itemId: point.id,
       patch: fields
@@ -687,7 +687,7 @@ export const edgeIntentHandlers: EdgeIntentHandlers = {
     )
   },
   'edge.route.move': (ctx) => {
-    ctx.emit(createStructuralOrderedMoveOperation<MutationStructuralCanonicalOperation>({
+    ctx.program.append(createStructuralOrderedMoveOperation<MutationStructuralCanonicalOperation>({
       structure: edgeRoutePointsStructure(ctx.intent.edgeId),
       itemId: ctx.intent.pointId,
       to: toStructuralOrderedAnchor(ctx.intent.to)
@@ -709,7 +709,7 @@ export const edgeIntentHandlers: EdgeIntentHandlers = {
       return
     }
     edge.route.points.forEach((point) => {
-      ctx.emit(createStructuralOrderedDeleteOperation<MutationStructuralCanonicalOperation>({
+      ctx.program.append(createStructuralOrderedDeleteOperation<MutationStructuralCanonicalOperation>({
         structure: edgeRoutePointsStructure(edge.id),
         itemId: point.id
       }))

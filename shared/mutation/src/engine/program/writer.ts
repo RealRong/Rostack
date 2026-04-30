@@ -1,17 +1,16 @@
 import type {
   MutationChangeInput,
-  MutationDeltaInput,
   MutationFootprint,
   MutationOrderedAnchor,
   MutationTreeSubtreeSnapshot,
 } from '../../write'
 import type {
-  MutationEffect,
-  MutationEffectProgram,
+  MutationProgram,
+  MutationProgramStep,
   MutationEntityRef,
-} from './effect'
+} from './program'
 
-export interface MutationEffectBuilder<
+export interface MutationProgramWriter<
   Tag extends string = string
 > {
   entity: {
@@ -107,18 +106,18 @@ export interface MutationEffectBuilder<
     change(key: string, change?: MutationChangeInput): void
     footprint(footprint: readonly MutationFootprint[]): void
   }
-  build(): MutationEffectProgram<Tag>
+  build(): MutationProgram<Tag>
 }
 
-export const createMutationEffectBuilder = <
+export const createMutationProgramWriter = <
   Tag extends string = string
->(): MutationEffectBuilder<Tag> => {
-  const effects: MutationEffect<Tag>[] = []
+>(): MutationProgramWriter<Tag> => {
+  const steps: MutationProgramStep<Tag>[] = []
 
   return {
     entity: {
       create: (entity, value, tags) => {
-        effects.push({
+        steps.push({
           type: 'entity.create',
           entity,
           value,
@@ -126,7 +125,7 @@ export const createMutationEffectBuilder = <
         })
       },
       patch: (entity, writes, tags) => {
-        effects.push({
+        steps.push({
           type: 'entity.patch',
           entity,
           writes,
@@ -134,7 +133,7 @@ export const createMutationEffectBuilder = <
         })
       },
       patchMany: (table, updates, tags) => {
-        effects.push({
+        steps.push({
           type: 'entity.patchMany',
           table,
           updates,
@@ -142,7 +141,7 @@ export const createMutationEffectBuilder = <
         })
       },
       delete: (entity, tags) => {
-        effects.push({
+        steps.push({
           type: 'entity.delete',
           entity,
           ...(tags === undefined ? {} : { tags })
@@ -152,7 +151,7 @@ export const createMutationEffectBuilder = <
     structure: {
       ordered: {
         insert: (structure, itemId, value, to, tags) => {
-          effects.push({
+          steps.push({
             type: 'ordered.insert',
             structure,
             itemId,
@@ -162,7 +161,7 @@ export const createMutationEffectBuilder = <
           })
         },
         move: (structure, itemId, to, tags) => {
-          effects.push({
+          steps.push({
             type: 'ordered.move',
             structure,
             itemId,
@@ -171,7 +170,7 @@ export const createMutationEffectBuilder = <
           })
         },
         splice: (structure, itemIds, to, tags) => {
-          effects.push({
+          steps.push({
             type: 'ordered.splice',
             structure,
             itemIds,
@@ -180,7 +179,7 @@ export const createMutationEffectBuilder = <
           })
         },
         delete: (structure, itemId, tags) => {
-          effects.push({
+          steps.push({
             type: 'ordered.delete',
             structure,
             itemId,
@@ -188,7 +187,7 @@ export const createMutationEffectBuilder = <
           })
         },
         patch: (structure, itemId, patch, tags) => {
-          effects.push({
+          steps.push({
             type: 'ordered.patch',
             structure,
             itemId,
@@ -199,7 +198,7 @@ export const createMutationEffectBuilder = <
       },
       tree: {
         insert: (structure, nodeId, parentId, index, value, tags) => {
-          effects.push({
+          steps.push({
             type: 'tree.insert',
             structure,
             nodeId,
@@ -210,7 +209,7 @@ export const createMutationEffectBuilder = <
           })
         },
         move: (structure, nodeId, parentId, index, tags) => {
-          effects.push({
+          steps.push({
             type: 'tree.move',
             structure,
             nodeId,
@@ -220,7 +219,7 @@ export const createMutationEffectBuilder = <
           })
         },
         delete: (structure, nodeId, tags) => {
-          effects.push({
+          steps.push({
             type: 'tree.delete',
             structure,
             nodeId,
@@ -228,7 +227,7 @@ export const createMutationEffectBuilder = <
           })
         },
         restore: (structure, snapshot, tags) => {
-          effects.push({
+          steps.push({
             type: 'tree.restore',
             structure,
             snapshot,
@@ -236,7 +235,7 @@ export const createMutationEffectBuilder = <
           })
         },
         patch: (structure, nodeId, patch, tags) => {
-          effects.push({
+          steps.push({
             type: 'tree.node.patch',
             structure,
             nodeId,
@@ -248,27 +247,27 @@ export const createMutationEffectBuilder = <
     },
     semantic: {
       tag: (value) => {
-        effects.push({
+        steps.push({
           type: 'semantic.tag',
           value
         })
       },
       change: (key, change) => {
-        effects.push({
+        steps.push({
           type: 'semantic.change',
           key,
           ...(change === undefined ? {} : { change })
         })
       },
       footprint: (footprint) => {
-        effects.push({
+        steps.push({
           type: 'semantic.footprint',
           footprint
         })
       }
     },
     build: () => ({
-      effects: [...effects]
+      steps: [...steps]
     })
   }
 }

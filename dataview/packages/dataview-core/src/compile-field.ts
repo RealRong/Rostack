@@ -38,7 +38,7 @@ const emitData = <T>(
   data: T,
   ...operations: readonly DocumentOperation[]
 ): T => {
-  input.emit(...operations)
+  input.program.append(...operations)
   return data
 }
 
@@ -243,7 +243,7 @@ const lowerFieldPatch = (
 
   const nextField = applyFieldPatch(field, intent.patch)
   reportIssues(input, ...validateField(document, input.source, nextField, 'patch'))
-  input.emit(toFieldPatch(intent.id, intent.patch))
+  input.program.append(toFieldPatch(intent.id, intent.patch))
 }
 
 const lowerFieldReplace = (
@@ -267,7 +267,7 @@ const lowerFieldReplace = (
     return
   }
 
-  input.emit({
+  input.program.append({
     type: 'field.patch',
     id: intent.id,
     patch: createEntityPatch(current, field)
@@ -290,7 +290,7 @@ const lowerFieldSetKind = (
   const patch = createEntityPatch(field, nextField)
   reportIssues(input, ...validateField(document, input.source, nextField, 'kind'))
 
-  input.emit(
+  input.program.append(
     toFieldPatch(intent.id, patch),
     ...buildConvertedFieldViewOps(views, nextField)
   )
@@ -469,7 +469,7 @@ const lowerFieldOptionMove = (
     return
   }
 
-  input.emit({
+  input.program.append({
     type: 'field.option.move',
     field: intent.field,
     option: optionId,
@@ -566,7 +566,7 @@ const lowerFieldOptionPatch = (
     context.options.map((option) => option.id === optionId ? nextOption : option)
   )
 
-  input.emit(toFieldPatch(intent.field, patch as Partial<Omit<CustomField, 'id'>>))
+  input.program.append(toFieldPatch(intent.field, patch as Partial<Omit<CustomField, 'id'>>))
 }
 
 const lowerFieldOptionRemove = (
@@ -602,7 +602,7 @@ const lowerFieldOptionRemove = (
 
   void records
 
-  input.emit({
+  input.program.append({
     type: 'field.option.delete',
     field: intent.field,
     option: optionId
@@ -619,7 +619,7 @@ const lowerFieldRemove = (
     return
   }
 
-  input.emit(
+  input.program.append(
     ...buildRemovedFieldViewOps(views, intent.id),
     {
       type: 'field.remove',

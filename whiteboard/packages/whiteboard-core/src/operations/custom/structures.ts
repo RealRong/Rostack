@@ -40,7 +40,7 @@ import {
   uniqueSorted
 } from './common'
 
-type MindmapStructureValue = {
+export type WhiteboardMindmapTreeValue = {
   side?: 'left' | 'right'
   collapsed?: boolean
   branchStyle: MindmapRecord['members'][NodeId]['branchStyle']
@@ -205,7 +205,7 @@ export const getManualRoutePoints = (
 const createMindmapStructureValue = (
   member: MindmapRecord['members'][NodeId] | undefined,
   nodeId: NodeId
-): MindmapStructureValue => {
+): WhiteboardMindmapTreeValue => {
   if (!member) {
     throw new Error(`Mindmap member ${nodeId} not found.`)
   }
@@ -219,7 +219,7 @@ const createMindmapStructureValue = (
 
 const createMindmapTreeSnapshot = (
   record: MindmapRecord
-): MutationTreeSnapshot<MindmapStructureValue> => ({
+): MutationTreeSnapshot<WhiteboardMindmapTreeValue> => ({
   rootIds: [record.root],
   nodes: Object.fromEntries(
     Object.entries(record.members).map(([nodeId, member]) => [
@@ -236,7 +236,7 @@ const createMindmapTreeSnapshot = (
 const writeMindmapTreeSnapshot = (
   document: Document,
   id: MindmapId,
-  tree: MutationTreeSnapshot<MindmapStructureValue>
+  tree: MutationTreeSnapshot<WhiteboardMindmapTreeValue>
 ): Document => {
   const current = document.mindmaps[id]
   if (!current) {
@@ -351,7 +351,7 @@ export const resolveInsertedMindmapBranchStyle = (
 export const createMindmapTreeSubtreeSnapshot = (
   current: MindmapRecord,
   snapshot: MindmapTopicSnapshot
-): MutationTreeSubtreeSnapshot<MindmapStructureValue> => ({
+): MutationTreeSubtreeSnapshot<WhiteboardMindmapTreeValue> => ({
   rootId: snapshot.root,
   parentId: snapshot.slot.parent,
   index: snapshot.slot.prev
@@ -492,8 +492,8 @@ export const whiteboardStructures: MutationStructureSource<Document> = (
         }
         return createMindmapTreeSnapshot(record)
       },
-      clone: (value: MindmapStructureValue) => clone(value)!,
-      write: (document: Document, tree: MutationTreeSnapshot<MindmapStructureValue>) => (
+      clone: (value: WhiteboardMindmapTreeValue) => clone(value)!,
+      write: (document: Document, tree: MutationTreeSnapshot<WhiteboardMindmapTreeValue>) => (
         writeMindmapTreeSnapshot(document, mindmapId, tree)
       )
     }

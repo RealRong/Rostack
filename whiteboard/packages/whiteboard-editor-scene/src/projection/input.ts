@@ -1,5 +1,6 @@
 import { idDelta } from '@shared/delta'
 import {
+  normalizeMutationDelta,
   type MutationDelta
 } from '@shared/mutation'
 import type {
@@ -29,14 +30,11 @@ const EMPTY_MUTATION_CHANGES = Object.freeze(
   Object.create(null)
 ) as Record<string, never>
 
-const BOOTSTRAP_DOCUMENT_DELTA: MutationDelta = {
-  reset: true,
-  changes: EMPTY_MUTATION_CHANGES
-}
+const BOOTSTRAP_DOCUMENT_DELTA: MutationDelta = normalizeMutationDelta({
+  reset: true
+})
 
-const EMPTY_DOCUMENT_DELTA: MutationDelta = {
-  changes: EMPTY_MUTATION_CHANGES
-}
+const EMPTY_DOCUMENT_DELTA: MutationDelta = normalizeMutationDelta()
 
 const createTouchedIdDelta = <TId extends string>(
   ids: Iterable<TId>

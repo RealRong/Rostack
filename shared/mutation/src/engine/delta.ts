@@ -12,6 +12,7 @@ import type {
 import {
   cloneValue,
   EMPTY_DELTA,
+  EMPTY_MUTATION_IDS,
   EMPTY_MUTATION_CHANGES,
   endsWithOperationKey,
   hasOwn,
@@ -267,6 +268,77 @@ const finalizeMutationChange = (
   return change as MutationChange
 }
 
+const readMutationPaths = (
+  change: MutationChange | undefined,
+  id: string
+): readonly string[] | 'all' | undefined => {
+  if (!change) {
+    return undefined
+  }
+  if (change.paths === 'all') {
+    return 'all'
+  }
+  return change.paths?.[id]
+}
+
+const readMutationIds = (
+  change: MutationChange | undefined
+): ReadonlySet<string> | 'all' => {
+  if (!change) {
+    return EMPTY_MUTATION_IDS
+  }
+  if (change.ids === 'all' || change.paths === 'all') {
+    return 'all'
+  }
+  if (Array.isArray(change.ids)) {
+    return new Set(change.ids)
+  }
+  if (change.paths) {
+    return new Set(Object.keys(change.paths))
+  }
+  return EMPTY_MUTATION_IDS
+}
+
+const withMutationDeltaReadApi = (
+  input: {
+    reset?: true
+    changes: MutationDelta['changes']
+  }
+): MutationDelta => {
+  const delta: MutationDelta = {
+    ...(input.reset
+      ? {
+          reset: true
+        }
+      : {}),
+    changes: input.changes,
+    has: (key) => delta.reset === true || hasOwn(delta.changes, key),
+    changed: (key, id) => {
+      if (delta.reset === true) {
+        return true
+      }
+      const change = delta.changes[key]
+      if (id === undefined) {
+        return change !== undefined
+      }
+      const ids = readMutationIds(change)
+      if (ids === 'all' || ids.has(id)) {
+        return true
+      }
+      const paths = readMutationPaths(change, id)
+      return paths === 'all'
+        || (Array.isArray(paths) && paths.length > 0)
+    },
+    ids: (key) => delta.reset === true
+      ? 'all'
+      : readMutationIds(delta.changes[key]),
+    paths: (key, id) => delta.reset === true
+      ? 'all'
+      : readMutationPaths(delta.changes[key], id)
+  }
+  return Object.freeze(delta)
+}
+
 export const normalizeMutationDelta = (
   input?: MutationDeltaInput | MutationDelta
 ): MutationDelta => {
@@ -300,16 +372,16 @@ export const normalizeMutationDelta = (
     return EMPTY_DELTA
   }
 
-  return {
+  return withMutationDeltaReadApi({
     ...(input.reset
       ? {
-          reset: true
+          reset: true as const
         }
       : {}),
     changes: hasChanges
       ? normalizedChanges
       : EMPTY_MUTATION_CHANGES
-  }
+  })
 }
 
 export const mergeMutationDeltas = (
@@ -357,16 +429,16 @@ export const mergeMutationDeltas = (
     return EMPTY_DELTA
   }
 
-  return {
+  return withMutationDeltaReadApi({
     ...(left.reset || right.reset
       ? {
-          reset: true
+          reset: true as const
         }
       : {}),
     changes: hasChanges
       ? normalizedChanges
       : EMPTY_MUTATION_CHANGES
-  }
+  })
 }
 
 const createDeltaChangeForRule = (

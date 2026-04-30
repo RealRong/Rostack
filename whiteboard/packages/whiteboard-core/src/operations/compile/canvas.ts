@@ -53,7 +53,7 @@ export const compileCanvasDelete = (
 
   refs.forEach((ref) => {
     if (ref.kind === 'edge') {
-      ctx.emit({
+      ctx.program.append({
         type: 'edge.delete',
         id: ref.id
       })
@@ -63,14 +63,14 @@ export const compileCanvasDelete = (
     const node = ctx.reader.nodes.get(ref.id)
     const mindmapId = getNodeMindmapId(node)
     if (!mindmapId) {
-      ctx.emit({
+      ctx.program.append({
         type: 'node.delete',
         id: ref.id
       })
       return
     }
 
-    ctx.emit(
+    ctx.program.append(
       ctx.reader.mindmaps.isRoot(ref.id)
         ? {
             type: 'mindmap.delete',
@@ -142,7 +142,7 @@ export const compileCanvasDuplicate = (
     return failInvalid(ctx, built.error.message, built.error.details)
   }
 
-  built.data.operations.forEach((op) => ctx.emit(op))
+  built.data.operations.forEach((op) => ctx.program.append(op))
   return {
     allNodeIds: built.data.allNodeIds,
     allEdgeIds: built.data.allEdgeIds,
@@ -235,7 +235,7 @@ const compileCanvasSelectionMove = (
         node.position.x !== entry.position.x
         || node.position.y !== entry.position.y
       ) {
-        ctx.emit(...nodeApi.update.createOperation(node.id, {
+        ctx.program.append(...nodeApi.update.createOperation(node.id, {
           fields: {
             position: entry.position
           }
@@ -261,7 +261,7 @@ const compileCanvasSelectionMove = (
     }
 
     movedMindmapIds.add(mindmapId)
-    ctx.emit({
+    ctx.program.append({
       type: 'mindmap.move',
       id: mindmapId,
       position: entry.position
@@ -305,7 +305,7 @@ export const canvasIntentHandlers: CanvasIntentHandlers = {
     }
   },
   'canvas.selection.move': (ctx) => compileCanvasSelectionMove(ctx),
-  'canvas.order.move': (ctx) => ctx.emit({
+  'canvas.order.move': (ctx) => ctx.program.append({
     type: 'canvas.order.move',
     refs: ctx.intent.refs,
     to: ctx.intent.to

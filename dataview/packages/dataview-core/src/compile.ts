@@ -42,7 +42,11 @@ const runCompileIntent = (
     reader: DocumentReader
   ) => unknown
 ) => {
-  const result = compileIntent(input.intent, input, input.reader)
+  const result = compileIntent(
+    input.intent,
+    input,
+    input.reader
+  )
   if (result !== undefined) {
     input.output(result)
   }
@@ -63,7 +67,7 @@ const compileExternalBump = (
     )
   }
 
-  input.emit({
+  input.program.append({
     type: 'external.version.bump',
     source: input.intent.source
   })

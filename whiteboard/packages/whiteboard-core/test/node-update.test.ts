@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { test } from 'vitest'
 import {
   MutationEngine,
-  type MutationEffectProgram
+  type MutationProgram
 } from '@shared/mutation'
 import { node as nodeApi } from '@whiteboard/core/node'
 import { document as documentApi } from '@whiteboard/core/document'
@@ -80,7 +80,7 @@ const applyOperations = (
 
 const replayInverse = (
   doc: Document,
-  program: MutationEffectProgram<string>
+  program: MutationProgram<string>
 ) => {
   const engine = new MutationEngine({
     document: doc,
@@ -106,7 +106,7 @@ test('node.update reducer 为 set(path) 生成精确 inverse 并可回放', () =
 
   assert.ok(result.ok)
   assert.deepEqual(result.commit.inverse, {
-    effects: [{
+    steps: [{
       type: 'entity.patch',
       entity: {
         table: 'node',

@@ -22,7 +22,7 @@ export const planCanvasOrderMove = (
 
   const anchor = toStructuralCanvasAnchor(currentOrder, existingRefs, input.op.to)
   if (existingRefs.length === 1) {
-    input.effects.structure.ordered.move(
+    input.program.structure.ordered.move(
       CANVAS_ORDER_STRUCTURE,
       canvasRefKey(existingRefs[0]!),
       anchor
@@ -30,7 +30,7 @@ export const planCanvasOrderMove = (
     return
   }
 
-  input.effects.structure.ordered.splice(
+  input.program.structure.ordered.splice(
     CANVAS_ORDER_STRUCTURE,
     existingRefs.map((ref) => canvasRefKey(ref)),
     anchor

@@ -41,20 +41,20 @@ import {
   draft,
 } from '@shared/draft'
 import type {
-  AppliedMutationEffectProgram,
-  MutationEffect,
-  MutationEffectProgram,
-  MutationEntityEffect,
-  MutationOrderedEffect,
-  MutationTreeEffect,
-} from './effect'
+  AppliedMutationProgram,
+  MutationEntityProgramStep,
+  MutationOrderedProgramStep,
+  MutationProgram,
+  MutationProgramStep,
+  MutationTreeProgramStep,
+} from './program'
 
-const createEffectProgram = <
+const createMutationProgram = <
   Tag extends string = string
 >(
-  effects: readonly MutationEffect<Tag>[] = EMPTY_OUTPUTS as readonly MutationEffect<Tag>[]
-): MutationEffectProgram<Tag> => ({
-  effects
+  steps: readonly MutationProgramStep<Tag>[] = EMPTY_OUTPUTS as readonly MutationProgramStep<Tag>[]
+): MutationProgram<Tag> => ({
+  steps
 })
 
 const mergeTagDelta = (
@@ -81,8 +81,8 @@ const mergeTagDelta = (
 }
 
 const isEntityEffect = (
-  effect: MutationEffectProgram['effects'][number]
-): effect is MutationEntityEffect => (
+  effect: MutationProgram['steps'][number]
+): effect is MutationEntityProgramStep => (
   effect.type === 'entity.create'
   || effect.type === 'entity.patch'
   || effect.type === 'entity.patchMany'
@@ -90,8 +90,8 @@ const isEntityEffect = (
 )
 
 const isStructuralEffect = (
-  effect: MutationEffectProgram['effects'][number]
-): effect is MutationOrderedEffect | MutationTreeEffect => (
+  effect: MutationProgram['steps'][number]
+): effect is MutationOrderedProgramStep | MutationTreeProgramStep => (
   effect.type === 'ordered.insert'
   || effect.type === 'ordered.move'
   || effect.type === 'ordered.splice'
@@ -108,10 +108,10 @@ const applyEntityCreateEffect = <
   Doc extends object
 >(input: {
   document: Doc
-  effect: Extract<MutationEntityEffect, { type: 'entity.create' }>
+  effect: Extract<MutationEntityProgramStep, { type: 'entity.create' }>
   spec: CompiledEntitySpec
   normalize(doc: Doc): Doc
-}): AppliedMutationEffectProgram<Doc> => {
+}): AppliedMutationProgram<Doc> => {
   try {
     const { effect, spec } = input
     const value = effect.value
@@ -122,7 +122,7 @@ const applyEntityCreateEffect = <
         const changedPaths = readEntitySnapshotPaths(spec, nextDocument)
         return {
           document: nextDocument,
-          inverse: createEffectProgram([{
+          inverse: createMutationProgram([{
             type: 'entity.create',
             entity: {
               table: spec.family,
@@ -148,7 +148,7 @@ const applyEntityCreateEffect = <
       const changedPaths = readEntitySnapshotPaths(spec, value)
       return {
         document: input.normalize(nextDocument),
-        inverse: createEffectProgram([{
+        inverse: createMutationProgram([{
           type: 'entity.delete',
           entity: {
             table: spec.family,
@@ -181,7 +181,7 @@ const applyEntityCreateEffect = <
 
     return {
       document: input.normalize(nextDocument),
-      inverse: createEffectProgram([{
+      inverse: createMutationProgram([{
         type: 'entity.delete',
         entity: {
           table: spec.family,
@@ -206,10 +206,10 @@ const applyEntityPatchEffect = <
   Doc extends object
 >(input: {
   document: Doc
-  effect: Extract<MutationEntityEffect, { type: 'entity.patch' }>
+  effect: Extract<MutationEntityProgramStep, { type: 'entity.patch' }>
   spec: CompiledEntitySpec
   normalize(doc: Doc): Doc
-}): AppliedMutationEffectProgram<Doc> => {
+}): AppliedMutationProgram<Doc> => {
   const { effect, spec } = input
   const entityId = spec.kind === 'singleton'
     ? undefined
@@ -227,7 +227,7 @@ const applyEntityPatchEffect = <
   if (changedPaths.length === 0) {
     return {
       document: input.document,
-      inverse: createEffectProgram(),
+      inverse: createMutationProgram(),
       delta: mergeTagDelta(EMPTY_DELTA, effect.tags),
       structural: EMPTY_OUTPUTS as readonly MutationStructuralFact[],
       footprint: [],
@@ -245,8 +245,8 @@ const applyEntityPatchEffect = <
   return {
     document: nextDocument,
     inverse: Object.keys(inverseWrites).length === 0
-      ? createEffectProgram()
-      : createEffectProgram([{
+      ? createMutationProgram()
+      : createMutationProgram([{
           type: 'entity.patch',
           entity: {
             table: spec.family,
@@ -271,10 +271,10 @@ const applyEntityDeleteEffect = <
   Doc extends object
 >(input: {
   document: Doc
-  effect: Extract<MutationEntityEffect, { type: 'entity.delete' }>
+  effect: Extract<MutationEntityProgramStep, { type: 'entity.delete' }>
   spec: CompiledEntitySpec
   normalize(doc: Doc): Doc
-}): AppliedMutationEffectProgram<Doc> => {
+}): AppliedMutationProgram<Doc> => {
   const { effect, spec } = input
   if (spec.kind === 'singleton') {
     if (spec.family === 'document') {
@@ -291,7 +291,7 @@ const applyEntityDeleteEffect = <
     const changedPaths = readEntitySnapshotPaths(spec, current)
     return {
       document: input.normalize(nextDocument),
-      inverse: createEffectProgram([{
+      inverse: createMutationProgram([{
         type: 'entity.create',
         entity: {
           table: spec.family,
@@ -325,7 +325,7 @@ const applyEntityDeleteEffect = <
 
   return {
     document: input.normalize(nextDocument),
-    inverse: createEffectProgram([{
+    inverse: createMutationProgram([{
       type: 'entity.create',
       entity: {
         table: spec.family,
@@ -348,14 +348,14 @@ const applyEntityEffect = <
   Doc extends object
 >(input: {
   document: Doc
-  effect: MutationEntityEffect
+  effect: MutationEntityProgramStep
   entities: ReadonlyMap<string, CompiledEntitySpec>
   normalize(doc: Doc): Doc
-}): AppliedMutationEffectProgram<Doc> => {
+}): AppliedMutationProgram<Doc> => {
   if (input.effect.type === 'entity.patchMany') {
     let current = input.document
     let delta = mergeTagDelta(EMPTY_DELTA, input.effect.tags)
-    const inverseEffects: MutationEffect[] = []
+    const inverseSteps: MutationProgramStep[] = []
     const footprint: MutationFootprint[] = []
     let historyMode: 'track' | 'neutral' = 'neutral'
 
@@ -376,7 +376,7 @@ const applyEntityEffect = <
       })
       current = applied.document
       delta = mergeMutationDeltas(delta, applied.delta)
-      inverseEffects.unshift(...applied.inverse.effects)
+      inverseSteps.unshift(...applied.inverse.steps)
       footprint.push(...applied.footprint)
       if (applied.historyMode === 'track') {
         historyMode = 'track'
@@ -385,7 +385,7 @@ const applyEntityEffect = <
 
     return {
       document: current,
-      inverse: createEffectProgram(inverseEffects),
+      inverse: createMutationProgram(inverseSteps),
       delta,
       structural: EMPTY_OUTPUTS as readonly MutationStructuralFact[],
       footprint: dedupeFootprints(footprint),
@@ -428,14 +428,14 @@ const applyEntityEffect = <
   }
 }
 
-export const applyMutationEffectProgram = <
+export const applyMutationProgram = <
   Doc extends object,
   Op extends { type: string },
   Tag extends string = string,
   Code extends string = string
 >(input: {
   document: Doc
-  program: MutationEffectProgram<Tag>
+  program: MutationProgram<Tag>
   entities: ReadonlyMap<string, CompiledEntitySpec>
   structures?: MutationStructureSource<Doc>
   normalize(doc: Doc): Doc
@@ -443,14 +443,14 @@ export const applyMutationEffectProgram = <
   let currentDocument = input.document
   let delta = EMPTY_DELTA
   const structural: MutationStructuralFact[] = []
-  const inverseEffects: MutationEffect[] = []
+  const inverseSteps: MutationProgramStep[] = []
   const footprint: MutationFootprint[] = []
   const issues: MutationIssue[] = []
   let historyMode: 'track' | 'neutral' = 'neutral'
 
   try {
-    for (let index = 0; index < input.program.effects.length; index += 1) {
-      const effect = input.program.effects[index]!
+    for (let index = 0; index < input.program.steps.length; index += 1) {
+      const effect = input.program.steps[index]!
       if (effect.type === 'semantic.tag') {
         delta = mergeTagDelta(delta, [effect.value])
         continue
@@ -493,7 +493,7 @@ export const applyMutationEffectProgram = <
         mergeTagDelta(applied.delta, 'tags' in effect ? effect.tags : undefined)
       )
       structural.push(...applied.structural)
-      inverseEffects.unshift(...applied.inverse.effects)
+      inverseSteps.unshift(...applied.inverse.steps)
       footprint.push(...applied.footprint)
       issues.push(...applied.issues)
       if (applied.historyMode === 'track') {
@@ -506,7 +506,7 @@ export const applyMutationEffectProgram = <
       data: {
         document: currentDocument,
         applied: input.program,
-        inverse: createEffectProgram(inverseEffects),
+        inverse: createMutationProgram(inverseSteps),
         delta,
         structural,
         footprint: dedupeFootprints(footprint),

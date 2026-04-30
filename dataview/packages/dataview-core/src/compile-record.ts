@@ -30,7 +30,7 @@ const emitData = <T>(
   data: T,
   ...operations: readonly DocumentOperation[]
 ): T => {
-  input.emit(...operations)
+  input.program.append(...operations)
   return data
 }
 
@@ -207,7 +207,7 @@ const lowerRecordPatch = (
     )
   }
 
-  input.emit(...recordIds.map((recordId): DocumentOperation => ({
+  input.program.append(...recordIds.map((recordId): DocumentOperation => ({
     type: 'record.patch',
     id: recordId,
     patch: intent.patch
@@ -224,7 +224,7 @@ const lowerRecordRemove = (
     return
   }
 
-  input.emit({
+  input.program.append({
     type: 'record.remove',
     recordIds: [...recordIds]
   })
@@ -286,7 +286,7 @@ const lowerRecordFieldsWriteMany = (
     return
   }
 
-  input.emit({
+  input.program.append({
     type: 'record.values.writeMany',
     recordIds,
     ...(Object.keys(nextSet).length

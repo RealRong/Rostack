@@ -7,10 +7,6 @@ export { useEditor } from '@whiteboard/react/runtime/hooks'
 export { useWhiteboard } from '@whiteboard/react/runtime/hooks'
 export { nodeSpec } from '@whiteboard/react/features/node'
 export { whiteboardSpec } from '@whiteboard/react/spec'
-export {
-  createEditor,
-  createWhiteboardRuntime
-} from '@whiteboard/react/runtime/whiteboard/factory'
 
 export type {
   WhiteboardOptions,

@@ -13,7 +13,7 @@ export interface MutationEntityRef {
   id: string
 }
 
-export type MutationEntityEffect<
+export type MutationEntityProgramStep<
   Tag extends string = string
 > =
   | {
@@ -43,7 +43,7 @@ export type MutationEntityEffect<
       tags?: readonly Tag[]
     }
 
-export type MutationOrderedEffect<
+export type MutationOrderedProgramStep<
   Tag extends string = string
 > =
   | {
@@ -82,7 +82,7 @@ export type MutationOrderedEffect<
       tags?: readonly Tag[]
     }
 
-export type MutationTreeEffect<
+export type MutationTreeProgramStep<
   Tag extends string = string
 > =
   | {
@@ -122,7 +122,7 @@ export type MutationTreeEffect<
       tags?: readonly Tag[]
     }
 
-export type MutationTagEffect<
+export type MutationSemanticProgramStep<
   Tag extends string = string
 > =
   | {
@@ -139,26 +139,55 @@ export type MutationTagEffect<
       footprint: readonly MutationFootprint[]
     }
 
-export type MutationEffect<
+export type MutationProgramStep<
   Tag extends string = string
 > =
-  | MutationEntityEffect<Tag>
-  | MutationOrderedEffect<Tag>
-  | MutationTreeEffect<Tag>
-  | MutationTagEffect<Tag>
+  | MutationEntityProgramStep<Tag>
+  | MutationOrderedProgramStep<Tag>
+  | MutationTreeProgramStep<Tag>
+  | MutationSemanticProgramStep<Tag>
 
-export interface MutationEffectProgram<
-  Tag extends string = string
-> {
-  readonly effects: readonly MutationEffect<Tag>[]
+export const isMutationProgramStep = (
+  value: {
+    type: string
+  }
+): value is MutationProgramStep => {
+  switch (value.type) {
+    case 'entity.create':
+    case 'entity.patch':
+    case 'entity.patchMany':
+    case 'entity.delete':
+    case 'ordered.insert':
+    case 'ordered.move':
+    case 'ordered.splice':
+    case 'ordered.delete':
+    case 'ordered.patch':
+    case 'tree.insert':
+    case 'tree.move':
+    case 'tree.delete':
+    case 'tree.restore':
+    case 'tree.node.patch':
+    case 'semantic.tag':
+    case 'semantic.change':
+    case 'semantic.footprint':
+      return true
+    default:
+      return false
+  }
 }
 
-export interface AppliedMutationEffectProgram<
+export interface MutationProgram<
+  Tag extends string = string
+> {
+  readonly steps: readonly MutationProgramStep<Tag>[]
+}
+
+export interface AppliedMutationProgram<
   Doc,
   Tag extends string = string
 > {
   document: Doc
-  inverse: MutationEffectProgram<Tag>
+  inverse: MutationProgram<Tag>
   delta: MutationDelta
   structural: readonly MutationStructuralFact[]
   footprint: readonly MutationFootprint[]

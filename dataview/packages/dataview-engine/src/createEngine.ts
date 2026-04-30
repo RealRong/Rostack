@@ -9,9 +9,6 @@ import {
   compile
 } from '@dataview/core/compile'
 import {
-  custom
-} from '@dataview/core/custom'
-import {
   entities
 } from '@dataview/core/entities'
 import {
@@ -87,7 +84,6 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
     normalize: documentApi.normalize,
     createReader: createDocumentReader,
     entities,
-    custom,
     compile: compile.handlers,
     history: historyConfig.enabled
       ? {

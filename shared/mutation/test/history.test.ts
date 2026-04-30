@@ -2,8 +2,8 @@ import assert from 'node:assert/strict'
 import { test } from 'vitest'
 import { history } from '../src/history'
 import type {
-  MutationEffectProgram
-} from '../src/engine/effect/effect'
+  MutationProgram
+} from '../src/engine/program/program'
 
 type TestWrite = {
   rev: number
@@ -11,8 +11,8 @@ type TestWrite = {
   origin: 'user' | 'remote' | 'system' | 'history'
   doc: {}
   authored: readonly string[]
-  applied: MutationEffectProgram<string>
-  inverse: MutationEffectProgram<string>
+  applied: MutationProgram<string>
+  inverse: MutationProgram<string>
   footprint: readonly string[]
   extra: {}
 }
@@ -26,13 +26,13 @@ const createWrite = (
   doc: {},
   authored: ['forward'],
   applied: {
-    effects: [{
+    steps: [{
       type: 'semantic.tag',
       value: 'forward'
     }]
   },
   inverse: {
-    effects: [{
+    steps: [{
       type: 'semantic.tag',
       value: 'inverse'
     }]
@@ -59,7 +59,7 @@ test('history controller captures writes and confirms undo redo', () => {
   })
 
   assert.deepEqual(controller.undo(), {
-    effects: [{
+    steps: [{
       type: 'semantic.tag',
       value: 'inverse'
     }]
@@ -76,7 +76,7 @@ test('history controller captures writes and confirms undo redo', () => {
   })
 
   assert.deepEqual(controller.redo(), {
-    effects: [{
+    steps: [{
       type: 'semantic.tag',
       value: 'forward'
     }]
@@ -144,13 +144,13 @@ test('history controller trims undo stack by capacity', () => {
   controller.capture(createWrite({
     authored: ['f1'],
     applied: {
-      effects: [{
+      steps: [{
         type: 'semantic.tag',
         value: 'f1'
       }]
     },
     inverse: {
-      effects: [{
+      steps: [{
         type: 'semantic.tag',
         value: 'i1'
       }]
@@ -159,13 +159,13 @@ test('history controller trims undo stack by capacity', () => {
   controller.capture(createWrite({
     authored: ['f2'],
     applied: {
-      effects: [{
+      steps: [{
         type: 'semantic.tag',
         value: 'f2'
       }]
     },
     inverse: {
-      effects: [{
+      steps: [{
         type: 'semantic.tag',
         value: 'i2'
       }]
@@ -174,13 +174,13 @@ test('history controller trims undo stack by capacity', () => {
   controller.capture(createWrite({
     authored: ['f3'],
     applied: {
-      effects: [{
+      steps: [{
         type: 'semantic.tag',
         value: 'f3'
       }]
     },
     inverse: {
-      effects: [{
+      steps: [{
         type: 'semantic.tag',
         value: 'i3'
       }]
@@ -189,14 +189,14 @@ test('history controller trims undo stack by capacity', () => {
 
   assert.equal(controller.state().undoDepth, 2)
   assert.deepEqual(controller.undo(), {
-    effects: [{
+    steps: [{
       type: 'semantic.tag',
       value: 'i3'
     }]
   })
   controller.confirm()
   assert.deepEqual(controller.undo(), {
-    effects: [{
+    steps: [{
       type: 'semantic.tag',
       value: 'i2'
     }]

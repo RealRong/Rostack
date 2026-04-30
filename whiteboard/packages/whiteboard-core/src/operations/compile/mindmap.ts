@@ -70,7 +70,7 @@ const compileMindmapCreate = (
     ])
   )
 
-  ctx.emit({
+  ctx.program.append({
     type: 'mindmap.create',
     mindmap: {
       id: mindmapId,
@@ -114,21 +114,21 @@ export const mindmapIntentHandlers: MindmapIntentHandlers = {
   ),
   'mindmap.delete': (ctx) => {
     ctx.intent.ids.forEach((id) => {
-      ctx.emit({
+      ctx.program.append({
         type: 'mindmap.delete',
         id
       })
     })
   },
   'mindmap.layout.set': (ctx) => {
-    ctx.emit({
+    ctx.program.append({
       type: 'mindmap.layout',
       id: ctx.intent.id,
       patch: ctx.intent.layout
     })
   },
   'mindmap.move': (ctx) => {
-    ctx.emit({
+    ctx.program.append({
       type: 'mindmap.move',
       id: ctx.intent.id,
       position: ctx.intent.position
@@ -148,7 +148,7 @@ export const mindmapIntentHandlers: MindmapIntentHandlers = {
     if (!materialized.ok) {
       return failInvalid(ctx, 'Mindmap topic node could not be materialized.')
     }
-    ctx.emit({
+    ctx.program.append({
       type: 'mindmap.topic.insert',
       id: ctx.intent.id,
       input,
@@ -159,14 +159,14 @@ export const mindmapIntentHandlers: MindmapIntentHandlers = {
     })
   },
   'mindmap.topic.move': (ctx) => {
-    ctx.emit({
+    ctx.program.append({
       type: 'mindmap.topic.move',
       id: ctx.intent.id,
       input: ctx.intent.input
     })
   },
   'mindmap.topic.delete': (ctx) => {
-    ctx.emit({
+    ctx.program.append({
       type: 'mindmap.topic.delete',
       id: ctx.intent.id,
       input: ctx.intent.input
@@ -203,7 +203,7 @@ export const mindmapIntentHandlers: MindmapIntentHandlers = {
       }
 
       const source = mindmap.members[sourceId]
-      ctx.emit({
+      ctx.program.append({
         type: 'mindmap.topic.insert',
         id: intent.id,
         input: {
@@ -228,7 +228,7 @@ export const mindmapIntentHandlers: MindmapIntentHandlers = {
           position: { x: 0, y: 0 }
         }
       })
-      ctx.emit({
+      ctx.program.append({
         type: 'mindmap.branch.patch',
         id: intent.id,
         topicId: nextId,
@@ -240,7 +240,7 @@ export const mindmapIntentHandlers: MindmapIntentHandlers = {
         }
       })
       if (source.collapsed !== undefined) {
-        ctx.emit({
+        ctx.program.append({
           type: 'mindmap.topic.collapse',
           id: intent.id,
           topicId: nextId,
@@ -263,12 +263,12 @@ export const mindmapIntentHandlers: MindmapIntentHandlers = {
         mindmapId: ctx.intent.id,
         topicId: entry.topicId,
         update: entry.input,
-        emit: ctx.emit
+        emit: ctx.program.append
       })
     })
   },
   'mindmap.topic.collapse.set': (ctx) => {
-    ctx.emit({
+    ctx.program.append({
       type: 'mindmap.topic.collapse',
       id: ctx.intent.id,
       topicId: ctx.intent.topicId,
@@ -281,7 +281,7 @@ export const mindmapIntentHandlers: MindmapIntentHandlers = {
         mindmapId: ctx.intent.id,
         topicId: entry.topicId,
         update: entry.input,
-        emit: ctx.emit
+        emit: ctx.program.append
       })
     })
   }

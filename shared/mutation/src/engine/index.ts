@@ -1,6 +1,7 @@
 export type {
   MutationApplyResult,
   MutationCompileControl,
+  MutationCompileProgram,
   MutationCompileHandler,
   MutationCompileHandlerInput,
   MutationCompileHandlerTable,
@@ -52,18 +53,21 @@ export type {
   MutationResult
 } from './contracts'
 export type {
-  AppliedMutationEffectProgram,
-  MutationEntityEffect,
+  AppliedMutationProgram,
+  MutationEntityProgramStep,
   MutationEntityRef,
-  MutationEffect,
-  MutationEffectProgram,
-  MutationOrderedEffect,
-  MutationTagEffect,
-  MutationTreeEffect,
-} from './effect/effect'
+  MutationOrderedProgramStep,
+  MutationProgram,
+  MutationProgramStep,
+  MutationSemanticProgramStep,
+  MutationTreeProgramStep,
+} from './program/program'
 export type {
-  MutationEffectBuilder
-} from './effect/effectBuilder'
+  MutationProgramWriter
+} from './program/writer'
+export {
+  createMutationProgramWriter
+} from './program/writer'
 export {
   mutationFailure
 } from './contracts'

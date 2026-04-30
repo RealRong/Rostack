@@ -18,8 +18,8 @@ import type {
   Origin,
 } from './write'
 import type {
-  MutationEffectProgram
-} from './engine/effect/effect'
+  MutationProgram
+} from './engine/program/program'
 
 export interface HistoryPortState extends HistoryState {
   lastUpdatedAt?: number
@@ -54,7 +54,7 @@ export interface HistorySyncPort<Footprint> {
 
 export interface HistoryPort<
   Result,
-  Program = MutationEffectProgram<string>,
+  Program = MutationProgram<string>,
   Footprint = any,
   Commit extends ApplyCommit<any, any, Footprint, any> = ApplyCommit<any, any, Footprint, any>
 > extends ReadStore<HistoryPortState> {

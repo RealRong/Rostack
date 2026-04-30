@@ -1,37 +1,25 @@
-import { forwardRef, useEffect, useEffectEvent, useImperativeHandle, useMemo, useRef } from 'react'
-import { scheduler } from '@shared/core'
+import { forwardRef, useImperativeHandle, useMemo, useRef } from 'react'
 import { OverlayProvider } from '@shared/ui'
-import type { Document } from '@whiteboard/core/types'
-import { collab as collabApi, type CollabSession } from '@whiteboard/collab'
-import { engine as engineApi, normalizeDocument } from '@whiteboard/engine'
 import type { WhiteboardProps } from '@whiteboard/react/types/common/board'
 import { resolveConfig } from '@whiteboard/react/config'
-import { whiteboardSpec } from '@whiteboard/react/spec'
-import {
-  getSelectionSnapshot,
-  resolvePresenceActivity,
-  serializePresenceTool
-} from '@whiteboard/react/features/collab/presence'
 import {
   WhiteboardConfigProvider,
   WhiteboardServicesProvider
 } from '@whiteboard/react/runtime/hooks/useWhiteboard'
 import type { WhiteboardInstance as Editor } from '@whiteboard/react/types/runtime'
-import type {
-  WhiteboardPresenceActivity,
-  WhiteboardPresencePointer
-} from '@whiteboard/react/types/common/presence'
 import { Surface } from '@whiteboard/react/canvas/Surface'
 import {
-  createWhiteboardServices,
-  isMirroredDocumentFromEngine
-} from '@whiteboard/react/runtime/whiteboard/services'
-
-const POINTER_THROTTLE_MS = 16
-
-type DisposeHandle = ReturnType<typeof globalThis.setTimeout>
-type WhiteboardServices = ReturnType<typeof createWhiteboardServices>
-type CollabStatus = ReturnType<CollabSession['status']['get']>
+  useWhiteboardServices
+} from '@whiteboard/react/runtime/whiteboard/useWhiteboardServices'
+import {
+  useWhiteboardDocumentSync
+} from '@whiteboard/react/runtime/whiteboard/useWhiteboardDocumentSync'
+import {
+  useWhiteboardCollab
+} from '@whiteboard/react/runtime/whiteboard/useWhiteboardCollab'
+import {
+  useWhiteboardPresence
+} from '@whiteboard/react/runtime/whiteboard/useWhiteboardPresence'
 
 const WhiteboardInner = forwardRef<Editor | null, WhiteboardProps>(function WhiteboardInner(
   {
@@ -53,296 +41,40 @@ const WhiteboardInner = forwardRef<Editor | null, WhiteboardProps>(function Whit
     () => resolveConfig(options),
     [options]
   )
-  const inputDocument = useMemo(
-    () => normalizeDocument(document),
-    [document, boardConfig]
-  )
-  const onDocumentChangeRef = useRef(onDocumentChange)
-  const lastOutboundDocumentRef = useRef<Document>(inputDocument)
-  const specRef = useRef(spec ?? whiteboardSpec)
-  const servicesRef = useRef<WhiteboardServices | null>(null)
-  const collabSessionRef = useRef<CollabSession | null>(null)
-  const lastPointerPublishAtRef = useRef(0)
-  const pendingDisposeRef = useRef<DisposeHandle | null>(null)
-
-  onDocumentChangeRef.current = onDocumentChange
-
-  const notifyCollabSession = useEffectEvent((session: CollabSession | null) => {
-    collab?.onSession?.(session)
+  const {
+    services,
+    contextServices,
+    inputDocument,
+    lastOutboundDocumentRef
+  } = useWhiteboardServices({
+    document,
+    onDocumentChange,
+    coreRegistries,
+    spec,
+    resolvedConfig,
+    boardConfig
   })
-  const notifyCollabStatus = useEffectEvent((status: CollabStatus) => {
-    collab?.onStatusChange?.(status)
-  })
-
-  if (!servicesRef.current) {
-    servicesRef.current = createWhiteboardServices({
-      document: inputDocument,
-      onDocumentChange: (nextDocument) => {
-        lastOutboundDocumentRef.current = nextDocument
-        onDocumentChangeRef.current(nextDocument)
-      },
-      coreRegistries,
-      spec: specRef.current,
-      resolvedConfig,
-      boardConfig
-    })
-  }
-
-  const services = servicesRef.current
   const editor = services.editor
-  const engine = services.engine
 
   useImperativeHandle(ref, () => editor, [editor])
 
-  const cancelPendingDispose = () => {
-    if (pendingDisposeRef.current === null) {
-      return
-    }
-
-    globalThis.clearTimeout(pendingDisposeRef.current)
-    pendingDisposeRef.current = null
-  }
-
-  const scheduleDispose = (
-    currentServices: WhiteboardServices
-  ) => {
-    pendingDisposeRef.current = globalThis.setTimeout(() => {
-      if (servicesRef.current === currentServices) {
-        servicesRef.current = null
-      }
-      currentServices.dispose()
-      pendingDisposeRef.current = null
-    }, 0)
-  }
-
-  useEffect(() => {
-    cancelPendingDispose()
-
-    return () => {
-      // Delay disposal so StrictMode effect replay does not tear down
-      // the live editor instance during the initial development-only pass.
-      scheduleDispose(services)
-    }
-  }, [editor, services])
-
-  useEffect(() => {
-    editor.write.viewport.setLimits(viewportLimits)
-  }, [editor, viewportLimits])
-
-  useEffect(() => {
-    if (isMirroredDocumentFromEngine(document, inputDocument)) {
-      return
-    }
-    if (!isMirroredDocumentFromEngine(lastOutboundDocumentRef.current, inputDocument)) {
-      return
-    }
-    onDocumentChangeRef.current(inputDocument)
-  }, [document, inputDocument])
-
-  useEffect(() => {
-    if (isMirroredDocumentFromEngine(lastOutboundDocumentRef.current, inputDocument)) {
-      return
-    }
-    lastOutboundDocumentRef.current = inputDocument
-    editor.write.app.replace(inputDocument)
-  }, [editor, inputDocument])
-
-  useEffect(() => {
-    if (!collab) {
-      return
-    }
-
-    const session = collabApi.yjs.session.create({
-      engine,
-      doc: collab.doc,
-      actorId: collab.actorId,
-      provider: collab.provider
-    })
-    services.setHistorySource(session.localHistory)
-    collabSessionRef.current = session
-    notifyCollabSession(session)
-    notifyCollabStatus(session.status.get())
-
-    const unsubscribeStatus = session.status.subscribe(() => {
-      notifyCollabStatus(session.status.get())
-    })
-
-    if (collab.autoConnect ?? true) {
-      session.connect()
-    }
-
-    return () => {
-      unsubscribeStatus()
-      services.resetHistorySource()
-      collabSessionRef.current = null
-      notifyCollabSession(null)
-      session.destroy()
-    }
-  }, [
-    collab?.autoConnect,
-    collab?.actorId,
-    collab?.doc,
-    collab?.provider,
-    engine
-  ])
-
-  useEffect(() => {
-    const session = collabSessionRef.current
-    if (!session || !collab?.onSession) {
-      return
-    }
-    collab.onSession(session)
-  }, [collab?.onSession])
-
-  useEffect(() => {
-    const session = collabSessionRef.current
-    if (!session || !collab?.onStatusChange) {
-      return
-    }
-    collab.onStatusChange(session.status.get())
-  }, [collab?.onStatusChange])
-
-  useEffect(() => {
-    const binding = collab?.presence?.binding
-    if (!binding) {
-      return
-    }
-
-    const syncPresence = (input?: {
-      pointer?: WhiteboardPresencePointer
-      clearPointer?: boolean
-      activity?: WhiteboardPresenceActivity
-    }) => {
-      binding.updateLocalState((prev) => {
-        const pointer = input?.clearPointer
-          ? undefined
-          : input?.pointer ?? prev?.pointer
-        const activity = resolvePresenceActivity(
-          editor,
-          input?.activity ?? (pointer ? 'pointing' : 'idle')
-        )
-
-        return {
-          user: prev?.user ?? binding.user,
-          pointer,
-          selection: getSelectionSnapshot(editor),
-          tool: serializePresenceTool(editor.state.tool.get()),
-          activity,
-          updatedAt: Date.now()
-        }
-      })
-    }
-
-    const publishPointer = (
-      clientX: number,
-      clientY: number,
-      activity: 'pointing' | 'dragging'
-    ) => {
-      const container = containerRef.current
-      if (!container) {
-        return
-      }
-
-      const now = scheduler.readMonotonicNow()
-      if (now - lastPointerPublishAtRef.current < POINTER_THROTTLE_MS) {
-        return
-      }
-      lastPointerPublishAtRef.current = now
-
-      const pointer = editor.state.viewport.pointer({
-        clientX,
-        clientY
-      })
-
-      syncPresence({
-        pointer: {
-          world: pointer.world,
-          timestamp: Date.now()
-        },
-        activity
-      })
-    }
-
-    const clearPresence = () => {
-      syncPresence({
-        clearPointer: true,
-        activity: 'idle'
-      })
-    }
-
-    syncPresence({
-      clearPointer: true,
-      activity: 'idle'
-    })
-
-    const unsubscribeSelection = editor.state.selection.subscribe(() => {
-      syncPresence()
-    })
-    const unsubscribeTool = editor.state.tool.subscribe(() => {
-      syncPresence()
-    })
-    const unsubscribeEdit = editor.state.edit.subscribe(() => {
-      syncPresence()
-    })
-
-    const container = containerRef.current
-    const onPointerDown = (event: PointerEvent) => {
-      publishPointer(event.clientX, event.clientY, 'pointing')
-    }
-    const onPointerMove = (event: PointerEvent) => {
-      publishPointer(
-        event.clientX,
-        event.clientY,
-        event.buttons === 0 ? 'pointing' : 'dragging'
-      )
-    }
-    const onPointerUp = (event: PointerEvent) => {
-      publishPointer(event.clientX, event.clientY, 'pointing')
-    }
-    const onPointerCancel = () => {
-      clearPresence()
-    }
-    const onPointerLeave = () => {
-      clearPresence()
-    }
-    const onVisibilityChange = () => {
-      if (globalThis.document.visibilityState !== 'visible') {
-        clearPresence()
-      }
-    }
-
-    if (container) {
-      container.addEventListener('pointerdown', onPointerDown, true)
-      container.addEventListener('pointermove', onPointerMove)
-      container.addEventListener('pointerup', onPointerUp)
-      container.addEventListener('pointercancel', onPointerCancel)
-      container.addEventListener('pointerleave', onPointerLeave)
-    }
-
-    window.addEventListener('blur', clearPresence)
-    globalThis.document.addEventListener('visibilitychange', onVisibilityChange)
-
-    return () => {
-      unsubscribeSelection()
-      unsubscribeTool()
-      unsubscribeEdit()
-      if (container) {
-        container.removeEventListener('pointerdown', onPointerDown, true)
-        container.removeEventListener('pointermove', onPointerMove)
-        container.removeEventListener('pointerup', onPointerUp)
-        container.removeEventListener('pointercancel', onPointerCancel)
-        container.removeEventListener('pointerleave', onPointerLeave)
-      }
-      window.removeEventListener('blur', clearPresence)
-      globalThis.document.removeEventListener('visibilitychange', onVisibilityChange)
-      binding.setLocalState(null)
-    }
-  }, [collab?.presence?.binding, editor])
-
-  const contextServices = useMemo(() => {
-    const { history: _history, ...rest } = services
-    return rest
-  }, [services])
+  useWhiteboardDocumentSync({
+    services,
+    document,
+    inputDocument,
+    lastOutboundDocumentRef,
+    onDocumentChange,
+    viewportLimits
+  })
+  useWhiteboardCollab({
+    collab,
+    services
+  })
+  useWhiteboardPresence({
+    binding: collab?.presence?.binding,
+    containerRef,
+    services
+  })
 
   return (
     <WhiteboardServicesProvider value={contextServices}>

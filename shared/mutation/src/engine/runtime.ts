@@ -28,7 +28,7 @@ import {
   hasCompileErrors,
   isCompileControl,
   mutationFailure,
-  MutationCustomReduceError,
+  MutationCustomPlanError,
   mutationSuccess,
   normalizeCompileIssue,
   readFirstOutput,
@@ -36,6 +36,7 @@ import {
   type MutationCompileHandlerInput,
   type MutationCompileHandlerTable,
   type MutationCurrent,
+  type MutationCustomPlannerInput,
   type MutationReaderFactory,
   type MutationCustomSpec,
   type MutationCustomTable,
@@ -58,25 +59,27 @@ import {
 } from './contracts'
 import {
   mergeMutationDeltas,
+  normalizeMutationDelta,
 } from './delta'
 import {
-  applyMutationEffectProgram
-} from './effect/effectApply'
+  applyMutationProgram
+} from './program/apply'
 import {
-  materializeMutationEffectProgram
-} from './effect/effectMaterialize'
-import type {
-  MutationEffect,
-  MutationEffectProgram,
-  MutationOrderedEffect,
-  MutationTreeEffect,
-} from './effect/effect'
+  materializeMutationProgram
+} from './program/materialize'
 import {
-  createMutationEffectBuilder
-} from './effect/effectBuilder'
+  isMutationProgramStep,
+  type MutationOrderedProgramStep,
+  type MutationProgram,
+  type MutationProgramStep,
+  type MutationTreeProgramStep,
+} from './program/program'
+import {
+  createMutationProgramWriter
+} from './program/writer'
 import type {
-  MutationEffectBuilder
-} from './effect/effectBuilder'
+  MutationProgramWriter
+} from './program/writer'
 import {
   compileEntities,
   readCanonicalOperation,
@@ -97,7 +100,7 @@ import type {
   MutationStructuralCanonicalOperation
 } from './contracts'
 
-const createCustomPlannerEffects = <
+const createCustomPlannerProgram = <
   Doc extends object,
   Tag extends string = string,
   Code extends string = string
@@ -109,10 +112,10 @@ const createCustomPlannerEffects = <
     message: string
   }): never
 }) => {
-  const builder = createMutationEffectBuilder<Tag>()
+  const builder = createMutationProgramWriter<Tag>()
 
   const commitStructuralEffect = (
-    effect: MutationOrderedEffect<Tag> | MutationTreeEffect<Tag>
+    effect: MutationOrderedProgramStep<Tag> | MutationTreeProgramStep<Tag>
   ): boolean => {
     const result = readStructuralEffectResult<Doc, Code>({
       document: input.document,
@@ -176,7 +179,7 @@ const createCustomPlannerEffects = <
     }
   }
 
-  const effects: MutationEffectBuilder<Tag> = {
+  const program: MutationProgramWriter<Tag> = {
     entity: builder.entity,
     semantic: builder.semantic,
     build: builder.build,
@@ -239,7 +242,7 @@ const createCustomPlannerEffects = <
     }
   }
 
-  return effects
+  return program
 }
 
 const readCustomOperationResult = <
@@ -261,26 +264,34 @@ const readCustomOperationResult = <
   normalize(doc: Doc): Doc
 }): MutationApplyResult<Doc, Op, Code> => {
   try {
-    const effects = createCustomPlannerEffects<Doc, string, Code>({
+    const program = createCustomPlannerProgram<Doc, string, Code>({
       document: input.document,
       structures: input.structures,
       fail: (issue) => {
-        throw new MutationCustomReduceError(issue)
+        throw new MutationCustomPlanError(issue)
       }
     })
-    input.spec.plan({
+    const plannerInput: MutationCustomPlannerInput<
+      Doc,
+      Op,
+      Reader,
+      Services,
+      string,
+      Code
+    > = {
       op: input.operation,
       document: input.document,
       reader: input.createReader(() => input.document),
       services: input.services,
-      effects,
+      program,
       fail: (issue) => {
-        throw new MutationCustomReduceError(issue)
+        throw new MutationCustomPlanError(issue)
       }
-    })
-    const applied = applyMutationEffectProgram<Doc, Op, string, Code>({
+    }
+    input.spec.plan(plannerInput)
+    const applied = applyMutationProgram<Doc, Op, string, Code>({
       document: input.document,
-      program: effects.build(),
+      program: program.build(),
       entities: input.entities,
       structures: input.structures,
       normalize: input.normalize
@@ -293,7 +304,7 @@ const readCustomOperationResult = <
       ok: true,
       data: {
         document: applied.data.document,
-        applied: effects.build(),
+        applied: program.build(),
         inverse: applied.data.inverse,
         delta: applied.data.delta,
         structural: applied.data.structural,
@@ -304,7 +315,7 @@ const readCustomOperationResult = <
       }
     }
   } catch (error) {
-    if (error instanceof MutationCustomReduceError) {
+    if (error instanceof MutationCustomPlanError) {
       return mutationFailure(
         error.issue.code as Code,
         error.issue.message,
@@ -371,8 +382,8 @@ const applyConcreteOperations = <
   let delta = EMPTY_DELTA
   const structural: MutationStructuralFact[] = []
   const authored: Op[] = []
-  const appliedEffects: MutationEffect[] = []
-  const inverseEffects: MutationEffect[] = []
+  const appliedSteps: MutationProgramStep[] = []
+  const inverseSteps: MutationProgramStep[] = []
   const footprint: MutationFootprint[] = []
   const outputs: unknown[] = []
   const issues: MutationIssue[] = []
@@ -393,6 +404,16 @@ const applyConcreteOperations = <
           entities: input.entities,
           structures: input.structures,
           services: input.services,
+          normalize: input.normalize
+        })
+      : isMutationProgramStep(operation)
+      ? applyMutationProgram<Doc, Op, string, Code>({
+          document: currentDocument,
+          program: {
+            steps: [operation]
+          },
+          entities: input.entities,
+          structures: input.structures,
           normalize: input.normalize
         })
       : (() => {
@@ -422,7 +443,7 @@ const applyConcreteOperations = <
             )
           }
 
-          return applyMutationEffectProgram<Doc, Op, string, Code>({
+          return applyMutationProgram<Doc, Op, string, Code>({
             document: currentDocument,
             program,
             entities: input.entities,
@@ -450,12 +471,12 @@ const applyConcreteOperations = <
     delta = mergeMutationDeltas(delta, applied.data.delta)
     structural.push(...applied.data.structural)
     authored.push(operation)
-    appliedEffects.push(...applied.data.applied.effects)
+    appliedSteps.push(...applied.data.applied.steps)
     footprint.push(...applied.data.footprint)
     outputs.push(...applied.data.outputs)
     issues.push(...applied.data.issues)
-    if (applied.data.inverse.effects.length > 0) {
-      inverseEffects.unshift(...applied.data.inverse.effects)
+    if (applied.data.inverse.steps.length > 0) {
+      inverseSteps.unshift(...applied.data.inverse.steps)
     }
     if (applied.data.historyMode === 'track') {
       hasTrackedHistory = true
@@ -470,10 +491,10 @@ const applyConcreteOperations = <
     data: {
       document: currentDocument,
       applied: {
-        effects: appliedEffects
+        steps: appliedSteps
       },
       inverse: {
-        effects: inverseEffects
+        steps: inverseSteps
       },
       delta,
       structural,
@@ -553,9 +574,11 @@ const compileMutationIntents = <
       document: workingDocument,
       reader: input.createReader(() => workingDocument),
       services: input.services,
-      emit: (...nextOps) => {
-        for (let opIndex = 0; opIndex < nextOps.length; opIndex += 1) {
-          pendingOps.push(nextOps[opIndex]!)
+      program: {
+        append: (...nextOps) => {
+          for (let opIndex = 0; opIndex < nextOps.length; opIndex += 1) {
+            pendingOps.push(nextOps[opIndex]!)
+          }
         }
       },
       output: (value) => {
@@ -662,7 +685,7 @@ class MutationRuntime<
 > {
   readonly history: HistoryPort<
     MutationResult<void, ApplyCommit<Doc, Op, MutationFootprint, void>, Code>,
-    MutationEffectProgram<string>,
+    MutationProgram<string>,
     MutationFootprint,
     ApplyCommit<Doc, Op, MutationFootprint, void>
   >
@@ -676,7 +699,7 @@ class MutationRuntime<
   private readonly compileHandlers?: MutationCompileHandlerTable<any, Doc, Op, Reader, Services, Code>
   private readonly historyOptions?: MutationHistoryOptions | false
   private readonly historyControllerRef?: HistoryController<
-    MutationEffectProgram<string>,
+    MutationProgram<string>,
     MutationFootprint,
     ApplyCommit<Doc, Op, MutationFootprint, void>
   >
@@ -708,7 +731,7 @@ class MutationRuntime<
 
     if (input.history !== false) {
       this.historyControllerRef = historyRuntime.create<
-        MutationEffectProgram<string>,
+        MutationProgram<string>,
         MutationFootprint,
         ApplyCommit<Doc, Op, MutationFootprint, void>
       >({
@@ -775,10 +798,9 @@ class MutationRuntime<
       at: Date.now(),
       origin: options?.origin ?? 'system',
       document: nextDocument,
-      delta: {
-        reset: true,
-        changes: EMPTY_OUTPUTS as never
-      },
+      delta: normalizeMutationDelta({
+        reset: true
+      }),
       structural: EMPTY_OUTPUTS as readonly MutationStructuralFact[],
       issues: EMPTY_ISSUES,
       outputs: EMPTY_OUTPUTS
@@ -990,14 +1012,14 @@ class MutationRuntime<
   }
 
   applyProgram(
-    program: MutationEffectProgram<string>,
+    program: MutationProgram<string>,
     options?: MutationOptions
   ): MutationResult<
     void,
     ApplyCommit<Doc, Op, MutationFootprint, void>,
     Code
   > {
-    const applied = applyMutationEffectProgram<Doc, Op, string, Code>({
+    const applied = applyMutationProgram<Doc, Op, string, Code>({
       document: this.documentState,
       program,
       entities: this.entities,
@@ -1010,7 +1032,7 @@ class MutationRuntime<
 
     return this.commit({
       document: applied.data.document,
-      authored: materializeMutationEffectProgram<Op>({
+      authored: materializeMutationProgram<Op>({
         program: applied.data.applied,
         entities: this.entities
       }),
@@ -1030,8 +1052,8 @@ class MutationRuntime<
   private commit<TData>(input: {
     document: Doc
     authored: readonly Op[]
-    applied: MutationEffectProgram<string>
-    inverse: MutationEffectProgram<string>
+    applied: MutationProgram<string>
+    inverse: MutationProgram<string>
     delta: any
     structural: readonly MutationStructuralFact[]
     footprint: readonly MutationFootprint[]
@@ -1069,8 +1091,8 @@ class MutationRuntime<
       this.historyControllerRef
       && shouldCaptureHistory(this.historyOptions, input.origin)
       && input.historyMode === 'track'
-      && commit.applied.effects.length > 0
-      && commit.inverse.effects.length > 0
+      && commit.applied.steps.length > 0
+      && commit.inverse.steps.length > 0
     ) {
       this.historyControllerRef.capture(commit)
     }
@@ -1127,7 +1149,7 @@ export class MutationEngine<
 
   get history(): HistoryPort<
     MutationResult<void, ApplyCommit<Doc, Op, MutationFootprint, void>, Code>,
-    MutationEffectProgram<string>,
+    MutationProgram<string>,
     MutationFootprint,
     ApplyCommit<Doc, Op, MutationFootprint, void>
   > {
@@ -1187,7 +1209,7 @@ export class MutationEngine<
   }
 
   applyProgram(
-    program: MutationEffectProgram<string>,
+    program: MutationProgram<string>,
     options?: MutationOptions
   ): MutationResult<
     void,

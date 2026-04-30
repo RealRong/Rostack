@@ -98,8 +98,8 @@ const createEngine = () => new MutationEngine<
   createReader: (readDocument) => readDocument(),
   entities,
   compile: {
-    'item.add': ({ intent, emit, output }) => {
-      emit({
+    'item.add': ({ intent, program, output }) => {
+      program.append({
         type: 'item.create',
         value: {
           id: intent.id,
@@ -108,8 +108,8 @@ const createEngine = () => new MutationEngine<
       })
       output(intent.id)
     },
-    'item.open': ({ intent, emit, output }) => {
-      emit({
+    'item.open': ({ intent, program, output }) => {
+      program.append({
         type: 'document.patch',
         patch: {
           activeItemId: intent.id
@@ -159,7 +159,7 @@ describe('MutationEngine current API', () => {
       }
     }])
     expect(result.commit.inverse).toEqual({
-      effects: [{
+      steps: [{
         type: 'entity.delete',
         entity: {
           table: 'item',
@@ -395,7 +395,7 @@ describe('MutationEngine structural API', () => {
       }
     }])
     expect(result.commit.inverse).toEqual({
-      effects: [{
+      steps: [{
         type: 'ordered.move',
         structure: 'canvas',
         itemId: 'c',
@@ -451,7 +451,7 @@ describe('MutationEngine structural API', () => {
 
     expect(result.commit.document.ordered.items).toEqual(['b', 'd', 'a', 'c'])
     expect(result.commit.inverse).toEqual({
-      effects: [{
+      steps: [{
         type: 'ordered.move',
         structure: 'canvas',
         itemId: 'a',
@@ -578,7 +578,7 @@ describe('MutationEngine structural API', () => {
       }
     })
     expect(patched.commit.inverse).toEqual({
-      effects: [{
+      steps: [{
         type: 'ordered.patch',
         structure: 'cards',
         itemId: 'card_a',
@@ -636,7 +636,7 @@ describe('MutationEngine structural API', () => {
       }
     })
     expect(patched.commit.inverse).toEqual({
-      effects: [{
+      steps: [{
         type: 'tree.node.patch',
         structure: 'stateTree',
         nodeId: 'child',

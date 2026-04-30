@@ -131,112 +131,165 @@ export const createDisplayApi = (
 export const createSummaryApi = (
   base: ActiveViewContext
 ): ActiveViewApi['summary'] => ({
-  set: (fieldId, metric) => base.patchView(view => ({
-    calc: viewApi.calc.set(view.calc, fieldId, metric)
-  }))
+  set: (fieldId, metric) => {
+    const viewId = base.id()
+    if (!viewId) {
+      return
+    }
+
+    base.execute({
+      type: 'view.calc.set',
+      id: viewId,
+      field: fieldId,
+      metric
+    })
+  }
 })
 
 export const createTableApi = (input: {
   base: ActiveViewContext
 }): ActiveViewApi['table'] => ({
-  setColumnWidths: widths => input.base.patchView(view => view.type === 'table'
-    ? {
-        options: viewApi.layout.table.patch(view.options, {
-          widths
-        })
-      }
-    : undefined),
-  setVerticalLines: value => input.base.patchView(view => view.type === 'table'
-    ? {
-        options: viewApi.layout.table.patch(view.options, {
-          showVerticalLines: value
-        })
-      }
-    : undefined),
-  setWrap: value => input.base.patchView(view => view.type === 'table'
-    ? {
-        options: viewApi.layout.table.patch(view.options, {
-          wrap: value
-        })
-      }
-    : undefined),
+  setColumnWidths: (widths) => {
+    const viewId = input.base.id()
+    if (!viewId) {
+      return
+    }
+
+    input.base.execute({
+      type: 'view.table.widths.set',
+      id: viewId,
+      widths
+    })
+  },
+  setVerticalLines: (value) => {
+    const viewId = input.base.id()
+    if (!viewId) {
+      return
+    }
+
+    input.base.execute({
+      type: 'view.table.verticalLines.set',
+      id: viewId,
+      value
+    })
+  },
+  setWrap: (value) => {
+    const viewId = input.base.id()
+    if (!viewId) {
+      return
+    }
+
+    input.base.execute({
+      type: 'view.table.wrap.set',
+      id: viewId,
+      value
+    })
+  },
   insertField: fieldInput => insertField(input.base, fieldInput)
 })
 
 export const createGalleryApi = (
   base: ActiveViewContext
 ): ActiveViewApi['gallery'] => ({
-  setWrap: value => base.patchView(view => view.type === 'gallery'
-    ? {
-        options: viewApi.layout.gallery.patch(view.options, {
-          card: {
-            wrap: value
-          }
-        })
-      }
-    : undefined),
-  setSize: value => base.patchView(view => view.type === 'gallery'
-    ? {
-        options: viewApi.layout.gallery.patch(view.options, {
-          card: {
-            size: value
-          }
-        })
-      }
-    : undefined),
-  setLayout: value => base.patchView(view => view.type === 'gallery'
-    ? {
-        options: viewApi.layout.gallery.patch(view.options, {
-          card: {
-            layout: value
-          }
-        })
-      }
-    : undefined)
+  setWrap: (value) => {
+    const viewId = base.id()
+    if (!viewId) {
+      return
+    }
+
+    base.execute({
+      type: 'view.gallery.wrap.set',
+      id: viewId,
+      value
+    })
+  },
+  setSize: (value) => {
+    const viewId = base.id()
+    if (!viewId) {
+      return
+    }
+
+    base.execute({
+      type: 'view.gallery.size.set',
+      id: viewId,
+      value
+    })
+  },
+  setLayout: (value) => {
+    const viewId = base.id()
+    if (!viewId) {
+      return
+    }
+
+    base.execute({
+      type: 'view.gallery.layout.set',
+      id: viewId,
+      value
+    })
+  }
 })
 
 export const createKanbanApi = (
   base: ActiveViewContext
 ): ActiveViewApi['kanban'] => ({
-  setWrap: value => base.patchView(view => view.type === 'kanban'
-    ? {
-        options: viewApi.layout.kanban.patch(view.options, {
-          card: {
-            wrap: value
-          }
-        })
-      }
-    : undefined),
-  setSize: value => base.patchView(view => view.type === 'kanban'
-    ? {
-        options: viewApi.layout.kanban.patch(view.options, {
-          card: {
-            size: value
-          }
-        })
-      }
-    : undefined),
-  setLayout: value => base.patchView(view => view.type === 'kanban'
-    ? {
-        options: viewApi.layout.kanban.patch(view.options, {
-          card: {
-            layout: value
-          }
-        })
-      }
-    : undefined),
-  setFillColor: value => base.patchView(view => view.type === 'kanban'
-    ? {
-        options: viewApi.layout.kanban.patch(view.options, {
-          fillColumnColor: value
-        })
-      }
-    : undefined),
-  setCardsPerColumn: value => base.patchView(view => view.type === 'kanban'
-    ? {
-        options: viewApi.layout.kanban.patch(view.options, {
-          cardsPerColumn: value
-        })
-      }
-    : undefined)
+  setWrap: (value) => {
+    const viewId = base.id()
+    if (!viewId) {
+      return
+    }
+
+    base.execute({
+      type: 'view.kanban.wrap.set',
+      id: viewId,
+      value
+    })
+  },
+  setSize: (value) => {
+    const viewId = base.id()
+    if (!viewId) {
+      return
+    }
+
+    base.execute({
+      type: 'view.kanban.size.set',
+      id: viewId,
+      value
+    })
+  },
+  setLayout: (value) => {
+    const viewId = base.id()
+    if (!viewId) {
+      return
+    }
+
+    base.execute({
+      type: 'view.kanban.layout.set',
+      id: viewId,
+      value
+    })
+  },
+  setFillColor: (value) => {
+    const viewId = base.id()
+    if (!viewId) {
+      return
+    }
+
+    base.execute({
+      type: 'view.kanban.fillColor.set',
+      id: viewId,
+      value
+    })
+  },
+  setCardsPerColumn: (value) => {
+    const viewId = base.id()
+    if (!viewId) {
+      return
+    }
+
+    base.execute({
+      type: 'view.kanban.cardsPerColumn.set',
+      id: viewId,
+      value
+    })
+  }
 })

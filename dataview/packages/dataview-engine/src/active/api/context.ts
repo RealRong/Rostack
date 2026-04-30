@@ -1,7 +1,6 @@
 import type {
   Field,
-  View,
-  ViewPatch
+  View
 } from '@dataview/core/types'
 import type {
   ActiveViewApi,
@@ -22,9 +21,6 @@ export interface ActiveViewContext {
   execute: Engine['execute']
   view: () => View | undefined
   resolveGroupField: (view?: View) => Field | undefined
-  patchView: (
-    resolve: (view: View, reader: DocumentReader) => ViewPatch | undefined
-  ) => boolean
 }
 
 export const createActiveContext = (
@@ -33,24 +29,6 @@ export const createActiveContext = (
   const state = (): ViewState | undefined => engine.current().active
   const reader = createDocumentReader(() => engine.doc())
   const view = () => engine.current().docActiveView
-  const patchView = (
-    resolve: (currentView: View, currentReader: DocumentReader) => ViewPatch | undefined
-  ): boolean => {
-    const currentView = view()
-    const viewId = engine.current().docActiveViewId
-    if (!currentView || !viewId) {
-      return false
-    }
-
-    const nextPatch = resolve(currentView, reader)
-    return nextPatch
-      ? engine.execute({
-          type: 'view.patch',
-          id: viewId,
-          patch: nextPatch
-        }).ok
-      : false
-  }
   const resolveGroupField = (
     currentView = view()
   ): Field | undefined => {
@@ -66,7 +44,6 @@ export const createActiveContext = (
     reader,
     execute: engine.execute.bind(engine),
     view,
-    resolveGroupField,
-    patchView
+    resolveGroupField
   }
 }

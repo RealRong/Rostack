@@ -3,13 +3,14 @@ import type {
   FieldOption,
   FieldId,
   Intent,
-  RecordId
+  RecordId,
+  View
 } from '@dataview/core/types'
 import type { DocumentOperation } from '@dataview/core/op'
 import {
   field as fieldApi
 } from '@dataview/core/field'
-import { createId } from '@shared/core'
+import { createId, equal } from '@shared/core'
 import {
   view as viewApi
 } from '@dataview/core/view'

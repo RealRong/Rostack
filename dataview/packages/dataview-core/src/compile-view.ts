@@ -1,6 +1,8 @@
 import type {
+  Field,
   FieldId,
   Filter,
+  FilterRule,
   Intent,
   RecordId,
   Search,
@@ -9,46 +11,37 @@ import type {
   View,
   ViewCalc,
   ViewDisplay,
-  ViewGroup
+  ViewFilterRuleId,
+  ViewGroup,
+  ViewId,
+  ViewSortRuleId
 } from '@dataview/core/types'
 import type { DocumentOperation } from '@dataview/core/op'
-import type { GalleryOptions } from '@dataview/core/types/state'
-import {
-  KANBAN_CARDS_PER_COLUMN_OPTIONS,
-  type KanbanOptions
+import type {
+  GalleryOptions,
+  KanbanOptions,
+  TableOptions
 } from '@dataview/core/types/state'
-import type { TableOptions } from '@dataview/core/types/state'
 import {
-  calculation
-} from '@dataview/core/view'
-import { field as fieldApi } from '@dataview/core/field'
+  KANBAN_CARDS_PER_COLUMN_OPTIONS
+} from '@dataview/core/types/state'
 import {
-  fieldSpec
-} from '@dataview/core/field/spec'
-import {
-  filter as filterApi
-} from '@dataview/core/view'
-import {
-  group,
-} from '@dataview/core/view'
-import {
-  search as searchApi
-} from '@dataview/core/view'
-import {
-  sort as sortApi
-} from '@dataview/core/view'
-import { createId, order } from '@shared/core'
-import {
+  calculation,
   view as viewApi
 } from '@dataview/core/view'
-import { entityTable, equal, string } from '@shared/core'
+import {
+  field as fieldApi
+} from '@dataview/core/field'
+import {
+  createId,
+  entityTable,
+  equal,
+  string
+} from '@shared/core'
 import {
   type IssueSource,
   type ValidationIssue
 } from './compile-contracts'
-import {
-  createEntityPatch
-} from './compile-patch'
 import {
   issue as compileIssue,
   reportIssues,
@@ -56,8 +49,10 @@ import {
   type DataviewCompileInput
 } from './compile-base'
 import type { DocumentReader } from './document/reader'
-
-const sameRecordOrder = equal.sameOrder<string>
+import {
+  resolveDefaultKanbanGroup,
+  setViewType
+} from './view/update'
 
 const emitOps = (
   input: DataviewCompileInput,
@@ -66,7 +61,7 @@ const emitOps = (
   input.emit(...operations)
 }
 
-const emitData = <T>(
+const emitData = <T,>(
   input: DataviewCompileInput,
   data: T,
   ...operations: readonly DocumentOperation[]
@@ -75,85 +70,64 @@ const emitData = <T>(
   return data
 }
 
-const toViewPatch = (
-  current: View,
-  next: View
-): DocumentOperation => {
-  const patch = createEntityPatch(current, next)
-  return {
-    type: 'view.patch',
-    id: current.id,
-    patch
-  }
+const readErrorMessage = (
+  error: unknown,
+  fallback: string
+): string => error instanceof Error
+  ? error.message
+  : fallback
+
+const reportSemanticError = (
+  input: DataviewCompileInput,
+  error: unknown,
+  path: string
+) => {
+  compileIssue(
+    input,
+    'view.invalidProjection',
+    readErrorMessage(error, 'Invalid view operation.'),
+    path
+  )
 }
 
-const buildViewDisplayOps = (
-  current: View,
-  next: View
-): DocumentOperation[] => {
-  if (equal.sameOrder(current.display.fields, next.display.fields)) {
-    return []
+const cloneFilterValueForOperation = (
+  value: FilterRule['value']
+): FilterRule['value'] => {
+  if (
+    typeof value === 'object'
+    && value !== null
+    && 'kind' in value
+    && value.kind === 'option-set'
+  ) {
+    return {
+      kind: 'option-set',
+      optionIds: [...value.optionIds]
+    }
   }
 
-  const operations: DocumentOperation[] = []
-  let working = [...current.display.fields]
-  const nextFieldSet = new Set(next.display.fields)
-
-  current.display.fields.forEach((fieldId) => {
-    if (nextFieldSet.has(fieldId)) {
-      return
-    }
-
-    operations.push({
-      type: 'view.display.hide',
-      id: current.id,
-      field: fieldId
-    })
-    working = working.filter((entry) => entry !== fieldId)
-  })
-
-  for (let index = next.display.fields.length - 1; index >= 0; index -= 1) {
-    const fieldId = next.display.fields[index]!
-    const before = next.display.fields[index + 1]
-    if (!working.includes(fieldId)) {
-      operations.push({
-        type: 'view.display.show',
-        id: current.id,
-        field: fieldId,
-        ...(before !== undefined
-          ? { before }
-          : {})
-      })
-      working = order.moveItem(working, fieldId, {
-        ...(before !== undefined
-          ? { before }
-          : {})
-      })
-      continue
-    }
-
-    const reordered = order.moveItem(working, fieldId, {
-      ...(before !== undefined
-        ? { before }
-        : {})
-    })
-    if (equal.sameOrder(working, reordered)) {
-      continue
-    }
-
-    operations.push({
-      type: 'view.display.move',
-      id: current.id,
-      field: fieldId,
-      ...(before !== undefined
-        ? { before }
-        : {})
-    })
-    working = reordered
-  }
-
-  return operations
+  return structuredClone(value)
 }
+
+const cloneFilterRuleForOperation = (
+  rule: FilterRule
+): FilterRule => ({
+  id: rule.id,
+  fieldId: rule.fieldId,
+  presetId: rule.presetId,
+  ...(Object.prototype.hasOwnProperty.call(rule, 'value')
+    ? {
+        value: cloneFilterValueForOperation(rule.value)
+      }
+    : {})
+})
+
+const cloneSortRuleForOperation = (
+  rule: SortRule
+): SortRule => ({
+  id: rule.id,
+  fieldId: rule.fieldId,
+  direction: rule.direction
+})
 
 const issue = (
   source: IssueSource,
@@ -222,7 +196,7 @@ const validateFilter = (
   path = 'view.filter'
 ) => {
   const issues: ValidationIssue[] = []
-  filterApi.rules.list(filter.rules).forEach((rule, index) => {
+  viewApi.filter.rules.list(filter.rules).forEach((rule, index) => {
     if (!string.isNonEmptyString(rule.fieldId)) {
       issues.push(issue(source, 'view.invalidProjection', `Filter field id must be a non-empty string (${rule.id})`, `${path}.rules.${index}.fieldId`))
       return
@@ -236,7 +210,7 @@ const validateFilter = (
       issues.push(issue(source, 'field.notFound', `Unknown field: ${rule.fieldId} (${rule.id})`, `${path}.rules.${index}.fieldId`))
       return
     }
-    if (!filterApi.rule.hasPreset(field, rule.presetId)) {
+    if (!viewApi.filter.rule.hasPreset(field, rule.presetId)) {
       issues.push(issue(source, 'view.invalidProjection', `Filter preset ${rule.presetId} is invalid for ${field.kind} fields (${rule.id})`, `${path}.rules.${index}.presetId`))
     }
   })
@@ -251,7 +225,7 @@ const validateSort = (
 ) => {
   const issues: ValidationIssue[] = []
   const seen = new Set<string>()
-  sortApi.rules.list(sort.rules).forEach((rule, index) => {
+  viewApi.sort.rules.list(sort.rules).forEach((rule, index) => {
     if (!string.isNonEmptyString(rule.fieldId)) {
       issues.push(issue(source, 'view.invalidProjection', `Sort field must be a non-empty string (${rule.id})`, `${path}.rules.${index}.fieldId`))
     } else if (!reader.fields.has(rule.fieldId)) {
@@ -281,16 +255,22 @@ const validateGroup = (
 
   const issues = string.isNonEmptyString(group.fieldId)
     ? []
-    : [issue(source, 'view.invalidProjection', 'group field must be a non-empty string', `${path}.field`)]
+    : [issue(source, 'view.invalidProjection', 'group field must be a non-empty string', `${path}.fieldId`)]
 
   const field = string.isNonEmptyString(group.fieldId)
     ? reader.fields.get(group.fieldId)
     : undefined
-  const fieldGroupMeta = field ? fieldApi.group.meta(field) : undefined
-  const fieldGroupMetaForMode = field ? fieldApi.group.meta(field, { mode: group.mode }) : undefined
+  const fieldGroupMeta = field
+    ? fieldApi.group.meta(field)
+    : undefined
+  const fieldGroupMetaForMode = field
+    ? fieldApi.group.meta(field, {
+        mode: group.mode
+      })
+    : undefined
 
   if (!field) {
-    issues.push(issue(source, 'field.notFound', `Unknown field: ${group.fieldId}`, `${path}.field`))
+    issues.push(issue(source, 'field.notFound', `Unknown field: ${group.fieldId}`, `${path}.fieldId`))
   }
   if (!string.isNonEmptyString(group.mode)) {
     issues.push(issue(source, 'view.invalidProjection', 'group mode must be a non-empty string', `${path}.mode`))
@@ -489,112 +469,22 @@ const validateView = (
   return issues
 }
 
-const applyViewPatch = (
-  reader: DocumentReader,
-  view: View,
-  patch: Extract<Intent, { type: 'view.patch' }>['patch']
-): View => {
-  const nextType = patch.type ?? view.type
-  const nextGroup = patch.group !== undefined
-    ? (patch.group === null ? undefined : patch.group)
-    : view.group
-  const nextShared = {
-    id: view.id,
-    name: patch.name !== undefined ? patch.name : view.name,
-    type: nextType,
-    search: patch.search !== undefined
-      ? searchApi.state.clone(patch.search)
-      : searchApi.state.clone(view.search),
-    filter: patch.filter !== undefined
-      ? filterApi.state.clone(patch.filter)
-      : filterApi.state.clone(view.filter),
-    sort: patch.sort !== undefined
-      ? {
-          rules: sortApi.rules.clone(patch.sort.rules)
-        }
-      : {
-          rules: sortApi.rules.clone(view.sort.rules)
-        },
-    calc: patch.calc !== undefined
-      ? viewApi.calc.clone(patch.calc)
-      : viewApi.calc.clone(view.calc),
-    display: patch.display !== undefined
-      ? viewApi.display.clone(patch.display)
-      : viewApi.display.clone(view.display),
-    orders: [...view.orders]
-  }
-
-  switch (nextType) {
-    case 'table':
-      return {
-        ...nextShared,
-        type: 'table',
-        ...(nextGroup
-          ? {
-              group: group.state.clone(nextGroup)
-            }
-          : {}),
-        options: patch.options !== undefined
-          ? viewApi.options.clone('table', patch.options as TableOptions)
-          : view.type === 'table'
-            ? viewApi.options.clone('table', view.options)
-            : viewApi.options.defaults('table', [])
-      }
-    case 'gallery':
-      return {
-        ...nextShared,
-        type: 'gallery',
-        ...(nextGroup
-          ? {
-              group: group.state.clone(nextGroup)
-            }
-          : {}),
-        options: patch.options !== undefined
-          ? viewApi.options.clone('gallery', patch.options as GalleryOptions)
-          : view.type === 'gallery'
-            ? viewApi.options.clone('gallery', view.options)
-            : viewApi.options.defaults('gallery', [])
-      }
-    case 'kanban': {
-      const resolvedGroup = nextGroup
-        ? group.state.clone(nextGroup)
-        : (view.group
-            ? group.state.clone(view.group)
-            : resolveDefaultKanbanGroup(reader))
-      if (!resolvedGroup) {
-        return view
-      }
-
-      return {
-        ...nextShared,
-        type: 'kanban',
-        group: resolvedGroup,
-        options: patch.options !== undefined
-          ? viewApi.options.clone('kanban', patch.options as KanbanOptions)
-          : view.type === 'kanban'
-            ? viewApi.options.clone('kanban', view.options)
-            : viewApi.options.defaults('kanban', [])
-      }
-    }
-  }
-}
-
 const normalizeView = (
   reader: DocumentReader,
   view: View
 ): View => {
   const fields = reader.fields.list()
-  const nextGroup = group.state.normalize(view.group)
+  const nextGroup = viewApi.group.state.normalize(view.group)
   const normalizedShared = {
     id: view.id,
     name: view.name,
-    search: searchApi.state.normalize(view.search),
-    filter: filterApi.state.normalize(view.filter),
+    search: viewApi.search.state.normalize(view.search),
+    filter: viewApi.filter.state.normalize(view.filter),
     sort: {
-      rules: sortApi.rules.normalize(view.sort.rules)
+      rules: viewApi.sort.rules.normalize(view.sort.rules)
     },
     calc: calculation.view.normalize(view.calc, {
-      fields: new Map(fields.map(field => [field.id, field] as const))
+      fields: new Map(fields.map((field) => [field.id, field] as const))
     }),
     display: viewApi.display.normalize(view.display),
     orders: [...view.orders]
@@ -625,39 +515,13 @@ const normalizeView = (
       return {
         ...normalizedShared,
         type: 'kanban',
-        group: nextGroup ?? resolveDefaultKanbanGroup(reader) ?? view.group,
+        group: nextGroup ?? resolveDefaultKanbanGroup(fields) ?? view.group,
         options: viewApi.options.normalize(view.options, {
           type: 'kanban',
           fields
         })
       }
   }
-}
-
-const resolveDefaultKanbanGroup = (
-  reader: DocumentReader
-): ViewGroup | undefined => {
-  const fields = reader.fields.list()
-  const isGroupable = (field: (typeof fields)[number]) => (
-    field.kind !== 'title'
-    && fieldApi.group.meta(field).modes.length > 0
-  )
-  const groupableFields = fields.filter(isGroupable)
-  const field = groupableFields.reduce<(typeof groupableFields)[number] | undefined>((best, candidate) => {
-    if (!best) {
-      return candidate
-    }
-
-    const bestPriority = fieldSpec.view.kanbanGroupPriority(best)
-    const candidatePriority = fieldSpec.view.kanbanGroupPriority(candidate)
-    return candidatePriority > bestPriority
-      ? candidate
-      : best
-  }, undefined)
-
-  return field
-    ? group.set(undefined, field)
-    : undefined
 }
 
 const ensureKanbanGroup = (
@@ -668,7 +532,7 @@ const ensureKanbanGroup = (
     return view
   }
 
-  const group = resolveDefaultKanbanGroup(reader)
+  const group = resolveDefaultKanbanGroup(reader.fields.list())
   return group
     ? {
         ...view,
@@ -677,10 +541,33 @@ const ensureKanbanGroup = (
     : view
 }
 
+const finalizeView = (
+  reader: DocumentReader,
+  view: View
+): View => ensureKanbanGroup(reader, normalizeView(reader, view))
+
+const emitValidatedViewUpdate = <T,>(
+  input: DataviewCompileInput,
+  reader: DocumentReader,
+  current: View,
+  next: View,
+  operations: readonly DocumentOperation[],
+  data?: T
+) => {
+  if (!operations.length || equal.sameJsonValue(current, next)) {
+    return undefined
+  }
+
+  reportIssues(input, ...validateView(reader, input.source, next))
+  return data === undefined
+    ? emitOps(input, ...operations)
+    : emitData(input, data, ...operations)
+}
+
 const requireView = (
   input: DataviewCompileInput,
   reader: DocumentReader,
-  viewId: string
+  viewId: ViewId
 ) => requireValue(
   input,
   reader.views.get(viewId),
@@ -691,6 +578,37 @@ const requireView = (
   }
 )
 
+const requireField = (
+  input: DataviewCompileInput,
+  reader: DocumentReader,
+  fieldId: FieldId,
+  path = 'fieldId'
+): Field | undefined => requireValue(
+  input,
+  reader.fields.get(fieldId),
+  {
+    code: 'field.notFound',
+    message: `Unknown field: ${fieldId}`,
+    path
+  }
+)
+
+const requireGroupedField = (
+  input: DataviewCompileInput,
+  reader: DocumentReader,
+  view: View
+): Field | undefined => {
+  const fieldId = view.group?.fieldId
+  return fieldId
+    ? requireField(input, reader, fieldId, 'fieldId')
+    : (compileIssue(
+        input,
+        'view.invalidProjection',
+        'View is not grouped.',
+        'id'
+      ), undefined)
+}
+
 const lowerViewCreate = (
   intent: Extract<Intent, { type: 'view.create' }>,
   input: DataviewCompileInput,
@@ -700,28 +618,13 @@ const lowerViewCreate = (
   const preferredName = string.trimToUndefined(intent.input.name) ?? ''
 
   if (intent.input.id !== undefined && !explicitViewId) {
-    compileIssue(
-      input,
-      'view.invalid',
-      'View id must be a non-empty string',
-      'input.id'
-    )
+    compileIssue(input, 'view.invalid', 'View id must be a non-empty string', 'input.id')
   }
   if (explicitViewId && reader.views.has(explicitViewId)) {
-    compileIssue(
-      input,
-      'view.invalid',
-      `View already exists: ${explicitViewId}`,
-      'input.id'
-    )
+    compileIssue(input, 'view.invalid', `View already exists: ${explicitViewId}`, 'input.id')
   }
   if (!preferredName) {
-    compileIssue(
-      input,
-      'view.invalid',
-      'View name must be a non-empty string',
-      'input.name'
-    )
+    compileIssue(input, 'view.invalid', 'View name must be a non-empty string', 'input.name')
   }
   if (!preferredName || (intent.input.id !== undefined && !explicitViewId) || (explicitViewId && reader.views.has(explicitViewId))) {
     return
@@ -729,12 +632,14 @@ const lowerViewCreate = (
 
   const fields = reader.fields.list()
   const base = {
-    id: explicitViewId || createId('view'),
+    id: explicitViewId ?? createId('view'),
     name: viewApi.name.unique({
       views: reader.views.list(),
       preferredName
     }),
-    search: intent.input.search ?? { query: '' },
+    search: intent.input.search ?? {
+      query: ''
+    },
     filter: intent.input.filter ?? {
       mode: 'and',
       rules: entityTable.normalize.list([])
@@ -748,13 +653,14 @@ const lowerViewCreate = (
       : viewApi.options.defaultDisplay(intent.input.type, fields),
     orders: []
   }
+
   let created: View
   switch (intent.input.type) {
     case 'table':
       created = {
         ...base,
         type: 'table',
-        ...(intent.input.group ? { group: intent.input.group } : {}),
+        ...(intent.input.group ? { group: viewApi.group.state.clone(intent.input.group) } : {}),
         options: intent.input.options
           ? viewApi.options.clone('table', intent.input.options)
           : viewApi.options.defaults('table', fields)
@@ -764,28 +670,23 @@ const lowerViewCreate = (
       created = {
         ...base,
         type: 'gallery',
-        ...(intent.input.group ? { group: intent.input.group } : {}),
+        ...(intent.input.group ? { group: viewApi.group.state.clone(intent.input.group) } : {}),
         options: intent.input.options
           ? viewApi.options.clone('gallery', intent.input.options)
           : viewApi.options.defaults('gallery', fields)
       }
       break
     case 'kanban': {
-      const resolvedGroup = intent.input.group ?? resolveDefaultKanbanGroup(reader)
+      const resolvedGroup = intent.input.group ?? resolveDefaultKanbanGroup(fields)
       if (!resolvedGroup) {
-        compileIssue(
-          input,
-          'view.invalidProjection',
-          'Kanban view requires a groupable field',
-          'input.group'
-        )
+        compileIssue(input, 'view.invalidProjection', 'Kanban view requires a groupable field', 'input.group')
         return
       }
 
       created = {
         ...base,
         type: 'kanban',
-        group: resolvedGroup,
+        group: viewApi.group.state.clone(resolvedGroup)!,
         options: intent.input.options
           ? viewApi.options.clone('kanban', intent.input.options)
           : viewApi.options.defaults('kanban', fields)
@@ -793,12 +694,14 @@ const lowerViewCreate = (
       break
     }
   }
-  const view = ensureKanbanGroup(reader, normalizeView(reader, created))
 
+  const view = finalizeView(reader, created)
   reportIssues(input, ...validateView(reader, input.source, view))
   return emitData(
     input,
-    { id: view.id },
+    {
+      id: view.id
+    },
     {
       type: 'view.create',
       value: view
@@ -814,8 +717,8 @@ const lowerViewCreate = (
   )
 }
 
-const lowerViewPatch = (
-  intent: Extract<Intent, { type: 'view.patch' }>,
+const lowerViewRename = (
+  intent: Extract<Intent, { type: 'view.rename' }>,
   input: DataviewCompileInput,
   reader: DocumentReader
 ) => {
@@ -824,35 +727,1111 @@ const lowerViewPatch = (
     return
   }
 
-  const nextView = (
-    intent.patch.type === 'kanban'
-      ? ensureKanbanGroup(reader, normalizeView(reader, applyViewPatch(reader, view, intent.patch)))
-      : normalizeView(reader, applyViewPatch(reader, view, intent.patch))
-  )
-  if (equal.sameJsonValue(nextView, view)) {
+  const name = string.trimToUndefined(intent.name)
+  if (!name) {
+    compileIssue(input, 'view.invalid', 'View name must be a non-empty string', 'name')
     return
   }
 
-  reportIssues(input, ...validateView(reader, input.source, nextView))
-  const displayOps = buildViewDisplayOps(view, nextView)
-  const patchTarget = displayOps.length > 0
-    ? {
-        ...view,
-        display: nextView.display
-      }
-    : view
-  const patch = createEntityPatch(patchTarget, nextView)
+  const nextView = finalizeView(reader, {
+    ...view,
+    name
+  })
+  return emitValidatedViewUpdate(input, reader, view, nextView, [{
+    type: 'view.rename',
+    id: view.id,
+    name: nextView.name
+  }])
+}
 
-  input.emit(
-    ...displayOps,
-    ...(Object.keys(patch).length
-      ? [{
-          type: 'view.patch',
-          id: view.id,
-          patch
-        } satisfies DocumentOperation]
-      : [])
+const lowerViewTypeSet = (
+  intent: Extract<Intent, { type: 'view.type.set' }>,
+  input: DataviewCompileInput,
+  reader: DocumentReader
+) => {
+  const view = requireView(input, reader, intent.id)
+  if (!view) {
+    return
+  }
+
+  const nextCandidate = setViewType({
+    view,
+    type: intent.viewType,
+    fields: reader.fields.list()
+  })
+  if (!nextCandidate) {
+    compileIssue(input, 'view.invalidProjection', 'Kanban view requires a groupable field', 'viewType')
+    return
+  }
+
+  const nextView = finalizeView(reader, nextCandidate)
+  return emitValidatedViewUpdate(input, reader, view, nextView, [{
+    type: 'view.type.set',
+    id: view.id,
+    viewType: nextView.type
+  }])
+}
+
+const lowerViewSearchSet = (
+  intent: Extract<Intent, { type: 'view.search.set' }>,
+  input: DataviewCompileInput,
+  reader: DocumentReader
+) => {
+  const view = requireView(input, reader, intent.id)
+  if (!view) {
+    return
+  }
+
+  const nextView = finalizeView(reader, {
+    ...view,
+    search: viewApi.search.state.clone(intent.search)
+  })
+  return emitValidatedViewUpdate(input, reader, view, nextView, [{
+    type: 'view.search.set',
+    id: view.id,
+    search: viewApi.search.state.clone(nextView.search)
+  }])
+}
+
+const lowerViewFilterCreate = (
+  intent: Extract<Intent, { type: 'view.filter.create' }>,
+  input: DataviewCompileInput,
+  reader: DocumentReader
+) => {
+  const view = requireView(input, reader, intent.id)
+  const field = requireField(input, reader, intent.input.fieldId, 'input.fieldId')
+  if (!view || !field) {
+    return
+  }
+
+  const explicitRuleId = intent.input.id === undefined
+    ? undefined
+    : string.trimToUndefined(intent.input.id)
+  if (intent.input.id !== undefined && !explicitRuleId) {
+    compileIssue(input, 'view.invalidProjection', 'Filter rule id must be a non-empty string', 'input.id')
+    return
+  }
+
+  try {
+    const created = viewApi.filter.write.insert(view.filter, field, {
+      ...(explicitRuleId !== undefined
+        ? { id: explicitRuleId }
+        : {}),
+      ...(intent.input.presetId !== undefined
+        ? { presetId: intent.input.presetId }
+        : {}),
+      ...(Object.prototype.hasOwnProperty.call(intent.input, 'value')
+        ? { value: intent.input.value }
+        : {}),
+      ...(intent.before !== undefined
+        ? { before: intent.before }
+        : {})
+    })
+    const nextView = finalizeView(reader, {
+      ...view,
+      filter: created.filter
+    })
+    const rule = nextView.filter.rules.byId[created.id] ?? created.filter.rules.byId[created.id]
+    if (!rule) {
+      compileIssue(input, 'view.invalidProjection', `Unable to create filter rule ${created.id}`, 'input')
+      return
+    }
+
+    return emitValidatedViewUpdate(
+      input,
+      reader,
+      view,
+      nextView,
+      [{
+        type: 'view.filter.create',
+        id: view.id,
+        rule: cloneFilterRuleForOperation(rule),
+        ...(intent.before !== undefined
+          ? { before: intent.before }
+          : {})
+      }],
+      {
+        id: created.id
+      }
+    )
+  } catch (error) {
+    reportSemanticError(input, error, 'input')
+  }
+}
+
+const lowerViewFilterPatch = (
+  intent: Extract<Intent, { type: 'view.filter.patch' }>,
+  input: DataviewCompileInput,
+  reader: DocumentReader
+) => {
+  const view = requireView(input, reader, intent.id)
+  if (!view) {
+    return
+  }
+
+  const currentRule = view.filter.rules.byId[intent.rule]
+  if (!currentRule) {
+    compileIssue(input, 'view.invalidProjection', `Unknown filter rule: ${intent.rule}`, 'rule')
+    return
+  }
+
+  const nextFieldId = intent.patch.fieldId ?? currentRule.fieldId
+  const field = requireField(input, reader, nextFieldId, 'patch.fieldId')
+  if (!field) {
+    return
+  }
+
+  try {
+    const nextFilter = viewApi.filter.write.patch(
+      view.filter,
+      intent.rule,
+      intent.patch,
+      field
+    )
+    const nextView = finalizeView(reader, {
+      ...view,
+      filter: nextFilter
+    })
+    return emitValidatedViewUpdate(input, reader, view, nextView, [{
+      type: 'view.filter.patch',
+      id: view.id,
+      rule: intent.rule,
+      patch: {
+        fieldId: nextView.filter.rules.byId[intent.rule]!.fieldId,
+        presetId: nextView.filter.rules.byId[intent.rule]!.presetId,
+        ...(Object.prototype.hasOwnProperty.call(nextView.filter.rules.byId[intent.rule]!, 'value')
+          ? {
+              value: cloneFilterValueForOperation(nextView.filter.rules.byId[intent.rule]!.value)
+            }
+          : {})
+      }
+    }])
+  } catch (error) {
+    reportSemanticError(input, error, 'patch')
+  }
+}
+
+const lowerViewFilterMove = (
+  intent: Extract<Intent, { type: 'view.filter.move' }>,
+  input: DataviewCompileInput,
+  reader: DocumentReader
+) => {
+  const view = requireView(input, reader, intent.id)
+  if (!view) {
+    return
+  }
+
+  try {
+    const nextFilter = viewApi.filter.write.move(
+      view.filter,
+      intent.rule,
+      intent.before
+    )
+    const nextView = finalizeView(reader, {
+      ...view,
+      filter: nextFilter
+    })
+    return emitValidatedViewUpdate(input, reader, view, nextView, [{
+      type: 'view.filter.move',
+      id: view.id,
+      rule: intent.rule,
+      ...(intent.before !== undefined
+        ? { before: intent.before }
+        : {})
+    }])
+  } catch (error) {
+    reportSemanticError(input, error, 'rule')
+  }
+}
+
+const lowerViewFilterModeSet = (
+  intent: Extract<Intent, { type: 'view.filter.mode.set' }>,
+  input: DataviewCompileInput,
+  reader: DocumentReader
+) => {
+  const view = requireView(input, reader, intent.id)
+  if (!view) {
+    return
+  }
+
+  const nextView = finalizeView(reader, {
+    ...view,
+    filter: viewApi.filter.write.mode(view.filter, intent.mode)
+  })
+  return emitValidatedViewUpdate(input, reader, view, nextView, [{
+    type: 'view.filter.mode.set',
+    id: view.id,
+    mode: nextView.filter.mode
+  }])
+}
+
+const lowerViewFilterRemove = (
+  intent: Extract<Intent, { type: 'view.filter.remove' }>,
+  input: DataviewCompileInput,
+  reader: DocumentReader
+) => {
+  const view = requireView(input, reader, intent.id)
+  if (!view) {
+    return
+  }
+
+  try {
+    const nextView = finalizeView(reader, {
+      ...view,
+      filter: viewApi.filter.write.remove(view.filter, intent.rule)
+    })
+    return emitValidatedViewUpdate(input, reader, view, nextView, [{
+      type: 'view.filter.remove',
+      id: view.id,
+      rule: intent.rule
+    }])
+  } catch (error) {
+    reportSemanticError(input, error, 'rule')
+  }
+}
+
+const lowerViewFilterClear = (
+  intent: Extract<Intent, { type: 'view.filter.clear' }>,
+  input: DataviewCompileInput,
+  reader: DocumentReader
+) => {
+  const view = requireView(input, reader, intent.id)
+  if (!view) {
+    return
+  }
+
+  const nextView = finalizeView(reader, {
+    ...view,
+    filter: viewApi.filter.write.clear(view.filter)
+  })
+  return emitValidatedViewUpdate(input, reader, view, nextView, [{
+    type: 'view.filter.clear',
+    id: view.id
+  }])
+}
+
+const lowerViewSortCreate = (
+  intent: Extract<Intent, { type: 'view.sort.create' }>,
+  input: DataviewCompileInput,
+  reader: DocumentReader
+) => {
+  const view = requireView(input, reader, intent.id)
+  if (!view) {
+    return
+  }
+
+  if (!requireField(input, reader, intent.input.fieldId, 'input.fieldId')) {
+    return
+  }
+
+  const explicitRuleId = intent.input.id === undefined
+    ? undefined
+    : string.trimToUndefined(intent.input.id)
+  if (intent.input.id !== undefined && !explicitRuleId) {
+    compileIssue(input, 'view.invalidProjection', 'Sort rule id must be a non-empty string', 'input.id')
+    return
+  }
+
+  try {
+    const created = viewApi.sort.write.insert(view.sort, {
+      ...(explicitRuleId !== undefined
+        ? { id: explicitRuleId }
+        : {}),
+      fieldId: intent.input.fieldId,
+      ...(intent.input.direction !== undefined
+        ? { direction: intent.input.direction }
+        : {}),
+      ...(intent.before !== undefined
+        ? { before: intent.before }
+        : {})
+    })
+    const nextView = finalizeView(reader, {
+      ...view,
+      sort: created.sort
+    })
+    const rule = nextView.sort.rules.byId[created.id] ?? created.sort.rules.byId[created.id]
+    if (!rule) {
+      compileIssue(input, 'view.invalidProjection', `Unable to create sort rule ${created.id}`, 'input')
+      return
+    }
+
+    return emitValidatedViewUpdate(
+      input,
+      reader,
+      view,
+      nextView,
+      [{
+        type: 'view.sort.create',
+        id: view.id,
+        rule: cloneSortRuleForOperation(rule),
+        ...(intent.before !== undefined
+          ? { before: intent.before }
+          : {})
+      }],
+      {
+        id: created.id
+      }
+    )
+  } catch (error) {
+    reportSemanticError(input, error, 'input')
+  }
+}
+
+const lowerViewSortPatch = (
+  intent: Extract<Intent, { type: 'view.sort.patch' }>,
+  input: DataviewCompileInput,
+  reader: DocumentReader
+) => {
+  const view = requireView(input, reader, intent.id)
+  if (!view) {
+    return
+  }
+
+  if (intent.patch.fieldId && !requireField(input, reader, intent.patch.fieldId, 'patch.fieldId')) {
+    return
+  }
+
+  try {
+    const nextSort = viewApi.sort.write.patch(
+      view.sort,
+      intent.rule,
+      intent.patch
+    )
+    const nextView = finalizeView(reader, {
+      ...view,
+      sort: nextSort
+    })
+    const rule = nextView.sort.rules.byId[intent.rule]
+    if (!rule) {
+      compileIssue(input, 'view.invalidProjection', `Unknown sort rule: ${intent.rule}`, 'rule')
+      return
+    }
+
+    return emitValidatedViewUpdate(input, reader, view, nextView, [{
+      type: 'view.sort.patch',
+      id: view.id,
+      rule: intent.rule,
+      patch: {
+        fieldId: rule.fieldId,
+        direction: rule.direction
+      }
+    }])
+  } catch (error) {
+    reportSemanticError(input, error, 'patch')
+  }
+}
+
+const lowerViewSortMove = (
+  intent: Extract<Intent, { type: 'view.sort.move' }>,
+  input: DataviewCompileInput,
+  reader: DocumentReader
+) => {
+  const view = requireView(input, reader, intent.id)
+  if (!view) {
+    return
+  }
+
+  try {
+    const nextSort = viewApi.sort.write.move(
+      view.sort,
+      intent.rule,
+      intent.before
+    )
+    const nextView = finalizeView(reader, {
+      ...view,
+      sort: nextSort
+    })
+    return emitValidatedViewUpdate(input, reader, view, nextView, [{
+      type: 'view.sort.move',
+      id: view.id,
+      rule: intent.rule,
+      ...(intent.before !== undefined
+        ? { before: intent.before }
+        : {})
+    }])
+  } catch (error) {
+    reportSemanticError(input, error, 'rule')
+  }
+}
+
+const lowerViewSortRemove = (
+  intent: Extract<Intent, { type: 'view.sort.remove' }>,
+  input: DataviewCompileInput,
+  reader: DocumentReader
+) => {
+  const view = requireView(input, reader, intent.id)
+  if (!view) {
+    return
+  }
+
+  try {
+    const nextView = finalizeView(reader, {
+      ...view,
+      sort: viewApi.sort.write.remove(view.sort, intent.rule)
+    })
+    return emitValidatedViewUpdate(input, reader, view, nextView, [{
+      type: 'view.sort.remove',
+      id: view.id,
+      rule: intent.rule
+    }])
+  } catch (error) {
+    reportSemanticError(input, error, 'rule')
+  }
+}
+
+const lowerViewSortClear = (
+  intent: Extract<Intent, { type: 'view.sort.clear' }>,
+  input: DataviewCompileInput,
+  reader: DocumentReader
+) => {
+  const view = requireView(input, reader, intent.id)
+  if (!view) {
+    return
+  }
+
+  const nextView = finalizeView(reader, {
+    ...view,
+    sort: viewApi.sort.write.clear(view.sort)
+  })
+  return emitValidatedViewUpdate(input, reader, view, nextView, [{
+    type: 'view.sort.clear',
+    id: view.id
+  }])
+}
+
+const lowerViewGroupSet = (
+  intent: Extract<Intent, { type: 'view.group.set' }>,
+  input: DataviewCompileInput,
+  reader: DocumentReader
+) => {
+  const view = requireView(input, reader, intent.id)
+  if (!view) {
+    return
+  }
+
+  const nextView = finalizeView(reader, {
+    ...view,
+    group: viewApi.group.state.clone(intent.group)
+  } as View)
+  return emitValidatedViewUpdate(input, reader, view, nextView, [{
+    type: 'view.group.set',
+    id: view.id,
+    group: viewApi.group.state.clone(nextView.group)!
+  }])
+}
+
+const lowerViewGroupClear = (
+  intent: Extract<Intent, { type: 'view.group.clear' }>,
+  input: DataviewCompileInput,
+  reader: DocumentReader
+) => {
+  const view = requireView(input, reader, intent.id)
+  if (!view) {
+    return
+  }
+
+  const nextView = finalizeView(reader, {
+    ...view,
+    group: viewApi.group.clear(view.group)
+  } as View)
+  return emitValidatedViewUpdate(input, reader, view, nextView, [{
+    type: 'view.group.clear',
+    id: view.id
+  }])
+}
+
+const lowerViewGroupToggle = (
+  intent: Extract<Intent, { type: 'view.group.toggle' }>,
+  input: DataviewCompileInput,
+  reader: DocumentReader
+) => {
+  const view = requireView(input, reader, intent.id)
+  const field = requireField(input, reader, intent.field, 'field')
+  if (!view || !field) {
+    return
+  }
+
+  const nextView = finalizeView(reader, {
+    ...view,
+    group: viewApi.group.toggle(view.group, field)
+  } as View)
+  return emitValidatedViewUpdate(input, reader, view, nextView, [{
+    type: 'view.group.toggle',
+    id: view.id,
+    field: intent.field
+  }])
+}
+
+const lowerViewGroupModeSet = (
+  intent: Extract<Intent, { type: 'view.group.mode.set' }>,
+  input: DataviewCompileInput,
+  reader: DocumentReader
+) => {
+  const view = requireView(input, reader, intent.id)
+  if (!view) {
+    return
+  }
+
+  const field = requireGroupedField(input, reader, view)
+  if (!field) {
+    return
+  }
+
+  const nextGroup = viewApi.group.patch(view.group, field, {
+    mode: intent.mode
+  })
+  if (!nextGroup) {
+    compileIssue(input, 'view.invalidProjection', 'Unable to update group mode.', 'mode')
+    return
+  }
+
+  const nextView = finalizeView(reader, {
+    ...view,
+    group: nextGroup
+  })
+  return emitValidatedViewUpdate(input, reader, view, nextView, [{
+    type: 'view.group.mode.set',
+    id: view.id,
+    mode: nextView.group!.mode
+  }])
+}
+
+const lowerViewGroupSortSet = (
+  intent: Extract<Intent, { type: 'view.group.sort.set' }>,
+  input: DataviewCompileInput,
+  reader: DocumentReader
+) => {
+  const view = requireView(input, reader, intent.id)
+  if (!view) {
+    return
+  }
+
+  const field = requireGroupedField(input, reader, view)
+  if (!field) {
+    return
+  }
+
+  const nextGroup = viewApi.group.patch(view.group, field, {
+    bucketSort: intent.sort
+  })
+  if (!nextGroup) {
+    compileIssue(input, 'view.invalidProjection', 'Unable to update group sort.', 'sort')
+    return
+  }
+
+  const nextView = finalizeView(reader, {
+    ...view,
+    group: nextGroup
+  })
+  return emitValidatedViewUpdate(input, reader, view, nextView, [{
+    type: 'view.group.sort.set',
+    id: view.id,
+    sort: nextView.group!.bucketSort
+  }])
+}
+
+const lowerViewGroupIntervalSet = (
+  intent: Extract<Intent, { type: 'view.group.interval.set' }>,
+  input: DataviewCompileInput,
+  reader: DocumentReader
+) => {
+  const view = requireView(input, reader, intent.id)
+  if (!view) {
+    return
+  }
+
+  const field = requireGroupedField(input, reader, view)
+  if (!field) {
+    return
+  }
+
+  const nextGroup = viewApi.group.patch(view.group, field, {
+    bucketInterval: intent.interval
+  })
+  if (!nextGroup) {
+    compileIssue(input, 'view.invalidProjection', 'Unable to update group interval.', 'interval')
+    return
+  }
+
+  const nextView = finalizeView(reader, {
+    ...view,
+    group: nextGroup
+  })
+  return emitValidatedViewUpdate(input, reader, view, nextView, [{
+    type: 'view.group.interval.set',
+    id: view.id,
+    ...(nextView.group!.bucketInterval !== undefined
+      ? { interval: nextView.group!.bucketInterval }
+      : {})
+  }])
+}
+
+const lowerViewGroupShowEmptySet = (
+  intent: Extract<Intent, { type: 'view.group.showEmpty.set' }>,
+  input: DataviewCompileInput,
+  reader: DocumentReader
+) => {
+  const view = requireView(input, reader, intent.id)
+  if (!view) {
+    return
+  }
+
+  const field = requireGroupedField(input, reader, view)
+  if (!field) {
+    return
+  }
+
+  const nextGroup = viewApi.group.patch(view.group, field, {
+    showEmpty: intent.value
+  })
+  if (!nextGroup) {
+    compileIssue(input, 'view.invalidProjection', 'Unable to update group empty-bucket visibility.', 'value')
+    return
+  }
+
+  const nextView = finalizeView(reader, {
+    ...view,
+    group: nextGroup
+  })
+  return emitValidatedViewUpdate(input, reader, view, nextView, [{
+    type: 'view.group.showEmpty.set',
+    id: view.id,
+    value: nextView.group?.showEmpty ?? false
+  }])
+}
+
+const lowerViewSectionVisibility = (
+  intent: Extract<Intent, { type: 'view.section.show' | 'view.section.hide' | 'view.section.collapse' | 'view.section.expand' }>,
+  input: DataviewCompileInput,
+  reader: DocumentReader
+) => {
+  const view = requireView(input, reader, intent.id)
+  if (!view) {
+    return
+  }
+
+  const field = requireGroupedField(input, reader, view)
+  if (!field) {
+    return
+  }
+
+  const patch = intent.type === 'view.section.show'
+    ? {
+        hidden: false
+      }
+    : intent.type === 'view.section.hide'
+      ? {
+          hidden: true
+        }
+      : intent.type === 'view.section.collapse'
+        ? {
+            collapsed: true
+          }
+        : {
+            collapsed: false
+          }
+
+  const nextGroup = viewApi.group.bucket.patch(
+    view.group,
+    field,
+    intent.bucket,
+    patch
   )
+  if (!nextGroup) {
+    compileIssue(input, 'view.invalidProjection', 'Unable to update group section state.', 'bucket')
+    return
+  }
+
+  const nextView = finalizeView(reader, {
+    ...view,
+    group: nextGroup
+  })
+  return emitValidatedViewUpdate(input, reader, view, nextView, [{
+    type: intent.type,
+    id: view.id,
+    bucket: intent.bucket
+  }])
+}
+
+const lowerViewCalcSet = (
+  intent: Extract<Intent, { type: 'view.calc.set' }>,
+  input: DataviewCompileInput,
+  reader: DocumentReader
+) => {
+  const view = requireView(input, reader, intent.id)
+  if (!view) {
+    return
+  }
+
+  if (!requireField(input, reader, intent.field, 'field')) {
+    return
+  }
+
+  const nextView = finalizeView(reader, {
+    ...view,
+    calc: viewApi.calc.set(view.calc, intent.field, intent.metric ?? null)
+  })
+  return emitValidatedViewUpdate(input, reader, view, nextView, [{
+    type: 'view.calc.set',
+    id: view.id,
+    field: intent.field,
+    metric: nextView.calc[intent.field] ?? null
+  }])
+}
+
+const lowerViewTableWidthsSet = (
+  intent: Extract<Intent, { type: 'view.table.widths.set' }>,
+  input: DataviewCompileInput,
+  reader: DocumentReader
+) => {
+  const view = requireView(input, reader, intent.id)
+  if (!view) {
+    return
+  }
+  if (view.type !== 'table') {
+    compileIssue(input, 'view.invalidProjection', 'view.table.widths.set requires a table view', 'id')
+    return
+  }
+
+  const nextView = finalizeView(reader, {
+    ...view,
+    options: viewApi.layout.table.patch(view.options, {
+      widths: intent.widths
+    })
+  })
+  if (nextView.type !== 'table') {
+    compileIssue(input, 'view.invalidProjection', 'view.table.widths.set produced a non-table view', 'id')
+    return
+  }
+  return emitValidatedViewUpdate(input, reader, view, nextView, [{
+    type: 'view.table.widths.set',
+    id: view.id,
+    widths: {
+      ...nextView.options.widths
+    }
+  }])
+}
+
+const lowerViewTableVerticalLinesSet = (
+  intent: Extract<Intent, { type: 'view.table.verticalLines.set' }>,
+  input: DataviewCompileInput,
+  reader: DocumentReader
+) => {
+  const view = requireView(input, reader, intent.id)
+  if (!view) {
+    return
+  }
+  if (view.type !== 'table') {
+    compileIssue(input, 'view.invalidProjection', 'view.table.verticalLines.set requires a table view', 'id')
+    return
+  }
+
+  const nextView = finalizeView(reader, {
+    ...view,
+    options: viewApi.layout.table.patch(view.options, {
+      showVerticalLines: intent.value
+    })
+  })
+  if (nextView.type !== 'table') {
+    compileIssue(input, 'view.invalidProjection', 'view.table.verticalLines.set produced a non-table view', 'id')
+    return
+  }
+  return emitValidatedViewUpdate(input, reader, view, nextView, [{
+    type: 'view.table.verticalLines.set',
+    id: view.id,
+    value: nextView.options.showVerticalLines
+  }])
+}
+
+const lowerViewTableWrapSet = (
+  intent: Extract<Intent, { type: 'view.table.wrap.set' }>,
+  input: DataviewCompileInput,
+  reader: DocumentReader
+) => {
+  const view = requireView(input, reader, intent.id)
+  if (!view) {
+    return
+  }
+  if (view.type !== 'table') {
+    compileIssue(input, 'view.invalidProjection', 'view.table.wrap.set requires a table view', 'id')
+    return
+  }
+
+  const nextView = finalizeView(reader, {
+    ...view,
+    options: viewApi.layout.table.patch(view.options, {
+      wrap: intent.value
+    })
+  })
+  if (nextView.type !== 'table') {
+    compileIssue(input, 'view.invalidProjection', 'view.table.wrap.set produced a non-table view', 'id')
+    return
+  }
+  return emitValidatedViewUpdate(input, reader, view, nextView, [{
+    type: 'view.table.wrap.set',
+    id: view.id,
+    value: nextView.options.wrap
+  }])
+}
+
+const lowerViewGalleryWrapSet = (
+  intent: Extract<Intent, { type: 'view.gallery.wrap.set' }>,
+  input: DataviewCompileInput,
+  reader: DocumentReader
+) => {
+  const view = requireView(input, reader, intent.id)
+  if (!view) {
+    return
+  }
+  if (view.type !== 'gallery') {
+    compileIssue(input, 'view.invalidProjection', 'view.gallery.wrap.set requires a gallery view', 'id')
+    return
+  }
+
+  const nextView = finalizeView(reader, {
+    ...view,
+    options: viewApi.layout.gallery.patch(view.options, {
+      card: {
+        wrap: intent.value
+      }
+    })
+  })
+  if (nextView.type !== 'gallery') {
+    compileIssue(input, 'view.invalidProjection', 'view.gallery.wrap.set produced a non-gallery view', 'id')
+    return
+  }
+  return emitValidatedViewUpdate(input, reader, view, nextView, [{
+    type: 'view.gallery.wrap.set',
+    id: view.id,
+    value: nextView.options.card.wrap
+  }])
+}
+
+const lowerViewGallerySizeSet = (
+  intent: Extract<Intent, { type: 'view.gallery.size.set' }>,
+  input: DataviewCompileInput,
+  reader: DocumentReader
+) => {
+  const view = requireView(input, reader, intent.id)
+  if (!view) {
+    return
+  }
+  if (view.type !== 'gallery') {
+    compileIssue(input, 'view.invalidProjection', 'view.gallery.size.set requires a gallery view', 'id')
+    return
+  }
+
+  const nextView = finalizeView(reader, {
+    ...view,
+    options: viewApi.layout.gallery.patch(view.options, {
+      card: {
+        size: intent.value
+      }
+    })
+  })
+  if (nextView.type !== 'gallery') {
+    compileIssue(input, 'view.invalidProjection', 'view.gallery.size.set produced a non-gallery view', 'id')
+    return
+  }
+  return emitValidatedViewUpdate(input, reader, view, nextView, [{
+    type: 'view.gallery.size.set',
+    id: view.id,
+    value: nextView.options.card.size
+  }])
+}
+
+const lowerViewGalleryLayoutSet = (
+  intent: Extract<Intent, { type: 'view.gallery.layout.set' }>,
+  input: DataviewCompileInput,
+  reader: DocumentReader
+) => {
+  const view = requireView(input, reader, intent.id)
+  if (!view) {
+    return
+  }
+  if (view.type !== 'gallery') {
+    compileIssue(input, 'view.invalidProjection', 'view.gallery.layout.set requires a gallery view', 'id')
+    return
+  }
+
+  const nextView = finalizeView(reader, {
+    ...view,
+    options: viewApi.layout.gallery.patch(view.options, {
+      card: {
+        layout: intent.value
+      }
+    })
+  })
+  if (nextView.type !== 'gallery') {
+    compileIssue(input, 'view.invalidProjection', 'view.gallery.layout.set produced a non-gallery view', 'id')
+    return
+  }
+  return emitValidatedViewUpdate(input, reader, view, nextView, [{
+    type: 'view.gallery.layout.set',
+    id: view.id,
+    value: nextView.options.card.layout
+  }])
+}
+
+const lowerViewKanbanWrapSet = (
+  intent: Extract<Intent, { type: 'view.kanban.wrap.set' }>,
+  input: DataviewCompileInput,
+  reader: DocumentReader
+) => {
+  const view = requireView(input, reader, intent.id)
+  if (!view) {
+    return
+  }
+  if (view.type !== 'kanban') {
+    compileIssue(input, 'view.invalidProjection', 'view.kanban.wrap.set requires a kanban view', 'id')
+    return
+  }
+
+  const nextView = finalizeView(reader, {
+    ...view,
+    options: viewApi.layout.kanban.patch(view.options, {
+      card: {
+        wrap: intent.value
+      }
+    })
+  })
+  if (nextView.type !== 'kanban') {
+    compileIssue(input, 'view.invalidProjection', 'view.kanban.wrap.set produced a non-kanban view', 'id')
+    return
+  }
+  return emitValidatedViewUpdate(input, reader, view, nextView, [{
+    type: 'view.kanban.wrap.set',
+    id: view.id,
+    value: nextView.options.card.wrap
+  }])
+}
+
+const lowerViewKanbanSizeSet = (
+  intent: Extract<Intent, { type: 'view.kanban.size.set' }>,
+  input: DataviewCompileInput,
+  reader: DocumentReader
+) => {
+  const view = requireView(input, reader, intent.id)
+  if (!view) {
+    return
+  }
+  if (view.type !== 'kanban') {
+    compileIssue(input, 'view.invalidProjection', 'view.kanban.size.set requires a kanban view', 'id')
+    return
+  }
+
+  const nextView = finalizeView(reader, {
+    ...view,
+    options: viewApi.layout.kanban.patch(view.options, {
+      card: {
+        size: intent.value
+      }
+    })
+  })
+  if (nextView.type !== 'kanban') {
+    compileIssue(input, 'view.invalidProjection', 'view.kanban.size.set produced a non-kanban view', 'id')
+    return
+  }
+  return emitValidatedViewUpdate(input, reader, view, nextView, [{
+    type: 'view.kanban.size.set',
+    id: view.id,
+    value: nextView.options.card.size
+  }])
+}
+
+const lowerViewKanbanLayoutSet = (
+  intent: Extract<Intent, { type: 'view.kanban.layout.set' }>,
+  input: DataviewCompileInput,
+  reader: DocumentReader
+) => {
+  const view = requireView(input, reader, intent.id)
+  if (!view) {
+    return
+  }
+  if (view.type !== 'kanban') {
+    compileIssue(input, 'view.invalidProjection', 'view.kanban.layout.set requires a kanban view', 'id')
+    return
+  }
+
+  const nextView = finalizeView(reader, {
+    ...view,
+    options: viewApi.layout.kanban.patch(view.options, {
+      card: {
+        layout: intent.value
+      }
+    })
+  })
+  if (nextView.type !== 'kanban') {
+    compileIssue(input, 'view.invalidProjection', 'view.kanban.layout.set produced a non-kanban view', 'id')
+    return
+  }
+  return emitValidatedViewUpdate(input, reader, view, nextView, [{
+    type: 'view.kanban.layout.set',
+    id: view.id,
+    value: nextView.options.card.layout
+  }])
+}
+
+const lowerViewKanbanFillColorSet = (
+  intent: Extract<Intent, { type: 'view.kanban.fillColor.set' }>,
+  input: DataviewCompileInput,
+  reader: DocumentReader
+) => {
+  const view = requireView(input, reader, intent.id)
+  if (!view) {
+    return
+  }
+  if (view.type !== 'kanban') {
+    compileIssue(input, 'view.invalidProjection', 'view.kanban.fillColor.set requires a kanban view', 'id')
+    return
+  }
+
+  const nextView = finalizeView(reader, {
+    ...view,
+    options: viewApi.layout.kanban.patch(view.options, {
+      fillColumnColor: intent.value
+    })
+  })
+  if (nextView.type !== 'kanban') {
+    compileIssue(input, 'view.invalidProjection', 'view.kanban.fillColor.set produced a non-kanban view', 'id')
+    return
+  }
+  return emitValidatedViewUpdate(input, reader, view, nextView, [{
+    type: 'view.kanban.fillColor.set',
+    id: view.id,
+    value: nextView.options.fillColumnColor
+  }])
+}
+
+const lowerViewKanbanCardsPerColumnSet = (
+  intent: Extract<Intent, { type: 'view.kanban.cardsPerColumn.set' }>,
+  input: DataviewCompileInput,
+  reader: DocumentReader
+) => {
+  const view = requireView(input, reader, intent.id)
+  if (!view) {
+    return
+  }
+  if (view.type !== 'kanban') {
+    compileIssue(input, 'view.invalidProjection', 'view.kanban.cardsPerColumn.set requires a kanban view', 'id')
+    return
+  }
+
+  const nextView = finalizeView(reader, {
+    ...view,
+    options: viewApi.layout.kanban.patch(view.options, {
+      cardsPerColumn: intent.value
+    })
+  })
+  if (nextView.type !== 'kanban') {
+    compileIssue(input, 'view.invalidProjection', 'view.kanban.cardsPerColumn.set produced a non-kanban view', 'id')
+    return
+  }
+  return emitValidatedViewUpdate(input, reader, view, nextView, [{
+    type: 'view.kanban.cardsPerColumn.set',
+    id: view.id,
+    value: nextView.options.cardsPerColumn
+  }])
 }
 
 const lowerViewOpen = (
@@ -865,7 +1844,7 @@ const lowerViewOpen = (
     return
   }
 
-  input.emit({
+  emitOps(input, {
     type: 'view.open',
     id: view.id
   })
@@ -876,44 +1855,27 @@ const lowerViewOrderMove = (
   input: DataviewCompileInput,
   reader: DocumentReader
 ) => {
-  const view = requireView(input, reader, intent.id)
-  if (!view) {
+  if (!requireView(input, reader, intent.id)) {
     return
   }
 
   const recordId = string.trimToUndefined(intent.record)
   if (!recordId) {
-    compileIssue(
-      input,
-      'view.invalidOrder',
-      'view.order.move requires a non-empty record id',
-      'record'
-    )
+    compileIssue(input, 'view.invalidOrder', 'view.order.move requires a non-empty record id', 'record')
     return
   }
   if (!reader.records.has(recordId)) {
-    compileIssue(
-      input,
-      'record.notFound',
-      `Unknown record: ${recordId}`,
-      'record'
-    )
+    compileIssue(input, 'record.notFound', `Unknown record: ${recordId}`, 'record')
     return
   }
 
   const beforeRecordId = string.trimToUndefined(intent.before)
   if (beforeRecordId !== undefined && beforeRecordId !== recordId && !reader.records.has(beforeRecordId)) {
-    compileIssue(
-      input,
-      'record.notFound',
-      `Unknown record: ${beforeRecordId}`,
-      'before'
-    )
+    compileIssue(input, 'record.notFound', `Unknown record: ${beforeRecordId}`, 'before')
     return
   }
 
-  void view
-  input.emit({
+  emitOps(input, {
     type: 'view.order.move',
     id: intent.id,
     record: recordId,
@@ -928,47 +1890,32 @@ const lowerViewOrderSplice = (
   input: DataviewCompileInput,
   reader: DocumentReader
 ) => {
-  const view = requireView(input, reader, intent.id)
-  if (!view) {
+  if (!requireView(input, reader, intent.id)) {
     return
   }
 
   const recordIds = Array.from(new Set(
-    intent.records.map((recordId) => string.trimToUndefined(recordId)).filter((recordId): recordId is RecordId => Boolean(recordId))
+    intent.records
+      .map((recordId) => string.trimToUndefined(recordId))
+      .filter((recordId): recordId is RecordId => Boolean(recordId))
   ))
   if (!recordIds.length) {
-    compileIssue(
-      input,
-      'view.invalidOrder',
-      'view.order.splice requires at least one record id',
-      'records'
-    )
+    compileIssue(input, 'view.invalidOrder', 'view.order.splice requires at least one record id', 'records')
     return
   }
   if (recordIds.some((recordId) => !reader.records.has(recordId))) {
     const missing = recordIds.find((recordId) => !reader.records.has(recordId))
-    compileIssue(
-      input,
-      'record.notFound',
-      `Unknown record: ${missing}`,
-      'records'
-    )
+    compileIssue(input, 'record.notFound', `Unknown record: ${missing}`, 'records')
     return
   }
 
   const beforeRecordId = string.trimToUndefined(intent.before)
   if (beforeRecordId !== undefined && !reader.records.has(beforeRecordId)) {
-    compileIssue(
-      input,
-      'record.notFound',
-      `Unknown record: ${beforeRecordId}`,
-      'before'
-    )
+    compileIssue(input, 'record.notFound', `Unknown record: ${beforeRecordId}`, 'before')
     return
   }
 
-  void view
-  input.emit({
+  emitOps(input, {
     type: 'view.order.splice',
     id: intent.id,
     records: recordIds,
@@ -991,7 +1938,7 @@ const lowerViewDisplayMove = (
     return
   }
 
-  input.emit({
+  emitOps(input, {
     type: 'view.display.move',
     id: intent.id,
     field: intent.field,
@@ -1021,7 +1968,7 @@ const lowerViewDisplaySplice = (
     return
   }
 
-  input.emit({
+  emitOps(input, {
     type: 'view.display.splice',
     id: intent.id,
     fields: fieldIds,
@@ -1044,7 +1991,7 @@ const lowerViewDisplayShow = (
     return
   }
 
-  input.emit({
+  emitOps(input, {
     type: 'view.display.show',
     id: intent.id,
     field: intent.field,
@@ -1067,7 +2014,7 @@ const lowerViewDisplayHide = (
     return
   }
 
-  input.emit({
+  emitOps(input, {
     type: 'view.display.hide',
     id: intent.id,
     field: intent.field
@@ -1083,7 +2030,7 @@ const lowerViewDisplayClear = (
     return
   }
 
-  input.emit({
+  emitOps(input, {
     type: 'view.display.clear',
     id: intent.id
   })
@@ -1099,7 +2046,7 @@ const lowerViewRemove = (
     return
   }
 
-  input.emit({
+  emitOps(input, {
     type: 'view.remove',
     id: view.id
   })
@@ -1113,8 +2060,77 @@ export const compileViewIntent = (
   switch (intent.type) {
     case 'view.create':
       return lowerViewCreate(intent, input, reader)
-    case 'view.patch':
-      return lowerViewPatch(intent, input, reader)
+    case 'view.rename':
+      return lowerViewRename(intent, input, reader)
+    case 'view.type.set':
+      return lowerViewTypeSet(intent, input, reader)
+    case 'view.search.set':
+      return lowerViewSearchSet(intent, input, reader)
+    case 'view.filter.create':
+      return lowerViewFilterCreate(intent, input, reader)
+    case 'view.filter.patch':
+      return lowerViewFilterPatch(intent, input, reader)
+    case 'view.filter.move':
+      return lowerViewFilterMove(intent, input, reader)
+    case 'view.filter.mode.set':
+      return lowerViewFilterModeSet(intent, input, reader)
+    case 'view.filter.remove':
+      return lowerViewFilterRemove(intent, input, reader)
+    case 'view.filter.clear':
+      return lowerViewFilterClear(intent, input, reader)
+    case 'view.sort.create':
+      return lowerViewSortCreate(intent, input, reader)
+    case 'view.sort.patch':
+      return lowerViewSortPatch(intent, input, reader)
+    case 'view.sort.move':
+      return lowerViewSortMove(intent, input, reader)
+    case 'view.sort.remove':
+      return lowerViewSortRemove(intent, input, reader)
+    case 'view.sort.clear':
+      return lowerViewSortClear(intent, input, reader)
+    case 'view.group.set':
+      return lowerViewGroupSet(intent, input, reader)
+    case 'view.group.clear':
+      return lowerViewGroupClear(intent, input, reader)
+    case 'view.group.toggle':
+      return lowerViewGroupToggle(intent, input, reader)
+    case 'view.group.mode.set':
+      return lowerViewGroupModeSet(intent, input, reader)
+    case 'view.group.sort.set':
+      return lowerViewGroupSortSet(intent, input, reader)
+    case 'view.group.interval.set':
+      return lowerViewGroupIntervalSet(intent, input, reader)
+    case 'view.group.showEmpty.set':
+      return lowerViewGroupShowEmptySet(intent, input, reader)
+    case 'view.section.show':
+    case 'view.section.hide':
+    case 'view.section.collapse':
+    case 'view.section.expand':
+      return lowerViewSectionVisibility(intent, input, reader)
+    case 'view.calc.set':
+      return lowerViewCalcSet(intent, input, reader)
+    case 'view.table.widths.set':
+      return lowerViewTableWidthsSet(intent, input, reader)
+    case 'view.table.verticalLines.set':
+      return lowerViewTableVerticalLinesSet(intent, input, reader)
+    case 'view.table.wrap.set':
+      return lowerViewTableWrapSet(intent, input, reader)
+    case 'view.gallery.wrap.set':
+      return lowerViewGalleryWrapSet(intent, input, reader)
+    case 'view.gallery.size.set':
+      return lowerViewGallerySizeSet(intent, input, reader)
+    case 'view.gallery.layout.set':
+      return lowerViewGalleryLayoutSet(intent, input, reader)
+    case 'view.kanban.wrap.set':
+      return lowerViewKanbanWrapSet(intent, input, reader)
+    case 'view.kanban.size.set':
+      return lowerViewKanbanSizeSet(intent, input, reader)
+    case 'view.kanban.layout.set':
+      return lowerViewKanbanLayoutSet(intent, input, reader)
+    case 'view.kanban.fillColor.set':
+      return lowerViewKanbanFillColorSet(intent, input, reader)
+    case 'view.kanban.cardsPerColumn.set':
+      return lowerViewKanbanCardsPerColumnSet(intent, input, reader)
     case 'view.order.move':
       return lowerViewOrderMove(intent, input, reader)
     case 'view.order.splice':

@@ -42,9 +42,16 @@ export const createActiveViewApi = (
     state: base.state,
     read: readApi,
     changeType: (type) => {
-      base.patchView(() => ({
-        type
-      }))
+      const viewId = base.id()
+      if (!viewId) {
+        return
+      }
+
+      base.execute({
+        type: 'view.type.set',
+        id: viewId,
+        viewType: type
+      })
     },
     search: createSearchApi(base),
     filters: createFiltersApi(base),

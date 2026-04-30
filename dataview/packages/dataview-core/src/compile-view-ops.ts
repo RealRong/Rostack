@@ -42,6 +42,45 @@ const insertBefore = <T,>(
   ]
 }
 
+const cloneFilterRuleOperationValue = (
+  value: FilterRule['value']
+): FilterRule['value'] => {
+  if (
+    typeof value === 'object'
+    && value !== null
+    && 'kind' in value
+    && value.kind === 'option-set'
+  ) {
+    return {
+      kind: 'option-set',
+      optionIds: [...value.optionIds]
+    }
+  }
+
+  return structuredClone(value)
+}
+
+const cloneFilterRuleForOperation = (
+  rule: FilterRule
+): FilterRule => ({
+  id: rule.id,
+  fieldId: rule.fieldId,
+  presetId: rule.presetId,
+  ...(Object.prototype.hasOwnProperty.call(rule, 'value')
+    ? {
+        value: cloneFilterRuleOperationValue(rule.value)
+      }
+    : {})
+})
+
+const cloneSortRuleForOperation = (
+  rule: SortRule
+): SortRule => ({
+  id: rule.id,
+  fieldId: rule.fieldId,
+  direction: rule.direction
+})
+
 export const buildViewDisplayOps = (
   current: View,
   next: View
@@ -150,12 +189,12 @@ const buildViewFilterOps = (
       operations.push({
         type: 'view.filter.create',
         id: current.id,
-        rule: structuredClone(nextRule),
+        rule: cloneFilterRuleForOperation(nextRule),
         ...(before !== undefined
           ? { before }
           : {})
       })
-      workingIds = insertBefore(workingIds, ruleId, before)
+      workingIds = [...insertBefore(workingIds, ruleId, before)]
       continue
     }
 
@@ -222,12 +261,12 @@ const buildViewSortOps = (
       operations.push({
         type: 'view.sort.create',
         id: current.id,
-        rule: structuredClone(nextRule),
+        rule: cloneSortRuleForOperation(nextRule),
         ...(before !== undefined
           ? { before }
           : {})
       })
-      workingIds = insertBefore(workingIds, ruleId, before)
+      workingIds = [...insertBefore(workingIds, ruleId, before)]
       continue
     }
 

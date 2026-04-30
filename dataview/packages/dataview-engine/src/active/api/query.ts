@@ -1,81 +1,109 @@
 import {
-  filter
-} from '@dataview/core/view'
-import {
-  group
-} from '@dataview/core/view'
-import { search } from '@dataview/core/view'
-import {
-  sort
+  group,
+  search
 } from '@dataview/core/view'
 import type { ActiveViewApi } from '@dataview/engine/contracts/view'
 import type { ActiveViewContext } from '@dataview/engine/active/api/context'
 
+const readCreatedId = (
+  value: unknown
+): string | undefined => (
+  typeof value === 'object'
+  && value !== null
+  && 'id' in value
+  && typeof value.id === 'string'
+)
+  ? value.id
+  : undefined
+
 export const createSearchApi = (
   base: ActiveViewContext
 ): ActiveViewApi['search'] => ({
-  set: value => {
-    base.patchView(view => ({
+  set: (value) => {
+    const view = base.view()
+    if (!view) {
+      return
+    }
+
+    base.execute({
+      type: 'view.search.set',
+      id: view.id,
       search: search.state.setQuery(view.search, value)
-    }))
+    })
   }
 })
 
 export const createFiltersApi = (
   base: ActiveViewContext
 ): ActiveViewApi['filters'] => ({
-  create: fieldId => {
-    let createdId
-    const applied = base.patchView((view, reader) => {
-      const field = reader.fields.get(fieldId)
-      if (!field) {
-        return undefined
-      }
+  create: (fieldId) => {
+    const viewId = base.id()
+    if (!viewId) {
+      throw new Error(`Unable to create filter for field ${fieldId}`)
+    }
 
-      const created = filter.write.create(view.filter, field)
-      createdId = created.id
-      return {
-        filter: created.filter
+    const result = base.execute({
+      type: 'view.filter.create',
+      id: viewId,
+      input: {
+        fieldId
       }
     })
-    if (!applied || !createdId) {
+    const createdId = result.ok
+      ? readCreatedId(result.data)
+      : undefined
+    if (!createdId) {
       throw new Error(`Unable to create filter for field ${fieldId}`)
     }
     return createdId
   },
   patch: (id, patch) => {
-    base.patchView((view, reader) => {
-      const nextFieldId = patch.fieldId ?? filter.rules.get(view.filter.rules, id)?.fieldId
-      if (patch.fieldId !== undefined && !reader.fields.has(patch.fieldId)) {
-        return undefined
-      }
+    const viewId = base.id()
+    if (!viewId) {
+      return
+    }
 
-      return {
-        filter: filter.write.patch(
-          view.filter,
-          id,
-          patch,
-          nextFieldId
-            ? reader.fields.get(nextFieldId)
-            : undefined
-        )
-      }
+    base.execute({
+      type: 'view.filter.patch',
+      id: viewId,
+      rule: id,
+      patch
     })
   },
-  setMode: value => {
-    base.patchView(view => ({
-      filter: filter.write.mode(view.filter, value)
-    }))
+  setMode: (value) => {
+    const viewId = base.id()
+    if (!viewId) {
+      return
+    }
+
+    base.execute({
+      type: 'view.filter.mode.set',
+      id: viewId,
+      mode: value
+    })
   },
-  remove: id => {
-    base.patchView(view => ({
-      filter: filter.write.remove(view.filter, id)
-    }))
+  remove: (id) => {
+    const viewId = base.id()
+    if (!viewId) {
+      return
+    }
+
+    base.execute({
+      type: 'view.filter.remove',
+      id: viewId,
+      rule: id
+    })
   },
   clear: () => {
-    base.patchView(view => ({
-      filter: filter.write.clear(view.filter)
-    }))
+    const viewId = base.id()
+    if (!viewId) {
+      return
+    }
+
+    base.execute({
+      type: 'view.filter.clear',
+      id: viewId
+    })
   }
 })
 
@@ -83,115 +111,174 @@ export const createSortApi = (
   base: ActiveViewContext
 ): ActiveViewApi['sort'] => ({
   create: (fieldId, direction) => {
-    let createdId
-    const applied = base.patchView(view => {
-      const created = sort.write.create(view.sort, fieldId, direction)
-      createdId = created.id
-      return {
-        sort: created.sort
+    const viewId = base.id()
+    if (!viewId) {
+      throw new Error(`Unable to create sort for field ${fieldId}`)
+    }
+
+    const result = base.execute({
+      type: 'view.sort.create',
+      id: viewId,
+      input: {
+        fieldId,
+        ...(direction !== undefined
+          ? { direction }
+          : {})
       }
     })
-    if (!applied || !createdId) {
+    const createdId = result.ok
+      ? readCreatedId(result.data)
+      : undefined
+    if (!createdId) {
       throw new Error(`Unable to create sort for field ${fieldId}`)
     }
     return createdId
   },
   patch: (id, patch) => {
-    base.patchView(view => ({
-      sort: sort.write.patch(view.sort, id, patch)
-    }))
+    const viewId = base.id()
+    if (!viewId) {
+      return
+    }
+
+    base.execute({
+      type: 'view.sort.patch',
+      id: viewId,
+      rule: id,
+      patch
+    })
   },
-  move: (id, beforeId) => {
-    base.patchView(view => ({
-      sort: sort.write.move(view.sort, id, beforeId.before)
-    }))
+  move: (id, target) => {
+    const viewId = base.id()
+    if (!viewId) {
+      return
+    }
+
+    base.execute({
+      type: 'view.sort.move',
+      id: viewId,
+      rule: id,
+      ...(target.before !== undefined && target.before !== null
+        ? { before: target.before }
+        : {})
+    })
   },
-  remove: id => {
-    base.patchView(view => ({
-      sort: sort.write.remove(view.sort, id)
-    }))
+  remove: (id) => {
+    const viewId = base.id()
+    if (!viewId) {
+      return
+    }
+
+    base.execute({
+      type: 'view.sort.remove',
+      id: viewId,
+      rule: id
+    })
   },
   clear: () => {
-    base.patchView(view => ({
-      sort: sort.write.clear(view.sort)
-    }))
+    const viewId = base.id()
+    if (!viewId) {
+      return
+    }
+
+    base.execute({
+      type: 'view.sort.clear',
+      id: viewId
+    })
   }
 })
 
 export const createGroupApi = (
   base: ActiveViewContext
 ): ActiveViewApi['group'] => ({
-  set: fieldId => {
-    base.patchView((view, reader) => {
-      const field = reader.fields.get(fieldId)
-      return field
-        ? {
-            group: group.set(view.group, field) ?? null
-          }
-        : undefined
+  set: (fieldId) => {
+    const view = base.view()
+    const field = base.reader.fields.get(fieldId)
+    if (!view || !field) {
+      return
+    }
+
+    const nextGroup = group.set(view.group, field)
+    if (!nextGroup) {
+      return
+    }
+
+    base.execute({
+      type: 'view.group.set',
+      id: view.id,
+      group: nextGroup
     })
   },
   clear: () => {
-    base.patchView(view => ({
-      group: group.clear(view.group) ?? null
-    }))
-  },
-  toggle: fieldId => {
-    base.patchView((view, reader) => {
-      const field = reader.fields.get(fieldId)
-      return field
-        ? {
-            group: group.toggle(view.group, field) ?? null
-          }
-        : undefined
+    const viewId = base.id()
+    if (!viewId) {
+      return
+    }
+
+    base.execute({
+      type: 'view.group.clear',
+      id: viewId
     })
   },
-  setMode: value => {
-    base.patchView(view => {
-      const field = base.resolveGroupField(view)
-      return field
-        ? {
-            group: group.patch(view.group, field, {
-              mode: value
-            }) ?? null
-          }
-        : undefined
+  toggle: (fieldId) => {
+    const viewId = base.id()
+    if (!viewId) {
+      return
+    }
+
+    base.execute({
+      type: 'view.group.toggle',
+      id: viewId,
+      field: fieldId
     })
   },
-  setSort: value => {
-    base.patchView(view => {
-      const field = base.resolveGroupField(view)
-      return field
-        ? {
-            group: group.patch(view.group, field, {
-              bucketSort: value
-            }) ?? null
-          }
-        : undefined
+  setMode: (value) => {
+    const viewId = base.id()
+    if (!viewId) {
+      return
+    }
+
+    base.execute({
+      type: 'view.group.mode.set',
+      id: viewId,
+      mode: value
     })
   },
-  setInterval: value => {
-    base.patchView(view => {
-      const field = base.resolveGroupField(view)
-      return field
-        ? {
-            group: group.patch(view.group, field, {
-              bucketInterval: value
-            }) ?? null
-          }
-        : undefined
+  setSort: (value) => {
+    const viewId = base.id()
+    if (!viewId) {
+      return
+    }
+
+    base.execute({
+      type: 'view.group.sort.set',
+      id: viewId,
+      sort: value
     })
   },
-  setShowEmpty: value => {
-    base.patchView(view => {
-      const field = base.resolveGroupField(view)
-      return field
-        ? {
-            group: group.patch(view.group, field, {
-              showEmpty: value
-            }) ?? null
-          }
-        : undefined
+  setInterval: (value) => {
+    const viewId = base.id()
+    if (!viewId) {
+      return
+    }
+
+    base.execute({
+      type: 'view.group.interval.set',
+      id: viewId,
+      ...(value !== undefined
+        ? { interval: value }
+        : {})
+    })
+  },
+  setShowEmpty: (value) => {
+    const viewId = base.id()
+    if (!viewId) {
+      return
+    }
+
+    base.execute({
+      type: 'view.group.showEmpty.set',
+      id: viewId,
+      value
     })
   }
 })
@@ -199,52 +286,67 @@ export const createGroupApi = (
 export const createSectionsApi = (
   base: ActiveViewContext
 ): ActiveViewApi['sections'] => ({
-  show: key => base.patchView(view => {
-    const field = base.resolveGroupField(view)
-    return field
-      ? {
-          group: group.bucket.patch(view.group, field, key, {
-            hidden: false
-          }) ?? null
-        }
-      : undefined
-  }),
-  hide: key => base.patchView(view => {
-    const field = base.resolveGroupField(view)
-    return field
-      ? {
-          group: group.bucket.patch(view.group, field, key, {
-            hidden: true
-          }) ?? null
-        }
-      : undefined
-  }),
-  collapse: key => base.patchView(view => {
-    const field = base.resolveGroupField(view)
-    return field
-      ? {
-          group: group.bucket.patch(view.group, field, key, {
-            collapsed: true
-          }) ?? null
-        }
-      : undefined
-  }),
-  expand: key => base.patchView(view => {
-    const field = base.resolveGroupField(view)
-    return field
-      ? {
-          group: group.bucket.patch(view.group, field, key, {
-            collapsed: false
-          }) ?? null
-        }
-      : undefined
-  }),
-  toggleCollapse: key => base.patchView(view => {
-    const field = base.resolveGroupField(view)
-    return field
-      ? {
-          group: group.bucket.toggleCollapsed(view.group, field, key) ?? null
-        }
-      : undefined
-  })
+  show: (key) => {
+    const viewId = base.id()
+    if (!viewId) {
+      return
+    }
+
+    base.execute({
+      type: 'view.section.show',
+      id: viewId,
+      bucket: key
+    })
+  },
+  hide: (key) => {
+    const viewId = base.id()
+    if (!viewId) {
+      return
+    }
+
+    base.execute({
+      type: 'view.section.hide',
+      id: viewId,
+      bucket: key
+    })
+  },
+  collapse: (key) => {
+    const viewId = base.id()
+    if (!viewId) {
+      return
+    }
+
+    base.execute({
+      type: 'view.section.collapse',
+      id: viewId,
+      bucket: key
+    })
+  },
+  expand: (key) => {
+    const viewId = base.id()
+    if (!viewId) {
+      return
+    }
+
+    base.execute({
+      type: 'view.section.expand',
+      id: viewId,
+      bucket: key
+    })
+  },
+  toggleCollapse: (key) => {
+    const view = base.view()
+    if (!view?.group) {
+      return
+    }
+
+    const collapsed = view.group.buckets?.[key]?.collapsed === true
+    base.execute({
+      type: collapsed
+        ? 'view.section.expand'
+        : 'view.section.collapse',
+      id: view.id,
+      bucket: key
+    })
+  }
 })

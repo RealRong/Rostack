@@ -60,11 +60,9 @@ export const createViewsApi = (
       }
 
       engine.execute({
-        type: 'view.patch',
+        type: 'view.rename',
         id,
-        patch: {
-          name: nextName
-        }
+        name: nextName
       })
     },
     duplicate: (id) => {

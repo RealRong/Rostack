@@ -19,9 +19,13 @@ import type {
   CustomField,
   DataDoc,
   DataRecord,
+  Field,
   FieldId,
   FieldOption,
-  RecordId
+  FilterRule,
+  RecordId,
+  SortRule,
+  View
 } from '@dataview/core/types'
 import type {
   StatusOption
@@ -33,8 +37,12 @@ import {
   TITLE_FIELD_ID
 } from '@dataview/core/types'
 import {
-  entityTable
+  entityTable,
+  equal
 } from '@shared/core'
+import {
+  view as viewApi
+} from '@dataview/core/view'
 import {
   order
 } from '@shared/core'
@@ -58,9 +66,16 @@ import {
   applyRecordOrder
 } from '@dataview/core/view/order'
 import {
+  buildViewUpdateOps
+} from './compile-view-ops'
+import {
   dataviewMutationBuilder,
   type DataviewMutationSchema
 } from '@dataview/core/mutation'
+import {
+  resolveDefaultKanbanGroup,
+  setViewType
+} from './view/update'
 type DataviewMutationIdsKey = Parameters<typeof dataviewMutationBuilder.ids>[0]
 
 const toMutationDelta = (
@@ -157,6 +172,24 @@ const createViewOrdersDelta = (
     raw: 'orders'
   }]
 }) as MutationDelta)
+
+const createViewQueryDelta = (
+  viewId: string,
+  aspects: readonly ('search' | 'filter' | 'sort' | 'group' | 'order')[]
+) => aspects.length
+  ? toMutationDelta(dataviewMutationBuilder.paths('view.query', {
+      [viewId]: aspects.map((aspect) => ({
+        aspect,
+        raw: aspect === 'order'
+          ? 'orders'
+          : aspect
+      }))
+    }) as MutationDelta)
+  : undefined
+
+const createViewCalcDelta = (
+  viewIds: readonly string[]
+) => createIdsDelta('view.calc', viewIds)
 
 const createEntityFootprint = (
   family: 'field' | 'view',
@@ -793,6 +826,501 @@ const createFieldOptionDeleteResult = (
   }
 }
 
+const ensureKanbanGroup = (
+  reader: DocumentReader,
+  view: View
+): View => {
+  if (view.type !== 'kanban' || view.group) {
+    return view
+  }
+
+  const nextGroup = resolveDefaultKanbanGroup(reader.fields.list())
+  return nextGroup
+    ? {
+        ...view,
+        group: viewApi.group.state.clone(nextGroup)!
+      }
+    : view
+}
+
+const sameViewOptions = (
+  current: View,
+  next: View
+): boolean => {
+  if (current.type !== next.type) {
+    return false
+  }
+
+  switch (current.type) {
+    case 'table':
+      return next.type === 'table'
+        ? viewApi.options.same('table', current.options, next.options)
+        : false
+    case 'gallery':
+      return next.type === 'gallery'
+        ? viewApi.options.same('gallery', current.options, next.options)
+        : false
+    case 'kanban':
+      return next.type === 'kanban'
+        ? viewApi.options.same('kanban', current.options, next.options)
+        : false
+  }
+}
+
+const createViewDelta = (
+  current: View,
+  next: View
+) => {
+  const queryAspects: ('search' | 'filter' | 'sort' | 'group' | 'order')[] = []
+
+  if (!viewApi.search.state.same(current.search, next.search)) {
+    queryAspects.push('search')
+  }
+  if (!viewApi.filter.state.same(current.filter, next.filter)) {
+    queryAspects.push('filter')
+  }
+  if (!viewApi.sort.rules.same(current.sort.rules, next.sort.rules)) {
+    queryAspects.push('sort')
+  }
+  if (!viewApi.group.state.same(current.group, next.group)) {
+    queryAspects.push('group')
+  }
+  if (!equal.sameOrder(current.orders, next.orders)) {
+    queryAspects.push('order')
+  }
+
+  const layoutChanged = (
+    current.name !== next.name
+    || current.type !== next.type
+    || !viewApi.display.same(current.display, next.display)
+    || !sameViewOptions(current, next)
+  )
+  const calcChanged = !viewApi.calc.same(current.calc, next.calc)
+
+  return toMutationDelta(dataviewMutationBuilder.merge(
+    createViewQueryDelta(current.id, queryAspects),
+    layoutChanged
+      ? createViewLayoutDelta([current.id])
+      : undefined,
+    calcChanged
+      ? createViewCalcDelta([current.id])
+      : undefined
+  ) as MutationDelta)
+}
+
+const createViewRewriteResult = (
+  document: DataDoc,
+  reader: DocumentReader,
+  current: View,
+  next: View
+) => {
+  const nextView = ensureKanbanGroup(reader, next)
+  if (equal.sameJsonValue(current, nextView)) {
+    return
+  }
+
+  const inverse = buildViewUpdateOps(nextView, current)
+  if (!inverse.length) {
+    throw new Error(`Unable to derive inverse operations for view ${current.id}.`)
+  }
+
+  return {
+    document: {
+      ...document,
+      views: entityTable.write.put(document.views, nextView)
+    },
+    delta: createViewDelta(current, nextView),
+    footprint: [
+      createEntityFootprint('view', current.id)
+    ],
+    history: {
+      inverse
+    }
+  }
+}
+
+const createViewSemanticResult = (
+  document: DataDoc,
+  reader: DocumentReader,
+  operation: Extract<DocumentOperation, {
+    type:
+      | 'view.rename'
+      | 'view.type.set'
+      | 'view.search.set'
+      | 'view.filter.create'
+      | 'view.filter.patch'
+      | 'view.filter.move'
+      | 'view.filter.mode.set'
+      | 'view.filter.remove'
+      | 'view.filter.clear'
+      | 'view.sort.create'
+      | 'view.sort.patch'
+      | 'view.sort.move'
+      | 'view.sort.remove'
+      | 'view.sort.clear'
+      | 'view.group.set'
+      | 'view.group.clear'
+      | 'view.group.toggle'
+      | 'view.group.mode.set'
+      | 'view.group.sort.set'
+      | 'view.group.interval.set'
+      | 'view.group.showEmpty.set'
+      | 'view.section.show'
+      | 'view.section.hide'
+      | 'view.section.collapse'
+      | 'view.section.expand'
+      | 'view.calc.set'
+      | 'view.table.widths.set'
+      | 'view.table.verticalLines.set'
+      | 'view.table.wrap.set'
+      | 'view.gallery.wrap.set'
+      | 'view.gallery.size.set'
+      | 'view.gallery.layout.set'
+      | 'view.kanban.wrap.set'
+      | 'view.kanban.size.set'
+      | 'view.kanban.layout.set'
+      | 'view.kanban.fillColor.set'
+      | 'view.kanban.cardsPerColumn.set'
+  }>
+) => {
+  const current = document.views.byId[operation.id]
+  if (!current) {
+    return
+  }
+
+  switch (operation.type) {
+    case 'view.rename':
+      return createViewRewriteResult(document, reader, current, {
+        ...current,
+        name: operation.name
+      })
+    case 'view.type.set': {
+      const next = setViewType({
+        view: current,
+        type: operation.viewType,
+        fields: reader.fields.list()
+      })
+      return next
+        ? createViewRewriteResult(document, reader, current, next)
+        : undefined
+    }
+    case 'view.search.set':
+      return createViewRewriteResult(document, reader, current, {
+        ...current,
+        search: viewApi.search.state.clone(operation.search)
+      })
+    case 'view.filter.create': {
+      const field = reader.fields.get(operation.rule.fieldId)
+      if (!field) {
+        return
+      }
+
+      const created = viewApi.filter.write.insert(current.filter, field, {
+        id: operation.rule.id,
+        presetId: operation.rule.presetId,
+        ...(Object.prototype.hasOwnProperty.call(operation.rule, 'value')
+          ? { value: operation.rule.value }
+          : {}),
+        ...(operation.before !== undefined
+          ? { before: operation.before }
+          : {})
+      })
+      return createViewRewriteResult(document, reader, current, {
+        ...current,
+        filter: created.filter
+      })
+    }
+    case 'view.filter.patch': {
+      const currentRule = current.filter.rules.byId[operation.rule]
+      if (!currentRule) {
+        return
+      }
+
+      const nextFieldId = operation.patch.fieldId ?? currentRule.fieldId
+      const field = reader.fields.get(nextFieldId)
+      if (!field) {
+        return
+      }
+
+      return createViewRewriteResult(document, reader, current, {
+        ...current,
+        filter: viewApi.filter.write.patch(
+          current.filter,
+          operation.rule,
+          operation.patch,
+          field
+        )
+      })
+    }
+    case 'view.filter.move':
+      return createViewRewriteResult(document, reader, current, {
+        ...current,
+        filter: viewApi.filter.write.move(
+          current.filter,
+          operation.rule,
+          operation.before
+        )
+      })
+    case 'view.filter.mode.set':
+      return createViewRewriteResult(document, reader, current, {
+        ...current,
+        filter: viewApi.filter.write.mode(current.filter, operation.mode)
+      })
+    case 'view.filter.remove':
+      return createViewRewriteResult(document, reader, current, {
+        ...current,
+        filter: viewApi.filter.write.remove(current.filter, operation.rule)
+      })
+    case 'view.filter.clear':
+      return createViewRewriteResult(document, reader, current, {
+        ...current,
+        filter: viewApi.filter.write.clear(current.filter)
+      })
+    case 'view.sort.create':
+      return createViewRewriteResult(document, reader, current, {
+        ...current,
+        sort: viewApi.sort.write.insert(current.sort, {
+          id: operation.rule.id,
+          fieldId: operation.rule.fieldId,
+          direction: operation.rule.direction,
+          ...(operation.before !== undefined
+            ? { before: operation.before }
+            : {})
+        }).sort
+      })
+    case 'view.sort.patch':
+      return createViewRewriteResult(document, reader, current, {
+        ...current,
+        sort: viewApi.sort.write.patch(
+          current.sort,
+          operation.rule,
+          operation.patch
+        )
+      })
+    case 'view.sort.move':
+      return createViewRewriteResult(document, reader, current, {
+        ...current,
+        sort: viewApi.sort.write.move(
+          current.sort,
+          operation.rule,
+          operation.before
+        )
+      })
+    case 'view.sort.remove':
+      return createViewRewriteResult(document, reader, current, {
+        ...current,
+        sort: viewApi.sort.write.remove(current.sort, operation.rule)
+      })
+    case 'view.sort.clear':
+      return createViewRewriteResult(document, reader, current, {
+        ...current,
+        sort: viewApi.sort.write.clear(current.sort)
+      })
+    case 'view.group.set':
+      return createViewRewriteResult(document, reader, current, {
+        ...current,
+        group: viewApi.group.state.clone(operation.group)
+      } as View)
+    case 'view.group.clear':
+      return createViewRewriteResult(document, reader, current, {
+        ...current,
+        group: viewApi.group.clear(current.group)
+      } as View)
+    case 'view.group.toggle': {
+      const field = reader.fields.get(operation.field)
+      if (!field) {
+        return
+      }
+
+      return createViewRewriteResult(document, reader, current, {
+        ...current,
+        group: viewApi.group.toggle(current.group, field)
+      } as View)
+    }
+    case 'view.group.mode.set':
+    case 'view.group.sort.set':
+    case 'view.group.interval.set':
+    case 'view.group.showEmpty.set': {
+      const fieldId = current.group?.fieldId
+      const field = fieldId
+        ? reader.fields.get(fieldId)
+        : undefined
+      if (!field) {
+        return
+      }
+
+      const group = operation.type === 'view.group.mode.set'
+        ? viewApi.group.patch(current.group, field, {
+            mode: operation.mode
+          })
+        : operation.type === 'view.group.sort.set'
+          ? viewApi.group.patch(current.group, field, {
+              bucketSort: operation.sort
+            })
+          : operation.type === 'view.group.interval.set'
+            ? viewApi.group.patch(current.group, field, {
+                bucketInterval: operation.interval
+              })
+            : viewApi.group.patch(current.group, field, {
+                showEmpty: operation.value
+              })
+      return group
+        ? createViewRewriteResult(document, reader, current, {
+            ...current,
+            group
+          })
+        : undefined
+    }
+    case 'view.section.show':
+    case 'view.section.hide':
+    case 'view.section.collapse':
+    case 'view.section.expand': {
+      const fieldId = current.group?.fieldId
+      const field = fieldId
+        ? reader.fields.get(fieldId)
+        : undefined
+      if (!field) {
+        return
+      }
+
+      const nextGroup = viewApi.group.bucket.patch(
+        current.group,
+        field,
+        operation.bucket,
+        operation.type === 'view.section.show'
+          ? { hidden: false }
+          : operation.type === 'view.section.hide'
+            ? { hidden: true }
+            : operation.type === 'view.section.collapse'
+              ? { collapsed: true }
+              : { collapsed: false }
+      )
+      return nextGroup
+        ? createViewRewriteResult(document, reader, current, {
+            ...current,
+            group: nextGroup
+          })
+        : undefined
+    }
+    case 'view.calc.set':
+      return createViewRewriteResult(document, reader, current, {
+        ...current,
+        calc: viewApi.calc.set(current.calc, operation.field, operation.metric ?? null)
+      })
+    case 'view.table.widths.set':
+      return current.type === 'table'
+        ? createViewRewriteResult(document, reader, current, {
+            ...current,
+            options: viewApi.layout.table.patch(current.options, {
+              widths: operation.widths
+            })
+          })
+        : undefined
+    case 'view.table.verticalLines.set':
+      return current.type === 'table'
+        ? createViewRewriteResult(document, reader, current, {
+            ...current,
+            options: viewApi.layout.table.patch(current.options, {
+              showVerticalLines: operation.value
+            })
+          })
+        : undefined
+    case 'view.table.wrap.set':
+      return current.type === 'table'
+        ? createViewRewriteResult(document, reader, current, {
+            ...current,
+            options: viewApi.layout.table.patch(current.options, {
+              wrap: operation.value
+            })
+          })
+        : undefined
+    case 'view.gallery.wrap.set':
+      return current.type === 'gallery'
+        ? createViewRewriteResult(document, reader, current, {
+            ...current,
+            options: viewApi.layout.gallery.patch(current.options, {
+              card: {
+                wrap: operation.value
+              }
+            })
+          })
+        : undefined
+    case 'view.gallery.size.set':
+      return current.type === 'gallery'
+        ? createViewRewriteResult(document, reader, current, {
+            ...current,
+            options: viewApi.layout.gallery.patch(current.options, {
+              card: {
+                size: operation.value
+              }
+            })
+          })
+        : undefined
+    case 'view.gallery.layout.set':
+      return current.type === 'gallery'
+        ? createViewRewriteResult(document, reader, current, {
+            ...current,
+            options: viewApi.layout.gallery.patch(current.options, {
+              card: {
+                layout: operation.value
+              }
+            })
+          })
+        : undefined
+    case 'view.kanban.wrap.set':
+      return current.type === 'kanban'
+        ? createViewRewriteResult(document, reader, current, {
+            ...current,
+            options: viewApi.layout.kanban.patch(current.options, {
+              card: {
+                wrap: operation.value
+              }
+            })
+          })
+        : undefined
+    case 'view.kanban.size.set':
+      return current.type === 'kanban'
+        ? createViewRewriteResult(document, reader, current, {
+            ...current,
+            options: viewApi.layout.kanban.patch(current.options, {
+              card: {
+                size: operation.value
+              }
+            })
+          })
+        : undefined
+    case 'view.kanban.layout.set':
+      return current.type === 'kanban'
+        ? createViewRewriteResult(document, reader, current, {
+            ...current,
+            options: viewApi.layout.kanban.patch(current.options, {
+              card: {
+                layout: operation.value
+              }
+            })
+          })
+        : undefined
+    case 'view.kanban.fillColor.set':
+      return current.type === 'kanban'
+        ? createViewRewriteResult(document, reader, current, {
+            ...current,
+            options: viewApi.layout.kanban.patch(current.options, {
+              fillColumnColor: operation.value
+            })
+          })
+        : undefined
+    case 'view.kanban.cardsPerColumn.set':
+      return current.type === 'kanban'
+        ? createViewRewriteResult(document, reader, current, {
+            ...current,
+            options: viewApi.layout.kanban.patch(current.options, {
+              cardsPerColumn: operation.value
+            })
+          })
+        : undefined
+  }
+}
+
 const createViewOrderMoveResult = (
   document: DataDoc,
   operation: Extract<DocumentOperation, { type: 'view.order.move' }>
@@ -1381,6 +1909,117 @@ export const dataviewCustom: MutationCustomTable<
   },
   'field.remove': {
     reduce: ({ op, document }) => createFieldRemoveResult(document, op)
+  },
+  'view.rename': {
+    reduce: ({ op, document, reader }) => createViewSemanticResult(document, reader, op)
+  },
+  'view.type.set': {
+    reduce: ({ op, document, reader }) => createViewSemanticResult(document, reader, op)
+  },
+  'view.search.set': {
+    reduce: ({ op, document, reader }) => createViewSemanticResult(document, reader, op)
+  },
+  'view.filter.create': {
+    reduce: ({ op, document, reader }) => createViewSemanticResult(document, reader, op)
+  },
+  'view.filter.patch': {
+    reduce: ({ op, document, reader }) => createViewSemanticResult(document, reader, op)
+  },
+  'view.filter.move': {
+    reduce: ({ op, document, reader }) => createViewSemanticResult(document, reader, op)
+  },
+  'view.filter.mode.set': {
+    reduce: ({ op, document, reader }) => createViewSemanticResult(document, reader, op)
+  },
+  'view.filter.remove': {
+    reduce: ({ op, document, reader }) => createViewSemanticResult(document, reader, op)
+  },
+  'view.filter.clear': {
+    reduce: ({ op, document, reader }) => createViewSemanticResult(document, reader, op)
+  },
+  'view.sort.create': {
+    reduce: ({ op, document, reader }) => createViewSemanticResult(document, reader, op)
+  },
+  'view.sort.patch': {
+    reduce: ({ op, document, reader }) => createViewSemanticResult(document, reader, op)
+  },
+  'view.sort.move': {
+    reduce: ({ op, document, reader }) => createViewSemanticResult(document, reader, op)
+  },
+  'view.sort.remove': {
+    reduce: ({ op, document, reader }) => createViewSemanticResult(document, reader, op)
+  },
+  'view.sort.clear': {
+    reduce: ({ op, document, reader }) => createViewSemanticResult(document, reader, op)
+  },
+  'view.group.set': {
+    reduce: ({ op, document, reader }) => createViewSemanticResult(document, reader, op)
+  },
+  'view.group.clear': {
+    reduce: ({ op, document, reader }) => createViewSemanticResult(document, reader, op)
+  },
+  'view.group.toggle': {
+    reduce: ({ op, document, reader }) => createViewSemanticResult(document, reader, op)
+  },
+  'view.group.mode.set': {
+    reduce: ({ op, document, reader }) => createViewSemanticResult(document, reader, op)
+  },
+  'view.group.sort.set': {
+    reduce: ({ op, document, reader }) => createViewSemanticResult(document, reader, op)
+  },
+  'view.group.interval.set': {
+    reduce: ({ op, document, reader }) => createViewSemanticResult(document, reader, op)
+  },
+  'view.group.showEmpty.set': {
+    reduce: ({ op, document, reader }) => createViewSemanticResult(document, reader, op)
+  },
+  'view.section.show': {
+    reduce: ({ op, document, reader }) => createViewSemanticResult(document, reader, op)
+  },
+  'view.section.hide': {
+    reduce: ({ op, document, reader }) => createViewSemanticResult(document, reader, op)
+  },
+  'view.section.collapse': {
+    reduce: ({ op, document, reader }) => createViewSemanticResult(document, reader, op)
+  },
+  'view.section.expand': {
+    reduce: ({ op, document, reader }) => createViewSemanticResult(document, reader, op)
+  },
+  'view.calc.set': {
+    reduce: ({ op, document, reader }) => createViewSemanticResult(document, reader, op)
+  },
+  'view.table.widths.set': {
+    reduce: ({ op, document, reader }) => createViewSemanticResult(document, reader, op)
+  },
+  'view.table.verticalLines.set': {
+    reduce: ({ op, document, reader }) => createViewSemanticResult(document, reader, op)
+  },
+  'view.table.wrap.set': {
+    reduce: ({ op, document, reader }) => createViewSemanticResult(document, reader, op)
+  },
+  'view.gallery.wrap.set': {
+    reduce: ({ op, document, reader }) => createViewSemanticResult(document, reader, op)
+  },
+  'view.gallery.size.set': {
+    reduce: ({ op, document, reader }) => createViewSemanticResult(document, reader, op)
+  },
+  'view.gallery.layout.set': {
+    reduce: ({ op, document, reader }) => createViewSemanticResult(document, reader, op)
+  },
+  'view.kanban.wrap.set': {
+    reduce: ({ op, document, reader }) => createViewSemanticResult(document, reader, op)
+  },
+  'view.kanban.size.set': {
+    reduce: ({ op, document, reader }) => createViewSemanticResult(document, reader, op)
+  },
+  'view.kanban.layout.set': {
+    reduce: ({ op, document, reader }) => createViewSemanticResult(document, reader, op)
+  },
+  'view.kanban.fillColor.set': {
+    reduce: ({ op, document, reader }) => createViewSemanticResult(document, reader, op)
+  },
+  'view.kanban.cardsPerColumn.set': {
+    reduce: ({ op, document, reader }) => createViewSemanticResult(document, reader, op)
   },
   'view.order.move': {
     reduce: ({ op, document }) => createViewOrderMoveResult(document, op)

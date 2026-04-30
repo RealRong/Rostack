@@ -1,5 +1,7 @@
 import type {
   BucketSort,
+  CardLayout,
+  CardSize,
   CustomField,
   CustomFieldId,
   DataRecord,
@@ -8,6 +10,7 @@ import type {
   Filter,
   FilterRule,
   FilterValue,
+  KanbanCardsPerColumn,
   RecordId,
   Search,
   SortDirection,
@@ -232,16 +235,12 @@ export type DocumentOperation =
   | {
       type: 'view.gallery.size.set'
       id: ViewId
-      value: View['type'] extends 'gallery'
-        ? never
-        : never
+      value: CardSize
     }
   | {
       type: 'view.gallery.layout.set'
       id: ViewId
-      value: View['type'] extends 'gallery'
-        ? never
-        : never
+      value: CardLayout
     }
   | {
       type: 'view.kanban.wrap.set'
@@ -266,7 +265,7 @@ export type DocumentOperation =
   | {
       type: 'view.kanban.cardsPerColumn.set'
       id: ViewId
-      value: 25 | 50 | 100 | 'all'
+      value: KanbanCardsPerColumn
     }
   | {
       type: 'view.order.move'

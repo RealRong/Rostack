@@ -159,7 +159,7 @@ export const createWhiteboardMutationDelta = (
     return cached
   }
 
-  const delta = Object.assign(normalized, {
+  const delta = Object.assign({}, normalized, {
     raw: normalized,
     canvas: {
       orderChanged: () => hasKey(normalized, 'canvas.order')

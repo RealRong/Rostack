@@ -3,13 +3,6 @@ import {
   record as draftRecord,
   type RecordWrite
 } from '@shared/draft'
-import {
-  createStructuralOrderedDeleteOperation,
-  createStructuralOrderedInsertOperation,
-  createStructuralOrderedMoveOperation,
-  createStructuralOrderedPatchOperation,
-  type MutationStructuralCanonicalOperation
-} from '@shared/mutation'
 import { edge as edgeApi } from '@whiteboard/core/edge'
 import {
   createEdgeLabelPatch,
@@ -19,9 +12,6 @@ import type {
   WhiteboardCompileContext,
   WhiteboardCompileHandlerTable
 } from '@whiteboard/core/operations/compile/helpers'
-import {
-  appendWhiteboardOperation
-} from './append'
 import {
   failCancelled,
   failInvalid,
@@ -35,6 +25,19 @@ import {
   toStructuralOrderedAnchor
 } from '@whiteboard/core/operations/targets'
 import { resolveLockDecision } from '@whiteboard/core/operations/lock'
+import {
+  writeEdgeCreate,
+  writeEdgeDelete,
+  writeEdgeLabelDelete,
+  writeEdgeLabelInsert,
+  writeEdgeLabelMove,
+  writeEdgeLabelPatch,
+  writeEdgePatch,
+  writeEdgeRouteDelete,
+  writeEdgeRouteInsert,
+  writeEdgeRouteMove,
+  writeEdgeRoutePatch,
+} from './write'
 import type {
   Edge,
   EdgeFieldPatch,
@@ -246,12 +249,7 @@ const emitEdgeRouteDiffOps = (
         x: point.x,
         y: point.y
       }
-      appendWhiteboardOperation(ctx, createStructuralOrderedInsertOperation<MutationStructuralCanonicalOperation>({
-        structure,
-        itemId: routePoint.id,
-        value: routePoint,
-        to: toStructuralOrderedAnchor(to)
-      }))
+      writeEdgeRouteInsert(ctx.program, edgeId, routePoint, to)
       to = {
         kind: 'after',
         pointId: routePoint.id
@@ -262,10 +260,7 @@ const emitEdgeRouteDiffOps = (
 
   if (nextMiddle.length === 0) {
     currentMiddle.forEach((point) => {
-      appendWhiteboardOperation(ctx, createStructuralOrderedDeleteOperation<MutationStructuralCanonicalOperation>({
-        structure,
-        itemId: point.id
-      }))
+      writeEdgeRouteDelete(ctx.program, edgeId, point.id)
     })
     return
   }
@@ -281,21 +276,14 @@ const emitEdgeRouteDiffOps = (
         fields.y = nextPoint.y
       }
       if (Object.keys(fields).length) {
-        appendWhiteboardOperation(ctx, createStructuralOrderedPatchOperation<MutationStructuralCanonicalOperation>({
-          structure,
-          itemId: point.id,
-          patch: fields
-        }))
+        writeEdgeRoutePatch(ctx.program, edgeId, point.id, fields)
       }
     })
     return
   }
 
   currentPoints.forEach((point) => {
-    appendWhiteboardOperation(ctx, createStructuralOrderedDeleteOperation<MutationStructuralCanonicalOperation>({
-      structure,
-      itemId: point.id
-    }))
+    writeEdgeRouteDelete(ctx.program, edgeId, point.id)
   })
 
   let to: EdgeRoutePointAnchor = { kind: 'start' }
@@ -305,12 +293,7 @@ const emitEdgeRouteDiffOps = (
       x: point.x,
       y: point.y
     }
-    appendWhiteboardOperation(ctx, createStructuralOrderedInsertOperation<MutationStructuralCanonicalOperation>({
-      structure,
-      itemId: routePoint.id,
-      value: routePoint,
-      to: toStructuralOrderedAnchor(to)
-    }))
+    writeEdgeRouteInsert(ctx.program, edgeId, routePoint, to)
     to = {
       kind: 'after',
       pointId: routePoint.id
@@ -329,14 +312,10 @@ const emitEdgeUpdateInputOps = (
     return
   }
 
-  appendWhiteboardOperation(ctx, {
-    type: 'edge.patch',
-    id: edge.id,
-    patch: createEdgePatch({
-      ...(fields ? { fields } : {}),
-      ...(record ? { record } : {})
-    })
-  })
+  writeEdgePatch(ctx.program, edge.id, createEdgePatch({
+    ...(fields ? { fields } : {}),
+    ...(record ? { record } : {})
+  }))
 }
 
 export const emitEdgeMovePatchOps = (
@@ -400,10 +379,7 @@ const compileEdgeRouteDelete = (
     return failInvalid(ctx, `Edge ${edge.id} route point not found.`)
   }
 
-  appendWhiteboardOperation(ctx, createStructuralOrderedDeleteOperation<MutationStructuralCanonicalOperation>({
-    structure: edgeRoutePointsStructure(edge.id),
-    itemId: pointId
-  }))
+  writeEdgeRouteDelete(ctx.program, edge.id, pointId)
 }
 
 type EdgeIntentHandlers = Pick<
@@ -451,7 +427,7 @@ export const edgeIntentHandlers: EdgeIntentHandlers = {
       return failInvalid(ctx, built.error.message, built.error.details)
     }
 
-    appendWhiteboardOperation(ctx, built.data.operation)
+    writeEdgeCreate(ctx.program, built.data.edge)
     ctx.output({
       edgeId: built.data.edgeId
     })
@@ -556,10 +532,7 @@ export const edgeIntentHandlers: EdgeIntentHandlers = {
     }
 
     ctx.intent.ids.forEach((id) => {
-      appendWhiteboardOperation(ctx, {
-        type: 'edge.delete',
-        id
-      })
+      writeEdgeDelete(ctx.program, id)
     })
   },
   'edge.label.insert': (ctx) => {
@@ -577,12 +550,7 @@ export const edgeIntentHandlers: EdgeIntentHandlers = {
       ...(ctx.intent.label.style !== undefined ? { style: ctx.intent.label.style } : {}),
       ...(ctx.intent.label.data !== undefined ? { data: ctx.intent.label.data } : {})
     }
-    appendWhiteboardOperation(ctx, createStructuralOrderedInsertOperation<MutationStructuralCanonicalOperation>({
-      structure: edgeLabelsStructure(edge.id),
-      itemId: label.id,
-      value: label,
-      to: toStructuralOrderedAnchor(ctx.intent.to ?? { kind: 'end' })
-    }))
+    writeEdgeLabelInsert(ctx.program, edge.id, label, ctx.intent.to ?? { kind: 'end' })
     ctx.output({
       labelId
     })
@@ -604,27 +572,16 @@ export const edgeIntentHandlers: EdgeIntentHandlers = {
       return
     }
 
-    appendWhiteboardOperation(ctx, createStructuralOrderedPatchOperation<MutationStructuralCanonicalOperation>({
-      structure: edgeLabelsStructure(edge.id),
-      itemId: label.id,
-      patch: createEdgeLabelPatch({
-        ...(fields ? { fields } : {}),
-        ...(record ? { record } : {})
-      })
+    writeEdgeLabelPatch(ctx.program, edge.id, label.id, createEdgeLabelPatch({
+      ...(fields ? { fields } : {}),
+      ...(record ? { record } : {})
     }))
   },
   'edge.label.move': (ctx) => {
-    appendWhiteboardOperation(ctx, createStructuralOrderedMoveOperation<MutationStructuralCanonicalOperation>({
-      structure: edgeLabelsStructure(ctx.intent.edgeId),
-      itemId: ctx.intent.labelId,
-      to: toStructuralOrderedAnchor(ctx.intent.to)
-    }))
+    writeEdgeLabelMove(ctx.program, ctx.intent.edgeId, ctx.intent.labelId, ctx.intent.to)
   },
   'edge.label.delete': (ctx) => {
-    appendWhiteboardOperation(ctx, createStructuralOrderedDeleteOperation<MutationStructuralCanonicalOperation>({
-      structure: edgeLabelsStructure(ctx.intent.edgeId),
-      itemId: ctx.intent.labelId
-    }))
+    writeEdgeLabelDelete(ctx.program, ctx.intent.edgeId, ctx.intent.labelId)
   },
   'edge.route.insert': (ctx) => {
     const edge = requireEdge(ctx, ctx.intent.edgeId)
@@ -633,16 +590,11 @@ export const edgeIntentHandlers: EdgeIntentHandlers = {
     }
 
     const pointId = readCompileServices(ctx).ids.edgeRoutePoint()
-    appendWhiteboardOperation(ctx, createStructuralOrderedInsertOperation<MutationStructuralCanonicalOperation>({
-      structure: edgeRoutePointsStructure(edge.id),
-      itemId: pointId,
-      value: {
-        id: pointId,
-        x: ctx.intent.point.x,
-        y: ctx.intent.point.y
-      },
-      to: toStructuralOrderedAnchor(ctx.intent.to ?? { kind: 'end' })
-    }))
+    writeEdgeRouteInsert(ctx.program, edge.id, {
+      id: pointId,
+      x: ctx.intent.point.x,
+      y: ctx.intent.point.y
+    }, ctx.intent.to ?? { kind: 'end' })
     ctx.output({
       pointId
     })
@@ -671,11 +623,7 @@ export const edgeIntentHandlers: EdgeIntentHandlers = {
       return
     }
 
-    appendWhiteboardOperation(ctx, createStructuralOrderedPatchOperation<MutationStructuralCanonicalOperation>({
-      structure: edgeRoutePointsStructure(edge.id),
-      itemId: point.id,
-      patch: fields
-    }))
+    writeEdgeRoutePatch(ctx.program, edge.id, point.id, fields)
   },
   'edge.route.set': (ctx) => {
     const edge = requireEdge(ctx, ctx.intent.edgeId)
@@ -690,11 +638,7 @@ export const edgeIntentHandlers: EdgeIntentHandlers = {
     )
   },
   'edge.route.move': (ctx) => {
-    appendWhiteboardOperation(ctx, createStructuralOrderedMoveOperation<MutationStructuralCanonicalOperation>({
-      structure: edgeRoutePointsStructure(ctx.intent.edgeId),
-      itemId: ctx.intent.pointId,
-      to: toStructuralOrderedAnchor(ctx.intent.to)
-    }))
+    writeEdgeRouteMove(ctx.program, ctx.intent.edgeId, ctx.intent.pointId, ctx.intent.to)
   },
   'edge.route.delete': (ctx) => {
     const edge = requireEdge(ctx, ctx.intent.edgeId)
@@ -712,10 +656,7 @@ export const edgeIntentHandlers: EdgeIntentHandlers = {
       return
     }
     edge.route.points.forEach((point) => {
-      appendWhiteboardOperation(ctx, createStructuralOrderedDeleteOperation<MutationStructuralCanonicalOperation>({
-        structure: edgeRoutePointsStructure(edge.id),
-        itemId: point.id
-      }))
+      writeEdgeRouteDelete(ctx.program, edge.id, point.id)
     })
   }
 }

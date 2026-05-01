@@ -8,12 +8,8 @@ export {
   whiteboardMutationRegistry
 } from '@whiteboard/core/operations/targets'
 export {
-  whiteboardCustom,
   whiteboardStructures
-} from '@whiteboard/core/operations/custom'
-export {
-  createWhiteboardProgramWriter
-} from '@whiteboard/core/operations/programWriter'
+} from '@whiteboard/core/operations/targets'
 export {
   validateWhiteboardOperationBatch
 } from '@whiteboard/core/operations/validate'
@@ -22,7 +18,8 @@ export {
   validateLockOperations
 } from '@whiteboard/core/operations/lock'
 export {
-  isCheckpointOperation
+  isCheckpointOperation,
+  isCheckpointProgram
 } from '@whiteboard/core/operations/checkpoint'
 
 export type {
@@ -32,15 +29,10 @@ export type {
   LockTarget
 } from '@whiteboard/core/operations/lock'
 export type {
-  WhiteboardProgramWriter,
-  WhiteboardRoutePointPatch,
-} from '@whiteboard/core/operations/programWriter'
-export type {
   WhiteboardCompileCode,
   WhiteboardCompileContext,
   WhiteboardCompileHandlerTable,
   WhiteboardCompileIds,
-  WhiteboardInternalOperation,
   WhiteboardCompileServices
 } from '@whiteboard/core/operations/compile'
 export type {

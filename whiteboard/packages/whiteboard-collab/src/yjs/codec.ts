@@ -7,12 +7,15 @@ import {
   assertMutationFootprintList
 } from '@shared/mutation'
 import {
-  isCheckpointOperation
+  isMutationProgramStep,
+  type MutationProgram
+} from '@shared/mutation'
+import {
+  isCheckpointProgram
 } from '@whiteboard/core/operations'
 import type {
   SharedChange,
   SharedCheckpoint,
-  SharedOperation,
   YjsSyncCodec
 } from '@whiteboard/collab/types/shared'
 
@@ -24,27 +27,30 @@ const isRecord = (
   && !Array.isArray(value)
 )
 
-const assertSharedOperations = (
+const assertSharedProgram = (
   value: unknown
-): readonly SharedOperation[] => {
-  if (!Array.isArray(value)) {
-    throw new Error('Shared change operations must be an array.')
+): MutationProgram<string> => {
+  if (
+    !isRecord(value)
+    || !Array.isArray(value.steps)
+  ) {
+    throw new Error('Shared change program is invalid.')
   }
 
-  value.forEach((entry) => {
-    if (!isRecord(entry) || typeof entry.type !== 'string') {
-      throw new Error('Shared change operation is invalid.')
-    }
-    if (
-      isCheckpointOperation({
-        type: entry.type as SharedOperation['type']
-      })
-    ) {
-      throw new Error('document.create cannot appear in shared change log.')
+  value.steps.forEach((entry) => {
+    if (!isRecord(entry) || typeof entry.type !== 'string' || !isMutationProgramStep(entry as { type: string })) {
+      throw new Error('Shared change program step is invalid.')
     }
   })
 
-  return value as readonly SharedOperation[]
+  const program = {
+    steps: value.steps as MutationProgram<string>['steps']
+  }
+  if (isCheckpointProgram(program)) {
+    throw new Error('document.create cannot appear in shared change log.')
+  }
+
+  return program
 }
 
 const assertSharedChange = (
@@ -63,7 +69,7 @@ const assertSharedChange = (
   return {
     id: value.id,
     actorId: value.actorId,
-    ops: assertSharedOperations(value.ops),
+    program: assertSharedProgram(value.program),
     footprint: assertMutationFootprintList(value.footprint)
   }
 }

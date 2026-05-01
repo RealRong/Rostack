@@ -4,6 +4,7 @@ import {
   type HistoryPort,
   type MutationCommitRecord,
   type MutationReplaceResult,
+  type MutationProgram,
   type Origin
 } from '@shared/mutation'
 import {
@@ -91,7 +92,7 @@ export type MutationCollabSessionOptions<
     ):
       | {
           kind: 'apply'
-          operations: readonly Op[]
+          program: MutationProgram<string>
         }
       | {
           kind: 'replace'
@@ -128,7 +129,7 @@ export type MutationCollabEngine<
     }
   ): MutationReplaceResult<Doc>
   apply(
-    operations: readonly Op[],
+    program: MutationProgram<string>,
     options?: {
       origin?: Origin
     }
@@ -291,7 +292,7 @@ export const createMutationCollabSession = <
           return
         }
 
-        const applied = engine.apply(effect.operations, {
+        const applied = engine.apply(effect.program, {
           origin: 'remote'
         })
         if (!applied.ok) {
@@ -357,7 +358,7 @@ export const createMutationCollabSession = <
       return
     }
 
-    if (commit.authored.length === 0) {
+    if (commit.authored.steps.length === 0) {
       return
     }
     if (options.policy?.canPublish && !options.policy.canPublish(commit as Commit)) {

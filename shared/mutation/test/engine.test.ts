@@ -2,7 +2,7 @@ import { describe, expect, test } from 'vitest'
 import {
   MutationEngine,
   type MutationEntitySpec,
-  type MutationStructuralCanonicalOperation,
+  type MutationProgramStep,
   type MutationTreeSnapshot
 } from '@shared/mutation'
 import type {
@@ -24,21 +24,6 @@ type TestDoc = {
   }
   activeItemId?: ItemId
 }
-
-type TestOp =
-  | {
-      type: 'item.create'
-      value: Item
-    }
-  | {
-      type: 'item.patch'
-      id: ItemId
-      patch: Partial<Pick<Item, 'title'>>
-    }
-  | {
-      type: 'document.patch'
-      patch: Partial<Pick<TestDoc, 'activeItemId'>>
-    }
 
 interface TestIntentTable extends MutationIntentTable {
   'item.add': {
@@ -90,7 +75,7 @@ const createDocument = (): TestDoc => ({
 const createEngine = () => new MutationEngine<
   TestDoc,
   TestIntentTable,
-  TestOp,
+  MutationProgramStep,
   TestDoc
 >({
   document: createDocument(),
@@ -121,7 +106,7 @@ const createEngine = () => new MutationEngine<
 })
 
 describe('MutationEngine current API', () => {
-  test('applies canonical entity operations and emits watch/commit updates', () => {
+  test('applies mutation program steps and emits watch/commit updates', () => {
     const engine = createEngine()
     const commits: string[] = []
     const snapshots: MutationCurrent<TestDoc>[] = []
@@ -134,11 +119,17 @@ describe('MutationEngine current API', () => {
     })
 
     const result = engine.apply({
-      type: 'item.create',
-      value: {
-        id: 'item_1',
-        title: 'First'
-      }
+      steps: [{
+        type: 'entity.create',
+        entity: {
+          table: 'item',
+          id: 'item_1'
+        },
+        value: {
+          id: 'item_1',
+          title: 'First'
+        }
+      }]
     })
 
     expect(result.ok).toBe(true)
@@ -151,13 +142,19 @@ describe('MutationEngine current API', () => {
       id: 'item_1',
       title: 'First'
     })
-    expect(result.commit.authored).toEqual([{
-      type: 'item.create',
-      value: {
-        id: 'item_1',
-        title: 'First'
-      }
-    }])
+    expect(result.commit.authored).toEqual({
+      steps: [{
+        type: 'entity.create',
+        entity: {
+          table: 'item',
+          id: 'item_1'
+        },
+        value: {
+          id: 'item_1',
+          title: 'First'
+        }
+      }]
+    })
     expect(result.commit.inverse).toEqual({
       steps: [{
         type: 'entity.delete',
@@ -206,11 +203,17 @@ describe('MutationEngine current API', () => {
   test('replace publishes a reset delta and clears local history', () => {
     const engine = createEngine()
     engine.apply({
-      type: 'item.create',
-      value: {
-        id: 'item_1',
-        title: 'First'
-      }
+      steps: [{
+        type: 'entity.create',
+        entity: {
+          table: 'item',
+          id: 'item_1'
+        },
+        value: {
+          id: 'item_1',
+          title: 'First'
+        }
+      }]
     })
 
     const commit = engine.replace(createDocument(), {
@@ -317,7 +320,7 @@ const createStructuralEngine = (
 ) => new MutationEngine<
   StructuralDoc,
   MutationIntentTable,
-  MutationStructuralCanonicalOperation,
+  MutationProgramStep,
   StructuralDoc
 >({
   document,
@@ -369,13 +372,15 @@ describe('MutationEngine structural API', () => {
   test('applies ordered structural move with inverse, footprint, and structural facts', () => {
     const engine = createStructuralEngine()
     const result = engine.apply({
-      type: 'structural.ordered.move',
-      structure: 'canvas',
-      itemId: 'c',
-      to: {
-        kind: 'before',
-        itemId: 'b'
-      }
+      steps: [{
+        type: 'ordered.move',
+        structure: 'canvas',
+        itemId: 'c',
+        to: {
+          kind: 'before',
+          itemId: 'b'
+        }
+      }]
     })
 
     expect(result.ok).toBe(true)
@@ -385,15 +390,17 @@ describe('MutationEngine structural API', () => {
 
     expect(result.commit.document.ordered.items).toEqual(['a', 'c', 'b'])
     expect(result.commit.delta.changes).toEqual({})
-    expect(result.commit.authored).toEqual([{
-      type: 'structural.ordered.move',
-      structure: 'canvas',
-      itemId: 'c',
-      to: {
-        kind: 'before',
-        itemId: 'b'
-      }
-    }])
+    expect(result.commit.authored).toEqual({
+      steps: [{
+        type: 'ordered.move',
+        structure: 'canvas',
+        itemId: 'c',
+        to: {
+          kind: 'before',
+          itemId: 'b'
+        }
+      }]
+    })
     expect(result.commit.inverse).toEqual({
       steps: [{
         type: 'ordered.move',
@@ -436,12 +443,14 @@ describe('MutationEngine structural API', () => {
       }
     })
     const result = engine.apply({
-      type: 'structural.ordered.splice',
-      structure: 'canvas',
-      itemIds: ['b', 'd'],
-      to: {
-        kind: 'start'
-      }
+      steps: [{
+        type: 'ordered.splice',
+        structure: 'canvas',
+        itemIds: ['b', 'd'],
+        to: {
+          kind: 'start'
+        }
+      }]
     })
 
     expect(result.ok).toBe(true)
@@ -512,9 +521,11 @@ describe('MutationEngine structural API', () => {
   test('applies tree structural delete and restores from generated inverse snapshot', () => {
     const engine = createStructuralEngine()
     const deleted = engine.apply({
-      type: 'structural.tree.delete',
-      structure: 'outline',
-      nodeId: 'left'
+      steps: [{
+        type: 'tree.delete',
+        structure: 'outline',
+        nodeId: 'left'
+      }]
     })
 
     expect(deleted.ok).toBe(true)
@@ -534,7 +545,7 @@ describe('MutationEngine structural API', () => {
       previousIndex: 0
     }])
 
-    const restored = engine.applyProgram(deleted.commit.inverse)
+    const restored = engine.apply(deleted.commit.inverse)
     expect(restored.ok).toBe(true)
     if (!restored.ok) {
       return
@@ -554,15 +565,17 @@ describe('MutationEngine structural API', () => {
   test('applies ordered structural patch and restores the previous item through inverse patch', () => {
     const engine = createStructuralEngine()
     const patched = engine.apply({
-      type: 'structural.ordered.patch',
-      structure: 'cards',
-      itemId: 'card_a',
-      patch: {
-        title: 'A2',
-        meta: {
-          color: 'orange'
+      steps: [{
+        type: 'ordered.patch',
+        structure: 'cards',
+        itemId: 'card_a',
+        patch: {
+          title: 'A2',
+          meta: {
+            color: 'orange'
+          }
         }
-      }
+      }]
     })
 
     expect(patched.ok).toBe(true)
@@ -595,7 +608,7 @@ describe('MutationEngine structural API', () => {
       itemId: 'card_a'
     }])
 
-    const restored = engine.applyProgram(patched.commit.inverse)
+    const restored = engine.apply(patched.commit.inverse)
     expect(restored.ok).toBe(true)
     if (!restored.ok) {
       return
@@ -613,15 +626,17 @@ describe('MutationEngine structural API', () => {
   test('applies tree node patch and restores the previous node value through inverse patch', () => {
     const engine = createStructuralEngine()
     const patched = engine.apply({
-      type: 'structural.tree.node.patch',
-      structure: 'stateTree',
-      nodeId: 'child',
-      patch: {
-        collapsed: true,
-        branchStyle: {
-          color: 'purple'
+      steps: [{
+        type: 'tree.node.patch',
+        structure: 'stateTree',
+        nodeId: 'child',
+        patch: {
+          collapsed: true,
+          branchStyle: {
+            color: 'purple'
+          }
         }
-      }
+      }]
     })
 
     expect(patched.ok).toBe(true)
@@ -653,7 +668,7 @@ describe('MutationEngine structural API', () => {
       nodeId: 'child'
     }])
 
-    const restored = engine.applyProgram(patched.commit.inverse)
+    const restored = engine.apply(patched.commit.inverse)
     expect(restored.ok).toBe(true)
     if (!restored.ok) {
       return

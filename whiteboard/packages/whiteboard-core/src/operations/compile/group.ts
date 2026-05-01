@@ -3,12 +3,18 @@ import type {
   WhiteboardCompileHandlerTable
 } from '@whiteboard/core/operations/compile/helpers'
 import {
-  appendWhiteboardOperation,
-  appendWhiteboardOperations
-} from './append'
-import {
   readCompileServices
 } from '@whiteboard/core/operations/compile/helpers'
+import {
+  writeCanvasOrderSplice,
+  writeEdgePatch,
+  writeGroupCreate,
+  writeGroupDelete,
+  writeNodePatch,
+} from './write'
+import {
+  toStructuralCanvasAnchor,
+} from '@whiteboard/core/operations/targets'
 
 type GroupIntentHandlers = Pick<
   WhiteboardCompileHandlerTable,
@@ -20,25 +26,20 @@ type GroupIntentHandlers = Pick<
 export const groupIntentHandlers: GroupIntentHandlers = {
   'group.merge': (ctx) => {
     const groupId = readCompileServices(ctx).ids.group()
-    appendWhiteboardOperation(ctx, {
-      type: 'group.create',
-      value: {
-        id: groupId
-      }
+    writeGroupCreate(ctx.program, {
+      id: groupId
     })
 
     ctx.intent.target.nodeIds?.forEach((nodeId) => {
-      appendWhiteboardOperations(ctx, ...nodeApi.update.createFieldsOperation(nodeId, {
-        groupId
+      writeNodePatch(ctx.program, nodeId, nodeApi.update.toPatch({
+        fields: {
+          groupId
+        }
       }))
     })
     ctx.intent.target.edgeIds?.forEach((edgeId) => {
-      appendWhiteboardOperation(ctx, {
-        type: 'edge.patch',
-        id: edgeId,
-        patch: {
-          groupId
-        }
+      writeEdgePatch(ctx.program, edgeId, {
+        groupId
       })
     })
 
@@ -50,11 +51,18 @@ export const groupIntentHandlers: GroupIntentHandlers = {
     const refs = ctx.intent.ids.flatMap((groupId) =>
       ctx.reader.canvas.groupRefs(groupId)
     )
-    appendWhiteboardOperation(ctx, {
-      type: 'canvas.order.move',
-      refs,
-      to: ctx.intent.to
-    })
+    const currentOrder = ctx.reader.canvas.order()
+    const existingRefs = refs.filter((ref) => (
+      currentOrder.some((entry) => entry.kind === ref.kind && entry.id === ref.id)
+    ))
+    if (existingRefs.length === 0) {
+      return
+    }
+    writeCanvasOrderSplice(
+      ctx.program,
+      existingRefs,
+      toStructuralCanvasAnchor(currentOrder, existingRefs, ctx.intent.to)
+    )
   },
   'group.ungroup': (ctx) => {
     const document = ctx.document
@@ -63,27 +71,22 @@ export const groupIntentHandlers: GroupIntentHandlers = {
 
     ctx.intent.ids.forEach((groupId) => {
       const refs = ctx.reader.canvas.groupRefs(groupId)
-      appendWhiteboardOperation(ctx, {
-        type: 'group.delete',
-        id: groupId
-      })
+      writeGroupDelete(ctx.program, groupId)
 
       refs.forEach((ref) => {
         if (ref.kind === 'node') {
           nodeIds.push(ref.id)
-          appendWhiteboardOperations(ctx, ...nodeApi.update.createFieldsOperation(ref.id, {
-            groupId: undefined
+          writeNodePatch(ctx.program, ref.id, nodeApi.update.toPatch({
+            fields: {
+              groupId: undefined
+            }
           }))
           return
         }
 
         edgeIds.push(ref.id)
-        appendWhiteboardOperation(ctx, {
-          type: 'edge.patch',
-          id: ref.id,
-          patch: {
-            groupId: undefined
-          }
+        writeEdgePatch(ctx.program, ref.id, {
+          groupId: undefined
         })
       })
     })

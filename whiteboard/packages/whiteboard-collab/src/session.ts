@@ -8,11 +8,8 @@ import {
   document as documentApi
 } from '@whiteboard/core/document'
 import {
-  isCheckpointOperation
+  isCheckpointProgram
 } from '@whiteboard/core/operations'
-import type {
-  Operation
-} from '@whiteboard/core/types'
 import { createId } from '@shared/core'
 import * as Y from 'yjs'
 import type {
@@ -25,29 +22,35 @@ import { createYjsSyncCodec } from '@whiteboard/collab/yjs/codec'
 
 const DEFAULT_CHECKPOINT_THRESHOLD = 100
 
-const readLiveOperations = (
-  operations: readonly Operation[]
+const readLiveProgram = (
+  program: import('@shared/mutation').MutationProgram<string>
 ): {
-  live: readonly Exclude<Operation, { type: 'document.create' }>[]
+  live: import('@shared/mutation').MutationProgram<string>
   checkpointOnly: boolean
 } => {
-  const live = operations.filter((operation) => (
-    !isCheckpointOperation(operation)
-  )) as readonly Exclude<Operation, { type: 'document.create' }>[]
+  const live = program.steps.filter((step) => (
+    !isCheckpointProgram({
+      steps: [step]
+    })
+  ))
 
-  if (live.length === operations.length) {
+  if (live.length === program.steps.length) {
     return {
-      live,
+      live: {
+        steps: live
+      },
       checkpointOnly: false
     }
   }
   if (live.length === 0) {
     return {
-      live,
-      checkpointOnly: operations.length > 0
+      live: {
+        steps: []
+      },
+      checkpointOnly: program.steps.length > 0
     }
   }
-  throw new Error('Collab write must be all live operations or all checkpoint operations.')
+  throw new Error('Collab write must be all live program steps or all checkpoint program steps.')
 }
 
 export const createYjsSession = ({
@@ -92,7 +95,7 @@ export const createYjsSession = ({
     },
     change: {
       create: (write, meta) => {
-        const live = readLiveOperations(write.authored)
+        const live = readLiveProgram(write.authored)
         if (live.checkpointOnly) {
           return null
         }
@@ -100,13 +103,13 @@ export const createYjsSession = ({
         return {
           id: meta.changeId,
           actorId: meta.actorId,
-          ops: live.live,
+          program: live.live,
           footprint: write.footprint
         }
       },
       read: (change) => ({
         kind: 'apply',
-        operations: change.ops
+        program: change.program
       }),
       footprint: (change) => change.footprint
     }

@@ -26,7 +26,6 @@ export type {
   SharedChange,
   SharedCheckpoint,
   SharedMeta,
-  SharedOperation,
   YjsSyncCodec,
   YjsSyncStore
 } from '@dataview/collab/types'

@@ -7,11 +7,13 @@ import {
   assertMutationFootprintList
 } from '@shared/mutation/write'
 import type { DataDoc } from '@dataview/core/types'
-import type { DocumentOperation } from '@dataview/core/types'
+import {
+  isMutationProgramStep,
+  type MutationProgram
+} from '@shared/mutation'
 import type {
   SharedChange,
   SharedCheckpoint,
-  SharedOperation,
   YjsSyncCodec
 } from '@dataview/collab/types'
 
@@ -23,20 +25,25 @@ const isRecord = (
   && !Array.isArray(value)
 )
 
-const assertSharedOperations = (
+const assertSharedProgram = (
   value: unknown
-): readonly SharedOperation[] => {
-  if (!Array.isArray(value)) {
-    throw new Error('Shared change operations must be an array.')
+): MutationProgram<string> => {
+  if (
+    !isRecord(value)
+    || !Array.isArray(value.steps)
+  ) {
+    throw new Error('Shared change program is invalid.')
   }
 
-  value.forEach((entry) => {
-    if (!isRecord(entry) || typeof entry.type !== 'string') {
-      throw new Error('Shared change operation is invalid.')
+  value.steps.forEach((entry) => {
+    if (!isRecord(entry) || typeof entry.type !== 'string' || !isMutationProgramStep(entry as { type: string })) {
+      throw new Error('Shared change program step is invalid.')
     }
   })
 
-  return value as readonly DocumentOperation[]
+  return {
+    steps: value.steps as MutationProgram<string>['steps']
+  }
 }
 
 const assertSharedChange = (
@@ -55,7 +62,7 @@ const assertSharedChange = (
   return {
     id: value.id,
     actorId: value.actorId,
-    ops: assertSharedOperations(value.ops),
+    program: assertSharedProgram(value.program),
     footprint: assertMutationFootprintList(value.footprint)
   }
 }

@@ -49,12 +49,48 @@ test('DataviewProgramWriter lowers entity and ordered writes to shared program s
         to: {
           kind: 'before',
           itemId: 'field_2'
-        }
+        },
+        delta: {
+          changes: {
+            'view.layout': {
+              ids: ['view_1'],
+              paths: {
+                view_1: ['display']
+              }
+            }
+          }
+        },
+        footprint: [{
+          kind: 'structure',
+          structure: 'view.display.fields:view_1'
+        }, {
+          kind: 'structure-item',
+          structure: 'view.display.fields:view_1',
+          id: 'field_1'
+        }]
       },
       {
         type: 'ordered.delete',
         structure: 'field.options:field_1',
-        itemId: 'option_1'
+        itemId: 'option_1',
+        delta: {
+          changes: {
+            'field.schema': {
+              ids: ['field_1'],
+              paths: {
+                field_1: ['options']
+              }
+            }
+          }
+        },
+        footprint: [{
+          kind: 'structure',
+          structure: 'field.options:field_1'
+        }, {
+          kind: 'structure-item',
+          structure: 'field.options:field_1',
+          id: 'option_1'
+        }]
       }
     ]
   })

@@ -60,7 +60,6 @@ export type {
   WhiteboardCompileContext,
   WhiteboardCompileHandlerTable,
   WhiteboardCompileIds,
-  WhiteboardInternalOperation,
   WhiteboardCompileServices
 } from '@whiteboard/core/operations/compile/helpers'
 export type {

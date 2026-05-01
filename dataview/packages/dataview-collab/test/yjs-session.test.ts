@@ -202,13 +202,18 @@ test('session records duplicate shared changes deterministically', () => {
   const duplicateChange = {
     id: 'change_duplicate',
     actorId: 'actor_remote',
-    ops: [{
-      type: 'record.patch' as const,
-      id: 'rec_1',
-      patch: {
-        title: 'Remote title'
-      }
-    }],
+    program: {
+      steps: [{
+        type: 'entity.patch' as const,
+        entity: {
+          table: 'record',
+          id: 'rec_1'
+        },
+        writes: {
+          title: 'Remote title'
+        }
+      }]
+    },
     footprint: [{
       kind: 'field' as const,
       family: 'record',

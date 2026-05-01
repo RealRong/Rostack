@@ -315,7 +315,7 @@ export interface WhiteboardIntentTable {
   }
   'document.insert': {
     intent: Extract<DocumentIntent, { type: 'document.insert' }>
-    output: Omit<SliceInsertResult, 'operations'>
+    output: Omit<SliceInsertResult, 'nodes' | 'edges'>
   }
   'document.background.set': {
     intent: Extract<DocumentIntent, { type: 'document.background.set' }>
@@ -327,7 +327,7 @@ export interface WhiteboardIntentTable {
   }
   'canvas.duplicate': {
     intent: Extract<CanvasIntent, { type: 'canvas.duplicate' }>
-    output: Omit<SliceInsertResult, 'operations'>
+    output: Omit<SliceInsertResult, 'nodes' | 'edges'>
   }
   'canvas.selection.move': {
     intent: Extract<CanvasIntent, { type: 'canvas.selection.move' }>

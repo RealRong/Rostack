@@ -1,8 +1,6 @@
 import { mindmap as mindmapApi } from '@whiteboard/core/mindmap'
 import {
   createMindmapTopicNode,
-  emitMindmapBranchUpdateOps,
-  emitMindmapTopicUpdateOps
 } from '@whiteboard/core/mindmap/ops'
 import { node as nodeApi } from '@whiteboard/core/node'
 import type {
@@ -10,13 +8,23 @@ import type {
   WhiteboardCompileHandlerTable
 } from '@whiteboard/core/operations/compile/helpers'
 import {
-  appendWhiteboardOperation
-} from './append'
-import {
   failInvalid,
   readCompileRegistries,
-  readCompileServices
+  readCompileServices,
+  runCustomPlanner,
 } from '@whiteboard/core/operations/compile/helpers'
+import {
+  planMindmapBranchPatch,
+  planMindmapCreate,
+  planMindmapDelete,
+  planMindmapLayout,
+  planMindmapMove,
+  planMindmapTopicCollapse,
+  planMindmapTopicDelete,
+  planMindmapTopicInsert,
+  planMindmapTopicMove,
+  planMindmapTopicPatch,
+} from '@whiteboard/core/operations/custom/mindmap'
 import type { NodeId } from '@whiteboard/core/types'
 
 const compileMindmapCreate = (
@@ -73,7 +81,7 @@ const compileMindmapCreate = (
     ])
   )
 
-  appendWhiteboardOperation(ctx, {
+  runCustomPlanner(ctx, {
     type: 'mindmap.create',
     mindmap: {
       id: mindmapId,
@@ -83,7 +91,7 @@ const compileMindmapCreate = (
       layout: instantiated.tree.layout
     },
     nodes
-  })
+  }, planMindmapCreate)
 
   ctx.output({
     mindmapId,
@@ -117,25 +125,25 @@ export const mindmapIntentHandlers: MindmapIntentHandlers = {
   ),
   'mindmap.delete': (ctx) => {
     ctx.intent.ids.forEach((id) => {
-      appendWhiteboardOperation(ctx, {
+      runCustomPlanner(ctx, {
         type: 'mindmap.delete',
         id
-      })
+      }, planMindmapDelete)
     })
   },
   'mindmap.layout.set': (ctx) => {
-    appendWhiteboardOperation(ctx, {
+    runCustomPlanner(ctx, {
       type: 'mindmap.layout',
       id: ctx.intent.id,
       patch: ctx.intent.layout
-    })
+    }, planMindmapLayout)
   },
   'mindmap.move': (ctx) => {
-    appendWhiteboardOperation(ctx, {
+    runCustomPlanner(ctx, {
       type: 'mindmap.move',
       id: ctx.intent.id,
       position: ctx.intent.position
-    })
+    }, planMindmapMove)
   },
   'mindmap.topic.insert': (ctx) => {
     const input = readCompileServices(ctx).layout.commit({
@@ -151,29 +159,29 @@ export const mindmapIntentHandlers: MindmapIntentHandlers = {
     if (!materialized.ok) {
       return failInvalid(ctx, 'Mindmap topic node could not be materialized.')
     }
-    appendWhiteboardOperation(ctx, {
+    runCustomPlanner(ctx, {
       type: 'mindmap.topic.insert',
       id: ctx.intent.id,
       input,
       node: materialized.data
-    })
+    }, planMindmapTopicInsert)
     ctx.output({
       nodeId
     })
   },
   'mindmap.topic.move': (ctx) => {
-    appendWhiteboardOperation(ctx, {
+    runCustomPlanner(ctx, {
       type: 'mindmap.topic.move',
       id: ctx.intent.id,
       input: ctx.intent.input
-    })
+    }, planMindmapTopicMove)
   },
   'mindmap.topic.delete': (ctx) => {
-    appendWhiteboardOperation(ctx, {
+    runCustomPlanner(ctx, {
       type: 'mindmap.topic.delete',
       id: ctx.intent.id,
       input: ctx.intent.input
-    })
+    }, planMindmapTopicDelete)
   },
   'mindmap.topic.clone': (ctx) => {
     const {
@@ -206,7 +214,7 @@ export const mindmapIntentHandlers: MindmapIntentHandlers = {
       }
 
       const source = mindmap.members[sourceId]
-      appendWhiteboardOperation(ctx, {
+      runCustomPlanner(ctx, {
         type: 'mindmap.topic.insert',
         id: intent.id,
         input: {
@@ -230,8 +238,8 @@ export const mindmapIntentHandlers: MindmapIntentHandlers = {
           },
           position: { x: 0, y: 0 }
         }
-      })
-      appendWhiteboardOperation(ctx, {
+      }, planMindmapTopicInsert)
+      runCustomPlanner(ctx, {
         type: 'mindmap.branch.patch',
         id: intent.id,
         topicId: nextId,
@@ -241,14 +249,14 @@ export const mindmapIntentHandlers: MindmapIntentHandlers = {
           width: source.branchStyle.width,
           stroke: source.branchStyle.stroke
         }
-      })
+      }, planMindmapBranchPatch)
       if (source.collapsed !== undefined) {
-        appendWhiteboardOperation(ctx, {
+        runCustomPlanner(ctx, {
           type: 'mindmap.topic.collapse',
           id: intent.id,
           topicId: nextId,
           collapsed: source.collapsed
-        })
+        }, planMindmapTopicCollapse)
       }
 
       ;(mindmap.children[sourceId] ?? []).forEach(walk)
@@ -262,34 +270,30 @@ export const mindmapIntentHandlers: MindmapIntentHandlers = {
   },
   'mindmap.topic.update': (ctx) => {
     ctx.intent.updates.forEach((entry) => {
-      emitMindmapTopicUpdateOps({
-        mindmapId: ctx.intent.id,
+      runCustomPlanner(ctx, {
+        type: 'mindmap.topic.patch',
+        id: ctx.intent.id,
         topicId: entry.topicId,
-        update: entry.input,
-        emit: (operation) => {
-          appendWhiteboardOperation(ctx, operation)
-        }
-      })
+        patch: nodeApi.update.toPatch(entry.input)
+      }, planMindmapTopicPatch)
     })
   },
   'mindmap.topic.collapse.set': (ctx) => {
-    appendWhiteboardOperation(ctx, {
+    runCustomPlanner(ctx, {
       type: 'mindmap.topic.collapse',
       id: ctx.intent.id,
       topicId: ctx.intent.topicId,
       collapsed: ctx.intent.collapsed
-    })
+    }, planMindmapTopicCollapse)
   },
   'mindmap.branch.update': (ctx) => {
     ctx.intent.updates.forEach((entry) => {
-      emitMindmapBranchUpdateOps({
-        mindmapId: ctx.intent.id,
+      runCustomPlanner(ctx, {
+        type: 'mindmap.branch.patch',
+        id: ctx.intent.id,
         topicId: entry.topicId,
-        update: entry.input,
-        emit: (operation) => {
-          appendWhiteboardOperation(ctx, operation)
-        }
-      })
+        patch: entry.input.fields ?? {}
+      }, planMindmapBranchPatch)
     })
   }
 }

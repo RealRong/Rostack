@@ -78,12 +78,12 @@ export const createYjsSession = ({
       create: (write, meta) => ({
         id: meta.changeId,
         actorId: meta.actorId,
-        ops: write.authored,
+        program: write.authored,
         footprint: write.footprint
       }),
       read: (change) => ({
         kind: 'apply',
-        operations: change.ops
+        program: change.program
       }),
       footprint: (change) => change.footprint
     }

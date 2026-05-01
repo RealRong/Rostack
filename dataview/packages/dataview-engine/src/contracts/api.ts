@@ -28,6 +28,9 @@ import type {
   MutationResult
 } from '@shared/mutation/engine'
 import type {
+  MutationProgram
+} from '@shared/mutation'
+import type {
   MutationReplaceCommit
 } from '@shared/mutation/write'
 import type {
@@ -199,7 +202,7 @@ export interface Engine {
   ): ExecuteResultOf<I>
 
   apply(
-    operations: readonly DocumentOperation[],
+    program: MutationProgram<string>,
     options?: MutationOptions
   ): MutationResult<void, EngineApplyCommit>
 }

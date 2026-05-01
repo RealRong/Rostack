@@ -4,14 +4,16 @@ import type {
   WhiteboardCompileHandlerTable
 } from '@whiteboard/core/operations/compile/helpers'
 import {
-  appendWhiteboardOperation,
-  appendWhiteboardOperations
-} from './append'
-import {
   failInvalid,
   readCompileRegistries,
   readCompileServices
 } from '@whiteboard/core/operations/compile/helpers'
+import {
+  writeDocumentCreate,
+  writeDocumentPatch,
+  writeEdgeCreate,
+  writeNodeCreate,
+} from './write'
 
 type DocumentIntentHandlers = Pick<
   WhiteboardCompileHandlerTable,
@@ -23,10 +25,10 @@ type DocumentIntentHandlers = Pick<
 export const documentIntentHandlers: DocumentIntentHandlers = {
   'document.replace': (ctx) => {
     const intent = ctx.intent
-    appendWhiteboardOperation(ctx, {
-      type: 'document.create',
-      value: normalizeDocument(documentApi.assert(intent.document))
-    })
+    writeDocumentCreate(
+      ctx.program,
+      normalizeDocument(documentApi.assert(intent.document))
+    )
   },
   'document.insert': (ctx) => {
     const intent = ctx.intent
@@ -47,7 +49,12 @@ export const documentIntentHandlers: DocumentIntentHandlers = {
       )
     }
 
-    appendWhiteboardOperations(ctx, ...built.data.operations)
+    built.data.nodes.forEach((node) => {
+      writeNodeCreate(ctx.program, node)
+    })
+    built.data.edges.forEach((edge) => {
+      writeEdgeCreate(ctx.program, edge)
+    })
     ctx.output({
       allNodeIds: built.data.allNodeIds,
       allEdgeIds: built.data.allEdgeIds,
@@ -55,11 +62,8 @@ export const documentIntentHandlers: DocumentIntentHandlers = {
     })
   },
   'document.background.set': (ctx) => {
-    appendWhiteboardOperation(ctx, {
-      type: 'document.patch',
-      patch: {
-        background: ctx.intent.background
-      }
+    writeDocumentPatch(ctx.program, {
+      background: ctx.intent.background
     })
   }
 }

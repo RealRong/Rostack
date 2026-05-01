@@ -211,10 +211,10 @@ test('engine blocks remote edge deletion that would change a locked node relatio
     layout: createTestLayout()
   })
 
-  const result = engine.apply([{
+  const result = engine.execute({
     type: 'edge.delete',
-    id: 'edge_1'
-  }], {
+    ids: ['edge_1']
+  }, {
     origin: 'remote'
   })
 
@@ -232,19 +232,24 @@ test('engine allows remote unlock then delete in the same operation batch', () =
     layout: createTestLayout()
   })
 
-  const result = engine.apply([
-    {
-      type: 'node.patch',
-      id: 'node_locked',
-      patch: {
+  const result = engine.apply({
+    steps: [{
+      type: 'entity.patch',
+      entity: {
+        table: 'node',
+        id: 'node_locked'
+      },
+      writes: {
         locked: false
       }
-    },
-    {
-      type: 'node.delete',
-      id: 'node_locked'
-    }
-  ], {
+    }, {
+      type: 'entity.delete',
+      entity: {
+        table: 'node',
+        id: 'node_locked'
+      }
+    }]
+  }, {
     origin: 'remote'
   })
 
@@ -287,22 +292,27 @@ test('engine allows remote unlock then edge update in the same batch', () => {
     layout: createTestLayout()
   })
 
-  const result = engine.apply([
-    {
-      type: 'edge.patch',
-      id: 'edge_locked',
-      patch: {
+  const result = engine.apply({
+    steps: [{
+      type: 'entity.patch',
+      entity: {
+        table: 'edge',
+        id: 'edge_locked'
+      },
+      writes: {
         locked: false
       }
-    },
-    {
-      type: 'edge.patch',
-      id: 'edge_locked',
-      patch: {
+    }, {
+      type: 'entity.patch',
+      entity: {
+        table: 'edge',
+        id: 'edge_locked'
+      },
+      writes: {
         textMode: 'tangent'
       }
-    }
-  ], {
+    }]
+  }, {
     origin: 'remote'
   })
 

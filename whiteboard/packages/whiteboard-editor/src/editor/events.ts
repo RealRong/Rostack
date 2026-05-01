@@ -1,5 +1,5 @@
 import { equal } from '@shared/core'
-import { isCheckpointOperation } from '@whiteboard/core/operations'
+import { isCheckpointProgram } from '@whiteboard/core/operations'
 import type { DocumentFrame } from '@whiteboard/editor-scene'
 import type { Engine } from '@whiteboard/engine'
 import type { EditorSession } from '@whiteboard/editor/session/runtime'
@@ -56,7 +56,7 @@ export const createEditorEvents = ({
   const unsubscribeCommit = engine.commits.subscribe((commit) => {
     if (
       commit.kind === 'replace'
-      || commit.authored.some((op) => isCheckpointOperation(op))
+      || isCheckpointProgram(commit.authored)
     ) {
       session.reset()
       resetHost()

@@ -34,28 +34,26 @@ test('normalizeDocument 为缺失 size 的 text 节点补齐系统尺寸', () =>
   })
 })
 
-test('engine apply publishes normalized committed documents after reducer output', () => {
+test('engine execute publishes normalized committed documents after compile output', () => {
   const engine = createEngine({
     document: documentApi.create('doc_text_create'),
     layout: createTestLayout()
   })
 
-  const result = engine.apply([
-    {
-      type: 'node.create',
-      value: {
-        id: 'node_1',
-        type: 'text',
-        position: {
-          x: 40,
-          y: 24
-        },
-        data: {
-          text: 'hello'
-        }
+  const result = engine.execute({
+    type: 'node.create',
+    input: {
+      id: 'node_1',
+      type: 'text',
+      position: {
+        x: 40,
+        y: 24
+      },
+      data: {
+        text: 'hello'
       }
     }
-  ], {
+  }, {
     origin: 'remote'
   })
 

@@ -490,13 +490,13 @@ const isEdgeInsideNodeSlice = (
 
 const withCreatedNodes = (
   doc: Document,
-  operations: readonly Extract<Operation, { type: 'node.create' }>[],
-  operation?: Extract<Operation, { type: 'node.create' }>
+  created: readonly Node[],
+  node?: Node
 ): Document => {
   const nodes = { ...doc.nodes }
   const order = [...doc.canvas.order]
 
-  operations.forEach(({ value }) => {
+  created.forEach((value) => {
     nodes[value.id] = value
     if (!order.some((ref) => ref.kind === 'node' && ref.id === value.id)) {
       order.push({
@@ -506,12 +506,12 @@ const withCreatedNodes = (
     }
   })
 
-  if (operation) {
-    nodes[operation.value.id] = operation.value
-    if (!order.some((ref) => ref.kind === 'node' && ref.id === operation.value.id)) {
+  if (node) {
+    nodes[node.id] = node
+    if (!order.some((ref) => ref.kind === 'node' && ref.id === node.id)) {
       order.push({
         kind: 'node',
-        id: operation.value.id
+        id: node.id
       })
     }
   }
@@ -528,13 +528,13 @@ const withCreatedNodes = (
 
 const withCreatedEdges = (
   doc: Document,
-  operations: readonly Extract<Operation, { type: 'edge.create' }>[],
-  operation?: Extract<Operation, { type: 'edge.create' }>
+  created: readonly Edge[],
+  edge?: Edge
 ): Document => {
   const edges = { ...doc.edges }
   const order = [...doc.canvas.order]
 
-  operations.forEach(({ value }) => {
+  created.forEach((value) => {
     edges[value.id] = value
     if (!order.some((ref) => ref.kind === 'edge' && ref.id === value.id)) {
       order.push({
@@ -544,12 +544,12 @@ const withCreatedEdges = (
     }
   })
 
-  if (operation) {
-    edges[operation.value.id] = operation.value
-    if (!order.some((ref) => ref.kind === 'edge' && ref.id === operation.value.id)) {
+  if (edge) {
+    edges[edge.id] = edge
+    if (!order.some((ref) => ref.kind === 'edge' && ref.id === edge.id)) {
       order.push({
         kind: 'edge',
-        id: operation.value.id
+        id: edge.id
       })
     }
   }
@@ -778,9 +778,8 @@ export const createInsertSliceOps = ({
 
   const normalizedRoots = toRoots(roots ?? readDefaultRoots(slice))
 
-  const operations: Operation[] = []
-  const duplicatedNodeOperations: Extract<Operation, { type: 'node.create' }>[] = []
-  const duplicatedEdgeOperations: Extract<Operation, { type: 'edge.create' }>[] = []
+  const nodes: Node[] = []
+  const edges: Edge[] = []
   const nodeIdMap = new Map<NodeId, NodeId>()
   const edgeIdMap = new Map<EdgeId, EdgeId>()
   const allNodeIds: NodeId[] = []
@@ -802,7 +801,7 @@ export const createInsertSliceOps = ({
         nodeIdMap,
         delta: translation
       }),
-      doc: withCreatedNodes(doc, duplicatedNodeOperations),
+      doc: withCreatedNodes(doc, nodes),
       registries,
       createNodeId: () => nextNodeId
     })
@@ -810,8 +809,7 @@ export const createInsertSliceOps = ({
       return err('invalid', planned.error.message, planned.error.details)
     }
 
-    duplicatedNodeOperations.push(planned.data.operation)
-    operations.push(planned.data.operation)
+    nodes.push(planned.data.node)
     allNodeIds.push(planned.data.nodeId)
     nodeIdMap.set(sourceNode.id, planned.data.nodeId)
   }
@@ -835,7 +833,7 @@ export const createInsertSliceOps = ({
 
     const planned = createEdgeOp({
       payload,
-      doc: withCreatedEdges(withCreatedNodes(doc, duplicatedNodeOperations), duplicatedEdgeOperations),
+      doc: withCreatedEdges(withCreatedNodes(doc, nodes), edges),
       registries,
       createEdgeId: () => nextEdgeId,
       createEdgeRoutePointId: () => createId('edge_point')
@@ -844,14 +842,14 @@ export const createInsertSliceOps = ({
       return err('invalid', planned.error.message, planned.error.details)
     }
 
-    duplicatedEdgeOperations.push(planned.data.operation)
-    operations.push(planned.data.operation)
+    edges.push(planned.data.edge)
     allEdgeIds.push(planned.data.edgeId)
     edgeIdMap.set(sourceEdge.id, planned.data.edgeId)
   }
 
   return ok({
-    operations,
+    nodes,
+    edges,
     roots: remapRoots({
       roots: normalizedRoots,
       nodeIdMap,

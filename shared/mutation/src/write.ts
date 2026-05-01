@@ -264,7 +264,7 @@ export interface MutationCommit<
   at: number
   origin: MutationOrigin
   document: Doc
-  authored: readonly Op[]
+  authored: MutationProgram<Tag>
   applied: MutationProgram<Tag>
   inverse: MutationProgram<Tag>
   delta: MutationDelta

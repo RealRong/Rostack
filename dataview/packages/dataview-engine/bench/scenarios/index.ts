@@ -24,22 +24,11 @@ const applyHistory = (engine, kind) => {
     return
   }
 
-  const operations = kind === 'undo'
-    ? history.undo()
-    : history.redo()
-  if (!operations) {
+  if (kind === 'undo') {
+    history.undo()
     return
   }
-
-  const result = engine.apply(operations, {
-    origin: 'history'
-  })
-  if (result.ok) {
-    history.confirm()
-    return
-  }
-
-  history.cancel('restore')
+  history.redo()
 }
 
 const SCENARIOS = [

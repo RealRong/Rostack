@@ -1,6 +1,5 @@
 import type {
-  MutationCustomPlannerInput,
-  MutationCustomTable,
+  MutationProgramWriter,
 } from '@shared/mutation/engine'
 import type {
   DocumentReader
@@ -8,9 +7,6 @@ import type {
 import type {
   WhiteboardCompileServices
 } from '@whiteboard/core/operations/compile/helpers'
-import type {
-  WhiteboardInternalOperation
-} from '@whiteboard/core/operations/internal'
 import type {
   Document,
   Operation,
@@ -34,28 +30,26 @@ export type WhiteboardCustomOperation = Exclude<
 
 export type WhiteboardCustomCode = ResultCode
 
+export interface WhiteboardCustomFailure {
+  code: WhiteboardCustomCode
+  message: string
+  details?: unknown
+  path?: string
+}
+
 export type WhiteboardCustomPlanContext<
   TOp extends WhiteboardCustomOperation = WhiteboardCustomOperation
-> = MutationCustomPlannerInput<
-  Document,
-  TOp,
-  DocumentReader,
-  WhiteboardCompileServices,
-  string,
-  WhiteboardCustomCode
->
+> = {
+  op: TOp
+  document: Document
+  reader: DocumentReader
+  services: WhiteboardCompileServices | undefined
+  program: MutationProgramWriter<string>
+  fail(issue: WhiteboardCustomFailure): never
+}
 
 export type WhiteboardCustomPlanner<
   TOp extends WhiteboardCustomOperation
 > = {
   plan(input: WhiteboardCustomPlanContext<TOp>): void
 }
-
-export type WhiteboardCustomTableType = MutationCustomTable<
-  Document,
-  WhiteboardInternalOperation,
-  DocumentReader,
-  WhiteboardCompileServices,
-  string,
-  WhiteboardCustomCode
->

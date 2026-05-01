@@ -57,7 +57,7 @@ export type DocumentWrite = {
   insert: (
     slice: Slice,
     options?: SliceInsertOptions
-  ) => IntentResult<Omit<SliceInsertResult, 'operations'>>
+  ) => IntentResult<Pick<SliceInsertResult, 'roots' | 'allNodeIds' | 'allEdgeIds'>>
   background: {
     set: (background?: Document['background']) => IntentResult
   }
@@ -67,7 +67,7 @@ export type CanvasWrite = {
   delete: (refs: readonly CanvasItemRef[]) => IntentResult
   duplicate: (
     refs: readonly CanvasItemRef[]
-  ) => IntentResult<Omit<SliceInsertResult, 'operations'>>
+  ) => IntentResult<Pick<SliceInsertResult, 'roots' | 'allNodeIds' | 'allEdgeIds'>>
   selection: {
     move: (input: {
       nodeIds: readonly NodeId[]

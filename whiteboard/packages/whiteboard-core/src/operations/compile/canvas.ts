@@ -6,18 +6,30 @@ import type {
   WhiteboardCompileHandlerTable
 } from '@whiteboard/core/operations/compile/helpers'
 import {
-  appendWhiteboardOperation,
-  appendWhiteboardOperations
-} from './append'
-import {
   failCancelled,
   failInvalid,
   readCompileRegistries,
-  readCompileServices
+  readCompileServices,
+  runCustomPlanner,
 } from '@whiteboard/core/operations/compile/helpers'
+import {
+  planCanvasOrderMove,
+} from '@whiteboard/core/operations/custom/canvas'
+import {
+  planMindmapDelete,
+  planMindmapMove,
+  planMindmapTopicDelete,
+} from '@whiteboard/core/operations/custom/mindmap'
 import { resolveLockDecision } from '@whiteboard/core/operations/lock'
 import type { CanvasItemRef } from '@whiteboard/core/types'
 import { emitEdgeMovePatchOps } from './edge'
+import {
+  writeEdgeCreate,
+  writeEdgeDelete,
+  writeNodeCreate,
+  writeNodeDelete,
+  writeNodePatch,
+} from './write'
 
 const failLockedModification = (
   ctx: WhiteboardCompileContext,
@@ -57,38 +69,32 @@ export const compileCanvasDelete = (
 
   refs.forEach((ref) => {
     if (ref.kind === 'edge') {
-      appendWhiteboardOperation(ctx, {
-        type: 'edge.delete',
-        id: ref.id
-      })
+      writeEdgeDelete(ctx.program, ref.id)
       return
     }
 
     const node = ctx.reader.nodes.get(ref.id)
     const mindmapId = getNodeMindmapId(node)
     if (!mindmapId) {
-      appendWhiteboardOperation(ctx, {
-        type: 'node.delete',
-        id: ref.id
-      })
+      writeNodeDelete(ctx.program, ref.id)
       return
     }
 
-    appendWhiteboardOperation(
-      ctx,
-      ctx.reader.mindmaps.isRoot(ref.id)
-        ? {
-            type: 'mindmap.delete',
-            id: mindmapId
-          }
-        : {
-            type: 'mindmap.topic.delete',
-            id: mindmapId,
-            input: {
-              nodeId: ref.id
-            }
-          }
-    )
+    if (ctx.reader.mindmaps.isRoot(ref.id)) {
+      runCustomPlanner(ctx, {
+        type: 'mindmap.delete',
+        id: mindmapId
+      }, planMindmapDelete)
+      return
+    }
+
+    runCustomPlanner(ctx, {
+      type: 'mindmap.topic.delete',
+      id: mindmapId,
+      input: {
+        nodeId: ref.id
+      }
+    }, planMindmapTopicDelete)
   })
 }
 
@@ -147,7 +153,12 @@ export const compileCanvasDuplicate = (
     return failInvalid(ctx, built.error.message, built.error.details)
   }
 
-  appendWhiteboardOperations(ctx, ...built.data.operations)
+  built.data.nodes.forEach((node) => {
+    writeNodeCreate(ctx.program, node)
+  })
+  built.data.edges.forEach((edge) => {
+    writeEdgeCreate(ctx.program, edge)
+  })
   return {
     allNodeIds: built.data.allNodeIds,
     allEdgeIds: built.data.allEdgeIds,
@@ -240,7 +251,7 @@ const compileCanvasSelectionMove = (
         node.position.x !== entry.position.x
         || node.position.y !== entry.position.y
       ) {
-        appendWhiteboardOperations(ctx, ...nodeApi.update.createOperation(node.id, {
+        writeNodePatch(ctx.program, node.id, nodeApi.update.toPatch({
           fields: {
             position: entry.position
           }
@@ -266,11 +277,11 @@ const compileCanvasSelectionMove = (
     }
 
     movedMindmapIds.add(mindmapId)
-    appendWhiteboardOperation(ctx, {
+    runCustomPlanner(ctx, {
       type: 'mindmap.move',
       id: mindmapId,
       position: entry.position
-    })
+    }, planMindmapMove)
   }
 
   selectedEdgeChanges.forEach((entry) => {
@@ -310,9 +321,9 @@ export const canvasIntentHandlers: CanvasIntentHandlers = {
     }
   },
   'canvas.selection.move': (ctx) => compileCanvasSelectionMove(ctx),
-  'canvas.order.move': (ctx) => appendWhiteboardOperation(ctx, {
+  'canvas.order.move': (ctx) => runCustomPlanner(ctx, {
     type: 'canvas.order.move',
     refs: ctx.intent.refs,
     to: ctx.intent.to
-  })
+  }, planCanvasOrderMove)
 }

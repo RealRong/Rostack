@@ -222,10 +222,10 @@ test('edge.reconnect.commit applies endpoint, type, and route in one command', (
     kind: 'auto'
   })
   assert.deepEqual(
-    result.commit.authored.map((op) => op.type),
+    result.commit.authored.steps.map((step) => step.type),
     [
-      'edge.patch',
-      'edge.route.point.delete'
+      'entity.patch',
+      'ordered.delete'
     ]
   )
 })

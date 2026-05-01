@@ -8,15 +8,12 @@ import {
 } from '@shared/mutation/engine'
 import type {
   WhiteboardCompileIds,
-  WhiteboardInternalOperation,
   WhiteboardCompileServices,
   WhiteboardMutationTable
 } from '@whiteboard/core/operations'
 import {
-  isCheckpointOperation,
-  validateWhiteboardOperationBatch,
+  isCheckpointProgram,
   whiteboardCompileHandlers,
-  whiteboardCustom,
   whiteboardMutationRegistry
 } from '@whiteboard/core/operations'
 import {
@@ -121,7 +118,7 @@ export const createEngine = ({
   const core = new MutationEngine<
     Document,
     WhiteboardMutationTable,
-    WhiteboardInternalOperation,
+    Operation,
     DocumentReader,
     WhiteboardCompileServices,
     ResultCode
@@ -132,7 +129,6 @@ export const createEngine = ({
     services,
     entities: whiteboardMutationRegistry.entities,
     structures: whiteboardMutationRegistry.structures,
-    custom: whiteboardCustom,
     compile: whiteboardCompileHandlers,
     history: {
       capacity: 100,
@@ -145,7 +141,7 @@ export const createEngine = ({
   })
 
   core.subscribe((commit) => {
-    if (commit.kind === 'apply' && commit.authored.some((op) => isCheckpointOperation(op))) {
+    if (commit.kind === 'apply' && isCheckpointProgram(commit.authored)) {
       core.history.clear()
     }
     if (onDocumentChange) {
@@ -180,27 +176,9 @@ export const createEngine = ({
     replace: (document, options) => core.replace(document, {
       origin: options?.origin ?? 'system'
     }),
-    apply: (ops, options) => {
-      const input = Array.isArray(ops)
-        ? ops
-        : [ops]
-      const origin = options?.origin ?? 'user'
-      const invalid = validateWhiteboardOperationBatch({
-        document: core.document(),
-        operations: input,
-        origin
-      })
-      if (invalid) {
-        return failure(
-          invalid.code,
-          invalid.message,
-          invalid.details
-        )
-      }
-      return core.apply(input, {
-        origin
-      })
-    }
+    apply: (program, options) => core.apply(program, {
+      origin: options?.origin ?? 'user'
+    })
   }
 
   return engine

@@ -138,7 +138,7 @@ test('canvas.order.move keeps moved refs as a block when the target anchor is in
   }
 
   const nodeIds = created.map((result) => result.data.nodeId)
-  const moved = engine.apply({
+  const moved = engine.execute({
     type: 'canvas.order.move',
     refs: [
       {
@@ -222,7 +222,7 @@ test('mindmap.topic.move still commits when only the root-side changes', () => {
   }
 
   const childId = inserted.data.nodeId
-  const moved = engine.apply({
+  const moved = engine.execute({
     type: 'mindmap.topic.move',
     id: created.data.mindmapId,
     input: {

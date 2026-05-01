@@ -77,16 +77,22 @@ const createExecuteMutation = () => new MutationEngine<
   createProgram: createDataviewProgramWriter
 })
 
-test('MutationEngine applies canonical field.create with shared inverse', () => {
+test('MutationEngine applies program field.create with shared inverse', () => {
   const mutation = createMutation()
-  const result = mutation.apply([{
-    type: 'field.create',
-    value: {
-      id: 'field_notes',
-      name: 'Notes',
-      kind: 'text'
-    }
-  }])
+  const result = mutation.apply({
+    steps: [{
+      type: 'entity.create',
+      entity: {
+        table: 'field',
+        id: 'field_notes'
+      },
+      value: {
+        id: 'field_notes',
+        name: 'Notes',
+        kind: 'text'
+      }
+    }]
+  })
 
   assert.equal(result.ok, true)
   if (!result.ok) {

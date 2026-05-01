@@ -288,7 +288,7 @@ export const createDataviewMutationDelta = (
     readTouchedIds<FieldId>(normalized, ['field.schema'])
   )
 
-  const delta = Object.assign(normalized, {
+  const delta = Object.assign({}, normalized, {
     raw: normalized,
     document: {
       activeViewChanged: () => hasKey(normalized, 'document.activeViewId')

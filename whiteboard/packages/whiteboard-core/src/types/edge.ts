@@ -164,7 +164,7 @@ export type ResolvedEdgePathFromRects = {
 
 export type EdgeCreateOperationResult =
   Result<{
-    operation: Extract<Operation, { type: 'edge.create' }>
+    edge: Edge
     edgeId: EdgeId
   }, 'invalid'>
 

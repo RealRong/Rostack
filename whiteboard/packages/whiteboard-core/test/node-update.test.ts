@@ -8,11 +8,9 @@ import { node as nodeApi } from '@whiteboard/core/node'
 import { document as documentApi } from '@whiteboard/core/document'
 import { mindmap as mindmapApi } from '@whiteboard/core/mindmap'
 import {
-  validateWhiteboardOperationBatch,
-  whiteboardCustom,
   whiteboardEntities
 } from '@whiteboard/core/operations'
-import type { Document, Operation } from '@whiteboard/core/types'
+import type { Document } from '@whiteboard/core/types'
 
 const FIXED_TIMESTAMP = Date.parse('2024-01-01T00:00:00.000Z')
 const FIXED_ISO = new Date(FIXED_TIMESTAMP).toISOString()
@@ -51,29 +49,16 @@ const createTextNode = (overrides = {}) => ({
 
 const applyOperations = (
   doc: Document,
-  operations: readonly Operation[]
+  program: MutationProgram<string>
 ) => {
   const engine = new MutationEngine({
     document: doc,
     normalize: documentApi.normalize,
     createReader: (readDocument: () => Document) => readDocument(),
     entities: whiteboardEntities,
-    custom: whiteboardCustom,
     history: false
   })
-  const invalid = validateWhiteboardOperationBatch({
-    document: doc,
-    operations,
-    origin: 'user'
-  })
-  if (invalid) {
-    return {
-      ok: false as const,
-      error: invalid
-    }
-  }
-
-  return engine.apply(operations, {
+  return engine.apply(program, {
     origin: 'user'
   })
 }
@@ -87,22 +72,28 @@ const replayInverse = (
     normalize: documentApi.normalize,
     createReader: (readDocument: () => Document) => readDocument(),
     entities: whiteboardEntities,
-    custom: whiteboardCustom,
     history: false
   })
 
-  return engine.applyProgram(program, {
+  return engine.apply(program, {
     origin: 'history'
   })
 }
 
 test('node.update reducer 为 set(path) 生成精确 inverse 并可回放', () => {
   const doc = createDocWithNode(createTextNode())
-  const result = applyOperations(doc, nodeApi.update.createOperation('node_1', {
-    record: {
-      'data.text': 'world'
-    }
-  }))
+  const result = applyOperations(doc, {
+    steps: [{
+      type: 'entity.patch',
+      entity: {
+        table: 'node',
+        id: 'node_1'
+      },
+      writes: {
+        'data.text': 'world'
+      }
+    }]
+  })
 
   assert.ok(result.ok)
   assert.deepEqual(result.commit.inverse, {
@@ -226,23 +217,30 @@ test('node.update 会为 direct mindmap data mutation 标记 node.value', () => 
     meta: tree.meta
   }
 
-  const result = applyOperations(doc, nodeApi.update.createOperation('mind_1', {
-    record: {
-      'data.meta.title': 'new'
-    }
-  }))
+  const result = applyOperations(doc, {
+    steps: [{
+      type: 'entity.patch',
+      entity: {
+        table: 'node',
+        id: 'mind_1'
+      },
+      writes: {
+        'data.meta.title': 'new'
+      }
+    }]
+  })
 
   assert.ok(result.ok)
-  assert.deepEqual(result.commit.delta, {
-    changes: {
-      'node.content': {
-        ids: ['mind_1'],
-        paths: {
-          mind_1: ['data.meta.title']
-        }
+  assert.deepEqual(result.commit.delta.changes, {
+    'node.content': {
+      ids: ['mind_1'],
+      paths: {
+        mind_1: ['data.meta.title']
       }
     }
   })
+  assert.deepEqual(result.commit.delta.changed('node.content', 'mind_1'), true)
+  assert.deepEqual(result.commit.delta.paths('node.content', 'mind_1'), ['data.meta.title'])
 })
 
 test('applyNodeUpdate 允许 frame 几何写入，并拒绝穿透 primitive 容器的 path set', () => {

@@ -1,44 +1,88 @@
-# Typed Target Program Writer 迁移清单
+# Typed Target Program Writer 下一阶段实施清单
 
-## 0. 硬约束
+## 0. 文档定位
 
-- 不保留兼容。
-- 不保留两套写入链。
-- 不保留 `operation -> append -> writer` 二次 lowering。
-- 不保留 `string structure protocol -> domain adapter -> shared structural runtime` 这种多层翻译。
-- 最终唯一写入中轴：`intent -> compile(reader, writer) -> MutationProgram -> engine apply -> MutationDelta`
+- 本文档对齐当前最新实现。
+- 第一阶段的 API 收口已经完成，本阶段不再讨论 `engine` / `history` / `collab` 对外接口改名问题。
+- 本文档只描述后续还要继续砍掉的内部层，以及 typed target 终态要怎么落地。
 
-## 1. 最终模型
+## 1. 当前基线
 
-- `shared/mutation` 只保留 `program` 作为 authored write IR。
-- `ordered/tree` 不再使用裸 `string structure`，改为 typed target。
-- domain compile 直接拿 typed writer 写 program，不再先产 domain operation / structural operation。
-- `MutationDelta` 继续作为唯一提交增量模型。
-- dataview 和 whiteboard 都只保留一条 compile 主链，不允许再各自维护 append / adapter / secondary diff runtime。
+### 1.1 已完成的收口
 
-## 2. shared/mutation
+- shared mutation runtime 对外主写入入口已经收口为 `apply(program)`。
+- dataview / whiteboard engine 对外写入入口已经同步收口为 `apply(program)`。
+- history / collab 相关调用面已经跟随 `apply(program)` 收口。
+- shared 顶层公开导出面已经移除旧 structural authored-op 相关导出。
+- `shared/mutation/src/engine/program/materialize.ts` 已删除。
+- 已经不再要求测试通过旧 authored structural operation 喂写入主链。
 
-### 2.1 typed target
+### 1.2 当前还剩的核心问题
 
-- 为 `entity / ordered / tree` 建立统一 typed target 协议。
-- `ordered/tree` target 替代当前所有 `structure: string`。
-- target 必须携带足够的类型信息，避免 domain 自己维护前缀字符串协议。
-- target registry 负责：
-  - `read`
-  - `write`
-  - `identify`
-  - `clone`
-  - `patch`
-  - `diff`
-  - `change`
+- shared program 的 `ordered/tree` step 仍然使用 `structure: string`，typed target 还没落地。
+- shared registry 仍然是 `entities + structures` 模型，不是 typed target registry。
+- dataview 仍然依赖 prefix string target 协议。
+- dataview 仍然通过 `createDataviewProgramWriter(...)` 暴露 domain writer facade。
+- dataview 的 `compile/viewDiff.ts` 仍承担第二套 writer orchestration。
+- whiteboard compile / planner 仍然直接操作 `MutationProgramWriter<string>`。
+- whiteboard 仍然通过 `canvas.order`、`edge.labels:${id}`、`mindmap.tree:${id}` 这类字符串 target 工作。
+- whiteboard 主实现目录仍然是 `operations/`，`mutation/` 目录还没有真正承接主链。
+- `shared/mutation/src/engine/structural.ts` 内部仍保留一层 `program effect <-> 旧 structural op` 的转换实现。
 
-### 2.1.1 最简单 target registry API
+## 2. 本阶段硬约束
+
+- 不恢复任何 authored structural operation public API。
+- 不恢复 `program -> operation[]` 的 authored 回翻译链。
+- 不保留两套 authored 写入抽象。
+- 不把 `string structure` 继续包装成“伪 typed target”的 public surface。
+- 不把 domain writer facade 继续当长期边界。
+- 允许短期 internal-only shim，但必须继续收薄，不能重新长成 shared 或 domain 边界的一部分。
+
+最终唯一写入中轴固定为：
+
+```ts
+intent -> compile(reader, writer/ports) -> MutationProgram -> engine apply -> MutationDelta
+```
+
+## 3. 本阶段目标
+
+### 3.1 shared/mutation
+
+- `MutationProgram` 继续是唯一 authored write IR。
+- `ordered/tree` step 从 `structure: string` 迁到 typed target。
+- `defineMutationRegistry(...)` 改为 typed target registry declaration。
+- `MutationProgramWriter` 继续可作为 shared 底层 builder 存在，但不再承担 typed 语义边界。
+- `engine/structural.ts` 从“旧 structural op 兼容内核”收薄为“typed ordered/tree apply helper”。
+
+### 3.2 dataview / whiteboard
+
+- compile handler 最终直接写 typed target program。
+- domain compile 不再显式处理 `structure` / prefix string target。
+- domain 允许保留纯算法 helper、纯 diff helper、纯校验 helper。
+- domain 不允许保留“把一种写入 IR 再翻译成另一种写入 IR”的 helper。
+
+## 4. shared/mutation 实施项
+
+### 4.1 引入 typed target program model
+
+- 替换当前 `MutationOrderedProgramStep` / `MutationTreeProgramStep` 中的 `structure: string`。
+- 新的 target descriptor 至少覆盖三类：
+  - `entity`
+  - `ordered`
+  - `tree`
+- target descriptor 需要携带：
+  - family kind
+  - family type
+  - family key
+  - entity id 或 ordered item / tree node 所需最小上下文
+
+建议最小模型：
 
 ```ts
 type MutationTarget =
   | {
       kind: 'entity'
-      table: string
+      type: string
       id?: string
     }
   | {
@@ -51,310 +95,190 @@ type MutationTarget =
       type: string
       key?: string
     }
-
-type MutationTargetRegistry<Doc> = {
-  entity?: {
-    [table: string]: {
-      read(doc: Doc, id: string): unknown
-      write(doc: Doc, id: string, value: unknown): Doc
-      patch?(value: unknown, patch: unknown): unknown
-      diff?(before: unknown, after: unknown): unknown
-      change?: MutationChangeFactory
-    }
-  }
-  ordered?: {
-    [type: string]: {
-      read(doc: Doc, key: string | undefined): readonly unknown[]
-      write(doc: Doc, key: string | undefined, items: readonly unknown[]): Doc
-      identify(item: unknown): string
-      clone?(item: unknown): unknown
-      patch?(item: unknown, patch: unknown): unknown
-      diff?(before: unknown, after: unknown): unknown
-      change?: MutationChangeFactory
-    }
-  }
-  tree?: {
-    [type: string]: {
-      read(doc: Doc, key: string | undefined): MutationTreeSnapshot<unknown>
-      write(doc: Doc, key: string | undefined, tree: MutationTreeSnapshot<unknown>): Doc
-      clone?(value: unknown): unknown
-      patch?(value: unknown, patch: unknown): unknown
-      diff?(before: unknown, after: unknown): unknown
-      change?: MutationChangeFactory
-    }
-  }
-}
 ```
 
-- `type` 表示 target family，例如：
-  - dataview: `field.options` / `view.sort` / `view.filter` / `view.display` / `view.order`
-  - whiteboard: `canvas.order` / `edge.labels` / `edge.route` / `mindmap.tree`
-- `key` 表示 family 实例 key，例如 `viewId`、`fieldId`、`edgeId`、`mindmapId`。
-- 不再允许 domain 自己拼 `view.sort.rules:${viewId}` 这种结构字符串。
-- `change` 是 target 级 delta 编译入口，直接从 target + action 生成增量，不再让 domain 在 compile 层到处手写。
+### 4.2 重写 registry declaration
 
-### 2.1.2 target 只保留为内部模型
+- 废弃当前 `entities?: ...` / `structures?: ...` 形态。
+- 改为 typed registry：
+  - `entity`
+  - `ordered`
+  - `tree`
+- ordered/tree family 负责：
+  - `read`
+  - `write`
+  - `identify`
+  - `clone`
+  - `patch`
+  - `diff`
+  - `change`
+- entity family 负责：
+  - `read`
+  - `write`
+  - `patch`
+  - `diff`
+  - `change`
 
-- authored API 不直接暴露 `target`。
-- `target` 只作为 shared kernel 内部解析模型存在，用于：
-  - program step 持久化
-  - engine apply
-  - inverse
-  - delta/change 编译
-- domain compile 不直接操作 target 对象。
-- domain compile 只操作 registry 生成的 bound mutation ports。
+### 4.3 收薄 structural runtime
 
-### 2.1.3 最简单 registry API
+- `engine/structural.ts` 不再维护 `effect <-> structural canonical operation` 双向转换层。
+- ordered/tree apply 的内部实现直接消费 typed target program step。
+- inverse 直接生成 typed target program step。
+- `MutationStructuralCanonicalOperation` 以及 `createStructural*Operation` 不再作为 shared 内部主模型存在。
+- 如果个别过渡 helper 还需要旧结构，必须局部私有化在文件内，不能继续经由 contracts / engine index 传播。
+
+### 4.4 收口 shared 内部公开面
+
+- shared 顶层已经不再公开旧 structural authored-op；本阶段继续清理次级公开面和内部依赖传播。
+- 后续要收掉的对象包括：
+  - `engine/contracts.ts` 中的 `MutationStructuralCanonicalOperation` 及相关旧 structural op type
+  - `engine/index.ts` 对 `applyStructuralEffectResult` 的再导出
+  - `engine/structural.ts` 中围绕旧 structural op 的 constructor / lowering helper
+- 目标不是“删除一个文件名”，而是让 shared 内部不再把旧 structural op 当作中间语义层。
+
+## 5. dataview 实施项
+
+### 5.1 compile surface 继续收口
+
+- `createDataviewProgramWriter(...)` 仍是当前 compile 主入口，需要在后续阶段下沉。
+- `compile/index.ts` 最终不再传 `createProgram: createDataviewProgramWriter`。
+- compile handler 最终直接拿 dataview typed ports 或 typed target writer。
+
+目标调用面：
 
 ```ts
-const registry = defineMutationRegistry<Doc>()({
-  entity: {
-    node: entity({
-      read(doc, id) { ... },
-      write(doc, id, value) { ... },
-      patch(value, patch) { ... },
-      diff(before, after) { ... },
-      change(change) { ... }
-    }),
-    edge: entity({ ... }),
-    view: entity({ ... })
-  },
-  ordered: {
-    edgeLabels: ordered({
-      read(doc, edgeId) { ... },
-      write(doc, edgeId, items) { ... },
-      identify(label) { return label.id },
-      patch(label, patch) { ... },
-      diff(before, after) { ... },
-      change(change, edgeId) { ... }
-    }),
-    canvasOrder: ordered({
-      read(doc) { ... },
-      write(doc, _key, items) { ... },
-      identify(ref) { return canvasRefKey(ref) },
-      change(change) { ... }
-    })
-  },
-  tree: {
-    mindmapTree: tree({
-      read(doc, mindmapId) { ... },
-      write(doc, mindmapId, tree) { ... },
-      patch(value, patch) { ... },
-      diff(before, after) { ... },
-      change(change, mindmapId) { ... }
-    })
-  }
-})
+input.program.record.create(record)
+input.program.fieldOptions(fieldId).insert(option, anchor)
+input.program.viewFilter(viewId).move(ruleId, anchor)
 ```
 
-- `entity / ordered / tree` 是 registry declaration。
-- `node / edge / edgeLabels / canvasOrder / mindmapTree` 是 domain 名字，不再暴露 `table: 'node'` 或 `type: 'edge.labels'` 这类字面量到 compile 调用面。
-- registry 内部可以编译出 target descriptor，但这不是业务 API。
+### 5.2 去掉 prefix string target 协议
 
-### 2.1.4 最简单 authored API
+- 删除下列 prefix 协议及其解析职责：
+  - `FIELD_OPTIONS_STRUCTURE_PREFIX`
+  - `VIEW_ORDERS_STRUCTURE_PREFIX`
+  - `VIEW_DISPLAY_FIELDS_STRUCTURE_PREFIX`
+  - `VIEW_FILTER_RULES_STRUCTURE_PREFIX`
+  - `VIEW_SORT_RULES_STRUCTURE_PREFIX`
+- `targets.ts` 改成 typed target family declaration，而不是 `structure.startsWith(...)` resolver。
 
-```ts
-const mutation = createMutationPorts(registry, program)
+### 5.3 收口 view diff 编排层
 
-mutation.node.create(node)
-mutation.node.patch(node.id, { position })
-mutation.node.delete(node.id)
+- `compile/viewDiff.ts` 不再承担 writer orchestration 文件角色。
+- `writeViewUpdate / writeViewDisplayInsert / writeViewOrderInsert` 要么：
+  - 合并回 `compile/view.ts`
+  - 要么下沉为纯值级 diff helper
+- 允许保留：
+  - 纯 view diff 算法
+  - 纯 clone / normalize helper
+- 不允许保留：
+  - 直接依赖 domain writer facade 的二次编排层
 
-mutation.edgeLabels(edgeId).insert(label, anchor)
-mutation.edgeLabels(edgeId).move(label.id, anchor)
-mutation.edgeLabels(edgeId).patch(label.id, patch)
+### 5.4 目录收口
 
-mutation.canvasOrder().move(canvasRef(ref), anchor)
-mutation.canvasOrder().splice(refs, anchor)
-
-mutation.fieldOptions(fieldId).insert(option, anchor)
-mutation.fieldOptions(fieldId).patch(option.id, patch)
-
-mutation.mindmapTree(mindmapId).insert(nodeId, parentId, index, value)
-mutation.mindmapTree(mindmapId).move(nodeId, parentId, index)
-mutation.mindmapTree(mindmapId).patch(nodeId, patch)
-```
-
-- 业务侧只有一个概念：`mutation ports`。
-- `writer + target` 的组合被 registry 预绑定，compile 只调用 domain port。
-- `table: 'node'`、`type: 'edge.labels'`、`key: edgeId` 这类协议不再出现在 compile 调用面。
-- 无 key 的 ordered target 用 `canvasOrder()` 这种零参 port。
-- 有 key 的 ordered/tree target 用 `edgeLabels(edgeId)` / `mindmapTree(mindmapId)` 这种 bound port。
-
-### 2.1.5 shared 内部仍然保留的最低限度模型
-
-- shared 内部仍然需要：
-  - program
-  - target descriptor
-  - registry descriptor
-- 但这些都是 kernel 内部实现细节。
-- authored surface 只暴露：
-  - `defineMutationRegistry(...)`
-  - `createMutationPorts(registry, program)`
-
-### 2.2 program writer
-
-- `MutationProgramWriter` 退化为 shared 内部底层写入器。
-- domain authored API 统一改为 `mutation ports`。
-- 禁止 domain 再包 append 层。
-- writer API 保持扁平直接，不再要求 domain 自己做结构协议翻译。
-
-### 2.3 engine
-
-- `engine/program/materialize.ts` 不再把 program 再 materialize 成 `canonical operation[]` 作为主链。
-- `engine/contracts.ts` 里的 `structural.ordered.* / structural.tree.*` 不再作为 authored API。
-- `engine/structural.ts` 改为直接消费 typed target program step。
-- history / inverse / applied commit 全部基于 program，而不是基于 operation。
-
-### 2.4 必删项
-
-- `canonical op` 作为主 authored 模型
-- `custom op` 作为主 authored 模型
-- `structure: string` authored target
-- program 到 operation 的回翻译主链
-
-## 3. dataview
-
-### 3.1 compile 主链
-
-- `dataview/packages/dataview-core/src/mutation/compile` 直接使用 shared typed writer。
-- compile handler 直接写 target program。
-- compile 内局部校验和 domain read 继续保留，但必须依附主 writer，不允许再派生 secondary IR。
-
-### 3.2 `viewProgram.ts`
-
-- [dataview/packages/dataview-core/src/mutation/compile/viewProgram.ts](/Users/realrong/Rostack/dataview/packages/dataview-core/src/mutation/compile/viewProgram.ts) 视为第二套编排层，必须删除。
-- `writeViewUpdate / writeViewDisplayInsert / writeViewOrderInsert` 合并回 `compile/view.ts` 或 compile 下更小的纯 domain diff 模块。
-- 允许保留纯函数级别的 view diff 算法，但不允许保留一个“compile 下面再包一层 writer orchestration”的文件。
-
-### 3.3 target / adapter
-
-- [dataview/packages/dataview-core/src/mutation/adapters.ts](/Users/realrong/Rostack/dataview/packages/dataview-core/src/mutation/adapters.ts) 当前承担了 string structure 协议翻译，typed target 落地后必须删除。
-- `FIELD_OPTIONS_STRUCTURE_PREFIX`
-- `VIEW_ORDERS_STRUCTURE_PREFIX`
-- `VIEW_DISPLAY_FIELDS_STRUCTURE_PREFIX`
-- `VIEW_FILTER_RULES_STRUCTURE_PREFIX`
-- `VIEW_SORT_RULES_STRUCTURE_PREFIX`
-- 上述前缀协议全部改为 typed target constructor。
-
-### 3.4 writer
-
-- [dataview/packages/dataview-core/src/mutation/programWriter.ts](/Users/realrong/Rostack/dataview/packages/dataview-core/src/mutation/programWriter.ts) 继续保留的话，只能作为 dataview typed target facade，不能再承担 adapter 协议翻译。
-- 更优目标：dataview compile 直接使用 shared typed writer + dataview target constructors，尽量删除 domain-specific writer 包装层。
-
-### 3.5 目录收口
-
-- `dataview/packages/dataview-core/src/mutation` 下只保留：
+- `dataview/packages/dataview-core/src/mutation` 最终只保留：
   - `compile/`
   - `targets/`
   - `index.ts`
-- 删除零散 re-export。
-- compile 相关文件全部收进 `mutation/compile/`。
-- target 定义全部收进 `mutation/targets/`。
+- `programWriter.ts` 删除或彻底下沉为 internal-only。
+- `program.ts` 如无额外必要，合并或删除。
+- `targets.ts` 拆成 `targets/` 目录。
 
-## 4. whiteboard
+## 6. whiteboard 实施项
 
-### 4.1 第二套实现必须清零
+### 6.1 compile surface 继续收口
 
-- [whiteboard/packages/whiteboard-core/src/operations/compile/append.ts](/Users/realrong/Rostack/whiteboard/packages/whiteboard-core/src/operations/compile/append.ts) 必删。
-- [whiteboard/packages/whiteboard-core/src/operations/internal.ts](/Users/realrong/Rostack/whiteboard/packages/whiteboard-core/src/operations/internal.ts) 必删。
-- `WhiteboardInternalOperation` 必删。
-- `appendWhiteboardOperation` 必删。
-- `appendWhiteboardOperations` 必删。
-- `appendStructuralOperation` 必删。
+- compile context 不再长期暴露 `MutationProgramWriter<string>`。
+- `compile/write.ts` 不再承担 “domain API -> raw writer calls + string structure” 翻译层。
+- compile / planner 最终直接写 whiteboard typed ports。
 
-### 4.2 compile 主链
+目标调用面：
 
-- `whiteboard-core` compile handler 直接写 shared typed writer。
-- `canvas / node / edge / group / mindmap` compile 文件不再构造 `Operation` 或 `MutationStructuralCanonicalOperation`。
-- compile 的唯一输出就是 program step 写入。
+```ts
+input.program.node.create(node)
+input.program.canvasOrder().splice(refs, anchor)
+input.program.edgeLabels(edgeId).patch(labelId, patch)
+input.program.mindmapTree(mindmapId).insert(nodeId, parentId, index, value)
+```
 
-### 4.3 custom 收口
+### 6.2 去掉字符串 target 构造协议
 
-- `custom` 不再表示 custom operation runtime。
-- `custom` 如果保留，只能放纯领域算法或 planner。
+- 删除或内部化以下字符串协议常量：
+  - `CANVAS_ORDER_STRUCTURE`
+  - `EDGE_LABELS_STRUCTURE_PREFIX`
+  - `EDGE_ROUTE_STRUCTURE_PREFIX`
+  - `MINDMAP_TREE_STRUCTURE_PREFIX`
+- `targets.ts` 改成 typed target family declaration，不再使用：
+  - `structure === ...`
+  - `structure.startsWith(...)`
+
+### 6.3 custom/planner 收口
+
+- `custom` 如继续保留，只承载纯领域 planner / algorithm。
 - planner 直接吃：
   - `reader`
-  - `writer`
+  - `typed writer / ports`
   - `services`
-- planner 不再吃 `WhiteboardInternalOperation`，不再 emit operation。
+- planner 不再知道字符串 target 协议。
+- planner 不再自己决定 `MutationProgramWriter` 的 ordered/tree 原语。
 
-### 4.4 structures 收口
+### 6.4 目录重组
 
-- [whiteboard/packages/whiteboard-core/src/operations/custom/structures.ts](/Users/realrong/Rostack/whiteboard/packages/whiteboard-core/src/operations/custom/structures.ts) 当前混合了：
-  - string target 协议
-  - structure read/write
-  - change 映射
-  - patch/diff
-  - 少量领域算法
-- typed target 落地后必须拆开：
-  - `targets/`：typed target constructor 与 registry
-  - `algorithms/`：纯领域算法，如 mindmap layout diff、branch style 推导、anchor 转换
-- 不允许继续把 target 协议和领域算法混放在一个大文件里。
+- `whiteboard/packages/whiteboard-core/src/operations` 的实现迁入 `src/mutation`。
+- `src/mutation/index.ts` 不再是空壳。
+- 目标目录为：
+  - `mutation/compile`
+  - `mutation/targets`
+  - `mutation/planner`
+  - `mutation/validate`
+  - `mutation/index.ts`
 
-### 4.5 writer
+## 7. 建议实施顺序
 
-- [whiteboard/packages/whiteboard-core/src/operations/programWriter.ts](/Users/realrong/Rostack/whiteboard/packages/whiteboard-core/src/operations/programWriter.ts) 不能再承担“domain API -> string structure”翻译层。
-- 更优目标：删除该文件，compile 直接使用 shared typed writer + whiteboard target constructors。
-- 如果短期保留同名文件，它只能是极薄的 typed target facade，不允许继续增长。
+### 7.1 第一批：shared 内部瘦身
 
-### 4.6 目录重组
+- 把 `engine/structural.ts` 从旧 structural op 转换层收薄成纯 ordered/tree apply helper。
+- 删掉次级公开面上的旧 structural op type / helper 传播。
+- 保证 shared 内部不再把旧 structural op 当主中间层。
 
-- `whiteboard/packages/whiteboard-core/src/operations` 目录名本身已经误导，最终应重命名为 `mutation`。
-- 最终目录建议：
-  - `whiteboard/packages/whiteboard-core/src/mutation/compile`
-  - `whiteboard/packages/whiteboard-core/src/mutation/targets`
-  - `whiteboard/packages/whiteboard-core/src/mutation/planner`
-  - `whiteboard/packages/whiteboard-core/src/mutation/validate`
-  - `whiteboard/packages/whiteboard-core/src/mutation/index.ts`
-- `planner` 放 mindmap / canvas 这类纯领域组合写入算法。
-- `targets` 放 canvas order / edge labels / edge route / mindmap tree 这类 typed target。
-- `compile` 只做 intent 编排，不再承载 append/runtime 翻译。
+### 7.2 第二批：shared typed target 落地
 
-## 5. 现有必须下沉为底层设施的能力
+- 引入 typed target step model。
+- 改 registry declaration。
+- 让 apply / inverse / delta/change 跑通 typed target。
 
-- typed target registry
-- ordered/tree target apply
-- ordered/tree patch/diff contract
-- ordered/tree target delta/change compile
-- target 级类型提示与 target constructor
+### 7.3 第三批：dataview 接入
 
-## 6. 允许保留的 helper 边界
+- 把 dataview registry 改成 typed family declaration。
+- 替换 compile context 为 typed ports / typed writer。
+- 删除或下沉 `createDataviewProgramWriter(...)`。
+- 清空 `viewDiff.ts` 的 orchestration 职责。
+- 完成目录收口。
 
-- 纯领域算法 helper 可以保留。
-- 纯值级 diff / clone / normalize helper 可以保留。
-- 任何“把一种写入 IR 再翻译成另一种写入 IR”的 helper 不允许保留。
-- 任何“把 string target 协议补全成 typed 语义”的 helper 不允许保留。
+### 7.4 第四批：whiteboard 接入
 
-## 7. 删除清单
-
-### 7.1 shared/mutation
-
-- authored `canonical operation`
-- authored `custom operation`
-- authored `structural.ordered.*`
-- authored `structural.tree.*`
-- program materialize 回 operation 的主链
-
-### 7.2 dataview
-
-- `mutation/adapters.ts`
-- `mutation/compile/viewProgram.ts`
-- 所有基于 structure prefix 的 target 协议
-
-### 7.3 whiteboard
-
-- `operations/internal.ts`
-- `operations/compile/append.ts`
-- `appendWhiteboardOperation`
-- `appendWhiteboardOperations`
-- `appendStructuralOperation`
-- 所有 compile 中直接构造 `MutationStructuralCanonicalOperation` 的路径
+- 把 whiteboard registry 改成 typed family declaration。
+- 替换 compile / planner context 为 typed ports / typed writer。
+- 清空 `compile/write.ts` 的字符串 target 翻译职责。
+- 把实现从 `operations/` 迁到 `mutation/`。
 
 ## 8. 完成标准
 
-- shared 不再暴露 authored operation 主模型。
-- dataview 不再存在 adapter / viewProgram 这种第二套写入编排。
-- whiteboard 不再存在 internal operation / append / structural operation 中转。
-- dataview 与 whiteboard 都直接基于 shared typed writer 写 program。
-- 目录命名与文件职责反映单一中轴，不再出现 operation/runtime/append 这类历史遗留中转命名。
+- shared 顶层与次级公开面都不再传播旧 structural authored-op 模型。
+- `engine/structural.ts` 不再保留 `effect <-> 旧 structural op` 双向转换层。
+- shared program step 不再包含裸 `structure: string`。
+- shared registry 不再使用 `structures` resolver。
+- dataview compile 不再依赖 domain writer facade 主入口。
+- dataview 不再存在 prefix string target 协议。
+- dataview 不再存在 compile 下的二次 writer orchestration 文件。
+- whiteboard compile / planner 不再显式使用 `MutationProgramWriter<string>`。
+- whiteboard 不再存在字符串 target constructor 作为 compile 依赖。
+- whiteboard 主实现目录改为 `mutation/`，`operations/` 不再承载写入主链。
+- dataview 与 whiteboard 都直接基于 typed target program 写入 shared 主链。
+
+## 9. 非目标
+
+- 本阶段不回头恢复任何旧 authored operation API。
+- 本阶段不回头恢复 `materialize` 一类 authored 回翻译能力。
+- 本阶段不单独优化 projection、UI、业务语义。
+- 本阶段主要处理 shared 内部瘦身、typed target 落地、domain compile 收口。

@@ -21,20 +21,19 @@ import type {
   MindmapRecord,
   Node,
   NodeId,
+  Operation,
   ResultCode
 } from '@whiteboard/core/types'
-import type {
-  WhiteboardInternalOperation
-} from '@whiteboard/core/operations/internal'
-export type {
-  WhiteboardInternalOperation
-} from '@whiteboard/core/operations/internal'
 import type {
   WhiteboardIntent,
   WhiteboardIntentKind,
   WhiteboardIntentOutput,
   WhiteboardMutationTable
 } from '@whiteboard/core/operations/intents'
+import type {
+  WhiteboardCustomOperation,
+  WhiteboardCustomPlanContext,
+} from '@whiteboard/core/operations/custom/types'
 
 export type WhiteboardCompileCode = ResultCode
 
@@ -139,3 +138,27 @@ export const requireMindmap = (
   code: 'invalid',
   message: `Mindmap ${id} not found.`
 })
+
+export const runCustomPlanner = <
+  TOp extends WhiteboardCustomOperation
+>(
+  input: WhiteboardCompileContext,
+  op: TOp,
+  plan: (input: WhiteboardCustomPlanContext<TOp>) => void
+) => {
+  plan({
+    op,
+    document: input.document,
+    reader: input.reader,
+    services: input.services,
+    program: input.program,
+    fail: ({ code, message, details, path }) => {
+      throw input.fail({
+        code,
+        message,
+        details,
+        ...(path === undefined ? {} : { path })
+      })
+    }
+  })
+}

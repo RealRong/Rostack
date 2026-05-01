@@ -120,14 +120,11 @@ export const createEdgeOp = ({
 
   return ok({
     edgeId: id,
-    operation: {
-      type: 'edge.create',
-      value: {
-        ...normalized,
-        id,
-        type: normalized.type ?? 'straight',
-        route
-      }
+    edge: {
+      ...normalized,
+      id,
+      type: normalized.type ?? 'straight',
+      route
     }
   })
 }

@@ -6,7 +6,6 @@ import type {
   Point,
   Rect
 } from '@whiteboard/core/types/model'
-import type { Operation } from '@whiteboard/core/types/operations'
 
 export type Slice = {
   version: 1
@@ -32,7 +31,8 @@ export type SliceInsertOptions = {
 }
 
 export type SliceInsertResult = {
-  operations: Operation[]
+  nodes: readonly Node[]
+  edges: readonly Edge[]
   roots: SliceRoots
   allNodeIds: readonly NodeId[]
   allEdgeIds: readonly EdgeId[]

@@ -36,7 +36,7 @@ describe('document engine subscribe', () => {
     expect(Object.keys(engine.doc().nodes)).toHaveLength(1)
   })
 
-  it('increments revision monotonically across execute and apply', () => {
+  it('increments revision monotonically across execute calls', () => {
     const engine = createEngine({
       document: documentApi.create('doc_document_engine_revision'),
       layout: createTestLayout()
@@ -56,13 +56,17 @@ describe('document engine subscribe', () => {
     expect(first.ok).toBe(true)
     expect(engine.rev()).toBe(1)
 
-    const second = engine.apply([{
-      type: 'node.patch',
-      id: 'node_1',
-      patch: {
-        rotation: 15
-      }
-    }], {
+    const second = engine.execute({
+      type: 'node.update',
+      updates: [{
+        id: 'node_1',
+        input: {
+          fields: {
+            rotation: 15
+          }
+        }
+      }]
+    }, {
       origin: 'remote'
     })
 

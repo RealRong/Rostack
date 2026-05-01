@@ -1,19 +1,17 @@
-import type { Document, Operation } from '@whiteboard/core/types'
-import type { MutationFootprint } from '@shared/mutation'
+import type { Document } from '@whiteboard/core/types'
+import type { MutationFootprint, MutationProgram } from '@shared/mutation'
 import type {
   YjsSyncCodec as SharedYjsSyncCodec,
   YjsSyncMeta,
   YjsSyncStore as SharedYjsSyncStore
 } from '@shared/collab-yjs'
 
-export type SharedOperation = Exclude<Operation, { type: 'document.create' }>
-
 export type SharedMeta = YjsSyncMeta<1>
 
 export type SharedChange = {
   id: string
   actorId: string
-  ops: readonly SharedOperation[]
+  program: MutationProgram<string>
   footprint: readonly MutationFootprint[]
 }
 

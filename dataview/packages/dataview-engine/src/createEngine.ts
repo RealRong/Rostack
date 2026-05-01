@@ -56,6 +56,9 @@ import type {
   DataviewProgramWriter
 } from '@dataview/core/mutation'
 import type {
+  MutationProgram
+} from '@shared/mutation'
+import type {
   DataviewIntentTable,
   DataviewErrorCode
 } from '@dataview/engine/types/intent'
@@ -180,8 +183,8 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
       mutationEngine.replace(nextDocument, replaceOptions)
     ),
     execute: mutationEngine.execute.bind(mutationEngine),
-    apply: (operations: readonly DocumentOperation[], applyOptions?: MutationOptions) => (
-      mutationEngine.apply(operations, applyOptions)
+    apply: (program: MutationProgram<string>, applyOptions?: MutationOptions) => (
+      mutationEngine.apply(program, applyOptions)
     )
   }
   const engineWithInfra = {

@@ -76,7 +76,7 @@ export interface HistoryPortEngine<
   },
   Commit extends ApplyCommit<Doc, any, Footprint, any> = ApplyCommit<Doc, any, Footprint, any>
 > {
-  applyProgram(
+  apply(
     program: Program,
     options?: {
       origin?: Origin
@@ -173,7 +173,7 @@ export const createHistoryPort = <
 
     publish()
 
-    const result = engine.applyProgram(program, {
+    const result = engine.apply(program, {
       origin: 'history'
     })
     if (!result.ok) {

@@ -22,6 +22,7 @@ import {
   applyRootWrites,
   appendTableCreateWrites,
   appendTableDeleteWrites,
+  compileEntityPatchWrites,
   invalidCanonicalOperation,
   prefixRecordWrites,
   readChangedPathsFromWrites,
@@ -120,6 +121,13 @@ const isStructuralEffect = (
   || effect.type === 'tree.restore'
   || effect.type === 'tree.node.patch'
 )
+
+const resolveEntityWrites = (
+  spec: CompiledEntitySpec,
+  input: Readonly<Record<string, unknown>>
+): Readonly<Record<string, unknown>> => Object.keys(input).some((key) => key.includes('.'))
+  ? input
+  : compileEntityPatchWrites(spec, input)
 
 const applyEntityCreateEffect = <
   Doc extends object
@@ -239,7 +247,7 @@ const applyEntityPatchEffect = <
     throw new Error(`Mutation operation "${spec.family}.patch" cannot find entity "${effect.entity.id}".`)
   }
 
-  const entityWrites = effect.writes
+  const entityWrites = resolveEntityWrites(spec, effect.writes)
   const changedPaths = readChangedPathsFromWrites(entityWrites)
   if (changedPaths.length === 0) {
     return {

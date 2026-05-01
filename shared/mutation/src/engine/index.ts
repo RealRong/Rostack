@@ -8,11 +8,7 @@ export type {
   MutationCompileInput,
   MutationCompileIssue,
   MutationCurrent,
-  MutationCustomFailure,
-  MutationCustomPlannerInput,
   MutationReaderFactory,
-  MutationCustomSpec,
-  MutationCustomTable,
   MutationEngineOptions,
   MutationEntityEffectInput,
   MutationEntityPatch,
@@ -34,18 +30,7 @@ export type {
   MutationStructureResolver,
   MutationStructureSource,
   MutationStructureTable,
-  MutationStructuralCanonicalOperation,
   MutationStructuralFact,
-  MutationStructuralOrderedDeleteOperation,
-  MutationStructuralOrderedInsertOperation,
-  MutationStructuralOrderedMoveOperation,
-  MutationStructuralOrderedPatchOperation,
-  MutationStructuralOrderedSpliceOperation,
-  MutationStructuralTreeDeleteOperation,
-  MutationStructuralTreeInsertOperation,
-  MutationStructuralTreeMoveOperation,
-  MutationStructuralTreeNodePatchOperation,
-  MutationStructuralTreeRestoreOperation,
   MutationTreeNodeSnapshot,
   MutationTreeSnapshot,
   MutationTreeSubtreeSnapshot,
@@ -65,6 +50,9 @@ export type {
   MutationProgram,
   MutationProgramStep,
   MutationTreeProgramStep,
+} from './program/program'
+export {
+  isMutationProgramStep
 } from './program/program'
 export type {
   MutationProgramWriter
@@ -87,20 +75,7 @@ export {
   mutationFootprintConflicts
 } from './footprint'
 export {
-  applyStructuralOperation,
-  createStructuralOrderedDeleteOperation,
-  createStructuralOrderedInsertOperation,
-  createStructuralOrderedMoveOperation,
-  createStructuralOrderedPatchOperation,
-  createStructuralOrderedSpliceOperation,
-  createStructuralTreeDeleteOperation,
-  createStructuralTreeInsertOperation,
-  createStructuralTreeMoveOperation,
-  createStructuralTreeNodePatchOperation,
-  createStructuralTreeRestoreOperation,
-  readStructuralEffectResult,
-  readStructuralOperation,
-  readStructuralOperationResult,
+  applyStructuralEffectResult,
 } from './structural'
 export {
   MutationEngine

@@ -316,66 +316,6 @@ export interface MutationHistoryOptions {
   capture?: Partial<Record<Exclude<Origin, 'history'>, boolean>>
 }
 
-export interface MutationCustomFailure<
-  Code extends string = string
-> {
-  code: Code
-  message: string
-  details?: unknown
-  path?: string
-}
-
-export interface MutationCustomPlannerInput<
-  Doc,
-  Op,
-  Reader,
-  Services = void,
-  Tag extends string = string,
-  Code extends string = string
-> {
-  op: Op
-  document: Doc
-  reader: Reader
-  services: Services | undefined
-  program: MutationProgramWriter<Tag>
-  fail(issue: MutationCustomFailure<Code>): never
-}
-
-export interface MutationCustomSpec<
-  Doc,
-  CurrentOp,
-  Op = CurrentOp,
-  Reader = unknown,
-  Services = void,
-  Tag extends string = string,
-  Code extends string = string
-> {
-  plan(
-    input: MutationCustomPlannerInput<Doc, CurrentOp, Reader, Services, Tag, Code>
-  ): void
-}
-
-export type MutationCustomTable<
-  Doc,
-  Op extends {
-    type: string
-  },
-  Reader,
-  Services = void,
-  Tag extends string = string,
-  Code extends string = string
-> = Partial<{
-  readonly [TType in Op['type']]: MutationCustomSpec<
-    Doc,
-    Extract<Op, { type: TType }>,
-    Op,
-    Reader,
-    Services,
-    Tag,
-    Code
-  >
-}> & Readonly<Record<string, MutationCustomSpec<Doc, Op, Op, Reader, Services, Tag, Code>>>
-
 export interface MutationEngineOptions<
   Doc extends object,
   Table extends MutationIntentTable,
@@ -393,7 +333,6 @@ export interface MutationEngineOptions<
   services?: Services
   entities?: Readonly<Record<string, MutationEntitySpec>>
   structures?: MutationStructureSource<Doc>
-  custom?: MutationCustomTable<Doc, Op, Reader, Services, string, Code>
   compile?: MutationCompileHandlerTable<Table, Doc, Program, Reader, Services, Code>
   createProgram?: MutationCompileProgramFactory<Program>
   history?: MutationHistoryOptions | false
@@ -644,17 +583,6 @@ export const mutationFailure = <Code extends string>(
         })
   }
 })
-
-export class MutationCustomPlanError<
-  Code extends string = string
-> extends Error {
-  readonly issue: MutationCustomFailure<Code>
-
-  constructor(issue: MutationCustomFailure<Code>) {
-    super(issue.message)
-    this.issue = issue
-  }
-}
 
 export const mutationSuccess = <T, Commit, Code extends string = string>(
   data: T,

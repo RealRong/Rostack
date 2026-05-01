@@ -6,7 +6,6 @@ import type {
   Node,
   NodeId,
   NodeInput,
-  Operation,
   Result
 } from '@whiteboard/core/types'
 import {
@@ -20,18 +19,17 @@ import {
 import {
   getNodeBoundsByNode,
 } from '@whiteboard/core/node/geometry'
-import { createNodeFieldsUpdateOperation } from '@whiteboard/core/node/update'
 import { materializeCommittedNode } from '@whiteboard/core/node/materialize'
 
 type NodeCreateOpResult =
   Result<{
-    operation: Extract<Operation, { type: 'node.create' }>
+    node: Node
     nodeId: NodeId
   }, 'invalid'>
 
 type NodeOpsResult =
   Result<{
-    operations: Operation[]
+    updates: readonly NodeLayoutUpdate[]
   }, 'invalid'>
 
 type CreateNodeOpInput = {
@@ -86,32 +84,6 @@ const readLayoutEntries = ({
   })
 }
 
-const createLayoutOps = (
-  doc: Document,
-  updates: readonly NodeLayoutUpdate[]
-): {
-  operations: Operation[]
-} => {
-  const nodes = Object.values(doc.nodes)
-  const nodeById = new Map(nodes.map((node) => [node.id, node] as const))
-  const operations: Operation[] = []
-
-  updates.forEach((update) => {
-    const node = nodeById.get(update.id)
-    if (!node) {
-      return
-    }
-
-    operations.push(
-      ...createNodeFieldsUpdateOperation(update.id, {
-        position: update.position
-      })
-    )
-  })
-
-  return { operations }
-}
-
 export const createNodeOp = ({
   payload,
   doc,
@@ -149,10 +121,7 @@ export const createNodeOp = ({
 
   return ok({
     nodeId: materialized.data.id,
-    operation: {
-      type: 'node.create',
-      value: materialized.data
-    }
+    node: materialized.data
   })
 }
 
@@ -172,7 +141,9 @@ export const planNodeAlignOps = ({
   }
 
   const updates = alignNodes(entriesResult.data.entries, mode)
-  return ok(createLayoutOps(doc, updates))
+  return ok({
+    updates
+  })
 }
 
 export const planNodeDistributeOps = ({
@@ -191,5 +162,7 @@ export const planNodeDistributeOps = ({
   }
 
   const updates = distributeNodes(entriesResult.data.entries, mode)
-  return ok(createLayoutOps(doc, updates))
+  return ok({
+    updates
+  })
 }

@@ -1,6 +1,7 @@
 import type {
   HistoryPort,
   MutationFootprint,
+  MutationProgram,
   MutationReplaceResult,
 } from '@shared/mutation'
 import type {
@@ -8,12 +9,8 @@ import type {
 } from '@shared/mutation/engine'
 import type {
   CoreRegistries,
-  Document,
-  Operation
+  Document
 } from '@whiteboard/core/types'
-import type {
-  WhiteboardInternalOperation
-} from '@whiteboard/core/operations'
 import type { WhiteboardLayoutService } from '@whiteboard/core/layout'
 import type { BoardConfig } from '@whiteboard/engine/config'
 import type {
@@ -42,7 +39,7 @@ export interface Engine {
   readonly commits: EngineCommits
   readonly history: HistoryPort<
     IntentResult,
-    WhiteboardInternalOperation,
+    MutationProgram<string>,
     MutationFootprint,
     EngineApplyCommit
   >
@@ -58,7 +55,7 @@ export interface Engine {
     options?: MutationOptions
   ): MutationReplaceResult<Document>
   apply(
-    ops: readonly Operation[],
+    program: MutationProgram<string>,
     options?: MutationOptions
   ): IntentResult
 }

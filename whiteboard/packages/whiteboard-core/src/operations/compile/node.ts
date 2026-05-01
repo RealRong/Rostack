@@ -11,26 +11,30 @@ import type {
   WhiteboardCompileHandlerTable
 } from '@whiteboard/core/operations/compile/helpers'
 import {
-  appendWhiteboardOperation,
-  appendWhiteboardOperations
-} from './append'
-import {
   failCancelled,
   failInvalid,
   readCompileRegistries,
-  readCompileServices
+  readCompileServices,
+  runCustomPlanner,
 } from '@whiteboard/core/operations/compile/helpers'
+import {
+  planMindmapMove,
+  planMindmapTopicPatch,
+} from '@whiteboard/core/operations/custom/mindmap'
 import { resolveLockDecision } from '@whiteboard/core/operations/lock'
 import type {
   NodeId,
   NodeUpdateInput,
-  Operation
 } from '@whiteboard/core/types'
 import { ok } from '@whiteboard/core/utils/result'
 import {
   compileCanvasDelete,
   compileCanvasDuplicate
 } from './canvas'
+import {
+  writeNodeCreate,
+  writeNodePatch,
+} from './write'
 
 const hasOwn = <T extends object>(
   target: T,
@@ -47,72 +51,71 @@ const readErrorDetails = (
     : undefined
 )
 
-const compileMindmapTopicUpdate = (
-  reader: DocumentReader,
+const writeMindmapTopicUpdate = (
+  ctx: WhiteboardCompileContext,
   nodeId: NodeId,
   update: NodeUpdateInput
 ) => {
+  const reader = ctx.reader
   const node = reader.nodes.get(nodeId)
   if (!node) {
-    return ok([] as Operation[])
+    return
   }
 
   const mindmapId = getNodeMindmapId(node)
   if (!mindmapId) {
-    return ok(nodeApi.update.createOperation(nodeId, update))
+    const patch = nodeApi.update.toPatch(update)
+    if (Object.keys(patch).length > 0) {
+      writeNodePatch(ctx.program, nodeId, patch)
+    }
+    return
   }
 
-  const ops: Operation[] = []
   const fields = update.fields
   const isRoot = reader.mindmaps.isRoot(node.id)
 
   if (fields?.position) {
     if (!isRoot) {
-      return {
-        ok: false as const,
-        error: {
-          code: 'invalid' as const,
-          message: 'Mindmap member position is reconcile-owned.'
-        }
-      }
+      throw failInvalid(ctx, 'Mindmap member position is reconcile-owned.')
     }
 
-    ops.push({
+    runCustomPlanner(ctx, {
       type: 'mindmap.move',
       id: mindmapId,
       position: fields.position
-    })
+    }, planMindmapMove)
   }
 
   if (fields && hasOwn(fields, 'groupId')) {
-    return {
-      ok: false as const,
-      error: {
-        code: 'invalid' as const,
-        message: 'Mindmap topic group is not writable.'
-      }
-    }
+    throw failInvalid(ctx, 'Mindmap topic group is not writable.')
   }
   if (fields && hasOwn(fields, 'owner')) {
-    return {
-      ok: false as const,
-      error: {
-        code: 'invalid' as const,
-        message: 'Mindmap topic owner is aggregate-owned.'
-      }
-    }
+    throw failInvalid(ctx, 'Mindmap topic owner is aggregate-owned.')
   }
 
-  emitMindmapTopicUpdateOps({
-    mindmapId,
-    topicId: nodeId,
-    update,
-    emit: (op) => {
-      ops.push(op)
-    }
+  const patch = nodeApi.update.toPatch({
+    ...(fields
+      ? {
+          fields: {
+            ...(hasOwn(fields, 'size') ? { size: fields.size } : {}),
+            ...(hasOwn(fields, 'rotation') ? { rotation: fields.rotation } : {}),
+            ...(hasOwn(fields, 'locked') ? { locked: fields.locked } : {})
+          }
+        }
+      : {}),
+    ...(update.record ? { record: update.record } : {})
   })
 
-  return ok(ops)
+  if (Object.keys(patch).length === 0) {
+    return
+  }
+
+  runCustomPlanner(ctx, {
+    type: 'mindmap.topic.patch',
+    id: mindmapId,
+    topicId: nodeId,
+    patch
+  }, planMindmapTopicPatch)
 }
 
 const compileNodeTextCommit = (
@@ -171,12 +174,14 @@ const compileNodeTextCommit = (
     return
   }
 
-  const planned = compileMindmapTopicUpdate(reader, intent.nodeId, input)
-  if (!planned.ok) {
-    return failInvalid(ctx, planned.error.message, readErrorDetails(planned.error))
+  try {
+    writeMindmapTopicUpdate(ctx, intent.nodeId, input)
+  } catch (error) {
+    if (error && typeof error === 'object' && 'kind' in error) {
+      return error as never
+    }
+    return failInvalid(ctx, error instanceof Error ? error.message : 'Node update failed.', readErrorDetails(error))
   }
-
-  appendWhiteboardOperations(ctx, ...planned.data)
 }
 
 type NodeIntentHandlers = Pick<
@@ -210,7 +215,7 @@ export const nodeIntentHandlers: NodeIntentHandlers = {
       return failInvalid(ctx, built.error.message, built.error.details)
     }
 
-    appendWhiteboardOperation(ctx, built.data.operation)
+    writeNodeCreate(ctx.program, built.data.node)
     ctx.output({
       nodeId: built.data.nodeId
     })
@@ -246,11 +251,14 @@ export const nodeIntentHandlers: NodeIntentHandlers = {
             origin: ctx.intent.origin
           }).update
         : entry.input
-      const planned = compileMindmapTopicUpdate(reader, entry.id, update)
-      if (!planned.ok) {
-        return failInvalid(ctx, planned.error.message, readErrorDetails(planned.error))
+      try {
+        writeMindmapTopicUpdate(ctx, entry.id, update)
+      } catch (error) {
+        if (error && typeof error === 'object' && 'kind' in error) {
+          return error as never
+        }
+        return failInvalid(ctx, error instanceof Error ? error.message : 'Node update failed.', readErrorDetails(error))
       }
-      appendWhiteboardOperations(ctx, ...planned.data)
     }
   },
   'node.move': (ctx) => {
@@ -282,10 +290,12 @@ export const nodeIntentHandlers: NodeIntentHandlers = {
 
       const mindmapId = getNodeMindmapId(node)
       if (!mindmapId) {
-        appendWhiteboardOperations(ctx, ...nodeApi.update.createFieldsOperation(id, {
-          position: {
-            x: node.position.x + intent.delta.x,
-            y: node.position.y + intent.delta.y
+        writeNodePatch(ctx.program, id, nodeApi.update.toPatch({
+          fields: {
+            position: {
+              x: node.position.x + intent.delta.x,
+              y: node.position.y + intent.delta.y
+            }
           }
         }))
         continue
@@ -295,14 +305,14 @@ export const nodeIntentHandlers: NodeIntentHandlers = {
         return failInvalid(ctx, 'Mindmap member move must use mindmap drag.')
       }
 
-      appendWhiteboardOperation(ctx, {
+      runCustomPlanner(ctx, {
         type: 'mindmap.move',
         id: mindmapId,
         position: {
           x: node.position.x + intent.delta.x,
           y: node.position.y + intent.delta.y
         }
-      })
+      }, planMindmapMove)
     }
   },
   'node.text.commit': compileNodeTextCommit,
@@ -317,7 +327,13 @@ export const nodeIntentHandlers: NodeIntentHandlers = {
       return failInvalid(ctx, built.error.message, built.error.details)
     }
 
-    appendWhiteboardOperations(ctx, ...built.data.operations)
+    built.data.updates.forEach((update) => {
+      writeNodePatch(ctx.program, update.id, nodeApi.update.toPatch({
+        fields: {
+          position: update.position
+        }
+      }))
+    })
   },
   'node.distribute': (ctx) => {
     const document = ctx.document
@@ -330,7 +346,13 @@ export const nodeIntentHandlers: NodeIntentHandlers = {
       return failInvalid(ctx, built.error.message, built.error.details)
     }
 
-    appendWhiteboardOperations(ctx, ...built.data.operations)
+    built.data.updates.forEach((update) => {
+      writeNodePatch(ctx.program, update.id, nodeApi.update.toPatch({
+        fields: {
+          position: update.position
+        }
+      }))
+    })
   },
   'node.delete': (ctx) => compileCanvasDelete(
     ctx.intent.ids.map((id) => ({ kind: 'node' as const, id })),

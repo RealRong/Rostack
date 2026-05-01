@@ -28,7 +28,6 @@ import {
   hasCompileErrors,
   isCompileControl,
   mutationFailure,
-  MutationCustomPlanError,
   mutationSuccess,
   normalizeCompileIssue,
   readFirstOutput,
@@ -38,10 +37,7 @@ import {
   type MutationCompileHandlerInput,
   type MutationCompileHandlerTable,
   type MutationCurrent,
-  type MutationCustomPlannerInput,
   type MutationReaderFactory,
-  type MutationCustomSpec,
-  type MutationCustomTable,
   type MutationEngineOptions,
   type MutationExecuteInput,
   type MutationExecuteResult,
@@ -67,14 +63,9 @@ import {
   applyMutationProgram
 } from './program/apply'
 import {
-  materializeMutationProgram
-} from './program/materialize'
-import {
   isMutationProgramStep,
-  type MutationOrderedProgramStep,
   type MutationProgram,
   type MutationProgramStep,
-  type MutationTreeProgramStep,
 } from './program/program'
 import {
   createMutationProgramWriter
@@ -84,305 +75,14 @@ import type {
 } from './program/writer'
 import {
   compileEntities,
-  readCanonicalOperation,
-  lowerCanonicalEntityOperation,
 } from './entity'
-import {
-  readStructuralEffectResult,
-  lowerStructuralOperation,
-  readStructuralOperation
-} from './structural'
 import {
   dedupeFootprints,
   mutationFootprintBatchConflicts
 } from './footprint'
 import type {
   CompiledEntitySpec,
-  MutationEntityCanonicalOperation,
-  MutationStructuralCanonicalOperation
 } from './contracts'
-
-const createCustomPlannerProgram = <
-  Doc extends object,
-  Tag extends string = string,
-  Code extends string = string
->(input: {
-  document: Doc
-  structures?: MutationStructureSource<Doc>
-  fail(issue: {
-    code: Code
-    message: string
-  }): never
-}) => {
-  const builder = createMutationProgramWriter<Tag>()
-
-  const commitStructuralEffect = (
-    effect: MutationOrderedProgramStep<Tag> | MutationTreeProgramStep<Tag>
-  ): boolean => {
-    const result = readStructuralEffectResult<Doc, Code>({
-      document: input.document,
-      effect,
-      structures: input.structures
-    })
-    if (!result.ok) {
-      return input.fail({
-        code: result.error.code as Code,
-        message: result.error.message
-      })
-    }
-    if (result.data.historyMode === 'neutral') {
-      return false
-    }
-
-    switch (effect.type) {
-      case 'ordered.insert':
-        builder.ordered.insert(effect.structure, effect.itemId, effect.value, effect.to, effect.tags, {
-          delta: effect.delta,
-          footprint: effect.footprint
-        })
-        return true
-      case 'ordered.move':
-        builder.ordered.move(effect.structure, effect.itemId, effect.to, effect.tags, {
-          delta: effect.delta,
-          footprint: effect.footprint
-        })
-        return true
-      case 'ordered.splice':
-        builder.ordered.splice(effect.structure, effect.itemIds, effect.to, effect.tags, {
-          delta: effect.delta,
-          footprint: effect.footprint
-        })
-        return true
-      case 'ordered.delete':
-        builder.ordered.delete(effect.structure, effect.itemId, effect.tags, {
-          delta: effect.delta,
-          footprint: effect.footprint
-        })
-        return true
-      case 'ordered.patch':
-        builder.ordered.patch(effect.structure, effect.itemId, effect.patch, effect.tags, {
-          delta: effect.delta,
-          footprint: effect.footprint
-        })
-        return true
-      case 'tree.insert':
-        builder.tree.insert(
-          effect.structure,
-          effect.nodeId,
-          effect.parentId,
-          effect.index,
-          effect.value,
-          effect.tags,
-          {
-            delta: effect.delta,
-            footprint: effect.footprint
-          }
-        )
-        return true
-      case 'tree.move':
-        builder.tree.move(
-          effect.structure,
-          effect.nodeId,
-          effect.parentId,
-          effect.index,
-          effect.tags,
-          {
-            delta: effect.delta,
-            footprint: effect.footprint
-          }
-        )
-        return true
-      case 'tree.delete':
-        builder.tree.delete(effect.structure, effect.nodeId, effect.tags, {
-          delta: effect.delta,
-          footprint: effect.footprint
-        })
-        return true
-      case 'tree.restore':
-        builder.tree.restore(effect.structure, effect.snapshot, effect.tags, {
-          delta: effect.delta,
-          footprint: effect.footprint
-        })
-        return true
-      case 'tree.node.patch':
-        builder.tree.patch(effect.structure, effect.nodeId, effect.patch, effect.tags, {
-          delta: effect.delta,
-          footprint: effect.footprint
-        })
-        return true
-    }
-  }
-
-  const program: MutationProgramWriter<Tag> = {
-    entity: builder.entity,
-    build: builder.build,
-    ordered: {
-      insert: builder.ordered.insert,
-      delete: builder.ordered.delete,
-      move: (structure, itemId, to, tags, metadata) => {
-        commitStructuralEffect({
-          type: 'ordered.move',
-          structure,
-          itemId,
-          to,
-          ...(tags === undefined ? {} : { tags }),
-          ...(metadata?.delta === undefined ? {} : { delta: metadata.delta }),
-          ...(metadata?.footprint === undefined ? {} : { footprint: metadata.footprint })
-        })
-      },
-      splice: (structure, itemIds, to, tags, metadata) => {
-        commitStructuralEffect({
-          type: 'ordered.splice',
-          structure,
-          itemIds,
-          to,
-          ...(tags === undefined ? {} : { tags }),
-          ...(metadata?.delta === undefined ? {} : { delta: metadata.delta }),
-          ...(metadata?.footprint === undefined ? {} : { footprint: metadata.footprint })
-        })
-      },
-      patch: (structure, itemId, patch, tags, metadata) => {
-        commitStructuralEffect({
-          type: 'ordered.patch',
-          structure,
-          itemId,
-          patch,
-          ...(tags === undefined ? {} : { tags }),
-          ...(metadata?.delta === undefined ? {} : { delta: metadata.delta }),
-          ...(metadata?.footprint === undefined ? {} : { footprint: metadata.footprint })
-        })
-      }
-    },
-    tree: {
-      insert: builder.tree.insert,
-      delete: builder.tree.delete,
-      restore: builder.tree.restore,
-      move: (structure, nodeId, parentId, index, tags, metadata) => {
-        commitStructuralEffect({
-          type: 'tree.move',
-          structure,
-          nodeId,
-          ...(parentId === undefined ? {} : { parentId }),
-          ...(index === undefined ? {} : { index }),
-          ...(tags === undefined ? {} : { tags }),
-          ...(metadata?.delta === undefined ? {} : { delta: metadata.delta }),
-          ...(metadata?.footprint === undefined ? {} : { footprint: metadata.footprint })
-        })
-      },
-      patch: (structure, nodeId, patch, tags, metadata) => {
-        commitStructuralEffect({
-          type: 'tree.node.patch',
-          structure,
-          nodeId,
-          patch,
-          ...(tags === undefined ? {} : { tags }),
-          ...(metadata?.delta === undefined ? {} : { delta: metadata.delta }),
-          ...(metadata?.footprint === undefined ? {} : { footprint: metadata.footprint })
-        })
-      }
-    }
-  }
-
-  return program
-}
-
-const readCustomOperationResult = <
-  Doc extends object,
-  Op extends {
-    type: string
-  },
-  Reader,
-  Services,
-  Code extends string = string
->(input: {
-  document: Doc
-  operation: Op
-  spec: MutationCustomSpec<Doc, Op, Op, Reader, Services, string, Code>
-  createReader: MutationReaderFactory<Doc, Reader>
-  entities: ReadonlyMap<string, CompiledEntitySpec>
-  structures?: MutationStructureSource<Doc>
-  services: Services | undefined
-  normalize(doc: Doc): Doc
-}): MutationApplyResult<Doc, Op, Code> => {
-  try {
-    const program = createCustomPlannerProgram<Doc, string, Code>({
-      document: input.document,
-      structures: input.structures,
-      fail: (issue) => {
-        throw new MutationCustomPlanError(issue)
-      }
-    })
-    const plannerInput: MutationCustomPlannerInput<
-      Doc,
-      Op,
-      Reader,
-      Services,
-      string,
-      Code
-    > = {
-      op: input.operation,
-      document: input.document,
-      reader: input.createReader(() => input.document),
-      services: input.services,
-      program,
-      fail: (issue) => {
-        throw new MutationCustomPlanError(issue)
-      }
-    }
-    input.spec.plan(plannerInput)
-    const applied = applyMutationProgram<Doc, Op, string, Code>({
-      document: input.document,
-      program: program.build(),
-      entities: input.entities,
-      structures: input.structures,
-      normalize: input.normalize
-    })
-    if (!applied.ok) {
-      return applied
-    }
-
-    return {
-      ok: true,
-      data: {
-        document: applied.data.document,
-        applied: program.build(),
-        inverse: applied.data.inverse,
-        delta: applied.data.delta,
-        structural: applied.data.structural,
-        footprint: applied.data.footprint,
-        outputs: EMPTY_OUTPUTS,
-        issues: applied.data.issues,
-        historyMode: applied.data.historyMode
-      }
-    }
-  } catch (error) {
-    if (error instanceof MutationCustomPlanError) {
-      return mutationFailure(
-        error.issue.code as Code,
-        error.issue.message,
-        {
-          ...(error.issue.path === undefined
-            ? {}
-            : {
-                path: error.issue.path
-              }),
-          ...(error.issue.details === undefined
-            ? {}
-            : {
-                details: error.issue.details
-              })
-        }
-      )
-    }
-
-    return mutationFailure(
-      'mutation_engine.custom.failed' as Code,
-      error instanceof Error
-        ? error.message
-        : `Custom mutation operation "${input.operation.type}" failed.`
-    )
-  }
-}
 
 const shouldCaptureHistory = (
   history: MutationHistoryOptions | false | undefined,
@@ -398,157 +98,6 @@ const shouldCaptureHistory = (
   }
 
   return origin === 'user'
-}
-
-const applyConcreteOperations = <
-  Doc extends object,
-  Op extends {
-    type: string
-  },
-  Reader,
-  Services,
-  Code extends string = string
->(input: {
-  document: Doc
-  operations: readonly Op[]
-  entities: ReadonlyMap<string, CompiledEntitySpec>
-  structures?: MutationStructureSource<Doc>
-  custom?: MutationCustomTable<Doc, Op, Reader, Services, string, Code>
-  createReader: MutationReaderFactory<Doc, Reader>
-  origin: Origin
-  services: Services | undefined
-  normalize(doc: Doc): Doc
-}): MutationApplyResult<Doc, Op, Code> => {
-  let currentDocument = input.document
-  let delta = EMPTY_DELTA
-  const structural: MutationStructuralFact[] = []
-  const authored: Op[] = []
-  const appliedSteps: MutationProgramStep[] = []
-  const inverseSteps: MutationProgramStep[] = []
-  const footprint: MutationFootprint[] = []
-  const outputs: unknown[] = []
-  const issues: MutationIssue[] = []
-  let hasTrackedHistory = false
-  let skipHistory = false
-
-  for (let index = 0; index < input.operations.length; index += 1) {
-    const operation = input.operations[index]!
-    const descriptor = readCanonicalOperation(operation.type)
-    const structuralDescriptor = readStructuralOperation(operation.type)
-    const customSpec = input.custom?.[operation.type]
-    const applied = customSpec
-      ? readCustomOperationResult<Doc, Op, Reader, Services, Code>({
-          document: currentDocument,
-          operation,
-          spec: customSpec,
-          createReader: input.createReader,
-          entities: input.entities,
-          structures: input.structures,
-          services: input.services,
-          normalize: input.normalize
-        })
-      : isMutationProgramStep(operation)
-      ? applyMutationProgram<Doc, Op, string, Code>({
-          document: currentDocument,
-          program: {
-            steps: [operation]
-          },
-          entities: input.entities,
-          structures: input.structures,
-          normalize: input.normalize
-        })
-      : (() => {
-        try {
-          const program = structuralDescriptor
-            ? lowerStructuralOperation(
-                operation as unknown as MutationStructuralCanonicalOperation
-              )
-            : descriptor
-            ? (() => {
-                const spec = input.entities.get(descriptor.family)
-                if (!spec) {
-                  throw new Error(`Unknown mutation operation "${operation.type}".`)
-                }
-                return lowerCanonicalEntityOperation({
-                  operation: operation as unknown as MutationEntityCanonicalOperation,
-                  spec,
-                  kind: descriptor.kind
-                })
-              })()
-            : undefined
-
-          if (!program) {
-            return mutationFailure(
-              'mutation_engine.apply.unknown_operation' as Code,
-              `Unknown mutation operation "${operation.type}".`
-            )
-          }
-
-          return applyMutationProgram<Doc, Op, string, Code>({
-            document: currentDocument,
-            program,
-            entities: input.entities,
-            structures: input.structures,
-            normalize: input.normalize
-          })
-        } catch (error) {
-          return mutationFailure(
-            'mutation_engine.apply.invalid_operation' as Code,
-            error instanceof Error
-              ? error.message
-              : 'MutationEngine.apply received an invalid operation.'
-          )
-        }
-      })()
-    if (!applied.ok) {
-      return mutationFailure(
-        applied.error.code as Code,
-        applied.error.message,
-        applied.error.details
-      )
-    }
-
-    currentDocument = applied.data.document
-    delta = mergeMutationDeltas(delta, applied.data.delta)
-    structural.push(...applied.data.structural)
-    authored.push(operation)
-    appliedSteps.push(...applied.data.applied.steps)
-    footprint.push(...applied.data.footprint)
-    outputs.push(...applied.data.outputs)
-    issues.push(...applied.data.issues)
-    if (applied.data.inverse.steps.length > 0) {
-      inverseSteps.unshift(...applied.data.inverse.steps)
-    }
-    if (applied.data.historyMode === 'track') {
-      hasTrackedHistory = true
-    }
-    if (applied.data.historyMode === 'skip') {
-      skipHistory = true
-    }
-  }
-
-  return {
-    ok: true,
-    data: {
-      document: currentDocument,
-      applied: {
-        steps: appliedSteps
-      },
-      inverse: {
-        steps: inverseSteps
-      },
-      delta,
-      structural,
-      footprint: dedupeFootprints(footprint),
-      outputs,
-      issues,
-      historyMode: skipHistory
-        ? 'skip'
-        : hasTrackedHistory
-          ? 'track'
-          : 'neutral'
-    }
-  }
 }
 
 type CompiledIntentProgramResult<
@@ -793,7 +342,6 @@ class MutationRuntime<
   private readonly normalize: (doc: Doc) => Doc
   private readonly entities: ReadonlyMap<string, CompiledEntitySpec>
   private readonly structures?: MutationStructureSource<Doc>
-  private readonly custom?: MutationCustomTable<Doc, Op, Reader, Services, string, Code>
   private readonly services: Services | undefined
   private readonly compileHandlers?: MutationCompileHandlerTable<any, Doc, Program, Reader, Services, Code>
   private readonly compileProgramFactory?: MutationCompileProgramFactory<Program>
@@ -814,7 +362,6 @@ class MutationRuntime<
     createReader: MutationReaderFactory<Doc, Reader>
     entities?: Readonly<Record<string, any>>
     structures?: MutationStructureSource<Doc>
-    custom?: MutationCustomTable<Doc, Op, Reader, Services, string, Code>
     services?: Services
     compile?: MutationCompileHandlerTable<any, Doc, Program, Reader, Services, Code>
     createProgram?: MutationCompileProgramFactory<Program>
@@ -824,7 +371,6 @@ class MutationRuntime<
     this.normalize = input.normalize
     this.entities = compileEntities(input.entities)
     this.structures = input.structures
-    this.custom = input.custom
     this.services = input.services
     this.compileHandlers = input.compile
     this.compileProgramFactory = input.createProgram
@@ -843,7 +389,7 @@ class MutationRuntime<
     }
 
     this.history = createHistoryPort({
-      applyProgram: (program, options) => this.applyProgram(program, options),
+      apply: (program, options) => this.apply(program, options),
       commits: {
         subscribe: (listener) => {
           this.commitListeners.add(listener)
@@ -914,55 +460,6 @@ class MutationRuntime<
     this.emitCurrent()
     this.emitCommit(commit)
     return commit
-  }
-
-  apply(
-    input: Op | readonly Op[],
-    options?: MutationOptions
-  ): MutationResult<
-    void,
-    ApplyCommit<Doc, Op, MutationFootprint, void>,
-    Code
-  > {
-    const operations: readonly Op[] = Array.isArray(input)
-      ? input
-      : [input]
-    if (operations.length === 0) {
-      return mutationFailure(
-        APPLY_EMPTY_CODE as Code,
-        'MutationEngine.apply requires at least one operation.'
-      )
-    }
-
-    const applied = applyConcreteOperations<Doc, Op, Reader, Services, Code>({
-      document: this.documentState,
-      operations,
-      entities: this.entities,
-      structures: this.structures,
-      custom: this.custom,
-      createReader: this.createReader,
-      origin: options?.origin ?? 'user',
-      services: this.services,
-      normalize: this.normalize
-    })
-    if (!applied.ok) {
-      return applied
-    }
-
-    return this.commit({
-      document: applied.data.document,
-      authored: operations,
-      applied: applied.data.applied,
-      inverse: applied.data.inverse,
-      delta: applied.data.delta,
-      structural: applied.data.structural,
-      footprint: applied.data.footprint,
-      outputs: applied.data.outputs,
-      issues: applied.data.issues,
-      historyMode: applied.data.historyMode,
-      origin: options?.origin ?? 'user',
-      data: undefined
-    })
   }
 
   execute<Table extends MutationIntentTable, Input extends MutationExecuteInput<Table>>(
@@ -1050,10 +547,7 @@ class MutationRuntime<
 
     const committed = this.commit({
       document: planned.document,
-      authored: materializeMutationProgram<Op>({
-        program: planned.applied,
-        entities: this.entities
-      }),
+      authored: planned.applied,
       applied: planned.applied,
       inverse: planned.inverse,
       delta: planned.delta,
@@ -1085,7 +579,7 @@ class MutationRuntime<
     >
   }
 
-  applyProgram(
+  apply(
     program: MutationProgram<string>,
     options?: MutationOptions
   ): MutationResult<
@@ -1106,10 +600,7 @@ class MutationRuntime<
 
     return this.commit({
       document: applied.data.document,
-      authored: materializeMutationProgram<Op>({
-        program: applied.data.applied,
-        entities: this.entities
-      }),
+      authored: applied.data.applied,
       applied: applied.data.applied,
       inverse: applied.data.inverse,
       delta: applied.data.delta,
@@ -1125,7 +616,7 @@ class MutationRuntime<
 
   private commit<TData>(input: {
     document: Doc
-    authored: readonly Op[]
+    authored: MutationProgram<string>
     applied: MutationProgram<string>
     inverse: MutationProgram<string>
     delta: any
@@ -1215,7 +706,6 @@ export class MutationEngine<
       createReader: input.createReader,
       entities: input.entities,
       structures: input.structures,
-      custom: input.custom,
       services: input.services,
       compile: input.compile,
       createProgram: input.createProgram,
@@ -1274,17 +764,6 @@ export class MutationEngine<
   }
 
   apply(
-    input: Op | readonly Op[],
-    options?: MutationOptions
-  ): MutationResult<
-    void,
-    ApplyCommit<Doc, Op, MutationFootprint, void>,
-    Code
-  > {
-    return this.runtime.apply(input, options)
-  }
-
-  applyProgram(
     program: MutationProgram<string>,
     options?: MutationOptions
   ): MutationResult<
@@ -1292,7 +771,7 @@ export class MutationEngine<
     ApplyCommit<Doc, Op, MutationFootprint, void>,
     Code
   > {
-    return this.runtime.applyProgram(program, options)
+    return this.runtime.apply(program, options)
   }
 
   replace(

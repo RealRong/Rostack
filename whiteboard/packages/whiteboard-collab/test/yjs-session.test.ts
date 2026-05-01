@@ -182,15 +182,21 @@ test('session records duplicate and rejected shared changes deterministically', 
   const duplicateChange = {
     id: 'change_duplicate',
     actorId: 'actor_remote',
-      ops: [{
-        type: 'document.patch',
-        patch: {
+    program: {
+      steps: [{
+        type: 'entity.patch' as const,
+        entity: {
+          table: 'document',
+          id: 'document'
+        },
+        writes: {
           background: {
             type: 'none',
             color: '#000'
           }
         }
-      }],
+      }]
+    },
     footprint: [{
       kind: 'field',
       family: 'document',
@@ -205,13 +211,18 @@ test('session records duplicate and rejected shared changes deterministically', 
     store.appendChange({
       id: 'change_rejected',
       actorId: 'actor_remote',
-      ops: [{
-        type: 'node.patch',
-        id: 'node_missing',
-        patch: {
-          rotation: 90
-        }
-      }],
+      program: {
+        steps: [{
+          type: 'entity.patch' as const,
+          entity: {
+            table: 'node',
+            id: 'node_missing'
+          },
+          writes: {
+            rotation: 90
+          }
+        }]
+      },
       footprint: [{
         kind: 'field',
         family: 'node',

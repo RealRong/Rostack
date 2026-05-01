@@ -196,7 +196,7 @@ test('createDataviewFrame resolves plain active spec from document', () => {
   assert.deepEqual(frame.active?.calcFields, [FIELD_POINTS])
 })
 
-test('ensureDataviewIndex keeps only one active index and rebuilds when active spec changes', () => {
+test('ensureDataviewIndex keeps one active index and syncs active demand changes', () => {
   const firstFrame = createDataviewFrame({
     revision: 1,
     document: createDocument(createView({
@@ -229,11 +229,13 @@ test('ensureDataviewIndex keeps only one active index and rebuilds when active s
     frame: secondFrame,
     previous: first?.index
   })
-  assert.equal(second?.action, 'rebuild')
+  assert.equal(second?.action, 'sync')
   assert.equal(
     writeNormalizedIndexDemandKey(second!.index.demand) === writeNormalizedIndexDemandKey(first!.index.demand),
     false
   )
+  assert.deepEqual(second?.index.delta?.demand?.calculations.removed.map(entry => entry.fieldId), [FIELD_POINTS])
+  assert.equal(second?.index.trace?.summaries.action, 'sync')
 })
 
 test('createDataviewActivePlan keeps layout-only change inside publish', () => {

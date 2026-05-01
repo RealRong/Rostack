@@ -139,14 +139,35 @@ export interface EditorInteractionState {
   hover: HoverState
 }
 
-export interface EditorSceneSnapshot {
+export interface EditorProjectionStableState {
   tool: ToolState
   draw: EditorDrawState
   selection: SelectionTarget
   edit: EditSession | null
+  interaction: {
+    mode: EditorInteractionMode
+    chrome: boolean
+    space: boolean
+  }
+  viewport: Viewport
+}
+
+export interface EditorProjectionOverlayState {
+  hover: HoverState
+  preview: {
+    base: PreviewInput
+    transient: PreviewInput
+  }
+}
+
+export interface EditorProjectionSnapshot {
+  state: EditorProjectionStableState
+  overlay: EditorProjectionOverlayState
+}
+
+export interface EditorSceneSnapshot extends EditorProjectionStableState {
   interaction: EditorInteractionState
   preview: PreviewInput
-  viewport: Viewport
   view: SceneViewSnapshot
 }
 
@@ -168,7 +189,7 @@ export interface EditorScenePreviewDelta extends EditorSceneTouchedIds {
   hover: boolean
 }
 
-export interface EditorSceneDelta {
+export interface EditorProjectionDelta {
   tool?: true
   draw?: true
   selection?: true
@@ -177,8 +198,8 @@ export interface EditorSceneDelta {
     mode?: true
     chrome?: true
     space?: true
-    hover?: true | EditorSceneTouchedIds
   }
+  hover?: true | EditorSceneTouchedIds
   preview?: true | EditorScenePreviewDelta
   viewport?: true
 }
@@ -190,8 +211,8 @@ export interface SceneUpdateInput {
     delta: MutationDelta
   }
   editor: {
-    snapshot: EditorSceneSnapshot
-    delta: EditorSceneDelta
+    snapshot: EditorProjectionSnapshot
+    delta: EditorProjectionDelta
   }
 }
 
@@ -281,8 +302,8 @@ export interface EdgeDraft {
 }
 
 export interface PreviewInput {
-  nodes: ReadonlyMap<NodeId, NodePreview>
-  edges: ReadonlyMap<EdgeId, EdgePreview>
+  nodes: Readonly<Record<NodeId, NodePreview | undefined>>
+  edges: Readonly<Record<EdgeId, EdgePreview | undefined>>
   edgeGuide?: EdgeGuidePreview
   draw: DrawPreview | null
   selection: SelectionPreview

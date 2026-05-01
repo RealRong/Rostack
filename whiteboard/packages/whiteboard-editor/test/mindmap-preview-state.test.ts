@@ -23,12 +23,11 @@ describe('mindmap preview state', () => {
       interaction: {
         mode: 'mindmap-drag',
         chrome: false,
-        space: false,
-        hover: EMPTY_HOVER_STATE
+        space: false
       }
     })
     const preview = composeEditorPreviewState({
-      base: runtime.stores.preview.store.get(),
+      base: runtime.snapshot().overlay.preview.base,
       gesture: createGesture('mindmap-drag', {
         mindmap: {
           rootMove: {
@@ -40,7 +39,7 @@ describe('mindmap preview state', () => {
           }
         }
       }),
-      hover: runtime.stores.interaction.store.get().hover,
+      hover: EMPTY_HOVER_STATE,
       readDocument: () => ({
         nodes: {
           'mind-1': {

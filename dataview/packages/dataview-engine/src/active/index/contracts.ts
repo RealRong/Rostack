@@ -66,6 +66,32 @@ export interface NormalizedIndexDemand {
   calculations: readonly CalculationDemand[]
 }
 
+export interface IndexDemandSetDelta<T> {
+  added: readonly T[]
+  removed: readonly T[]
+}
+
+export interface IndexDemandChangeDelta<T> extends IndexDemandSetDelta<T> {
+  changed: readonly T[]
+}
+
+export interface IndexDemandDelta {
+  recordFields: IndexDemandSetDelta<FieldId>
+  search: IndexDemandSetDelta<FieldId>
+  buckets: IndexDemandChangeDelta<BucketSpec>
+  sort: IndexDemandSetDelta<FieldId>
+  calculations: IndexDemandChangeDelta<CalculationDemand>
+}
+
+export interface ContentDelta {
+  records: ReadonlySet<RecordId> | 'all'
+  values: ReadonlySet<FieldId> | 'all'
+  schema: ReadonlySet<FieldId>
+  touchedFields: ReadonlySet<FieldId> | 'all'
+  recordSetChanged: boolean
+  reset: boolean
+}
+
 export interface SearchIndex {
   fields: ReadonlyMap<FieldId, SearchFieldIndex>
 }
@@ -124,6 +150,8 @@ export interface IndexState {
 export interface IndexDelta {
   bucket?: MembershipTransition<BucketKey, RecordId>
   calculation?: CalculationTransition
+  demand?: IndexDemandDelta
+  content?: ContentDelta
 }
 
 export interface FieldSyncContext {

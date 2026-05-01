@@ -1,19 +1,9 @@
-import { store as coreStore } from '@shared/core'
 import type {
   HoverState
 } from '@whiteboard/editor-scene'
 import type { EditorPick } from '@whiteboard/editor/types/pick'
 
 export type { HoverState } from '@whiteboard/editor-scene'
-
-export type HoverStore = Pick<coreStore.ReadStore<HoverState>, 'get' | 'subscribe'> & {
-  set: (
-    next:
-      | HoverState
-      | ((current: HoverState) => HoverState)
-  ) => void
-  reset: () => void
-}
 
 export const EMPTY_HOVER_STATE: HoverState = {
   kind: 'none'
@@ -106,27 +96,5 @@ export const toHoverStateFromPick = (
       }
     default:
       return EMPTY_HOVER_STATE
-  }
-}
-
-export const createHoverStore = (): HoverStore => {
-  const hoverStore = coreStore.createValueStore<HoverState>(EMPTY_HOVER_STATE, {
-    isEqual: isHoverStateEqual
-  })
-  let current: HoverState = EMPTY_HOVER_STATE
-
-  return {
-    get: hoverStore.get,
-    subscribe: hoverStore.subscribe,
-    set: (next) => {
-      current = normalizeHoverState(typeof next === 'function'
-        ? next(current)
-        : next)
-      hoverStore.set(current)
-    },
-    reset: () => {
-      current = EMPTY_HOVER_STATE
-      hoverStore.set(EMPTY_HOVER_STATE)
-    }
   }
 }

@@ -4,14 +4,12 @@ import './styles.css'
 import { createRoot } from 'react-dom/client'
 import {
   type DataDoc,
-  type CustomField
-} from '@dataview/core/contracts'
+  type CustomField,
+  TITLE_FIELD_ID
+} from '@dataview/core/types'
 import { view } from '@dataview/core/view'
 import { createEngine } from '@dataview/engine'
-import {
-  TITLE_FIELD_ID
-} from '@dataview/core/contracts'
-import { DataViewProvider, Page } from '@dataview/react'
+import { DataViewProvider, Page, dataviewSpec } from '@dataview/react'
 import { I18nProvider } from '@shared/i18n/react'
 import { entityTable } from '@shared/core'
 
@@ -72,7 +70,7 @@ const createFieldTable = (
 
   return {
     byId,
-    order: fields.map(field => field.id)
+    ids: fields.map(field => field.id)
   }
 }
 
@@ -83,7 +81,7 @@ const createDefaultDocument = (): DataDoc => {
   const fieldTable = createFieldTable(fields)
   const records: DataDoc['records'] = {
     byId: {},
-    order: []
+    ids: []
   }
 
   for (let index = 0; index < count; index += 1) {
@@ -97,7 +95,7 @@ const createDefaultDocument = (): DataDoc => {
         [FIELD_POINTS]: Math.floor(Math.random() * 13) + 1
       }
     }
-    records.order.push(id)
+    records.ids.push(id)
   }
 
   return {
@@ -157,7 +155,7 @@ const createDefaultDocument = (): DataDoc => {
           orders: []
         }
       },
-      order: [VIEW_TABLE, VIEW_KANBAN]
+      ids: [VIEW_TABLE, VIEW_KANBAN]
     },
     records,
     meta: {
@@ -198,7 +196,8 @@ if (!root) {
 syncSystemTheme()
 
 const engine = createEngine({
-  document: createDefaultDocument()
+  document: createDefaultDocument(),
+  spec: dataviewSpec
 })
 
 createRoot(root).render(

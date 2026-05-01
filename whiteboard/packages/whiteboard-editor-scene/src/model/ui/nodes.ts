@@ -24,7 +24,7 @@ const buildCurrentNodeUiView = (input: {
 
   const next = buildNodeUiView({
     nodeId: input.nodeId,
-    preview: input.context.current.runtime.session.preview.nodes.get(input.nodeId),
+    preview: input.context.current.runtime.session.preview.nodes[input.nodeId],
     draw: input.context.current.runtime.session.preview.draw,
     edit: input.context.current.runtime.session.edit,
     selection: input.context.current.runtime.interaction.selection,

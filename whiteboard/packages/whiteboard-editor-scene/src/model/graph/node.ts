@@ -134,7 +134,7 @@ export const readNodeEntry = (
       node,
       owner: ownerByNode.get(nodeId)
     },
-    preview: input.runtime.session.preview.nodes.get(nodeId)
+    preview: input.runtime.session.preview.nodes[nodeId]
   }
 }
 

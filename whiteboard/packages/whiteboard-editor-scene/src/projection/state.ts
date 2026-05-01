@@ -91,8 +91,8 @@ export const createWorking = (input: {
           edges: new Map()
         },
         preview: {
-          nodes: new Map(),
-          edges: new Map(),
+          nodes: {},
+          edges: {},
           draw: null,
           selection: {
             guides: []

@@ -12,6 +12,7 @@ import type {
   BucketSpec,
   IndexDemand,
   IndexReadContext,
+  IndexDemandDelta,
   NormalizedIndexDemand
 } from '@dataview/engine/active/index/contracts'
 import { bucket } from '@dataview/engine/active/index/bucket'
@@ -34,6 +35,123 @@ export const writeNormalizedIndexDemandKey = (
   buckets: demand.buckets.map(spec => bucket.key.write(spec)),
   sortFields: demand.sortFields,
   calculations: calculation.demand.normalize(demand.calculations)
+})
+
+const diffValues = <T,>(
+  previous: readonly T[],
+  next: readonly T[],
+  keyOf: (value: T) => string
+) => {
+  const previousByKey = new Map(previous.map(value => [keyOf(value), value] as const))
+  const nextByKey = new Map(next.map(value => [keyOf(value), value] as const))
+  const added: T[] = []
+  const removed: T[] = []
+
+  nextByKey.forEach((value, keyValue) => {
+    if (!previousByKey.has(keyValue)) {
+      added.push(value)
+    }
+  })
+
+  previousByKey.forEach((value, keyValue) => {
+    if (!nextByKey.has(keyValue)) {
+      removed.push(value)
+    }
+  })
+
+  return {
+    added,
+    removed
+  }
+}
+
+const diffChangedValues = <T,>(
+  previous: readonly T[],
+  next: readonly T[],
+  identityOf: (value: T) => string,
+  versionOf: (value: T) => string
+) => {
+  const base = diffValues(previous, next, identityOf)
+  const previousByIdentity = new Map(previous.map(value => [identityOf(value), value] as const))
+  const changed: T[] = []
+
+  next.forEach(value => {
+    const previousValue = previousByIdentity.get(identityOf(value))
+    if (previousValue && versionOf(previousValue) !== versionOf(value)) {
+      changed.push(value)
+    }
+  })
+
+  return {
+    ...base,
+    changed
+  }
+}
+
+const diffBucketSpecs = (
+  previous: readonly BucketSpec[],
+  next: readonly BucketSpec[]
+) => {
+  const base = diffValues(previous, next, spec => bucket.key.write(spec))
+  const previousKeysByField = new Map<FieldId, Set<string>>()
+  previous.forEach(spec => {
+    const current = previousKeysByField.get(spec.fieldId)
+    if (current) {
+      current.add(bucket.key.write(spec))
+      return
+    }
+
+    previousKeysByField.set(spec.fieldId, new Set([bucket.key.write(spec)]))
+  })
+
+  const changed: BucketSpec[] = []
+  next.forEach(spec => {
+    const previousKeys = previousKeysByField.get(spec.fieldId)
+    if (
+      previousKeys
+      && !previousKeys.has(bucket.key.write(spec))
+    ) {
+      changed.push(spec)
+    }
+  })
+
+  return {
+    ...base,
+    changed
+  }
+}
+
+export const indexDemandDeltaChanged = (
+  delta: IndexDemandDelta
+): boolean => (
+  delta.recordFields.added.length > 0
+  || delta.recordFields.removed.length > 0
+  || delta.search.added.length > 0
+  || delta.search.removed.length > 0
+  || delta.buckets.added.length > 0
+  || delta.buckets.removed.length > 0
+  || delta.buckets.changed.length > 0
+  || delta.sort.added.length > 0
+  || delta.sort.removed.length > 0
+  || delta.calculations.added.length > 0
+  || delta.calculations.removed.length > 0
+  || delta.calculations.changed.length > 0
+)
+
+export const diffNormalizedIndexDemand = (
+  previous: NormalizedIndexDemand,
+  next: NormalizedIndexDemand
+): IndexDemandDelta => ({
+  recordFields: diffValues(previous.recordFields, next.recordFields, value => value),
+  search: diffValues(previous.search, next.search, value => value),
+  buckets: diffBucketSpecs(previous.buckets, next.buckets),
+  sort: diffValues(previous.sortFields, next.sortFields, value => value),
+  calculations: diffChangedValues(
+    previous.calculations,
+    next.calculations,
+    demand => demand.fieldId,
+    demand => JSON.stringify(calculation.demand.normalize([demand]))
+  )
 })
 
 const uniqueBucketSpecs = (

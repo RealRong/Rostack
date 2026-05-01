@@ -99,9 +99,9 @@ export const createInteractionRuntime = ({
       state.dispatch({
         type: 'interaction.set',
         interaction: {
-          ...current,
           mode: 'idle',
-          chrome: true
+          chrome: true,
+          space: current.space
         }
       })
       syncGesture(null)
@@ -111,9 +111,9 @@ export const createInteractionRuntime = ({
     state.dispatch({
       type: 'interaction.set',
       interaction: {
-        ...current,
         mode: running.session.mode,
-        chrome: Boolean(running.session.chrome)
+        chrome: Boolean(running.session.chrome),
+        space: current.space
       }
     })
     syncGesture(running)
@@ -337,7 +337,8 @@ export const createInteractionRuntime = ({
           state.dispatch({
             type: 'interaction.set',
             interaction: {
-              ...current,
+              mode: current.mode,
+              chrome: current.chrome,
               space: true
             }
           })
@@ -370,7 +371,8 @@ export const createInteractionRuntime = ({
           state.dispatch({
             type: 'interaction.set',
             interaction: {
-              ...current,
+              mode: current.mode,
+              chrome: current.chrome,
               space: false
             }
           })
@@ -395,7 +397,8 @@ export const createInteractionRuntime = ({
         state.dispatch({
           type: 'interaction.set',
           interaction: {
-            ...currentInteraction,
+            mode: currentInteraction.mode,
+            chrome: currentInteraction.chrome,
             space: false
           }
         })

@@ -3,7 +3,6 @@ import { mindmap as mindmapApi } from '@whiteboard/core/mindmap'
 import type {
   Document,
   EdgeId,
-  MindmapId,
   NodeId
 } from '@whiteboard/core/types'
 import { json } from '@shared/core'
@@ -19,7 +18,6 @@ import type {
   ActiveGesture
 } from '@whiteboard/editor/input/core/gesture'
 import {
-  EMPTY_EDGE_FEEDBACK_ENTRIES,
   EMPTY_EDGE_GUIDE,
   isEdgeGuideEqual
 } from '@whiteboard/editor/session/preview/edge'
@@ -34,8 +32,19 @@ import type {
   MindmapPreviewState
 } from '@whiteboard/editor/session/preview/types'
 
-const EMPTY_NODE_PREVIEWS = new Map<NodeId, NodePreview>()
-const EMPTY_EDGE_PREVIEWS = new Map<EdgeId, EdgePreview>()
+type NodePreviewRecord = PreviewInput['nodes']
+type EdgePreviewRecord = PreviewInput['edges']
+
+const EMPTY_NODE_PREVIEWS = Object.freeze({}) as NodePreviewRecord
+const EMPTY_EDGE_PREVIEWS = Object.freeze({}) as EdgePreviewRecord
+
+const readNodePreviewIds = (
+  value: NodePreviewRecord
+): readonly NodeId[] => Object.keys(value) as readonly NodeId[]
+
+const readEdgePreviewIds = (
+  value: EdgePreviewRecord
+): readonly EdgeId[] => Object.keys(value) as readonly EdgeId[]
 
 const isNodePreviewPatchEqual = (
   left: NodePreview['patch'],
@@ -69,20 +78,24 @@ const isEdgePreviewEqual = (
   && left.activeRouteIndex === right.activeRouteIndex
 )
 
-const isPreviewMapEqual = <TId extends string, TValue>(
-  left: ReadonlyMap<TId, TValue>,
-  right: ReadonlyMap<TId, TValue>,
+const isPreviewRecordEqual = <TId extends string, TValue>(
+  left: Readonly<Record<TId, TValue | undefined>>,
+  right: Readonly<Record<TId, TValue | undefined>>,
   isEqual: (left: TValue | undefined, right: TValue | undefined) => boolean
 ): boolean => {
   if (left === right) {
     return true
   }
-  if (left.size !== right.size) {
+
+  const leftKeys = Object.keys(left) as TId[]
+  const rightKeys = Object.keys(right) as TId[]
+  if (leftKeys.length !== rightKeys.length) {
     return false
   }
 
-  for (const [id, value] of left) {
-    if (!isEqual(value, right.get(id))) {
+  for (let index = 0; index < leftKeys.length; index += 1) {
+    const id = leftKeys[index]!
+    if (!isEqual(left[id], right[id])) {
       return false
     }
   }
@@ -265,6 +278,22 @@ const mergeMindmapPreview = (
   }
 }
 
+const mergeNodePreviewRecord = (
+  base: NodePreviewRecord,
+  transient: NodePreviewRecord
+): NodePreviewRecord => normalizeNodePreviewRecord({
+  ...base,
+  ...transient
+})
+
+const mergeEdgePreviewRecord = (
+  base: EdgePreviewRecord,
+  transient: EdgePreviewRecord
+): EdgePreviewRecord => normalizeEdgePreviewRecord({
+  ...base,
+  ...transient
+})
+
 const normalizeDrawPreview = (
   draw: PreviewInput['draw']
 ): PreviewInput['draw'] => draw
@@ -275,6 +304,70 @@ const normalizeDrawPreview = (
         : EMPTY_NODE_HIDDEN
     }
   : null
+
+const normalizeNodePreviewRecord = (
+  value: NodePreviewRecord
+): NodePreviewRecord => {
+  const ids = readNodePreviewIds(value)
+  if (ids.length === 0) {
+    return EMPTY_NODE_PREVIEWS
+  }
+
+  const next: Record<NodeId, NodePreview | undefined> = {}
+  for (let index = 0; index < ids.length; index += 1) {
+    const id = ids[index]!
+    const preview = value[id]
+    if (!preview) {
+      continue
+    }
+
+    if (
+      preview.patch === undefined
+      && preview.presentation === undefined
+      && preview.hovered === false
+      && preview.hidden === false
+    ) {
+      continue
+    }
+
+    next[id] = preview
+  }
+
+  return Object.keys(next).length > 0
+    ? next
+    : EMPTY_NODE_PREVIEWS
+}
+
+const normalizeEdgePreviewRecord = (
+  value: EdgePreviewRecord
+): EdgePreviewRecord => {
+  const ids = readEdgePreviewIds(value)
+  if (ids.length === 0) {
+    return EMPTY_EDGE_PREVIEWS
+  }
+
+  const next: Record<EdgeId, EdgePreview | undefined> = {}
+  for (let index = 0; index < ids.length; index += 1) {
+    const id = ids[index]!
+    const preview = value[id]
+    if (!preview) {
+      continue
+    }
+
+    if (
+      preview.patch === undefined
+      && preview.activeRouteIndex === undefined
+    ) {
+      continue
+    }
+
+    next[id] = preview
+  }
+
+  return Object.keys(next).length > 0
+    ? next
+    : EMPTY_EDGE_PREVIEWS
+}
 
 export const EMPTY_PREVIEW_STATE: PreviewInput = {
   nodes: EMPTY_NODE_PREVIEWS,
@@ -289,12 +382,8 @@ export const EMPTY_PREVIEW_STATE: PreviewInput = {
 export const normalizeEditorPreviewState = (
   state: PreviewInput
 ): PreviewInput => {
-  const nodes = state.nodes.size > 0
-    ? state.nodes
-    : EMPTY_NODE_PREVIEWS
-  const edges = state.edges.size > 0
-    ? state.edges
-    : EMPTY_EDGE_PREVIEWS
+  const nodes = normalizeNodePreviewRecord(state.nodes)
+  const edges = normalizeEdgePreviewRecord(state.edges)
   const draw = normalizeDrawPreview(state.draw)
   const guides = state.selection.guides.length > 0
     ? state.selection.guides
@@ -340,59 +429,84 @@ export const isEditorPreviewStateEqual = (
   left: PreviewInput,
   right: PreviewInput
 ): boolean => (
-  isPreviewMapEqual(left.nodes, right.nodes, isNodePreviewEqual)
-  && isPreviewMapEqual(left.edges, right.edges, isEdgePreviewEqual)
+  isPreviewRecordEqual(left.nodes, right.nodes, isNodePreviewEqual)
+  && isPreviewRecordEqual(left.edges, right.edges, isEdgePreviewEqual)
   && isEdgeGuideEqual(left.edgeGuide ?? EMPTY_EDGE_GUIDE, right.edgeGuide ?? EMPTY_EDGE_GUIDE)
   && isDrawPreviewEqual(left.draw, right.draw)
   && isSelectionPreviewEqual(left.selection, right.selection)
   && isMindmapPreviewEqual(left.mindmap, right.mindmap)
 )
 
+export const isPreviewEqual = isEditorPreviewStateEqual
+
+export const mergeEditorPreviewState = (
+  baseInput: PreviewInput,
+  transientInput: PreviewInput
+): PreviewInput => {
+  const base = normalizeEditorPreviewState(baseInput)
+  const transient = normalizeEditorPreviewState(transientInput)
+
+  return normalizeEditorPreviewState({
+    nodes: mergeNodePreviewRecord(base.nodes, transient.nodes),
+    edges: mergeEdgePreviewRecord(base.edges, transient.edges),
+    edgeGuide: transient.edgeGuide ?? base.edgeGuide,
+    draw: transient.draw ?? base.draw,
+    selection: {
+      marquee: transient.selection.marquee ?? base.selection.marquee,
+      guides: transient.selection.guides.length > 0
+        ? transient.selection.guides
+        : base.selection.guides
+    },
+    mindmap: mergeMindmapPreview(base.mindmap, transient.mindmap)
+  })
+}
+
 const readNodePreviews = (input: {
-  base: ReadonlyMap<NodeId, NodePreview>
+  base: NodePreviewRecord
   gesture: ActiveGesture | null
-}): ReadonlyMap<NodeId, NodePreview> => {
-  const next = new Map(input.base)
+}): NodePreviewRecord => {
+  const next: Record<NodeId, NodePreview | undefined> = {
+    ...input.base
+  }
   const draft = input.gesture?.draft
 
   ;(draft?.nodePatches ?? EMPTY_NODE_PATCHES).forEach((entry) => {
-    next.set(entry.id, mergeNodePreviewPatch(next.get(entry.id), entry.patch))
+    next[entry.id] = mergeNodePreviewPatch(next[entry.id], entry.patch)
   })
+
   ;(draft?.hiddenNodeIds ?? EMPTY_NODE_HIDDEN).forEach((nodeId) => {
-    const current = next.get(nodeId)
-    next.set(nodeId, {
+    const current = next[nodeId]
+    next[nodeId] = {
       patch: current?.patch,
       presentation: current?.presentation,
       hovered: current?.hovered ?? false,
       hidden: true
-    })
+    }
   })
 
-  return next.size > 0
-    ? next
-    : EMPTY_NODE_PREVIEWS
+  return normalizeNodePreviewRecord(next)
 }
 
 const readEdgePreviews = (input: {
-  base: ReadonlyMap<EdgeId, EdgePreview>
+  base: EdgePreviewRecord
   gesture: ActiveGesture | null
-}): ReadonlyMap<EdgeId, EdgePreview> => {
+}): EdgePreviewRecord => {
   const draft = input.gesture?.draft
   if (!draft?.edgePatches?.length) {
-    return input.base.size > 0
-      ? input.base
-      : EMPTY_EDGE_PREVIEWS
+    return normalizeEdgePreviewRecord(input.base)
   }
 
-  const next = new Map(input.base)
+  const next: Record<EdgeId, EdgePreview | undefined> = {
+    ...input.base
+  }
   draft.edgePatches.forEach((entry) => {
-    next.set(entry.id, mergeEdgePreview(next.get(entry.id), {
+    next[entry.id] = mergeEdgePreview(next[entry.id], {
       patch: entry.patch,
       activeRouteIndex: entry.activeRouteIndex
-    }))
+    })
   })
 
-  return next
+  return normalizeEdgePreviewRecord(next)
 }
 
 const readDrawPreview = (
@@ -458,7 +572,7 @@ export const updatePreviewNodePresentation = (
     y: number
   }
 ): PreviewInput => {
-  const current = state.nodes.get(nodeId)
+  const current = state.nodes[nodeId]
   const nextPresentation = position
     ? {
         position
@@ -469,7 +583,9 @@ export const updatePreviewNodePresentation = (
     return state
   }
 
-  const nodes = new Map(state.nodes)
+  const nodes: Record<NodeId, NodePreview | undefined> = {
+    ...state.nodes
+  }
   const nextNode = nextPresentation
     ? mergeNodePresentation(current, nextPresentation)
     : current
@@ -490,9 +606,9 @@ export const updatePreviewNodePresentation = (
     && nextNode.hovered === false
     && nextNode.hidden === false
   ) {
-    nodes.delete(nodeId)
+    delete nodes[nodeId]
   } else {
-    nodes.set(nodeId, nextNode)
+    nodes[nodeId] = nextNode
   }
 
   return normalizeEditorPreviewState({

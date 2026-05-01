@@ -209,7 +209,7 @@ export const readEdgeEntry = (
       nodes: indexes.edgeNodesByEdge.get(edgeId) ?? {}
     },
     draft: input.runtime.session.draft.edges.get(edgeId),
-    preview: input.runtime.session.preview.edges.get(edgeId)
+    preview: input.runtime.session.preview.edges[edgeId]
   }
 }
 

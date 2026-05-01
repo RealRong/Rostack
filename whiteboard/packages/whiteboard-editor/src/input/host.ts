@@ -61,19 +61,9 @@ export const createEditorInputHost = ({
       current: ReturnType<EditorHostDeps['session']['interaction']['read']['hover']['get']>
     ) => ReturnType<EditorHostDeps['session']['interaction']['read']['hover']['get']>
   ) => {
-    const currentInteraction = {
-      mode: session.interaction.read.mode.get(),
-      chrome: session.interaction.read.chrome.get(),
-      space: session.interaction.read.space.get(),
-      hover: session.interaction.read.hover.get()
-    }
-
     session.dispatch({
-      type: 'interaction.set',
-      interaction: {
-        ...currentInteraction,
-        hover: update(currentInteraction.hover)
-      }
+      type: 'overlay.hover.set',
+      hover: update(session.interaction.read.hover.get())
     } satisfies EditorCommand)
   }
 
@@ -104,18 +94,9 @@ export const createEditorInputHost = ({
 
   const clearTransientState = () => {
     clearPointer()
-    const currentInteraction = {
-      mode: session.interaction.read.mode.get(),
-      chrome: session.interaction.read.chrome.get(),
-      space: session.interaction.read.space.get(),
-      hover: session.interaction.read.hover.get()
-    }
     session.dispatch({
-      type: 'interaction.set',
-      interaction: {
-        ...currentInteraction,
-        hover: EMPTY_HOVER_STATE
-      }
+      type: 'overlay.hover.set',
+      hover: EMPTY_HOVER_STATE
     } satisfies EditorCommand)
     edgeHover.clear()
   }

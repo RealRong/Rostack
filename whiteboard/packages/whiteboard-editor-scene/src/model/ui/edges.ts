@@ -30,7 +30,7 @@ const buildCurrentEdgeUiView = (input: {
         nodes: view.base.nodes
       },
       draft: input.context.current.runtime.session.draft.edges.get(input.edgeId),
-      preview: input.context.current.runtime.session.preview.edges.get(input.edgeId)
+      preview: input.context.current.runtime.session.preview.edges[input.edgeId]
     },
     view,
     edit: input.context.current.runtime.session.edit,

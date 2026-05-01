@@ -6,67 +6,34 @@ import type { EditorStateDocument } from './document'
 
 export const editorStateRegistry = defineMutationRegistry<EditorStateDocument>()({
   entity: {
-    tool: {
+    state: {
       kind: 'singleton',
       members: {
-        value: 'record'
+        tool: 'record',
+        draw: 'record',
+        selection: 'record',
+        edit: 'record',
+        interaction: 'record',
+        viewport: 'record'
       },
       change: {
-        value: ['value.**']
+        tool: ['tool.**'],
+        draw: ['draw.**'],
+        selection: ['selection.nodeIds', 'selection.edgeIds'],
+        edit: ['edit.**'],
+        interaction: ['interaction.mode', 'interaction.chrome', 'interaction.space'],
+        viewport: ['viewport.center', 'viewport.zoom']
       }
     },
-    draw: {
+    overlay: {
       kind: 'singleton',
       members: {
-        value: 'record'
+        hover: 'record',
+        preview: 'record'
       },
       change: {
-        value: ['value.**']
-      }
-    },
-    selection: {
-      kind: 'singleton',
-      members: {
-        value: 'record'
-      },
-      change: {
-        value: ['value.nodeIds', 'value.edgeIds']
-      }
-    },
-    edit: {
-      kind: 'singleton',
-      members: {
-        value: 'record'
-      },
-      change: {
-        value: ['value.**']
-      }
-    },
-    interaction: {
-      kind: 'singleton',
-      members: {
-        value: 'record'
-      },
-      change: {
-        value: ['value.mode', 'value.chrome', 'value.space', 'value.hover.**']
-      }
-    },
-    preview: {
-      kind: 'singleton',
-      members: {
-        value: 'record'
-      },
-      change: {
-        value: ['value.**']
-      }
-    },
-    viewport: {
-      kind: 'singleton',
-      members: {
-        value: 'record'
-      },
-      change: {
-        value: ['value.center', 'value.zoom']
+        hover: ['hover.**'],
+        preview: ['preview.base.**', 'preview.transient.**']
       }
     }
   }

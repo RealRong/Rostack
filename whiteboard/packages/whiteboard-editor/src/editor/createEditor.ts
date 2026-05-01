@@ -12,26 +12,21 @@ import {
   createEditorProjection,
   createEditorSceneApi
 } from '@whiteboard/editor/editor/projection'
-import {
-  buildEditorSceneSnapshot,
-  collectEditorSceneCommitFlags,
-  createBootstrapEditorSceneDelta,
-  createDocumentEditorSceneDelta,
-  createEditorSceneDeltaFromCommitFlags,
-  mergeEditorSceneDelta
-} from '@whiteboard/editor/editor/projectionSync'
-import { createEditorHost, type EditorInputRuntimeHost } from '@whiteboard/editor/input/runtime'
-import { EMPTY_HOVER_STATE } from '@whiteboard/editor/input/hover/store'
+import { createEditorHost } from '@whiteboard/editor/input/runtime'
 import { createProjectionRuntime } from '@whiteboard/editor-scene'
 import {
   DEFAULT_DRAW_STATE,
   type DrawState
 } from '@whiteboard/editor/session/draw/state'
-import {
-  EMPTY_PREVIEW_STATE
-} from '@whiteboard/editor/session/preview/state'
 import { createEditorStateRuntime } from '@whiteboard/editor/state-engine/runtime'
 import type { EditorCommand } from '@whiteboard/editor/state-engine/intents'
+import {
+  collectEditorCommitFlags,
+  createBootstrapEditorDelta,
+  createDocumentDrivenEditorDelta,
+  createEditorDeltaFromCommitFlags,
+  mergeEditorDeltas
+} from '@whiteboard/editor/state-engine/delta'
 import { createEditorTaskRuntime } from '@whiteboard/editor/tasks/runtime'
 import type { Editor } from '@whiteboard/editor/types/editor'
 import {
@@ -54,8 +49,11 @@ const BOOTSTRAP_DOCUMENT_DELTA = normalizeMutationDelta({
 })
 
 const reconcileEditorAfterDocumentCommit = (input: {
-  selection: ReturnType<ReturnType<typeof createEditorStateRuntime>['stores']['selection']['store']['get']>
-  edit: ReturnType<ReturnType<typeof createEditorStateRuntime>['stores']['edit']['store']['get']>
+  selection: {
+    nodeIds: readonly string[]
+    edgeIds: readonly string[]
+  }
+  edit: import('@whiteboard/editor/session/edit').EditSession
   document: {
     node: (id: string) => unknown
     edge: (id: string) => unknown
@@ -111,13 +109,11 @@ const createResetEditorCommands = (): readonly EditorCommand[] => ([
     interaction: {
       mode: 'idle',
       chrome: false,
-      space: false,
-      hover: EMPTY_HOVER_STATE
+      space: false
     }
   },
   {
-    type: 'preview.set',
-    preview: EMPTY_PREVIEW_STATE
+    type: 'overlay.reset'
   }
 ])
 
@@ -147,14 +143,7 @@ export const createEditor = (input: {
   })
   const tasks = createEditorTaskRuntime()
 
-  let host: EditorInputRuntimeHost | null = null
-  const readProjectionSnapshot = () => buildEditorSceneSnapshot({
-    engine: input.engine,
-    runtime: stateRuntime,
-    preview: host?.preview.get() ?? stateRuntime.stores.preview.store.get()
-  })
-
-  let currentSnapshot = readProjectionSnapshot()
+  let currentSnapshot = stateRuntime.snapshot()
   const sceneRuntime = createProjectionRuntime({
     layout,
     nodeCapability: {
@@ -162,7 +151,11 @@ export const createEditor = (input: {
       edit: nodeType.edit,
       capability: (node) => resolveNodeEditorCapability(node, nodeType)
     },
-    view: () => currentSnapshot.view
+    view: () => ({
+      zoom: stateRuntime.viewport.read.get().zoom,
+      center: stateRuntime.viewport.read.get().center,
+      worldRect: stateRuntime.viewport.read.worldRect()
+    })
   })
 
   sceneRuntime.update({
@@ -173,7 +166,7 @@ export const createEditor = (input: {
     },
     editor: {
       snapshot: currentSnapshot,
-      delta: createBootstrapEditorSceneDelta(currentSnapshot)
+      delta: createBootstrapEditorDelta(currentSnapshot)
     }
   })
 
@@ -201,19 +194,19 @@ export const createEditor = (input: {
     projection,
     editor: {
       tool: {
-        get: stateRuntime.stores.tool.store.get
+        get: projection.stores.runtime.editor.tool.get
       },
       draw: {
-        get: stateRuntime.stores.draw.store.get
+        get: projection.stores.runtime.editor.draw.get
       },
       edit: {
-        get: stateRuntime.stores.edit.store.get
+        get: projection.stores.runtime.editor.edit.get
       },
       selection: {
-        get: stateRuntime.stores.selection.store.get
+        get: projection.stores.runtime.editor.selection.get
       },
       preview: {
-        get: () => host?.preview.get() ?? stateRuntime.stores.preview.store.get()
+        get: projection.stores.runtime.editor.preview.get
       },
       dispatch: stateRuntime.dispatch,
       viewport: stateRuntime.viewport
@@ -224,7 +217,7 @@ export const createEditor = (input: {
     defaults: defaults.templates,
     onViewportFrameChange: () => {
       const previous = currentSnapshot
-      const next = readProjectionSnapshot()
+      const next = stateRuntime.snapshot()
       currentSnapshot = next
       sceneRuntime.update({
         document: {
@@ -234,13 +227,14 @@ export const createEditor = (input: {
         },
         editor: {
           snapshot: next,
-          delta: createEditorSceneDeltaFromCommitFlags({
+          delta: createEditorDeltaFromCommitFlags({
             flags: {
               tool: false,
               draw: false,
               selection: false,
               edit: false,
               interaction: false,
+              hover: false,
               preview: false,
               viewport: true
             },
@@ -252,7 +246,7 @@ export const createEditor = (input: {
     }
   })
 
-  host = createEditorHost({
+  const host = createEditorHost({
     engine: input.engine,
     document,
     projection,
@@ -273,7 +267,7 @@ export const createEditor = (input: {
     }
 
     const previous = currentSnapshot
-    const next = readProjectionSnapshot()
+    const next = stateRuntime.snapshot()
     currentSnapshot = next
 
     sceneRuntime.update({
@@ -284,38 +278,8 @@ export const createEditor = (input: {
       },
       editor: {
         snapshot: next,
-        delta: createEditorSceneDeltaFromCommitFlags({
-          flags: collectEditorSceneCommitFlags([commit.delta]),
-          previous,
-          next
-        })
-      }
-    })
-  })
-
-  const unsubscribeHostPreview = host.preview.subscribe(() => {
-    const previous = currentSnapshot
-    const next = readProjectionSnapshot()
-    currentSnapshot = next
-
-    sceneRuntime.update({
-      document: {
-        snapshot: input.engine.doc(),
-        rev: input.engine.rev(),
-        delta: EMPTY_DOCUMENT_DELTA
-      },
-      editor: {
-        snapshot: next,
-        delta: createEditorSceneDeltaFromCommitFlags({
-          flags: {
-            tool: false,
-            draw: false,
-            selection: false,
-            edit: false,
-            interaction: false,
-            preview: true,
-            viewport: false
-          },
+        delta: createEditorDeltaFromCommitFlags({
+          flags: collectEditorCommitFlags([commit.delta]),
           previous,
           next
         })
@@ -329,12 +293,13 @@ export const createEditor = (input: {
     suppressedCommitDeltas = []
 
     if (commit.kind === 'replace' || isCheckpointProgram(commit.authored)) {
-      host?.cancel()
+      host.cancel()
       stateRuntime.dispatch(createResetEditorCommands())
     } else {
+      const editorSnapshot = stateRuntime.snapshot()
       const commands = reconcileEditorAfterDocumentCommit({
-        selection: stateRuntime.stores.selection.store.get(),
-        edit: stateRuntime.stores.edit.store.get(),
+        selection: editorSnapshot.state.selection,
+        edit: editorSnapshot.state.edit,
         document
       })
       if (commands.length > 0) {
@@ -344,15 +309,15 @@ export const createEditor = (input: {
 
     suppressEditorCommitProjection = false
 
-    const next = readProjectionSnapshot()
+    const next = stateRuntime.snapshot()
     currentSnapshot = next
-    const editorDelta = mergeEditorSceneDelta(
-      createEditorSceneDeltaFromCommitFlags({
-        flags: collectEditorSceneCommitFlags(suppressedCommitDeltas),
+    const editorDelta = mergeEditorDeltas(
+      createEditorDeltaFromCommitFlags({
+        flags: collectEditorCommitFlags(suppressedCommitDeltas),
         previous,
         next
       }),
-      createDocumentEditorSceneDelta({
+      createDocumentDrivenEditorDelta({
         previous,
         next
       })
@@ -380,9 +345,8 @@ export const createEditor = (input: {
     dispose: () => {
       unsubscribeEngineCommits()
       unsubscribeEditorCommits()
-      unsubscribeHostPreview()
       tasks.dispose()
-      host?.cancel()
+      host.cancel()
       sceneRuntime.dispose()
       stateRuntime.dispose()
     }

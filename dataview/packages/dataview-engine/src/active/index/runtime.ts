@@ -14,6 +14,8 @@ import {
   syncCalculationIndex
 } from '@dataview/engine/active/index/calculations'
 import {
+  diffNormalizedIndexDemand,
+  indexDemandDeltaChanged,
   emptyNormalizedIndexDemand
 } from '@dataview/engine/active/index/demand'
 import {
@@ -47,6 +49,7 @@ import {
 } from '@dataview/engine/active/index/trace'
 import type {
   BucketKey,
+  ContentDelta,
   IndexDeriveContext,
   IndexDeriveResult,
   IndexReadContext,
@@ -96,35 +99,69 @@ const createIndexReadContext = (
 
 const createIndexDeriveContext = (
   document: DataDoc,
-  delta: DataviewMutationDelta
+  content: ContentDelta
 ): IndexDeriveContext => {
-  const touchedRecords = delta.touched.records()
-  const touchedFields = delta.touched.fields()
-  const schemaTouched = delta.field.schema.touchedIds()
-  const schemaFields = schemaTouched === 'all'
-    ? new Set(document.fields.ids)
-    : schemaTouched
-  const valueFields = delta.record.values.touchedFieldIds()
-  const recordSetChanged = delta.recordSetChanged()
-
   return {
     ...createIndexReadContext(document),
-    schemaFields,
-    valueFields,
-    touchedFields,
-    touchedRecords,
-    recordSetChanged,
+    schemaFields: content.schema,
+    valueFields: content.values,
+    touchedFields: content.touchedFields,
+    touchedRecords: content.records,
+    recordSetChanged: content.recordSetChanged,
     changed: Boolean(
-      delta.reset === true
-      || recordSetChanged
-      || touchedRecords === 'all'
-      || (touchedRecords instanceof Set && touchedRecords.size > 0)
-      || touchedFields === 'all'
-      || (touchedFields instanceof Set && touchedFields.size > 0)
-      || schemaFields.size > 0
+      content.reset
+      || content.recordSetChanged
+      || content.records === 'all'
+      || (content.records instanceof Set && content.records.size > 0)
+      || content.touchedFields === 'all'
+      || (content.touchedFields instanceof Set && content.touchedFields.size > 0)
+      || content.schema.size > 0
     )
   }
 }
+
+const createContentDelta = (
+  document: DataDoc,
+  delta: DataviewMutationDelta
+): ContentDelta => {
+  if (delta.reset === true) {
+    return {
+      records: 'all',
+      values: 'all',
+      schema: new Set(document.fields.ids),
+      touchedFields: 'all',
+      recordSetChanged: true,
+      reset: true
+    }
+  }
+
+  const schemaTouched = delta.field.schema.touchedIds()
+
+  return {
+    records: delta.touched.records(),
+    values: delta.record.values.touchedFieldIds(),
+    schema: schemaTouched === 'all'
+      ? new Set(document.fields.ids)
+      : schemaTouched,
+    touchedFields: delta.touched.fields(),
+    recordSetChanged: delta.recordSetChanged(),
+    reset: false
+  }
+}
+
+const contentDeltaChanged = (
+  delta: ContentDelta
+): boolean => (
+  delta.reset
+  || delta.recordSetChanged
+  || delta.records === 'all'
+  || delta.values === 'all'
+  || delta.touchedFields === 'all'
+  || (delta.records instanceof Set && delta.records.size > 0)
+  || (delta.values instanceof Set && delta.values.size > 0)
+  || (delta.touchedFields instanceof Set && delta.touchedFields.size > 0)
+  || delta.schema.size > 0
+)
 
 const buildState = (
   document: DataDoc,
@@ -165,8 +202,10 @@ export const deriveIndex = (input: {
   demand?: NormalizedIndexDemand
 }): IndexDeriveResult => {
   const previous = input.previous
-  const context = createIndexDeriveContext(input.document, input.delta)
   const nextDemand = input.demand ?? input.previousDemand
+  const demandDelta = diffNormalizedIndexDemand(input.previousDemand, nextDemand)
+  const contentDelta = createContentDelta(input.document, input.delta)
+  const context = createIndexDeriveContext(input.document, contentDelta)
   const totalStart = now()
   const touchedRecordCount = touchedRecordCountOfDelta(input.delta)
   const touchedFieldCount = touchedFieldCountOfDelta(input.delta)
@@ -264,10 +303,14 @@ export const deriveIndex = (input: {
     })
   } satisfies IndexState
 
+  const hasDemandDelta = indexDemandDeltaChanged(demandDelta)
+  const hasContentDelta = contentDeltaChanged(contentDelta)
   const delta = (
     bucketDelta.rebuild
     || bucketDelta.records.size
     || calculationDelta.fields.size
+    || hasDemandDelta
+    || hasContentDelta
   )
     ? {
         ...(bucketDelta.rebuild || bucketDelta.records.size
@@ -275,6 +318,12 @@ export const deriveIndex = (input: {
           : {}),
         ...(calculationDelta.fields.size
           ? { calculation: calculationDelta }
+          : {}),
+        ...(hasDemandDelta
+          ? { demand: demandDelta }
+          : {}),
+        ...(hasContentDelta
+          ? { content: contentDelta }
           : {})
       }
     : undefined
@@ -389,13 +438,13 @@ export const ensureDataviewIndex = (input: {
   }
 
   const document = input.frame.reader.document()
-  const context = createIndexDeriveContext(document, input.frame.delta)
+  const contentDelta = createContentDelta(document, input.frame.delta)
   const previous = input.previous
 
   if (
     previous
     && writeNormalizedIndexDemandKey(previous.demand) === writeNormalizedIndexDemandKey(active.demand)
-    && !context.changed
+    && !contentDeltaChanged(contentDelta)
   ) {
     return {
       action: 'reuse',
@@ -403,10 +452,7 @@ export const ensureDataviewIndex = (input: {
     }
   }
 
-  if (
-    previous
-    && writeNormalizedIndexDemandKey(previous.demand) === writeNormalizedIndexDemandKey(active.demand)
-  ) {
+  if (previous) {
     const next = deriveIndex({
       previous: previous.state,
       previousDemand: previous.demand,
@@ -423,9 +469,11 @@ export const ensureDataviewIndex = (input: {
     })
 
     return {
-      action: next.trace?.changed
-        ? 'sync'
-        : 'reuse',
+      action: input.frame.delta.reset === true
+        ? 'rebuild'
+        : next.trace?.changed
+          ? 'sync'
+          : 'reuse',
       index
     }
   }

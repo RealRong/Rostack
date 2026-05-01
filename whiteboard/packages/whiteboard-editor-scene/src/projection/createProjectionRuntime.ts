@@ -6,12 +6,14 @@ import type {
   EditorSceneLayout,
   Input,
   SceneUpdateInput,
+  EditorProjectionSnapshot,
+  EditorProjectionDelta,
   EditorSceneSnapshot,
-  EditorSceneDelta,
   EditorSceneTouchedIds,
   EditorScenePreviewDelta,
   DragState,
-  EditSession
+  EditSession,
+  PreviewInput
 } from '../contracts/editor'
 import type { State } from '../contracts/state'
 import type { WorkingState } from '../contracts/working'
@@ -55,11 +57,11 @@ const readEditedEdgeIds = (
 
 const readPreviewNodeIds = (
   preview: EditorSceneSnapshot['preview']
-): ReadonlySet<string> => new Set(preview.nodes.keys())
+): ReadonlySet<string> => new Set(Object.keys(preview.nodes))
 
 const readPreviewEdgeIds = (
   preview: EditorSceneSnapshot['preview']
-): ReadonlySet<string> => new Set(preview.edges.keys())
+): ReadonlySet<string> => new Set(Object.keys(preview.edges))
 
 const readPreviewMindmapIds = (
   preview: EditorSceneSnapshot['preview']['mindmap']
@@ -85,7 +87,7 @@ const createTouchedIdDelta = <TId extends string>(
 })
 
 const readPreviewDelta = (
-  value: EditorSceneDelta['preview']
+  value: EditorProjectionDelta['preview']
 ): EditorScenePreviewDelta | undefined => (
   value && value !== true
     ? value
@@ -93,16 +95,74 @@ const readPreviewDelta = (
 )
 
 const readHoverDelta = (
-  value: NonNullable<EditorSceneDelta['interaction']>['hover']
+  value: EditorProjectionDelta['hover']
 ): EditorSceneTouchedIds | undefined => (
   value && value !== true
     ? value
     : undefined
 )
 
+const mergePreview = (
+  base: PreviewInput,
+  transient: PreviewInput
+): PreviewInput => ({
+  nodes: {
+    ...base.nodes,
+    ...transient.nodes
+  },
+  edges: {
+    ...base.edges,
+    ...transient.edges
+  },
+  ...(transient.edgeGuide ?? base.edgeGuide
+    ? {
+        edgeGuide: transient.edgeGuide ?? base.edgeGuide
+      }
+    : {}),
+  draw: transient.draw ?? base.draw,
+  selection: {
+    ...(transient.selection.marquee ?? base.selection.marquee
+      ? {
+          marquee: transient.selection.marquee ?? base.selection.marquee
+        }
+      : {}),
+    guides: transient.selection.guides.length > 0
+      ? transient.selection.guides
+      : base.selection.guides
+  },
+  mindmap: transient.mindmap
+    ? {
+        ...(base.mindmap ?? {}),
+        ...transient.mindmap
+      }
+    : base.mindmap
+})
+
+const toEditorSceneSnapshot = (input: {
+  snapshot: EditorProjectionSnapshot
+  view: ReturnType<SceneViewInput>
+}): EditorSceneSnapshot => ({
+  tool: input.snapshot.state.tool,
+  draw: input.snapshot.state.draw,
+  selection: input.snapshot.state.selection,
+  edit: input.snapshot.state.edit,
+  interaction: {
+    mode: input.snapshot.state.interaction.mode,
+    chrome: input.snapshot.state.interaction.chrome,
+    space: input.snapshot.state.interaction.space,
+    hover: input.snapshot.overlay.hover
+  },
+  preview: mergePreview(
+    input.snapshot.overlay.preview.base,
+    input.snapshot.overlay.preview.transient
+  ),
+  viewport: input.snapshot.state.viewport,
+  view: input.view
+})
+
 const createEditorRuntimeInputDelta = (input: {
   snapshot: EditorSceneSnapshot
-  delta: EditorSceneDelta
+  delta: EditorProjectionDelta
 }) => {
   const delta = createEmptyEditorSceneRuntimeDelta()
 
@@ -124,22 +184,23 @@ const createEditorRuntimeInputDelta = (input: {
 
   const interaction = input.delta.interaction
   if (interaction) {
-    if (interaction.mode || interaction.chrome || interaction.space || interaction.hover) {
+    if (interaction.mode || interaction.chrome || interaction.space) {
       delta.session.interaction = true
     }
-    if (interaction.hover) {
-      delta.session.hover = true
-      const hover = readHoverDelta(interaction.hover)
-      if (hover) {
-        if (hover.touchedNodeIds.length > 0) {
-          delta.session.preview.nodes = createTouchedIdDelta(hover.touchedNodeIds)
-        }
-        if (hover.touchedEdgeIds.length > 0) {
-          delta.session.preview.edges = createTouchedIdDelta(hover.touchedEdgeIds)
-        }
-        if (hover.touchedMindmapIds.length > 0) {
-          delta.session.preview.mindmaps = createTouchedIdDelta(hover.touchedMindmapIds)
-        }
+  }
+
+  if (input.delta.hover) {
+    delta.session.hover = true
+    const hover = readHoverDelta(input.delta.hover)
+    if (hover) {
+      if (hover.touchedNodeIds.length > 0) {
+        delta.session.preview.nodes = createTouchedIdDelta(hover.touchedNodeIds)
+      }
+      if (hover.touchedEdgeIds.length > 0) {
+        delta.session.preview.edges = createTouchedIdDelta(hover.touchedEdgeIds)
+      }
+      if (hover.touchedMindmapIds.length > 0) {
+        delta.session.preview.mindmaps = createTouchedIdDelta(hover.touchedMindmapIds)
       }
     }
   }
@@ -252,41 +313,47 @@ const readDragState = (input: {
   }
 }
 
-const toProjectionInput = (
-  input: SceneUpdateInput
+const toProjectionInput = (input: {
+  update: SceneUpdateInput
+  view: ReturnType<SceneViewInput>
+}
 ): Input => {
+  const editorSnapshot = toEditorSceneSnapshot({
+    snapshot: input.update.editor.snapshot,
+    view: input.view
+  })
   const runtimeDelta = createEditorRuntimeInputDelta({
-    snapshot: input.editor.snapshot,
-    delta: input.editor.delta
+    snapshot: editorSnapshot,
+    delta: input.update.editor.delta
   })
   const session: Input['runtime']['session'] = {
-    edit: input.editor.snapshot.edit,
+    edit: editorSnapshot.edit,
     draft: {
       edges: new Map()
     },
-    preview: input.editor.snapshot.preview,
-    tool: input.editor.snapshot.tool
+    preview: editorSnapshot.preview,
+    tool: editorSnapshot.tool
   }
   const interaction: Input['runtime']['interaction'] = {
-    selection: input.editor.snapshot.selection,
-    hover: input.editor.snapshot.interaction.hover,
+    selection: editorSnapshot.selection,
+    hover: editorSnapshot.interaction.hover,
     drag: readDragState({
-      document: input.document.snapshot,
-      editor: input.editor.snapshot
+      document: input.update.document.snapshot,
+      editor: editorSnapshot
     }),
-    chrome: input.editor.snapshot.interaction.chrome,
-    editingEdge: isEdgeInteractionMode(input.editor.snapshot.interaction.mode)
+    chrome: editorSnapshot.interaction.chrome,
+    editingEdge: isEdgeInteractionMode(editorSnapshot.interaction.mode)
   }
 
   return {
     document: {
-      rev: input.document.rev,
-      doc: input.document.snapshot
+      rev: input.update.document.rev,
+      doc: input.update.document.snapshot
     },
     runtime: {
       session,
       interaction,
-      view: input.editor.snapshot.view,
+      view: editorSnapshot.view,
       facts: createRuntimeFacts({
         session,
         interaction,
@@ -294,7 +361,7 @@ const toProjectionInput = (
       }),
       delta: runtimeDelta
     },
-    delta: createWhiteboardMutationDelta(input.document.delta)
+    delta: createWhiteboardMutationDelta(input.update.document.delta)
   }
 }
 
@@ -322,7 +389,10 @@ export const createProjectionRuntime = (input: {
       scene.dispose()
     },
     update: (value) => {
-      const result = runtime.update(toProjectionInput(value))
+      const result = runtime.update(toProjectionInput({
+        update: value,
+        view: input.view()
+      }))
       return {
         revision: result.revision,
         trace: result.trace

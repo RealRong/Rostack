@@ -10,7 +10,13 @@ import type {
 import type {
   SelectionTarget
 } from '@whiteboard/core/selection'
-import type { EditorInteractionStateValue } from './document'
+import type {
+  EditorStableInteractionState
+} from './document'
+import type {
+  HoverState
+} from '@whiteboard/editor/input/hover/store'
+
 export type EditorStateIntentTable = {
   'tool.set': {
     intent: {
@@ -43,14 +49,7 @@ export type EditorStateIntentTable = {
   'interaction.set': {
     intent: {
       type: 'interaction.set'
-      interaction: EditorInteractionStateValue
-    }
-    output: void
-  }
-  'preview.set': {
-    intent: {
-      type: 'preview.set'
-      preview: PreviewInput
+      interaction: EditorStableInteractionState
     }
     output: void
   }
@@ -58,6 +57,33 @@ export type EditorStateIntentTable = {
     intent: {
       type: 'viewport.set'
       viewport: Viewport
+    }
+    output: void
+  }
+  'overlay.hover.set': {
+    intent: {
+      type: 'overlay.hover.set'
+      hover: HoverState
+    }
+    output: void
+  }
+  'overlay.preview.base.set': {
+    intent: {
+      type: 'overlay.preview.base.set'
+      preview: PreviewInput
+    }
+    output: void
+  }
+  'overlay.preview.transient.set': {
+    intent: {
+      type: 'overlay.preview.transient.set'
+      preview: PreviewInput
+    }
+    output: void
+  }
+  'overlay.reset': {
+    intent: {
+      type: 'overlay.reset'
     }
     output: void
   }

@@ -1262,6 +1262,30 @@ test('engine.performance syncs summaries when grouped filters change visible mem
   assert.equal(trace.snapshot.changedStores.includes('summaries'), true)
 })
 
+test('engine.performance syncs index demand when effective filter adds a bucket index', () => {
+  const engine = createEngineForTest({
+    document: createDocument(),
+    perf: {
+      trace: true,
+      stats: true
+    }
+  })
+
+  engine.performance.traces.clear()
+  engine.performance.stats.clear()
+
+  addFilterRule(openView(engine, VIEW_TABLE), FIELD_STATUS, {
+    presetId: 'eq',
+    value: filter.value.optionSet.create(['todo'])
+  })
+
+  const trace = engine.performance.traces.last()
+
+  assert.ok(trace)
+  assert.equal(trace.index.bucket.action, 'sync')
+  assert.notEqual(trace.index.bucket.action, 'rebuild')
+})
+
 test('engine.performance reuses summaries when sort only reorders records', () => {
   const engine = createEngineForTest({
     document: createDocument(),

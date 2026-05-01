@@ -98,7 +98,7 @@ const withNodePresentation = (
   }
 
   editor.dispatch({
-    type: 'preview.set',
+    type: 'overlay.preview.base.set',
     preview: nextPreview
   } satisfies EditorCommand)
 }

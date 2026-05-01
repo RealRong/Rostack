@@ -1,7 +1,5 @@
 import { geometry as geometryApi, type ContainerRect, type ViewportLimits, type WheelInput } from '@whiteboard/core/geometry'
-import { selection as selectionApi, type SelectionTarget } from '@whiteboard/core/selection'
 import type { Point, Viewport } from '@whiteboard/core/types'
-import type { PreviewInput } from '@whiteboard/editor-scene'
 import { record as draftRecord } from '@shared/draft'
 import {
   MutationEngine,
@@ -13,32 +11,24 @@ import {
 import type {
   MutationCommitRecord
 } from '@shared/mutation'
-import { equal, store } from '@shared/core'
+import { equal } from '@shared/core'
 import type {
   DrawState
 } from '@whiteboard/editor/session/draw/state'
 import type { Tool } from '@whiteboard/editor/types/tool'
-import type { EditSession } from '@whiteboard/editor/session/edit'
 import type {
   ViewportInputRuntime,
   ViewportRead,
   ViewportRuntime
 } from '@whiteboard/editor/session/viewport'
 import {
+  EMPTY_PREVIEW_STATE
+} from '@whiteboard/editor/session/preview/state'
+import {
   buildEditorStateDocument,
-  isDrawEqual,
-  isEditSessionEqual,
-  isInteractionStateEqual,
-  isPreviewEqual,
-  isSelectionEqual,
-  isToolEqual,
   isViewportEqual,
-  normalizeEditSession,
   normalizeEditorStateDocument,
-  normalizeInteractionStateValue,
-  normalizeTool,
   normalizeViewportValue,
-  type EditorInteractionStateValue,
   type EditorStateDocument
 } from './document'
 import { editorStateRegistry } from './entities'
@@ -46,6 +36,7 @@ import type {
   EditorCommand,
   EditorStateMutationTable
 } from './intents'
+import { EMPTY_HOVER_STATE } from '@whiteboard/editor/input/hover/store'
 
 type EditorStateReader = MutationCurrent<EditorStateDocument>['document']
 type EditorStateProgram = MutationPorts<typeof editorStateRegistry>
@@ -63,108 +54,116 @@ const compileHandlers: MutationCompileHandlerTable<
   EditorStateProgram,
   EditorStateReader
 > = {
-  'tool.set': (input) => {
-    const {
-      document,
-      intent,
-      program
-    } = input
-    program.tool.patch(draftRecord.diff(
+  'tool.set': ({ document, intent, program }) => {
+    program.state.patch(draftRecord.diff(
       {
-        value: document.tool.value
+        tool: document.state.tool
       },
       {
-        value: intent.tool
+        tool: intent.tool
       }
     ))
   },
-  'draw.set': (input) => {
-    const {
-      document,
-      intent,
-      program
-    } = input
-    program.draw.patch(draftRecord.diff(
+  'draw.set': ({ document, intent, program }) => {
+    program.state.patch(draftRecord.diff(
       {
-        value: document.draw.value
+        draw: document.state.draw
       },
       {
-        value: intent.state
+        draw: intent.state
       }
     ))
   },
-  'selection.set': (input) => {
-    const {
-      document,
-      intent,
-      program
-    } = input
-    program.selection.patch(draftRecord.diff(
+  'selection.set': ({ document, intent, program }) => {
+    program.state.patch(draftRecord.diff(
       {
-        value: document.selection.value
+        selection: document.state.selection
       },
       {
-        value: intent.selection
+        selection: intent.selection
       }
     ))
   },
-  'edit.set': (input) => {
-    const {
-      document,
-      intent,
-      program
-    } = input
-    program.edit.patch(draftRecord.diff(
+  'edit.set': ({ document, intent, program }) => {
+    program.state.patch(draftRecord.diff(
       {
-        value: document.edit.value
+        edit: document.state.edit
       },
       {
-        value: intent.edit
+        edit: intent.edit
       }
     ))
   },
-  'interaction.set': (input) => {
-    const {
-      document,
-      intent,
-      program
-    } = input
-    program.interaction.patch(draftRecord.diff(
+  'interaction.set': ({ document, intent, program }) => {
+    program.state.patch(draftRecord.diff(
       {
-        value: document.interaction.value
+        interaction: document.state.interaction
       },
       {
-        value: intent.interaction
+        interaction: intent.interaction
       }
     ))
   },
-  'preview.set': (input) => {
-    const {
-      document,
-      intent,
-      program
-    } = input
-    program.preview.patch(draftRecord.diff(
+  'viewport.set': ({ document, intent, program }) => {
+    program.state.patch(draftRecord.diff(
       {
-        value: document.preview.value
+        viewport: document.state.viewport
       },
       {
-        value: intent.preview
+        viewport: intent.viewport
       }
     ))
   },
-  'viewport.set': (input) => {
-    const {
-      document,
-      intent,
-      program
-    } = input
-    program.viewport.patch(draftRecord.diff(
+  'overlay.hover.set': ({ document, intent, program }) => {
+    program.overlay.patch(draftRecord.diff(
       {
-        value: document.viewport.value
+        hover: document.overlay.hover
       },
       {
-        value: intent.viewport
+        hover: intent.hover
+      }
+    ))
+  },
+  'overlay.preview.base.set': ({ document, intent, program }) => {
+    program.overlay.patch(draftRecord.diff(
+      {
+        preview: {
+          base: document.overlay.preview.base
+        }
+      },
+      {
+        preview: {
+          base: intent.preview
+        }
+      }
+    ))
+  },
+  'overlay.preview.transient.set': ({ document, intent, program }) => {
+    program.overlay.patch(draftRecord.diff(
+      {
+        preview: {
+          transient: document.overlay.preview.transient
+        }
+      },
+      {
+        preview: {
+          transient: intent.preview
+        }
+      }
+    ))
+  },
+  'overlay.reset': ({ document, program }) => {
+    program.overlay.patch(draftRecord.diff(
+      {
+        hover: document.overlay.hover,
+        preview: document.overlay.preview
+      },
+      {
+        hover: EMPTY_HOVER_STATE,
+        preview: {
+          base: EMPTY_PREVIEW_STATE,
+          transient: EMPTY_PREVIEW_STATE
+        }
       }
     ))
   }
@@ -190,56 +189,10 @@ const toCommandList = (
   return [command as EditorCommand]
 }
 
-const syncStateStore = <T,>(
-  target: {
-    set: (value: T) => void
-  },
-  read: () => T
-) => {
-  target.set(read())
-}
-
-const createStateStores = (
-  document: EditorStateDocument
-) => ({
-  tool: store.createNormalizedValue<Tool>({
-    initial: document.tool.value,
-    normalize: normalizeTool,
-    isEqual: isToolEqual
-  }),
-  draw: store.createNormalizedValue<DrawState>({
-    initial: document.draw.value,
-    isEqual: isDrawEqual
-  }),
-  selection: store.createNormalizedValue<SelectionTarget>({
-    initial: document.selection.value,
-    normalize: selectionApi.target.normalize,
-    isEqual: isSelectionEqual
-  }),
-  edit: store.createNormalizedValue<EditSession>({
-    initial: document.edit.value,
-    normalize: normalizeEditSession,
-    isEqual: isEditSessionEqual
-  }),
-  interaction: store.createNormalizedValue<EditorInteractionStateValue>({
-    initial: document.interaction.value,
-    normalize: normalizeInteractionStateValue,
-    isEqual: isInteractionStateEqual
-  }),
-  preview: store.createNormalizedValue<PreviewInput>({
-    initial: document.preview.value,
-    isEqual: isPreviewEqual
-  }),
-  viewport: store.createNormalizedValue<Viewport>({
-    initial: document.viewport.value,
-    normalize: normalizeViewportValue,
-    isEqual: isViewportEqual
-  })
-})
-
 const createViewportRuntime = (input: {
   initialViewport: Viewport
-  viewportStore: EditorStateRuntime['stores']['viewport']['store']
+  readViewport: () => Viewport
+  subscribeViewport: (listener: () => void) => () => void
   setViewport: (nextViewport: Viewport) => boolean
 }): ViewportRuntime => {
   const initialLimits = geometryApi.viewport.defaultLimits
@@ -250,13 +203,11 @@ const createViewportRuntime = (input: {
   let rect = geometryApi.viewport.emptyContainerRect
   let limits = initialLimits
 
-  const readViewport = (): Viewport => input.viewportStore.get()
-
   const setViewport = (
     nextViewport: Viewport
   ): boolean => {
     const normalized = geometryApi.viewport.normalize(nextViewport, limits)
-    if (geometryApi.viewport.isSame(readViewport(), normalized)) {
+    if (geometryApi.viewport.isSame(input.readViewport(), normalized)) {
       return false
     }
 
@@ -278,24 +229,24 @@ const createViewportRuntime = (input: {
 
     return {
       screen,
-      world: geometryApi.viewport.screenToWorld(screen, readViewport(), rect)
+      world: geometryApi.viewport.screenToWorld(screen, input.readViewport(), rect)
     }
   }
 
   const read: ViewportRead = {
-    get: readViewport,
-    subscribe: input.viewportStore.subscribe,
+    get: input.readViewport,
+    subscribe: input.subscribeViewport,
     pointer: readPointer,
-    worldToScreen: (point) => geometryApi.viewport.worldToScreen(point, readViewport(), rect),
+    worldToScreen: (point) => geometryApi.viewport.worldToScreen(point, input.readViewport(), rect),
     worldRect: () => geometryApi.rect.fromPoints(
       geometryApi.viewport.screenToWorld({
         x: 0,
         y: 0
-      }, readViewport(), rect),
+      }, input.readViewport(), rect),
       geometryApi.viewport.screenToWorld({
         x: rect.width,
         y: rect.height
-      }, readViewport(), rect)
+      }, input.readViewport(), rect)
     )
   }
 
@@ -318,7 +269,7 @@ const createViewportRuntime = (input: {
       }
 
       return geometryApi.viewport.pan(
-        readViewport(),
+        input.readViewport(),
         delta
       )
     },
@@ -330,7 +281,7 @@ const createViewportRuntime = (input: {
         return null
       }
 
-      const current = readViewport()
+      const current = input.readViewport()
       const factor = current.zoom === 0
         ? zoom
         : zoom / current.zoom
@@ -348,7 +299,7 @@ const createViewportRuntime = (input: {
       bounds: ReturnType<ViewportRead['worldRect']>,
       padding: number = geometryApi.viewport.fitPadding
     ): Viewport => geometryApi.viewport.fitToRect({
-      viewport: readViewport(),
+      viewport: input.readViewport(),
       rect,
       bounds,
       limits,
@@ -361,7 +312,7 @@ const createViewportRuntime = (input: {
       }
 
       return geometryApi.viewport.applyScreenPan(
-        readViewport(),
+        input.readViewport(),
         deltaScreen
       )
     },
@@ -369,7 +320,7 @@ const createViewportRuntime = (input: {
       wheelInput: WheelInput,
       wheelSensitivity: number
     ): Viewport => geometryApi.viewport.applyWheelInput({
-      viewport: readViewport(),
+      viewport: input.readViewport(),
       input: wheelInput,
       rect,
       limits,
@@ -403,7 +354,7 @@ const createViewportRuntime = (input: {
       }
 
       limits = normalized
-      setViewport(readViewport())
+      setViewport(input.readViewport())
     }
   }
 }
@@ -418,13 +369,6 @@ export interface EditorStateRuntime {
     string,
     EditorStateProgram
   >
-  stores: ReturnType<typeof createStateStores>
-  state: {
-    tool: ReturnType<typeof createStateStores>['tool']['store']
-    draw: ReturnType<typeof createStateStores>['draw']['store']
-    selection: ReturnType<typeof createStateStores>['selection']['store']
-    edit: ReturnType<typeof createStateStores>['edit']['store']
-  }
   snapshot(): EditorStateDocument
   dispatch: (
     command: EditorCommand | readonly EditorCommand[]
@@ -463,22 +407,32 @@ export const createEditorStateRuntime = (input: {
     compile: compileHandlers,
     history: false
   })
-  const stores = createStateStores(engine.document())
 
-  const unsubscribeWatch = engine.watch((current) => {
-    syncStateStore(stores.tool, () => current.document.tool.value)
-    syncStateStore(stores.draw, () => current.document.draw.value)
-    syncStateStore(stores.selection, () => current.document.selection.value)
-    syncStateStore(stores.edit, () => current.document.edit.value)
-    syncStateStore(stores.interaction, () => current.document.interaction.value)
-    syncStateStore(stores.viewport, () => current.document.viewport.value)
+  const dispatch = (
+    command: EditorCommand | readonly EditorCommand[]
+  ) => {
+    toCommandList(command).forEach((entry) => {
+      assertEditorStateCommit(engine.execute(entry))
+    })
+  }
+
+  const subscribeViewport = (
+    listener: () => void
+  ) => engine.subscribe((commit) => {
+    if (
+      commit.delta.reset === true
+      || commit.delta.has('state.viewport')
+      || Object.keys(commit.delta.changes).some((key) => key.startsWith('state.viewport.'))
+    ) {
+      listener()
+    }
   })
 
   const setViewport = (
     nextViewport: Viewport
   ): boolean => {
     const normalized = normalizeViewportValue(nextViewport)
-    if (isViewportEqual(stores.viewport.read(), normalized)) {
+    if (isViewportEqual(engine.document().state.viewport, normalized)) {
       return false
     }
 
@@ -489,42 +443,21 @@ export const createEditorStateRuntime = (input: {
     return true
   }
 
-  const dispatch = (
-    command: EditorCommand | readonly EditorCommand[]
-  ) => {
-    toCommandList(command).forEach((entry) => {
-      if (entry.type === 'preview.set') {
-        stores.preview.set(entry.preview)
-        return
-      }
-
-      assertEditorStateCommit(engine.execute(entry))
-    })
-  }
-
   const viewport = createViewportRuntime({
     initialViewport: input.initialViewport,
-    viewportStore: stores.viewport.store,
+    readViewport: () => engine.document().state.viewport,
+    subscribeViewport,
     setViewport
   })
 
   return {
     engine,
-    stores,
-    state: {
-      tool: stores.tool.store,
-      draw: stores.draw.store,
-      selection: stores.selection.store,
-      edit: stores.edit.store
-    },
     snapshot: () => engine.document(),
     dispatch,
     commits: {
       subscribe: (listener) => engine.subscribe(listener)
     },
     viewport,
-    dispose: () => {
-      unsubscribeWatch()
-    }
+    dispose: () => {}
   }
 }

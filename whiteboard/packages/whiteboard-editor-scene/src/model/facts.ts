@@ -136,8 +136,8 @@ export const createInputFacts = (
   appendIds(mindmapTargetIds, runtimeFacts.touchedMindmapIds)
 
   appendIds(edgeTargetIds, input.runtime.session.draft.edges.keys())
-  appendIds(nodeTargetIds, input.runtime.session.preview.nodes.keys())
-  appendIds(edgeTargetIds, input.runtime.session.preview.edges.keys())
+  appendIds(nodeTargetIds, Object.keys(input.runtime.session.preview.nodes))
+  appendIds(edgeTargetIds, Object.keys(input.runtime.session.preview.edges))
 
   if (input.runtime.session.preview.mindmap?.rootMove) {
     mindmapTargetIds.add(input.runtime.session.preview.mindmap.rootMove.mindmapId)

@@ -6,8 +6,8 @@ import type {
 } from '@whiteboard/core/types'
 import { createWhiteboardMutationDelta } from '@whiteboard/engine/mutation'
 import type {
-  EditorSceneDelta,
   EditorDrawState,
+  EditorProjectionDelta,
   Input,
   SceneUpdateInput,
   EditorInteractionMode
@@ -101,7 +101,7 @@ export const toSceneUpdateInput = (
     input.runtime.delta.session.interaction
     || input.runtime.delta.session.hover
 
-  const delta: EditorSceneDelta = {}
+  const delta: EditorProjectionDelta = {}
 
   if (input.runtime.delta.session.tool) {
     delta.tool = true
@@ -118,9 +118,11 @@ export const toSceneUpdateInput = (
     delta.interaction = {
       mode: input.runtime.delta.session.interaction || undefined,
       chrome: input.runtime.delta.session.interaction || undefined,
-      space: undefined,
-      hover: input.runtime.delta.session.hover || undefined
+      space: undefined
     }
+  }
+  if (input.runtime.delta.session.hover) {
+    delta.hover = true
   }
   if (hasPreviewDelta) {
     delta.preview = {
@@ -143,22 +145,36 @@ export const toSceneUpdateInput = (
     },
     editor: {
       snapshot: {
-        tool: input.runtime.session.tool,
-        draw: EMPTY_DRAW_STATE,
-        selection: input.runtime.interaction.selection,
-        edit: input.runtime.session.edit,
-        interaction: {
-          mode: readInteractionMode(input.runtime.interaction),
-          chrome: input.runtime.interaction.chrome,
-          space: false,
-          hover: input.runtime.interaction.hover
+        state: {
+          tool: input.runtime.session.tool,
+          draw: EMPTY_DRAW_STATE,
+          selection: input.runtime.interaction.selection,
+          edit: input.runtime.session.edit,
+          interaction: {
+            mode: readInteractionMode(input.runtime.interaction),
+            chrome: input.runtime.interaction.chrome,
+            space: false
+          },
+          viewport: {
+            center: input.runtime.view.center,
+            zoom: input.runtime.view.zoom
+          }
         },
-        preview: input.runtime.session.preview,
-        viewport: {
-          center: input.runtime.view.center,
-          zoom: input.runtime.view.zoom
-        },
-        view: input.runtime.view
+        overlay: {
+          hover: input.runtime.interaction.hover,
+          preview: {
+            base: input.runtime.session.preview,
+            transient: {
+              nodes: {},
+              edges: {},
+              draw: null,
+              selection: {
+                guides: []
+              },
+              mindmap: null
+            }
+          }
+        }
       },
       delta
     }
@@ -176,8 +192,8 @@ export const createEmptyInput = (): Input => {
       edges: new Map()
     },
     preview: {
-      nodes: new Map(),
-      edges: new Map(),
+      nodes: {},
+      edges: {},
       edgeGuide: undefined,
       draw: null,
       selection: {

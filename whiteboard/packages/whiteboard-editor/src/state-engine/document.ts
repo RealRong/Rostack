@@ -30,25 +30,38 @@ import type {
   EditSession
 } from '@whiteboard/editor/session/edit'
 
-type EditorStateValueBox<T> = {
-  value: T
-}
-
-export interface EditorStateDocument {
-  tool: EditorStateValueBox<Tool>
-  draw: EditorStateValueBox<DrawState>
-  selection: EditorStateValueBox<SelectionTarget>
-  edit: EditorStateValueBox<EditSession>
-  interaction: EditorStateValueBox<EditorInteractionStateValue>
-  preview: EditorStateValueBox<PreviewInput>
-  viewport: EditorStateValueBox<Viewport>
-}
-
-export interface EditorInteractionStateValue {
+export interface EditorStableInteractionState {
   mode: InteractionMode
   chrome: boolean
   space: boolean
+}
+
+export interface EditorInteractionStateValue extends EditorStableInteractionState {
   hover: HoverState
+}
+
+export interface EditorStableState {
+  tool: Tool
+  draw: DrawState
+  selection: SelectionTarget
+  edit: EditSession
+  interaction: EditorStableInteractionState
+  viewport: Viewport
+}
+
+export interface EditorOverlayPreviewState {
+  base: PreviewInput
+  transient: PreviewInput
+}
+
+export interface EditorOverlayState {
+  hover: HoverState
+  preview: EditorOverlayPreviewState
+}
+
+export interface EditorStateDocument {
+  state: EditorStableState
+  overlay: EditorOverlayState
 }
 
 const isObjectRecord = (
@@ -242,22 +255,61 @@ export const normalizeInteractionMode = (
 }
 
 export const normalizeInteractionStateValue = (
-  value: EditorInteractionStateValue
-): EditorInteractionStateValue => ({
+  value: EditorStableInteractionState
+): EditorStableInteractionState => ({
   mode: normalizeInteractionMode(value.mode),
   chrome: Boolean(value.chrome),
-  space: Boolean(value.space),
-  hover: normalizeHoverState(value.hover)
+  space: Boolean(value.space)
 })
 
 export const isInteractionStateEqual = (
-  left: EditorInteractionStateValue,
-  right: EditorInteractionStateValue
+  left: EditorStableInteractionState,
+  right: EditorStableInteractionState
 ): boolean => (
   left.mode === right.mode
   && left.chrome === right.chrome
   && left.space === right.space
-  && isHoverStateEqual(left.hover, right.hover)
+)
+
+export const normalizeEditorStableState = (
+  value: EditorStableState
+): EditorStableState => ({
+  tool: normalizeTool(value.tool),
+  draw: normalizeDrawState(value.draw),
+  selection: selectionApi.target.normalize(value.selection),
+  edit: normalizeEditSession(value.edit),
+  interaction: normalizeInteractionStateValue(value.interaction),
+  viewport: normalizeViewportValue(value.viewport)
+})
+
+export const normalizeEditorOverlayPreviewState = (
+  value: EditorOverlayPreviewState
+): EditorOverlayPreviewState => ({
+  base: normalizeEditorPreviewState(value.base),
+  transient: normalizeEditorPreviewState(value.transient)
+})
+
+export const isEditorOverlayPreviewStateEqual = (
+  left: EditorOverlayPreviewState,
+  right: EditorOverlayPreviewState
+): boolean => (
+  isEditorPreviewStateEqual(left.base, right.base)
+  && isEditorPreviewStateEqual(left.transient, right.transient)
+)
+
+export const normalizeEditorOverlayState = (
+  value: EditorOverlayState
+): EditorOverlayState => ({
+  hover: normalizeHoverState(value.hover),
+  preview: normalizeEditorOverlayPreviewState(value.preview)
+})
+
+export const isEditorOverlayStateEqual = (
+  left: EditorOverlayState,
+  right: EditorOverlayState
+): boolean => (
+  isHoverStateEqual(left.hover, right.hover)
+  && isEditorOverlayPreviewStateEqual(left.preview, right.preview)
 )
 
 export const buildEditorStateDocument = (input: {
@@ -265,62 +317,38 @@ export const buildEditorStateDocument = (input: {
   draw: DrawState
   selection?: SelectionTarget
   edit?: EditSession
-  interaction?: EditorInteractionStateValue
-  preview?: PreviewInput
+  interaction?: EditorStableInteractionState
+  hover?: HoverState
+  previewBase?: PreviewInput
+  previewTransient?: PreviewInput
   viewport: Viewport
 }): EditorStateDocument => normalizeEditorStateDocument({
-  tool: {
-    value: input.tool
-  },
-  draw: {
-    value: input.draw
-  },
-  selection: {
-    value: input.selection ?? selectionApi.target.empty
-  },
-  edit: {
-    value: input.edit ?? null
-  },
-  interaction: {
-    value: input.interaction ?? {
+  state: {
+    tool: input.tool,
+    draw: input.draw,
+    selection: input.selection ?? selectionApi.target.empty,
+    edit: input.edit ?? null,
+    interaction: input.interaction ?? {
       mode: 'idle',
       chrome: true,
-      space: false,
-      hover: EMPTY_HOVER_STATE
+      space: false
+    },
+    viewport: input.viewport
+  },
+  overlay: {
+    hover: input.hover ?? EMPTY_HOVER_STATE,
+    preview: {
+      base: input.previewBase ?? EMPTY_PREVIEW_STATE,
+      transient: input.previewTransient ?? EMPTY_PREVIEW_STATE
     }
-  },
-  preview: {
-    value: input.preview ?? EMPTY_PREVIEW_STATE
-  },
-  viewport: {
-    value: input.viewport
   }
 })
 
 export const normalizeEditorStateDocument = (
   value: EditorStateDocument
 ): EditorStateDocument => ({
-  tool: {
-    value: normalizeTool(value.tool.value)
-  },
-  draw: {
-    value: normalizeDrawState(value.draw.value)
-  },
-  selection: {
-    value: selectionApi.target.normalize(value.selection.value)
-  },
-  edit: {
-    value: normalizeEditSession(value.edit.value)
-  },
-  interaction: {
-    value: normalizeInteractionStateValue(value.interaction.value)
-  },
-  preview: {
-    value: normalizeEditorPreviewState(value.preview.value)
-  },
-  viewport: {
-    value: normalizeViewportValue(value.viewport.value)
-  }
+  state: normalizeEditorStableState(value.state),
+  overlay: normalizeEditorOverlayState(value.overlay)
 })
 
 export const isSelectionEqual = selectionApi.target.equal

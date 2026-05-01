@@ -8,26 +8,18 @@ import { TITLE_FIELD_ID } from '@dataview/core/types'
 import {
   field as fieldApi
 } from '@dataview/core/field'
-import { createId, equal, string } from '@shared/core'
+import { createId, equal, json, string } from '@shared/core'
 import {
   view as viewApi
 } from '@dataview/core/view'
-import type {
-  DocumentReader
-} from '../../document/reader'
 import { validateField } from '@dataview/core/field/validate'
+import type {
+  DataviewCompileReader
+} from './reader'
+import type {
+  DataviewCompileContext
+} from './contracts'
 import {
-  createEntityPatch
-} from './patch'
-import {
-  issue,
-  reportIssues,
-  writeRecordValuesMany,
-  type DataviewCompileContext,
-  type DataviewCompileContext as DataviewCompileInput
-} from './base'
-import {
-  writeViewDisplayInsert,
   writeViewUpdate
 } from './viewDiff'
 
@@ -56,18 +48,19 @@ const createOptionName = (
 
 const requireCustomField = (
   input: DataviewCompileContext,
-  reader: DocumentReader,
+  reader: DataviewCompileReader,
   fieldId: string,
   path = 'fieldId'
 ): CustomField | undefined => {
-  const field = reader.fields.get(fieldId)
+  const field = reader.fields.require(fieldId, path)
   if (!fieldApi.kind.isCustom(field)) {
-    issue(
-      input,
-      'field.notFound',
-      `Unknown field: ${fieldId}`,
-      path
-    )
+    input.issue({
+      source: input.source,
+      code: 'field.notFound',
+      message: `Unknown field: ${fieldId}`,
+      path,
+      severity: 'error'
+    })
     return undefined
   }
 
@@ -76,7 +69,7 @@ const requireCustomField = (
 
 const requireOptionField = (
   input: DataviewCompileContext,
-  reader: DocumentReader,
+  reader: DataviewCompileReader,
   fieldId: string
 ) => {
   const field = requireCustomField(input, reader, fieldId)
@@ -84,12 +77,13 @@ const requireOptionField = (
     return undefined
   }
   if (!fieldApi.kind.hasOptions(field)) {
-    issue(
-      input,
-      'field.invalid',
-      'Field does not support options',
-      'fieldId'
-    )
+    input.issue({
+      source: input.source,
+      code: 'field.invalid',
+      message: 'Field does not support options',
+      path: 'fieldId',
+      severity: 'error'
+    })
     return undefined
   }
 
@@ -116,27 +110,29 @@ const applyFieldPatch = (
 
 const lowerFieldCreate = (
   intent: Extract<Intent, { type: 'field.create' }>,
-  input: DataviewCompileInput,
-  reader: DocumentReader
+  input: DataviewCompileContext,
+  reader: DataviewCompileReader
 ) => {
   const document = input.document
   const explicitFieldId = string.trimToUndefined(intent.input.id)
 
   if (intent.input.id !== undefined && !explicitFieldId) {
-    issue(
-      input,
-      'field.invalid',
-      'Field id must be a non-empty string',
-      'input.id'
-    )
+    input.issue({
+      source: input.source,
+      code: 'field.invalid',
+      message: 'Field id must be a non-empty string',
+      path: 'input.id',
+      severity: 'error'
+    })
   }
   if (explicitFieldId && reader.fields.has(explicitFieldId)) {
-    issue(
-      input,
-      'field.invalid',
-      `Field already exists: ${explicitFieldId}`,
-      'input.id'
-    )
+    input.issue({
+      source: input.source,
+      code: 'field.invalid',
+      message: `Field already exists: ${explicitFieldId}`,
+      path: 'input.id',
+      severity: 'error'
+    })
   }
   if ((intent.input.id !== undefined && !explicitFieldId) || (explicitFieldId && reader.fields.has(explicitFieldId))) {
     return
@@ -149,15 +145,15 @@ const lowerFieldCreate = (
     meta: intent.input.meta
   })
 
-  reportIssues(input, ...validateField(document, input.source, field, 'input'))
+  input.issue(...validateField(document, input.source, field, 'input'))
   input.program.field.create(field)
   input.output({ id: field.id })
 }
 
 const lowerFieldPatch = (
   intent: Extract<Intent, { type: 'field.patch' }>,
-  input: DataviewCompileInput,
-  reader: DocumentReader
+  input: DataviewCompileContext,
+  reader: DataviewCompileReader
 ) => {
   const document = input.document
   const field = requireCustomField(input, reader, intent.id, 'id')
@@ -166,24 +162,25 @@ const lowerFieldPatch = (
   }
 
   if (!Object.keys(intent.patch).length) {
-    issue(
-      input,
-      'field.invalid',
-      'field.patch patch cannot be empty',
-      'patch'
-    )
+    input.issue({
+      source: input.source,
+      code: 'field.invalid',
+      message: 'field.patch patch cannot be empty',
+      path: 'patch',
+      severity: 'error'
+    })
     return
   }
 
   const nextField = applyFieldPatch(field, intent.patch)
-  reportIssues(input, ...validateField(document, input.source, nextField, 'patch'))
+  input.issue(...validateField(document, input.source, nextField, 'patch'))
   input.program.field.patch(intent.id, intent.patch)
 }
 
 const lowerFieldReplace = (
   intent: Extract<Intent, { type: 'field.replace' }>,
-  input: DataviewCompileInput,
-  reader: DocumentReader
+  input: DataviewCompileContext,
+  reader: DataviewCompileReader
 ) => {
   const document = input.document
   if (!requireCustomField(input, reader, intent.id, 'id')) {
@@ -195,19 +192,19 @@ const lowerFieldReplace = (
     id: intent.id
   } satisfies CustomField
 
-  reportIssues(input, ...validateField(document, input.source, field, 'field'))
+  input.issue(...validateField(document, input.source, field, 'field'))
   const current = reader.fields.get(intent.id)
   if (!current || !fieldApi.kind.isCustom(current)) {
     return
   }
 
-  input.program.field.patch(intent.id, createEntityPatch(current, field))
+  input.program.field.patch(intent.id, json.diff(current, field))
 }
 
 const lowerFieldSetKind = (
   intent: Extract<Intent, { type: 'field.setKind' }>,
-  input: DataviewCompileInput,
-  reader: DocumentReader
+  input: DataviewCompileContext,
+  reader: DataviewCompileReader
 ) => {
   const document = input.document
   const views = reader.views.list()
@@ -217,8 +214,8 @@ const lowerFieldSetKind = (
   }
 
   const nextField = fieldApi.kind.convert(field, intent.kind)
-  const patch = createEntityPatch(field, nextField)
-  reportIssues(input, ...validateField(document, input.source, nextField, 'kind'))
+  const patch = json.diff(field, nextField)
+  input.issue(...validateField(document, input.source, nextField, 'kind'))
 
   input.program.field.patch(intent.id, patch)
   views.forEach((view) => {
@@ -231,8 +228,8 @@ const lowerFieldSetKind = (
 
 const lowerFieldDuplicate = (
   intent: Extract<Intent, { type: 'field.duplicate' }>,
-  input: DataviewCompileInput,
-  reader: DocumentReader
+  input: DataviewCompileContext,
+  reader: DataviewCompileReader
 ) => {
   const document = input.document
   const views = reader.views.list()
@@ -252,7 +249,7 @@ const lowerFieldDuplicate = (
     )
   } satisfies CustomField
 
-  reportIssues(input, ...validateField(document, input.source, nextField, 'field'))
+  input.issue(...validateField(document, input.source, nextField, 'field'))
   input.program.field.create(nextField)
 
   records.forEach((record) => {
@@ -260,7 +257,7 @@ const lowerFieldDuplicate = (
       return
     }
 
-    writeRecordValuesMany(input.program, {
+    input.program.record.writeValuesMany({
       recordIds: [record.id],
       set: {
         [nextFieldId]: structuredClone(record.values[sourceField.id])
@@ -278,11 +275,14 @@ const lowerFieldDuplicate = (
       return
     }
 
-    writeViewDisplayInsert(
-      input.program,
-      view.id,
+    input.program.viewDisplay(view.id).insert(
       nextFieldId,
-      view.display.fields[sourceIndex + 1]
+      view.display.fields[sourceIndex + 1] === undefined
+        ? undefined
+        : {
+            kind: 'before',
+            itemId: view.display.fields[sourceIndex + 1]
+          }
     )
   })
 
@@ -293,8 +293,8 @@ const lowerFieldDuplicate = (
 
 const lowerFieldOptionCreate = (
   intent: Extract<Intent, { type: 'field.option.create' }>,
-  input: DataviewCompileInput,
-  reader: DocumentReader
+  input: DataviewCompileContext,
+  reader: DataviewCompileReader
 ) => {
   const context = requireOptionField(input, reader, intent.field)
   if (!context) {
@@ -303,12 +303,13 @@ const lowerFieldOptionCreate = (
 
   const explicitName = string.trimToUndefined(intent.name)
   if (intent.name !== undefined && !explicitName) {
-    issue(
-      input,
-      'field.invalid',
-      'Field option name must be a non-empty string',
-      'name'
-    )
+    input.issue({
+      source: input.source,
+      code: 'field.invalid',
+      message: 'Field option name must be a non-empty string',
+      path: 'name',
+      severity: 'error'
+    })
     return
   }
   if (explicitName && fieldApi.option.read.findByName(context.options, explicitName)) {
@@ -326,8 +327,8 @@ const lowerFieldOptionCreate = (
 
 const lowerFieldOptionMove = (
   intent: Extract<Intent, { type: 'field.option.move' }>,
-  input: DataviewCompileInput,
-  reader: DocumentReader
+  input: DataviewCompileContext,
+  reader: DataviewCompileReader
 ) => {
   const context = requireOptionField(input, reader, intent.field)
   if (!context) {
@@ -336,22 +337,24 @@ const lowerFieldOptionMove = (
 
   const optionId = string.trimToUndefined(intent.option)
   if (!optionId) {
-    issue(
-      input,
-      'field.invalid',
-      'Field option id must be a non-empty string',
-      'option'
-    )
+    input.issue({
+      source: input.source,
+      code: 'field.invalid',
+      message: 'Field option id must be a non-empty string',
+      path: 'option',
+      severity: 'error'
+    })
     return
   }
   const currentOption = context.options.find((option) => option.id === optionId)
   if (!currentOption) {
-    issue(
-      input,
-      'field.invalid',
-      `Unknown field option: ${optionId}`,
-      'option'
-    )
+    input.issue({
+      source: input.source,
+      code: 'field.invalid',
+      message: `Unknown field option: ${optionId}`,
+      path: 'option',
+      severity: 'error'
+    })
     return
   }
 
@@ -376,8 +379,8 @@ const lowerFieldOptionMove = (
 
 const lowerFieldOptionPatch = (
   intent: Extract<Intent, { type: 'field.option.patch' }>,
-  input: DataviewCompileInput,
-  reader: DocumentReader
+  input: DataviewCompileContext,
+  reader: DataviewCompileReader
 ) => {
   const context = requireOptionField(input, reader, intent.field)
   if (!context) {
@@ -386,23 +389,25 @@ const lowerFieldOptionPatch = (
 
   const optionId = string.trimToUndefined(intent.option)
   if (!optionId) {
-    issue(
-      input,
-      'field.invalid',
-      'Field option id must be a non-empty string',
-      'option'
-    )
+    input.issue({
+      source: input.source,
+      code: 'field.invalid',
+      message: 'Field option id must be a non-empty string',
+      path: 'option',
+      severity: 'error'
+    })
     return
   }
 
   const currentOption = context.options.find((option) => option.id === optionId)
   if (!currentOption) {
-    issue(
-      input,
-      'field.invalid',
-      `Unknown field option: ${optionId}`,
-      'option'
-    )
+    input.issue({
+      source: input.source,
+      code: 'field.invalid',
+      message: `Unknown field option: ${optionId}`,
+      path: 'option',
+      severity: 'error'
+    })
     return
   }
 
@@ -420,8 +425,8 @@ const lowerFieldOptionPatch = (
 
 const lowerFieldOptionRemove = (
   intent: Extract<Intent, { type: 'field.option.remove' }>,
-  input: DataviewCompileInput,
-  reader: DocumentReader
+  input: DataviewCompileContext,
+  reader: DataviewCompileReader
 ) => {
   const context = requireOptionField(input, reader, intent.field)
   if (!context) {
@@ -430,21 +435,23 @@ const lowerFieldOptionRemove = (
 
   const optionId = string.trimToUndefined(intent.option)
   if (!optionId) {
-    issue(
-      input,
-      'field.invalid',
-      'Field option id must be a non-empty string',
-      'option'
-    )
+    input.issue({
+      source: input.source,
+      code: 'field.invalid',
+      message: 'Field option id must be a non-empty string',
+      path: 'option',
+      severity: 'error'
+    })
     return
   }
   if (!context.options.some((option) => option.id === optionId)) {
-    issue(
-      input,
-      'field.invalid',
-      `Unknown field option: ${optionId}`,
-      'option'
-    )
+    input.issue({
+      source: input.source,
+      code: 'field.invalid',
+      message: `Unknown field option: ${optionId}`,
+      path: 'option',
+      severity: 'error'
+    })
     return
   }
 
@@ -459,7 +466,7 @@ const lowerFieldOptionRemove = (
       return
     }
 
-    writeRecordValuesMany(input.program, {
+    input.program.record.writeValuesMany({
       recordIds: [record.id],
       ...(nextValue.kind === 'clear'
         ? {
@@ -484,8 +491,8 @@ const lowerFieldOptionRemove = (
 
 const lowerFieldRemove = (
   intent: Extract<Intent, { type: 'field.remove' }>,
-  input: DataviewCompileInput,
-  reader: DocumentReader
+  input: DataviewCompileContext,
+  reader: DataviewCompileReader
 ) => {
   const views = reader.views.list()
   const field = requireCustomField(input, reader, intent.id, 'id')
@@ -498,7 +505,7 @@ const lowerFieldRemove = (
       return
     }
 
-    writeRecordValuesMany(input.program, {
+    input.program.record.writeValuesMany({
       recordIds: [record.id],
       clear: [field.id]
     })

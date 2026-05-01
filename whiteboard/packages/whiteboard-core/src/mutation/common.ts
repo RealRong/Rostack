@@ -5,6 +5,7 @@ import {
 import type {
   MutationFootprint
 } from '@shared/mutation'
+
 export const same = (
   left: unknown,
   right: unknown

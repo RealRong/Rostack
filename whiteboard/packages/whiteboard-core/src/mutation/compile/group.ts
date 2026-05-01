@@ -6,13 +6,6 @@ import {
   readCompileServices
 } from '@whiteboard/core/mutation/compile/helpers'
 import {
-  writeCanvasOrderSplice,
-  writeEdgePatch,
-  writeGroupCreate,
-  writeGroupDelete,
-  writeNodePatch,
-} from './write'
-import {
   toCanvasOrderAnchor,
 } from '@whiteboard/core/mutation/targets'
 
@@ -26,19 +19,19 @@ type GroupIntentHandlers = Pick<
 export const groupIntentHandlers: GroupIntentHandlers = {
   'group.merge': (ctx) => {
     const groupId = readCompileServices(ctx).ids.group()
-    writeGroupCreate(ctx.program, {
+    ctx.program.group.create({
       id: groupId
     })
 
     ctx.intent.target.nodeIds?.forEach((nodeId) => {
-      writeNodePatch(ctx.program, nodeId, nodeApi.update.toPatch({
+      ctx.program.node.patch(nodeId, nodeApi.update.toPatch({
         fields: {
           groupId
         }
       }))
     })
     ctx.intent.target.edgeIds?.forEach((edgeId) => {
-      writeEdgePatch(ctx.program, edgeId, {
+      ctx.program.edge.patch(edgeId, {
         groupId
       })
     })
@@ -58,8 +51,7 @@ export const groupIntentHandlers: GroupIntentHandlers = {
     if (existingRefs.length === 0) {
       return
     }
-    writeCanvasOrderSplice(
-      ctx.program,
+    ctx.program.canvasOrder().spliceRefs(
       existingRefs,
       toCanvasOrderAnchor(currentOrder, existingRefs, ctx.intent.to)
     )
@@ -71,12 +63,12 @@ export const groupIntentHandlers: GroupIntentHandlers = {
 
     ctx.intent.ids.forEach((groupId) => {
       const refs = ctx.reader.canvas.groupRefs(groupId)
-      writeGroupDelete(ctx.program, groupId)
+      ctx.program.group.delete(groupId)
 
       refs.forEach((ref) => {
         if (ref.kind === 'node') {
           nodeIds.push(ref.id)
-          writeNodePatch(ctx.program, ref.id, nodeApi.update.toPatch({
+          ctx.program.node.patch(ref.id, nodeApi.update.toPatch({
             fields: {
               groupId: undefined
             }
@@ -85,7 +77,7 @@ export const groupIntentHandlers: GroupIntentHandlers = {
         }
 
         edgeIds.push(ref.id)
-        writeEdgePatch(ctx.program, ref.id, {
+        ctx.program.edge.patch(ref.id, {
           groupId: undefined
         })
       })

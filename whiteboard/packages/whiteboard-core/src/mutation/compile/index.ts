@@ -2,11 +2,17 @@ import { canvasIntentHandlers } from '@whiteboard/core/mutation/compile/canvas'
 import { documentIntentHandlers } from '@whiteboard/core/mutation/compile/document'
 import { edgeIntentHandlers } from '@whiteboard/core/mutation/compile/edge'
 import { groupIntentHandlers } from '@whiteboard/core/mutation/compile/group'
+import {
+  createCompileReader
+} from '@whiteboard/core/mutation/compile/reader'
 import type {
   WhiteboardCompileHandlerTable
 } from '@whiteboard/core/mutation/compile/helpers'
 import { mindmapIntentHandlers } from '@whiteboard/core/mutation/compile/mindmap'
 import { nodeIntentHandlers } from '@whiteboard/core/mutation/compile/node'
+import {
+  createWhiteboardMutationPorts
+} from '@whiteboard/core/mutation/program'
 export const whiteboardCompileHandlers: WhiteboardCompileHandlerTable = {
   'document.replace': documentIntentHandlers['document.replace'],
   'document.insert': documentIntentHandlers['document.insert'],
@@ -55,6 +61,12 @@ export const whiteboardCompileHandlers: WhiteboardCompileHandlerTable = {
   'mindmap.branch.update': mindmapIntentHandlers['mindmap.branch.update']
 }
 
+export const whiteboardCompile = {
+  createReader: createCompileReader,
+  createProgram: createWhiteboardMutationPorts,
+  handlers: whiteboardCompileHandlers
+} as const
+
 export type {
   WhiteboardCompileCode,
   WhiteboardCompileContext,
@@ -62,6 +74,9 @@ export type {
   WhiteboardCompileIds,
   WhiteboardCompileServices
 } from '@whiteboard/core/mutation/compile/helpers'
+export type {
+  WhiteboardCompileReader
+} from '@whiteboard/core/mutation/compile/reader'
 export type {
   CanvasIntent,
   DocumentIntent,

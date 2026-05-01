@@ -41,14 +41,12 @@ import {
   type IssueSource,
   type ValidationIssue
 } from './contracts'
-import {
-  issue as compileIssue,
-  reportIssues,
-  requireValue,
-  type DataviewCompileContext,
-  type DataviewCompileContext as DataviewCompileInput
-} from './base'
-import type { DocumentReader } from '../../document/reader'
+import type {
+  DataviewCompileContext
+} from './contracts'
+import type {
+  DataviewCompileReader
+} from './reader'
 import {
   documentViews
 } from '../../document/views'
@@ -64,6 +62,9 @@ import {
   resolveDefaultKanbanGroup,
   setViewType
 } from '../../view/update'
+
+type DataviewCompileInput = DataviewCompileContext
+type DocumentReader = DataviewCompileReader
 
 const readErrorMessage = (
   error: unknown,
@@ -82,16 +83,32 @@ const toBeforeAnchor = (
     }
 
 const reportSemanticError = (
-  input: DataviewCompileInput,
+  input: DataviewCompileContext,
   error: unknown,
   path: string
 ) => {
-  compileIssue(
-    input,
-    'view.invalidProjection',
-    readErrorMessage(error, 'Invalid view operation.'),
-    path
-  )
+  input.issue({
+    source: input.source,
+    code: 'view.invalidProjection',
+    message: readErrorMessage(error, 'Invalid view operation.'),
+    path,
+    severity: 'error'
+  })
+}
+
+const emitProblem = (
+  input: DataviewCompileContext,
+  code: ValidationIssue['code'],
+  message: string,
+  path?: string
+) => {
+  input.issue({
+    source: input.source,
+    code,
+    message,
+    ...(path === undefined ? {} : { path }),
+    severity: 'error'
+  })
 }
 
 const cloneFilterValueForOperation = (
@@ -133,7 +150,7 @@ const cloneSortRuleForOperation = (
   direction: rule.direction
 })
 
-const issue = (
+const createValidationIssue = (
   source: IssueSource,
   code: ValidationIssue['code'],
   message: string,
@@ -161,16 +178,16 @@ const validateFieldIdList = (
 
   fieldIds.forEach((fieldId, index) => {
     if (!string.isNonEmptyString(fieldId)) {
-      issues.push(issue(source, 'view.invalidProjection', 'field id must be a non-empty string', `${path}.${index}`))
+      issues.push(createValidationIssue(source, 'view.invalidProjection', 'field id must be a non-empty string', `${path}.${index}`))
       return
     }
     if (seen.has(fieldId)) {
-      issues.push(issue(source, 'view.invalidProjection', `Duplicate field id: ${fieldId}`, `${path}.${index}`))
+      issues.push(createValidationIssue(source, 'view.invalidProjection', `Duplicate field id: ${fieldId}`, `${path}.${index}`))
       return
     }
     seen.add(fieldId)
     if (!reader.fields.has(fieldId)) {
-      issues.push(issue(source, 'field.notFound', `Unknown field: ${fieldId}`, `${path}.${index}`))
+      issues.push(createValidationIssue(source, 'field.notFound', `Unknown field: ${fieldId}`, `${path}.${index}`))
     }
   })
 
@@ -185,7 +202,7 @@ const validateSearch = (
 ) => {
   const issues: ValidationIssue[] = []
   if (typeof search.query !== 'string') {
-    issues.push(issue(source, 'view.invalidProjection', 'Search query must be a string', `${path}.query`))
+    issues.push(createValidationIssue(source, 'view.invalidProjection', 'Search query must be a string', `${path}.query`))
   }
   if (search.fields) {
     issues.push(...validateFieldIdList(reader, source, search.fields, `${path}.fields`))
@@ -202,20 +219,20 @@ const validateFilter = (
   const issues: ValidationIssue[] = []
   viewApi.filter.rules.list(filter.rules).forEach((rule, index) => {
     if (!string.isNonEmptyString(rule.fieldId)) {
-      issues.push(issue(source, 'view.invalidProjection', `Filter field id must be a non-empty string (${rule.id})`, `${path}.rules.${index}.fieldId`))
+      issues.push(createValidationIssue(source, 'view.invalidProjection', `Filter field id must be a non-empty string (${rule.id})`, `${path}.rules.${index}.fieldId`))
       return
     }
     if (!string.isNonEmptyString(rule.presetId)) {
-      issues.push(issue(source, 'view.invalidProjection', `Filter preset id must be a non-empty string (${rule.id})`, `${path}.rules.${index}.presetId`))
+      issues.push(createValidationIssue(source, 'view.invalidProjection', `Filter preset id must be a non-empty string (${rule.id})`, `${path}.rules.${index}.presetId`))
       return
     }
     const field = reader.fields.get(rule.fieldId)
     if (!field) {
-      issues.push(issue(source, 'field.notFound', `Unknown field: ${rule.fieldId} (${rule.id})`, `${path}.rules.${index}.fieldId`))
+      issues.push(createValidationIssue(source, 'field.notFound', `Unknown field: ${rule.fieldId} (${rule.id})`, `${path}.rules.${index}.fieldId`))
       return
     }
     if (!viewApi.filter.rule.hasPreset(field, rule.presetId)) {
-      issues.push(issue(source, 'view.invalidProjection', `Filter preset ${rule.presetId} is invalid for ${field.kind} fields (${rule.id})`, `${path}.rules.${index}.presetId`))
+      issues.push(createValidationIssue(source, 'view.invalidProjection', `Filter preset ${rule.presetId} is invalid for ${field.kind} fields (${rule.id})`, `${path}.rules.${index}.presetId`))
     }
   })
   return issues
@@ -231,17 +248,17 @@ const validateSort = (
   const seen = new Set<string>()
   viewApi.sort.rules.list(sort.rules).forEach((rule, index) => {
     if (!string.isNonEmptyString(rule.fieldId)) {
-      issues.push(issue(source, 'view.invalidProjection', `Sort field must be a non-empty string (${rule.id})`, `${path}.rules.${index}.fieldId`))
+      issues.push(createValidationIssue(source, 'view.invalidProjection', `Sort field must be a non-empty string (${rule.id})`, `${path}.rules.${index}.fieldId`))
     } else if (!reader.fields.has(rule.fieldId)) {
-      issues.push(issue(source, 'field.notFound', `Unknown field: ${rule.fieldId} (${rule.id})`, `${path}.rules.${index}.fieldId`))
+      issues.push(createValidationIssue(source, 'field.notFound', `Unknown field: ${rule.fieldId} (${rule.id})`, `${path}.rules.${index}.fieldId`))
     } else if (seen.has(rule.fieldId)) {
-      issues.push(issue(source, 'view.invalidProjection', `Duplicate sort field: ${rule.fieldId} (${rule.id})`, `${path}.rules.${index}.fieldId`))
+      issues.push(createValidationIssue(source, 'view.invalidProjection', `Duplicate sort field: ${rule.fieldId} (${rule.id})`, `${path}.rules.${index}.fieldId`))
     } else {
       seen.add(rule.fieldId)
     }
 
     if (rule.direction !== 'asc' && rule.direction !== 'desc') {
-      issues.push(issue(source, 'view.invalidProjection', `Sort direction must be asc or desc (${rule.id})`, `${path}.rules.${index}.direction`))
+      issues.push(createValidationIssue(source, 'view.invalidProjection', `Sort direction must be asc or desc (${rule.id})`, `${path}.rules.${index}.direction`))
     }
   })
   return issues
@@ -259,7 +276,7 @@ const validateGroup = (
 
   const issues = string.isNonEmptyString(group.fieldId)
     ? []
-    : [issue(source, 'view.invalidProjection', 'group field must be a non-empty string', `${path}.fieldId`)]
+    : [createValidationIssue(source, 'view.invalidProjection', 'group field must be a non-empty string', `${path}.fieldId`)]
 
   const field = string.isNonEmptyString(group.fieldId)
     ? reader.fields.get(group.fieldId)
@@ -274,23 +291,23 @@ const validateGroup = (
     : undefined
 
   if (!field) {
-    issues.push(issue(source, 'field.notFound', `Unknown field: ${group.fieldId}`, `${path}.fieldId`))
+    issues.push(createValidationIssue(source, 'field.notFound', `Unknown field: ${group.fieldId}`, `${path}.fieldId`))
   }
   if (!string.isNonEmptyString(group.mode)) {
-    issues.push(issue(source, 'view.invalidProjection', 'group mode must be a non-empty string', `${path}.mode`))
+    issues.push(createValidationIssue(source, 'view.invalidProjection', 'group mode must be a non-empty string', `${path}.mode`))
   } else if (field && (!fieldGroupMeta?.modes.length || !fieldGroupMeta.modes.includes(group.mode))) {
-    issues.push(issue(source, 'view.invalidProjection', 'group mode is invalid for this field', `${path}.mode`))
+    issues.push(createValidationIssue(source, 'view.invalidProjection', 'group mode is invalid for this field', `${path}.mode`))
   }
   if (!fieldApi.group.sort.isBucket(group.bucketSort)) {
-    issues.push(issue(source, 'view.invalidProjection', 'group bucketSort is invalid', `${path}.bucketSort`))
+    issues.push(createValidationIssue(source, 'view.invalidProjection', 'group bucketSort is invalid', `${path}.bucketSort`))
   } else if (field && !fieldGroupMetaForMode?.sorts.includes(group.bucketSort)) {
-    issues.push(issue(source, 'view.invalidProjection', 'group bucketSort is invalid for this field', `${path}.bucketSort`))
+    issues.push(createValidationIssue(source, 'view.invalidProjection', 'group bucketSort is invalid for this field', `${path}.bucketSort`))
   }
   if (group.bucketInterval !== undefined) {
     if (typeof group.bucketInterval !== 'number' || !Number.isFinite(group.bucketInterval) || group.bucketInterval <= 0) {
-      issues.push(issue(source, 'view.invalidProjection', 'group bucketInterval must be a positive finite number', `${path}.bucketInterval`))
+      issues.push(createValidationIssue(source, 'view.invalidProjection', 'group bucketInterval must be a positive finite number', `${path}.bucketInterval`))
     } else if (field && !fieldGroupMetaForMode?.supportsInterval) {
-      issues.push(issue(source, 'view.invalidProjection', 'group bucketInterval is invalid for this field', `${path}.bucketInterval`))
+      issues.push(createValidationIssue(source, 'view.invalidProjection', 'group bucketInterval is invalid for this field', `${path}.bucketInterval`))
     }
   }
   return issues
@@ -312,21 +329,21 @@ const validateTableOptions = (
   const issues: ValidationIssue[] = []
   Object.entries(table.widths).forEach(([fieldId, width]) => {
     if (!string.isNonEmptyString(fieldId)) {
-      issues.push(issue(source, 'view.invalidProjection', 'width field id must be a non-empty string', `${path}.widths`))
+      issues.push(createValidationIssue(source, 'view.invalidProjection', 'width field id must be a non-empty string', `${path}.widths`))
       return
     }
     if (!reader.fields.has(fieldId)) {
-      issues.push(issue(source, 'field.notFound', `Unknown field: ${fieldId}`, `${path}.widths.${fieldId}`))
+      issues.push(createValidationIssue(source, 'field.notFound', `Unknown field: ${fieldId}`, `${path}.widths.${fieldId}`))
     }
     if (typeof width !== 'number' || !Number.isFinite(width) || width <= 0) {
-      issues.push(issue(source, 'view.invalidProjection', 'column width must be a positive finite number', `${path}.widths.${fieldId}`))
+      issues.push(createValidationIssue(source, 'view.invalidProjection', 'column width must be a positive finite number', `${path}.widths.${fieldId}`))
     }
   })
   if (typeof table.showVerticalLines !== 'boolean') {
-    issues.push(issue(source, 'view.invalidProjection', 'table.showVerticalLines must be boolean', `${path}.showVerticalLines`))
+    issues.push(createValidationIssue(source, 'view.invalidProjection', 'table.showVerticalLines must be boolean', `${path}.showVerticalLines`))
   }
   if (typeof table.wrap !== 'boolean') {
-    issues.push(issue(source, 'view.invalidProjection', 'table.wrap must be boolean', `${path}.wrap`))
+    issues.push(createValidationIssue(source, 'view.invalidProjection', 'table.wrap must be boolean', `${path}.wrap`))
   }
   return issues
 }
@@ -338,13 +355,13 @@ const validateGalleryOptions = (
 ) => {
   const issues: ValidationIssue[] = []
   if (typeof gallery.card.wrap !== 'boolean') {
-    issues.push(issue(source, 'view.invalidProjection', 'gallery.card.wrap must be boolean', `${path}.card.wrap`))
+    issues.push(createValidationIssue(source, 'view.invalidProjection', 'gallery.card.wrap must be boolean', `${path}.card.wrap`))
   }
   if (!['sm', 'md', 'lg'].includes(gallery.card.size)) {
-    issues.push(issue(source, 'view.invalidProjection', 'gallery.card.size is invalid', `${path}.card.size`))
+    issues.push(createValidationIssue(source, 'view.invalidProjection', 'gallery.card.size is invalid', `${path}.card.size`))
   }
   if (gallery.card.layout !== 'compact' && gallery.card.layout !== 'stacked') {
-    issues.push(issue(source, 'view.invalidProjection', 'gallery.card.layout is invalid', `${path}.card.layout`))
+    issues.push(createValidationIssue(source, 'view.invalidProjection', 'gallery.card.layout is invalid', `${path}.card.layout`))
   }
   return issues
 }
@@ -356,19 +373,19 @@ const validateKanbanOptions = (
 ) => {
   const issues: ValidationIssue[] = []
   if (typeof kanban.card.wrap !== 'boolean') {
-    issues.push(issue(source, 'view.invalidProjection', 'kanban.card.wrap must be boolean', `${path}.card.wrap`))
+    issues.push(createValidationIssue(source, 'view.invalidProjection', 'kanban.card.wrap must be boolean', `${path}.card.wrap`))
   }
   if (!['sm', 'md', 'lg'].includes(kanban.card.size)) {
-    issues.push(issue(source, 'view.invalidProjection', 'kanban.card.size is invalid', `${path}.card.size`))
+    issues.push(createValidationIssue(source, 'view.invalidProjection', 'kanban.card.size is invalid', `${path}.card.size`))
   }
   if (kanban.card.layout !== 'compact' && kanban.card.layout !== 'stacked') {
-    issues.push(issue(source, 'view.invalidProjection', 'kanban.card.layout is invalid', `${path}.card.layout`))
+    issues.push(createValidationIssue(source, 'view.invalidProjection', 'kanban.card.layout is invalid', `${path}.card.layout`))
   }
   if (typeof kanban.fillColumnColor !== 'boolean') {
-    issues.push(issue(source, 'view.invalidProjection', 'kanban.fillColumnColor must be boolean', `${path}.fillColumnColor`))
+    issues.push(createValidationIssue(source, 'view.invalidProjection', 'kanban.fillColumnColor must be boolean', `${path}.fillColumnColor`))
   }
   if (!KANBAN_CARDS_PER_COLUMN_OPTIONS.includes(kanban.cardsPerColumn)) {
-    issues.push(issue(source, 'view.invalidProjection', 'kanban.cardsPerColumn is invalid', `${path}.cardsPerColumn`))
+    issues.push(createValidationIssue(source, 'view.invalidProjection', 'kanban.cardsPerColumn is invalid', `${path}.cardsPerColumn`))
   }
   return issues
 }
@@ -400,16 +417,16 @@ const validateOrders = (
   const seen = new Set<string>()
   orders.forEach((recordId, index) => {
     if (!string.isNonEmptyString(recordId)) {
-      issues.push(issue(source, 'view.invalidOrder', 'orders must only contain non-empty record ids', `${path}.${index}`))
+      issues.push(createValidationIssue(source, 'view.invalidOrder', 'orders must only contain non-empty record ids', `${path}.${index}`))
       return
     }
     if (seen.has(recordId)) {
-      issues.push(issue(source, 'view.invalidOrder', `Duplicate record id: ${recordId}`, `${path}.${index}`))
+      issues.push(createValidationIssue(source, 'view.invalidOrder', `Duplicate record id: ${recordId}`, `${path}.${index}`))
       return
     }
     seen.add(recordId)
     if (!reader.records.has(recordId)) {
-      issues.push(issue(source, 'record.notFound', `Unknown record: ${recordId}`, `${path}.${index}`))
+      issues.push(createValidationIssue(source, 'record.notFound', `Unknown record: ${recordId}`, `${path}.${index}`))
     }
   })
   return issues
@@ -424,20 +441,20 @@ const validateCalc = (
   const issues: ValidationIssue[] = []
   Object.entries(calc).forEach(([fieldId, metric]) => {
     if (!string.isNonEmptyString(fieldId)) {
-      issues.push(issue(source, 'view.invalidProjection', 'Calculation field must be a non-empty string', path))
+      issues.push(createValidationIssue(source, 'view.invalidProjection', 'Calculation field must be a non-empty string', path))
       return
     }
     const field = reader.fields.get(fieldId as FieldId)
     if (!field) {
-      issues.push(issue(source, 'field.notFound', `Unknown field: ${fieldId}`, `${path}.${fieldId}`))
+      issues.push(createValidationIssue(source, 'field.notFound', `Unknown field: ${fieldId}`, `${path}.${fieldId}`))
       return
     }
     if (!calculation.metric.is(metric)) {
-      issues.push(issue(source, 'view.invalidProjection', 'Calculation metric is invalid', `${path}.${fieldId}`))
+      issues.push(createValidationIssue(source, 'view.invalidProjection', 'Calculation metric is invalid', `${path}.${fieldId}`))
       return
     }
     if (!calculation.metric.supports(field, metric)) {
-      issues.push(issue(source, 'view.invalidProjection', `Calculation metric ${metric} is invalid for ${field.kind} fields`, `${path}.${fieldId}`))
+      issues.push(createValidationIssue(source, 'view.invalidProjection', `Calculation metric ${metric} is invalid for ${field.kind} fields`, `${path}.${fieldId}`))
     }
   })
   return issues
@@ -450,13 +467,13 @@ const validateView = (
 ) => {
   const issues: ValidationIssue[] = []
   if (!string.isNonEmptyString(view.id)) {
-    issues.push(issue(source, 'view.invalid', 'View id must be a non-empty string', 'view.id'))
+    issues.push(createValidationIssue(source, 'view.invalid', 'View id must be a non-empty string', 'view.id'))
   }
   if (!string.isNonEmptyString(view.name)) {
-    issues.push(issue(source, 'view.invalid', 'View name must be a non-empty string', 'view.name'))
+    issues.push(createValidationIssue(source, 'view.invalid', 'View name must be a non-empty string', 'view.name'))
   }
   if (!string.isNonEmptyString(view.type)) {
-    issues.push(issue(source, 'view.invalid', 'View type must be a non-empty string', 'view.type'))
+    issues.push(createValidationIssue(source, 'view.invalid', 'View type must be a non-empty string', 'view.type'))
   }
 
   issues.push(
@@ -561,7 +578,7 @@ const emitValidatedViewUpdate = <T,>(
     return undefined
   }
 
-  reportIssues(input, ...validateView(reader, input.source, next))
+  input.issue(...validateView(reader, input.source, next))
   writeViewUpdate(input.program, current, next)
   if (data !== undefined) {
     input.output(data)
@@ -573,30 +590,14 @@ const requireView = (
   input: DataviewCompileInput,
   reader: DocumentReader,
   viewId: ViewId
-) => requireValue(
-  input,
-  reader.views.get(viewId),
-  {
-    code: 'view.notFound',
-    message: `Unknown view: ${viewId}`,
-    path: 'id'
-  }
-)
+) => reader.views.require(viewId, 'id')
 
 const requireField = (
   input: DataviewCompileInput,
   reader: DocumentReader,
   fieldId: FieldId,
   path = 'fieldId'
-): Field | undefined => requireValue(
-  input,
-  reader.fields.get(fieldId),
-  {
-    code: 'field.notFound',
-    message: `Unknown field: ${fieldId}`,
-    path
-  }
-)
+): Field | undefined => reader.fields.require(fieldId, path)
 
 const requireGroupedField = (
   input: DataviewCompileInput,
@@ -606,7 +607,7 @@ const requireGroupedField = (
   const fieldId = view.group?.fieldId
   return fieldId
     ? requireField(input, reader, fieldId, 'fieldId')
-    : (compileIssue(
+    : (emitProblem(
         input,
         'view.invalidProjection',
         'View is not grouped.',
@@ -623,13 +624,13 @@ const lowerViewCreate = (
   const preferredName = string.trimToUndefined(intent.input.name) ?? ''
 
   if (intent.input.id !== undefined && !explicitViewId) {
-    compileIssue(input, 'view.invalid', 'View id must be a non-empty string', 'input.id')
+    emitProblem(input, 'view.invalid', 'View id must be a non-empty string', 'input.id')
   }
   if (explicitViewId && reader.views.has(explicitViewId)) {
-    compileIssue(input, 'view.invalid', `View already exists: ${explicitViewId}`, 'input.id')
+    emitProblem(input, 'view.invalid', `View already exists: ${explicitViewId}`, 'input.id')
   }
   if (!preferredName) {
-    compileIssue(input, 'view.invalid', 'View name must be a non-empty string', 'input.name')
+    emitProblem(input, 'view.invalid', 'View name must be a non-empty string', 'input.name')
   }
   if (!preferredName || (intent.input.id !== undefined && !explicitViewId) || (explicitViewId && reader.views.has(explicitViewId))) {
     return
@@ -684,7 +685,7 @@ const lowerViewCreate = (
     case 'kanban': {
       const resolvedGroup = intent.input.group ?? resolveDefaultKanbanGroup(fields)
       if (!resolvedGroup) {
-        compileIssue(input, 'view.invalidProjection', 'Kanban view requires a groupable field', 'input.group')
+        emitProblem(input, 'view.invalidProjection', 'Kanban view requires a groupable field', 'input.group')
         return
       }
 
@@ -701,7 +702,7 @@ const lowerViewCreate = (
   }
 
   const view = finalizeView(reader, created)
-  reportIssues(input, ...validateView(reader, input.source, view))
+  input.issue(...validateView(reader, input.source, view))
   input.program.view.create(view)
   if (input.document.activeViewId === undefined) {
     input.program.document.patch({
@@ -725,7 +726,7 @@ const lowerViewRename = (
 
   const name = string.trimToUndefined(intent.name)
   if (!name) {
-    compileIssue(input, 'view.invalid', 'View name must be a non-empty string', 'name')
+    emitProblem(input, 'view.invalid', 'View name must be a non-empty string', 'name')
     return
   }
 
@@ -752,7 +753,7 @@ const lowerViewTypeSet = (
     fields: reader.fields.list()
   })
   if (!nextCandidate) {
-    compileIssue(input, 'view.invalidProjection', 'Kanban view requires a groupable field', 'viewType')
+    emitProblem(input, 'view.invalidProjection', 'Kanban view requires a groupable field', 'viewType')
     return
   }
 
@@ -792,7 +793,7 @@ const lowerViewFilterCreate = (
     ? undefined
     : string.trimToUndefined(intent.input.id)
   if (intent.input.id !== undefined && !explicitRuleId) {
-    compileIssue(input, 'view.invalidProjection', 'Filter rule id must be a non-empty string', 'input.id')
+    emitProblem(input, 'view.invalidProjection', 'Filter rule id must be a non-empty string', 'input.id')
     return
   }
 
@@ -817,7 +818,7 @@ const lowerViewFilterCreate = (
     })
     const rule = nextView.filter.rules.byId[created.id] ?? created.filter.rules.byId[created.id]
     if (!rule) {
-      compileIssue(input, 'view.invalidProjection', `Unable to create filter rule ${created.id}`, 'input')
+      emitProblem(input, 'view.invalidProjection', `Unable to create filter rule ${created.id}`, 'input')
       return
     }
 
@@ -841,7 +842,7 @@ const lowerViewFilterPatch = (
 
   const currentRule = view.filter.rules.byId[intent.rule]
   if (!currentRule) {
-    compileIssue(input, 'view.invalidProjection', `Unknown filter rule: ${intent.rule}`, 'rule')
+    emitProblem(input, 'view.invalidProjection', `Unknown filter rule: ${intent.rule}`, 'rule')
     return
   }
 
@@ -967,7 +968,7 @@ const lowerViewSortCreate = (
     ? undefined
     : string.trimToUndefined(intent.input.id)
   if (intent.input.id !== undefined && !explicitRuleId) {
-    compileIssue(input, 'view.invalidProjection', 'Sort rule id must be a non-empty string', 'input.id')
+    emitProblem(input, 'view.invalidProjection', 'Sort rule id must be a non-empty string', 'input.id')
     return
   }
 
@@ -990,7 +991,7 @@ const lowerViewSortCreate = (
     })
     const rule = nextView.sort.rules.byId[created.id] ?? created.sort.rules.byId[created.id]
     if (!rule) {
-      compileIssue(input, 'view.invalidProjection', `Unable to create sort rule ${created.id}`, 'input')
+      emitProblem(input, 'view.invalidProjection', `Unable to create sort rule ${created.id}`, 'input')
       return
     }
 
@@ -1028,7 +1029,7 @@ const lowerViewSortPatch = (
     })
     const rule = nextView.sort.rules.byId[intent.rule]
     if (!rule) {
-      compileIssue(input, 'view.invalidProjection', `Unknown sort rule: ${intent.rule}`, 'rule')
+      emitProblem(input, 'view.invalidProjection', `Unknown sort rule: ${intent.rule}`, 'rule')
       return
     }
 
@@ -1173,7 +1174,7 @@ const lowerViewGroupModeSet = (
     mode: intent.mode
   })
   if (!nextGroup) {
-    compileIssue(input, 'view.invalidProjection', 'Unable to update group mode.', 'mode')
+    emitProblem(input, 'view.invalidProjection', 'Unable to update group mode.', 'mode')
     return
   }
 
@@ -1203,7 +1204,7 @@ const lowerViewGroupSortSet = (
     bucketSort: intent.sort
   })
   if (!nextGroup) {
-    compileIssue(input, 'view.invalidProjection', 'Unable to update group sort.', 'sort')
+    emitProblem(input, 'view.invalidProjection', 'Unable to update group sort.', 'sort')
     return
   }
 
@@ -1233,7 +1234,7 @@ const lowerViewGroupIntervalSet = (
     bucketInterval: intent.interval
   })
   if (!nextGroup) {
-    compileIssue(input, 'view.invalidProjection', 'Unable to update group interval.', 'interval')
+    emitProblem(input, 'view.invalidProjection', 'Unable to update group interval.', 'interval')
     return
   }
 
@@ -1263,7 +1264,7 @@ const lowerViewGroupShowEmptySet = (
     showEmpty: intent.value
   })
   if (!nextGroup) {
-    compileIssue(input, 'view.invalidProjection', 'Unable to update group empty-bucket visibility.', 'value')
+    emitProblem(input, 'view.invalidProjection', 'Unable to update group empty-bucket visibility.', 'value')
     return
   }
 
@@ -1312,7 +1313,7 @@ const lowerViewSectionVisibility = (
     patch
   )
   if (!nextGroup) {
-    compileIssue(input, 'view.invalidProjection', 'Unable to update group section state.', 'bucket')
+    emitProblem(input, 'view.invalidProjection', 'Unable to update group section state.', 'bucket')
     return
   }
 
@@ -1354,7 +1355,7 @@ const lowerViewTableWidthsSet = (
     return
   }
   if (view.type !== 'table') {
-    compileIssue(input, 'view.invalidProjection', 'view.table.widths.set requires a table view', 'id')
+    emitProblem(input, 'view.invalidProjection', 'view.table.widths.set requires a table view', 'id')
     return
   }
 
@@ -1365,7 +1366,7 @@ const lowerViewTableWidthsSet = (
     })
   })
   if (nextView.type !== 'table') {
-    compileIssue(input, 'view.invalidProjection', 'view.table.widths.set produced a non-table view', 'id')
+    emitProblem(input, 'view.invalidProjection', 'view.table.widths.set produced a non-table view', 'id')
     return
   }
   return emitValidatedViewUpdate(input, reader, view, nextView)
@@ -1381,7 +1382,7 @@ const lowerViewTableVerticalLinesSet = (
     return
   }
   if (view.type !== 'table') {
-    compileIssue(input, 'view.invalidProjection', 'view.table.verticalLines.set requires a table view', 'id')
+    emitProblem(input, 'view.invalidProjection', 'view.table.verticalLines.set requires a table view', 'id')
     return
   }
 
@@ -1392,7 +1393,7 @@ const lowerViewTableVerticalLinesSet = (
     })
   })
   if (nextView.type !== 'table') {
-    compileIssue(input, 'view.invalidProjection', 'view.table.verticalLines.set produced a non-table view', 'id')
+    emitProblem(input, 'view.invalidProjection', 'view.table.verticalLines.set produced a non-table view', 'id')
     return
   }
   return emitValidatedViewUpdate(input, reader, view, nextView)
@@ -1408,7 +1409,7 @@ const lowerViewTableWrapSet = (
     return
   }
   if (view.type !== 'table') {
-    compileIssue(input, 'view.invalidProjection', 'view.table.wrap.set requires a table view', 'id')
+    emitProblem(input, 'view.invalidProjection', 'view.table.wrap.set requires a table view', 'id')
     return
   }
 
@@ -1419,7 +1420,7 @@ const lowerViewTableWrapSet = (
     })
   })
   if (nextView.type !== 'table') {
-    compileIssue(input, 'view.invalidProjection', 'view.table.wrap.set produced a non-table view', 'id')
+    emitProblem(input, 'view.invalidProjection', 'view.table.wrap.set produced a non-table view', 'id')
     return
   }
   return emitValidatedViewUpdate(input, reader, view, nextView)
@@ -1435,7 +1436,7 @@ const lowerViewGalleryWrapSet = (
     return
   }
   if (view.type !== 'gallery') {
-    compileIssue(input, 'view.invalidProjection', 'view.gallery.wrap.set requires a gallery view', 'id')
+    emitProblem(input, 'view.invalidProjection', 'view.gallery.wrap.set requires a gallery view', 'id')
     return
   }
 
@@ -1448,7 +1449,7 @@ const lowerViewGalleryWrapSet = (
     })
   })
   if (nextView.type !== 'gallery') {
-    compileIssue(input, 'view.invalidProjection', 'view.gallery.wrap.set produced a non-gallery view', 'id')
+    emitProblem(input, 'view.invalidProjection', 'view.gallery.wrap.set produced a non-gallery view', 'id')
     return
   }
   return emitValidatedViewUpdate(input, reader, view, nextView)
@@ -1464,7 +1465,7 @@ const lowerViewGallerySizeSet = (
     return
   }
   if (view.type !== 'gallery') {
-    compileIssue(input, 'view.invalidProjection', 'view.gallery.size.set requires a gallery view', 'id')
+    emitProblem(input, 'view.invalidProjection', 'view.gallery.size.set requires a gallery view', 'id')
     return
   }
 
@@ -1477,7 +1478,7 @@ const lowerViewGallerySizeSet = (
     })
   })
   if (nextView.type !== 'gallery') {
-    compileIssue(input, 'view.invalidProjection', 'view.gallery.size.set produced a non-gallery view', 'id')
+    emitProblem(input, 'view.invalidProjection', 'view.gallery.size.set produced a non-gallery view', 'id')
     return
   }
   return emitValidatedViewUpdate(input, reader, view, nextView)
@@ -1493,7 +1494,7 @@ const lowerViewGalleryLayoutSet = (
     return
   }
   if (view.type !== 'gallery') {
-    compileIssue(input, 'view.invalidProjection', 'view.gallery.layout.set requires a gallery view', 'id')
+    emitProblem(input, 'view.invalidProjection', 'view.gallery.layout.set requires a gallery view', 'id')
     return
   }
 
@@ -1506,7 +1507,7 @@ const lowerViewGalleryLayoutSet = (
     })
   })
   if (nextView.type !== 'gallery') {
-    compileIssue(input, 'view.invalidProjection', 'view.gallery.layout.set produced a non-gallery view', 'id')
+    emitProblem(input, 'view.invalidProjection', 'view.gallery.layout.set produced a non-gallery view', 'id')
     return
   }
   return emitValidatedViewUpdate(input, reader, view, nextView)
@@ -1522,7 +1523,7 @@ const lowerViewKanbanWrapSet = (
     return
   }
   if (view.type !== 'kanban') {
-    compileIssue(input, 'view.invalidProjection', 'view.kanban.wrap.set requires a kanban view', 'id')
+    emitProblem(input, 'view.invalidProjection', 'view.kanban.wrap.set requires a kanban view', 'id')
     return
   }
 
@@ -1535,7 +1536,7 @@ const lowerViewKanbanWrapSet = (
     })
   })
   if (nextView.type !== 'kanban') {
-    compileIssue(input, 'view.invalidProjection', 'view.kanban.wrap.set produced a non-kanban view', 'id')
+    emitProblem(input, 'view.invalidProjection', 'view.kanban.wrap.set produced a non-kanban view', 'id')
     return
   }
   return emitValidatedViewUpdate(input, reader, view, nextView)
@@ -1551,7 +1552,7 @@ const lowerViewKanbanSizeSet = (
     return
   }
   if (view.type !== 'kanban') {
-    compileIssue(input, 'view.invalidProjection', 'view.kanban.size.set requires a kanban view', 'id')
+    emitProblem(input, 'view.invalidProjection', 'view.kanban.size.set requires a kanban view', 'id')
     return
   }
 
@@ -1564,7 +1565,7 @@ const lowerViewKanbanSizeSet = (
     })
   })
   if (nextView.type !== 'kanban') {
-    compileIssue(input, 'view.invalidProjection', 'view.kanban.size.set produced a non-kanban view', 'id')
+    emitProblem(input, 'view.invalidProjection', 'view.kanban.size.set produced a non-kanban view', 'id')
     return
   }
   return emitValidatedViewUpdate(input, reader, view, nextView)
@@ -1580,7 +1581,7 @@ const lowerViewKanbanLayoutSet = (
     return
   }
   if (view.type !== 'kanban') {
-    compileIssue(input, 'view.invalidProjection', 'view.kanban.layout.set requires a kanban view', 'id')
+    emitProblem(input, 'view.invalidProjection', 'view.kanban.layout.set requires a kanban view', 'id')
     return
   }
 
@@ -1593,7 +1594,7 @@ const lowerViewKanbanLayoutSet = (
     })
   })
   if (nextView.type !== 'kanban') {
-    compileIssue(input, 'view.invalidProjection', 'view.kanban.layout.set produced a non-kanban view', 'id')
+    emitProblem(input, 'view.invalidProjection', 'view.kanban.layout.set produced a non-kanban view', 'id')
     return
   }
   return emitValidatedViewUpdate(input, reader, view, nextView)
@@ -1609,7 +1610,7 @@ const lowerViewKanbanFillColorSet = (
     return
   }
   if (view.type !== 'kanban') {
-    compileIssue(input, 'view.invalidProjection', 'view.kanban.fillColor.set requires a kanban view', 'id')
+    emitProblem(input, 'view.invalidProjection', 'view.kanban.fillColor.set requires a kanban view', 'id')
     return
   }
 
@@ -1620,7 +1621,7 @@ const lowerViewKanbanFillColorSet = (
     })
   })
   if (nextView.type !== 'kanban') {
-    compileIssue(input, 'view.invalidProjection', 'view.kanban.fillColor.set produced a non-kanban view', 'id')
+    emitProblem(input, 'view.invalidProjection', 'view.kanban.fillColor.set produced a non-kanban view', 'id')
     return
   }
   return emitValidatedViewUpdate(input, reader, view, nextView)
@@ -1636,7 +1637,7 @@ const lowerViewKanbanCardsPerColumnSet = (
     return
   }
   if (view.type !== 'kanban') {
-    compileIssue(input, 'view.invalidProjection', 'view.kanban.cardsPerColumn.set requires a kanban view', 'id')
+    emitProblem(input, 'view.invalidProjection', 'view.kanban.cardsPerColumn.set requires a kanban view', 'id')
     return
   }
 
@@ -1647,7 +1648,7 @@ const lowerViewKanbanCardsPerColumnSet = (
     })
   })
   if (nextView.type !== 'kanban') {
-    compileIssue(input, 'view.invalidProjection', 'view.kanban.cardsPerColumn.set produced a non-kanban view', 'id')
+    emitProblem(input, 'view.invalidProjection', 'view.kanban.cardsPerColumn.set produced a non-kanban view', 'id')
     return
   }
   return emitValidatedViewUpdate(input, reader, view, nextView)
@@ -1680,17 +1681,17 @@ const lowerViewOrderMove = (
 
   const recordId = string.trimToUndefined(intent.record)
   if (!recordId) {
-    compileIssue(input, 'view.invalidOrder', 'view.order.move requires a non-empty record id', 'record')
+    emitProblem(input, 'view.invalidOrder', 'view.order.move requires a non-empty record id', 'record')
     return
   }
   if (!reader.records.has(recordId)) {
-    compileIssue(input, 'record.notFound', `Unknown record: ${recordId}`, 'record')
+    emitProblem(input, 'record.notFound', `Unknown record: ${recordId}`, 'record')
     return
   }
 
   const beforeRecordId = string.trimToUndefined(intent.before)
   if (beforeRecordId !== undefined && beforeRecordId !== recordId && !reader.records.has(beforeRecordId)) {
-    compileIssue(input, 'record.notFound', `Unknown record: ${beforeRecordId}`, 'before')
+    emitProblem(input, 'record.notFound', `Unknown record: ${beforeRecordId}`, 'before')
     return
   }
 
@@ -1727,18 +1728,18 @@ const lowerViewOrderSplice = (
       .filter((recordId): recordId is RecordId => Boolean(recordId))
   ))
   if (!recordIds.length) {
-    compileIssue(input, 'view.invalidOrder', 'view.order.splice requires at least one record id', 'records')
+    emitProblem(input, 'view.invalidOrder', 'view.order.splice requires at least one record id', 'records')
     return
   }
   if (recordIds.some((recordId) => !reader.records.has(recordId))) {
     const missing = recordIds.find((recordId) => !reader.records.has(recordId))
-    compileIssue(input, 'record.notFound', `Unknown record: ${missing}`, 'records')
+    emitProblem(input, 'record.notFound', `Unknown record: ${missing}`, 'records')
     return
   }
 
   const beforeRecordId = string.trimToUndefined(intent.before)
   if (beforeRecordId !== undefined && !reader.records.has(beforeRecordId)) {
-    compileIssue(input, 'record.notFound', `Unknown record: ${beforeRecordId}`, 'before')
+    emitProblem(input, 'record.notFound', `Unknown record: ${beforeRecordId}`, 'before')
     return
   }
 
@@ -1768,7 +1769,7 @@ const lowerViewDisplayMove = (
     return
   }
   if (!reader.fields.has(intent.field)) {
-    compileIssue(input, 'field.notFound', `Unknown field: ${intent.field}`, 'field')
+    emitProblem(input, 'field.notFound', `Unknown field: ${intent.field}`, 'field')
     return
   }
 
@@ -1791,12 +1792,12 @@ const lowerViewDisplaySplice = (
 
   const fieldIds = Array.from(new Set(intent.fields))
   if (!fieldIds.length) {
-    compileIssue(input, 'view.invalidProjection', 'view.display.splice requires at least one field id', 'fields')
+    emitProblem(input, 'view.invalidProjection', 'view.display.splice requires at least one field id', 'fields')
     return
   }
   if (fieldIds.some((fieldId) => !reader.fields.has(fieldId))) {
     const missing = fieldIds.find((fieldId) => !reader.fields.has(fieldId))
-    compileIssue(input, 'field.notFound', `Unknown field: ${missing}`, 'fields')
+    emitProblem(input, 'field.notFound', `Unknown field: ${missing}`, 'fields')
     return
   }
 
@@ -1817,7 +1818,7 @@ const lowerViewDisplayShow = (
     return
   }
   if (!reader.fields.has(intent.field)) {
-    compileIssue(input, 'field.notFound', `Unknown field: ${intent.field}`, 'field')
+    emitProblem(input, 'field.notFound', `Unknown field: ${intent.field}`, 'field')
     return
   }
 
@@ -1860,7 +1861,7 @@ const lowerViewDisplayHide = (
     return
   }
   if (!reader.fields.has(intent.field)) {
-    compileIssue(input, 'field.notFound', `Unknown field: ${intent.field}`, 'field')
+    emitProblem(input, 'field.notFound', `Unknown field: ${intent.field}`, 'field')
     return
   }
 

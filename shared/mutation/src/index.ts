@@ -20,6 +20,7 @@ export type {
   MutationEntitySpec,
   MutationOrderedAnchor,
   MutationOrderedSlot,
+  MutationCompileReaderTools,
   MutationReaderFactory,
   MutationStructuralFact,
   MutationTreeProgramStep,

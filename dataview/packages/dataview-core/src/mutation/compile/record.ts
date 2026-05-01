@@ -13,27 +13,23 @@ import {
 } from '@dataview/core/field/spec'
 import { createId, string } from '@shared/core'
 import type {
-  DocumentReader
-} from '../../document/reader'
-import {
-  issue,
-  resolveTarget,
-  writeRecordValuesMany,
-  type DataviewCompileContext,
-  type DataviewCompileContext as DataviewCompileInput
-} from './base'
+  DataviewCompileReader
+} from './reader'
+import type {
+  DataviewCompileContext
+} from './contracts'
 import {
   writeViewUpdate
 } from './viewDiff'
 
 const resolveDefaultRecordType = (
-  reader: DocumentReader
+  reader: DataviewCompileReader
 ) => reader.records.list().find(
   (record) => typeof record.type === 'string' && record.type.length
 )?.type
 
 const resolveRecordCreateValues = (
-  reader: DocumentReader,
+  reader: DataviewCompileReader,
   explicitValues: Extract<Intent, { type: 'record.create' }>['input']['values']
 ) => {
   const nextValues: Partial<Record<FieldId, unknown>> = {
@@ -61,30 +57,32 @@ const resolveRecordCreateValues = (
 
 const requireRecordIds = (
   input: DataviewCompileContext,
-  reader: DocumentReader,
+  reader: DataviewCompileReader,
   recordIds: readonly string[],
   path: string
 ): readonly RecordId[] | undefined => {
   const nextRecordIds = Array.from(new Set(recordIds))
   if (!nextRecordIds.length) {
-    issue(
-      input,
-      'batch.emptyCollection',
-      `${input.source.type} requires at least one item`,
-      path
-    )
+    input.issue({
+      source: input.source,
+      code: 'batch.emptyCollection',
+      message: `${input.source.type} requires at least one item`,
+      path,
+      severity: 'error'
+    })
     return undefined
   }
 
   const resolved: RecordId[] = []
   nextRecordIds.forEach((recordId, index) => {
     if (!reader.records.has(recordId)) {
-      issue(
-        input,
-        'record.notFound',
-        `Unknown record: ${recordId}`,
-        `${path}.${index}`
-      )
+      input.issue({
+        source: input.source,
+        code: 'record.notFound',
+        message: `Unknown record: ${recordId}`,
+        path: `${path}.${index}`,
+        severity: 'error'
+      })
       return
     }
 
@@ -97,28 +95,30 @@ const requireRecordIds = (
 }
 
 const validateWritableField = (
-  input: DataviewCompileInput,
-  reader: DocumentReader,
+  input: DataviewCompileContext,
+  reader: DataviewCompileReader,
   fieldId: string,
   path: string
 ): fieldId is FieldId => {
   if (!string.isNonEmptyString(fieldId)) {
-    issue(
-      input,
-      'record.fields.invalidField',
-      'record.fields.writeMany requires non-empty field ids',
-      path
-    )
+    input.issue({
+      source: input.source,
+      code: 'record.fields.invalidField',
+      message: 'record.fields.writeMany requires non-empty field ids',
+      path,
+      severity: 'error'
+    })
     return false
   }
 
   if (fieldId !== TITLE_FIELD_ID && !reader.fields.has(fieldId)) {
-    issue(
-      input,
-      'field.notFound',
-      `Unknown field: ${fieldId}`,
-      path
-    )
+    input.issue({
+      source: input.source,
+      code: 'field.notFound',
+      message: `Unknown field: ${fieldId}`,
+      path,
+      severity: 'error'
+    })
     return false
   }
 
@@ -127,26 +127,28 @@ const validateWritableField = (
 
 const lowerRecordCreate = (
   intent: Extract<Intent, { type: 'record.create' }>,
-  input: DataviewCompileInput,
-  reader: DocumentReader
+  input: DataviewCompileContext,
+  reader: DataviewCompileReader
 ) => {
   const explicitRecordId = string.trimToUndefined(intent.input.id)
 
   if (intent.input.id !== undefined && !explicitRecordId) {
-    issue(
-      input,
-      'record.invalidId',
-      'Record id must be a non-empty string',
-      'input.id'
-    )
+    input.issue({
+      source: input.source,
+      code: 'record.invalidId',
+      message: 'Record id must be a non-empty string',
+      path: 'input.id',
+      severity: 'error'
+    })
   }
   if (explicitRecordId && reader.records.has(explicitRecordId)) {
-    issue(
-      input,
-      'record.duplicateId',
-      `Record already exists: ${explicitRecordId}`,
-      'input.id'
-    )
+    input.issue({
+      source: input.source,
+      code: 'record.duplicateId',
+      message: `Record already exists: ${explicitRecordId}`,
+      path: 'input.id',
+      severity: 'error'
+    })
   }
   if ((intent.input.id !== undefined && !explicitRecordId) || (explicitRecordId && reader.records.has(explicitRecordId))) {
     return
@@ -168,29 +170,31 @@ const lowerRecordCreate = (
 
 const lowerRecordPatch = (
   intent: Extract<Intent, { type: 'record.patch' }>,
-  input: DataviewCompileInput,
-  reader: DocumentReader
+  input: DataviewCompileContext,
+  reader: DataviewCompileReader
 ) => {
-  const recordIds = resolveTarget(input, reader, intent.target)
+  const recordIds = reader.records.require(intent.target)
   if (!recordIds) {
     return
   }
 
   if (!Object.keys(intent.patch).length) {
-    issue(
-      input,
-      'record.emptyPatch',
-      'record.patch patch cannot be empty',
-      'patch'
-    )
+    input.issue({
+      source: input.source,
+      code: 'record.emptyPatch',
+      message: 'record.patch patch cannot be empty',
+      path: 'patch',
+      severity: 'error'
+    })
   }
   if (Object.prototype.hasOwnProperty.call(intent.patch, 'values')) {
-    issue(
-      input,
-      'record.invalidPatch',
-      'record.patch does not support values; use record.fields.writeMany',
-      'patch.values'
-    )
+    input.issue({
+      source: input.source,
+      code: 'record.invalidPatch',
+      message: 'record.patch does not support values; use record.fields.writeMany',
+      path: 'patch.values',
+      severity: 'error'
+    })
   }
 
   recordIds.forEach((recordId) => {
@@ -200,8 +204,8 @@ const lowerRecordPatch = (
 
 const lowerRecordRemove = (
   intent: Extract<Intent, { type: 'record.remove' }>,
-  input: DataviewCompileInput,
-  reader: DocumentReader
+  input: DataviewCompileContext,
+  reader: DataviewCompileReader
 ) => {
   const recordIds = requireRecordIds(input, reader, intent.recordIds, 'recordIds')
   if (!recordIds) {
@@ -228,8 +232,8 @@ const lowerRecordRemove = (
 
 const lowerRecordFieldsWriteMany = (
   intent: Extract<Intent, { type: 'record.fields.writeMany' }>,
-  input: DataviewCompileInput,
-  reader: DocumentReader
+  input: DataviewCompileContext,
+  reader: DataviewCompileReader
 ) => {
   const recordIds = requireRecordIds(input, reader, intent.recordIds, 'recordIds')
   const nextSet: Partial<Record<FieldId, unknown>> = {}
@@ -261,15 +265,16 @@ const lowerRecordFieldsWriteMany = (
   }
 
   if (!Object.keys(nextSet).length && nextClear.size === 0) {
-    issue(
-      input,
-      'record.fields.emptyWrite',
-      'record.fields.writeMany requires at least one set or clear entry'
-    )
+    input.issue({
+      source: input.source,
+      code: 'record.fields.emptyWrite',
+      message: 'record.fields.writeMany requires at least one set or clear entry',
+      severity: 'error'
+    })
     return
   }
 
-  writeRecordValuesMany(input.program, {
+  input.program.record.writeValuesMany({
     recordIds,
     ...(Object.keys(nextSet).length
       ? {

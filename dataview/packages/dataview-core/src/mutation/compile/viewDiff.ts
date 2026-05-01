@@ -1,7 +1,5 @@
 import type {
-  FieldId,
   FilterRule,
-  RecordId,
   SortRule,
   View
 } from '@dataview/core/types'
@@ -397,23 +395,3 @@ export const writeViewUpdate = (
   writeViewDisplay(writer, current, next)
   writeViewOrder(writer, current, next)
 }
-
-export const writeViewDisplayInsert = (
-  writer: DataviewMutationPorts,
-  viewId: string,
-  fieldId: FieldId,
-  before?: FieldId
-) => writer.viewDisplay(viewId).insert(
-  fieldId,
-  toBeforeAnchor(before)
-)
-
-export const writeViewOrderInsert = (
-  writer: DataviewMutationPorts,
-  viewId: string,
-  recordId: RecordId,
-  before?: RecordId
-) => writer.viewOrder(viewId).insert(
-  recordId,
-  toBeforeAnchor(before)
-)

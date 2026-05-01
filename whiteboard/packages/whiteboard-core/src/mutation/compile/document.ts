@@ -4,16 +4,9 @@ import type {
   WhiteboardCompileHandlerTable
 } from '@whiteboard/core/mutation/compile/helpers'
 import {
-  failInvalid,
   readCompileRegistries,
   readCompileServices
 } from '@whiteboard/core/mutation/compile/helpers'
-import {
-  writeDocumentCreate,
-  writeDocumentPatch,
-  writeEdgeCreate,
-  writeNodeCreate,
-} from './write'
 
 type DocumentIntentHandlers = Pick<
   WhiteboardCompileHandlerTable,
@@ -25,8 +18,7 @@ type DocumentIntentHandlers = Pick<
 export const documentIntentHandlers: DocumentIntentHandlers = {
   'document.replace': (ctx) => {
     const intent = ctx.intent
-    writeDocumentCreate(
-      ctx.program,
+    ctx.program.document.create(
       normalizeDocument(documentApi.assert(intent.document))
     )
   },
@@ -42,18 +34,17 @@ export const documentIntentHandlers: DocumentIntentHandlers = {
       roots: intent.options?.roots
     })
     if (!built.ok) {
-      return failInvalid(
-        ctx,
+      return ctx.invalid(
         built.error.message,
         built.error.details
       )
     }
 
     built.data.nodes.forEach((node) => {
-      writeNodeCreate(ctx.program, node)
+      ctx.program.node.create(node)
     })
     built.data.edges.forEach((edge) => {
-      writeEdgeCreate(ctx.program, edge)
+      ctx.program.edge.create(edge)
     })
     ctx.output({
       allNodeIds: built.data.allNodeIds,
@@ -62,7 +53,7 @@ export const documentIntentHandlers: DocumentIntentHandlers = {
     })
   },
   'document.background.set': (ctx) => {
-    writeDocumentPatch(ctx.program, {
+    ctx.program.document.patch({
       background: ctx.intent.background
     })
   }

@@ -12,9 +12,6 @@ import {
 import {
   dataviewMutationRegistry
 } from '@dataview/core/mutation'
-import {
-  createDocumentReader
-} from '@dataview/core/document/reader'
 
 const createEmptyDocument = (): DataDoc => ({
   schemaVersion: 1,
@@ -29,7 +26,8 @@ test('MutationEngine.compile lowers field.create into executable operations', ()
   const mutation = new MutationEngine({
     document: createEmptyDocument(),
     normalize: document => document,
-    createReader: createDocumentReader,
+    createReader: compile.createReader,
+    createProgram: compile.createProgram,
     registry: dataviewMutationRegistry,
     compile: compile.handlers,
   })

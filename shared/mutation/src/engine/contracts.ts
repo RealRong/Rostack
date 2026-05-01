@@ -45,8 +45,38 @@ export type {
 
 export type MutableRecordWrite = Record<string, unknown>
 
+export interface MutationCompileReaderTools<
+  Code extends string = string
+> {
+  source: MutationCompileSource<string>
+  issue(...issues: readonly MutationCompileIssue<Code>[]): void
+  invalid(
+    message: string,
+    details?: unknown,
+    path?: string
+  ): {
+    kind: 'block'
+    issue: MutationCompileIssue<Code>
+  }
+  cancelled(
+    message: string,
+    details?: unknown,
+    path?: string
+  ): {
+    kind: 'block'
+    issue: MutationCompileIssue<Code>
+  }
+  fail(
+    issue: MutationCompileIssue<Code>
+  ): {
+    kind: 'block'
+    issue: MutationCompileIssue<Code>
+  }
+}
+
 export type MutationReaderFactory<Doc, Reader> = (
-  readDocument: () => Doc
+  readDocument: () => Doc,
+  tools?: MutationCompileReaderTools
 ) => Reader
 
 export interface MutationCompileIssue<
@@ -93,18 +123,30 @@ export interface MutationCompileHandlerInput<
   services: Services | undefined
   program: Program
   output(value: Output): void
-  issue(issue: MutationCompileIssue<Code>): void
+  issue(...issues: readonly MutationCompileIssue<Code>[]): void
   stop(): {
     kind: 'stop'
+  }
+  invalid(
+    message: string,
+    details?: unknown,
+    path?: string
+  ): {
+    kind: 'block'
+    issue: MutationCompileIssue<Code>
+  }
+  cancelled(
+    message: string,
+    details?: unknown,
+    path?: string
+  ): {
+    kind: 'block'
+    issue: MutationCompileIssue<Code>
   }
   fail(issue: MutationCompileIssue<Code>): {
     kind: 'block'
     issue: MutationCompileIssue<Code>
   }
-  require<T>(
-    value: T | undefined,
-    issue: MutationCompileIssue<Code>
-  ): T | undefined
 }
 
 export type MutationCompileHandler<

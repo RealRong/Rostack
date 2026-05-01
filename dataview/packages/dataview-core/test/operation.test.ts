@@ -8,6 +8,7 @@ import {
 } from '@dataview/core/mutation'
 import {
   dataviewMutationRegistry,
+  type DataviewCompileReader,
   type DataviewMutationPorts
 } from '@dataview/core/mutation'
 import {
@@ -59,14 +60,15 @@ const createExecuteMutation = () => new MutationEngine<
     }
   },
   DocumentOperation,
-  DocumentReader,
+  DataviewCompileReader,
   void,
   string,
   DataviewMutationPorts
 >({
   document: createEmptyDocument(),
   normalize: documentApi.normalize,
-  createReader: createDocumentReader,
+  createReader: compile.createReader,
+  createProgram: compile.createProgram,
   registry: dataviewMutationRegistry,
   compile: {
     'external.version.bump': compile.handlers['external.version.bump']

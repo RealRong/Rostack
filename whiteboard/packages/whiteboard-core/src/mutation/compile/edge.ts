@@ -13,26 +13,10 @@ import type {
   WhiteboardCompileHandlerTable
 } from '@whiteboard/core/mutation/compile/helpers'
 import {
-  failCancelled,
-  failInvalid,
   readCompileRegistries,
   readCompileServices,
-  requireEdge
 } from '@whiteboard/core/mutation/compile/helpers'
 import { resolveLockDecision } from '@whiteboard/core/mutation/lock'
-import {
-  writeEdgeCreate,
-  writeEdgeDelete,
-  writeEdgeLabelDelete,
-  writeEdgeLabelInsert,
-  writeEdgeLabelMove,
-  writeEdgeLabelPatch,
-  writeEdgePatch,
-  writeEdgeRouteDelete,
-  writeEdgeRouteInsert,
-  writeEdgeRouteMove,
-  writeEdgeRoutePatch,
-} from './write'
 import type {
   Edge,
   EdgeFieldPatch,
@@ -243,7 +227,7 @@ const emitEdgeRouteDiffOps = (
         x: point.x,
         y: point.y
       }
-      writeEdgeRouteInsert(ctx.program, edgeId, routePoint, to)
+      ctx.program.edgeRoute(edgeId).insert(routePoint, to)
       to = {
         kind: 'after',
         pointId: routePoint.id
@@ -254,7 +238,7 @@ const emitEdgeRouteDiffOps = (
 
   if (nextMiddle.length === 0) {
     currentMiddle.forEach((point) => {
-      writeEdgeRouteDelete(ctx.program, edgeId, point.id)
+      ctx.program.edgeRoute(edgeId).delete(point.id)
     })
     return
   }
@@ -270,14 +254,14 @@ const emitEdgeRouteDiffOps = (
         fields.y = nextPoint.y
       }
       if (Object.keys(fields).length) {
-        writeEdgeRoutePatch(ctx.program, edgeId, point.id, fields)
+        ctx.program.edgeRoute(edgeId).patch(point.id, fields)
       }
     })
     return
   }
 
   currentPoints.forEach((point) => {
-    writeEdgeRouteDelete(ctx.program, edgeId, point.id)
+    ctx.program.edgeRoute(edgeId).delete(point.id)
   })
 
   let to: EdgeRoutePointAnchor = { kind: 'start' }
@@ -287,7 +271,7 @@ const emitEdgeRouteDiffOps = (
       x: point.x,
       y: point.y
     }
-    writeEdgeRouteInsert(ctx.program, edgeId, routePoint, to)
+    ctx.program.edgeRoute(edgeId).insert(routePoint, to)
     to = {
       kind: 'after',
       pointId: routePoint.id
@@ -306,7 +290,7 @@ const emitEdgeUpdateInputOps = (
     return
   }
 
-  writeEdgePatch(ctx.program, edge.id, createEdgePatch({
+  ctx.program.edge.patch(edge.id, createEdgePatch({
     ...(fields ? { fields } : {}),
     ...(record ? { record } : {})
   }))
@@ -370,10 +354,10 @@ const compileEdgeRouteDelete = (
     ? edge.route.points.find((entry) => entry.id === pointId)
     : undefined
   if (!point) {
-    return failInvalid(ctx, `Edge ${edge.id} route point not found.`)
+    return ctx.invalid(`Edge ${edge.id} route point not found.`)
   }
 
-  writeEdgeRouteDelete(ctx.program, edge.id, pointId)
+  ctx.program.edgeRoute(edge.id).delete(pointId)
 }
 
 type EdgeIntentHandlers = Pick<
@@ -398,8 +382,7 @@ type EdgeIntentHandlers = Pick<
 const failLockedEdgeModification = (
   ctx: WhiteboardCompileContext,
   reason?: import('@whiteboard/core/mutation/lock').LockDecisionReason
-) => failCancelled(
-  ctx,
+) => ctx.cancelled(
   reason === 'locked-node'
     ? 'Locked nodes cannot be modified.'
     : reason === 'locked-edge'
@@ -418,10 +401,10 @@ export const edgeIntentHandlers: EdgeIntentHandlers = {
       createEdgeRoutePointId: readCompileServices(ctx).ids.edgeRoutePoint
     })
     if (!built.ok) {
-      return failInvalid(ctx, built.error.message, built.error.details)
+      return ctx.invalid(built.error.message, built.error.details)
     }
 
-    writeEdgeCreate(ctx.program, built.data.edge)
+    ctx.program.edge.create(built.data.edge)
     ctx.output({
       edgeId: built.data.edgeId
     })
@@ -526,11 +509,11 @@ export const edgeIntentHandlers: EdgeIntentHandlers = {
     }
 
     ctx.intent.ids.forEach((id) => {
-      writeEdgeDelete(ctx.program, id)
+      ctx.program.edge.delete(id)
     })
   },
   'edge.label.insert': (ctx) => {
-    const edge = requireEdge(ctx, ctx.intent.edgeId)
+    const edge = ctx.reader.edges.require(ctx.intent.edgeId)
     if (!edge) {
       return
     }
@@ -544,20 +527,20 @@ export const edgeIntentHandlers: EdgeIntentHandlers = {
       ...(ctx.intent.label.style !== undefined ? { style: ctx.intent.label.style } : {}),
       ...(ctx.intent.label.data !== undefined ? { data: ctx.intent.label.data } : {})
     }
-    writeEdgeLabelInsert(ctx.program, edge.id, label, ctx.intent.to ?? { kind: 'end' })
+    ctx.program.edgeLabels(edge.id).insert(label, ctx.intent.to ?? { kind: 'end' })
     ctx.output({
       labelId
     })
   },
   'edge.label.update': (ctx) => {
-    const edge = requireEdge(ctx, ctx.intent.edgeId)
+    const edge = ctx.reader.edges.require(ctx.intent.edgeId)
     if (!edge) {
       return
     }
 
     const label = edge.labels?.find((entry) => entry.id === ctx.intent.labelId)
     if (!label) {
-      return failInvalid(ctx, `Edge label ${ctx.intent.labelId} not found.`)
+      return ctx.invalid(`Edge label ${ctx.intent.labelId} not found.`)
     }
 
     const fields = buildEdgeLabelFieldPatch(label, ctx.intent.input.fields)
@@ -566,25 +549,25 @@ export const edgeIntentHandlers: EdgeIntentHandlers = {
       return
     }
 
-    writeEdgeLabelPatch(ctx.program, edge.id, label.id, createEdgeLabelPatch({
+    ctx.program.edgeLabels(edge.id).patch(label.id, createEdgeLabelPatch({
       ...(fields ? { fields } : {}),
       ...(record ? { record } : {})
     }))
   },
   'edge.label.move': (ctx) => {
-    writeEdgeLabelMove(ctx.program, ctx.intent.edgeId, ctx.intent.labelId, ctx.intent.to)
+    ctx.program.edgeLabels(ctx.intent.edgeId).move(ctx.intent.labelId, ctx.intent.to)
   },
   'edge.label.delete': (ctx) => {
-    writeEdgeLabelDelete(ctx.program, ctx.intent.edgeId, ctx.intent.labelId)
+    ctx.program.edgeLabels(ctx.intent.edgeId).delete(ctx.intent.labelId)
   },
   'edge.route.insert': (ctx) => {
-    const edge = requireEdge(ctx, ctx.intent.edgeId)
+    const edge = ctx.reader.edges.require(ctx.intent.edgeId)
     if (!edge) {
       return
     }
 
     const pointId = readCompileServices(ctx).ids.edgeRoutePoint()
-    writeEdgeRouteInsert(ctx.program, edge.id, {
+    ctx.program.edgeRoute(edge.id).insert({
       id: pointId,
       x: ctx.intent.point.x,
       y: ctx.intent.point.y
@@ -594,7 +577,7 @@ export const edgeIntentHandlers: EdgeIntentHandlers = {
     })
   },
   'edge.route.update': (ctx) => {
-    const edge = requireEdge(ctx, ctx.intent.edgeId)
+    const edge = ctx.reader.edges.require(ctx.intent.edgeId)
     if (!edge) {
       return
     }
@@ -603,7 +586,7 @@ export const edgeIntentHandlers: EdgeIntentHandlers = {
       ? edge.route.points.find((entry) => entry.id === ctx.intent.pointId)
       : undefined
     if (!point) {
-      return failInvalid(ctx, `Edge ${edge.id} route point not found.`)
+      return ctx.invalid(`Edge ${edge.id} route point not found.`)
     }
 
     const fields: Partial<Record<'x' | 'y', number>> = {}
@@ -617,10 +600,10 @@ export const edgeIntentHandlers: EdgeIntentHandlers = {
       return
     }
 
-    writeEdgeRoutePatch(ctx.program, edge.id, point.id, fields)
+    ctx.program.edgeRoute(edge.id).patch(point.id, fields)
   },
   'edge.route.set': (ctx) => {
-    const edge = requireEdge(ctx, ctx.intent.edgeId)
+    const edge = ctx.reader.edges.require(ctx.intent.edgeId)
     if (!edge) {
       return
     }
@@ -632,17 +615,17 @@ export const edgeIntentHandlers: EdgeIntentHandlers = {
     )
   },
   'edge.route.move': (ctx) => {
-    writeEdgeRouteMove(ctx.program, ctx.intent.edgeId, ctx.intent.pointId, ctx.intent.to)
+    ctx.program.edgeRoute(ctx.intent.edgeId).move(ctx.intent.pointId, ctx.intent.to)
   },
   'edge.route.delete': (ctx) => {
-    const edge = requireEdge(ctx, ctx.intent.edgeId)
+    const edge = ctx.reader.edges.require(ctx.intent.edgeId)
     if (!edge) {
       return
     }
     return compileEdgeRouteDelete(edge, ctx.intent.pointId, ctx)
   },
   'edge.route.clear': (ctx) => {
-    const edge = requireEdge(ctx, ctx.intent.edgeId)
+    const edge = ctx.reader.edges.require(ctx.intent.edgeId)
     if (!edge) {
       return
     }
@@ -650,7 +633,7 @@ export const edgeIntentHandlers: EdgeIntentHandlers = {
       return
     }
     edge.route.points.forEach((point) => {
-      writeEdgeRouteDelete(ctx.program, edge.id, point.id)
+      ctx.program.edgeRoute(edge.id).delete(point.id)
     })
   }
 }

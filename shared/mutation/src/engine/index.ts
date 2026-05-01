@@ -7,6 +7,7 @@ export type {
   MutationCompileHandlerTable,
   MutationCompileInput,
   MutationCompileIssue,
+  MutationCompileReaderTools,
   MutationCurrent,
   MutationReaderFactory,
   MutationEngineOptions,

@@ -176,3 +176,58 @@ export const hasPatchChanges = <T extends object>(
 
   return false
 }
+
+const NO_DIFF = Symbol('json.no-diff')
+
+const diffValue = (
+  base: unknown,
+  next: unknown
+): unknown | typeof NO_DIFF => {
+  if (equal(base, next)) {
+    return NO_DIFF
+  }
+
+  if (isPlainObject(base) && isPlainObject(next)) {
+    const patch: JsonObject = {}
+    const keys = new Set([
+      ...Object.keys(base),
+      ...Object.keys(next)
+    ])
+
+    keys.forEach((key) => {
+      const change = diffValue(base[key], next[key])
+      if (change !== NO_DIFF) {
+        patch[key] = change
+      }
+    })
+
+    return Object.keys(patch).length === 0
+      ? NO_DIFF
+      : patch
+  }
+
+  return clone(next)
+}
+
+export const diff = <T extends object>(
+  base: T,
+  next: T
+): Partial<T> => {
+  const patch: JsonObject = {}
+  const keys = new Set([
+    ...Object.keys(base),
+    ...Object.keys(next)
+  ])
+
+  keys.forEach((key) => {
+    const change = diffValue(
+      (base as JsonObject)[key],
+      (next as JsonObject)[key]
+    )
+    if (change !== NO_DIFF) {
+      patch[key] = change
+    }
+  })
+
+  return patch as Partial<T>
+}

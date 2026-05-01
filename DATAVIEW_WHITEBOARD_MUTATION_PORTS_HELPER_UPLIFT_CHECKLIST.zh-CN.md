@@ -15,8 +15,8 @@
 
 同时还涉及两条基础收口路线：
 
-- reader uplift：把 target 解析、实体查找等纯读逻辑收回 reader 中轴。
-- compile control uplift：把 issue / invalid / cancelled / fail / require 这类控制流 API 收回 shared compile context。
+- reader uplift：把 target 解析、实体查找以及 compile 场景下的 `require(...)` 收回 `ctx.reader` 中轴。
+- compile control uplift：把 issue / invalid / cancelled / fail 这类控制流 API 收回 shared compile context。
 
 ## 2. 中轴边界
 
@@ -25,16 +25,16 @@
 - shared mutation kernel 中轴：`@shared/mutation` 提供通用 `MutationPorts` / `MutationProgramWriter` / runtime primitive，只承载通用 mutation 原语，不承载 dataview / whiteboard 的领域编码规则。
 - domain mutation ports 中轴：`dataview` / `whiteboard` 各自围绕 shared ports 再包一层领域端口，把领域对象 id、anchor、path、ref 编码等固定转换收进去，compile / planner 不再自己散写这些转换。
 - shared core patch mode：`@shared/core` 提供通用 `json.diff(base, next)` 这类 JSON-like diff utility，只负责生成最小 patch，不负责 mutation step 编码。
-- shared compile control 中轴：`@shared/mutation` 的 compile context 统一承载 issue / invalid / cancelled / fail / require 这类控制流 API，domain 不再保留第二套同义 helper。
-- domain reader 中轴：`dataview` / `whiteboard` 的 reader 统一承载 target 解析、实体查找、聚合读取等纯读逻辑，不在 compile/base 中重复定义。
+- shared compile control 中轴：`@shared/mutation` 的 compile context 统一承载 issue / invalid / cancelled / fail 这类控制流 API，domain 不再保留第二套同义 helper。
+- compile reader 中轴：compile context 上的 `ctx.reader` 统一承载 target 解析、实体查找以及 `require(...)` 语义；底层 document reader 保持纯读，不在 compile/base 中重复定义。
 
 结论约束：
 
 - 只要 helper 包含领域 path 编码、领域 target 编码、领域 anchor 编码，它就更接近 domain mutation ports 中轴。
 - 只要 helper 只是对象 diff、校验、查找、报错、planner orchestration，它就不属于 mutation ports 中轴。
 - 只要 helper 负责 `current -> next -> minimal patch`，它优先归到 shared core patch mode，而不是 shared mutation ports。
-- 只要 helper 只是对 compile context 的 `issue/fail/require` 做语义同义包装，它就应上提到 shared compile control 中轴，而不是留在 domain。
-- 只要 helper 负责 target 解析、实体查找、集合归一化这类纯读行为，它就应上提到 reader 中轴，而不是留在 compile/base。
+- 只要 helper 只是对 compile context 的 `issue/fail` 做语义同义包装，它就应上提到 shared compile control 中轴，而不是留在 domain。
+- 只要 helper 负责 target 解析、实体查找、集合归一化以及 `require(...)` 这类读路径语义，它就应上提到 `ctx.reader` 中轴，而不是留在 compile/base。
 - 只要 helper 只是 `program.xxx` 的零语义转发，它不该上提，应该直接删掉。
 
 ## 3. 强建议上提
@@ -105,9 +105,9 @@
 - 应上提到 whiteboard 自己的 mutation ports 扩展层。
 - compile 层最终不应自己维护 `toOrderedAnchor(...)` 这种 target-specific 转换。
 
-## 4. 可选上提
+## 4. Dataview View Helper 评估
 
-### 4.1 Dataview `viewDisplay` / `viewOrder` 的 insert-before 语法糖
+### 4.1 `writeViewDisplayInsert`：直接内联
 
 位置：
 
@@ -116,23 +116,55 @@
 涉及 helper：
 
 - `writeViewDisplayInsert`
-- `writeViewOrderInsert`
+
+当前调用点：
+
+- [dataview/packages/dataview-core/src/mutation/compile/field.ts](/Users/realrong/Rostack/dataview/packages/dataview-core/src/mutation/compile/field.ts:281)
 
 判断：
 
-- 这两个 helper 本质只是把 `before?: string` 转成 ordered anchor，再调用 `writer.viewDisplay(viewId).insert(...)` / `writer.viewOrder(viewId).insert(...)`。
-- 它们比 `writeRecordValuesMany` 更薄，更多是端口使用体验问题，而不是缺失的核心中轴。
+- `writeViewDisplayInsert` 只是把 `before?: string` 转成 ordered anchor，再调用 `writer.viewDisplay(viewId).insert(...)`。
+- 当前只有一个调用点。
+- 它没有形成独立领域抽象，也没有降低认知负担，只是把一行调用换了个名字。
 
 结论：
 
-- 可以并入 dataview mutation ports 扩展层，作为顺手 API。
-- 优先级低于 `writeRecordValuesMany`。
+- 不上提。
+- 直接内联到调用点。
 
-### 4.2 Dataview `writeViewUpdate`
+### 4.2 `writeViewOrderInsert`：删除
+
+位置：
+
+- [dataview/packages/dataview-core/src/mutation/compile/viewDiff.ts](/Users/realrong/Rostack/dataview/packages/dataview-core/src/mutation/compile/viewDiff.ts:411)
+
+当前调用点：
+
+- 当前在 `dataview/packages/dataview-core/src/mutation` 下没有实际调用点。
+
+判断：
+
+- 这是一个没有消费方的薄语法糖导出。
+- 既没有复用价值，也没有形成稳定 API 面。
+
+结论：
+
+- 不上提。
+- 不内联。
+- 直接删除。
+
+### 4.3 `writeViewUpdate`：保留为集中 lowering helper，不内联
 
 位置：
 
 - [dataview/packages/dataview-core/src/mutation/compile/viewDiff.ts](/Users/realrong/Rostack/dataview/packages/dataview-core/src/mutation/compile/viewDiff.ts:357)
+
+当前调用点：
+
+- [dataview/packages/dataview-core/src/mutation/compile/view.ts](/Users/realrong/Rostack/dataview/packages/dataview-core/src/mutation/compile/view.ts:565)
+- [dataview/packages/dataview-core/src/mutation/compile/record.ts](/Users/realrong/Rostack/dataview/packages/dataview-core/src/mutation/compile/record.ts:218)
+- [dataview/packages/dataview-core/src/mutation/compile/field.ts](/Users/realrong/Rostack/dataview/packages/dataview-core/src/mutation/compile/field.ts:227)
+- [dataview/packages/dataview-core/src/mutation/compile/field.ts](/Users/realrong/Rostack/dataview/packages/dataview-core/src/mutation/compile/field.ts:510)
 
 判断：
 
@@ -143,15 +175,129 @@
   - [dataview/packages/dataview-core/src/mutation/compile/viewDiff.ts](/Users/realrong/Rostack/dataview/packages/dataview-core/src/mutation/compile/viewDiff.ts:273)
   - [dataview/packages/dataview-core/src/mutation/compile/viewDiff.ts](/Users/realrong/Rostack/dataview/packages/dataview-core/src/mutation/compile/viewDiff.ts:315)
 
+补充判断：
+
+- 它不是薄语法糖，而是 dataview view mutation 的集中 lowering 入口。
+- 当前已被 `view.ts`、`record.ts`、`field.ts` 三处复用。
+- 如果强行内联，会把同一套 diff / patch / ordered lowering 逻辑重新散回多个 compile 文件。
+
 结论：
 
-- 如果后续目标是把“view projection lowering”整体收敛成 dataview mutation 中轴的一部分，它是合格候选。
-- 如果只是做 helper 上提清理，它不必优先处理。
-- 它不应上提到 shared 层，只能留在 dataview domain 内部。
+- 不应内联。
+- 不应上提到 shared 层。
+- 应保留为 dataview domain 内部的集中 lowering helper。
+- 后续如果要继续收口，只应考虑重命名或移动到更准确的文件名，例如 `viewProgram.ts` / `viewLowering.ts`，而不是拆散。
 
-## 5. Patch Mode Uplift
+## 5. Dataview Compile Helper 模块收口
 
-### 5.1 Dataview `createEntityPatch` -> `@shared/core/json.diff(base, next)`
+### 5.1 `compile/base.ts`：拆空并最终删除文件
+
+位置：
+
+- [dataview/packages/dataview-core/src/mutation/compile/base.ts](/Users/realrong/Rostack/dataview/packages/dataview-core/src/mutation/compile/base.ts:1)
+
+当前承载内容：
+
+- `DataviewCompileContext`
+- `pushIssue`
+- `issue`
+- `reportIssues`
+- `requireValue`
+- `resolveTarget`
+- `writeRecordValuesMany`
+
+判断：
+
+- 这个文件当前是历史堆积点，把 compile context、compile control、reader 解析、domain writer helper 混在了一起。
+- 按本文既定路线：
+  - `pushIssue` / `issue` / `reportIssues` -> shared compile control
+  - `requireValue` -> `ctx.reader.xxx.require(...)`
+  - `resolveTarget` -> `ctx.reader.records.require(...)`
+  - `writeRecordValuesMany` -> dataview mutation ports 扩展层
+- 这些迁移完成后，`base.ts` 不应继续作为杂项文件存在。
+
+结论：
+
+- `compile/base.ts` 应最终删除。
+- `DataviewCompileContext` 应迁到更稳定的位置，例如 `compile/contracts.ts` 或 `compile/types.ts`。
+
+### 5.2 `compile/patch.ts`：删除
+
+位置：
+
+- [dataview/packages/dataview-core/src/mutation/compile/patch.ts](/Users/realrong/Rostack/dataview/packages/dataview-core/src/mutation/compile/patch.ts:1)
+
+判断：
+
+- 该文件只服务于 `createEntityPatch`。
+- 一旦 `createEntityPatch` 收敛到 `@shared/core/json.diff(base, next)`，整个文件就失去存在意义。
+
+结论：
+
+- `compile/patch.ts` 直接删除。
+
+### 5.3 `compile/viewDiff.ts`：保留，但语义上应视为 lowering 文件
+
+位置：
+
+- [dataview/packages/dataview-core/src/mutation/compile/viewDiff.ts](/Users/realrong/Rostack/dataview/packages/dataview-core/src/mutation/compile/viewDiff.ts:1)
+
+判断：
+
+- 该文件不再是“helper 堆”，而是 dataview view mutation 的集中 lowering 文件。
+- 需要保留的核心是 `writeViewUpdate` 及其私有支撑函数。
+- `writeViewDisplayInsert` 应内联。
+- `writeViewOrderInsert` 应删除。
+
+结论：
+
+- 文件整体保留。
+- 后续可重命名为 `viewLowering.ts` / `viewProgram.ts`，但不应拆散核心 lowering 逻辑。
+
+### 5.4 `compile/index.ts` 的 `runCompileIntent`：可以删除，但优先级低
+
+位置：
+
+- [dataview/packages/dataview-core/src/mutation/compile/index.ts](/Users/realrong/Rostack/dataview/packages/dataview-core/src/mutation/compile/index.ts:37)
+
+判断：
+
+- `runCompileIntent(...)` 只做“如果 compile 返回值不为 `undefined`，就转发给 `input.output(...)`”这一件事。
+- 它没有领域语义，也不形成稳定抽象。
+- 但它主要是在压缩 handler table 的重复样板，问题没有 `runCustomPlanner` 那么严重。
+
+结论：
+
+- 长期可以删除。
+- 最终方向是让 `compileRecordIntent` / `compileFieldIntent` / `compileViewIntent` 自己直接调用 `input.output(...)`，统一返回 `void`。
+- 这一项优先级低于前面的结构性收口。
+
+### 5.5 `compile/view.ts` 的本地薄 helper：不外溢，能内联就内联
+
+位置：
+
+- [dataview/packages/dataview-core/src/mutation/compile/view.ts](/Users/realrong/Rostack/dataview/packages/dataview-core/src/mutation/compile/view.ts:68)
+
+涉及薄 helper：
+
+- `readErrorMessage`
+- `toBeforeAnchor`
+- `reportSemanticError`
+
+判断：
+
+- 这些 helper 都只在单文件内服务，不构成跨文件 API。
+- 它们的问题不是“该不该上提”，而是不要继续外溢成新的公共 helper。
+
+结论：
+
+- 不上提。
+- 后续重写 `view.ts` 时，能直接内联就内联。
+- 如果 `view` compile 继续收口到 domain `finalize / validate`，这些薄 helper 大概率会自然消失。
+
+## 6. Patch Mode Uplift
+
+### 6.1 Dataview `createEntityPatch` -> `@shared/core/json.diff(base, next)`
 
 位置：
 
@@ -181,9 +327,9 @@
 - 这是明确应实施的上提项。
 - 但它属于 shared core patch mode uplift，不属于 mutation ports uplift。
 
-## 6. Compile Control Uplift
+## 7. Compile Control Uplift
 
-### 6.1 Dataview / Whiteboard 的 issue / fail helper 统一收回 shared compile context
+### 7.1 Dataview / Whiteboard 的 issue / fail helper 统一收回 shared compile context
 
 位置：
 
@@ -211,7 +357,6 @@
   - `ctx.invalid(message, details?, path?)`
   - `ctx.cancelled(message, details?, path?)`
   - `ctx.fail(issue)`
-  - `ctx.require(value, issue)` 或后续统一替换成更合适的 `ctx.expect(...)`
 - 不引入 `issueMany(...)`，批量上报统一通过 `ctx.issue(...)` 接受单个或多个 issue 完成。
 - dataview 本地 `issue` / `reportIssues` 删除。
 - whiteboard 本地 `failInvalid` / `failCancelled` 删除。
@@ -221,7 +366,7 @@
 - 这是明确应实施的 shared compile control uplift。
 - 它和 ports uplift 是并行但不同的一条线。
 
-### 6.2 Dataview `requireValue` -> shared `ctx.require(...)` / `ctx.expect(...)`
+### 7.2 Dataview `requireValue` -> `ctx.reader.xxx.require(...)`
 
 位置：
 
@@ -231,22 +376,52 @@
 判断：
 
 - `requireValue` 不负责读取领域数据，它负责“如果值不存在，则按统一控制流上报 issue 并返回 `undefined`”。
-- 这类逻辑不是 reader，也不是 ports，而是 compile context control。
-- shared compile context 现在已经有 `require(...)` primitive，因此 dataview 不应继续保留第二套同义 helper。
+- 但 compile 场景里更自然的落点不是 `ctx.require(...)`，而是 `ctx.reader` 上的 namespace require。
+- 对 dataview 来说，真正的稳定调用点应是：
+  - `ctx.reader.views.require(id)`
+  - `ctx.reader.fields.require(id)`
+  - `ctx.reader.records.require(target)`
 
 实施方案：
 
 - dataview 本地 `requireValue` 删除。
-- compile 统一改为 shared `ctx.require(...)`。
-- 如果后续觉得 `require(...)` 命名不够明确，可以统一升级成 `ctx.expect(...)`，但这件事也应发生在 shared，而不是 domain。
+- compile 统一改为 `ctx.reader.xxx.require(...)`。
+- 不再鼓励 domain compile 代码直接使用通用 `ctx.require(...)`。
+- namespace 上统一只保留短名 `require(...)`，不再额外发明 `requireValue(...)`、`requireTarget(...)` 这类按参数类型分叉的命名。
 
 结论：
 
-- `requireValue` 应收敛到 shared compile control 中轴。
+- `requireValue` 应收敛到 `ctx.reader` 中轴。
 
-## 7. Reader Uplift
+### 7.3 Whiteboard `requireNode` / `requireEdge` / `requireGroup` / `requireMindmap` -> `ctx.reader.xxx.require(id)`
 
-### 7.1 Dataview `resolveTarget` -> reader 中轴
+位置：
+
+- [whiteboard/packages/whiteboard-core/src/mutation/compile/helpers.ts](/Users/realrong/Rostack/whiteboard/packages/whiteboard-core/src/mutation/compile/helpers.ts:120)
+
+判断：
+
+- 这组 helper 的最终落点不应是 shared `ctx.require(...)`，而应是 compile context 上的 `ctx.reader` facade。
+- 它们表达的是按具体 namespace 获取并要求存在：
+  - `ctx.reader.nodes.require(id)`
+  - `ctx.reader.edges.require(id)`
+  - `ctx.reader.groups.require(id)`
+  - `ctx.reader.mindmaps.require(id)`
+- 底层 document reader 仍然可以保持纯 `get/has/list`；`require(...)` 只存在于 compile 场景看到的 `ctx.reader` facade 上。
+
+实施方案：
+
+- whiteboard 本地 `requireNode` / `requireEdge` / `requireGroup` / `requireMindmap` 删除。
+- compile 内统一改成 `ctx.reader.xxx.require(id)`。
+- 不再在 whiteboard compile helper 中保留第二套 `requireXxx`。
+
+结论：
+
+- `whiteboard requireXxx` 应收敛到 `ctx.reader` 中轴。
+
+## 8. Reader Uplift
+
+### 8.1 Dataview `resolveTarget` -> `ctx.reader.records.require(target)`
 
 位置：
 
@@ -255,23 +430,23 @@
 判断：
 
 - `resolveTarget` 的职责是把领域 `EditTarget` 解析成实际 `RecordId[]`。
-- 这是纯读逻辑，不涉及 mutation write port，也不属于 compile control。
+- 在 compile 场景里，最终更顺手的形式不需要暴露两段式 `resolve + require`，而是直接在 `records` namespace 下提供 `require(target)`。
 - 把它放在 compile/base 会导致读取协议和报错协议耦在一起，后续其他 compile 文件也会继续围绕 base.ts 长 helper。
 
 实施方案：
 
 - `resolveTarget` 从 compile/base 删除。
-- 解析逻辑收回 reader 中轴，例如 `ctx.reader.records.resolveTarget(...)`。
-- compile 负责决定解析失败后如何发 issue。
-- reader 可以返回纯结果，也可以返回带 issue payload 的结果，但它不直接操纵 compile control。
+- compile 场景统一改成 `ctx.reader.records.require(target)`。
+- `records` namespace 上的方法名就叫 `require(...)`；`target` 只是参数类型，不再引入 `requireTarget(...)` 这类专名。
+- 如果底层仍需要纯解析函数，可以保留 internal `resolveTarget(...)` / `getTarget(...)`，但不把它暴露成 compile handler 的主调用面。
 
 结论：
 
-- `resolveTarget` 应收敛到 reader 中轴。
+- `resolveTarget` 应收敛到 `ctx.reader.records.require(target)`。
 
-## 8. Whiteboard Planner Collapse
+## 9. Whiteboard Planner Collapse
 
-### 8.1 `runCustomPlanner` / `WhiteboardCustomPlanContext` / `WhiteboardCustomOperation` 整套删除
+### 9.1 `runCustomPlanner` / `WhiteboardCustomPlanContext` / `WhiteboardCustomOperation` 整套删除
 
 位置：
 
@@ -298,9 +473,9 @@
 - 单点调用、纯 lowering 的 planner，直接并回调用它的 compile handler。
 - 多点复用但仍然只是 compile 内部算法的 planner，降级成 compile 层内部 helper，不再保留 planner entry / custom context。
 
-### 8.2 最终迁移列表
+### 9.2 最终迁移列表
 
-#### 8.2.1 直接并回 compile 的项
+#### 9.2.1 直接并回 compile 的项
 
 - `planCanvasOrderMove`
   位置：[whiteboard/packages/whiteboard-core/src/mutation/planner/canvas.ts](/Users/realrong/Rostack/whiteboard/packages/whiteboard-core/src/mutation/planner/canvas.ts:9)
@@ -326,7 +501,7 @@
   判断：单点调用，逻辑短，直接围绕 `mindmapTree.move/patch` 发 program。
   最终去向：直接并回 `compile/mindmap.ts`。
 
-#### 8.2.2 降级成 compile 内部 helper 的项
+#### 9.2.2 降级成 compile 内部 helper 的项
 
 - `planMindmapMove`
   位置：[whiteboard/packages/whiteboard-core/src/mutation/planner/mindmap.ts](/Users/realrong/Rostack/whiteboard/packages/whiteboard-core/src/mutation/planner/mindmap.ts:126)
@@ -386,7 +561,7 @@
   判断：调用面集中在同一 compile 文件，属于 mindmap compile 内部子步骤。
   最终去向：降级成 `compile/mindmap.ts` 内部 helper。
 
-#### 8.2.3 直接删除的项
+#### 9.2.3 直接删除的项
 
 - `planMindmapRestore`
   位置：[whiteboard/packages/whiteboard-core/src/mutation/planner/mindmap.ts](/Users/realrong/Rostack/whiteboard/packages/whiteboard-core/src/mutation/planner/mindmap.ts:70)
@@ -398,7 +573,7 @@
   判断：当前没有 compile 调用点。
   最终去向：直接删除；如果未来需要 restore compile handler，应直接在 compile 路径重建。
 
-### 8.3 `planner/common.ts` 的最终去向
+### 9.3 `planner/common.ts` 的最终去向
 
 位置：
 
@@ -421,31 +596,26 @@
 - `planner/common.ts` 不保留在 planner 目录。
 - 但它不是 `runCustomPlanner` 一套的一部分，不能连带误删。
 
-## 9. 不建议上提到 Mutation Ports 中轴
+## 10. 不建议上提到 Mutation Ports 中轴
 
-### 9.1 Dataview / Whiteboard 的 orchestration helper
+### 10.1 Dataview / Whiteboard 的 orchestration helper
 
 位置：
 
 - [dataview/packages/dataview-core/src/mutation/compile/base.ts](/Users/realrong/Rostack/dataview/packages/dataview-core/src/mutation/compile/base.ts:18)
 - [whiteboard/packages/whiteboard-core/src/mutation/compile/helpers.ts](/Users/realrong/Rostack/whiteboard/packages/whiteboard-core/src/mutation/compile/helpers.ts:58)
 
-涉及 helper：
-
-- whiteboard: `requireNode`、`requireEdge`、`requireGroup`、`requireMindmap`
-
 判断：
 
-- 这些是 compile context orchestration，不是 mutation write port。
-- 它们管理的是报错、查找、控制流，而不是 program step 编码。
+- `runCustomPlanner` 这类 orchestration helper 是 compile control / call-graph 组织问题，不是 mutation write port。
 
 结论：
 
 - 不应上提到 mutation ports 中轴。
 
-## 10. 应直接删除而不是上提
+## 11. 应直接删除而不是上提
 
-### 10.1 Whiteboard `compile/write.ts` 中的纯 CRUD 转发 helper
+### 11.1 Whiteboard `compile/write.ts` 中的纯 CRUD 转发 helper
 
 位置：
 
@@ -483,7 +653,7 @@
 - 这批 helper 不该上提。
 - 更合理的方向是直接删除并内联到调用方。
 
-### 10.2 Whiteboard 中只为“换个名字”存在的 write helper
+### 11.2 Whiteboard 中只为“换个名字”存在的 write helper
 
 位置：
 
@@ -500,20 +670,20 @@
 - 上提时应只保留有编码价值的 domain port 方法。
 - 没有编码价值的 helper 应一并去掉。
 
-## 11. 建议执行顺序
+## 12. 建议执行顺序
 
-1. 先把 dataview `createEntityPatch` 收敛到 `@shared/core/json.diff(base, next)`，明确 shared core patch mode 基线。
+1. 先把 dataview `createEntityPatch` 收敛到 `@shared/core/json.diff(base, next)`，明确 shared core patch mode 基线，并删除 `compile/patch.ts`。
 2. 再把 dataview / whiteboard 的 issue / fail 同义 helper 收回 shared compile context，统一为 `ctx.issue(...)`、`ctx.invalid(...)`、`ctx.cancelled(...)`、`ctx.fail(...)`。
-3. 再把 dataview `requireValue` 收敛到 shared `ctx.require(...)` / `ctx.expect(...)`，并把 `resolveTarget` 收回 reader 中轴。
-4. 删除 `runCustomPlanner` / `WhiteboardCustomPlanContext` / `WhiteboardCustomOperation`，把 whiteboard planner 目录从“桥接层”降级或删除。
-5. 先把单点纯 lowering 的 whiteboard planner 直接并回对应 compile handler，再把多点复用的 planner 降级成 compile 内部 helper。
-6. 再处理 dataview `writeRecordValuesMany`，把 record field writes 收进 dataview ports 扩展层。
-7. 再处理 whiteboard `canvasOrder` ref 编码，把 `canvasRefKey(...)` 从 compile / planner 收回端口层。
-8. 再处理 whiteboard `edgeLabels` / `edgeRoute` 的 anchor 适配，把 `toOrderedAnchor(...)` 从 compile/write 移走。
-9. 之后视需要决定是否把 dataview `writeViewDisplayInsert` / `writeViewOrderInsert` 一并吸收到 ports 语法糖。
+3. 再把 dataview `requireValue` 与 whiteboard `requireXxx` 收敛到 `ctx.reader.xxx.require(...)`，并把 `resolveTarget` 收回 `ctx.reader.records.require(target)`。
+4. 完成 dataview `compile/base.ts` 拆空，把 `writeRecordValuesMany` 收进 dataview ports 扩展层，并删除 `compile/base.ts`。
+5. 处理 dataview view helper：`writeViewDisplayInsert` 直接内联，`writeViewOrderInsert` 直接删除，`writeViewUpdate` 保留为集中 lowering helper；`viewDiff.ts` 视情况重命名为更准确的 lowering 文件。
+6. 删除 `runCustomPlanner` / `WhiteboardCustomPlanContext` / `WhiteboardCustomOperation`，把 whiteboard planner 目录从“桥接层”降级或删除。
+7. 先把单点纯 lowering 的 whiteboard planner 直接并回对应 compile handler，再把多点复用的 planner 降级成 compile 内部 helper。
+8. 再处理 whiteboard `canvasOrder` ref 编码，把 `canvasRefKey(...)` 从 compile / planner 收回端口层。
+9. 再处理 whiteboard `edgeLabels` / `edgeRoute` 的 anchor 适配，把 `toOrderedAnchor(...)` 从 compile/write 移走。
 10. 最后清理 whiteboard `compile/write.ts` 中剩余纯转发 helper，能内联的全部内联。
 
-## 12. 最终清单
+## 13. 最终清单
 
 应上提到 shared core patch mode：
 
@@ -523,11 +693,13 @@
 
 - dataview `pushIssue` / `issue` / `reportIssues` -> shared `ctx.issue(...)`
 - whiteboard `failInvalid` / `failCancelled` -> shared `ctx.invalid(...)` / `ctx.cancelled(...)`
-- dataview `requireValue` -> shared `ctx.require(...)` / `ctx.expect(...)`
 
 应上提到 reader 中轴：
 
-- dataview `resolveTarget` -> `ctx.reader.records.resolveTarget(...)`
+- dataview `requireValue` -> `ctx.reader.xxx.require(...)`
+- dataview `resolveTarget` -> `ctx.reader.records.require(target)`
+- whiteboard `requireNode` / `requireEdge` / `requireGroup` / `requireMindmap` -> `ctx.reader.xxx.require(id)`
+- reader namespace 统一使用短名 `require(...)`，不新增 `requireTarget(...)` / `requireNode(...)` / `requireRecord(...)` 这类按对象类型再分叉的方法名
 
 应删除的 whiteboard planner 桥接层：
 
@@ -561,16 +733,22 @@
 - whiteboard `edgeLabels` anchor 适配
 - whiteboard `edgeRoute` anchor 适配
 
-可选上提：
-
-- dataview `writeViewDisplayInsert`
-- dataview `writeViewOrderInsert`
-- dataview `writeViewUpdate`
-
 不应上提：
 
-- whiteboard `requireXxx`
+- whiteboard `runCustomPlanner`
 
 应直接删除而不是上提：
 
+- dataview `compile/patch.ts`
+- dataview `compile/base.ts`
+- dataview `writeViewOrderInsert`
 - whiteboard `compile/write.ts` 中所有纯 `program.xxx` 转发 helper
+
+应直接内联：
+
+- dataview `writeViewDisplayInsert`
+
+应保留为 domain 内部集中 lowering helper：
+
+- dataview `writeViewUpdate`
+- dataview `compile/viewDiff.ts`（可重命名，但不拆散）

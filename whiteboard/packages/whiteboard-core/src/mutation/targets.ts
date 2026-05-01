@@ -43,7 +43,7 @@ import {
   clone,
   same,
   uniqueSorted
-} from '@whiteboard/core/mutation/planner/common'
+} from '@whiteboard/core/mutation/common'
 
 export type WhiteboardMindmapTreeValue = {
   side?: 'left' | 'right'

@@ -8,20 +8,18 @@ import {
 } from '@shared/mutation/engine'
 import type {
   WhiteboardCompileIds,
+  WhiteboardCompileReader,
   WhiteboardCompileServices,
+  WhiteboardMutationPorts,
   WhiteboardMutationTable
 } from '@whiteboard/core/mutation'
 import {
   isCheckpointProgram,
-  whiteboardCompileHandlers,
+  whiteboardCompile,
   whiteboardMutationRegistry
 } from '@whiteboard/core/mutation'
 import {
-  createDocumentReader,
   normalizeDocument
-} from '@whiteboard/core/document'
-import type {
-  DocumentReader
 } from '@whiteboard/core/document'
 import { createRegistries } from '@whiteboard/core/registry'
 import { createId } from '@shared/core'
@@ -119,16 +117,18 @@ export const createEngine = ({
     Document,
     WhiteboardMutationTable,
     Operation,
-    DocumentReader,
+    WhiteboardCompileReader,
     WhiteboardCompileServices,
-    ResultCode
+    ResultCode,
+    WhiteboardMutationPorts
   >({
     document,
     normalize: normalizeDocument,
-    createReader: createDocumentReader,
+    createReader: whiteboardCompile.createReader,
+    createProgram: whiteboardCompile.createProgram,
     services,
     registry: whiteboardMutationRegistry,
-    compile: whiteboardCompileHandlers,
+    compile: whiteboardCompile.handlers,
     history: {
       capacity: 100,
       capture: {

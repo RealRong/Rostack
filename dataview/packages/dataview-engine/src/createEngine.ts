@@ -48,12 +48,14 @@ import {
 import { createPerformanceRuntime } from '@dataview/engine/runtime/performance'
 import {
   createDocumentReadContext,
-  createDocumentReader,
   type DocumentReader
 } from '@dataview/core/document/reader'
 import type {
   DataviewMutationPorts
 } from '@dataview/core/mutation'
+import type {
+  DataviewCompileReader
+} from '@dataview/core/mutation/compile/reader'
 import type {
   MutationProgram
 } from '@shared/mutation'
@@ -84,14 +86,15 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
     DataDoc,
     DataviewIntentTable,
     DocumentOperation,
-    DocumentReader,
+    DataviewCompileReader,
     void,
     DataviewErrorCode,
     DataviewMutationPorts
   >({
     document: options.document,
     normalize: documentApi.normalize,
-    createReader: createDocumentReader,
+    createReader: compile.createReader,
+    createProgram: compile.createProgram,
     registry: dataviewMutationRegistry,
     compile: compile.handlers,
     history: historyConfig.enabled

@@ -8,16 +8,19 @@ import type {
   DataDoc,
   Intent
 } from '../../types'
-import type {
-  DocumentReader
-} from '../../document/reader'
 import {
+  createDataviewMutationPorts,
   type DataviewMutationPorts
 } from '../program'
 import {
-  issue,
   type DataviewCompileContext
-} from './base'
+} from './contracts'
+import type {
+  DataviewCompileReader
+} from './reader'
+import {
+  createCompileReader
+} from './reader'
 import { compileFieldIntent } from './field'
 import { compileRecordIntent } from './record'
 import { compileViewIntent } from './view'
@@ -34,18 +37,6 @@ type DataviewCompileTable = {
   }
 }
 
-const runCompileIntent = (
-  input: DataviewCompileContext,
-  compileIntent: (
-    input: DataviewCompileContext
-  ) => unknown
-) => {
-  const result = compileIntent(input)
-  if (result !== undefined) {
-    input.output(result)
-  }
-}
-
 const compileExternalBump = (
   input: DataviewCompileContext<
     Extract<Intent, { type: 'external.version.bump' }>,
@@ -53,12 +44,13 @@ const compileExternalBump = (
   >
 ) => {
   if (!string.isNonEmptyString(input.intent.source)) {
-    issue(
-      input,
-      'external.invalidSource',
-      'external.version.bump requires a non-empty source',
-      'source'
-    )
+    input.issue({
+      source: input.source,
+      code: 'external.invalidSource',
+      message: 'external.version.bump requires a non-empty source',
+      path: 'source',
+      severity: 'error'
+    })
   }
 
   input.program.signal({
@@ -72,75 +64,171 @@ export const dataviewIntentHandlers: MutationCompileHandlerTable<
   DataviewCompileTable,
   DataDoc,
   DataviewMutationPorts,
-  DocumentReader,
+  DataviewCompileReader,
   void,
   ValidationCode
 > = {
-  'record.create': (input) => runCompileIntent(input, compileRecordIntent),
-  'record.patch': (input) => runCompileIntent(input, compileRecordIntent),
-  'record.remove': (input) => runCompileIntent(input, compileRecordIntent),
-  'record.fields.writeMany': (input) => runCompileIntent(input, compileRecordIntent),
-  'field.create': (input) => runCompileIntent(input, compileFieldIntent),
-  'field.patch': (input) => runCompileIntent(input, compileFieldIntent),
-  'field.replace': (input) => runCompileIntent(input, compileFieldIntent),
-  'field.setKind': (input) => runCompileIntent(input, compileFieldIntent),
-  'field.duplicate': (input) => runCompileIntent(input, compileFieldIntent),
-  'field.option.create': (input) => runCompileIntent(input, compileFieldIntent),
-  'field.option.move': (input) => runCompileIntent(input, compileFieldIntent),
-  'field.option.patch': (input) => runCompileIntent(input, compileFieldIntent),
-  'field.option.remove': (input) => runCompileIntent(input, compileFieldIntent),
-  'field.remove': (input) => runCompileIntent(input, compileFieldIntent),
-  'view.create': (input) => runCompileIntent(input, compileViewIntent),
-  'view.rename': (input) => runCompileIntent(input, compileViewIntent),
-  'view.type.set': (input) => runCompileIntent(input, compileViewIntent),
-  'view.search.set': (input) => runCompileIntent(input, compileViewIntent),
-  'view.filter.create': (input) => runCompileIntent(input, compileViewIntent),
-  'view.filter.patch': (input) => runCompileIntent(input, compileViewIntent),
-  'view.filter.move': (input) => runCompileIntent(input, compileViewIntent),
-  'view.filter.mode.set': (input) => runCompileIntent(input, compileViewIntent),
-  'view.filter.remove': (input) => runCompileIntent(input, compileViewIntent),
-  'view.filter.clear': (input) => runCompileIntent(input, compileViewIntent),
-  'view.sort.create': (input) => runCompileIntent(input, compileViewIntent),
-  'view.sort.patch': (input) => runCompileIntent(input, compileViewIntent),
-  'view.sort.move': (input) => runCompileIntent(input, compileViewIntent),
-  'view.sort.remove': (input) => runCompileIntent(input, compileViewIntent),
-  'view.sort.clear': (input) => runCompileIntent(input, compileViewIntent),
-  'view.group.set': (input) => runCompileIntent(input, compileViewIntent),
-  'view.group.clear': (input) => runCompileIntent(input, compileViewIntent),
-  'view.group.toggle': (input) => runCompileIntent(input, compileViewIntent),
-  'view.group.mode.set': (input) => runCompileIntent(input, compileViewIntent),
-  'view.group.sort.set': (input) => runCompileIntent(input, compileViewIntent),
-  'view.group.interval.set': (input) => runCompileIntent(input, compileViewIntent),
-  'view.group.showEmpty.set': (input) => runCompileIntent(input, compileViewIntent),
-  'view.section.show': (input) => runCompileIntent(input, compileViewIntent),
-  'view.section.hide': (input) => runCompileIntent(input, compileViewIntent),
-  'view.section.collapse': (input) => runCompileIntent(input, compileViewIntent),
-  'view.section.expand': (input) => runCompileIntent(input, compileViewIntent),
-  'view.calc.set': (input) => runCompileIntent(input, compileViewIntent),
-  'view.table.widths.set': (input) => runCompileIntent(input, compileViewIntent),
-  'view.table.verticalLines.set': (input) => runCompileIntent(input, compileViewIntent),
-  'view.table.wrap.set': (input) => runCompileIntent(input, compileViewIntent),
-  'view.gallery.wrap.set': (input) => runCompileIntent(input, compileViewIntent),
-  'view.gallery.size.set': (input) => runCompileIntent(input, compileViewIntent),
-  'view.gallery.layout.set': (input) => runCompileIntent(input, compileViewIntent),
-  'view.kanban.wrap.set': (input) => runCompileIntent(input, compileViewIntent),
-  'view.kanban.size.set': (input) => runCompileIntent(input, compileViewIntent),
-  'view.kanban.layout.set': (input) => runCompileIntent(input, compileViewIntent),
-  'view.kanban.fillColor.set': (input) => runCompileIntent(input, compileViewIntent),
-  'view.kanban.cardsPerColumn.set': (input) => runCompileIntent(input, compileViewIntent),
-  'view.order.move': (input) => runCompileIntent(input, compileViewIntent),
-  'view.order.splice': (input) => runCompileIntent(input, compileViewIntent),
-  'view.display.move': (input) => runCompileIntent(input, compileViewIntent),
-  'view.display.splice': (input) => runCompileIntent(input, compileViewIntent),
-  'view.display.show': (input) => runCompileIntent(input, compileViewIntent),
-  'view.display.hide': (input) => runCompileIntent(input, compileViewIntent),
-  'view.display.clear': (input) => runCompileIntent(input, compileViewIntent),
-  'view.open': (input) => runCompileIntent(input, compileViewIntent),
-  'view.remove': (input) => runCompileIntent(input, compileViewIntent),
+  'record.create': compileRecordIntent,
+  'record.patch': compileRecordIntent,
+  'record.remove': compileRecordIntent,
+  'record.fields.writeMany': compileRecordIntent,
+  'field.create': compileFieldIntent,
+  'field.patch': compileFieldIntent,
+  'field.replace': compileFieldIntent,
+  'field.setKind': compileFieldIntent,
+  'field.duplicate': compileFieldIntent,
+  'field.option.create': compileFieldIntent,
+  'field.option.move': compileFieldIntent,
+  'field.option.patch': compileFieldIntent,
+  'field.option.remove': compileFieldIntent,
+  'field.remove': compileFieldIntent,
+  'view.create': (input) => {
+    compileViewIntent(input)
+  },
+  'view.rename': (input) => {
+    compileViewIntent(input)
+  },
+  'view.type.set': (input) => {
+    compileViewIntent(input)
+  },
+  'view.search.set': (input) => {
+    compileViewIntent(input)
+  },
+  'view.filter.create': (input) => {
+    compileViewIntent(input)
+  },
+  'view.filter.patch': (input) => {
+    compileViewIntent(input)
+  },
+  'view.filter.move': (input) => {
+    compileViewIntent(input)
+  },
+  'view.filter.mode.set': (input) => {
+    compileViewIntent(input)
+  },
+  'view.filter.remove': (input) => {
+    compileViewIntent(input)
+  },
+  'view.filter.clear': (input) => {
+    compileViewIntent(input)
+  },
+  'view.sort.create': (input) => {
+    compileViewIntent(input)
+  },
+  'view.sort.patch': (input) => {
+    compileViewIntent(input)
+  },
+  'view.sort.move': (input) => {
+    compileViewIntent(input)
+  },
+  'view.sort.remove': (input) => {
+    compileViewIntent(input)
+  },
+  'view.sort.clear': (input) => {
+    compileViewIntent(input)
+  },
+  'view.group.set': (input) => {
+    compileViewIntent(input)
+  },
+  'view.group.clear': (input) => {
+    compileViewIntent(input)
+  },
+  'view.group.toggle': (input) => {
+    compileViewIntent(input)
+  },
+  'view.group.mode.set': (input) => {
+    compileViewIntent(input)
+  },
+  'view.group.sort.set': (input) => {
+    compileViewIntent(input)
+  },
+  'view.group.interval.set': (input) => {
+    compileViewIntent(input)
+  },
+  'view.group.showEmpty.set': (input) => {
+    compileViewIntent(input)
+  },
+  'view.section.show': (input) => {
+    compileViewIntent(input)
+  },
+  'view.section.hide': (input) => {
+    compileViewIntent(input)
+  },
+  'view.section.collapse': (input) => {
+    compileViewIntent(input)
+  },
+  'view.section.expand': (input) => {
+    compileViewIntent(input)
+  },
+  'view.calc.set': (input) => {
+    compileViewIntent(input)
+  },
+  'view.table.widths.set': (input) => {
+    compileViewIntent(input)
+  },
+  'view.table.verticalLines.set': (input) => {
+    compileViewIntent(input)
+  },
+  'view.table.wrap.set': (input) => {
+    compileViewIntent(input)
+  },
+  'view.gallery.wrap.set': (input) => {
+    compileViewIntent(input)
+  },
+  'view.gallery.size.set': (input) => {
+    compileViewIntent(input)
+  },
+  'view.gallery.layout.set': (input) => {
+    compileViewIntent(input)
+  },
+  'view.kanban.wrap.set': (input) => {
+    compileViewIntent(input)
+  },
+  'view.kanban.size.set': (input) => {
+    compileViewIntent(input)
+  },
+  'view.kanban.layout.set': (input) => {
+    compileViewIntent(input)
+  },
+  'view.kanban.fillColor.set': (input) => {
+    compileViewIntent(input)
+  },
+  'view.kanban.cardsPerColumn.set': (input) => {
+    compileViewIntent(input)
+  },
+  'view.order.move': (input) => {
+    compileViewIntent(input)
+  },
+  'view.order.splice': (input) => {
+    compileViewIntent(input)
+  },
+  'view.display.move': (input) => {
+    compileViewIntent(input)
+  },
+  'view.display.splice': (input) => {
+    compileViewIntent(input)
+  },
+  'view.display.show': (input) => {
+    compileViewIntent(input)
+  },
+  'view.display.hide': (input) => {
+    compileViewIntent(input)
+  },
+  'view.display.clear': (input) => {
+    compileViewIntent(input)
+  },
+  'view.open': (input) => {
+    compileViewIntent(input)
+  },
+  'view.remove': (input) => {
+    compileViewIntent(input)
+  },
   'external.version.bump': compileExternalBump
 }
 
 export const compile = {
+  createReader: createCompileReader,
+  createProgram: createDataviewMutationPorts,
   handlers: dataviewIntentHandlers
 } as const
 

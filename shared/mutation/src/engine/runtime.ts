@@ -170,6 +170,18 @@ const compileMutationIntents = <
       break
     }
 
+    const createBlockedControl = (
+      issue: MutationCompileIssue<Code>
+    ) => {
+      const normalized = normalizeCompileIssue(issue)
+      pendingIssues.push(normalized)
+      blocked = true
+      return {
+        kind: 'block' as const,
+        issue: normalized
+      }
+    }
+
     const controls: MutationCompileHandlerInput<
       Doc,
       MutationIntentOf<Table>,
@@ -185,7 +197,7 @@ const compileMutationIntents = <
         type: intent.type
       },
       document: workingDocument,
-      reader: input.createReader(() => workingDocument),
+      reader: undefined as never,
       services: input.services,
       program: (() => {
         if (input.createProgram) {
@@ -202,12 +214,14 @@ const compileMutationIntents = <
       output: (value) => {
         pendingOutputs.push(value)
       },
-      issue: (issue) => {
-        const normalized = normalizeCompileIssue(issue)
-        pendingIssues.push(normalized)
-        if (normalized.severity !== 'warning') {
-          blocked = true
-        }
+      issue: (...compileIssues) => {
+        compileIssues.forEach((issue) => {
+          const normalized = normalizeCompileIssue(issue)
+          pendingIssues.push(normalized)
+          if (normalized.severity !== 'warning') {
+            blocked = true
+          }
+        })
       },
       stop: () => {
         shouldStop = true
@@ -215,24 +229,24 @@ const compileMutationIntents = <
           kind: 'stop'
         }
       },
-      fail: (issue) => {
-        const normalized = normalizeCompileIssue(issue)
-        pendingIssues.push(normalized)
-        blocked = true
-        return {
-          kind: 'block',
-          issue: normalized
-        }
-      },
-      require: (value, issue) => {
-        if (value !== undefined) {
-          return value
-        }
-
-        controls.issue(issue)
-        return undefined
-      }
+      invalid: (message, details, path) => createBlockedControl({
+        code: 'invalid' as Code,
+        message,
+        details,
+        ...(path === undefined ? {} : { path })
+      }),
+      cancelled: (message, details, path) => createBlockedControl({
+        code: 'cancelled' as Code,
+        message,
+        details,
+        ...(path === undefined ? {} : { path })
+      }),
+      fail: createBlockedControl
     }
+    controls.reader = input.createReader(
+      () => workingDocument,
+      controls
+    )
 
     const result = handler(controls)
     if (isCompileControl(result)) {

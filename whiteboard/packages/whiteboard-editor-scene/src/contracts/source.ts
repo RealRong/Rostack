@@ -59,17 +59,12 @@ export interface EditorSceneSourceChange {
     delta: MutationDelta
     reset: boolean
   }
-  session?: {
-    tool?: true
-    selection?: true
+  editor?: {
+    delta: MutationDelta
     edit?: EditorSceneSourceEditChange
-    preview?: EditorSceneSourcePreviewChange
   }
-  interaction?: {
-    hover?: true
-    drag?: true
-    chrome?: true
-    editingEdge?: true
+  session?: {
+    preview?: EditorSceneSourcePreviewChange
   }
   view?: true
 }

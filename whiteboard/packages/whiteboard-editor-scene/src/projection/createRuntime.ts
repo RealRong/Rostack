@@ -33,6 +33,7 @@ export const createRuntime = (input: {
     : never) => {
     currentSource = input.source.get()
     const runtimeDelta = createSourceRuntimeInputDelta({
+      source: currentSource,
       change
     })
     lastResult = runtime.update(createSceneInput({

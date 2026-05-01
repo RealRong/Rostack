@@ -1,5 +1,11 @@
 import { store } from '@shared/core'
+import type { SelectionInput, SelectionTarget } from '@whiteboard/core/selection'
 import type { Viewport } from '@whiteboard/core/types'
+import {
+  EMPTY_HOVER_STATE,
+  isHoverStateEqual,
+  type HoverStore
+} from '@whiteboard/editor/input/hover/store'
 import type { Tool } from '@whiteboard/editor/types/tool'
 import type {
   BrushStylePatch,
@@ -10,39 +16,30 @@ import {
   DEFAULT_DRAW_BRUSH,
   hasDrawBrush
 } from '@whiteboard/editor/session/draw/model'
-import {
-  createDrawStateStore
-} from '@whiteboard/editor/session/draw/runtime'
-import {
-  createEditState,
-  type EditMutate,
-  type EditSession
+import type {
+  EditMutate,
+  EditSession
 } from '@whiteboard/editor/session/edit'
-import {
-  createSelectionState
-} from '@whiteboard/editor/session/selection'
-import {
-  createViewport,
-  type ViewportRuntime
+import type {
+  ViewportRuntime
 } from '@whiteboard/editor/session/viewport'
 import type { ActiveGesture } from '@whiteboard/editor/input/core/gesture'
 import type { InteractionMode } from '@whiteboard/editor/input/core/types'
-import type { HoverStore } from '@whiteboard/editor/input/hover/store'
 import type { PointerSample } from '@whiteboard/editor/types/input'
 import {
-  createEditorInputState,
-  type EditorInputStateController
-} from '@whiteboard/editor/session/interaction'
-import { createPreviewState } from '@whiteboard/editor/session/preview/state'
+  composeEditorInputPreviewState,
+  isEditorInputPreviewStateEqual
+} from '@whiteboard/editor/session/preview/state'
 import type {
   EditorInputPreviewState,
   EditorInputPreviewWrite
 } from '@whiteboard/editor/session/preview/types'
+import { createEditorStateRuntime } from '@whiteboard/editor/state-engine/runtime'
 
 export type EditorSessionState = {
   tool: store.ValueStore<Tool>
-  draw: ReturnType<typeof createDrawStateStore>['store']
-  selection: ReturnType<typeof createSelectionState>['source']
+  draw: store.ValueStore<DrawState>
+  selection: store.ValueStore<SelectionTarget>
   edit: store.ValueStore<EditSession>
 }
 
@@ -56,12 +53,10 @@ export type EditorSessionMutate = {
     patch: (patch: BrushStylePatch) => void
   }
   selection: {
-    replace: Parameters<ReturnType<typeof createSelectionState>['mutate']['replace']>[0] extends never
-      ? never
-      : (input: Parameters<ReturnType<typeof createSelectionState>['mutate']['replace']>[0]) => boolean
-    add: (input: Parameters<ReturnType<typeof createSelectionState>['mutate']['add']>[0]) => boolean
-    remove: (input: Parameters<ReturnType<typeof createSelectionState>['mutate']['remove']>[0]) => boolean
-    toggle: (input: Parameters<ReturnType<typeof createSelectionState>['mutate']['toggle']>[0]) => boolean
+    replace: (input: SelectionInput) => boolean
+    add: (input: SelectionInput) => boolean
+    remove: (input: SelectionInput) => boolean
+    toggle: (input: SelectionInput) => boolean
     clear: () => boolean
   }
   edit: Pick<EditMutate, 'set' | 'input' | 'caret' | 'composing' | 'clear'>
@@ -86,8 +81,11 @@ export type EditorSessionInteractionRead = {
 }
 
 export type EditorSessionInteractionWrite = {
-  setActive: EditorInputStateController['interaction']['setActive']
-  setGesture: EditorInputStateController['interaction']['setGesture']
+  setActive: (meta: Readonly<{
+    mode: Exclude<InteractionMode, 'idle'>
+    chrome?: boolean
+  }> | null) => void
+  setGesture: (gesture: ActiveGesture | null) => void
   setPointer: (sample: PointerSample | null) => void
   setSpace: (value: boolean) => void
   setHover: HoverStore['set']
@@ -98,6 +96,7 @@ export type EditorSessionInteractionWrite = {
 export type EditorSession = {
   state: EditorSessionState
   mutate: EditorSessionMutate
+  stateEngine: Pick<ReturnType<typeof createEditorStateRuntime>, 'engine' | 'commits'>
   commands: {
     selection: EditorSessionSelectionCommands
   }
@@ -113,6 +112,7 @@ export type EditorSession = {
   resetDocument: () => void
   resetInteraction: () => void
   reset: () => void
+  dispose: () => void
 }
 
 const resolveDrawBrush = (
@@ -155,17 +155,44 @@ export const createEditorSession = ({
   initialDrawState: DrawState
   initialViewport: Viewport
 }): EditorSession => {
-  const tool = store.createValueStore<Tool>(initialTool)
-  const draw = createDrawStateStore(initialDrawState)
-  const selection = createSelectionState()
-  const edit = createEditState()
-  const viewport = createViewport({
+  const stateRuntime = createEditorStateRuntime({
+    initialTool,
+    initialDrawState,
     initialViewport
   })
-  const interaction = createEditorInputState()
-  const previewState = createPreviewState({
-    gesture: interaction.state.gesture,
-    hover: interaction.state.hover
+  const active = store.createValueStore<{
+    mode: Exclude<InteractionMode, 'idle'>
+    chrome?: boolean
+  } | null>(null)
+  const gesture = store.createValueStore<ActiveGesture | null>(null)
+  const pointer = store.createValueStore<PointerSample | null>(null)
+  const mode = store.createDerivedStore<InteractionMode>({
+    get: () => stateRuntime.stores.interaction.store.get().mode,
+    isEqual: (left, right) => left === right
+  })
+  const chrome = store.createDerivedStore<boolean>({
+    get: () => stateRuntime.stores.interaction.store.get().chrome,
+    isEqual: (left, right) => left === right
+  })
+  const space = store.createDerivedStore<boolean>({
+    get: () => stateRuntime.stores.interaction.store.get().space,
+    isEqual: (left, right) => left === right
+  })
+  const hover = store.createDerivedStore({
+    get: () => stateRuntime.stores.interaction.store.get().hover,
+    isEqual: isHoverStateEqual
+  })
+  const busy = store.createDerivedStore<boolean>({
+    get: () => active.get() !== null,
+    isEqual: (left, right) => left === right
+  })
+  const previewState = store.createDerivedStore<EditorInputPreviewState>({
+    get: () => composeEditorInputPreviewState({
+      base: stateRuntime.stores.preview.store.get(),
+      gesture: gesture.get(),
+      hover: stateRuntime.stores.interaction.store.get().hover
+    }),
+    isEqual: isEditorInputPreviewStateEqual
   })
   const preview = {
     state: {
@@ -173,88 +200,98 @@ export const createEditorSession = ({
       subscribe: previewState.subscribe
     },
     write: {
-      set: previewState.set,
-      reset: previewState.reset
+      set: stateRuntime.mutate.preview.set,
+      reset: stateRuntime.mutate.preview.reset
+    }
+  }
+  const interactionRead: EditorSessionInteractionRead = {
+    mode,
+    busy,
+    chrome,
+    gesture,
+    pointer,
+    space,
+    hover: {
+      get: hover.get,
+      subscribe: hover.subscribe
     }
   }
 
   const state: EditorSessionState = {
-    tool,
-    draw: draw.store,
-    selection: selection.source,
-    edit: edit.source
+    tool: stateRuntime.state.tool,
+    draw: stateRuntime.state.draw,
+    selection: stateRuntime.state.selection,
+    edit: stateRuntime.state.edit
   }
 
   const mutate: EditorSessionMutate = {
-    tool: {
-      set: (nextTool) => {
-        tool.set(nextTool)
-      }
-    },
+    tool: stateRuntime.mutate.tool,
     draw: {
       set: (nextState) => {
-        draw.commands.set(nextState)
+        stateRuntime.mutate.draw.set(nextState)
       },
       slot: (slot) => {
-        draw.commands.slot(resolveDrawBrush(tool.get()), slot)
+        stateRuntime.mutate.draw.slot(resolveDrawBrush(state.tool.get()), slot)
       },
       patch: (patch) => {
-        const brush = resolveDrawBrush(tool.get())
-        const currentSlot = draw.store.get()[brush].slot
-        draw.commands.patch(brush, currentSlot, patch)
+        const brush = resolveDrawBrush(state.tool.get())
+        const currentSlot = state.draw.get()[brush].slot
+        stateRuntime.mutate.draw.patch(brush, currentSlot, patch)
       }
     },
-    selection: {
-      replace: selection.mutate.replace,
-      add: selection.mutate.add,
-      remove: selection.mutate.remove,
-      toggle: selection.mutate.toggle,
-      clear: selection.mutate.clear
-    },
-    edit: {
-      set: edit.mutate.set,
-      input: edit.mutate.input,
-      caret: edit.mutate.caret,
-      composing: edit.mutate.composing,
-      clear: edit.mutate.clear
-    }
+    selection: stateRuntime.mutate.selection,
+    edit: stateRuntime.mutate.edit
   }
   const commands = {
     selection: createSelectionCommands(mutate)
   }
 
   const resetDocument = () => {
-    edit.mutate.clear()
-    selection.mutate.clear()
+    mutate.edit.clear()
+    mutate.selection.clear()
   }
 
   const resetInteraction = () => {
-    interaction.reset()
+    active.set(null)
+    gesture.set(null)
+    pointer.set(null)
+    stateRuntime.mutate.interaction.reset()
     preview.write.reset()
   }
 
   return {
     state,
     mutate,
+    stateEngine: {
+      engine: stateRuntime.engine,
+      commits: stateRuntime.commits
+    },
     commands,
-    viewport,
+    viewport: stateRuntime.viewport,
     interaction: {
-      read: interaction.state,
+      read: interactionRead,
       write: {
-        setActive: interaction.interaction.setActive,
-        setGesture: interaction.interaction.setGesture,
+        setActive: (meta) => {
+          active.set(meta)
+          stateRuntime.mutate.interaction.setActive(meta)
+        },
+        setGesture: (nextGesture) => {
+          gesture.set(nextGesture)
+        },
         setPointer: (sample) => {
           if (sample) {
-            interaction.pointer.set(sample)
+            pointer.set(sample)
             return
           }
 
-          interaction.pointer.clear()
+          pointer.set(null)
         },
-        setSpace: interaction.space.set,
-        setHover: interaction.hover.set,
-        clearHover: interaction.hover.reset,
-        reset: interaction.reset
+        setSpace: stateRuntime.mutate.interaction.setSpace,
+        setHover: stateRuntime.mutate.interaction.setHover,
+        clearHover: () => {
+          stateRuntime.mutate.interaction.setHover(EMPTY_HOVER_STATE)
+        },
+        reset: resetInteraction
       }
     },
     preview,
@@ -263,6 +300,9 @@ export const createEditorSession = ({
     reset: () => {
       resetDocument()
       resetInteraction()
+    },
+    dispose: () => {
+      stateRuntime.dispose()
     }
   }
 }

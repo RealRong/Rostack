@@ -32,7 +32,7 @@ import {
   EMPTY_NODE_PATCHES
 } from '@whiteboard/editor/session/preview/node'
 
-const normalizeDrawFeedbackState = (
+export const normalizeDrawFeedbackState = (
   state: EditorInputPreviewState['draw']
 ): EditorInputPreviewState['draw'] => ({
   preview: state.preview ?? null,
@@ -41,7 +41,7 @@ const normalizeDrawFeedbackState = (
     : EMPTY_NODE_HIDDEN
 })
 
-const EMPTY_PREVIEW_STATE: EditorInputPreviewState = {
+export const EMPTY_PREVIEW_STATE: EditorInputPreviewState = {
   node: EMPTY_NODE_FEEDBACK,
   edge: EMPTY_EDGE_FEEDBACK,
   draw: {
@@ -52,7 +52,7 @@ const EMPTY_PREVIEW_STATE: EditorInputPreviewState = {
   mindmap: {}
 }
 
-const normalizeFeedbackState = (
+export const normalizeEditorInputPreviewState = (
   state: EditorInputPreviewState
 ): EditorInputPreviewState => {
   const node = normalizeNodeFeedbackState(state.node)
@@ -83,7 +83,7 @@ const normalizeFeedbackState = (
   }
 }
 
-const isFeedbackStateEqual = (
+export const isEditorInputPreviewStateEqual = (
   left: EditorInputPreviewState,
   right: EditorInputPreviewState
 ) => (
@@ -114,7 +114,7 @@ const mergeMindmapPreview = (
   }
 }
 
-const composeFeedbackState = ({
+export const composeEditorInputPreviewState = ({
   base,
   gesture,
   hover
@@ -138,7 +138,7 @@ const composeFeedbackState = ({
     guide: draft?.edgeGuide ?? hover.edgeGuide
   })
 
-  return normalizeFeedbackState({
+  return normalizeEditorInputPreviewState({
     ...base,
     draw: normalizeDrawFeedbackState({
       preview: draft?.drawPreview ?? null,
@@ -163,15 +163,15 @@ export const createPreviewState = ({
   hover: Pick<store.ReadStore<HoverState>, 'get' | 'subscribe'>
 }): Pick<store.ReadStore<EditorInputPreviewState>, 'get' | 'subscribe'> & EditorInputPreviewWrite => {
   const baseState = store.createValueStore<EditorInputPreviewState>(EMPTY_PREVIEW_STATE, {
-    isEqual: isFeedbackStateEqual
+    isEqual: isEditorInputPreviewStateEqual
   })
   const composedState = store.createDerivedStore<EditorInputPreviewState>({
-    get: () => composeFeedbackState({
+    get: () => composeEditorInputPreviewState({
       base: store.read(baseState),
       gesture: store.read(gesture),
       hover: store.read(hover)
     }),
-    isEqual: isFeedbackStateEqual
+    isEqual: isEditorInputPreviewStateEqual
   })
   let current = EMPTY_PREVIEW_STATE
 
@@ -182,7 +182,7 @@ export const createPreviewState = ({
       const resolved = typeof next === 'function'
         ? next(current)
         : next
-      current = normalizeFeedbackState(resolved)
+      current = normalizeEditorInputPreviewState(resolved)
       baseState.set(current)
     },
     reset: () => {

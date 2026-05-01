@@ -116,23 +116,53 @@ export const createBootstrapRuntimeInputDelta = (
 }
 
 export const createSourceRuntimeInputDelta = (input: {
+  source: EditorSceneSourceSnapshot
   change: EditorSceneSourceChange
 }): EditorSceneRuntimeDelta => {
   const delta = createEmptyEditorSceneRuntimeDelta()
 
-  if (input.change.session?.tool) {
-    delta.session.tool = true
-  }
-  if (input.change.session?.selection) {
-    delta.session.selection = true
-  }
-  const editChange = input.change.session?.edit
-  if (editChange) {
-    delta.session.edit = true
-    if (editChange.touchedDraftEdgeIds.length > 0) {
-      delta.session.draft.edges = createTouchedIdDelta(editChange.touchedDraftEdgeIds)
+  const editorDelta = input.change.editor?.delta
+  if (editorDelta) {
+    if (editorDelta.has('tool.value')) {
+      delta.session.tool = true
+    }
+    if (editorDelta.has('selection.value')) {
+      delta.session.selection = true
+    }
+    if (editorDelta.has('edit.value')) {
+      delta.session.edit = true
+      const touchedDraftEdgeIds = input.change.editor?.edit?.touchedDraftEdgeIds
+        ?? [...readEditedEdgeIds(input.source.session.edit)]
+      if (touchedDraftEdgeIds.length > 0) {
+        delta.session.draft.edges = createTouchedIdDelta(touchedDraftEdgeIds)
+      }
+    }
+    if (editorDelta.has('interaction.value')) {
+      delta.session.interaction = true
+      delta.session.hover = true
+    }
+    if (editorDelta.has('preview.value')) {
+      const previewNodeIds = readPreviewNodeIds(input.source.session.preview)
+      const previewEdgeIds = readPreviewEdgeIds(input.source.session.preview)
+      const previewMindmapIds = readPreviewMindmapIds(input.source.session.preview.mindmap)
+
+      if (previewNodeIds.size > 0) {
+        delta.session.preview.nodes = createTouchedIdDelta(previewNodeIds)
+      }
+      if (previewEdgeIds.size > 0) {
+        delta.session.preview.edges = createTouchedIdDelta(previewEdgeIds)
+      }
+      if (previewMindmapIds.size > 0) {
+        delta.session.preview.mindmaps = createTouchedIdDelta(previewMindmapIds)
+      }
+
+      delta.session.preview.marquee = true
+      delta.session.preview.guides = true
+      delta.session.preview.draw = true
+      delta.session.preview.edgeGuide = true
     }
   }
+
   const previewChange = input.change.session?.preview
   if (previewChange) {
     if (previewChange.touchedNodeIds.length > 0) {
@@ -150,14 +180,6 @@ export const createSourceRuntimeInputDelta = (input: {
     delta.session.preview.draw = previewChange.draw
     delta.session.preview.edgeGuide = previewChange.edgeGuide
     delta.session.hover = delta.session.hover || previewChange.hover
-  }
-
-  if (input.change.interaction?.hover) {
-    delta.session.hover = true
-  }
-
-  if (input.change.interaction) {
-    delta.session.interaction = true
   }
 
   return delta

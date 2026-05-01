@@ -136,6 +136,7 @@ export const createEditor = (input: {
       host.cancel()
       sceneRuntime.dispose()
       sceneBinding.dispose()
+      session.dispose()
       session.reset()
     }
   }

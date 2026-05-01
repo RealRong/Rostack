@@ -47,7 +47,7 @@ export type HoverStore = Pick<coreStore.ReadStore<HoverState>, 'get' | 'subscrib
   reset: () => void
 }
 
-const EMPTY_HOVER_STATE: HoverState = {}
+export const EMPTY_HOVER_STATE: HoverState = {}
 
 export const isHoverTargetEqual = (
   left: HoverTarget | undefined,
@@ -107,7 +107,7 @@ export const toHoverTargetFromPick = (
   }
 }
 
-const isHoverStateEqual = (
+export const isHoverStateEqual = (
   left: HoverState,
   right: HoverState
 ): boolean => (
@@ -117,6 +117,26 @@ const isHoverStateEqual = (
     right.edgeGuide ?? EMPTY_EDGE_GUIDE
   )
 )
+
+export const normalizeHoverState = (
+  value: HoverState
+): HoverState => (
+  value.target === undefined
+  && value.edgeGuide === undefined
+)
+  ? EMPTY_HOVER_STATE
+  : {
+      ...(value.target === undefined
+        ? {}
+        : {
+            target: value.target
+          }),
+      ...(value.edgeGuide === undefined
+        ? {}
+        : {
+            edgeGuide: value.edgeGuide
+          })
+    }
 
 export const createHoverStore = (): HoverStore => {
   const hoverStore = coreStore.createValueStore<HoverState>(EMPTY_HOVER_STATE, {
@@ -128,9 +148,9 @@ export const createHoverStore = (): HoverStore => {
     get: hoverStore.get,
     subscribe: hoverStore.subscribe,
     set: (next) => {
-      current = typeof next === 'function'
+      current = normalizeHoverState(typeof next === 'function'
         ? next(current)
-        : next
+        : next)
       hoverStore.set(current)
     },
     reset: () => {

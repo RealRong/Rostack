@@ -13,7 +13,6 @@ import type { MutationDelta } from '@shared/mutation'
 import {
   type Result
 } from '../src'
-import type { Input as EditorSceneInput } from '../src/contracts/editor'
 import {
   createEditorRuntimeDelta,
   createMutationDelta,
@@ -25,7 +24,6 @@ import {
 } from '../src/testing/runtime'
 import {
   createEmptyInput,
-  toSceneUpdateInput
 } from '../src/testing/input'
 import type { SceneUpdateInput } from '../src/contracts/editor'
 import {
@@ -33,18 +31,18 @@ import {
 } from '../src/projection/createProjectionRuntime'
 
 type RuntimeInputOptions = {
-  edit?: EditorSceneInput['runtime']['editor']['state']['edit']
+  edit?: SceneUpdateInput['editor']['snapshot']['state']['edit']
   nodeMeasures?: ReadonlyMap<NodeId, Size>
   edgeLabelMeasures?: ReadonlyMap<EdgeId, ReadonlyMap<string, Size>>
-  selection?: EditorSceneInput['runtime']['editor']['interaction']['selection']
-  hover?: EditorSceneInput['runtime']['editor']['interaction']['hover']
-  draw?: EditorSceneInput['runtime']['editor']['state']['preview']['draw']
-  edgeGuide?: EditorSceneInput['runtime']['editor']['state']['preview']['edgeGuide']
-  marquee?: EditorSceneInput['runtime']['editor']['state']['preview']['selection']['marquee']
+  selection?: SceneUpdateInput['editor']['snapshot']['state']['selection']
+  hover?: SceneUpdateInput['editor']['snapshot']['overlay']['hover']
+  draw?: SceneUpdateInput['editor']['snapshot']['overlay']['preview']['draw']
+  edgeGuide?: SceneUpdateInput['editor']['snapshot']['overlay']['preview']['edgeGuide']
+  marquee?: SceneUpdateInput['editor']['snapshot']['overlay']['preview']['selection']['marquee']
   guides?: readonly Guide[]
-  mindmapPreview?: EditorSceneInput['runtime']['editor']['state']['preview']['mindmap']
-  delta?: EditorSceneInput['runtime']['editor']['delta']
-  documentDelta?: EditorSceneInput['delta'] | MutationDelta
+  mindmapPreview?: SceneUpdateInput['editor']['snapshot']['overlay']['preview']['mindmap']
+  delta?: SceneUpdateInput['editor']['delta']
+  documentDelta?: SceneUpdateInput['document']['delta'] | MutationDelta
 }
 
 let currentMeasureState: EditorGraphLayoutState = {}
@@ -110,25 +108,25 @@ const createInput = (
 
   const value = createEmptyInput()
   value.document.rev = engine.rev()
-  value.document.doc = engine.doc()
-  value.runtime.editor.state.edit = options.edit ?? null
-  value.runtime.editor.state.preview.draw = options.draw ?? null
-  value.runtime.editor.state.preview.edgeGuide = options.edgeGuide
-  value.runtime.editor.state.preview.selection.marquee = options.marquee
-  value.runtime.editor.state.preview.selection.guides = options.guides ?? []
-  value.runtime.editor.state.preview.mindmap = options.mindmapPreview ?? null
-  value.runtime.editor.interaction.selection = options.selection ?? {
+  value.document.snapshot = engine.doc()
+  value.editor.snapshot.state.edit = options.edit ?? null
+  value.editor.snapshot.overlay.preview.draw = options.draw ?? null
+  value.editor.snapshot.overlay.preview.edgeGuide = options.edgeGuide
+  value.editor.snapshot.overlay.preview.selection.marquee = options.marquee
+  value.editor.snapshot.overlay.preview.selection.guides = options.guides ?? []
+  value.editor.snapshot.overlay.preview.mindmap = options.mindmapPreview ?? null
+  value.editor.snapshot.state.selection = options.selection ?? {
     nodeIds: [],
     edgeIds: []
   }
-  value.runtime.editor.interaction.hover = options.hover ?? {
+  value.editor.snapshot.overlay.hover = options.hover ?? {
     kind: 'none'
   }
-  value.runtime.editor.delta = options.delta ?? createEditorRuntimeDelta()
-  value.delta = createWhiteboardMutationDelta(
+  value.editor.delta = options.delta ?? createEditorRuntimeDelta()
+  value.document.delta = createWhiteboardMutationDelta(
     options.documentDelta ?? createMutationDelta()
   )
-  return toSceneUpdateInput(value)
+  return value
 }
 
 const DOCUMENT_DELTA = createMutationDelta({

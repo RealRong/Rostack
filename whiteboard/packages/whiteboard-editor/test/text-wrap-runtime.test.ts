@@ -8,6 +8,10 @@ import type {
 } from '../src'
 import { createEditorTestLayout } from './support'
 
+const flushEditor = async (): Promise<void> => {
+  await Promise.resolve()
+}
+
 const createNodes = (): NodeSpec => ({
   text: {
     meta: {
@@ -258,7 +262,7 @@ const createStickyEditor = () => {
 }
 
 describe('text wrap runtime', () => {
-  it('projects auto-width text rect from live edit layout before commit', () => {
+  it('projects auto-width text rect from live edit layout before commit', async () => {
     const editor = createAutoWidthTextEditor()
 
     expect(editor.scene.nodes.get('text-1')?.geometry.rect).toMatchObject({
@@ -268,6 +272,7 @@ describe('text wrap runtime', () => {
 
     editor.write.edit.startNode('text-1', 'text')
     editor.write.edit.input('hello world!!!')
+    await flushEditor()
 
     expect(editor.scene.editor.edit.get()).toMatchObject({
       kind: 'node',
@@ -283,7 +288,7 @@ describe('text wrap runtime', () => {
     })
   })
 
-  it('preserves wrap width when entering edit after a text patch commit', () => {
+  it('preserves wrap width when entering edit after a text patch commit', async () => {
     const editor = createTextEditor()
 
     editor.write.node.patch(['text-1'], {
@@ -298,6 +303,7 @@ describe('text wrap runtime', () => {
         'data.wrapWidth': 180
       }
     })
+    await flushEditor()
 
     expect(editor.scene.document.snapshot().nodes['text-1']?.data).toMatchObject({
       widthMode: 'wrap',
@@ -310,6 +316,7 @@ describe('text wrap runtime', () => {
 
     editor.write.edit.startNode('text-1', 'text')
     editor.write.edit.input('this stays wrapped at the committed width')
+    await flushEditor()
 
     expect(editor.scene.editor.edit.get()).toMatchObject({
       kind: 'node',

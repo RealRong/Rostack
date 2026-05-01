@@ -6,6 +6,10 @@ import { editor as editorApi } from '../src'
 import type { NodeSpec, PointerInput } from '../src'
 import { createEditorTestLayout } from './support'
 
+const flushEditor = async (): Promise<void> => {
+  await Promise.resolve()
+}
+
 const nodes: NodeSpec = {
   text: {
     meta: {
@@ -79,7 +83,7 @@ const createPointerInput = (
 })
 
 describe('mindmap drag gesture runtime', () => {
-  it('publishes live root drag geometry before commit', () => {
+  it('publishes live root drag geometry before commit', async () => {
     const layoutService = createEditorTestLayout()
     const engine = engineApi.create({
       document: documentApi.create('doc_mindmap_drag_gesture_runtime'),
@@ -145,6 +149,7 @@ describe('mindmap drag gesture runtime', () => {
           field: 'text'
         }
       }))
+      await flushEditor()
 
       const liveRoot = editor.scene.nodes.get(created.data.rootId)?.geometry.rect
       const liveScene = editor.scene.mindmaps.get(created.data.mindmapId)?.tree.bbox

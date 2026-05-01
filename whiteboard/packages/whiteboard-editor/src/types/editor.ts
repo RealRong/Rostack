@@ -30,6 +30,7 @@ import type {
   EdgeGuide
 } from '@whiteboard/editor/session/preview/types'
 import type { EditorCommand } from '@whiteboard/editor/state-engine/intents'
+import type { EditorDispatchInput } from '@whiteboard/editor/state-engine/intents'
 import type { EditorInteractionStateValue } from '@whiteboard/editor/state-engine/document'
 import type {
   ContextMenuInput,
@@ -319,7 +320,7 @@ export type Editor = {
   history: HistoryPort<IntentResult>
   input: EditorInputHost
   write: EditorWrite
-  dispatch: (command: EditorCommand | readonly EditorCommand[]) => void
+  dispatch: (command: EditorDispatchInput) => void
   dispose: () => void
 }
 

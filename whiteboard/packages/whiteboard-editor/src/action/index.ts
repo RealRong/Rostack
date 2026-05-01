@@ -26,7 +26,10 @@ import type {
   PreviewInput
 } from '@whiteboard/editor-scene'
 import { json } from '@shared/core'
-import type { EditorCommand } from '@whiteboard/editor/state-engine/intents'
+import type {
+  EditorCommand,
+  EditorDispatchInput
+} from '@whiteboard/editor/state-engine/intents'
 import {
   DEFAULT_DRAW_BRUSH,
   hasDrawBrush
@@ -64,7 +67,7 @@ export type CreateEditorActionsApiDeps = {
     preview: {
       get: () => PreviewInput
     }
-    dispatch: (command: EditorCommand | readonly EditorCommand[]) => void
+    dispatch: (command: EditorDispatchInput) => void
     viewport: EditorStateRuntime['viewport']
   }
   tasks: EditorTaskRuntime

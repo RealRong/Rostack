@@ -8,6 +8,7 @@ import type {
 } from '@whiteboard/core/types'
 import type { Revision } from '@shared/projection'
 import { family } from '@shared/core'
+import { DEFAULT_DRAW_STATE } from '../../../whiteboard-editor/src/session/draw/state'
 import {
   createDeltaState,
   createGraphPhaseDelta,
@@ -21,6 +22,7 @@ import type {
   EdgeStateView,
   EdgeUiView,
   EdgeView,
+  EditorSnapshot,
   EditorSceneLayout,
   GroupView,
   MindmapView,
@@ -70,6 +72,42 @@ export const createWorking = (input: {
     endpointHandles: [],
     routePoints: []
   }
+  const editorSnapshot: EditorSnapshot = {
+    state: {
+      tool: {
+        type: 'select'
+      },
+      draw: DEFAULT_DRAW_STATE,
+      selection: {
+        nodeIds: [],
+        edgeIds: []
+      },
+      edit: null,
+      interaction: {
+        mode: 'idle',
+        chrome: false,
+        space: false
+      },
+      viewport: {
+        center: { x: 0, y: 0 },
+        zoom: 1
+      }
+    },
+    overlay: {
+      hover: {
+        kind: 'none'
+      },
+      preview: {
+        nodes: {},
+        edges: {},
+        draw: null,
+        selection: {
+          guides: []
+        },
+        mindmap: null
+      }
+    }
+  }
 
   return {
     layout: input.layout,
@@ -86,32 +124,10 @@ export const createWorking = (input: {
     },
     runtime: {
       editor: {
-        state: {
-          edit: null,
-          draft: {
-            edges: new Map()
-          },
-          preview: {
-            nodes: {},
-            edges: {},
-            draw: null,
-            selection: {
-              guides: []
-            },
-            mindmap: null
-          },
-          tool: {
-            type: 'select'
-          }
-        },
+        snapshot: editorSnapshot,
         interaction: {
-          selection: {
-            nodeIds: [],
-            edgeIds: []
-          },
-          hover: {
-            kind: 'none'
-          },
+          selection: editorSnapshot.state.selection,
+          hover: editorSnapshot.overlay.hover,
           drag: {
             kind: 'idle'
           },

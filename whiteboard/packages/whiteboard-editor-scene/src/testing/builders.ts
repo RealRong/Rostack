@@ -12,7 +12,7 @@ import type {
   NodeId,
   Size
 } from '@whiteboard/core/types'
-import type { Input } from '../contracts/editor'
+import type { EditorDelta } from '../contracts/editor'
 import { createEmptyRuntimeInputDelta } from './input'
 
 const EMPTY_MUTATION_CHANGES = Object.freeze(
@@ -26,14 +26,19 @@ export type EditorRuntimeDeltaFlags = Partial<{
 
 export const createEditorRuntimeDelta = (
   input: EditorRuntimeDeltaFlags = {}
-): Input['runtime']['editor']['delta'] => {
+): EditorDelta => {
   const delta = createEmptyRuntimeInputDelta()
 
   if (input.graph) {
-    delta.preview.nodes = {
-      added: new Set(),
-      updated: new Set(['__graph__']),
-      removed: new Set()
+    delta.preview = {
+      touchedNodeIds: ['__graph__' as NodeId],
+      touchedEdgeIds: [],
+      touchedMindmapIds: [],
+      marquee: false,
+      guides: false,
+      draw: false,
+      edgeGuide: false,
+      hover: false
     }
   }
   if (input.ui) {

@@ -24,7 +24,7 @@ import { reconcileEntity } from '../reconcile'
 
 const readEdgePatch = (
   entry: GraphEdgeEntry
-) => entry.preview?.patch ?? entry.draft?.patch
+) => entry.preview?.patch
 
 const toEdgeNodeSnapshot = (
   nodeView: NodeView | undefined
@@ -208,8 +208,7 @@ export const readEdgeEntry = (
       edge,
       nodes: indexes.edgeNodesByEdge.get(edgeId) ?? {}
     },
-    draft: input.runtime.editor.state.draft.edges.get(edgeId),
-    preview: input.runtime.editor.state.preview.edges[edgeId]
+    preview: input.editor.snapshot.overlay.preview.edges[edgeId]
   }
 }
 
@@ -300,7 +299,7 @@ export const patchEdge = (input: {
         nodes: input.working.graph.nodes,
         nodeSnapshotCache: input.nodeSnapshotCache,
         layout: input.working.layout,
-        edit: input.input.runtime.editor.state.edit
+        edit: input.input.editor.snapshot.state.edit
       })
     : undefined
 

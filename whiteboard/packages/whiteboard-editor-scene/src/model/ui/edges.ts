@@ -29,12 +29,11 @@ const buildCurrentEdgeUiView = (input: {
         edge: view.base.edge,
         nodes: view.base.nodes
       },
-      draft: input.context.current.runtime.editor.state.draft.edges.get(input.edgeId),
-      preview: input.context.current.runtime.editor.state.preview.edges[input.edgeId]
+      preview: input.context.current.editor.snapshot.overlay.preview.edges[input.edgeId]
     },
     view,
-    edit: input.context.current.runtime.editor.state.edit,
-    selection: input.context.current.runtime.editor.interaction.selection
+    edit: input.context.current.editor.snapshot.state.edit,
+    selection: input.context.working.runtime.editor.interaction.selection
   })
 
   return input.previous && isEdgeUiViewEqual(input.previous, next)

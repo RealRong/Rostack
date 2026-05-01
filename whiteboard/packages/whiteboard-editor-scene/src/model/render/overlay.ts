@@ -81,7 +81,7 @@ const readNodeLocked = (
 ): boolean => Boolean(context.working.graph.nodes.get(nodeId)?.base.node.locked)
 
 const readSelectedEdgeId = (
-  selection: RenderContext['current']['runtime']['editor']['interaction']['selection']
+  selection: RenderContext['working']['runtime']['editor']['interaction']['selection']
 ): EdgeId | undefined => (
   selection.nodeIds.length === 0
   && selection.edgeIds.length === 1
@@ -160,15 +160,15 @@ const resolveRenderEdgeCapability = (input: {
 const buildOverlayView = (
   context: RenderContext
 ): EdgeOverlayView => {
-  const previewPath = context.current.runtime.editor.state.preview.edgeGuide?.path
+  const previewPath = context.current.editor.snapshot.overlay.preview.edgeGuide?.path
     ? {
-        svgPath: context.current.runtime.editor.state.preview.edgeGuide.path.svgPath,
+        svgPath: context.current.editor.snapshot.overlay.preview.edgeGuide.path.svgPath,
         style: edgeApi.render.staticStyle(
-          context.current.runtime.editor.state.preview.edgeGuide.path.style
+          context.current.editor.snapshot.overlay.preview.edgeGuide.path.style
         )
       }
     : undefined
-  const connect = context.current.runtime.editor.state.preview.edgeGuide?.connect
+  const connect = context.current.editor.snapshot.overlay.preview.edgeGuide?.connect
   const snapPoint = connect
     && (
       connect.resolution.mode === 'outline'
@@ -177,7 +177,7 @@ const buildOverlayView = (
     ? connect.resolution.pointWorld
     : undefined
 
-  const selectedEdgeId = readSelectedEdgeId(context.current.runtime.editor.interaction.selection)
+  const selectedEdgeId = readSelectedEdgeId(context.working.runtime.editor.interaction.selection)
   if (!selectedEdgeId) {
     return {
       previewPath,
@@ -204,12 +204,12 @@ const buildOverlayView = (
     context
   })
   const editingThisSelectedEdge =
-    context.current.runtime.editor.state.edit?.kind === 'edge-label'
-    && context.current.runtime.editor.state.edit.edgeId === selectedEdgeId
+    context.current.editor.snapshot.state.edit?.kind === 'edge-label'
+    && context.current.editor.snapshot.state.edit.edgeId === selectedEdgeId
   const showEditHandles =
-    context.current.runtime.editor.state.tool.type === 'select'
-    && context.current.runtime.editor.interaction.chrome
-    && !context.current.runtime.editor.interaction.editingEdge
+    context.current.editor.snapshot.state.tool.type === 'select'
+    && context.working.runtime.editor.interaction.chrome
+    && !context.working.runtime.editor.interaction.editingEdge
     && !editingThisSelectedEdge
 
   return {

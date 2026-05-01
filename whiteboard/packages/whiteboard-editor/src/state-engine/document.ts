@@ -49,14 +49,9 @@ export interface EditorStableState {
   viewport: Viewport
 }
 
-export interface EditorOverlayPreviewState {
-  base: PreviewInput
-  transient: PreviewInput
-}
-
 export interface EditorOverlayState {
   hover: HoverState
-  preview: EditorOverlayPreviewState
+  preview: PreviewInput
 }
 
 export interface EditorStateDocument {
@@ -282,26 +277,11 @@ export const normalizeEditorStableState = (
   viewport: normalizeViewportValue(value.viewport)
 })
 
-export const normalizeEditorOverlayPreviewState = (
-  value: EditorOverlayPreviewState
-): EditorOverlayPreviewState => ({
-  base: normalizeEditorPreviewState(value.base),
-  transient: normalizeEditorPreviewState(value.transient)
-})
-
-export const isEditorOverlayPreviewStateEqual = (
-  left: EditorOverlayPreviewState,
-  right: EditorOverlayPreviewState
-): boolean => (
-  isEditorPreviewStateEqual(left.base, right.base)
-  && isEditorPreviewStateEqual(left.transient, right.transient)
-)
-
 export const normalizeEditorOverlayState = (
   value: EditorOverlayState
 ): EditorOverlayState => ({
   hover: normalizeHoverState(value.hover),
-  preview: normalizeEditorOverlayPreviewState(value.preview)
+  preview: normalizeEditorPreviewState(value.preview)
 })
 
 export const isEditorOverlayStateEqual = (
@@ -309,7 +289,7 @@ export const isEditorOverlayStateEqual = (
   right: EditorOverlayState
 ): boolean => (
   isHoverStateEqual(left.hover, right.hover)
-  && isEditorOverlayPreviewStateEqual(left.preview, right.preview)
+  && isEditorPreviewStateEqual(left.preview, right.preview)
 )
 
 export const buildEditorStateDocument = (input: {
@@ -319,8 +299,7 @@ export const buildEditorStateDocument = (input: {
   edit?: EditSession
   interaction?: EditorStableInteractionState
   hover?: HoverState
-  previewBase?: PreviewInput
-  previewTransient?: PreviewInput
+  preview?: PreviewInput
   viewport: Viewport
 }): EditorStateDocument => normalizeEditorStateDocument({
   state: {
@@ -337,10 +316,7 @@ export const buildEditorStateDocument = (input: {
   },
   overlay: {
     hover: input.hover ?? EMPTY_HOVER_STATE,
-    preview: {
-      base: input.previewBase ?? EMPTY_PREVIEW_STATE,
-      transient: input.previewTransient ?? EMPTY_PREVIEW_STATE
-    }
+    preview: input.preview ?? EMPTY_PREVIEW_STATE
   }
 })
 

@@ -47,9 +47,9 @@ const buildActiveView = (input: {
     style: edgeApi.render.staticStyle(edge.base.edge.style),
     box: edge.box,
     state: {
-      hovered: input.context.current.runtime.editor.interaction.hover.kind === 'edge'
-        && input.context.current.runtime.editor.interaction.hover.edgeId === input.edgeId,
-      selected: input.context.current.runtime.editor.interaction.selection.edgeIds.includes(input.edgeId),
+      hovered: input.context.working.runtime.editor.interaction.hover.kind === 'edge'
+        && input.context.working.runtime.editor.interaction.hover.edgeId === input.edgeId,
+      selected: input.context.working.runtime.editor.interaction.selection.edgeIds.includes(input.edgeId),
       editing: input.context.working.ui.edges.get(input.edgeId)?.editingLabelId !== undefined
     }
   }

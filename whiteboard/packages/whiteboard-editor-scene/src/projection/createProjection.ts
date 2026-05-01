@@ -8,6 +8,7 @@ import type {
 } from '@shared/projection/createProjection'
 import type {
   Input,
+  InteractionInput,
   NodeCapabilityInput,
   SceneViewInput,
   EditorSceneLayout
@@ -41,6 +42,7 @@ import {
   createProjectionRead,
   type ProjectionScene
 } from './query'
+import { createRuntimeFacts } from './runtimeFacts'
 import { buildEditorSceneCapture } from './capture'
 import { editorSceneStores } from './stores'
 import { createWorking } from './state'
@@ -100,7 +102,100 @@ const toDocumentSnapshot = (
   input: Input['document']
 ) => ({
   revision: input.rev,
-  document: input.doc
+  document: input.snapshot
+})
+
+const isEdgeInteractionMode = (
+  mode: Input['editor']['snapshot']['state']['interaction']['mode']
+): boolean => (
+  mode === 'edge-drag'
+  || mode === 'edge-label'
+  || mode === 'edge-connect'
+  || mode === 'edge-route'
+)
+
+const readDragState = (
+  snapshot: Input['editor']['snapshot']
+): InteractionInput['drag'] => {
+  const interaction = snapshot.state.interaction
+  const selection = snapshot.state.selection
+  const edit = snapshot.state.edit
+  const preview = snapshot.overlay.preview
+
+  switch (interaction.mode) {
+    case 'node-drag':
+      return {
+        kind: 'selection-move',
+        nodeIds: selection.nodeIds,
+        edgeIds: selection.edgeIds
+      }
+    case 'marquee':
+      return preview.selection.marquee
+        ? {
+            kind: 'selection-marquee',
+            worldRect: preview.selection.marquee.worldRect,
+            match: preview.selection.marquee.match
+          }
+        : {
+            kind: 'idle'
+          }
+    case 'node-transform':
+      return {
+        kind: 'selection-transform',
+        nodeIds: selection.nodeIds
+      }
+    case 'edge-label':
+      return edit?.kind === 'edge-label'
+        ? {
+            kind: 'edge-label',
+            edgeId: edit.edgeId,
+            labelId: edit.labelId
+          }
+        : {
+            kind: 'idle'
+          }
+    case 'edge-route':
+      return edit?.kind === 'edge-label'
+        ? {
+            kind: 'edge-route',
+            edgeId: edit.edgeId
+          }
+        : {
+            kind: 'idle'
+          }
+    case 'draw':
+      return {
+        kind: 'draw'
+      }
+    case 'mindmap-drag': {
+      const subtreeMove = preview.mindmap?.subtreeMove
+      if (!subtreeMove) {
+        return {
+          kind: 'idle'
+        }
+      }
+
+      return {
+        kind: 'mindmap-drag',
+        mindmapId: subtreeMove.mindmapId,
+        nodeId: subtreeMove.nodeId
+      }
+    }
+    default:
+      return {
+        kind: 'idle'
+      }
+  }
+}
+
+const createInteractionInput = (
+  snapshot: Input['editor']['snapshot']
+): InteractionInput => ({
+  selection: snapshot.state.selection,
+  hover: snapshot.overlay.hover,
+  drag: readDragState(snapshot),
+  chrome: snapshot.state.interaction.chrome,
+  editingEdge: isEdgeInteractionMode(snapshot.state.interaction.mode)
 })
 
 export const createProjection = (input: {
@@ -139,9 +234,21 @@ export const createProjection = (input: {
 
       dirty.previousDocument = ctx.read.document.snapshot()
       resetDocumentPhaseDelta(ctx.state)
-      ctx.state.runtime = ctx.input.runtime
+      ctx.state.runtime.editor.snapshot = ctx.input.editor.snapshot
+      ctx.state.runtime.editor.interaction = createInteractionInput(
+        ctx.input.editor.snapshot
+      )
+      ctx.state.runtime.editor.view = input.view()
+      ctx.state.runtime.editor.facts = createRuntimeFacts({
+        snapshot: ctx.input.editor.snapshot,
+        interaction: ctx.state.runtime.editor.interaction,
+        delta: ctx.input.editor.delta
+      })
       ctx.state.facts = createEmptyEditorSceneFacts()
-      ctx.state.facts.input = createInputFacts(ctx.input)
+      ctx.state.facts.input = createInputFacts({
+        current: ctx.input,
+        runtimeFacts: ctx.state.runtime.editor.facts
+      })
 
       patchDocumentState({
         current: ctx.input,

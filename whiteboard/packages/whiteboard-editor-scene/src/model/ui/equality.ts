@@ -97,6 +97,8 @@ const isEditSessionEqual = (
         && left.composing === right.composing
         && isEditCaretEqual(left.caret, right.caret)
       )
+    default:
+      return false
   }
 }
 
@@ -328,8 +330,8 @@ export const buildEdgeUiView = (input: {
 
   return {
     selected: input.selection.edgeIds.includes(input.edgeId),
-    patched: Boolean(input.entry.preview?.patch ?? input.entry.draft?.patch),
-    activeRouteIndex: input.entry.preview?.activeRouteIndex ?? input.entry.draft?.activeRouteIndex,
+    patched: Boolean(input.entry.preview?.patch),
+    activeRouteIndex: input.entry.preview?.activeRouteIndex,
     editingLabelId: input.edit?.kind === 'edge-label'
       && input.edit.edgeId === input.edgeId
       ? input.edit.labelId

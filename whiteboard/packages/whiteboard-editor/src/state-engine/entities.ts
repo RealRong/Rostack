@@ -33,7 +33,7 @@ export const editorStateRegistry = defineMutationRegistry<EditorStateDocument>()
       },
       change: {
         hover: ['hover.**'],
-        preview: ['preview.base.**', 'preview.transient.**']
+        preview: ['preview.**']
       }
     }
   }

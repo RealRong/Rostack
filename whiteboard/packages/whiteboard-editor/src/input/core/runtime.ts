@@ -1,7 +1,7 @@
 import type { ActiveGesture } from '@whiteboard/editor/input/core/gesture'
 import { createAutoPan } from '@whiteboard/editor/input/session/autoPan'
 import type { HoverState } from '@whiteboard/editor/input/hover/store'
-import type { EditorCommand } from '@whiteboard/editor/state-engine/intents'
+import type { EditorDispatchInput } from '@whiteboard/editor/state-engine/intents'
 import type {
   InteractionBinding,
   InteractionMode,
@@ -71,7 +71,7 @@ export const createInteractionRuntime = ({
       space: boolean
       hover: HoverState
     }
-    dispatch: (command: EditorCommand | readonly EditorCommand[]) => void
+    dispatch: (command: EditorDispatchInput) => void
     setGesture: (gesture: ActiveGesture | null) => void
     getSpace: () => boolean
   }

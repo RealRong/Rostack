@@ -67,16 +67,9 @@ export type EditorStateIntentTable = {
     }
     output: void
   }
-  'overlay.preview.base.set': {
+  'overlay.preview.set': {
     intent: {
-      type: 'overlay.preview.base.set'
-      preview: PreviewInput
-    }
-    output: void
-  }
-  'overlay.preview.transient.set': {
-    intent: {
-      type: 'overlay.preview.transient.set'
+      type: 'overlay.preview.set'
       preview: PreviewInput
     }
     output: void
@@ -102,3 +95,12 @@ export type EditorStateIntent<K extends EditorStateIntentKind = EditorStateInten
   EditorStateIntentTable[K]['intent']
 
 export type EditorCommand = EditorStateIntent
+
+export type EditorDispatchUpdater = (
+  state: import('./document').EditorStateDocument
+) => EditorCommand | readonly EditorCommand[] | null
+
+export type EditorDispatchInput =
+  | EditorCommand
+  | readonly EditorCommand[]
+  | EditorDispatchUpdater

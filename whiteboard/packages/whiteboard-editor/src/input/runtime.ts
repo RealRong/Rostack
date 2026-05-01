@@ -15,7 +15,8 @@ import { createEdgeHoverService } from '@whiteboard/editor/input/hover/edge'
 import {
   composeEditorPreviewState,
   EMPTY_PREVIEW_STATE,
-  isPreviewEqual
+  isPreviewEqual,
+  readPersistentPreviewState
 } from '@whiteboard/editor/session/preview/state'
 import type { EditorStateRuntime } from '@whiteboard/editor/state-engine/runtime'
 import type {
@@ -161,20 +162,23 @@ const createLocalEditorSession = (input: {
   let edgeGuide: EdgeGuidePreview | undefined
 
   const syncTransientPreview = () => {
+    const basePreview = readPersistentPreviewState(
+      input.runtime.snapshot().overlay.preview
+    )
     const nextPreview = composeEditorPreviewState({
-      base: EMPTY_PREVIEW_STATE,
+      base: basePreview,
       gesture,
       hover: input.runtime.snapshot().overlay.hover,
       edgeGuide,
       readDocument: input.document.snapshot
     })
-    const current = input.runtime.snapshot().overlay.preview.transient
+    const current = input.runtime.snapshot().overlay.preview
     if (isPreviewEqual(current, nextPreview)) {
       return
     }
 
     input.runtime.dispatch({
-      type: 'overlay.preview.transient.set',
+      type: 'overlay.preview.set',
       preview: nextPreview
     })
   }

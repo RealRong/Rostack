@@ -15,7 +15,10 @@ import type {
   EditorScene,
   PreviewInput
 } from '@whiteboard/editor-scene'
-import type { EditorCommand } from '@whiteboard/editor/state-engine/intents'
+import type {
+  EditorCommand,
+  EditorDispatchInput
+} from '@whiteboard/editor/state-engine/intents'
 import {
   updatePreviewNodePresentation
 } from '@whiteboard/editor/session/preview/state'
@@ -33,7 +36,7 @@ type MindmapActionDeps = {
     preview: {
       get: () => PreviewInput
     }
-    dispatch: (command: EditorCommand | readonly EditorCommand[]) => void
+    dispatch: (command: EditorDispatchInput) => void
   }
   tasks: EditorTaskRuntime
   write: Pick<EditorWrite, 'mindmap'>
@@ -98,7 +101,7 @@ const withNodePresentation = (
   }
 
   editor.dispatch({
-    type: 'overlay.preview.base.set',
+    type: 'overlay.preview.set',
     preview: nextPreview
   } satisfies EditorCommand)
 }

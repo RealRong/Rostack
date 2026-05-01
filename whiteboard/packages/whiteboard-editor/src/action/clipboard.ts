@@ -8,7 +8,7 @@ import type {
   ClipboardActions,
   ClipboardTarget,
 } from '@whiteboard/editor/action/types'
-import type { EditorCommand } from '@whiteboard/editor/state-engine/intents'
+import type { EditorDispatchInput } from '@whiteboard/editor/state-engine/intents'
 import {
   createClipboardPacket,
   type ClipboardPacket
@@ -19,7 +19,7 @@ import type { DocumentWrite } from '@whiteboard/editor/write/types'
 type ClipboardActionHelpersHost = {
   documentSource: Pick<DocumentFrame, 'slice'>
   document: Pick<DocumentWrite, 'insert'>
-  dispatch: (command: EditorCommand | readonly EditorCommand[]) => void
+  dispatch: (command: EditorDispatchInput) => void
   selection: Pick<SelectionActionHelpers, 'delete'>
   selectionState: {
     get: () => SelectionTarget

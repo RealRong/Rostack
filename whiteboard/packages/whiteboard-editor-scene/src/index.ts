@@ -14,20 +14,16 @@ export type {
   DocumentFrame,
   EditorScene,
   DragState,
+  DrawState,
   DrawPreview,
   DrawStyle,
   EdgeChromeView,
   EdgeBoxView,
-  EdgeDraft,
   EditorDrawBrushState,
-  EditorDrawState,
+  EditorDelta,
   EditorInteractionMode,
   EditorInteractionState,
-  EditorProjectionDelta,
-  EditorProjectionSnapshot,
-  EditorScenePreviewDelta,
-  EditorSceneSnapshot,
-  EditorSceneTouchedIds,
+  EditorSnapshot,
   EdgeGuidePreview,
   EdgeNodes,
   EdgePreview,
@@ -92,8 +88,7 @@ export type {
   SelectionPreview,
   SelectionState,
   EditorStateInput,
-  EditorSceneLayout,
-  ToolState
+  EditorSceneLayout
 } from './contracts/editor'
 export type {
   EdgeActiveView,

@@ -7,7 +7,10 @@ import type {
 import type { EdgeActions } from '@whiteboard/editor/action/types'
 import type { EditController } from '@whiteboard/editor/action/edit'
 import type { EditorScene } from '@whiteboard/editor-scene'
-import type { EditorCommand } from '@whiteboard/editor/state-engine/intents'
+import type {
+  EditorCommand,
+  EditorDispatchInput
+} from '@whiteboard/editor/state-engine/intents'
 import type { EditSession } from '@whiteboard/editor/session/edit'
 import type { DocumentFrame } from '@whiteboard/editor-scene'
 import type { EditorWrite } from '@whiteboard/editor/write'
@@ -52,7 +55,7 @@ export const createEdgeActions = (input: {
     edit: {
       get: () => EditSession
     }
-    dispatch: (command: EditorCommand | readonly EditorCommand[]) => void
+    dispatch: (command: EditorDispatchInput) => void
   }
   write: Pick<EditorWrite, 'edge'>
   edit: Pick<EditController, 'startEdgeLabel' | 'clearEditingEdgeLabel'>

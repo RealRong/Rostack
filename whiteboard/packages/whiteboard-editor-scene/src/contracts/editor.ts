@@ -35,20 +35,17 @@ import type {
   EdgeLabel,
   EdgeId,
   EdgePatch,
-  EdgeTemplate,
   Group,
   GroupId,
   MindmapDragDropTarget,
   MindmapId,
   MindmapLayout,
   MindmapRecord,
-  MindmapTemplate,
   Node,
   NodeGeometry,
   NodeModel,
   NodeFieldPatch,
   NodeId,
-  NodeTemplate,
   Point,
   Rect,
   Size,
@@ -61,9 +58,25 @@ import type {
 } from '@shared/projection'
 import { store } from '@shared/core'
 import type { WhiteboardMutationDelta } from '@whiteboard/engine/mutation'
+import type { DrawState } from '../../../whiteboard-editor/src/session/draw/state'
+import type {
+  EditCaret,
+  EditField,
+  EditSession
+} from '../../../whiteboard-editor/src/session/edit'
+import type {
+  EditorStateDocument as EditorSnapshot
+} from '../../../whiteboard-editor/src/state-engine/document'
+import type {
+  EditorDelta,
+  EditorEditDelta,
+  EditorPreviewDelta,
+  EditorTouchedIds
+} from '../../../whiteboard-editor/src/state-engine/delta'
+import type { Tool } from '../../../whiteboard-editor/src/types/tool'
+import type { InteractionMode } from '../../../whiteboard-editor/src/input/core/types'
 import type { Capture } from './capture'
 import type { IdDelta, SceneItemKey } from './delta'
-import type { EditorSceneRuntimeDelta } from './facts'
 import type {
   EdgeActiveView,
   ChromeRenderView,
@@ -80,20 +93,23 @@ export type NodeDraftMeasure = CoreNodeDraftMeasure
 import type { SpatialRead } from './spatial'
 import type { State } from './state'
 
+export type {
+  EditorSnapshot,
+  EditorDelta,
+  EditorEditDelta,
+  EditorPreviewDelta,
+  EditorTouchedIds,
+  DrawState,
+  EditCaret,
+  EditField,
+  EditSession
+}
+export type { Tool }
+export type { InsertTemplate } from '../../../whiteboard-editor/src/types/tool'
+
 export interface Input {
-  document: {
-    rev: Revision
-    doc: WhiteboardDocument
-  }
-  runtime: {
-    editor: {
-      state: EditorStateInput
-      interaction: InteractionInput
-      view: SceneViewSnapshot
-      facts: SceneRuntimeFacts
-      delta: EditorSceneRuntimeDelta
-    }
-  }
+  document: SceneUpdateInput['document']
+  editor: SceneUpdateInput['editor']
   delta: WhiteboardMutationDelta
 }
 
@@ -105,34 +121,9 @@ export interface SceneViewSnapshot {
 
 export type SceneViewInput = () => SceneViewSnapshot
 
-export type EditorInteractionMode =
-  | 'idle'
-  | 'press'
-  | 'draw'
-  | 'viewport-pan'
-  | 'marquee'
-  | 'node-drag'
-  | 'mindmap-drag'
-  | 'node-transform'
-  | 'edge-drag'
-  | 'edge-label'
-  | 'edge-connect'
-  | 'edge-route'
-
-export type EditorDrawBrushStyle = Readonly<{
-  color: string
-  width: number
-}>
-
-export type EditorDrawBrushState = Readonly<{
-  slot: '1' | '2' | '3'
-  slots: Readonly<Record<'1' | '2' | '3', EditorDrawBrushStyle>>
-}>
-
-export type EditorDrawState = Readonly<{
-  pen: EditorDrawBrushState
-  highlighter: EditorDrawBrushState
-}>
+export type EditorInteractionMode = InteractionMode
+export type EditorDrawBrushState = DrawState[keyof DrawState]
+export type EditorDrawBrushStyle = EditorDrawBrushState['slots'][keyof EditorDrawBrushState['slots']]
 
 export interface EditorInteractionState {
   mode: EditorInteractionMode
@@ -141,70 +132,9 @@ export interface EditorInteractionState {
   hover: HoverState
 }
 
-export interface EditorProjectionStableState {
-  tool: ToolState
-  draw: EditorDrawState
-  selection: SelectionTarget
-  edit: EditSession | null
-  interaction: {
-    mode: EditorInteractionMode
-    chrome: boolean
-    space: boolean
-  }
-  viewport: Viewport
-}
-
-export interface EditorProjectionOverlayState {
-  hover: HoverState
-  preview: {
-    base: PreviewInput
-    transient: PreviewInput
-  }
-}
-
-export interface EditorProjectionSnapshot {
-  state: EditorProjectionStableState
-  overlay: EditorProjectionOverlayState
-}
-
-export interface EditorSceneSnapshot extends EditorProjectionStableState {
-  interaction: EditorInteractionState
-  preview: PreviewInput
-  view: SceneViewSnapshot
-}
-
-export interface EditorSceneTouchedIds {
-  touchedNodeIds: readonly NodeId[]
-  touchedEdgeIds: readonly EdgeId[]
-  touchedMindmapIds: readonly MindmapId[]
-}
-
-export interface EditorSceneEditDelta {
-  touchedDraftEdgeIds: readonly EdgeId[]
-}
-
-export interface EditorScenePreviewDelta extends EditorSceneTouchedIds {
-  marquee: boolean
-  guides: boolean
-  draw: boolean
-  edgeGuide: boolean
-  hover: boolean
-}
-
-export interface EditorProjectionDelta {
-  tool?: true
-  draw?: true
-  selection?: true
-  edit?: true | EditorSceneEditDelta
-  interaction?: {
-    mode?: true
-    chrome?: true
-    space?: true
-  }
-  hover?: true | EditorSceneTouchedIds
-  preview?: true | EditorScenePreviewDelta
-  viewport?: true
-}
+export type EditorSceneTouchedIds = EditorTouchedIds
+export type EditorSceneEditDelta = EditorEditDelta
+export type EditorScenePreviewDelta = EditorPreviewDelta
 
 export interface SceneUpdateInput {
   document: {
@@ -213,8 +143,8 @@ export interface SceneUpdateInput {
     delta: MutationDelta
   }
   editor: {
-    snapshot: EditorProjectionSnapshot
-    delta: EditorProjectionDelta
+    snapshot: EditorSnapshot
+    delta: EditorDelta
   }
 }
 
@@ -256,51 +186,8 @@ export type GroupItemRef =
 
 export interface EditorStateInput {
   edit: EditSession | null
-  draft: DraftInput
   preview: PreviewInput
-  tool: ToolState
-}
-
-export type EditField = 'text' | 'title'
-
-export type EditCaret =
-  | {
-      kind: 'end'
-    }
-  | {
-      kind: 'point'
-      client: Point
-    }
-
-export type NodeEditSession = {
-  kind: 'node'
-  nodeId: NodeId
-  field: EditField
-  text: string
-  composing: boolean
-  caret: EditCaret
-}
-
-export type EdgeLabelEditSession = {
-  kind: 'edge-label'
-  edgeId: EdgeId
-  labelId: string
-  text: string
-  composing: boolean
-  caret: EditCaret
-}
-
-export type EditSession =
-  | NodeEditSession
-  | EdgeLabelEditSession
-
-export interface DraftInput {
-  edges: ReadonlyMap<EdgeId, EdgeDraft>
-}
-
-export interface EdgeDraft {
-  patch?: EdgePatch
-  activeRouteIndex?: number
+  tool: Tool
 }
 
 export interface PreviewInput {
@@ -379,39 +266,6 @@ export interface MindmapPreview {
     drop?: MindmapDragDropTarget
   }
 }
-
-export type ToolState =
-  | {
-      type: 'select'
-    }
-  | {
-      type: 'hand'
-    }
-  | {
-      type: 'edge'
-      template: EdgeTemplate
-    }
-  | {
-      type: 'insert'
-      template: InsertTemplate
-    }
-  | {
-      type: 'draw'
-      mode: string
-    }
-
-export type InsertTemplate =
-  | {
-      kind: 'node'
-      template: NodeTemplate
-      placement?: 'point' | 'center'
-      editField?: EditField
-    }
-  | {
-      kind: 'mindmap'
-      template: MindmapTemplate
-      focus?: 'edit-root' | 'select-root'
-    }
 
 export type EditorSceneLayout = WhiteboardLayoutService
 
@@ -796,7 +650,7 @@ export interface DocumentFrame {
 
 export interface RuntimeFrame {
   editor: {
-    tool(): ToolState
+    tool(): Tool
     selection(): SelectionTarget
     hover(): HoverState
     edit(): EditSession | null

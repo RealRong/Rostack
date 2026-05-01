@@ -75,43 +75,46 @@ const collectItemChangeScope = (
 }
 
 export const createInputFacts = (
-  input: Input
+  input: {
+    current: Input
+    runtimeFacts: WorkingState['runtime']['editor']['facts']
+  }
 ): EditorSceneInputFacts => {
-  const runtimeFacts = input.runtime.editor.facts
+  const { current, runtimeFacts } = input
   const nodeTargets = sceneScopeUnion(
-    input.delta.node.create.touchedIds(),
-    input.delta.node.delete.touchedIds(),
-    input.delta.node.geometry.touchedIds(),
-    input.delta.node.owner.touchedIds(),
-    input.delta.node.content.touchedIds()
+    current.delta.node.create.touchedIds(),
+    current.delta.node.delete.touchedIds(),
+    current.delta.node.geometry.touchedIds(),
+    current.delta.node.owner.touchedIds(),
+    current.delta.node.content.touchedIds()
   )
   const edgeTargets = sceneScopeUnion(
-    input.delta.edge.create.touchedIds(),
-    input.delta.edge.delete.touchedIds(),
-    input.delta.edge.endpoints.touchedIds(),
-    input.delta.edge.route.touchedIds(),
-    input.delta.edge.style.touchedIds(),
-    input.delta.edge.labels.touchedIds(),
-    input.delta.edge.data.touchedIds()
+    current.delta.edge.create.touchedIds(),
+    current.delta.edge.delete.touchedIds(),
+    current.delta.edge.endpoints.touchedIds(),
+    current.delta.edge.route.touchedIds(),
+    current.delta.edge.style.touchedIds(),
+    current.delta.edge.labels.touchedIds(),
+    current.delta.edge.data.touchedIds()
   )
   const mindmapTargets = sceneScopeUnion(
-    input.delta.mindmap.create.touchedIds(),
-    input.delta.mindmap.delete.touchedIds(),
-    input.delta.mindmap.structure.touchedIds(),
-    input.delta.mindmap.layout.touchedIds()
+    current.delta.mindmap.create.touchedIds(),
+    current.delta.mindmap.delete.touchedIds(),
+    current.delta.mindmap.structure.touchedIds(),
+    current.delta.mindmap.layout.touchedIds()
   )
   const groupTargets = sceneScopeUnion(
-    input.delta.group.create.touchedIds(),
-    input.delta.group.delete.touchedIds(),
-    input.delta.group.value.touchedIds()
+    current.delta.group.create.touchedIds(),
+    current.delta.group.delete.touchedIds(),
+    current.delta.group.value.touchedIds()
   )
 
-  const reset = input.delta.reset === true
+  const reset = current.delta.reset === true
     || nodeTargets === 'all'
     || edgeTargets === 'all'
     || mindmapTargets === 'all'
     || groupTargets === 'all'
-  const order = reset || input.delta.canvas.orderChanged()
+  const order = reset || current.delta.canvas.orderChanged()
 
   if (reset) {
     return {
@@ -135,15 +138,14 @@ export const createInputFacts = (
   appendIds(nodeTargetIds, runtimeFacts.touchedNodeIds)
   appendIds(mindmapTargetIds, runtimeFacts.touchedMindmapIds)
 
-  appendIds(edgeTargetIds, input.runtime.editor.state.draft.edges.keys())
-  appendIds(nodeTargetIds, Object.keys(input.runtime.editor.state.preview.nodes))
-  appendIds(edgeTargetIds, Object.keys(input.runtime.editor.state.preview.edges))
+  appendIds(nodeTargetIds, Object.keys(current.editor.snapshot.overlay.preview.nodes))
+  appendIds(edgeTargetIds, Object.keys(current.editor.snapshot.overlay.preview.edges))
 
-  if (input.runtime.editor.state.preview.mindmap?.rootMove) {
-    mindmapTargetIds.add(input.runtime.editor.state.preview.mindmap.rootMove.mindmapId)
+  if (current.editor.snapshot.overlay.preview.mindmap?.rootMove) {
+    mindmapTargetIds.add(current.editor.snapshot.overlay.preview.mindmap.rootMove.mindmapId)
   }
-  if (input.runtime.editor.state.preview.mindmap?.subtreeMove) {
-    mindmapTargetIds.add(input.runtime.editor.state.preview.mindmap.subtreeMove.mindmapId)
+  if (current.editor.snapshot.overlay.preview.mindmap?.subtreeMove) {
+    mindmapTargetIds.add(current.editor.snapshot.overlay.preview.mindmap.subtreeMove.mindmapId)
   }
 
   return {
@@ -190,11 +192,11 @@ export const createGraphFacts = (input: {
     }
   }
 
-  const editingNode = input.current.runtime.editor.state.edit?.kind === 'node'
-    ? sceneScopeFromValues([input.current.runtime.editor.state.edit.nodeId])
+  const editingNode = input.current.editor.snapshot.state.edit?.kind === 'node'
+    ? sceneScopeFromValues([input.current.editor.snapshot.state.edit.nodeId])
     : new Set<NodeId>()
-  const editingEdge = input.current.runtime.editor.state.edit?.kind === 'edge-label'
-    ? sceneScopeFromValues([input.current.runtime.editor.state.edit.edgeId])
+  const editingEdge = input.current.editor.snapshot.state.edit?.kind === 'edge-label'
+    ? sceneScopeFromValues([input.current.editor.snapshot.state.edit.edgeId])
     : new Set<EdgeId>()
 
   return {
@@ -253,7 +255,7 @@ export const createUiTargets = (input: {
     }
   }
 
-  const runtimeFacts = input.current.runtime.editor.facts
+  const runtimeFacts = input.working.runtime.editor.facts
   const graphFacts = input.working.facts.graph
   const node = new Set<NodeId>()
   const edge = new Set<EdgeId>()
@@ -339,7 +341,7 @@ export const createRenderFacts = (input: {
   }
 
   const graphFacts = input.working.facts.graph
-  const runtimeFacts = input.current.runtime.editor.facts
+  const runtimeFacts = input.working.runtime.editor.facts
   const uiFacts = input.working.facts.ui
   const node = new Set<NodeId>()
   const edgeStatics = new Set<EdgeId>()

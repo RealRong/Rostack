@@ -121,12 +121,12 @@ const createRuntimeRead = (input: {
   state: () => WorkingState
 }): RuntimeFrame => ({
   editor: {
-    tool: () => input.state().runtime.editor.state.tool,
+    tool: () => input.state().runtime.editor.snapshot.state.tool,
     selection: () => input.state().runtime.editor.interaction.selection,
     hover: () => input.state().runtime.editor.interaction.hover,
-    edit: () => input.state().runtime.editor.state.edit,
+    edit: () => input.state().runtime.editor.snapshot.state.edit,
     interaction: () => input.state().runtime.editor.interaction,
-    preview: () => input.state().runtime.editor.state.preview
+    preview: () => input.state().runtime.editor.snapshot.overlay.preview
   },
   facts: {
     touchedNodeIds: () => input.state().runtime.editor.facts.touchedNodeIds,

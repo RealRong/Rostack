@@ -6,6 +6,10 @@ import { editor as editorApi } from '../src'
 import type { NodeSpec, PointerInput } from '../src'
 import { createEditorTestLayout } from './support'
 
+const flushEditor = async (): Promise<void> => {
+  await Promise.resolve()
+}
+
 const nodes: NodeSpec = {
   text: {
     meta: {
@@ -79,7 +83,7 @@ const createPointerInput = (
 })
 
 describe('mindmap layout preview runtime', () => {
-  it('moves the whole live tree during root drag preview', () => {
+  it('moves the whole live tree during root drag preview', async () => {
     const layoutService = createEditorTestLayout()
     const engine = engineApi.create({
       document: documentApi.create('doc_mindmap_layout_preview_runtime'),
@@ -161,6 +165,7 @@ describe('mindmap layout preview runtime', () => {
           field: 'text'
         }
       }))
+      await flushEditor()
 
       expect(editor.scene.nodes.get(created.data.rootId)?.geometry.rect).toEqual({
         ...beforeRoot!,

@@ -6,6 +6,10 @@ import { editor as editorApi, type LayoutBackend, type NodeSpec } from '../src'
 import { createNodeTypeSupport, resolveNodeEditorCapability } from '../src/types/node'
 import { createEditorTestLayout } from './support'
 
+const flushEditor = async (): Promise<void> => {
+  await Promise.resolve()
+}
+
 const nodes: NodeSpec = {
   text: {
     meta: {
@@ -112,7 +116,7 @@ const createEditor = () => {
 }
 
 describe('mindmap root render', () => {
-  it('treats the root as a normal node and exposes both root add buttons through chrome', () => {
+  it('treats the root as a normal node and exposes both root add buttons through chrome', async () => {
     const editor = createEditor()
     const created = editor.write.mindmap.create({
       template: product.mindmap.template.build({
@@ -128,6 +132,7 @@ describe('mindmap root render', () => {
     editor.write.selection.replace({
       nodeIds: [created.data.rootId]
     })
+    await flushEditor()
 
     const rootNode = editor.scene.nodes.get(created.data.rootId)?.base.node
     const rootCapability = rootNode

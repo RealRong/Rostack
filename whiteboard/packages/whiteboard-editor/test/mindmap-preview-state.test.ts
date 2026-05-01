@@ -27,7 +27,7 @@ describe('mindmap preview state', () => {
       }
     })
     const preview = composeEditorPreviewState({
-      base: runtime.snapshot().overlay.preview.base,
+      base: runtime.snapshot().overlay.preview,
       gesture: createGesture('mindmap-drag', {
         mindmap: {
           rootMove: {

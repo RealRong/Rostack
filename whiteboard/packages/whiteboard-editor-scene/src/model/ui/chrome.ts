@@ -13,9 +13,13 @@ export const patchUiChrome = (
 
   const previous = context.working.ui.chrome
   const nextCandidate = buildChromeView({
-    state: context.current.runtime.editor.state,
-    selection: context.current.runtime.editor.interaction.selection,
-    hover: context.current.runtime.editor.interaction.hover
+    state: {
+      tool: context.current.editor.snapshot.state.tool,
+      edit: context.current.editor.snapshot.state.edit,
+      preview: context.current.editor.snapshot.overlay.preview
+    },
+    selection: context.working.runtime.editor.interaction.selection,
+    hover: context.working.runtime.editor.interaction.hover
   })
   const next = isChromeViewEqual(previous, nextCandidate)
     ? previous

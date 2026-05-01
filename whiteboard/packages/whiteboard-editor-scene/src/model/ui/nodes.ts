@@ -24,11 +24,11 @@ const buildCurrentNodeUiView = (input: {
 
   const next = buildNodeUiView({
     nodeId: input.nodeId,
-    preview: input.context.current.runtime.editor.state.preview.nodes[input.nodeId],
-    draw: input.context.current.runtime.editor.state.preview.draw,
-    edit: input.context.current.runtime.editor.state.edit,
-    selection: input.context.current.runtime.editor.interaction.selection,
-    hover: input.context.current.runtime.editor.interaction.hover
+    preview: input.context.current.editor.snapshot.overlay.preview.nodes[input.nodeId],
+    draw: input.context.current.editor.snapshot.overlay.preview.draw,
+    edit: input.context.current.editor.snapshot.state.edit,
+    selection: input.context.working.runtime.editor.interaction.selection,
+    hover: input.context.working.runtime.editor.interaction.hover
   })
 
   return input.previous && isNodeUiViewEqual(input.previous, next)

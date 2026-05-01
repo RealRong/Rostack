@@ -16,7 +16,7 @@ import type { Revision } from '@shared/projection'
 import type {
   ChromeView,
   ChromeStateView,
-  EdgeDraft,
+  EditorSnapshot,
   EdgeNodes,
   EdgeStateView,
   EdgePreview,
@@ -62,7 +62,7 @@ export interface State {
 
 export interface RuntimeState {
   editor: {
-    state: import('./editor').EditorStateInput
+    snapshot: EditorSnapshot
     interaction: import('./editor').InteractionInput
     view: import('./editor').SceneViewSnapshot
     facts: import('./editor').SceneRuntimeFacts
@@ -149,7 +149,6 @@ export interface GraphEdgeEntry {
     edge: Edge
     nodes: EdgeNodes
   }
-  draft?: EdgeDraft
   preview?: EdgePreview
 }
 

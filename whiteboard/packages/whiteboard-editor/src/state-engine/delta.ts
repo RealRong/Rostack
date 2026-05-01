@@ -9,17 +9,46 @@ import type {
   NodeId
 } from '@whiteboard/core/types'
 import type {
-  EditorProjectionDelta,
-  EditorScenePreviewDelta,
   HoverState,
   MindmapPreview
 } from '@whiteboard/editor-scene'
-import {
-  mergeEditorPreviewState
-} from '@whiteboard/editor/session/preview/state'
 import type {
   EditorStateDocument
 } from './document'
+
+export interface EditorTouchedIds {
+  touchedNodeIds: readonly NodeId[]
+  touchedEdgeIds: readonly EdgeId[]
+  touchedMindmapIds: readonly MindmapId[]
+}
+
+export interface EditorEditDelta {
+  touchedDraftEdgeIds: readonly EdgeId[]
+}
+
+export interface EditorPreviewDelta extends EditorTouchedIds {
+  marquee: boolean
+  guides: boolean
+  draw: boolean
+  edgeGuide: boolean
+  hover: boolean
+}
+
+export interface EditorDelta {
+  tool?: true
+  draw?: true
+  selection?: true
+  edit?: true | EditorEditDelta
+  interaction?: {
+    mode?: true
+    chrome?: true
+    space?: true
+  }
+  hover?: true | EditorTouchedIds
+  preview?: true | EditorPreviewDelta
+  viewport?: true
+  reset?: true
+}
 
 export type EditorStateMutationDelta = MutationDelta & {
   raw: MutationDelta
@@ -130,21 +159,11 @@ const readEditedEdgeIds = (
 
 const readPreviewNodeIds = (
   snapshot: EditorStateDocument
-): readonly NodeId[] => Object.keys(
-  mergeEditorPreviewState(
-    snapshot.overlay.preview.base,
-    snapshot.overlay.preview.transient
-  ).nodes
-) as readonly NodeId[]
+): readonly NodeId[] => Object.keys(snapshot.overlay.preview.nodes) as readonly NodeId[]
 
 const readPreviewEdgeIds = (
   snapshot: EditorStateDocument
-): readonly EdgeId[] => Object.keys(
-  mergeEditorPreviewState(
-    snapshot.overlay.preview.base,
-    snapshot.overlay.preview.transient
-  ).edges
-) as readonly EdgeId[]
+): readonly EdgeId[] => Object.keys(snapshot.overlay.preview.edges) as readonly EdgeId[]
 
 const readPreviewMindmapIds = (
   preview: MindmapPreview | null
@@ -169,15 +188,9 @@ const createPreviewDelta = (input: {
   draw: boolean
   edgeGuide: boolean
   hover: boolean
-}): EditorScenePreviewDelta => {
-  const previous = mergeEditorPreviewState(
-    input.previous.overlay.preview.base,
-    input.previous.overlay.preview.transient
-  )
-  const next = mergeEditorPreviewState(
-    input.next.overlay.preview.base,
-    input.next.overlay.preview.transient
-  )
+}): EditorPreviewDelta => {
+  const previous = input.previous.overlay.preview
+  const next = input.next.overlay.preview
 
   return {
     touchedNodeIds: unionIds(
@@ -305,7 +318,7 @@ export const collectEditorCommitFlags = (
 
 export const createBootstrapEditorDelta = (
   snapshot: EditorStateDocument
-): EditorProjectionDelta => ({
+): EditorDelta => ({
   tool: true,
   draw: true,
   selection: true,
@@ -334,8 +347,8 @@ export const createEditorDeltaFromCommitFlags = (input: {
   flags: CommitFlags
   previous: EditorStateDocument
   next: EditorStateDocument
-}): EditorProjectionDelta => {
-  const delta: EditorProjectionDelta = {}
+}): EditorDelta => {
+  const delta: EditorDelta = {}
 
   if (input.flags.tool) {
     delta.tool = true
@@ -393,15 +406,9 @@ export const createEditorDeltaFromCommitFlags = (input: {
 export const createDocumentDrivenEditorDelta = (input: {
   previous: EditorStateDocument
   next: EditorStateDocument
-}): EditorProjectionDelta => {
-  const previousPreview = mergeEditorPreviewState(
-    input.previous.overlay.preview.base,
-    input.previous.overlay.preview.transient
-  )
-  const nextPreview = mergeEditorPreviewState(
-    input.next.overlay.preview.base,
-    input.next.overlay.preview.transient
-  )
+}): EditorDelta => {
+  const previousPreview = input.previous.overlay.preview
+  const nextPreview = input.next.overlay.preview
   if (isMindmapPreviewEqual(previousPreview.mindmap, nextPreview.mindmap)) {
     return {}
   }
@@ -420,9 +427,9 @@ export const createDocumentDrivenEditorDelta = (input: {
 }
 
 export const mergeEditorDeltas = (
-  left: EditorProjectionDelta,
-  right: EditorProjectionDelta
-): EditorProjectionDelta => ({
+  left: EditorDelta,
+  right: EditorDelta
+): EditorDelta => ({
   ...(left.tool || right.tool
     ? {
         tool: true

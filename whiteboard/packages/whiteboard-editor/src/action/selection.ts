@@ -4,7 +4,7 @@ import type {
   CanvasItemRef,
   GroupId
 } from '@whiteboard/core/types'
-import type { EditorCommand } from '@whiteboard/editor/state-engine/intents'
+import type { EditorDispatchInput } from '@whiteboard/editor/state-engine/intents'
 import type { EditorScene } from '@whiteboard/editor-scene'
 import type { EditorDefaults } from '@whiteboard/editor/types/defaults'
 import type { EditorState } from '@whiteboard/editor/types/editor'
@@ -30,7 +30,7 @@ type SelectionActionHelpersHost = {
   group: GroupWrite
   node: Pick<NodeWrite, 'create'>
   selection: Pick<EditorState['selection'], 'get'>
-  dispatch: (command: EditorCommand | readonly EditorCommand[]) => void
+  dispatch: (command: EditorDispatchInput) => void
   defaults: EditorDefaults['templates']
 }
 

@@ -34,6 +34,8 @@ import {
 import { editorStateRegistry } from './entities'
 import type {
   EditorCommand,
+  EditorDispatchInput,
+  EditorDispatchUpdater,
   EditorStateMutationTable
 } from './intents'
 import { EMPTY_HOVER_STATE } from '@whiteboard/editor/input/hover/store'
@@ -124,31 +126,13 @@ const compileHandlers: MutationCompileHandlerTable<
       }
     ))
   },
-  'overlay.preview.base.set': ({ document, intent, program }) => {
+  'overlay.preview.set': ({ document, intent, program }) => {
     program.overlay.patch(draftRecord.diff(
       {
-        preview: {
-          base: document.overlay.preview.base
-        }
+        preview: document.overlay.preview
       },
       {
-        preview: {
-          base: intent.preview
-        }
-      }
-    ))
-  },
-  'overlay.preview.transient.set': ({ document, intent, program }) => {
-    program.overlay.patch(draftRecord.diff(
-      {
-        preview: {
-          transient: document.overlay.preview.transient
-        }
-      },
-      {
-        preview: {
-          transient: intent.preview
-        }
+        preview: intent.preview
       }
     ))
   },
@@ -160,10 +144,7 @@ const compileHandlers: MutationCompileHandlerTable<
       },
       {
         hover: EMPTY_HOVER_STATE,
-        preview: {
-          base: EMPTY_PREVIEW_STATE,
-          transient: EMPTY_PREVIEW_STATE
-        }
+        preview: EMPTY_PREVIEW_STATE
       }
     ))
   }
@@ -371,13 +352,14 @@ export interface EditorStateRuntime {
   >
   snapshot(): EditorStateDocument
   dispatch: (
-    command: EditorCommand | readonly EditorCommand[]
+    command: EditorDispatchInput
   ) => void
   commits: {
     subscribe: (
       listener: (commit: MutationCommitRecord<EditorStateDocument, EditorStateOperation>) => void
     ) => () => void
   }
+  flush(): void
   viewport: ViewportRuntime
   dispose(): void
 }
@@ -408,12 +390,151 @@ export const createEditorStateRuntime = (input: {
     history: false
   })
 
+  let stagedDocument = engine.document()
+  let pendingCommands: EditorCommand[] = []
+  let flushScheduled = false
+  const commitListeners = new Set<(
+    commit: MutationCommitRecord<EditorStateDocument, EditorStateOperation>
+  ) => void>()
+
+  engine.subscribe((commit) => {
+    stagedDocument = commit.document
+    commitListeners.forEach((listener) => {
+      listener(commit)
+    })
+  })
+
+  const applyCommand = (
+    document: EditorStateDocument,
+    command: EditorCommand
+  ): EditorStateDocument => {
+    switch (command.type) {
+      case 'tool.set':
+        return normalizeEditorStateDocument({
+          ...document,
+          state: {
+            ...document.state,
+            tool: command.tool
+          }
+        })
+      case 'draw.set':
+        return normalizeEditorStateDocument({
+          ...document,
+          state: {
+            ...document.state,
+            draw: command.state
+          }
+        })
+      case 'selection.set':
+        return normalizeEditorStateDocument({
+          ...document,
+          state: {
+            ...document.state,
+            selection: command.selection
+          }
+        })
+      case 'edit.set':
+        return normalizeEditorStateDocument({
+          ...document,
+          state: {
+            ...document.state,
+            edit: command.edit
+          }
+        })
+      case 'interaction.set':
+        return normalizeEditorStateDocument({
+          ...document,
+          state: {
+            ...document.state,
+            interaction: command.interaction
+          }
+        })
+      case 'viewport.set':
+        return normalizeEditorStateDocument({
+          ...document,
+          state: {
+            ...document.state,
+            viewport: command.viewport
+          }
+        })
+      case 'overlay.hover.set':
+        return normalizeEditorStateDocument({
+          ...document,
+          overlay: {
+            ...document.overlay,
+            hover: command.hover
+          }
+        })
+      case 'overlay.preview.set':
+        return normalizeEditorStateDocument({
+          ...document,
+          overlay: {
+            ...document.overlay,
+            preview: command.preview
+          }
+        })
+      case 'overlay.reset':
+        return normalizeEditorStateDocument({
+          ...document,
+          overlay: {
+            hover: EMPTY_HOVER_STATE,
+            preview: EMPTY_PREVIEW_STATE
+          }
+        })
+      default:
+        return document
+    }
+  }
+
+  const scheduleFlush = () => {
+    if (flushScheduled) {
+      return
+    }
+
+    flushScheduled = true
+    queueMicrotask(() => {
+      flush()
+    })
+  }
+
+  const flush = () => {
+    flushScheduled = false
+    if (pendingCommands.length === 0) {
+      return
+    }
+
+    const commands = pendingCommands
+    pendingCommands = []
+    stagedDocument = normalizeEditorStateDocument(stagedDocument)
+    assertEditorStateCommit(engine.execute(commands))
+    stagedDocument = engine.document()
+  }
+
   const dispatch = (
+    command: EditorDispatchInput
+  ) => {
+    const resolved = typeof command === 'function'
+      ? (command as EditorDispatchUpdater)(stagedDocument)
+      : command
+    if (!resolved) {
+      return
+    }
+
+    toCommandList(resolved).forEach((entry) => {
+      stagedDocument = applyCommand(stagedDocument, entry)
+      pendingCommands.push(entry)
+    })
+
+    scheduleFlush()
+  }
+
+  const dispatchNow = (
     command: EditorCommand | readonly EditorCommand[]
   ) => {
     toCommandList(command).forEach((entry) => {
       assertEditorStateCommit(engine.execute(entry))
     })
+    stagedDocument = engine.document()
   }
 
   const subscribeViewport = (
@@ -432,11 +553,11 @@ export const createEditorStateRuntime = (input: {
     nextViewport: Viewport
   ): boolean => {
     const normalized = normalizeViewportValue(nextViewport)
-    if (isViewportEqual(engine.document().state.viewport, normalized)) {
+    if (isViewportEqual(stagedDocument.state.viewport, normalized)) {
       return false
     }
 
-    dispatch({
+    dispatchNow({
       type: 'viewport.set',
       viewport: normalized
     })
@@ -452,11 +573,17 @@ export const createEditorStateRuntime = (input: {
 
   return {
     engine,
-    snapshot: () => engine.document(),
+    snapshot: () => stagedDocument,
     dispatch,
     commits: {
-      subscribe: (listener) => engine.subscribe(listener)
+      subscribe: (listener) => {
+        commitListeners.add(listener)
+        return () => {
+          commitListeners.delete(listener)
+        }
+      }
     },
+    flush,
     viewport,
     dispose: () => {}
   }

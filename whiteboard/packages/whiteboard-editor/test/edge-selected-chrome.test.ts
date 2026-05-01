@@ -41,6 +41,10 @@ afterEach(() => {
   editors.clear()
 })
 
+const flushEditor = async (): Promise<void> => {
+  await Promise.resolve()
+}
+
 const createEdgeDocument = () => {
   const document = documentApi.create('doc_edge_selected_chrome')
   document.nodes['node-1'] = {
@@ -180,12 +184,13 @@ const createEdgeEditor = () => {
 }
 
 describe('edge.selectedChrome', () => {
-  it('shows edit handles for a selected edge outside label editing', () => {
+  it('shows edit handles for a selected edge outside label editing', async () => {
     const editor = createEdgeEditor()
 
     editor.write.selection.replace({
       edgeIds: ['edge-1']
     })
+    await flushEditor()
 
     expect(editor.scene.selection.edge.chrome.get()).toMatchObject({
       edgeId: 'edge-1',
@@ -196,13 +201,14 @@ describe('edge.selectedChrome', () => {
     })
   })
 
-  it('hides edit handles when editing the selected edge label', () => {
+  it('hides edit handles when editing the selected edge label', async () => {
     const editor = createEdgeEditor()
 
     editor.write.selection.replace({
       edgeIds: ['edge-1']
     })
     editor.write.edit.startEdgeLabel('edge-1', 'label-1')
+    await flushEditor()
 
     expect(editor.scene.selection.edge.chrome.get()).toMatchObject({
       edgeId: 'edge-1',
@@ -210,13 +216,14 @@ describe('edge.selectedChrome', () => {
     })
   })
 
-  it('keeps edit handles visible when another edge is being edited', () => {
+  it('keeps edit handles visible when another edge is being edited', async () => {
     const editor = createEdgeEditor()
 
     editor.write.selection.replace({
       edgeIds: ['edge-1']
     })
     editor.write.edit.startEdgeLabel('edge-2', 'label-2')
+    await flushEditor()
 
     expect(editor.scene.selection.edge.chrome.get()).toMatchObject({
       edgeId: 'edge-1',

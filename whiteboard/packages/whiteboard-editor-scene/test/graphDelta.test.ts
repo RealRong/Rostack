@@ -10,7 +10,7 @@ import type {
 import { createEngine } from '@whiteboard/engine'
 import { createWhiteboardMutationDelta } from '@whiteboard/engine/mutation'
 import type { MutationDelta } from '@shared/mutation'
-import type { Input } from '../src/contracts/editor'
+import type { SceneUpdateInput } from '../src/contracts/editor'
 import { createEmptyInput, createEmptyRuntimeInputDelta } from '../src/testing/input'
 import {
   createMutationDelta,
@@ -94,11 +94,11 @@ const createGroup = (input: {
 
 const createInput = (input: {
   engine: ReturnType<typeof createEngine>
-  delta: Input['runtime']['editor']['delta']
-  documentDelta?: Input['delta'] | MutationDelta
-  edit?: Input['runtime']['editor']['state']['edit']
+  delta: SceneUpdateInput['editor']['delta']
+  documentDelta?: SceneUpdateInput['document']['delta'] | MutationDelta
+  edit?: SceneUpdateInput['editor']['snapshot']['state']['edit']
   nodeMeasures?: ReadonlyMap<NodeId, Size>
-}): Input => {
+}): SceneUpdateInput => {
   currentMeasureState = {
     nodeMeasures: input.nodeMeasures
       ? new Map(
@@ -114,10 +114,10 @@ const createInput = (input: {
   }
   const value = createEmptyInput()
   value.document.rev = input.engine.rev()
-  value.document.doc = input.engine.doc()
-  value.runtime.editor.state.edit = input.edit ?? null
-  value.runtime.editor.delta = input.delta
-  value.delta = createWhiteboardMutationDelta(
+  value.document.snapshot = input.engine.doc()
+  value.editor.snapshot.state.edit = input.edit ?? null
+  value.editor.delta = input.delta
+  value.document.delta = createWhiteboardMutationDelta(
     input.documentDelta ?? createMutationDelta()
   )
   return value
@@ -173,7 +173,16 @@ describe('graph delta patching', () => {
 
     const liveDelta = createEmptyRuntimeInputDelta()
     liveDelta.edit = true
-    idDelta.update(liveDelta.preview.nodes, firstId)
+    liveDelta.preview = {
+      touchedNodeIds: [firstId],
+      touchedEdgeIds: [],
+      touchedMindmapIds: [],
+      marquee: false,
+      guides: false,
+      draw: false,
+      edgeGuide: false,
+      hover: false
+    }
 
     const live = runtime.update(createInput({
         engine,

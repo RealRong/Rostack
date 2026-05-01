@@ -25,7 +25,6 @@ import type {
   EditorState,
   ToolRead
 } from '@whiteboard/editor/types/editor'
-import { mergeEditorPreviewState } from '@whiteboard/editor/session/preview/state'
 
 const readToolValue = (
   tool: EditorStateDocument['state']['tool']
@@ -64,10 +63,7 @@ const readInteractionValue = (
 
 const readPreviewValue = (
   snapshot: EditorStateDocument
-) => mergeEditorPreviewState(
-  snapshot.overlay.preview.base,
-  snapshot.overlay.preview.transient
-)
+) => snapshot.overlay.preview
 
 const createProjectionStateStores = (
   runtime: EditorStateRuntime

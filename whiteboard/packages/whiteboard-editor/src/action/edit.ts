@@ -5,7 +5,10 @@ import type {
 } from '@whiteboard/editor/action/types'
 import type { DocumentFrame } from '@whiteboard/editor-scene'
 import type { EditField, EditSession } from '@whiteboard/editor/session/edit'
-import type { EditorCommand } from '@whiteboard/editor/state-engine/intents'
+import type {
+  EditorCommand,
+  EditorDispatchInput
+} from '@whiteboard/editor/state-engine/intents'
 import type { NodeTypeSupport } from '@whiteboard/editor/types/node'
 import type { EditorWrite } from '@whiteboard/editor/write'
 
@@ -62,7 +65,7 @@ export const createEditController = (input: {
     edit: {
       get: () => EditSession
     }
-    dispatch: (command: EditorCommand | readonly EditorCommand[]) => void
+    dispatch: (command: EditorDispatchInput) => void
   }
   document: Pick<DocumentFrame, 'node' | 'edge'>
   nodeType: Pick<NodeTypeSupport, 'edit'>
@@ -93,15 +96,17 @@ export const createEditController = (input: {
   const updateEdit = (
     patch: (current: NonNullable<ReturnType<typeof input.editor.edit.get>>) => NonNullable<ReturnType<typeof input.editor.edit.get>>
   ) => {
-    const current = input.editor.edit.get()
-    if (!current) {
-      return
-    }
+    input.editor.dispatch((state) => {
+      const current = state.state.edit
+      if (!current) {
+        return null
+      }
 
-    input.editor.dispatch({
-      type: 'edit.set',
-      edit: patch(current)
-    } satisfies EditorCommand)
+      return {
+        type: 'edit.set',
+        edit: patch(current)
+      } satisfies EditorCommand
+    })
   }
 
   const startNode = ({

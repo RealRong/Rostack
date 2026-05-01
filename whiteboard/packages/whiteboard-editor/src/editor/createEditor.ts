@@ -295,6 +295,7 @@ export const createEditor = (input: {
     if (commit.kind === 'replace' || isCheckpointProgram(commit.authored)) {
       host.cancel()
       stateRuntime.dispatch(createResetEditorCommands())
+      stateRuntime.flush()
     } else {
       const editorSnapshot = stateRuntime.snapshot()
       const commands = reconcileEditorAfterDocumentCommit({
@@ -304,6 +305,7 @@ export const createEditor = (input: {
       })
       if (commands.length > 0) {
         stateRuntime.dispatch(commands)
+        stateRuntime.flush()
       }
     }
 

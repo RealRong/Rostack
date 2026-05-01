@@ -11,7 +11,7 @@ import type {
   EditorScene,
   PreviewInput
 } from '@whiteboard/editor-scene'
-import type { EditorCommand } from '@whiteboard/editor/state-engine/intents'
+import type { EditorDispatchInput } from '@whiteboard/editor/state-engine/intents'
 import type { EditorTaskRuntime } from '@whiteboard/editor/tasks/runtime'
 import type { DocumentFrame } from '@whiteboard/editor-scene'
 import type { EditorWrite } from '@whiteboard/editor/write'
@@ -70,7 +70,7 @@ export const createMindmapActionApi = (input: {
     preview: {
       get: () => PreviewInput
     }
-    dispatch: (command: EditorCommand | readonly EditorCommand[]) => void
+    dispatch: (command: EditorDispatchInput) => void
   }
   tasks: EditorTaskRuntime
   write: Pick<EditorWrite, 'mindmap'>

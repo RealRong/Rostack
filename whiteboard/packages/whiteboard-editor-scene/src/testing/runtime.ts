@@ -8,11 +8,16 @@ import type {
 } from '../contracts/editor'
 import type { Capture } from '../contracts/capture'
 import type { WorkingState } from '../contracts/working'
+import { createWhiteboardMutationDelta } from '@whiteboard/engine/mutation'
 import { createProjection } from '../projection/createProjection'
 import {
   createProjectionRuntime
 } from '../projection/createProjectionRuntime'
-import { toSceneUpdateInput } from './input'
+const normalizeInput = (input: SceneUpdateInput): Input => ({
+  document: input.document,
+  editor: input.editor,
+  delta: createWhiteboardMutationDelta(input.document.delta)
+})
 
 const TEST_SCENE_VIEW = () => ({
   zoom: 1,
@@ -39,7 +44,7 @@ export interface EditorSceneHarness {
 export interface EditorSceneProjectionHarness {
   capture(): Capture
   working(): WorkingState
-  update(input: Input): Result
+  update(input: Input | SceneUpdateInput): Result
   lastTrace(): Result['trace']
 }
 
@@ -56,11 +61,7 @@ export const createEditorSceneHarness = (input: {
     runtime,
     scene: runtime.scene,
     update: (value) => {
-      const result = runtime.update(
-        'editor' in value
-          ? value
-          : toSceneUpdateInput(value)
-      )
+      const result = runtime.update(value)
       trace = result.trace
       return result
     },
@@ -82,7 +83,11 @@ export const createEditorSceneProjectionHarness = (input: {
     capture: runtime.capture,
     working: () => runtime.state(),
     update: (value) => {
-      const result = runtime.update(value)
+      const result = runtime.update(
+        'delta' in value
+          ? value
+          : normalizeInput(value)
+      )
       trace = result.trace
       return {
         revision: result.revision,

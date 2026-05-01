@@ -2,12 +2,12 @@ import { document as documentApi, normalizeDocument } from '@whiteboard/core/doc
 import type {
   WhiteboardCompileContext,
   WhiteboardCompileHandlerTable
-} from '@whiteboard/core/operations/compile/helpers'
+} from '@whiteboard/core/mutation/compile/helpers'
 import {
   failInvalid,
   readCompileRegistries,
   readCompileServices
-} from '@whiteboard/core/operations/compile/helpers'
+} from '@whiteboard/core/mutation/compile/helpers'
 import {
   writeDocumentCreate,
   writeDocumentPatch,

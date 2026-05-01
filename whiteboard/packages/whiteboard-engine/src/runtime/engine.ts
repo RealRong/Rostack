@@ -10,12 +10,12 @@ import type {
   WhiteboardCompileIds,
   WhiteboardCompileServices,
   WhiteboardMutationTable
-} from '@whiteboard/core/operations'
+} from '@whiteboard/core/mutation'
 import {
   isCheckpointProgram,
   whiteboardCompileHandlers,
   whiteboardMutationRegistry
-} from '@whiteboard/core/operations'
+} from '@whiteboard/core/mutation'
 import {
   createDocumentReader,
   normalizeDocument

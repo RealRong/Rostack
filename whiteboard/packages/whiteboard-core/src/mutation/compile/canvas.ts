@@ -4,23 +4,23 @@ import { node as nodeApi } from '@whiteboard/core/node'
 import type {
   WhiteboardCompileContext,
   WhiteboardCompileHandlerTable
-} from '@whiteboard/core/operations/compile/helpers'
+} from '@whiteboard/core/mutation/compile/helpers'
 import {
   failCancelled,
   failInvalid,
   readCompileRegistries,
   readCompileServices,
   runCustomPlanner,
-} from '@whiteboard/core/operations/compile/helpers'
+} from '@whiteboard/core/mutation/compile/helpers'
 import {
   planCanvasOrderMove,
-} from '@whiteboard/core/operations/custom/canvas'
+} from '@whiteboard/core/mutation/planner/canvas'
 import {
   planMindmapDelete,
   planMindmapMove,
   planMindmapTopicDelete,
-} from '@whiteboard/core/operations/custom/mindmap'
-import { resolveLockDecision } from '@whiteboard/core/operations/lock'
+} from '@whiteboard/core/mutation/planner/mindmap'
+import { resolveLockDecision } from '@whiteboard/core/mutation/lock'
 import type { CanvasItemRef } from '@whiteboard/core/types'
 import { emitEdgeMovePatchOps } from './edge'
 import {
@@ -33,7 +33,7 @@ import {
 
 const failLockedModification = (
   ctx: WhiteboardCompileContext,
-  reason?: import('@whiteboard/core/operations/lock').LockDecisionReason
+  reason?: import('@whiteboard/core/mutation/lock').LockDecisionReason
 ) => failCancelled(
   ctx,
   reason === 'locked-node'

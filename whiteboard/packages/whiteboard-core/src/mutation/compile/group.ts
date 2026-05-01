@@ -1,10 +1,10 @@
 import { node as nodeApi } from '@whiteboard/core/node'
 import type {
   WhiteboardCompileHandlerTable
-} from '@whiteboard/core/operations/compile/helpers'
+} from '@whiteboard/core/mutation/compile/helpers'
 import {
   readCompileServices
-} from '@whiteboard/core/operations/compile/helpers'
+} from '@whiteboard/core/mutation/compile/helpers'
 import {
   writeCanvasOrderSplice,
   writeEdgePatch,
@@ -14,7 +14,7 @@ import {
 } from './write'
 import {
   toCanvasOrderAnchor,
-} from '@whiteboard/core/operations/targets'
+} from '@whiteboard/core/mutation/targets'
 
 type GroupIntentHandlers = Pick<
   WhiteboardCompileHandlerTable,

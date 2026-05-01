@@ -11,15 +11,15 @@ import {
 import type {
   WhiteboardCompileContext,
   WhiteboardCompileHandlerTable
-} from '@whiteboard/core/operations/compile/helpers'
+} from '@whiteboard/core/mutation/compile/helpers'
 import {
   failCancelled,
   failInvalid,
   readCompileRegistries,
   readCompileServices,
   requireEdge
-} from '@whiteboard/core/operations/compile/helpers'
-import { resolveLockDecision } from '@whiteboard/core/operations/lock'
+} from '@whiteboard/core/mutation/compile/helpers'
+import { resolveLockDecision } from '@whiteboard/core/mutation/lock'
 import {
   writeEdgeCreate,
   writeEdgeDelete,
@@ -397,7 +397,7 @@ type EdgeIntentHandlers = Pick<
 
 const failLockedEdgeModification = (
   ctx: WhiteboardCompileContext,
-  reason?: import('@whiteboard/core/operations/lock').LockDecisionReason
+  reason?: import('@whiteboard/core/mutation/lock').LockDecisionReason
 ) => failCancelled(
   ctx,
   reason === 'locked-node'

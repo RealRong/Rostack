@@ -1,5 +1,5 @@
 import { equal } from '@shared/core'
-import { isCheckpointProgram } from '@whiteboard/core/operations'
+import { isCheckpointProgram } from '@whiteboard/core/mutation'
 import type { DocumentFrame } from '@whiteboard/editor-scene'
 import type { Engine } from '@whiteboard/engine'
 import type { EditorSession } from '@whiteboard/editor/session/runtime'

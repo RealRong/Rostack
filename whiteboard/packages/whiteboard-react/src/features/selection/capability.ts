@@ -2,7 +2,7 @@ import type { SelectionTarget } from '@whiteboard/core/selection'
 import { document as documentApi } from '@whiteboard/core/document'
 import {
   resolveLockDecision
-} from '@whiteboard/core/operations'
+} from '@whiteboard/core/mutation'
 import type { WhiteboardRuntime } from '@whiteboard/react/types/runtime'
 
 export type SelectionCan = {

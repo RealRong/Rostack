@@ -9,19 +9,19 @@ import type {
 import type {
   WhiteboardCompileContext,
   WhiteboardCompileHandlerTable
-} from '@whiteboard/core/operations/compile/helpers'
+} from '@whiteboard/core/mutation/compile/helpers'
 import {
   failCancelled,
   failInvalid,
   readCompileRegistries,
   readCompileServices,
   runCustomPlanner,
-} from '@whiteboard/core/operations/compile/helpers'
+} from '@whiteboard/core/mutation/compile/helpers'
 import {
   planMindmapMove,
   planMindmapTopicPatch,
-} from '@whiteboard/core/operations/custom/mindmap'
-import { resolveLockDecision } from '@whiteboard/core/operations/lock'
+} from '@whiteboard/core/mutation/planner/mindmap'
+import { resolveLockDecision } from '@whiteboard/core/mutation/lock'
 import type {
   NodeId,
   NodeUpdateInput,

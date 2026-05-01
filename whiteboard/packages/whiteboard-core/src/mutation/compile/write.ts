@@ -26,7 +26,7 @@ import {
   canvasRefKey,
   toMutationOrderedAnchor,
   type WhiteboardMindmapTreeValue,
-} from '@whiteboard/core/operations/targets'
+} from '@whiteboard/core/mutation/targets'
 import type {
   WhiteboardMutationPorts
 } from './helpers'

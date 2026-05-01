@@ -1,12 +1,12 @@
 import type {
   WhiteboardMutationPorts
-} from '@whiteboard/core/operations/compile/helpers'
+} from '@whiteboard/core/mutation/compile/helpers'
 import type {
   DocumentReader
 } from '@whiteboard/core/document/reader'
 import type {
   WhiteboardCompileServices
-} from '@whiteboard/core/operations/compile/helpers'
+} from '@whiteboard/core/mutation/compile/helpers'
 import type {
   Document,
   Operation,

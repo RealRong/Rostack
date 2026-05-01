@@ -11,7 +11,7 @@ import type {
   WhiteboardIntentKind,
   WhiteboardIntentOutput,
   WhiteboardIntentTable
-} from '@whiteboard/core/operations'
+} from '@whiteboard/core/mutation'
 import type { EngineApplyCommit } from '../types/engineWrite'
 import type { WhiteboardErrorCode } from '../types/result'
 

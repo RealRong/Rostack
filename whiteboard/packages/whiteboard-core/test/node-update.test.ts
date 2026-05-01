@@ -9,7 +9,7 @@ import { document as documentApi } from '@whiteboard/core/document'
 import { mindmap as mindmapApi } from '@whiteboard/core/mindmap'
 import {
   whiteboardMutationRegistry
-} from '@whiteboard/core/operations'
+} from '@whiteboard/core/mutation'
 import type { Document } from '@whiteboard/core/types'
 
 const FIXED_TIMESTAMP = Date.parse('2024-01-01T00:00:00.000Z')

@@ -3,7 +3,7 @@ import type {
 } from '@shared/mutation'
 import {
   validateLockOperations
-} from '@whiteboard/core/operations/lock'
+} from '@whiteboard/core/mutation/lock'
 import type {
   Document,
   Operation,

@@ -1,18 +1,22 @@
 export {
-  whiteboardCompileHandlers,
-  whiteboardMutationRegistry,
-  validateWhiteboardOperationBatch,
+  whiteboardCompileHandlers
+} from './compile'
+export {
+  whiteboardMutationRegistry
+} from './targets'
+export {
+  validateWhiteboardOperationBatch
+} from './validate'
+export {
   resolveLockDecision,
-  validateLockOperations,
+  validateLockOperations
+} from './lock'
+export {
   isCheckpointOperation,
   isCheckpointProgram
-} from '@whiteboard/core/operations'
+} from './checkpoint'
 
 export type {
-  LockDecision,
-  LockDecisionReason,
-  LockOperationViolation,
-  LockTarget,
   WhiteboardCompileCode,
   WhiteboardCompileContext,
   WhiteboardCompileHandlerTable,
@@ -23,4 +27,10 @@ export type {
   WhiteboardIntentOutput,
   WhiteboardIntentTable,
   WhiteboardMutationTable
-} from '@whiteboard/core/operations'
+} from './compile'
+export type {
+  LockDecision,
+  LockDecisionReason,
+  LockOperationViolation,
+  LockTarget,
+} from './lock'

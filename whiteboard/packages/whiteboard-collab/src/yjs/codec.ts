@@ -12,7 +12,7 @@ import {
 } from '@shared/mutation'
 import {
   isCheckpointProgram
-} from '@whiteboard/core/operations'
+} from '@whiteboard/core/mutation'
 import type {
   SharedChange,
   SharedCheckpoint,

@@ -6,13 +6,13 @@ import { node as nodeApi } from '@whiteboard/core/node'
 import type {
   WhiteboardCompileContext,
   WhiteboardCompileHandlerTable
-} from '@whiteboard/core/operations/compile/helpers'
+} from '@whiteboard/core/mutation/compile/helpers'
 import {
   failInvalid,
   readCompileRegistries,
   readCompileServices,
   runCustomPlanner,
-} from '@whiteboard/core/operations/compile/helpers'
+} from '@whiteboard/core/mutation/compile/helpers'
 import {
   planMindmapBranchPatch,
   planMindmapCreate,
@@ -24,7 +24,7 @@ import {
   planMindmapTopicInsert,
   planMindmapTopicMove,
   planMindmapTopicPatch,
-} from '@whiteboard/core/operations/custom/mindmap'
+} from '@whiteboard/core/mutation/planner/mindmap'
 import type { NodeId } from '@whiteboard/core/types'
 
 const compileMindmapCreate = (

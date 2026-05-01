@@ -11,7 +11,7 @@ import {
 } from '@shared/draft'
 import {
   whiteboardEntities
-} from '@whiteboard/core/operations/entities'
+} from '@whiteboard/core/mutation/entities'
 import {
   createEdgeLabelPatch,
   readEdgeLabelUpdateFromPatch
@@ -43,7 +43,7 @@ import {
   clone,
   same,
   uniqueSorted
-} from '@whiteboard/core/operations/custom/common'
+} from '@whiteboard/core/mutation/planner/common'
 
 export type WhiteboardMindmapTreeValue = {
   side?: 'left' | 'right'

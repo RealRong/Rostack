@@ -9,7 +9,7 @@ import {
 } from '@whiteboard/core/document'
 import {
   isCheckpointProgram
-} from '@whiteboard/core/operations'
+} from '@whiteboard/core/mutation'
 import { createId } from '@shared/core'
 import * as Y from 'yjs'
 import type {

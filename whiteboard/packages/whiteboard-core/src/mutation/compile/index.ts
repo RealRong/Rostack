@@ -1,12 +1,12 @@
-import { canvasIntentHandlers } from '@whiteboard/core/operations/compile/canvas'
-import { documentIntentHandlers } from '@whiteboard/core/operations/compile/document'
-import { edgeIntentHandlers } from '@whiteboard/core/operations/compile/edge'
-import { groupIntentHandlers } from '@whiteboard/core/operations/compile/group'
+import { canvasIntentHandlers } from '@whiteboard/core/mutation/compile/canvas'
+import { documentIntentHandlers } from '@whiteboard/core/mutation/compile/document'
+import { edgeIntentHandlers } from '@whiteboard/core/mutation/compile/edge'
+import { groupIntentHandlers } from '@whiteboard/core/mutation/compile/group'
 import type {
   WhiteboardCompileHandlerTable
-} from '@whiteboard/core/operations/compile/helpers'
-import { mindmapIntentHandlers } from '@whiteboard/core/operations/compile/mindmap'
-import { nodeIntentHandlers } from '@whiteboard/core/operations/compile/node'
+} from '@whiteboard/core/mutation/compile/helpers'
+import { mindmapIntentHandlers } from '@whiteboard/core/mutation/compile/mindmap'
+import { nodeIntentHandlers } from '@whiteboard/core/mutation/compile/node'
 export const whiteboardCompileHandlers: WhiteboardCompileHandlerTable = {
   'document.replace': documentIntentHandlers['document.replace'],
   'document.insert': documentIntentHandlers['document.insert'],
@@ -61,7 +61,7 @@ export type {
   WhiteboardCompileHandlerTable,
   WhiteboardCompileIds,
   WhiteboardCompileServices
-} from '@whiteboard/core/operations/compile/helpers'
+} from '@whiteboard/core/mutation/compile/helpers'
 export type {
   CanvasIntent,
   DocumentIntent,
@@ -79,4 +79,4 @@ export type {
   WhiteboardIntentOutput,
   WhiteboardIntentTable,
   WhiteboardMutationTable
-} from '@whiteboard/core/operations/intents'
+} from '@whiteboard/core/mutation/intents'

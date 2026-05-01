@@ -98,7 +98,7 @@ input.program.viewDisplay(viewId).splice(fieldIds, anchor)
   - `VIEW_DISPLAY_FIELDS_STRUCTURE_PREFIX`
   - `VIEW_FILTER_RULES_STRUCTURE_PREFIX`
   - `VIEW_SORT_RULES_STRUCTURE_PREFIX`
-- `targets.ts` 现在只声明 typed family：
+- `mutation/targets/index.ts` 现在只声明 typed family：
   - `fieldOptions`
   - `viewOrder`
   - `viewDisplay`
@@ -135,7 +135,7 @@ input.program.mindmapTree(mindmapId).insert(nodeId, parentId, index, value)
   - `edge.labels:${id}`
   - `edge.route:${id}`
   - `mindmap.tree:${id}`
-- `targets.ts` 现在声明的 typed family 为：
+- `mutation/targets.ts` 现在声明的 typed family 为：
   - `canvasOrder`
   - `edgeLabels`
   - `edgeRoute`
@@ -150,7 +150,14 @@ input.program.mindmapTree(mindmapId).insert(nodeId, parentId, index, value)
 ### 4.4 入口
 
 - `whiteboard/packages/whiteboard-core/src/mutation/index.ts` 已变成真实入口，不再是空壳。
-- `operations/` 仍然承载当前实现文件，但对外 mutation 入口已经统一收口到 `mutation/`。
+- whiteboard 的 mutation 实现文件已经物理迁入 `src/mutation/`：
+  - `mutation/compile`
+  - `mutation/planner`
+  - `mutation/targets.ts`
+  - `mutation/validate.ts`
+  - `mutation/lock.ts`
+  - `mutation/checkpoint.ts`
+- `src/operations/index.ts` 现在只保留包级转发职责，不再承载实际实现。
 
 ## 5. 已清除的旧实现
 

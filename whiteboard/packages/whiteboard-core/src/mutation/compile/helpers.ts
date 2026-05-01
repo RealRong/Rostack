@@ -29,14 +29,14 @@ import type {
   WhiteboardIntentKind,
   WhiteboardIntentOutput,
   WhiteboardMutationTable
-} from '@whiteboard/core/operations/intents'
+} from '@whiteboard/core/mutation/intents'
 import type {
   WhiteboardCustomOperation,
   WhiteboardCustomPlanContext,
-} from '@whiteboard/core/operations/custom/types'
+} from '@whiteboard/core/mutation/planner/types'
 import type {
   WhiteboardMutationRegistry
-} from '@whiteboard/core/operations/targets'
+} from '@whiteboard/core/mutation/targets'
 
 export type WhiteboardMutationPorts = MutationPorts<
   WhiteboardMutationRegistry,

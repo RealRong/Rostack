@@ -3,7 +3,7 @@ import type {
   InteractionSession
 } from '@whiteboard/editor/input/core/types'
 import { FINISH } from '@whiteboard/editor/input/session/result'
-import type { EditorHostDeps } from '@whiteboard/editor/input/runtime'
+import type { EditorInputContext } from '@whiteboard/editor/input/runtime'
 import type { EditorCommand } from '@whiteboard/editor/state-engine/intents'
 
 type PanState = {
@@ -21,15 +21,15 @@ type PanPointer = {
 }
 
 type ViewportServices = Pick<
-  EditorHostDeps,
-  'read' | 'runtime'
+  EditorInputContext,
+  'editor'
 >
 
 const allowsLeftDrag = (
   ctx: ViewportServices
 ) => (
-  ctx.read.space.get()
-  || ctx.read.tool.is('hand')
+  ctx.editor.scene.ui.state.interaction.get().space
+  || ctx.editor.scene.ui.state.tool.is('hand')
 )
 
 const updatePan = (
@@ -47,7 +47,7 @@ const updatePan = (
     x: input.client.x,
     y: input.client.y
   }
-  const nextViewport = ctx.runtime.viewport.resolve.panScreenBy({
+  const nextViewport = ctx.editor.viewport.resolve.panScreenBy({
     x: -deltaX,
     y: -deltaY
   })
@@ -55,7 +55,7 @@ const updatePan = (
     return
   }
 
-  ctx.runtime.dispatch({
+  ctx.editor.dispatch({
     type: 'viewport.set',
     viewport: nextViewport
   } satisfies EditorCommand)

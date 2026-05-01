@@ -6,96 +6,96 @@ describe('createMoveInteraction', () => {
     const moveSelection = vi.fn(() => ({ ok: true }))
 
     const session = createMoveInteraction({
-      engine: {},
-      document: {
-        node: {
-          get: () => ({
-            node: {
-              id: 'node-1',
-              type: 'text',
-              data: {
-                text: 'node-1'
+      editor: {
+        document: {
+          node: (id: string) => id === 'node-1'
+            ? {
+                id: 'node-1',
+                type: 'text',
+                position: {
+                  x: 100,
+                  y: 120
+                },
+                size: {
+                  width: 120,
+                  height: 40
+                },
+                data: {
+                  text: 'node-1'
+                }
               }
-            },
-            rect: {
-              x: 100,
-              y: 120,
-              width: 120,
-              height: 40
+            : undefined
+        },
+        scene: {
+          selection: {
+            move: () => ({
+              nodes: [{
+                id: 'node-1',
+                type: 'text',
+                position: {
+                  x: 100,
+                  y: 120
+                },
+                size: {
+                  width: 120,
+                  height: 40
+                },
+                rotation: 0,
+                data: {
+                  text: 'node-1'
+                }
+              }],
+              edges: [{
+                id: 'edge-1',
+                type: 'straight',
+                source: {
+                  kind: 'point',
+                  point: { x: 80, y: 140 }
+                },
+                target: {
+                  kind: 'point',
+                  point: { x: 200, y: 140 }
+                },
+                route: {
+                  kind: 'auto'
+                }
+              }]
+            })
+          },
+          frame: {
+            pick: vi.fn(() => undefined),
+            parent: vi.fn()
+          },
+          mindmaps: {
+            tree: vi.fn(() => undefined)
+          },
+          ui: {
+            state: {
+              tool: {
+                is: () => false
+              }
             }
-          })
-        },
-        edge: {
-          ids: () => ['edge-1']
-        },
-      },
-      projection: {
-        selection: {
-          move: () => ({
-            nodes: [{
-              id: 'node-1',
-              type: 'text',
-              position: {
-                x: 100,
-                y: 120
-              },
-              size: {
-                width: 120,
-                height: 40
-              },
-              rotation: 0,
-              data: {
-                text: 'node-1'
-              }
-            }],
-            edges: [{
-              id: 'edge-1',
-              type: 'straight',
-              source: {
-                kind: 'point',
-                point: { x: 80, y: 140 }
-              },
-              target: {
-                kind: 'point',
-                point: { x: 200, y: 140 }
-              },
-              route: {
-                kind: 'auto'
-              }
-            }]
-          })
-        },
-        frame: {
-          pick: vi.fn(() => undefined),
-          parent: vi.fn()
-        },
-        mindmaps: {
-          tree: vi.fn(() => undefined)
-        }
-      },
-      read: {
-        tool: {
-          is: () => false
+          }
         },
         viewport: {
-          pointer: vi.fn()
-        }
-      },
-      runtime: {
-        dispatch: vi.fn()
-      },
-      snap: {
-        node: {
-          move: vi.fn()
-        }
-      },
-      write: {
-        canvas: {
-          selection: {
-            move: moveSelection
+          read: {
+            pointer: vi.fn()
+          }
+        },
+        dispatch: vi.fn(),
+        snap: {
+          node: {
+            move: vi.fn()
+          }
+        },
+        mutate: {
+          canvas: {
+            selection: {
+              move: moveSelection
+            }
           }
         }
-      },
+      }
     } as never, {
       start: {
         phase: 'down',

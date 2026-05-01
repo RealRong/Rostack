@@ -23,7 +23,7 @@ import {
 import type { InteractionBinding, InteractionSession } from '@whiteboard/editor/input/core/types'
 import { FINISH } from '@whiteboard/editor/input/session/result'
 import { createGesture } from '@whiteboard/editor/input/core/gesture'
-import type { EditorHostDeps } from '@whiteboard/editor/input/runtime'
+import type { EditorInputContext } from '@whiteboard/editor/input/runtime'
 import type { PointerDownInput, PointerSample } from '@whiteboard/editor/types/input'
 import type { Tool } from '@whiteboard/editor/types/tool'
 
@@ -198,22 +198,22 @@ const commitDrawStroke = (
 }
 
 const queryDrawNodeIdsInRect = (
-  ctx: Pick<EditorHostDeps, 'projection' | 'document'>,
+  ctx: Pick<EditorInputContext, 'editor'>,
   rect: Rect
-): readonly NodeId[] => ctx.projection.nodes.idsInRect(rect, {
+): readonly NodeId[] => ctx.editor.scene.nodes.idsInRect(rect, {
   match: 'touch'
 }).filter((nodeId) => (
-  ctx.document.node(nodeId)?.type === 'draw'
+  ctx.editor.document.node(nodeId)?.type === 'draw'
 ))
 
 const collectErasePoint = (
-  ctx: Pick<EditorHostDeps, 'projection' | 'document' | 'read'>,
+  ctx: Pick<EditorInputContext, 'editor'>,
   state: EraseState,
   world: Point
 ): EraseState => {
   const halfWorld =
     ERASER_HIT_EPSILON_SCREEN
-    / Math.max(ctx.read.viewport.get().zoom, ZOOM_EPSILON)
+    / Math.max(ctx.editor.scene.ui.state.viewport.get().zoom, ZOOM_EPSILON)
   const nodeIds = queryDrawNodeIdsInRect(
     ctx,
     geometryApi.segment.bounds(state.lastWorld, world, halfWorld)
@@ -249,10 +249,10 @@ const collectErasePoint = (
 }
 
 const tryStartErase = (
-  ctx: Pick<EditorHostDeps, 'read' | 'projection' | 'document'>,
+  ctx: Pick<EditorInputContext, 'editor'>,
   input: PointerDownInput
 ): EraseState | null => {
-  const tool = ctx.read.tool.get()
+  const tool = ctx.editor.scene.ui.state.tool.get()
 
   if (
     tool.type !== 'draw'
@@ -271,7 +271,7 @@ const tryStartErase = (
 }
 
 const stepEraseState = (
-  ctx: Pick<EditorHostDeps, 'read' | 'projection' | 'document'>,
+  ctx: Pick<EditorInputContext, 'editor'>,
   state: EraseState,
   input: DrawPointer
 ) => {
@@ -285,7 +285,7 @@ const stepEraseState = (
 }
 
 const createDrawStrokeSession = (
-  ctx: Pick<EditorHostDeps, 'read' | 'write'>,
+  ctx: Pick<EditorInputContext, 'editor'>,
   initial: DrawStrokeState
 ): InteractionSession => {
   let state = initial
@@ -305,7 +305,7 @@ const createDrawStrokeSession = (
     state = nextState
     interaction!.gesture = createGesture('draw', {
       drawPreview: previewDrawStroke(state, {
-        zoom: ctx.read.viewport.get().zoom
+        zoom: ctx.editor.scene.ui.state.viewport.get().zoom
       })
     })
   }
@@ -319,14 +319,14 @@ const createDrawStrokeSession = (
     up: (input) => {
       step(input, true)
       const commit = commitDrawStroke(state, {
-        zoom: ctx.read.viewport.get().zoom
+        zoom: ctx.editor.scene.ui.state.viewport.get().zoom
       })
       if (commit) {
         const {
           position,
           ...template
         } = commit
-        ctx.write.node.create({
+        ctx.editor.write.node.create({
           position,
           template
         })
@@ -340,7 +340,7 @@ const createDrawStrokeSession = (
 }
 
 const createEraseSession = (
-  ctx: Pick<EditorHostDeps, 'read' | 'projection' | 'document' | 'write'>,
+  ctx: Pick<EditorInputContext, 'editor'>,
   initial: EraseState
 ): InteractionSession => {
   let state = initial
@@ -367,7 +367,7 @@ const createEraseSession = (
     up: (input) => {
       step(input)
       if (state.ids.length > 0) {
-        ctx.write.node.delete([...state.ids])
+        ctx.editor.write.node.delete([...state.ids])
       }
       return FINISH
     },
@@ -378,11 +378,11 @@ const createEraseSession = (
 }
 
 export const createDrawBinding = (
-  ctx: Pick<EditorHostDeps, 'read' | 'projection' | 'document' | 'write'>
+  ctx: Pick<EditorInputContext, 'editor'>
 ): InteractionBinding => ({
   key: 'draw',
   start: (input) => {
-    const tool = ctx.read.tool.get()
+    const tool = ctx.editor.scene.ui.state.tool.get()
 
     if (tool.type !== 'draw') {
       return null
@@ -398,7 +398,7 @@ export const createDrawBinding = (
     const state = tryStartDrawStroke({
       tool,
       pointer: input,
-      state: ctx.read.draw.get()
+      state: ctx.editor.scene.ui.state.draw.get()
     })
     return state
       ? createDrawStrokeSession(ctx, state)

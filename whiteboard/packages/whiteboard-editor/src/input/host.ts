@@ -1,11 +1,9 @@
 import type { SelectionTarget } from '@whiteboard/core/selection'
-import type { EditorProjection } from '@whiteboard/editor/editor/projection/types'
 import type { EditorCommand } from '@whiteboard/editor/state-engine/intents'
 import type { ContextMenuIntent } from '@whiteboard/editor/types/input'
-import type { EditorInputHost } from '@whiteboard/editor/types/editor'
+import type { Editor, EditorInputHost } from '@whiteboard/editor/types/editor'
 import type { InteractionRuntime } from '@whiteboard/editor/input/core/types'
 import type { EdgeHoverService } from '@whiteboard/editor/input/hover/edge'
-import type { EditorHostDeps } from '@whiteboard/editor/input/runtime'
 import {
   EMPTY_HOVER_STATE,
   isHoverStateEqual,
@@ -13,17 +11,13 @@ import {
 } from '@whiteboard/editor/input/hover/store'
 
 export const createEditorInputHost = ({
+  editor,
   interaction,
-  edgeHover,
-  projection,
-  read,
-  runtime
+  edgeHover
 }: {
+  editor: Editor
   interaction: InteractionRuntime
   edgeHover: EdgeHoverService
-  projection: EditorProjection
-  read: EditorHostDeps['read']
-  runtime: EditorHostDeps['runtime']
 }): EditorInputHost => {
   const dispatchSelection = (
     selection: {
@@ -31,7 +25,7 @@ export const createEditorInputHost = ({
       edgeIds?: readonly string[]
     }
   ) => {
-    runtime.dispatch({
+    editor.dispatch({
       type: 'selection.set',
       selection: {
         nodeIds: selection.nodeIds ? [...selection.nodeIds] : [],
@@ -42,26 +36,26 @@ export const createEditorInputHost = ({
 
   const updateInteraction = (
     update: (
-      current: ReturnType<EditorHostDeps['read']['interaction']['hover']['get']>
-    ) => ReturnType<EditorHostDeps['read']['interaction']['hover']['get']>
+      current: ReturnType<typeof editor.snapshot>['overlay']['hover']
+    ) => ReturnType<typeof editor.snapshot>['overlay']['hover']
   ) => {
-    runtime.dispatch({
+    editor.dispatch({
       type: 'overlay.hover.set',
-      hover: update(read.interaction.hover.get())
+      hover: update(editor.snapshot().overlay.hover)
     } satisfies EditorCommand)
   }
 
   const dispatchViewport = (
-    viewport: ReturnType<EditorHostDeps['runtime']['viewport']['read']['get']>
+    viewport: ReturnType<Editor['viewport']['read']['get']>
   ) => {
-    runtime.dispatch({
+    editor.dispatch({
       type: 'viewport.set',
       viewport
     } satisfies EditorCommand)
   }
 
   const clearTransientState = () => {
-    runtime.dispatch({
+    editor.dispatch({
       type: 'overlay.hover.set',
       hover: EMPTY_HOVER_STATE
     } satisfies EditorCommand)
@@ -77,13 +71,13 @@ export const createEditorInputHost = ({
     contextMenu: (input) => {
       edgeHover.clear()
 
-      if (read.interaction.busy.get() || input.ignoreContextMenu) {
+      if (editor.scene.ui.state.interaction.get().busy || input.ignoreContextMenu) {
         return null
       }
 
       switch (input.pick.kind) {
         case 'selection-box': {
-          const target = read.selection.get()
+          const target = editor.scene.ui.state.selection.get()
           return (
             target.nodeIds.length > 0 || target.edgeIds.length > 0
               ? {
@@ -98,7 +92,7 @@ export const createEditorInputHost = ({
           }
         }
         case 'node': {
-          const current = read.selection.get()
+          const current = editor.scene.ui.state.selection.get()
           const reuseCurrentSelection = current.nodeIds.includes(input.pick.id)
           if (reuseCurrentSelection) {
             return {
@@ -116,7 +110,7 @@ export const createEditorInputHost = ({
           }
         }
         case 'group': {
-          const target = projection.groups.target(input.pick.id)
+          const target = editor.scene.groups.target(input.pick.id)
           if (!target) {
             return {
               kind: 'canvas',
@@ -158,7 +152,7 @@ export const createEditorInputHost = ({
 
       return {
         handled,
-        continuePointer: handled && read.interaction.busy.get()
+        continuePointer: handled && editor.scene.ui.state.interaction.get().busy
       }
     },
     pointerMove: (input) => {
@@ -176,7 +170,7 @@ export const createEditorInputHost = ({
           : target
       ))
 
-      if (read.tool.get().type === 'edge') {
+      if (editor.scene.ui.state.tool.get().type === 'edge') {
         edgeHover.move(input.world)
       } else {
         edgeHover.clear()
@@ -197,7 +191,7 @@ export const createEditorInputHost = ({
         return true
       }
 
-      dispatchViewport(runtime.viewport.resolve.wheel(
+      dispatchViewport(editor.viewport.resolve.wheel(
         {
           deltaX: input.deltaX,
           deltaY: input.deltaY,

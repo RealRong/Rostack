@@ -12,6 +12,7 @@ import {
   createEditorProjection,
   createEditorSceneFacade
 } from '@whiteboard/editor/editor/projection'
+import { createSnapRuntime } from '@whiteboard/editor/input/core/snap'
 import { createEditorHost } from '@whiteboard/editor/input/runtime'
 import { createProjectionRuntime } from '@whiteboard/editor-scene'
 import {
@@ -182,6 +183,17 @@ export const createEditor = (input: {
     capture: sceneRuntime.capture
   })
   const document = projection.document
+  const snap = createSnapRuntime({
+    readZoom: () => stateRuntime.snapshot().state.viewport.zoom,
+    node: {
+      config: input.engine.config.node,
+      query: projection.snap.candidates
+    },
+    edge: {
+      config: input.engine.config.edge,
+      query: projection.edges.connectCandidates
+    }
+  })
   const writeRuntime = createEditorWrite({
     engine: input.engine,
     history: input.history,
@@ -246,15 +258,26 @@ export const createEditor = (input: {
     }
   })
 
-  const host = createEditorHost({
-    engine: input.engine,
+  const editorBase = {
+    scene,
     document,
-    projection,
-    runtime: stateRuntime,
-    layout,
-    write: writeRuntime,
-    tool: actions.tool,
-    nodeType
+    history: input.history,
+    write: actions,
+    mutate: writeRuntime,
+    viewport: stateRuntime.viewport,
+    snapshot: stateRuntime.snapshot,
+    config: input.engine.config,
+    nodeType,
+    snap,
+    dispatch: stateRuntime.dispatch
+  }
+  const host = createEditorHost({
+    editor: {
+      ...editorBase,
+      input: null as never,
+      dispose: () => {}
+    },
+    layout
   })
 
   let suppressEditorCommitProjection = false
@@ -337,11 +360,8 @@ export const createEditor = (input: {
   })
 
   return {
-    scene,
-    history: input.history,
+    ...editorBase,
     input: host,
-    write: actions,
-    dispatch: stateRuntime.dispatch,
     dispose: () => {
       unsubscribeEngineCommits()
       unsubscribeEditorCommits()

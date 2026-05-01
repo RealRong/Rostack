@@ -22,10 +22,13 @@ import type {
   PreviewInput
 } from '@whiteboard/editor-scene'
 import type { EditorActions as EditorWrite } from '@whiteboard/editor/action/types'
+import type { SnapRuntime } from '@whiteboard/editor/input/core/snap'
 import type { EdgeGuide } from '@whiteboard/editor/preview/types'
 import type { DrawState } from '@whiteboard/editor/session/draw/state'
 import type { EditSession } from '@whiteboard/editor/session/edit'
+import type { EditorStateDocument } from '@whiteboard/editor/state-engine/document'
 import type { EditorDispatchInput } from '@whiteboard/editor/state-engine/intents'
+import type { EditorStateRuntime } from '@whiteboard/editor/state-engine/runtime'
 import type { PointerMode } from '@whiteboard/editor/input/core/types'
 import type {
   ContextMenuInput,
@@ -46,7 +49,10 @@ import type {
   SelectionToolbarEdgeScope,
   SelectionToolbarNodeScope
 } from '@whiteboard/editor/types/selectionPresentation'
+import type { NodeTypeSupport } from '@whiteboard/editor/types/node'
 import type { Tool } from '@whiteboard/editor/types/tool'
+import type { EditorWrite as EditorMutationWrite } from '@whiteboard/editor/write'
+import type { BoardConfig } from '@whiteboard/engine/config'
 import type { IntentResult } from '@whiteboard/engine'
 
 export type { EditorScene } from '@whiteboard/editor-scene'
@@ -189,9 +195,16 @@ export type EditorSceneFacade = EditorScene & {
 
 export type Editor = {
   scene: EditorSceneFacade
+  document: DocumentFrame
   history: HistoryPort<IntentResult>
   input: EditorInputHost
   write: EditorWrite
+  mutate: EditorMutationWrite
+  viewport: EditorStateRuntime['viewport']
+  snapshot: () => EditorStateDocument
+  config: BoardConfig
+  nodeType: NodeTypeSupport
+  snap: SnapRuntime
   dispatch: (command: EditorDispatchInput) => void
   dispose: () => void
 }

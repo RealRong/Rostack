@@ -10,12 +10,12 @@ import type {
 } from '@whiteboard/core/selection'
 import type { SelectionMode } from '@whiteboard/core/node'
 import type { GroupId, Node, NodeId } from '@whiteboard/core/types'
-import type { EditorHostDeps } from '@whiteboard/editor/input/runtime'
+import type { EditorInputContext } from '@whiteboard/editor/input/runtime'
 import type { EditorCommand } from '@whiteboard/editor/state-engine/intents'
 import { resolveNodeEditorCapability } from '@whiteboard/editor/types/node'
 
 const startNodeEdit = (input: {
-  ctx: Pick<EditorHostDeps, 'runtime' | 'document' | 'nodeType'>
+  ctx: Pick<EditorInputContext, 'editor'>
   nodeId: NodeId
   field: 'text' | 'title'
   caret: {
@@ -26,12 +26,12 @@ const startNodeEdit = (input: {
     }
   }
 }) => {
-  const committed = input.ctx.document.node(input.nodeId)
+  const committed = input.ctx.editor.document.node(input.nodeId)
   if (!committed) {
     return null
   }
 
-  const capability = input.ctx.nodeType.edit(committed.type, input.field)
+  const capability = input.ctx.editor.nodeType.edit(committed.type, input.field)
   if (!capability) {
     return null
   }
@@ -666,13 +666,13 @@ const matchSelectionTap = <TField extends string>(
 }
 
 const applySelectionTap = (
-  ctx: Pick<EditorHostDeps, 'document' | 'projection' | 'runtime' | 'nodeType' | 'ui'>,
+  ctx: Pick<EditorInputContext, 'editor'>,
   tap: SelectionTapAction<SelectionPressField>,
   input: Pick<PointerDownInput, 'client'>
 ) => {
   switch (tap.kind) {
     case 'clear':
-      ctx.runtime.dispatch({
+      ctx.editor.dispatch({
         type: 'selection.set',
         selection: {
           nodeIds: [],
@@ -681,14 +681,14 @@ const applySelectionTap = (
       })
       return
     case 'select':
-      ctx.runtime.dispatch({
+      ctx.editor.dispatch({
         type: 'selection.set',
         selection: tap.target
       })
       return
     case 'edit-node': {
       const field = resolveSelectionEditField(
-        ctx.document.node(tap.nodeId)
+        ctx.editor.document.node(tap.nodeId)
       )
       if (!field) {
         return
@@ -704,13 +704,13 @@ const applySelectionTap = (
         }
       })
       if (command) {
-        ctx.runtime.dispatch(command)
+        ctx.editor.dispatch(command)
       }
       return
     }
     case 'edit-field': {
       const commands: EditorCommand[] = []
-      if (!selectionApi.target.equal(ctx.ui.selection.summary.get().target, tap.selection)) {
+      if (!selectionApi.target.equal(ctx.editor.scene.ui.selection.summary.get().target, tap.selection)) {
         commands.push({
           type: 'selection.set',
           selection: tap.selection
@@ -731,16 +731,16 @@ const applySelectionTap = (
       }
 
       if (commands.length === 1) {
-        ctx.runtime.dispatch(commands[0])
+        ctx.editor.dispatch(commands[0])
       } else if (commands.length > 1) {
-        ctx.runtime.dispatch(commands)
+        ctx.editor.dispatch(commands)
       }
     }
   }
 }
 
 const createSelectionPressSession = (
-  ctx: Pick<EditorHostDeps, 'engine' | 'document' | 'projection' | 'read' | 'snap' | 'write' | 'runtime' | 'ui' | 'nodeType'>,
+  ctx: Pick<EditorInputContext, 'editor'>,
   start: PointerDownInput,
   resolved: {
     target: SelectionPressTarget<SelectionPressField>
@@ -791,10 +791,10 @@ const createSelectionPressSession = (
 })
 
 const tryStartSelectionPress = (
-  ctx: Pick<EditorHostDeps, 'engine' | 'document' | 'projection' | 'read' | 'snap' | 'write' | 'runtime' | 'ui' | 'nodeType'>,
+  ctx: Pick<EditorInputContext, 'editor'>,
   input: PointerDownInput
 ): InteractionSession | null => {
-  const tool = ctx.read.tool.get()
+  const tool = ctx.editor.scene.ui.state.tool.get()
   if (
     tool.type !== 'select'
     || input.pick.kind === 'edge'
@@ -811,21 +811,21 @@ const tryStartSelectionPress = (
     return null
   }
 
-  const selectionSummary = ctx.ui.selection.summary.get()
-  const selectionAffordance = ctx.ui.selection.affordance.get()
+  const selectionSummary = ctx.editor.scene.ui.selection.summary.get()
+  const selectionAffordance = ctx.editor.scene.ui.selection.affordance.get()
   const deps: SelectionPressDeps = {
     node: {
-      get: (nodeId) => ctx.document.node(nodeId),
+      get: (nodeId) => ctx.editor.document.node(nodeId),
       canEnter: (nodeId) => {
-        const node = ctx.document.node(nodeId)
+        const node = ctx.editor.document.node(nodeId)
         return node
-          ? resolveNodeEditorCapability(node, ctx.nodeType).enter
+          ? resolveNodeEditorCapability(node, ctx.editor.nodeType).enter
           : false
       },
-      groupId: ctx.projection.groups.ofNode
+      groupId: ctx.editor.scene.groups.ofNode
     },
     group: {
-      target: (groupId) => ctx.projection.groups.target(groupId)
+      target: (groupId) => ctx.editor.scene.groups.target(groupId)
     }
   }
   const mode = resolveSelectionPressMode(input.modifiers)
@@ -851,7 +851,7 @@ const tryStartSelectionPress = (
 }
 
 export const createSelectionBinding = (
-  ctx: Pick<EditorHostDeps, 'engine' | 'document' | 'projection' | 'read' | 'snap' | 'write' | 'runtime' | 'ui' | 'nodeType'>
+  ctx: Pick<EditorInputContext, 'editor'>
 ): InteractionBinding => ({
   key: 'selection',
   start: (input) => tryStartSelectionPress(ctx, input)

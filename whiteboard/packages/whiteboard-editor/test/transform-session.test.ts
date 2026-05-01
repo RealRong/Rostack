@@ -102,44 +102,6 @@ const createTransformContext = ({
   }
 
   return {
-    projection: {
-      document: {
-        node: () => node
-      },
-      nodes: {
-        get: (nodeId: string) => nodeId === node.id
-          ? {
-              base: {
-                node
-              },
-              geometry: {
-                rect: geometryRect,
-                rotation: 0
-              }
-            }
-          : undefined
-      }
-    },
-    read: {
-      viewport: {
-        get: () => ({
-          zoom: 1
-        }),
-        screenPoint: (screenX: number, screenY: number) => ({
-          x: screenX,
-          y: screenY
-        }),
-        pointer: (pointer: {
-          clientX: number
-          clientY: number
-        }) => ({
-          world: {
-            x: pointer.clientX,
-            y: pointer.clientY
-          }
-        })
-      }
-    },
     layout: createEditorTestLayout({
       measure: () => ({
         kind: 'size',
@@ -149,30 +111,78 @@ const createTransformContext = ({
         }
       })
     }),
-    write: {
-      node: {
-        updateMany: (nextUpdates: typeof updates) => {
-          updates.push(...nextUpdates)
-        }
-      }
-    },
-    snap: {
-      node: {
-        resize: (input: {
-          rect: typeof projectedRect
-        }) => ({
-          update: {
-            position: {
-              x: input.rect.x,
-              y: input.rect.y
-            },
-            size: {
-              width: input.rect.width,
-              height: input.rect.height
+    editor: {
+      document: {
+        node: () => node
+      },
+      scene: {
+        nodes: {
+          get: (nodeId: string) => nodeId === node.id
+            ? {
+                base: {
+                  node
+                },
+                geometry: {
+                  rect: geometryRect,
+                  rotation: 0
+                }
+              }
+            : undefined
+        },
+        ui: {
+          state: {
+            viewport: {
+              get: () => ({
+                zoom: 1
+              })
             }
-          },
-          guides: []
-        })
+          }
+        }
+      },
+      viewport: {
+        input: {
+          screenPoint: (screenX: number, screenY: number) => ({
+            x: screenX,
+            y: screenY
+          })
+        },
+        read: {
+          pointer: (pointer: {
+            clientX: number
+            clientY: number
+          }) => ({
+            world: {
+              x: pointer.clientX,
+              y: pointer.clientY
+            }
+          })
+        }
+      },
+      snap: {
+        node: {
+          resize: (input: {
+            rect: typeof projectedRect
+          }) => ({
+            update: {
+              position: {
+                x: input.rect.x,
+                y: input.rect.y
+              },
+              size: {
+                width: input.rect.width,
+                height: input.rect.height
+              }
+            },
+            guides: []
+          })
+        }
+      },
+      mutate: {
+        node: {
+          updateMany: (nextUpdates: typeof updates) => {
+            updates.push(...nextUpdates)
+          }
+        }
       }
     }
   } as any

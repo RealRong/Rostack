@@ -38,103 +38,102 @@ describe('mindmap field drag', () => {
     } as const
 
     const session = createMoveInteraction({
-      document: {
-        node: (id: string) => {
-          if (id === 'root-1') {
-            return {
-              id: 'root-1',
-              type: 'text',
-              owner: {
-                kind: 'mindmap',
-                id: 'mind-1'
-              },
-              position: { x: 100, y: 120 },
-              size: { width: 144, height: 44 },
-              data: {
-                text: 'Central topic'
+      editor: {
+        document: {
+          node: (id: string) => {
+            if (id === 'root-1') {
+              return {
+                id: 'root-1',
+                type: 'text',
+                owner: {
+                  kind: 'mindmap',
+                  id: 'mind-1'
+                },
+                position: { x: 100, y: 120 },
+                size: { width: 144, height: 44 },
+                data: {
+                  text: 'Central topic'
+                }
               }
             }
-          }
 
-          if (id === 'mind-1') {
-            return {
-              id: 'mind-1',
-              type: 'text',
-              owner: {
-                kind: 'mindmap',
-                id: 'mind-1'
-              },
-              position: { x: 100, y: 120 },
-              data: {}
+            if (id === 'mind-1') {
+              return {
+                id: 'mind-1',
+                type: 'text',
+                owner: {
+                  kind: 'mindmap',
+                  id: 'mind-1'
+                },
+                position: { x: 100, y: 120 },
+                data: {}
+              }
             }
-          }
 
-          return undefined
+            return undefined
+          }
         },
-        edge: vi.fn(() => undefined),
-        nodeIds: vi.fn(() => ['root-1']),
-        edgeIds: vi.fn(() => []),
-      },
-      projection: {
-        frame: {
-          pick: vi.fn(() => undefined),
-          parent: vi.fn()
-        },
-        mindmaps: {
-          tree: vi.fn(() => ({
-            id: 'mind-1',
-            rootId: 'root-1',
-            nodeIds: ['root-1'],
-            tree: {
-              ...structure.tree,
-              rootNodeId: 'root-1'
-            },
-            computed: {
-              node: {
-                'root-1': {
+        scene: {
+          frame: {
+            pick: vi.fn(() => undefined),
+            parent: vi.fn()
+          },
+          mindmaps: {
+            tree: vi.fn(() => ({
+              id: 'mind-1',
+              rootId: 'root-1',
+              nodeIds: ['root-1'],
+              tree: {
+                ...structure.tree,
+                rootNodeId: 'root-1'
+              },
+              computed: {
+                node: {
+                  'root-1': {
+                    x: 100,
+                    y: 120,
+                    width: 144,
+                    height: 44
+                  }
+                },
+                bbox: {
                   x: 100,
                   y: 120,
                   width: 144,
                   height: 44
                 }
-              },
-              bbox: {
-                x: 100,
-                y: 120,
-                width: 144,
-                height: 44
+              }
+            })),
+            ofNodes: vi.fn(() => undefined)
+          },
+          ui: {
+            state: {
+              tool: {
+                is: () => true
               }
             }
-          }))
-        }
-      },
-      read: {
-        tool: {
-          is: () => true
-        }
-      },
-      runtime: {
-        dispatch: vi.fn()
-      },
-      write: {
-        canvas: {
-          selection: {
-            move: vi.fn()
           }
         },
-        mindmap: {
-          move: vi.fn(),
-          topic: {
+        dispatch: vi.fn(),
+        write: {
+          mindmap: {
+            moveRoot: vi.fn(),
+            moveByDrop: vi.fn()
+          }
+        },
+        mutate: {
+          canvas: {
+            selection: {
+              move: vi.fn()
+            }
+          }
+        },
+        snap: {
+          node: {
             move: vi.fn()
           }
         }
-      },
-      snap: {
-        node: {
-          move: vi.fn()
-        }
-      },
-      engine: {} as never
+      }
     } as never, {
       start: {
         phase: 'down',

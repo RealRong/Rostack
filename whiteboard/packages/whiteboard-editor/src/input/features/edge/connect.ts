@@ -18,12 +18,12 @@ import type { Tool } from '@whiteboard/editor/types/tool'
 import type { InteractionSession } from '@whiteboard/editor/input/core/types'
 import { FINISH } from '@whiteboard/editor/input/session/result'
 import { createGesture } from '@whiteboard/editor/input/core/gesture'
-import type { EditorHostDeps } from '@whiteboard/editor/input/runtime'
+import type { EditorInputContext } from '@whiteboard/editor/input/runtime'
 import { resolveNodeEditorCapability } from '@whiteboard/editor/types/node'
 
-type EdgeConnectNodeRead = Pick<EditorHostDeps, 'projection' | 'nodeType'>
-type EdgeConnectPreviewGeometryRead = Pick<EditorHostDeps['projection'], 'nodes'>
-type EdgeConnectEdgeRead = Pick<EditorHostDeps, 'projection'>
+type EdgeConnectNodeRead = Pick<EditorInputContext, 'editor'>
+type EdgeConnectPreviewGeometryRead = Pick<EditorInputContext['editor']['scene'], 'nodes'>
+type EdgeConnectEdgeRead = Pick<EditorInputContext, 'editor'>
 type EdgeConnectSnap = (input: {
   pointerWorld: PointerDownInput['world']
 }) => EdgeConnectEvaluation
@@ -123,7 +123,7 @@ const resolveNodeHandleStart = (input: {
     return undefined
   }
 
-  const entry = input.node.projection.nodes.get(
+  const entry = input.node.editor.scene.nodes.get(
     pick.id
   ) as ConnectNodeEntry | undefined
   if (!entry) {
@@ -131,7 +131,7 @@ const resolveNodeHandleStart = (input: {
   }
   if (
     entry.base.node.locked
-    || !resolveNodeEditorCapability(entry.base.node, input.node.nodeType).connect
+    || !resolveNodeEditorCapability(entry.base.node, input.node.editor.nodeType).connect
   ) {
     return undefined
   }
@@ -174,7 +174,7 @@ const resolveNodeBodyStart = (input: {
     return undefined
   }
 
-  const entry = input.node.projection.nodes.get(
+  const entry = input.node.editor.scene.nodes.get(
     pick.id
   ) as ConnectNodeEntry | undefined
   if (!entry) {
@@ -182,7 +182,7 @@ const resolveNodeBodyStart = (input: {
   }
   if (
     entry.base.node.locked
-    || !resolveNodeEditorCapability(entry.base.node, input.node.nodeType).connect
+    || !resolveNodeEditorCapability(entry.base.node, input.node.editor.nodeType).connect
   ) {
     return undefined
   }
@@ -226,14 +226,14 @@ const resolveReconnectStart = (input: {
   end: 'source' | 'target'
   pointerId: number
 }): EdgeConnectState | undefined => {
-  const edge = input.edge.projection.edges.get(input.edgeId)?.base.edge
-  const resolved = input.edge.projection.edges.get(input.edgeId)
+  const edge = input.edge.editor.scene.edges.get(input.edgeId)?.base.edge
+  const resolved = input.edge.editor.scene.edges.get(input.edgeId)
   const resolvedEnd = resolved?.route.ends?.[input.end]
   if (!edge || !resolvedEnd) {
     return undefined
   }
 
-  const capability = input.edge.projection.edges.capability(
+  const capability = input.edge.editor.scene.edges.capability(
     input.edgeId
   )
   if (
@@ -386,7 +386,7 @@ const commitEdgeConnect = (
 ) => edgeApi.connect.toCommit(state)
 
 const commitConnectState = (
-  ctx: Pick<EditorHostDeps, 'write' | 'tool' | 'runtime'>,
+  ctx: Pick<EditorInputContext, 'editor'>,
   state: EdgeConnectState,
   reconnectDraftPatch?: EdgePatch
 ) => {
@@ -400,7 +400,7 @@ const commitConnectState = (
       state,
       draftPatch: reconnectDraftPatch
     })
-    ctx.write.edge.reconnectCommit({
+    ctx.editor.write.edge.reconnectCommit({
       edgeId: commit.edgeId,
       end: commit.end,
       target: commit.target,
@@ -422,7 +422,7 @@ const commitConnectState = (
     return
   }
 
-  const result = ctx.write.edge.create({
+  const result = ctx.editor.write.edge.create({
     from: commit.input.source,
     to: commit.input.target,
     template: {
@@ -435,8 +435,8 @@ const commitConnectState = (
     return
   }
 
-  ctx.tool.select()
-  ctx.runtime.dispatch({
+  ctx.editor.write.tool.select()
+  ctx.editor.dispatch({
     type: 'selection.set',
     selection: {
       nodeIds: [],
@@ -446,7 +446,7 @@ const commitConnectState = (
 }
 
 export const createEdgeConnectSession = (
-  ctx: Pick<EditorHostDeps, 'projection' | 'read' | 'snap' | 'write' | 'tool' | 'runtime'>,
+  ctx: Pick<EditorInputContext, 'editor'>,
   initial: EdgeConnectState
 ): InteractionSession => {
   let state = initial
@@ -456,7 +456,7 @@ export const createEdgeConnectSession = (
   const reconnectFixedPoint = edgeApi.connect.reconnectFixedPoint({
     state: initial,
     ends: initial.kind === 'reconnect'
-      ? ctx.projection.edges.get(initial.edgeId)?.route.ends
+      ? ctx.editor.scene.edges.get(initial.edgeId)?.route.ends
       : undefined
   })
   const originWorld = lastWorld
@@ -466,7 +466,7 @@ export const createEdgeConnectSession = (
   ) => Math.hypot(
     world.x - originWorld.x,
     world.y - originWorld.y
-  ) > 3 / Math.max(ctx.read.viewport.get().zoom, 0.0001)
+  ) > 3 / Math.max(ctx.editor.scene.ui.state.viewport.get().zoom, 0.0001)
 
   const project = ({
     world,
@@ -492,7 +492,7 @@ export const createEdgeConnectSession = (
       allowLatch
     })
     const result = stepEdgeConnect({
-      geometry: ctx.projection,
+      geometry: ctx.editor.scene,
       state,
       world: edgeApi.connect.reconnectWorld({
         state,
@@ -501,7 +501,7 @@ export const createEdgeConnectSession = (
         shift: modifiers.shift,
         draftPatch: reconnectDraftPatch
       }),
-      snap: ctx.snap.edge.connect,
+      snap: ctx.editor.snap.edge.connect,
       showPreviewPath: shouldShowPreviewPath(world)
     })
     state = result.state
@@ -542,7 +542,7 @@ export const createEdgeConnectSession = (
     autoPan: {
       frame: (pointer) => {
         interaction.gesture = project({
-          world: ctx.read.viewport.pointer(pointer).world,
+          world: ctx.editor.viewport.read.pointer(pointer).world,
           modifiers: lastModifiers,
           allowLatch: true,
           pointerId: state.pointerId

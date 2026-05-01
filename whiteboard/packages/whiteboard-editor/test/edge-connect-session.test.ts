@@ -11,93 +11,83 @@ const createInteractionDeps = () => {
   return {
     reconnectCommit,
     ctx: {
-      projection: {
-        edges: {
-          get: () => ({
-            route: {
-              ends: {
-                source: {
-                  end: {
-                    kind: 'point',
+      editor: {
+        scene: {
+          edges: {
+            get: () => ({
+              route: {
+                ends: {
+                  source: {
+                    end: {
+                      kind: 'point',
+                      point: { x: 0, y: 0 }
+                    },
                     point: { x: 0, y: 0 }
                   },
-                  point: { x: 0, y: 0 }
-                },
-                target: {
-                  end: {
-                    kind: 'point',
+                  target: {
+                    end: {
+                      kind: 'point',
+                      point: { x: 10, y: 0 }
+                    },
                     point: { x: 10, y: 0 }
-                  },
-                  point: { x: 10, y: 0 }
+                  }
                 }
               }
+            }),
+            capability: vi.fn(() => ({
+              reconnectSource: true,
+              reconnectTarget: true
+            }))
+          },
+          nodes: {
+            get: vi.fn(() => undefined)
+          },
+          ui: {
+            state: {
+              viewport: {
+                get: () => ({
+                  zoom: 1
+                })
+              }
             }
-          }),
-          capability: vi.fn(() => ({
-            reconnectSource: true,
-            reconnectTarget: true
-          }))
+          }
         },
-        nodes: {
-          get: vi.fn(() => undefined)
-        }
-      },
-      read: {
         viewport: {
-          get: () => ({
-            zoom: 1
-          }),
-          pointer: () => ({
-            world: { x: 0, y: 0 }
-          })
-        }
-      },
-      runtime: {
-        dispatch: vi.fn()
-      },
-      snap: {
-        edge: {
-          connect: ({
-            pointerWorld
-          }: {
-            pointerWorld: {
-              x: number
-              y: number
-            }
-          }) => ({
-            focusedNodeId: undefined,
-            resolution: {
-              mode: 'free' as const,
-              pointWorld: pointerWorld
-            }
-          })
-        }
-      },
-      write: {
-        edge: {
-          reconnectCommit,
-          create: vi.fn(),
-          type: {},
-          route: {}
-        }
-      },
-      actions: {
-        tool: {
-          set: vi.fn()
+          read: {
+            pointer: () => ({
+              world: { x: 0, y: 0 }
+            })
+          }
         },
-        selection: {
-          replace: vi.fn(),
-          clear: vi.fn(),
-          add: vi.fn(),
-          remove: vi.fn(),
-          toggle: vi.fn(),
-          selectAll: vi.fn(),
-          frame: vi.fn(),
-          order: vi.fn(),
-          group: vi.fn(),
-          ungroup: vi.fn(),
-          delete: vi.fn(),
-          duplicate: vi.fn()
+        dispatch: vi.fn(),
+        snap: {
+          edge: {
+            connect: ({
+              pointerWorld
+            }: {
+              pointerWorld: {
+                x: number
+                y: number
+              }
+            }) => ({
+              focusedNodeId: undefined,
+              resolution: {
+                mode: 'free' as const,
+                pointWorld: pointerWorld
+              }
+            })
+          }
+        },
+        write: {
+          edge: {
+            reconnectCommit,
+            create: vi.fn(),
+            type: {},
+            route: {}
+          },
+          tool: {
+            select: vi.fn()
+          }
         }
       }
     } as any

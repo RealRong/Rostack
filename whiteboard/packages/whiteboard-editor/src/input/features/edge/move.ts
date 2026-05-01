@@ -13,7 +13,7 @@ import {
   FINISH
 } from '@whiteboard/editor/input/session/result'
 import { createGesture } from '@whiteboard/editor/input/core/gesture'
-import type { EditorHostDeps } from '@whiteboard/editor/input/runtime'
+import type { EditorInputContext } from '@whiteboard/editor/input/runtime'
 
 export type EdgeMoveState = {
   edgeId: EdgeId
@@ -35,7 +35,7 @@ const readEdgeMovePatch = (
   : undefined
 
 const readMovableEdge = (
-  projection: Pick<EditorHostDeps, 'projection'>['projection'],
+  projection: EditorInputContext['editor']['scene'],
   edgeId: EdgeId
 ) => {
   const current = projection.edges.get(edgeId)?.base.edge
@@ -46,7 +46,7 @@ const readMovableEdge = (
 }
 
 export const startEdgeMove = (input: {
-  edge: Pick<EditorHostDeps, 'projection'>['projection']
+  edge: EditorInputContext['editor']['scene']
   edgeId: EdgeId
   pointerId: number
   start: Point
@@ -125,7 +125,7 @@ const readMoveGesture = (
   : null
 
 export const createEdgeMoveSession = (
-  ctx: Pick<EditorHostDeps, 'projection' | 'read' | 'write'>,
+  ctx: Pick<EditorInputContext, 'editor'>,
   initial: EdgeMoveState
 ): InteractionSession => {
   let state = initial
@@ -150,7 +150,7 @@ export const createEdgeMoveSession = (
     chrome: false,
     gesture: null,
     autoPan: {
-      frame: (pointer) => step(ctx.read.viewport.pointer(pointer).world)
+      frame: (pointer) => step(ctx.editor.viewport.read.pointer(pointer).world)
     },
     move: (input) => {
       const transition = step(input.world)
@@ -166,7 +166,7 @@ export const createEdgeMoveSession = (
 
       const commit = commitEdgeMove(state)
       if (commit) {
-        ctx.write.edge.move({
+        ctx.editor.write.edge.move({
           ids: [commit.edgeId],
           delta: commit.delta
         })

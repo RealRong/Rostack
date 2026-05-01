@@ -16,7 +16,7 @@ import type {
 } from '@whiteboard/editor/input/core/types'
 import type { PointerDownInput } from '@whiteboard/editor/types/input'
 import { GestureTuning } from '@whiteboard/editor/input/session/tuning'
-import type { EditorHostDeps } from '@whiteboard/editor/input/runtime'
+import type { EditorInputContext } from '@whiteboard/editor/input/runtime'
 
 export type MarqueeMatch = 'touch' | 'contain'
 
@@ -65,16 +65,16 @@ type MarqueeSelectionEvent =
 
 const readMatchedSelection = (
   input: {
-    ctx: Pick<EditorHostDeps, 'projection'>
+    ctx: Pick<EditorInputContext, 'editor'>
     rect: Rect
     match: SelectionMarqueeAction['match']
   }
 ): SelectionTarget => ({
-  nodeIds: input.ctx.projection.nodes.idsInRect(input.rect, {
+  nodeIds: input.ctx.editor.scene.nodes.idsInRect(input.rect, {
     match: input.match,
     policy: 'selection-marquee'
   }),
-  edgeIds: input.ctx.projection.edges.idsInRect(input.rect, {
+  edgeIds: input.ctx.editor.scene.edges.idsInRect(input.rect, {
     match: input.match
   })
 })
@@ -179,13 +179,13 @@ const reduceMarqueeSelection = (
 }
 
 const syncMarqueeInteraction = (
-  ctx: Pick<EditorHostDeps, 'runtime'>,
+  ctx: Pick<EditorInputContext, 'editor'>,
   interaction: InteractionSession,
   previous: MarqueeSelectionState,
   next: MarqueeSelectionState
 ) => {
   if (!selectionApi.target.equal(previous.selection, next.selection)) {
-    ctx.runtime.dispatch({
+    ctx.editor.dispatch({
       type: 'selection.set',
       selection: next.selection
     })
@@ -203,7 +203,7 @@ const syncMarqueeInteraction = (
 }
 
 export const createMarqueeSession = (
-  ctx: Pick<EditorHostDeps, 'projection' | 'read' | 'runtime'>,
+  ctx: Pick<EditorInputContext, 'editor'>,
   input: {
     start: PointerDownInput
     action: SelectionMarqueeAction
@@ -220,7 +220,7 @@ export const createMarqueeSession = (
   let interaction = null as InteractionSession | null
 
   if (input.action.clearOnStart) {
-    ctx.runtime.dispatch({
+    ctx.editor.dispatch({
       type: 'selection.set',
       selection: {
         nodeIds: [],
@@ -264,7 +264,7 @@ export const createMarqueeSession = (
           return
         }
 
-        const sample = ctx.read.viewport.pointer(pointer)
+        const sample = ctx.editor.viewport.read.pointer(pointer)
         step({
           screen: sample.screen,
           world: sample.world

@@ -18,7 +18,7 @@ import {
 } from '@whiteboard/editor/input/session/result'
 import type { InteractionSession } from '@whiteboard/editor/input/core/types'
 import { createPressDragSession } from '@whiteboard/editor/input/session/press'
-import type { EditorHostDeps } from '@whiteboard/editor/input/runtime'
+import type { EditorInputContext } from '@whiteboard/editor/input/runtime'
 
 export type EdgeRouteHandleState =
   | {
@@ -105,7 +105,7 @@ const isEdgeRoutePick = (
 )
 
 const resolveEdgeRoutePickTarget = (
-  projection: Pick<EditorHostDeps, 'projection'>['projection'],
+  projection: EditorInputContext['editor']['scene'],
   pick: PointerDownInput['pick']
 ): EdgeRouteHandleTarget | undefined => {
   if (!isEdgeRoutePick(pick)) {
@@ -194,7 +194,7 @@ const startEdgeRouteSegment = (input: {
 })
 
 export const tryStartEdgeRoute = (input: {
-  edge: Pick<EditorHostDeps, 'projection'>['projection']
+  edge: EditorInputContext['editor']['scene']
   pointer: PointerDownInput
 }): EdgeRouteStart | undefined => {
   const target = resolveEdgeRoutePickTarget(
@@ -261,11 +261,11 @@ export const tryStartEdgeRoute = (input: {
 }
 
 export const removeEdgeRoutePoint = (
-  ctx: Pick<EditorHostDeps, 'projection' | 'write'>,
+  ctx: Pick<EditorInputContext, 'editor'>,
   edgeId: EdgeId,
   index: number
 ) => {
-  const edge = ctx.projection.edges.get(edgeId)?.base.edge
+  const edge = ctx.editor.scene.edges.get(edgeId)?.base.edge
   if (!edge) {
     throw new Error(`Edge ${edgeId} not found.`)
   }
@@ -275,7 +275,7 @@ export const removeEdgeRoutePoint = (
     throw new Error(`Edge route point ${edgeId}:${index} not found.`)
   }
 
-  ctx.write.edge.route.set(edgeId, patch.route ?? {
+  ctx.editor.write.edge.route.set(edgeId, patch.route ?? {
     kind: 'auto'
   })
 }
@@ -450,12 +450,12 @@ const commitEdgeRoute = (
 }
 
 const readViewportWorld = (
-  ctx: Pick<EditorHostDeps, 'read'>,
+  ctx: Pick<EditorInputContext, 'editor'>,
   pointer: {
     clientX: number
     clientY: number
   }
-) => ctx.read.viewport.pointer(pointer).world
+) => ctx.editor.viewport.read.pointer(pointer).world
 
 const readRouteGesture = (
   state: EdgeRouteHandleState,
@@ -476,7 +476,7 @@ const readRouteGesture = (
 )
 
 const submitEdgeRouteCommit = (
-  ctx: Pick<EditorHostDeps, 'projection' | 'write'>,
+  ctx: Pick<EditorInputContext, 'editor'>,
   commit: EdgeRouteCommit | undefined
 ) => {
   if (!commit) {
@@ -484,28 +484,28 @@ const submitEdgeRouteCommit = (
   }
 
   if (commit.kind === 'update-route') {
-    ctx.write.edge.route.set(commit.edgeId, commit.route ?? {
+    ctx.editor.write.edge.route.set(commit.edgeId, commit.route ?? {
       kind: 'auto'
     })
     return
   }
 
-  const edge = ctx.projection.edges.get(commit.edgeId)?.base.edge
+  const edge = ctx.editor.scene.edges.get(commit.edgeId)?.base.edge
   const pointId = edge
     ? readRoutePointIdAtIndex(edge, commit.index)
     : undefined
   if (pointId) {
-    ctx.write.edge.route.update(commit.edgeId, pointId, commit.point)
+    ctx.editor.write.edge.route.movePoint(commit.edgeId, commit.index, commit.point)
   }
 }
 
 const createEdgeRouteSession = (
-  ctx: Pick<EditorHostDeps, 'projection' | 'read' | 'write'>,
+  ctx: Pick<EditorInputContext, 'editor'>,
   initial: EdgeRouteHandleState
 ): InteractionSession => {
   let state = initial
   let interaction = null as InteractionSession | null
-  const baseEdge = ctx.projection.edges.get(initial.edgeId)?.base.edge
+  const baseEdge = ctx.editor.scene.edges.get(initial.edgeId)?.base.edge
 
   const step = (
     pointer: {
@@ -513,8 +513,8 @@ const createEdgeRouteSession = (
       clientY: number
     }
   ) => {
-    const edge = ctx.projection.edges.get(state.edgeId)?.base.edge
-    if (!edge || !baseEdge || !ctx.projection.edges.edit(state.edgeId)) {
+    const edge = ctx.editor.scene.edges.get(state.edgeId)?.base.edge
+    if (!edge || !baseEdge || !ctx.editor.scene.edges.edit(state.edgeId)) {
       return CANCEL
     }
 
@@ -570,7 +570,7 @@ const createEdgeRouteSession = (
 }
 
 const createInsertedRouteSession = (
-  ctx: Pick<EditorHostDeps, 'projection' | 'read' | 'write'>,
+  ctx: Pick<EditorInputContext, 'editor'>,
   input: Extract<EdgeRouteStart, { kind: 'insert' }>
 ) => createEdgeRouteSession(
   ctx,
@@ -585,10 +585,10 @@ const createInsertedRouteSession = (
 )
 
 const commitInsertedRoute = (
-  ctx: Pick<EditorHostDeps, 'projection' | 'write'>,
+  ctx: Pick<EditorInputContext, 'editor'>,
   input: Extract<EdgeRouteStart, { kind: 'insert' }>
 ) => {
-  const edge = ctx.projection.edges.get(input.edgeId)?.base.edge
+  const edge = ctx.editor.scene.edges.get(input.edgeId)?.base.edge
   if (!edge) {
     return null
   }
@@ -610,7 +610,7 @@ const commitInsertedRoute = (
 }
 
 export const createEdgeRoutePressSession = (
-  ctx: Pick<EditorHostDeps, 'projection' | 'read' | 'write'>,
+  ctx: Pick<EditorInputContext, 'editor'>,
   start: PointerDownInput,
   plan: Extract<EdgeRouteStart, { kind: 'session' | 'insert' }>
 ): InteractionSession => createPressDragSession({

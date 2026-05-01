@@ -34,45 +34,47 @@ const createDeps = () => {
     insertRoute,
     updateRoute,
     ctx: {
-      projection: {
-        edges: {
-          get: () => ({
-            base: {
-              edge
-            }
-          }),
-          edit: vi.fn(() => ({
-            route: {
-              handles: []
-            }
-          }))
+      editor: {
+        scene: {
+          edges: {
+            get: () => ({
+              base: {
+                edge
+              }
+            }),
+            edit: vi.fn(() => ({
+              route: {
+                handles: []
+              }
+            }))
+          },
+          nodes: {
+            get: vi.fn(() => undefined)
+          }
         },
-        nodes: {
-          get: vi.fn(() => undefined)
-        }
-      },
-      read: {
         viewport: {
-          pointer: ({
-            clientX,
-            clientY
-          }: {
-            clientX: number
-            clientY: number
-          }) => ({
-            world: {
-              x: clientX,
-              y: clientY
+          read: {
+            pointer: ({
+              clientX,
+              clientY
+            }: {
+              clientX: number
+              clientY: number
+            }) => ({
+              world: {
+                x: clientX,
+                y: clientY
+              }
+            })
+          }
+        },
+        write: {
+          edge: {
+            route: {
+              set: setRoute,
+              insertPoint: insertRoute,
+              movePoint: updateRoute
             }
-          })
-        }
-      },
-      write: {
-        edge: {
-          route: {
-            set: setRoute,
-            insert: insertRoute,
-            update: updateRoute
           }
         }
       }

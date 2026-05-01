@@ -11,13 +11,13 @@ import {
   createEdgeRoutePressSession,
   tryStartEdgeRoute
 } from '@whiteboard/editor/input/features/edge/route'
-import type { EditorHostDeps } from '@whiteboard/editor/input/runtime'
+import type { EditorInputContext } from '@whiteboard/editor/input/runtime'
 
 const selectEdge = (
-  ctx: Pick<EditorHostDeps, 'runtime'>,
+  ctx: Pick<EditorInputContext, 'editor'>,
   edgeId: string
 ) => {
-  ctx.runtime.dispatch({
+  ctx.editor.dispatch({
     type: 'selection.set',
     selection: {
       nodeIds: [],
@@ -27,18 +27,18 @@ const selectEdge = (
 }
 
 export const createEdgeBinding = (
-  ctx: Pick<EditorHostDeps, 'engine' | 'document' | 'projection' | 'read' | 'write' | 'runtime' | 'tool' | 'snap' | 'nodeType' | 'ui'>
+  ctx: EditorInputContext
 ): InteractionBinding => ({
   key: 'edge',
   start: (input) => {
-    const tool = ctx.read.tool.get()
+    const tool = ctx.editor.scene.ui.state.tool.get()
     const connect = tryStartEdgeConnect({
       tool,
       pointer: input,
       node: ctx,
       edge: ctx,
-      zoom: ctx.read.viewport.get().zoom,
-      config: ctx.engine.config.edge
+      zoom: ctx.editor.scene.ui.state.viewport.get().zoom,
+      config: ctx.editor.config.edge
     })
     if (connect) {
       if (connect.kind === 'reconnect') {
@@ -68,7 +68,7 @@ export const createEdgeBinding = (
 
     if (input.pick.part === 'path') {
       const route = tryStartEdgeRoute({
-        edge: ctx.projection,
+        edge: ctx.editor.scene,
         pointer: input
       })
       if (!route) {
@@ -83,10 +83,7 @@ export const createEdgeBinding = (
       )
 
       if (route.kind === 'remove') {
-        removeEdgeRoutePoint({
-          projection: ctx.projection,
-          write: ctx.write
-        }, route.edgeId, route.index)
+        removeEdgeRoutePoint(ctx, route.edgeId, route.index)
         return HANDLED
       }
 
@@ -108,7 +105,7 @@ export const createEdgeBinding = (
 
     selectEdge(ctx, input.pick.id)
     const move = startEdgeMove({
-      edge: ctx.projection,
+      edge: ctx.editor.scene,
       edgeId: input.pick.id,
       pointerId: input.pointerId,
       start: input.world

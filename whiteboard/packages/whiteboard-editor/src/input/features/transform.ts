@@ -9,7 +9,7 @@ import type { InteractionBinding, InteractionSession } from '@whiteboard/editor/
 import { FINISH } from '@whiteboard/editor/input/session/result'
 import { createGesture } from '@whiteboard/editor/input/core/gesture'
 import type { PointerDownInput } from '@whiteboard/editor/types/input'
-import type { EditorHostDeps } from '@whiteboard/editor/input/runtime'
+import type { EditorInputContext } from '@whiteboard/editor/input/runtime'
 import { resolveNodeEditorCapability } from '@whiteboard/editor/types/node'
 
 export type TransformTarget = TransformSelectionMember<Node>
@@ -31,12 +31,12 @@ const toTransformNodePatches = (
 }))
 
 const toSpatialSelectionPlan = (
-  ctx: Pick<EditorHostDeps, 'projection' | 'ui'>,
-  plan: NonNullable<ReturnType<EditorHostDeps['ui']['selection']['summary']['get']>['transformPlan']>
+  ctx: Pick<EditorInputContext, 'editor'>,
+  plan: NonNullable<ReturnType<EditorInputContext['editor']['scene']['ui']['selection']['summary']['get']>['transformPlan']>
 ) => ({
   ...plan,
   members: plan.members.flatMap((member) => {
-    const geometry = ctx.projection.nodes.get(member.id)
+    const geometry = ctx.editor.scene.nodes.get(member.id)
     return geometry
       ? [{
           ...member,
@@ -51,10 +51,10 @@ const toSpatialSelectionPlan = (
 })
 
 const resolveTransformSpec = (
-  ctx: Pick<EditorHostDeps, 'projection' | 'read' | 'nodeType' | 'ui'>,
+  ctx: Pick<EditorInputContext, 'editor'>,
   input: PointerDownInput
 ): RuntimeTransformSpec | null => {
-  const tool = ctx.read.tool.get()
+  const tool = ctx.editor.scene.ui.state.tool.get()
   if (
     tool.type !== 'select'
     || (input.pick.kind !== 'node' && input.pick.kind !== 'selection-box')
@@ -65,12 +65,12 @@ const resolveTransformSpec = (
   }
 
   if (input.pick.kind === 'node') {
-    const geometry = ctx.projection.nodes.get(input.pick.id)
+    const geometry = ctx.editor.scene.nodes.get(input.pick.id)
     if (!geometry) {
       return null
     }
 
-    const capability = resolveNodeEditorCapability(geometry.base.node, ctx.nodeType)
+    const capability = resolveNodeEditorCapability(geometry.base.node, ctx.editor.nodeType)
     return nodeApi.transform.resolveSpec({
       target: {
         id: geometry.base.node.id,
@@ -94,7 +94,7 @@ const resolveTransformSpec = (
     }) ?? null
   }
 
-  const selection = ctx.ui.selection.summary.get()
+  const selection = ctx.editor.scene.ui.selection.summary.get()
   if (
     !selection.transformPlan
     || input.pick.handle.kind !== 'resize'
@@ -114,7 +114,7 @@ const resolveTransformSpec = (
 }
 
 export const createTransformSession = (
-  ctx: Pick<EditorHostDeps, 'projection' | 'read' | 'layout' | 'snap' | 'write'>,
+  ctx: EditorInputContext,
   spec: TransformSpec<Node>,
   start: Pick<PointerDownInput, 'modifiers'>
 ): InteractionSession => {
@@ -134,10 +134,10 @@ export const createTransformSession = (
         alt: input.modifiers.alt,
         shift: input.modifiers.shift
       },
-      zoom: ctx.read.viewport.get().zoom,
+      zoom: ctx.editor.scene.ui.state.viewport.get().zoom,
       minSize: RESIZE_MIN_SIZE,
       snap: (resize) => {
-        const snapped = ctx.snap.node.resize(resize)
+        const snapped = ctx.editor.snap.node.resize(resize)
         return {
           rect: nodeApi.transform.resizeUpdateRect(snapped.update),
           guides: snapped.guides
@@ -147,8 +147,8 @@ export const createTransformSession = (
     const nextPatches = ctx.layout.runtime({
       kind: 'node.transform',
       patches: result.state.patches,
-      readNode: ctx.projection.document.node,
-      readRect: (nodeId) => ctx.projection.nodes.get(nodeId)?.geometry.rect
+      readNode: ctx.editor.document.node,
+      readRect: (nodeId) => ctx.editor.scene.nodes.get(nodeId)?.geometry.rect
     }).patches
     state = {
       ...result.state,
@@ -177,8 +177,8 @@ export const createTransformSession = (
     autoPan: {
       frame: (pointer) => {
         project({
-          screen: ctx.read.viewport.screenPoint(pointer.clientX, pointer.clientY),
-          world: ctx.read.viewport.pointer(pointer).world,
+          screen: ctx.editor.viewport.input.screenPoint(pointer.clientX, pointer.clientY),
+          world: ctx.editor.viewport.read.pointer(pointer).world,
           modifiers
         })
       }
@@ -195,7 +195,7 @@ export const createTransformSession = (
         commitTargetIds: state.commitIds
       })
       if (updates.length > 0) {
-        ctx.write.node.updateMany(updates.map((entry) => ({
+        ctx.editor.mutate.node.updateMany(updates.map((entry) => ({
           id: entry.id,
           input: entry.update
         })))
@@ -210,7 +210,7 @@ export const createTransformSession = (
 }
 
 export const createTransformBinding = (
-  ctx: Pick<EditorHostDeps, 'projection' | 'read' | 'layout' | 'snap' | 'write' | 'nodeType' | 'ui'>
+  ctx: EditorInputContext
 ): InteractionBinding => ({
   key: 'transform',
   start: (input) => {

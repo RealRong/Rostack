@@ -12,7 +12,7 @@ import { createGesture } from '@whiteboard/editor/input/core/gesture'
 import type { PointerDownInput } from '@whiteboard/editor/types/input'
 import type { Tool } from '@whiteboard/editor/types/tool'
 import type { MindmapPreviewState } from '@whiteboard/editor/preview/types'
-import type { EditorHostDeps } from '@whiteboard/editor/input/runtime'
+import type { EditorInputContext } from '@whiteboard/editor/input/runtime'
 import type { Node } from '@whiteboard/core/types'
 
 export type MindmapDragState = CoreMindmapDragState
@@ -69,7 +69,7 @@ export const tryStartMindmapDrag = (input: {
   tool: Tool
   pointer: PointerDownInput
   mindmap: {
-    tree: EditorHostDeps['projection']['mindmaps']['tree']
+    tree: EditorInputContext['editor']['scene']['mindmaps']['tree']
   }
   node: (nodeId: NodeId) => Node | undefined
   selection: Pick<store.ReadStore<SelectionSummary>, 'get'>
@@ -145,7 +145,7 @@ export const tryStartMindmapDragForNode = (input: {
   pointerId: number
   world: Point
   mindmap: {
-    tree: EditorHostDeps['projection']['mindmaps']['tree']
+    tree: EditorInputContext['editor']['scene']['mindmaps']['tree']
   }
   node: (nodeId: NodeId) => Node | undefined
 }): MindmapDragState | undefined => {
@@ -198,7 +198,7 @@ const stepMindmapDrag = (input: {
   state: MindmapDragState
   world: Point
   mindmap: {
-    tree: EditorHostDeps['projection']['mindmaps']['tree']
+    tree: EditorInputContext['editor']['scene']['mindmaps']['tree']
   }
 }): MindmapDragState => mindmapApi.drop.projectDrag({
   active: input.state,
@@ -243,7 +243,7 @@ const commitMindmapDrag = (
 }
 
 export const createMindmapDragSession = (
-  ctx: Pick<EditorHostDeps, 'document' | 'projection' | 'read' | 'write'>,
+  ctx: Pick<EditorInputContext, 'editor'>,
   initial: MindmapDragState
 ): InteractionSession => {
   let state = initial
@@ -259,7 +259,7 @@ export const createMindmapDragSession = (
       state,
       world,
       mindmap: {
-        tree: ctx.projection.mindmaps.tree
+        tree: ctx.editor.scene.mindmaps.tree
       }
     })
     interaction!.gesture = createGesture('mindmap-drag', {
@@ -277,7 +277,7 @@ export const createMindmapDragSession = (
     autoPan: {
       frame: (pointer) => {
         project(
-          ctx.read.viewport.pointer(pointer).world
+          ctx.editor.viewport.read.pointer(pointer).world
         )
       }
     },
@@ -288,15 +288,20 @@ export const createMindmapDragSession = (
       const commit = commitMindmapDrag(state)
 
       if (commit?.kind === 'root') {
-        ctx.write.mindmap.move(commit.nodeId, commit.position)
+        ctx.editor.write.mindmap.moveRoot({
+          nodeId: commit.nodeId,
+          position: commit.position,
+          origin: commit.origin
+        })
       }
 
       if (commit?.kind === 'subtree') {
-        ctx.write.mindmap.topic.move(commit.id, {
+        ctx.editor.write.mindmap.moveByDrop({
+          id: commit.id,
           nodeId: commit.nodeId,
-          parentId: commit.drop.parentId,
-          index: commit.drop.index,
-          side: commit.drop.side
+          drop: commit.drop,
+          origin: commit.origin,
+          layout: commit.layout
         })
       }
 

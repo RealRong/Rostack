@@ -132,31 +132,22 @@ describe('mindmap root move', () => {
 
   it('keeps root move preview on the interaction draft until commit', () => {
     const moveRoot = vi.fn()
-    const moveTopic = vi.fn()
+    const moveByDrop = vi.fn()
 
     const session = createMindmapDragSession({
-      write: {
-        mindmap: {
-          move: moveRoot,
-          topic: {
-            move: moveTopic
+      editor: {
+        write: {
+          mindmap: {
+            moveRoot,
+            moveByDrop
           }
-        }
-      },
-      projection: {
-        read: {
-          scene: {
-            mindmaps: {
-              id: vi.fn(),
-              structure: vi.fn(),
-              get: vi.fn()
-            }
+        },
+        scene: {
+          mindmaps: {
+            id: vi.fn(),
+            structure: vi.fn(),
+            get: vi.fn()
           }
-        }
-      },
-      read: {
-        viewport: {
-          pointer: vi.fn()
         }
       }
     } as any, {
@@ -178,7 +169,11 @@ describe('mindmap root move', () => {
 
     session.up?.()
 
-    expect(moveRoot).toHaveBeenCalledWith('mindmap_1', { x: 100, y: 0 })
-    expect(moveTopic).not.toHaveBeenCalled()
+    expect(moveRoot).toHaveBeenCalledWith({
+      nodeId: 'mindmap_1',
+      position: { x: 100, y: 0 },
+      origin: { x: 50, y: 0 }
+    })
+    expect(moveByDrop).not.toHaveBeenCalled()
   })
 })

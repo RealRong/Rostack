@@ -12,7 +12,7 @@ import type {
   PointerDownInput
 } from '@whiteboard/editor/types/input'
 import type { SelectionMoveVisibility } from '@whiteboard/editor/input/features/selection/press'
-import type { EditorHostDeps } from '@whiteboard/editor/input/runtime'
+import type { EditorInputContext } from '@whiteboard/editor/input/runtime'
 
 const toMoveNodePatches = (
   result: MoveStepResult
@@ -35,12 +35,12 @@ const toMoveEdgePatches = (
 }))
 
 const findParentFrameId = (
-  ctx: Pick<EditorHostDeps, 'projection'>,
+  ctx: Pick<EditorInputContext, 'editor'>,
   nodeId: string
-) => ctx.projection.frame.parent(nodeId)
+) => ctx.editor.scene.frame.parent(nodeId)
 
 const resolveFrameHoverId = (
-  ctx: Pick<EditorHostDeps, 'projection'>,
+  ctx: Pick<EditorInputContext, 'editor'>,
   state: Parameters<typeof nodeApi.move.state.finish>[0],
   pointerWorld: {
     x: number
@@ -48,7 +48,7 @@ const resolveFrameHoverId = (
   }
 ) => {
   const movingIds = new Set(state.move.members.map((member) => member.id))
-  let frameId = ctx.projection.frame.pick(pointerWorld)
+  let frameId = ctx.editor.scene.frame.pick(pointerWorld)
 
   while (frameId && movingIds.has(frameId)) {
     frameId = findParentFrameId(ctx, frameId)
@@ -64,7 +64,7 @@ type MoveInteractionInput = {
 }
 
 export const createMoveInteraction = (
-  ctx: Pick<EditorHostDeps, 'engine' | 'document' | 'projection' | 'read' | 'snap' | 'write' | 'runtime'>,
+  ctx: Pick<EditorInputContext, 'editor'>,
   input: MoveInteractionInput
 ): InteractionSession | null => {
   const pickedNodeId = (
@@ -87,7 +87,7 @@ export const createMoveInteraction = (
     input.visibility.kind === 'show'
     || input.visibility.kind === 'temporary'
   ) {
-    ctx.runtime.dispatch({
+    ctx.editor.dispatch({
       type: 'selection.set',
       selection: input.visibility.selection
     })
@@ -99,9 +99,9 @@ export const createMoveInteraction = (
       pointerId: input.start.pointerId,
       world: input.start.world,
       mindmap: {
-        tree: ctx.projection.mindmaps.tree
+        tree: ctx.editor.scene.mindmaps.tree
       },
-      node: ctx.document.node
+      node: ctx.editor.document.node
     })
 
     if (mindmapState) {
@@ -110,7 +110,7 @@ export const createMoveInteraction = (
       session.cleanup = () => {
         cleanup?.()
         if (restoreSelection) {
-          ctx.runtime.dispatch({
+          ctx.editor.dispatch({
             type: 'selection.set',
             selection: restoreSelection
           })
@@ -121,7 +121,7 @@ export const createMoveInteraction = (
     }
   }
 
-  const moveScope = ctx.projection.selection.move(input.target)
+  const moveScope = ctx.editor.scene.selection.move(input.target)
   const initialState = nodeApi.move.state.start({
     nodes: moveScope.nodes,
     edges: moveScope.edges,
@@ -147,9 +147,9 @@ export const createMoveInteraction = (
     const result = nodeApi.move.state.step({
       state,
       pointerWorld: nextInput.world,
-      snap: ctx.read.tool.is('select')
+      snap: ctx.editor.scene.ui.state.tool.is('select')
         ? ({ rect, excludeIds }) => {
-            const snapped = ctx.snap.node.move({
+            const snapped = ctx.editor.snap.node.move({
               rect,
               excludeIds,
               modifiers: nextInput.modifiers
@@ -180,7 +180,7 @@ export const createMoveInteraction = (
     autoPan: {
       frame: (pointer) => {
         project({
-          world: ctx.read.viewport.pointer(pointer).world,
+          world: ctx.editor.viewport.read.pointer(pointer).world,
           modifiers
         })
       }
@@ -194,7 +194,7 @@ export const createMoveInteraction = (
     up: () => {
       const commit = nodeApi.move.state.finish(state)
       if (commit.delta) {
-        ctx.write.canvas.selection.move({
+        ctx.editor.mutate.canvas.selection.move({
           nodeIds: input.target.nodeIds,
           edgeIds: input.target.edgeIds,
           delta: commit.delta
@@ -205,7 +205,7 @@ export const createMoveInteraction = (
     },
     cleanup: () => {
       if (restoreSelection) {
-        ctx.runtime.dispatch({
+        ctx.editor.dispatch({
           type: 'selection.set',
           selection: restoreSelection
         })

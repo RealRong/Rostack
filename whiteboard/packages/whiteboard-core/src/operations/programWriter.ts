@@ -34,7 +34,7 @@ import {
   mindmapTreeStructure,
   toStructuralOrderedAnchor,
   type WhiteboardMindmapTreeValue,
-} from '@whiteboard/core/operations/custom/structures'
+} from '@whiteboard/core/operations/targets'
 
 type WhiteboardTag = string
 type WhiteboardTags = readonly WhiteboardTag[] | undefined

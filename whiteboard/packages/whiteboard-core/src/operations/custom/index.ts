@@ -32,14 +32,14 @@ import {
 } from './mindmap'
 import {
   whiteboardStructures
-} from './structures'
+} from '@whiteboard/core/operations/targets'
 import type {
   WhiteboardCustomCode
 } from './types'
 
 export {
   whiteboardStructures
-} from './structures'
+} from '@whiteboard/core/operations/targets'
 
 export const whiteboardCustom = {
   'canvas.order.move': {

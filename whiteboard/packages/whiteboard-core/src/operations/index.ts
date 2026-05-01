@@ -5,6 +5,9 @@ export {
   whiteboardEntities
 } from '@whiteboard/core/operations/entities'
 export {
+  whiteboardMutationRegistry
+} from '@whiteboard/core/operations/targets'
+export {
   whiteboardCustom,
   whiteboardStructures
 } from '@whiteboard/core/operations/custom'

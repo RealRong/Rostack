@@ -23,7 +23,7 @@ import {
 } from './base'
 import {
   writeViewUpdate
-} from './viewProgram'
+} from './viewDiff'
 
 const resolveDefaultRecordType = (
   reader: DocumentReader

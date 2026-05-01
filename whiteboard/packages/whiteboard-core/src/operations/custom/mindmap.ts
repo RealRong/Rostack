@@ -26,7 +26,7 @@ import {
   readCanvasOrderAnchorFromSlot,
   readMindmapLayoutChangedNodeIds,
   resolveInsertedMindmapBranchStyle,
-} from './structures'
+} from '@whiteboard/core/operations/targets'
 import type {
   WhiteboardCustomPlanContext
 } from './types'

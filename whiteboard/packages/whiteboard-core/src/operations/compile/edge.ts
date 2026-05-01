@@ -33,7 +33,7 @@ import {
   edgeLabelsStructure,
   edgeRoutePointsStructure,
   toStructuralOrderedAnchor
-} from '@whiteboard/core/operations/custom/structures'
+} from '@whiteboard/core/operations/targets'
 import { resolveLockDecision } from '@whiteboard/core/operations/lock'
 import type {
   Edge,

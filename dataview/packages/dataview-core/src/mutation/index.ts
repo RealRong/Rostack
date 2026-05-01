@@ -7,6 +7,15 @@ export type {
 export {
   createDataviewProgramWriter
 } from './programWriter'
+export {
+  dataviewMutationRegistry,
+  dataviewStructures,
+  fieldOptionsStructure,
+  viewDisplayFieldsStructure,
+  viewFilterRulesStructure,
+  viewOrdersStructure,
+  viewSortRulesStructure
+} from './targets'
 export type {
   DataviewDocumentPatch,
   DataviewFieldOptionPatch,

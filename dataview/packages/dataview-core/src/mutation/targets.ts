@@ -20,8 +20,14 @@ import type {
   MutationStructureSource,
 } from '@shared/mutation/engine'
 import {
+  defineMutationRegistry,
+} from '@shared/mutation/engine'
+import {
   view as viewApi,
 } from '@dataview/core/view'
+import {
+  dataviewEntities
+} from '@dataview/core/entities'
 
 const FIELD_OPTIONS_STRUCTURE_PREFIX = 'field.options:'
 const VIEW_ORDERS_STRUCTURE_PREFIX = 'view.orders:'
@@ -309,3 +315,8 @@ export const dataviewStructures: MutationStructureSource<DataDoc> = (
 
   return undefined
 }
+
+export const dataviewMutationRegistry = defineMutationRegistry<DataDoc>()({
+  entities: dataviewEntities,
+  structures: dataviewStructures
+})

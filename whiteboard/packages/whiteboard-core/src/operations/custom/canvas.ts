@@ -2,7 +2,7 @@ import {
   CANVAS_ORDER_STRUCTURE,
   canvasRefKey,
   toStructuralCanvasAnchor,
-} from './structures'
+} from '@whiteboard/core/operations/targets'
 import type {
   WhiteboardCustomPlanContext
 } from './types'

@@ -17,8 +17,7 @@ import {
   validateWhiteboardOperationBatch,
   whiteboardCompileHandlers,
   whiteboardCustom,
-  whiteboardEntities,
-  whiteboardStructures
+  whiteboardMutationRegistry
 } from '@whiteboard/core/operations'
 import {
   createDocumentReader,
@@ -131,8 +130,8 @@ export const createEngine = ({
     normalize: normalizeDocument,
     createReader: createDocumentReader,
     services,
-    entities: whiteboardEntities,
-    structures: whiteboardStructures,
+    entities: whiteboardMutationRegistry.entities,
+    structures: whiteboardMutationRegistry.structures,
     custom: whiteboardCustom,
     compile: whiteboardCompileHandlers,
     history: {

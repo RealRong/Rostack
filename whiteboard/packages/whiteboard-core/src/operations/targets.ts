@@ -5,8 +5,14 @@ import type {
   MutationTreeSubtreeSnapshot
 } from '@shared/mutation/engine'
 import {
+  defineMutationRegistry
+} from '@shared/mutation/engine'
+import {
   draft
 } from '@shared/draft'
+import {
+  whiteboardEntities
+} from '@whiteboard/core/operations/entities'
 import {
   createEdgeLabelPatch,
   readEdgeLabelUpdateFromPatch
@@ -38,7 +44,7 @@ import {
   clone,
   same,
   uniqueSorted
-} from './common'
+} from '@whiteboard/core/operations/custom/common'
 
 export type WhiteboardMindmapTreeValue = {
   side?: 'left' | 'right'
@@ -583,3 +589,8 @@ export const readCanvasOrderAnchorFromSlot = (
         kind: 'end'
       }
 )
+
+export const whiteboardMutationRegistry = defineMutationRegistry<Document>()({
+  entities: whiteboardEntities,
+  structures: whiteboardStructures
+})

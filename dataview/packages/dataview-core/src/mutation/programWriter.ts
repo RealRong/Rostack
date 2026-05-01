@@ -25,7 +25,7 @@ import {
   viewFilterRulesStructure,
   viewOrdersStructure,
   viewSortRulesStructure,
-} from './adapters'
+} from './targets'
 
 type DataviewTag = string
 type DataviewTags = readonly DataviewTag[] | undefined

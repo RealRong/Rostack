@@ -52,6 +52,12 @@ export type {
   MutationResult
 } from './contracts'
 export type {
+  MutationRegistry
+} from './registry'
+export {
+  defineMutationRegistry
+} from './registry'
+export type {
   AppliedMutationProgram,
   MutationEntityProgramStep,
   MutationEntityRef,

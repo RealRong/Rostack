@@ -9,11 +9,8 @@ import {
   createDataviewProgramWriter
 } from '@dataview/core/mutation'
 import {
-  entities
-} from '@dataview/core/entities'
-import {
-  dataviewStructures as structures
-} from '@dataview/core/mutation/adapters'
+  dataviewMutationRegistry
+} from '@dataview/core/mutation'
 import type {
   DocumentOperation
 } from '@dataview/core/types'
@@ -93,8 +90,8 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
     document: options.document,
     normalize: documentApi.normalize,
     createReader: createDocumentReader,
-    entities,
-    structures,
+    entities: dataviewMutationRegistry.entities,
+    structures: dataviewMutationRegistry.structures,
     compile: compile.handlers,
     createProgram: createDataviewProgramWriter,
     history: historyConfig.enabled

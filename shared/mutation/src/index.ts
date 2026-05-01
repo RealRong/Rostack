@@ -1,4 +1,5 @@
 export type {
+  MutationRegistry,
   AppliedMutationProgram,
   MutationEntityProgramStep,
   MutationEntityRef,
@@ -31,6 +32,7 @@ export type {
   MutationTreeSubtreeSnapshot,
 } from './engine'
 export {
+  defineMutationRegistry,
   applyStructuralOperation,
   createMutationProgramWriter,
   createStructuralOrderedDeleteOperation,

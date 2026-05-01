@@ -54,7 +54,7 @@ import {
 } from '../../document/views'
 import {
   writeViewUpdate
-} from './viewProgram'
+} from './viewDiff'
 import {
   applyRecordOrder,
   reorderRecordIds,

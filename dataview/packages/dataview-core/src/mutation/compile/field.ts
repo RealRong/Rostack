@@ -28,7 +28,7 @@ import {
 import {
   writeViewDisplayInsert,
   writeViewUpdate
-} from './viewProgram'
+} from './viewDiff'
 
 const DEFAULT_OPTION_NAME = 'Option'
 

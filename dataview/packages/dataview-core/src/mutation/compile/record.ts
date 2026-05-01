@@ -14,15 +14,16 @@ import {
 import { createId, string } from '@shared/core'
 import type {
   DocumentReader
-} from './document/reader'
+} from '../../document/reader'
 import {
   issue,
   resolveTarget,
-  type DataviewCompileInput
-} from './compile-base'
+  type DataviewCompileContext,
+  type DataviewCompileContext as DataviewCompileInput
+} from './base'
 import {
   writeViewUpdate
-} from './compile-view-ops'
+} from './viewProgram'
 
 const resolveDefaultRecordType = (
   reader: DocumentReader
@@ -58,7 +59,7 @@ const resolveRecordCreateValues = (
 }
 
 const requireRecordIds = (
-  input: DataviewCompileInput,
+  input: DataviewCompileContext,
   reader: DocumentReader,
   recordIds: readonly string[],
   path: string
@@ -283,10 +284,9 @@ const lowerRecordFieldsWriteMany = (
 }
 
 export const compileRecordIntent = (
-  intent: Intent,
-  input: DataviewCompileInput,
-  reader: DocumentReader
+  input: DataviewCompileContext
 ) => {
+  const { intent, reader } = input
   switch (intent.type) {
     case 'record.create':
       return lowerRecordCreate(intent, input, reader)

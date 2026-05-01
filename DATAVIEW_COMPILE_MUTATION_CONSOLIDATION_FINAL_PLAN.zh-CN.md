@@ -146,7 +146,7 @@ reportIssues(input, ...viewDomain.validate(next, input.source))
 writeViewProgram(input.program, current, next)
 ```
 
-### 2.5 program writer / structures / schema 的定位
+### 2.5 program writer / delta / internal adapters 的定位
 
 它们都属于 mutation 目录，不再放在 `src` 根。
 
@@ -154,10 +154,71 @@ writeViewProgram(input.program, current, next)
 
 - `programWriter` 是 dataview 的 typed mutation writer
 - `program` 是 dataview 的 program type alias
-- `schema` 负责 mutation delta schema / codecs
-- `structures` 负责 ordered/entity structure source
+- `delta` 负责 dataview 自己的 typed delta facade
+- `adapters` 负责 dataview mutation 内部 structural adapters
 
 这些是同一层能力，不应继续散落在根目录。
+
+补充约束：
+
+- dataview 不再暴露 `FIELD_OPTIONS_STRUCTURE_PREFIX` 这类 prefix 常量。
+- dataview 不再暴露或手写 `MutationPathCodec`。
+- dataview 不再依赖 shared public `structures / schema / codec` 模型。
+- dataview mutation 必须基于 [SHARED_MUTATION_KERNEL_SIMPLIFICATION_FINAL_PLAN.zh-CN.md](/Users/realrong/Rostack/SHARED_MUTATION_KERNEL_SIMPLIFICATION_FINAL_PLAN.zh-CN.md) 的 shared kernel 方向实现。
+
+### 2.6 dataview mutation 最终约束
+
+dataview mutation 层不再接受以下长期模型：
+
+- `xxxStructure(id) => string`
+- `const XXX_PREFIX = '...'`
+- `structure.startsWith(...)`
+- `structure.slice(...)`
+- `MutationPathCodec.parse/format`
+- shared public `defineEntityMutationSchema`
+- shared public `createDeltaBuilder`
+- shared public `MutationStructureSource`
+
+最终应该形成：
+
+```ts
+writer.field.option.insert(fieldId, option, { before })
+writer.field.option.move(fieldId, optionId, { before })
+writer.view.order.move(viewId, recordId, { before })
+writer.view.display.splice(viewId, fieldIds, { before })
+writer.view.filter.patch(viewId, ruleId, patch)
+```
+
+以及：
+
+```ts
+type DataviewMutationDelta = {
+  field: {
+    schema(id: FieldId): {
+      changed(path?: 'options' | 'name' | 'kind'): boolean
+    }
+  }
+  record: {
+    values(id: RecordId): {
+      changed(fieldId?: FieldId): boolean
+    }
+  }
+  view: {
+    query(id: ViewId): {
+      changed(aspect?: 'search' | 'filter' | 'sort' | 'group' | 'order'): boolean
+    }
+    layout(id: ViewId): {
+      changed(aspect?: 'display'): boolean
+    }
+  }
+}
+```
+
+也就是：
+
+- public API 只有 dataview writer 与 dataview delta facade
+- structural adapter 只允许留在 `mutation` 内部
+- shared 只提供执行内核，不再提供 public structure/schema/codec 模型
 
 ## 3. 最终目录结构
 
@@ -179,8 +240,8 @@ src/
       viewProgram.ts
     program.ts
     programWriter.ts
-    schema.ts
-    structures.ts
+    delta.ts
+    adapters.ts
     index.ts
   types/
   view/
@@ -191,7 +252,7 @@ src/
 说明：
 
 - 现在根下的 `compile.ts / compile-base.ts / compile-contracts.ts / compile-patch.ts / compile-record.ts / compile-field.ts / compile-view.ts / compile-view-ops.ts` 全部移入 `mutation/compile/`。
-- 现在根下的 `program.ts / programWriter.ts / structures.ts` 全部移入 `mutation/`。
+- 现在根下的 `program.ts / programWriter.ts / structures.ts` 全部移入 `mutation/`，其中 `structures.ts` 重写为 internal `adapters.ts`。
 - `intent.ts` 和 `op.ts` 删除，不再作为根级跳板文件存在。
 
 ## 4. 包级出口策略
@@ -221,10 +282,13 @@ export type * from './types'
 - `createDataviewProgramWriter`
 - `DataviewProgramWriter`
 - `DataviewProgram`
-- `dataviewMutationSchema`
-- `dataviewMutationBuilder`
-- `dataviewStructures`
+- `DataviewMutationDelta`
 - compile contracts types
+
+明确不导出：
+
+- internal `adapters`
+- shared-style `schema / builder / structures`
 
 ### 4.3 types 入口
 
@@ -325,13 +389,16 @@ export type * from './types'
 - 移动以下文件：
   - `program.ts -> mutation/program.ts`
   - `programWriter.ts -> mutation/programWriter.ts`
-  - `structures.ts -> mutation/structures.ts`
+  - `structures.ts -> mutation/adapters.ts`
 - `mutation/index.ts` 改成统一 mutation 正式入口。
+- `mutation/delta.ts` 定义 dataview 自己的 typed delta facade。
+- `mutation/adapters.ts` 改为 internal structural adapters，不再延续 public prefix / codec / structure 方案。
 
 验收标准：
 
 - `src` 根不再散落 compile / program / structures 文件。
 - 所有 mutation 相关实现都进入 `src/mutation/`。
+- dataview mutation 目录设计与 shared kernel 极简模型一致。
 
 ### Phase 2：compile API 收口
 
@@ -379,6 +446,20 @@ export type * from './types'
 - 不再存在“只为跳板而存在”的根级文件
 - mutation/types 出口单一清晰
 
+### Phase 6：dataview mutation public API 收口
+
+- `mutation/adapters.ts` 改为 internal structural adapters
+- 删除 `FIELD_OPTIONS_STRUCTURE_PREFIX` 及同类常量
+- 删除 `structure.startsWith/slice` resolver 逻辑
+- 删除 dataview 对 shared public `schema / builder / structures / codec` 的依赖
+- `mutation/delta.ts` 提供 dataview 自己的 typed delta facade
+- dataview writer 的 structural steps 直接附带 dataview delta / footprint
+
+验收标准：
+
+- dataview mutation 层不再出现 prefix / codec / public structures 模型
+- writer / compile / delta 读取都直接建立在 dataview writer 与 dataview delta facade 上
+
 ## 7. 最终状态判定
 
 满足以下条件才算完成：
@@ -390,6 +471,8 @@ export type * from './types'
 - view 的 normalize / finalize / validate 不再滞留在 compile 文件
 - mutation 相关出口统一由 `src/mutation/index.ts` 承接
 - 根级 `index.ts` 不再做零散 re-export
+- dataview 不再手写 structure prefix 与 path codec
+- dataview 不再依赖 shared public structures / schema / codec
 
 ## 8. 明确不做的事情
 
@@ -398,3 +481,4 @@ export type * from './types'
 - 不新增 `input.read`
 - 不保留 `(intent, input, reader)` 三参 compile API
 - 不在 compile-base 里继续堆 domain helper
+- 不继续接受 prefix / codec / public structures 作为 dataview mutation 的长期模型

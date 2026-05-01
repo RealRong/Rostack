@@ -10,6 +10,9 @@ import type {
   WhiteboardCompileHandlerTable
 } from '@whiteboard/core/operations/compile/helpers'
 import {
+  appendWhiteboardOperation
+} from './append'
+import {
   failInvalid,
   readCompileRegistries,
   readCompileServices
@@ -70,7 +73,7 @@ const compileMindmapCreate = (
     ])
   )
 
-  ctx.program.append({
+  appendWhiteboardOperation(ctx, {
     type: 'mindmap.create',
     mindmap: {
       id: mindmapId,
@@ -114,21 +117,21 @@ export const mindmapIntentHandlers: MindmapIntentHandlers = {
   ),
   'mindmap.delete': (ctx) => {
     ctx.intent.ids.forEach((id) => {
-      ctx.program.append({
+      appendWhiteboardOperation(ctx, {
         type: 'mindmap.delete',
         id
       })
     })
   },
   'mindmap.layout.set': (ctx) => {
-    ctx.program.append({
+    appendWhiteboardOperation(ctx, {
       type: 'mindmap.layout',
       id: ctx.intent.id,
       patch: ctx.intent.layout
     })
   },
   'mindmap.move': (ctx) => {
-    ctx.program.append({
+    appendWhiteboardOperation(ctx, {
       type: 'mindmap.move',
       id: ctx.intent.id,
       position: ctx.intent.position
@@ -148,7 +151,7 @@ export const mindmapIntentHandlers: MindmapIntentHandlers = {
     if (!materialized.ok) {
       return failInvalid(ctx, 'Mindmap topic node could not be materialized.')
     }
-    ctx.program.append({
+    appendWhiteboardOperation(ctx, {
       type: 'mindmap.topic.insert',
       id: ctx.intent.id,
       input,
@@ -159,14 +162,14 @@ export const mindmapIntentHandlers: MindmapIntentHandlers = {
     })
   },
   'mindmap.topic.move': (ctx) => {
-    ctx.program.append({
+    appendWhiteboardOperation(ctx, {
       type: 'mindmap.topic.move',
       id: ctx.intent.id,
       input: ctx.intent.input
     })
   },
   'mindmap.topic.delete': (ctx) => {
-    ctx.program.append({
+    appendWhiteboardOperation(ctx, {
       type: 'mindmap.topic.delete',
       id: ctx.intent.id,
       input: ctx.intent.input
@@ -203,7 +206,7 @@ export const mindmapIntentHandlers: MindmapIntentHandlers = {
       }
 
       const source = mindmap.members[sourceId]
-      ctx.program.append({
+      appendWhiteboardOperation(ctx, {
         type: 'mindmap.topic.insert',
         id: intent.id,
         input: {
@@ -228,7 +231,7 @@ export const mindmapIntentHandlers: MindmapIntentHandlers = {
           position: { x: 0, y: 0 }
         }
       })
-      ctx.program.append({
+      appendWhiteboardOperation(ctx, {
         type: 'mindmap.branch.patch',
         id: intent.id,
         topicId: nextId,
@@ -240,7 +243,7 @@ export const mindmapIntentHandlers: MindmapIntentHandlers = {
         }
       })
       if (source.collapsed !== undefined) {
-        ctx.program.append({
+        appendWhiteboardOperation(ctx, {
           type: 'mindmap.topic.collapse',
           id: intent.id,
           topicId: nextId,
@@ -263,12 +266,14 @@ export const mindmapIntentHandlers: MindmapIntentHandlers = {
         mindmapId: ctx.intent.id,
         topicId: entry.topicId,
         update: entry.input,
-        emit: ctx.program.append
+        emit: (operation) => {
+          appendWhiteboardOperation(ctx, operation)
+        }
       })
     })
   },
   'mindmap.topic.collapse.set': (ctx) => {
-    ctx.program.append({
+    appendWhiteboardOperation(ctx, {
       type: 'mindmap.topic.collapse',
       id: ctx.intent.id,
       topicId: ctx.intent.topicId,
@@ -281,7 +286,9 @@ export const mindmapIntentHandlers: MindmapIntentHandlers = {
         mindmapId: ctx.intent.id,
         topicId: entry.topicId,
         update: entry.input,
-        emit: ctx.program.append
+        emit: (operation) => {
+          appendWhiteboardOperation(ctx, operation)
+        }
       })
     })
   }

@@ -6,7 +6,7 @@ import type {
 } from '@whiteboard/core/document/reader'
 import type {
   WhiteboardCompileServices
-} from '@whiteboard/core/operations/compile'
+} from '@whiteboard/core/operations/compile/helpers'
 import type {
   WhiteboardInternalOperation
 } from '@whiteboard/core/operations/internal'

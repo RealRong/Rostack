@@ -7,26 +7,26 @@ import type {
 import type {
   DataDoc,
   Intent
-} from './types'
+} from '../../types'
 import type {
   DocumentReader
-} from './document/reader'
+} from '../../document/reader'
 import {
   createDataviewProgramWriter,
   type DataviewProgramWriter
-} from './programWriter'
+} from '../programWriter'
 import {
   issue,
-  type DataviewCompileInput
-} from './compile-base'
-import { compileFieldIntent } from './compile-field'
-import { compileRecordIntent } from './compile-record'
-import { compileViewIntent } from './compile-view'
+  type DataviewCompileContext
+} from './base'
+import { compileFieldIntent } from './field'
+import { compileRecordIntent } from './record'
+import { compileViewIntent } from './view'
 import type {
   ValidationCode,
   ValidationIssue,
   ValidationSeverity
-} from './compile-contracts'
+} from './contracts'
 
 type DataviewCompileTable = {
   [K in Intent['type']]: {
@@ -36,25 +36,19 @@ type DataviewCompileTable = {
 }
 
 const runCompileIntent = (
-  input: DataviewCompileInput,
+  input: DataviewCompileContext,
   compileIntent: (
-    intent: Intent,
-    input: DataviewCompileInput,
-    reader: DocumentReader
+    input: DataviewCompileContext
   ) => unknown
 ) => {
-  const result = compileIntent(
-    input.intent,
-    input,
-    input.reader
-  )
+  const result = compileIntent(input)
   if (result !== undefined) {
     input.output(result)
   }
 }
 
 const compileExternalBump = (
-  input: DataviewCompileInput<
+  input: DataviewCompileContext<
     Extract<Intent, { type: 'external.version.bump' }>,
     void
   >
@@ -68,7 +62,7 @@ const compileExternalBump = (
     )
   }
 
-  input.program.semantic.change('external.version')
+  input.program.signal.externalVersion()
 }
 
 export const dataviewIntentHandlers: MutationCompileHandlerTable<
@@ -152,4 +146,4 @@ export type {
   ValidationCode,
   ValidationIssue,
   ValidationSeverity
-} from './compile-contracts'
+} from './contracts'

@@ -7,7 +7,7 @@ import {
   assertMutationFootprintList
 } from '@shared/mutation/write'
 import type { DataDoc } from '@dataview/core/types'
-import type { DocumentOperation } from '@dataview/core/op'
+import type { DocumentOperation } from '@dataview/core/types'
 import type {
   SharedChange,
   SharedCheckpoint,

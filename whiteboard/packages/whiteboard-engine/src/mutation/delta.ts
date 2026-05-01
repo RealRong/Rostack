@@ -5,13 +5,10 @@ import type {
   NodeId
 } from '@whiteboard/core/types'
 import {
-  createTypedMutationDelta,
+  normalizeMutationDelta,
   type MutationDelta,
   type MutationDeltaInput
 } from '@shared/mutation'
-import {
-  whiteboardMutationSchema
-} from '@whiteboard/core/mutation'
 
 export type WhiteboardMutationDelta = MutationDelta & {
   raw: MutationDelta
@@ -112,116 +109,147 @@ const createTouchedIdView = <TId extends string>(
   changed
 })
 
+const changedKey = (
+  delta: MutationDelta,
+  key: string,
+  id?: string
+): boolean => delta.reset === true || delta.changed(key, id)
+
+const hasKey = (
+  delta: MutationDelta,
+  key: string
+): boolean => delta.reset === true || delta.has(key)
+
+const readTouchedIds = <TId extends string>(
+  delta: MutationDelta,
+  keys: readonly string[]
+): ReadonlySet<TId> | 'all' => {
+  if (delta.reset === true) {
+    return 'all'
+  }
+
+  let result: Set<TId> | undefined
+  for (let index = 0; index < keys.length; index += 1) {
+    const ids = delta.ids(keys[index]!)
+    if (ids === 'all') {
+      return 'all'
+    }
+    if (ids.size === 0) {
+      continue
+    }
+    if (!result) {
+      result = new Set<TId>()
+    }
+    ids.forEach((id) => {
+      result!.add(id as TId)
+    })
+  }
+
+  return result ?? new Set<TId>()
+}
+
 const WHITEBOARD_DELTA_CACHE = new WeakMap<MutationDelta, WhiteboardMutationDelta>()
 
 export const createWhiteboardMutationDelta = (
   raw: MutationDelta | MutationDeltaInput
 ): WhiteboardMutationDelta => {
-  const cached = raw && typeof raw === 'object'
-    ? WHITEBOARD_DELTA_CACHE.get(raw as MutationDelta)
-    : undefined
+  const normalized = normalizeMutationDelta(raw)
+  const cached = WHITEBOARD_DELTA_CACHE.get(normalized)
   if (cached) {
     return cached
   }
 
-  const delta = createTypedMutationDelta({
-    raw,
-    schema: whiteboardMutationSchema,
-    build: (context) => {
-      return {
-        canvas: {
-          orderChanged: () => context.has('canvas.order')
-        },
-        node: {
-          create: createTouchedIdView<NodeId>(
-            () => context.touchedIds(['node.create']) as ReadonlySet<NodeId> | 'all',
-            (nodeId) => context.changed('node.create', nodeId)
-          ),
-          delete: createTouchedIdView<NodeId>(
-            () => context.touchedIds(['node.delete']) as ReadonlySet<NodeId> | 'all',
-            (nodeId) => context.changed('node.delete', nodeId)
-          ),
-          geometry: createTouchedIdView<NodeId>(
-            () => context.touchedIds(['node.geometry']) as ReadonlySet<NodeId> | 'all',
-            (nodeId) => context.changed('node.geometry', nodeId)
-          ),
-          owner: createTouchedIdView<NodeId>(
-            () => context.touchedIds(['node.owner']) as ReadonlySet<NodeId> | 'all',
-            (nodeId) => context.changed('node.owner', nodeId)
-          ),
-          content: createTouchedIdView<NodeId>(
-            () => context.touchedIds(['node.content']) as ReadonlySet<NodeId> | 'all',
-            (nodeId) => context.changed('node.content', nodeId)
-          )
-        },
-        edge: {
-          create: createTouchedIdView<EdgeId>(
-            () => context.touchedIds(['edge.create']) as ReadonlySet<EdgeId> | 'all',
-            (edgeId) => context.changed('edge.create', edgeId)
-          ),
-          delete: createTouchedIdView<EdgeId>(
-            () => context.touchedIds(['edge.delete']) as ReadonlySet<EdgeId> | 'all',
-            (edgeId) => context.changed('edge.delete', edgeId)
-          ),
-          endpoints: createTouchedIdView<EdgeId>(
-            () => context.touchedIds(['edge.endpoints']) as ReadonlySet<EdgeId> | 'all',
-            (edgeId) => context.changed('edge.endpoints', edgeId)
-          ),
-          route: createTouchedIdView<EdgeId>(
-            () => context.touchedIds(['edge.route']) as ReadonlySet<EdgeId> | 'all',
-            (edgeId) => context.changed('edge.route', edgeId)
-          ),
-          style: createTouchedIdView<EdgeId>(
-            () => context.touchedIds(['edge.style']) as ReadonlySet<EdgeId> | 'all',
-            (edgeId) => context.changed('edge.style', edgeId)
-          ),
-          labels: createTouchedIdView<EdgeId>(
-            () => context.touchedIds(['edge.labels']) as ReadonlySet<EdgeId> | 'all',
-            (edgeId) => context.changed('edge.labels', edgeId)
-          ),
-          data: createTouchedIdView<EdgeId>(
-            () => context.touchedIds(['edge.data']) as ReadonlySet<EdgeId> | 'all',
-            (edgeId) => context.changed('edge.data', edgeId)
-          )
-        },
-        mindmap: {
-          create: createTouchedIdView<MindmapId>(
-            () => context.touchedIds(['mindmap.create']) as ReadonlySet<MindmapId> | 'all',
-            (mindmapId) => context.changed('mindmap.create', mindmapId)
-          ),
-          delete: createTouchedIdView<MindmapId>(
-            () => context.touchedIds(['mindmap.delete']) as ReadonlySet<MindmapId> | 'all',
-            (mindmapId) => context.changed('mindmap.delete', mindmapId)
-          ),
-          structure: createTouchedIdView<MindmapId>(
-            () => context.touchedIds(['mindmap.structure']) as ReadonlySet<MindmapId> | 'all',
-            (mindmapId) => context.changed('mindmap.structure', mindmapId)
-          ),
-          layout: createTouchedIdView<MindmapId>(
-            () => context.touchedIds(['mindmap.layout']) as ReadonlySet<MindmapId> | 'all',
-            (mindmapId) => context.changed('mindmap.layout', mindmapId)
-          )
-        },
-        group: {
-          create: createTouchedIdView<GroupId>(
-            () => context.touchedIds(['group.create']) as ReadonlySet<GroupId> | 'all',
-            (groupId) => context.changed('group.create', groupId)
-          ),
-          delete: createTouchedIdView<GroupId>(
-            () => context.touchedIds(['group.delete']) as ReadonlySet<GroupId> | 'all',
-            (groupId) => context.changed('group.delete', groupId)
-          ),
-          value: createTouchedIdView<GroupId>(
-            () => context.touchedIds(['group.value']) as ReadonlySet<GroupId> | 'all',
-            (groupId) => context.changed('group.value', groupId)
-          )
-        }
-      }
+  const delta = Object.assign(normalized, {
+    raw: normalized,
+    canvas: {
+      orderChanged: () => hasKey(normalized, 'canvas.order')
+    },
+    node: {
+      create: createTouchedIdView<NodeId>(
+        () => readTouchedIds<NodeId>(normalized, ['node.create']),
+        (nodeId) => changedKey(normalized, 'node.create', nodeId)
+      ),
+      delete: createTouchedIdView<NodeId>(
+        () => readTouchedIds<NodeId>(normalized, ['node.delete']),
+        (nodeId) => changedKey(normalized, 'node.delete', nodeId)
+      ),
+      geometry: createTouchedIdView<NodeId>(
+        () => readTouchedIds<NodeId>(normalized, ['node.geometry']),
+        (nodeId) => changedKey(normalized, 'node.geometry', nodeId)
+      ),
+      owner: createTouchedIdView<NodeId>(
+        () => readTouchedIds<NodeId>(normalized, ['node.owner']),
+        (nodeId) => changedKey(normalized, 'node.owner', nodeId)
+      ),
+      content: createTouchedIdView<NodeId>(
+        () => readTouchedIds<NodeId>(normalized, ['node.content']),
+        (nodeId) => changedKey(normalized, 'node.content', nodeId)
+      )
+    },
+    edge: {
+      create: createTouchedIdView<EdgeId>(
+        () => readTouchedIds<EdgeId>(normalized, ['edge.create']),
+        (edgeId) => changedKey(normalized, 'edge.create', edgeId)
+      ),
+      delete: createTouchedIdView<EdgeId>(
+        () => readTouchedIds<EdgeId>(normalized, ['edge.delete']),
+        (edgeId) => changedKey(normalized, 'edge.delete', edgeId)
+      ),
+      endpoints: createTouchedIdView<EdgeId>(
+        () => readTouchedIds<EdgeId>(normalized, ['edge.endpoints']),
+        (edgeId) => changedKey(normalized, 'edge.endpoints', edgeId)
+      ),
+      route: createTouchedIdView<EdgeId>(
+        () => readTouchedIds<EdgeId>(normalized, ['edge.route']),
+        (edgeId) => changedKey(normalized, 'edge.route', edgeId)
+      ),
+      style: createTouchedIdView<EdgeId>(
+        () => readTouchedIds<EdgeId>(normalized, ['edge.style']),
+        (edgeId) => changedKey(normalized, 'edge.style', edgeId)
+      ),
+      labels: createTouchedIdView<EdgeId>(
+        () => readTouchedIds<EdgeId>(normalized, ['edge.labels']),
+        (edgeId) => changedKey(normalized, 'edge.labels', edgeId)
+      ),
+      data: createTouchedIdView<EdgeId>(
+        () => readTouchedIds<EdgeId>(normalized, ['edge.data']),
+        (edgeId) => changedKey(normalized, 'edge.data', edgeId)
+      )
+    },
+    mindmap: {
+      create: createTouchedIdView<MindmapId>(
+        () => readTouchedIds<MindmapId>(normalized, ['mindmap.create']),
+        (mindmapId) => changedKey(normalized, 'mindmap.create', mindmapId)
+      ),
+      delete: createTouchedIdView<MindmapId>(
+        () => readTouchedIds<MindmapId>(normalized, ['mindmap.delete']),
+        (mindmapId) => changedKey(normalized, 'mindmap.delete', mindmapId)
+      ),
+      structure: createTouchedIdView<MindmapId>(
+        () => readTouchedIds<MindmapId>(normalized, ['mindmap.structure']),
+        (mindmapId) => changedKey(normalized, 'mindmap.structure', mindmapId)
+      ),
+      layout: createTouchedIdView<MindmapId>(
+        () => readTouchedIds<MindmapId>(normalized, ['mindmap.layout']),
+        (mindmapId) => changedKey(normalized, 'mindmap.layout', mindmapId)
+      )
+    },
+    group: {
+      create: createTouchedIdView<GroupId>(
+        () => readTouchedIds<GroupId>(normalized, ['group.create']),
+        (groupId) => changedKey(normalized, 'group.create', groupId)
+      ),
+      delete: createTouchedIdView<GroupId>(
+        () => readTouchedIds<GroupId>(normalized, ['group.delete']),
+        (groupId) => changedKey(normalized, 'group.delete', groupId)
+      ),
+      value: createTouchedIdView<GroupId>(
+        () => readTouchedIds<GroupId>(normalized, ['group.value']),
+        (groupId) => changedKey(normalized, 'group.value', groupId)
+      )
     }
   }) as WhiteboardMutationDelta
 
-  if (raw && typeof raw === 'object') {
-    WHITEBOARD_DELTA_CACHE.set(raw as MutationDelta, delta)
-  }
+  WHITEBOARD_DELTA_CACHE.set(normalized, delta)
   return delta
 }

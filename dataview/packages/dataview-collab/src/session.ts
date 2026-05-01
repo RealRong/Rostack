@@ -78,7 +78,7 @@ export const createYjsSession = ({
       create: (write, meta) => ({
         id: meta.changeId,
         actorId: meta.actorId,
-        ops: write.forward,
+        ops: write.authored,
         footprint: write.footprint
       }),
       read: (change) => ({

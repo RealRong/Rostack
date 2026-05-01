@@ -7,20 +7,17 @@ import type {
   TraceDeltaSummary
 } from '@dataview/engine/contracts/performance'
 import {
-  createTypedMutationDelta,
+  normalizeMutationDelta,
   type MutationDelta,
   type MutationDeltaInput,
 } from '@shared/mutation'
-import {
-  collectMutationTouchedIds,
-  type TypedMutationDeltaContext
-} from '@shared/mutation/typed'
-import {
-  dataviewMutationSchema,
-  type DataviewMutationSchema,
-  type DataviewQueryAspect,
-  type DataviewViewQueryPath
-} from '@dataview/core/mutation'
+
+export type DataviewQueryAspect =
+  | 'search'
+  | 'filter'
+  | 'sort'
+  | 'group'
+  | 'order'
 
 export type DataviewMutationDelta = MutationDelta & {
   raw: MutationDelta
@@ -116,6 +113,8 @@ const VIEW_TOUCH_KEYS = [
   'view.delete'
 ] as const
 
+const DATAVIEW_DELTA_CACHE = new WeakMap<MutationDelta, DataviewMutationDelta>()
+
 const countTouched = <T,>(
   value: ReadonlySet<T> | 'all'
 ): number | 'all' => value === 'all'
@@ -123,65 +122,72 @@ const countTouched = <T,>(
   : value.size
 
 const countIds = (
-  ids: readonly string[] | 'all' | undefined
-): number | 'all' | undefined => ids === 'all'
+  ids: ReadonlySet<string> | 'all'
+): number | 'all' => ids === 'all'
   ? 'all'
-  : ids?.length
+  : ids.size
 
-const countPathIds = (
-  context: TypedMutationDeltaContext<DataviewMutationSchema>,
-  key: keyof DataviewMutationSchema & string
-): number | 'all' | undefined => {
-  const paths = context.paths(key)
-  if (paths === 'all') {
+const readChangedPaths = (
+  delta: MutationDelta,
+  key: string,
+  id: string
+): readonly string[] | 'all' | undefined => delta.reset === true
+  ? 'all'
+  : delta.paths(key, id)
+
+const changedKey = (
+  delta: MutationDelta,
+  key: string,
+  id?: string
+): boolean => delta.reset === true || delta.changed(key, id)
+
+const hasKey = (
+  delta: MutationDelta,
+  key: string
+): boolean => delta.reset === true || delta.has(key)
+
+const readTouchedIds = <TId extends string>(
+  delta: MutationDelta,
+  keys: readonly string[]
+): ReadonlySet<TId> | 'all' => {
+  if (delta.reset === true) {
     return 'all'
   }
 
-  return paths
-    ? Object.keys(paths).length
-    : undefined
-}
-
-const unionTouchedFields = (
-  context: TypedMutationDeltaContext<DataviewMutationSchema>
-): ReadonlySet<FieldId> | 'all' => {
-  if (context.raw.reset === true) {
-    return 'all'
+  let result: Set<TId> | undefined
+  for (let index = 0; index < keys.length; index += 1) {
+    const ids = delta.ids(keys[index]!)
+    if (ids === 'all') {
+      return 'all'
+    }
+    if (ids.size === 0) {
+      continue
+    }
+    if (!result) {
+      result = new Set<TId>()
+    }
+    ids.forEach((id) => {
+      result!.add(id as TId)
+    })
   }
 
-  const direct = collectMutationTouchedIds<FieldId>(context.raw, FIELD_TOUCH_KEYS)
-  const valueFields = readTouchedValueFields(context)
-  if (direct === 'all' || valueFields === 'all') {
-    return 'all'
-  }
-
-  const result = new Set<FieldId>()
-  direct.forEach((fieldId) => {
-    result.add(fieldId)
-  })
-  valueFields.forEach((fieldId) => {
-    result.add(fieldId)
-  })
-  if (context.has('record.title')) {
-    result.add('title')
-  }
-  return result
+  return result ?? new Set<TId>()
 }
 
 const readTouchedValueFields = (
-  context: TypedMutationDeltaContext<DataviewMutationSchema>
+  delta: MutationDelta
 ): ReadonlySet<FieldId> | 'all' => {
-  if (context.raw.reset === true) {
+  if (delta.reset === true) {
     return 'all'
   }
 
-  const paths = context.paths('record.values')
-  if (paths === 'all') {
+  const changes = delta.changes['record.values']?.paths
+  if (changes === 'all') {
     return 'all'
   }
 
   const fields = new Set<FieldId>()
-  Object.values(paths ?? {}).forEach((value) => {
+  Object.values(changes ?? {}).forEach((value) => {
     if (value === 'all') {
       return
     }
@@ -193,6 +199,50 @@ const readTouchedValueFields = (
   return fields
 }
 
+const unionTouchedFields = (
+  delta: MutationDelta
+): ReadonlySet<FieldId> | 'all' => {
+  if (delta.reset === true) {
+    return 'all'
+  }
+
+  const direct = readTouchedIds<FieldId>(delta, FIELD_TOUCH_KEYS)
+  const valueFields = readTouchedValueFields(delta)
+  if (direct === 'all' || valueFields === 'all') {
+    return 'all'
+  }
+
+  const result = new Set<FieldId>()
+  direct.forEach((fieldId) => {
+    result.add(fieldId)
+  })
+  valueFields.forEach((fieldId) => {
+    result.add(fieldId)
+  })
+  if (delta.has('record.title')) {
+    result.add('title')
+  }
+  return result
+}
+
+const countPathIds = (
+  delta: MutationDelta,
+  key: string
+): number | 'all' | undefined => {
+  if (delta.reset === true) {
+    return 'all'
+  }
+
+  const paths = delta.changes[key]?.paths
+  if (paths === 'all') {
+    return 'all'
+  }
+
+  return paths
+    ? Object.keys(paths).length
+    : undefined
+}
+
 const createTouchedIdView = <TId extends string>(
   read: () => ReadonlySet<TId> | 'all',
   changed: (id?: TId) => boolean
@@ -201,183 +251,187 @@ const createTouchedIdView = <TId extends string>(
   changed
 })
 
-const DATAVIEW_DELTA_CACHE = new WeakMap<MutationDelta, DataviewMutationDelta>()
+const matchViewQueryAspect = (
+  delta: MutationDelta,
+  viewId: ViewId,
+  aspect: DataviewQueryAspect
+): boolean => {
+  const paths = readChangedPaths(delta, 'view.query', viewId)
+  if (paths === 'all') {
+    return true
+  }
+
+  return (paths ?? []).some((path) => (
+    path === aspect
+    || (aspect === 'order' && path === 'orders')
+    || path.startsWith(`${aspect}.`)
+  ))
+}
 
 export const createDataviewMutationDelta = (
   raw: MutationDelta | MutationDeltaInput
 ): DataviewMutationDelta => {
-  const cached = raw && typeof raw === 'object'
-    ? DATAVIEW_DELTA_CACHE.get(raw as MutationDelta)
-    : undefined
+  const normalized = normalizeMutationDelta(raw)
+  const cached = DATAVIEW_DELTA_CACHE.get(normalized)
   if (cached) {
     return cached
   }
 
-  const delta = createTypedMutationDelta({
-    raw,
-    schema: dataviewMutationSchema,
-    build: (context) => {
-      const readRecordTouchedIds = () => (
-        context.touchedIds(RECORD_TOUCH_KEYS) as ReadonlySet<RecordId> | 'all'
-      )
-      const readFieldTouchedIds = () => unionTouchedFields(context)
-      const readViewTouchedIds = () => (
-        context.touchedIds(VIEW_TOUCH_KEYS) as ReadonlySet<ViewId> | 'all'
-      )
-      const readSchemaFieldIds = () => (
-        context.touchedIds(['field.schema']) as ReadonlySet<FieldId> | 'all'
-      )
+  const readRecordTouchedIds = () => (
+    readTouchedIds<RecordId>(normalized, RECORD_TOUCH_KEYS)
+  )
+  const readFieldTouchedIds = () => unionTouchedFields(normalized)
+  const readViewTouchedIds = () => (
+    readTouchedIds<ViewId>(normalized, VIEW_TOUCH_KEYS)
+  )
+  const readSchemaFieldIds = () => (
+    readTouchedIds<FieldId>(normalized, ['field.schema'])
+  )
+
+  const delta = Object.assign(normalized, {
+    raw: normalized,
+    document: {
+      activeViewChanged: () => hasKey(normalized, 'document.activeViewId')
+    },
+    record: {
+      create: createTouchedIdView<RecordId>(
+        () => readTouchedIds<RecordId>(normalized, ['record.create']),
+        (recordId) => changedKey(normalized, 'record.create', recordId)
+      ),
+      title: createTouchedIdView<RecordId>(
+        () => readTouchedIds<RecordId>(normalized, ['record.title']),
+        (recordId) => changedKey(normalized, 'record.title', recordId)
+      ),
+      type: createTouchedIdView<RecordId>(
+        () => readTouchedIds<RecordId>(normalized, ['record.type']),
+        (recordId) => changedKey(normalized, 'record.type', recordId)
+      ),
+      meta: createTouchedIdView<RecordId>(
+        () => readTouchedIds<RecordId>(normalized, ['record.meta']),
+        (recordId) => changedKey(normalized, 'record.meta', recordId)
+      ),
+      delete: createTouchedIdView<RecordId>(
+        () => readTouchedIds<RecordId>(normalized, ['record.delete']),
+        (recordId) => changedKey(normalized, 'record.delete', recordId)
+      ),
+      touchedIds: readRecordTouchedIds,
+      values: {
+        touchedRecordIds: () => readTouchedIds<RecordId>(normalized, ['record.values']),
+        touchedFieldIds: () => readTouchedValueFields(normalized),
+        changed: (recordId?: RecordId, fieldId?: FieldId) => {
+          if (recordId === undefined) {
+            return hasKey(normalized, 'record.values')
+          }
+          if (fieldId === undefined) {
+            return changedKey(normalized, 'record.values', recordId)
+          }
+          const paths = readChangedPaths(normalized, 'record.values', recordId)
+          return paths === 'all' || (paths ?? []).includes(fieldId)
+        }
+      }
+    },
+    field: {
+      create: {
+        touchedIds: () => readTouchedIds<FieldId>(normalized, ['field.create'])
+      },
+      delete: {
+        touchedIds: () => readTouchedIds<FieldId>(normalized, ['field.delete'])
+      },
+      meta: {
+        touchedIds: () => readTouchedIds<FieldId>(normalized, ['field.meta'])
+      },
+      schema: {
+        touchedIds: readSchemaFieldIds,
+        changed: (fieldId?: FieldId) => fieldId === undefined
+          ? hasKey(normalized, 'field.schema')
+          : changedKey(normalized, 'field.schema', fieldId)
+      },
+      touchedIds: readFieldTouchedIds
+    },
+    view: {
+      touchedIds: readViewTouchedIds,
+      layout: (viewId: ViewId) => ({
+        changed: () => changedKey(normalized, 'view.layout', viewId)
+      }),
+      query: (viewId: ViewId) => ({
+        changed: (aspect?: DataviewQueryAspect) => aspect === undefined
+          ? changedKey(normalized, 'view.query', viewId)
+          : matchViewQueryAspect(normalized, viewId, aspect)
+      }),
+      calc: (viewId: ViewId) => ({
+        changed: () => changedKey(normalized, 'view.calc', viewId)
+      })
+    },
+    touched: {
+      records: readRecordTouchedIds,
+      fields: readFieldTouchedIds,
+      views: readViewTouchedIds
+    },
+    recordSetChanged: () => hasKey(normalized, 'record.create') || hasKey(normalized, 'record.delete'),
+    summary: (): TraceDeltaSummary => {
+      const facts: Array<{
+        kind: string
+        count?: number
+      }> = []
+      const pushFact = (
+        kind: string,
+        count: number | 'all' | undefined
+      ) => {
+        if (count === undefined) {
+          return
+        }
+
+        facts.push({
+          kind,
+          ...(typeof count === 'number'
+            ? { count }
+            : {})
+        })
+      }
+
+      pushFact('record.insert', countIds(normalized.ids('record.create') as ReadonlySet<string> | 'all'))
+      pushFact('record.title', countIds(normalized.ids('record.title') as ReadonlySet<string> | 'all'))
+      pushFact('record.type', countIds(normalized.ids('record.type') as ReadonlySet<string> | 'all'))
+      pushFact('record.meta', countIds(normalized.ids('record.meta') as ReadonlySet<string> | 'all'))
+      pushFact('record.remove', countIds(normalized.ids('record.delete') as ReadonlySet<string> | 'all'))
+      pushFact('record.value', countPathIds(normalized, 'record.values'))
+      pushFact('field.insert', countIds(normalized.ids('field.create') as ReadonlySet<string> | 'all'))
+      pushFact('field.remove', countIds(normalized.ids('field.delete') as ReadonlySet<string> | 'all'))
+      pushFact('field.schema', countIds(normalized.ids('field.schema') as ReadonlySet<string> | 'all'))
+      pushFact('field.meta', countIds(normalized.ids('field.meta') as ReadonlySet<string> | 'all'))
+      pushFact('view.insert', countIds(normalized.ids('view.create') as ReadonlySet<string> | 'all'))
+      pushFact('view.change', countIds(normalized.ids('view.query') as ReadonlySet<string> | 'all'))
+      pushFact('view.layout', countIds(normalized.ids('view.layout') as ReadonlySet<string> | 'all'))
+      pushFact('view.calc', countIds(normalized.ids('view.calc') as ReadonlySet<string> | 'all'))
+      pushFact('view.remove', countIds(normalized.ids('view.delete') as ReadonlySet<string> | 'all'))
+      pushFact('activeView.set', normalized.changes['document.activeViewId'] ? 1 : undefined)
+      pushFact('external.version', normalized.changes['external.version'] ? 1 : undefined)
+      pushFact('reset', normalized.reset === true ? 1 : undefined)
 
       return {
-        document: {
-          activeViewChanged: () => context.has('document.activeViewId')
+        summary: {
+          records: RECORD_TOUCH_KEYS.some((key) => hasKey(normalized, key)),
+          fields: FIELD_TOUCH_KEYS.some((key) => hasKey(normalized, key)),
+          views: VIEW_TOUCH_KEYS.some((key) => hasKey(normalized, key)),
+          activeView: hasKey(normalized, 'document.activeViewId'),
+          external: hasKey(normalized, 'external.version'),
+          indexes: [
+            ...RECORD_TOUCH_KEYS,
+            ...FIELD_TOUCH_KEYS,
+            'view.query',
+            'view.calc'
+          ].some((key) => hasKey(normalized, key))
         },
-        record: {
-          create: createTouchedIdView<RecordId>(
-            () => context.touchedIds(['record.create']) as ReadonlySet<RecordId> | 'all',
-            (recordId) => context.changed('record.create', recordId)
-          ),
-          title: createTouchedIdView<RecordId>(
-            () => context.touchedIds(['record.title']) as ReadonlySet<RecordId> | 'all',
-            (recordId) => context.changed('record.title', recordId)
-          ),
-          type: createTouchedIdView<RecordId>(
-            () => context.touchedIds(['record.type']) as ReadonlySet<RecordId> | 'all',
-            (recordId) => context.changed('record.type', recordId)
-          ),
-          meta: createTouchedIdView<RecordId>(
-            () => context.touchedIds(['record.meta']) as ReadonlySet<RecordId> | 'all',
-            (recordId) => context.changed('record.meta', recordId)
-          ),
-          delete: createTouchedIdView<RecordId>(
-            () => context.touchedIds(['record.delete']) as ReadonlySet<RecordId> | 'all',
-            (recordId) => context.changed('record.delete', recordId)
-          ),
-          touchedIds: readRecordTouchedIds,
-          values: {
-            touchedRecordIds: () => context.touchedIds(['record.values']) as ReadonlySet<RecordId> | 'all',
-            touchedFieldIds: () => readTouchedValueFields(context),
-            changed: (recordId, fieldId) => {
-              if (recordId === undefined) {
-                return context.has('record.values')
-              }
-              if (fieldId === undefined) {
-                return context.changed('record.values', recordId)
-              }
-              return context.matches('record.values', recordId, path => path === fieldId)
-            }
-          }
-        },
-        field: {
-          create: {
-            touchedIds: () => context.touchedIds(['field.create']) as ReadonlySet<FieldId> | 'all'
-          },
-          delete: {
-            touchedIds: () => context.touchedIds(['field.delete']) as ReadonlySet<FieldId> | 'all'
-          },
-          meta: {
-            touchedIds: () => context.touchedIds(['field.meta']) as ReadonlySet<FieldId> | 'all'
-          },
-          schema: {
-            touchedIds: readSchemaFieldIds,
-            changed: (fieldId) => fieldId === undefined
-              ? context.has('field.schema')
-              : context.changed('field.schema', fieldId)
-          },
-          touchedIds: readFieldTouchedIds
-        },
-        view: {
-          touchedIds: readViewTouchedIds,
-          layout: (viewId: ViewId) => ({
-            changed: () => context.changed('view.layout', viewId)
-          }),
-          query: (viewId: ViewId) => ({
-            changed: (aspect?: DataviewQueryAspect) => aspect === undefined
-              ? context.changed('view.query', viewId)
-              : context.matches(
-                  'view.query',
-                  viewId,
-                  (path) => (path as DataviewViewQueryPath).aspect === aspect
-                )
-          }),
-          calc: (viewId: ViewId) => ({
-            changed: () => context.changed('view.calc', viewId)
-          })
-        },
-        touched: {
-          records: readRecordTouchedIds,
-          fields: readFieldTouchedIds,
-          views: readViewTouchedIds
-        },
-        recordSetChanged: () => context.any(['record.create', 'record.delete']),
-        summary: (): TraceDeltaSummary => {
-          const facts: Array<{
-            kind: string
-            count?: number
-          }> = []
-          const pushFact = (
-            kind: string,
-            count: number | 'all' | undefined
-          ) => {
-            if (count === undefined) {
-              return
-            }
-
-            facts.push({
-              kind,
-              ...(typeof count === 'number'
-                ? { count }
-                : {})
-            })
-          }
-
-          pushFact('record.insert', countIds(context.ids('record.create')))
-          pushFact('record.title', countIds(context.ids('record.title')))
-          pushFact('record.type', countIds(context.ids('record.type')))
-          pushFact('record.meta', countIds(context.ids('record.meta')))
-          pushFact('record.remove', countIds(context.ids('record.delete')))
-          pushFact('record.value', countPathIds(context, 'record.values'))
-          pushFact('field.insert', countIds(context.ids('field.create')))
-          pushFact('field.remove', countIds(context.ids('field.delete')))
-          pushFact('field.schema', countIds(context.ids('field.schema')))
-          pushFact('field.meta', countIds(context.ids('field.meta')))
-          pushFact('view.insert', countIds(context.ids('view.create')))
-          pushFact('view.change', countIds(context.ids('view.query')))
-          pushFact('view.layout', countIds(context.ids('view.layout')))
-          pushFact('view.calc', countIds(context.ids('view.calc')))
-          pushFact('view.remove', countIds(context.ids('view.delete')))
-          pushFact('activeView.set', context.raw.changes['document.activeViewId'] ? 1 : undefined)
-          pushFact('external.version', context.raw.changes['external.version'] ? 1 : undefined)
-          pushFact('reset', context.raw.reset === true ? 1 : undefined)
-
-          return {
-            summary: {
-              records: context.any(RECORD_TOUCH_KEYS),
-              fields: context.any(FIELD_TOUCH_KEYS),
-              views: context.any(VIEW_TOUCH_KEYS),
-              activeView: context.has('document.activeViewId'),
-              external: context.has('external.version'),
-              indexes: context.any([
-                ...RECORD_TOUCH_KEYS,
-                ...FIELD_TOUCH_KEYS,
-                'view.query',
-                'view.calc'
-              ])
-            },
-            facts,
-            entities: {
-              touchedRecordCount: countTouched(readRecordTouchedIds()),
-              touchedFieldCount: countTouched(readFieldTouchedIds()),
-              touchedViewCount: countTouched(readViewTouchedIds())
-            }
-          }
+        facts,
+        entities: {
+          touchedRecordCount: countTouched(readRecordTouchedIds()),
+          touchedFieldCount: countTouched(readFieldTouchedIds()),
+          touchedViewCount: countTouched(readViewTouchedIds())
         }
       }
     }
   }) as DataviewMutationDelta
 
-  if (raw && typeof raw === 'object') {
-    DATAVIEW_DELTA_CACHE.set(raw as MutationDelta, delta)
-  }
+  DATAVIEW_DELTA_CACHE.set(normalized, delta)
   return delta
 }

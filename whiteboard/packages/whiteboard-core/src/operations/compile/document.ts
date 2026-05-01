@@ -4,17 +4,14 @@ import type {
   WhiteboardCompileHandlerTable
 } from '@whiteboard/core/operations/compile/helpers'
 import {
+  appendWhiteboardOperation,
+  appendWhiteboardOperations
+} from './append'
+import {
   failInvalid,
   readCompileRegistries,
   readCompileServices
 } from '@whiteboard/core/operations/compile/helpers'
-
-const emitOps = (
-  ctx: Pick<WhiteboardCompileContext, 'program'>,
-  ops: readonly import('@whiteboard/core/types').Operation[]
-) => {
-  ctx.program.append(...ops)
-}
 
 type DocumentIntentHandlers = Pick<
   WhiteboardCompileHandlerTable,
@@ -26,7 +23,7 @@ type DocumentIntentHandlers = Pick<
 export const documentIntentHandlers: DocumentIntentHandlers = {
   'document.replace': (ctx) => {
     const intent = ctx.intent
-    ctx.program.append({
+    appendWhiteboardOperation(ctx, {
       type: 'document.create',
       value: normalizeDocument(documentApi.assert(intent.document))
     })
@@ -50,7 +47,7 @@ export const documentIntentHandlers: DocumentIntentHandlers = {
       )
     }
 
-    emitOps(ctx, built.data.operations)
+    appendWhiteboardOperations(ctx, ...built.data.operations)
     ctx.output({
       allNodeIds: built.data.allNodeIds,
       allEdgeIds: built.data.allEdgeIds,
@@ -58,7 +55,7 @@ export const documentIntentHandlers: DocumentIntentHandlers = {
     })
   },
   'document.background.set': (ctx) => {
-    ctx.program.append({
+    appendWhiteboardOperation(ctx, {
       type: 'document.patch',
       patch: {
         background: ctx.intent.background

@@ -1,6 +1,7 @@
 import type {
   MutationCompileControl,
-  MutationCompileHandlerTable
+  MutationCompileHandlerTable,
+  MutationProgramWriter,
 } from '@shared/mutation/engine'
 import type {
   MutationCompileHandlerInput
@@ -57,7 +58,7 @@ export type WhiteboardCompileContext<
 > = MutationCompileHandlerInput<
   Document,
   WhiteboardIntent<K>,
-  WhiteboardInternalOperation,
+  MutationProgramWriter<string>,
   WhiteboardIntentOutput<K>,
   DocumentReader,
   WhiteboardCompileServices,
@@ -67,7 +68,7 @@ export type WhiteboardCompileContext<
 export type WhiteboardCompileHandlerTable = MutationCompileHandlerTable<
   WhiteboardMutationTable,
   Document,
-  WhiteboardInternalOperation,
+  MutationProgramWriter<string>,
   DocumentReader,
   WhiteboardCompileServices,
   WhiteboardCompileCode

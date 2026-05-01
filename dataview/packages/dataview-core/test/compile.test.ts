@@ -8,7 +8,7 @@ import type {
 } from '@dataview/core/types'
 import {
   compile
-} from '@dataview/core/compile'
+} from '@dataview/core/mutation'
 import {
   entities
 } from '@dataview/core/entities'

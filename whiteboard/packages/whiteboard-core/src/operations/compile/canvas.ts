@@ -6,6 +6,10 @@ import type {
   WhiteboardCompileHandlerTable
 } from '@whiteboard/core/operations/compile/helpers'
 import {
+  appendWhiteboardOperation,
+  appendWhiteboardOperations
+} from './append'
+import {
   failCancelled,
   failInvalid,
   readCompileRegistries,
@@ -53,7 +57,7 @@ export const compileCanvasDelete = (
 
   refs.forEach((ref) => {
     if (ref.kind === 'edge') {
-      ctx.program.append({
+      appendWhiteboardOperation(ctx, {
         type: 'edge.delete',
         id: ref.id
       })
@@ -63,14 +67,15 @@ export const compileCanvasDelete = (
     const node = ctx.reader.nodes.get(ref.id)
     const mindmapId = getNodeMindmapId(node)
     if (!mindmapId) {
-      ctx.program.append({
+      appendWhiteboardOperation(ctx, {
         type: 'node.delete',
         id: ref.id
       })
       return
     }
 
-    ctx.program.append(
+    appendWhiteboardOperation(
+      ctx,
       ctx.reader.mindmaps.isRoot(ref.id)
         ? {
             type: 'mindmap.delete',
@@ -142,7 +147,7 @@ export const compileCanvasDuplicate = (
     return failInvalid(ctx, built.error.message, built.error.details)
   }
 
-  built.data.operations.forEach((op) => ctx.program.append(op))
+  appendWhiteboardOperations(ctx, ...built.data.operations)
   return {
     allNodeIds: built.data.allNodeIds,
     allEdgeIds: built.data.allEdgeIds,
@@ -235,7 +240,7 @@ const compileCanvasSelectionMove = (
         node.position.x !== entry.position.x
         || node.position.y !== entry.position.y
       ) {
-        ctx.program.append(...nodeApi.update.createOperation(node.id, {
+        appendWhiteboardOperations(ctx, ...nodeApi.update.createOperation(node.id, {
           fields: {
             position: entry.position
           }
@@ -261,7 +266,7 @@ const compileCanvasSelectionMove = (
     }
 
     movedMindmapIds.add(mindmapId)
-    ctx.program.append({
+    appendWhiteboardOperation(ctx, {
       type: 'mindmap.move',
       id: mindmapId,
       position: entry.position
@@ -305,7 +310,7 @@ export const canvasIntentHandlers: CanvasIntentHandlers = {
     }
   },
   'canvas.selection.move': (ctx) => compileCanvasSelectionMove(ctx),
-  'canvas.order.move': (ctx) => ctx.program.append({
+  'canvas.order.move': (ctx) => appendWhiteboardOperation(ctx, {
     type: 'canvas.order.move',
     refs: ctx.intent.refs,
     to: ctx.intent.to

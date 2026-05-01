@@ -16,7 +16,7 @@ import type {
   DataviewFilterRulePatch,
   DataviewSortRulePatch,
   DataviewViewPatch
-} from './programWriter'
+} from '../programWriter'
 
 const insertBefore = <T,>(
   items: readonly T[],

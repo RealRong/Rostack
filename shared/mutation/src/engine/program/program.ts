@@ -1,6 +1,6 @@
 import type {
-  MutationChangeInput,
   MutationDelta,
+  MutationDeltaInput,
   MutationFootprint,
   MutationIssue,
   MutationOrderedAnchor,
@@ -13,6 +13,14 @@ export interface MutationEntityRef {
   id: string
 }
 
+type MutationProgramStepMetadata<
+  Tag extends string = string
+> = {
+  tags?: readonly Tag[]
+  delta?: MutationDeltaInput
+  footprint?: readonly MutationFootprint[]
+}
+
 export type MutationEntityProgramStep<
   Tag extends string = string
 > =
@@ -20,14 +28,12 @@ export type MutationEntityProgramStep<
       type: 'entity.create'
       entity: MutationEntityRef
       value: unknown
-      tags?: readonly Tag[]
-    }
+    } & MutationProgramStepMetadata<Tag>
   | {
       type: 'entity.patch'
       entity: MutationEntityRef
       writes: Readonly<Record<string, unknown>>
-      tags?: readonly Tag[]
-    }
+    } & MutationProgramStepMetadata<Tag>
   | {
       type: 'entity.patchMany'
       table: string
@@ -35,13 +41,11 @@ export type MutationEntityProgramStep<
         id: string
         writes: Readonly<Record<string, unknown>>
       }[]
-      tags?: readonly Tag[]
-    }
+    } & MutationProgramStepMetadata<Tag>
   | {
       type: 'entity.delete'
       entity: MutationEntityRef
-      tags?: readonly Tag[]
-    }
+    } & MutationProgramStepMetadata<Tag>
 
 export type MutationOrderedProgramStep<
   Tag extends string = string
@@ -52,35 +56,30 @@ export type MutationOrderedProgramStep<
       itemId: string
       value: unknown
       to: MutationOrderedAnchor
-      tags?: readonly Tag[]
-    }
+    } & MutationProgramStepMetadata<Tag>
   | {
       type: 'ordered.move'
       structure: string
       itemId: string
       to: MutationOrderedAnchor
-      tags?: readonly Tag[]
-    }
+    } & MutationProgramStepMetadata<Tag>
   | {
       type: 'ordered.splice'
       structure: string
       itemIds: readonly string[]
       to: MutationOrderedAnchor
-      tags?: readonly Tag[]
-    }
+    } & MutationProgramStepMetadata<Tag>
   | {
       type: 'ordered.delete'
       structure: string
       itemId: string
-      tags?: readonly Tag[]
-    }
+    } & MutationProgramStepMetadata<Tag>
   | {
       type: 'ordered.patch'
       structure: string
       itemId: string
       patch: unknown
-      tags?: readonly Tag[]
-    }
+    } & MutationProgramStepMetadata<Tag>
 
 export type MutationTreeProgramStep<
   Tag extends string = string
@@ -92,52 +91,30 @@ export type MutationTreeProgramStep<
       parentId?: string
       index?: number
       value?: unknown
-      tags?: readonly Tag[]
-    }
+    } & MutationProgramStepMetadata<Tag>
   | {
       type: 'tree.move'
       structure: string
       nodeId: string
       parentId?: string
       index?: number
-      tags?: readonly Tag[]
-    }
+    } & MutationProgramStepMetadata<Tag>
   | {
       type: 'tree.delete'
       structure: string
       nodeId: string
-      tags?: readonly Tag[]
-    }
+    } & MutationProgramStepMetadata<Tag>
   | {
       type: 'tree.restore'
       structure: string
       snapshot: MutationTreeSubtreeSnapshot
-      tags?: readonly Tag[]
-    }
+    } & MutationProgramStepMetadata<Tag>
   | {
       type: 'tree.node.patch'
       structure: string
       nodeId: string
       patch: unknown
-      tags?: readonly Tag[]
-    }
-
-export type MutationSemanticProgramStep<
-  Tag extends string = string
-> =
-  | {
-      type: 'semantic.tag'
-      value: Tag
-    }
-  | {
-      type: 'semantic.change'
-      key: string
-      change?: MutationChangeInput
-    }
-  | {
-      type: 'semantic.footprint'
-      footprint: readonly MutationFootprint[]
-    }
+    } & MutationProgramStepMetadata<Tag>
 
 export type MutationProgramStep<
   Tag extends string = string
@@ -145,7 +122,6 @@ export type MutationProgramStep<
   | MutationEntityProgramStep<Tag>
   | MutationOrderedProgramStep<Tag>
   | MutationTreeProgramStep<Tag>
-  | MutationSemanticProgramStep<Tag>
 
 export const isMutationProgramStep = (
   value: {
@@ -167,9 +143,6 @@ export const isMutationProgramStep = (
     case 'tree.delete':
     case 'tree.restore':
     case 'tree.node.patch':
-    case 'semantic.tag':
-    case 'semantic.change':
-    case 'semantic.footprint':
       return true
     default:
       return false

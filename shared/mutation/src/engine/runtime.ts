@@ -136,110 +136,149 @@ const createCustomPlannerProgram = <
 
     switch (effect.type) {
       case 'ordered.insert':
-        builder.structure.ordered.insert(effect.structure, effect.itemId, effect.value, effect.to, effect.tags)
+        builder.ordered.insert(effect.structure, effect.itemId, effect.value, effect.to, effect.tags, {
+          delta: effect.delta,
+          footprint: effect.footprint
+        })
         return true
       case 'ordered.move':
-        builder.structure.ordered.move(effect.structure, effect.itemId, effect.to, effect.tags)
+        builder.ordered.move(effect.structure, effect.itemId, effect.to, effect.tags, {
+          delta: effect.delta,
+          footprint: effect.footprint
+        })
         return true
       case 'ordered.splice':
-        builder.structure.ordered.splice(effect.structure, effect.itemIds, effect.to, effect.tags)
+        builder.ordered.splice(effect.structure, effect.itemIds, effect.to, effect.tags, {
+          delta: effect.delta,
+          footprint: effect.footprint
+        })
         return true
       case 'ordered.delete':
-        builder.structure.ordered.delete(effect.structure, effect.itemId, effect.tags)
+        builder.ordered.delete(effect.structure, effect.itemId, effect.tags, {
+          delta: effect.delta,
+          footprint: effect.footprint
+        })
         return true
       case 'ordered.patch':
-        builder.structure.ordered.patch(effect.structure, effect.itemId, effect.patch, effect.tags)
+        builder.ordered.patch(effect.structure, effect.itemId, effect.patch, effect.tags, {
+          delta: effect.delta,
+          footprint: effect.footprint
+        })
         return true
       case 'tree.insert':
-        builder.structure.tree.insert(
+        builder.tree.insert(
           effect.structure,
           effect.nodeId,
           effect.parentId,
           effect.index,
           effect.value,
-          effect.tags
+          effect.tags,
+          {
+            delta: effect.delta,
+            footprint: effect.footprint
+          }
         )
         return true
       case 'tree.move':
-        builder.structure.tree.move(
+        builder.tree.move(
           effect.structure,
           effect.nodeId,
           effect.parentId,
           effect.index,
-          effect.tags
+          effect.tags,
+          {
+            delta: effect.delta,
+            footprint: effect.footprint
+          }
         )
         return true
       case 'tree.delete':
-        builder.structure.tree.delete(effect.structure, effect.nodeId, effect.tags)
+        builder.tree.delete(effect.structure, effect.nodeId, effect.tags, {
+          delta: effect.delta,
+          footprint: effect.footprint
+        })
         return true
       case 'tree.restore':
-        builder.structure.tree.restore(effect.structure, effect.snapshot, effect.tags)
+        builder.tree.restore(effect.structure, effect.snapshot, effect.tags, {
+          delta: effect.delta,
+          footprint: effect.footprint
+        })
         return true
       case 'tree.node.patch':
-        builder.structure.tree.patch(effect.structure, effect.nodeId, effect.patch, effect.tags)
+        builder.tree.patch(effect.structure, effect.nodeId, effect.patch, effect.tags, {
+          delta: effect.delta,
+          footprint: effect.footprint
+        })
         return true
     }
   }
 
   const program: MutationProgramWriter<Tag> = {
     entity: builder.entity,
-    semantic: builder.semantic,
     build: builder.build,
-    structure: {
-      ordered: {
-        insert: builder.structure.ordered.insert,
-        delete: builder.structure.ordered.delete,
-        move: (structure, itemId, to, tags) => {
-          commitStructuralEffect({
-            type: 'ordered.move',
-            structure,
-            itemId,
-            to,
-            ...(tags === undefined ? {} : { tags })
-          })
-        },
-        splice: (structure, itemIds, to, tags) => {
-          commitStructuralEffect({
-            type: 'ordered.splice',
-            structure,
-            itemIds,
-            to,
-            ...(tags === undefined ? {} : { tags })
-          })
-        },
-        patch: (structure, itemId, patch, tags) => {
-          commitStructuralEffect({
-            type: 'ordered.patch',
-            structure,
-            itemId,
-            patch,
-            ...(tags === undefined ? {} : { tags })
-          })
-        }
+    ordered: {
+      insert: builder.ordered.insert,
+      delete: builder.ordered.delete,
+      move: (structure, itemId, to, tags, metadata) => {
+        commitStructuralEffect({
+          type: 'ordered.move',
+          structure,
+          itemId,
+          to,
+          ...(tags === undefined ? {} : { tags }),
+          ...(metadata?.delta === undefined ? {} : { delta: metadata.delta }),
+          ...(metadata?.footprint === undefined ? {} : { footprint: metadata.footprint })
+        })
       },
-      tree: {
-        insert: builder.structure.tree.insert,
-        delete: builder.structure.tree.delete,
-        restore: builder.structure.tree.restore,
-        move: (structure, nodeId, parentId, index, tags) => {
-          commitStructuralEffect({
-            type: 'tree.move',
-            structure,
-            nodeId,
-            ...(parentId === undefined ? {} : { parentId }),
-            ...(index === undefined ? {} : { index }),
-            ...(tags === undefined ? {} : { tags })
-          })
-        },
-        patch: (structure, nodeId, patch, tags) => {
-          commitStructuralEffect({
-            type: 'tree.node.patch',
-            structure,
-            nodeId,
-            patch,
-            ...(tags === undefined ? {} : { tags })
-          })
-        }
+      splice: (structure, itemIds, to, tags, metadata) => {
+        commitStructuralEffect({
+          type: 'ordered.splice',
+          structure,
+          itemIds,
+          to,
+          ...(tags === undefined ? {} : { tags }),
+          ...(metadata?.delta === undefined ? {} : { delta: metadata.delta }),
+          ...(metadata?.footprint === undefined ? {} : { footprint: metadata.footprint })
+        })
+      },
+      patch: (structure, itemId, patch, tags, metadata) => {
+        commitStructuralEffect({
+          type: 'ordered.patch',
+          structure,
+          itemId,
+          patch,
+          ...(tags === undefined ? {} : { tags }),
+          ...(metadata?.delta === undefined ? {} : { delta: metadata.delta }),
+          ...(metadata?.footprint === undefined ? {} : { footprint: metadata.footprint })
+        })
+      }
+    },
+    tree: {
+      insert: builder.tree.insert,
+      delete: builder.tree.delete,
+      restore: builder.tree.restore,
+      move: (structure, nodeId, parentId, index, tags, metadata) => {
+        commitStructuralEffect({
+          type: 'tree.move',
+          structure,
+          nodeId,
+          ...(parentId === undefined ? {} : { parentId }),
+          ...(index === undefined ? {} : { index }),
+          ...(tags === undefined ? {} : { tags }),
+          ...(metadata?.delta === undefined ? {} : { delta: metadata.delta }),
+          ...(metadata?.footprint === undefined ? {} : { footprint: metadata.footprint })
+        })
+      },
+      patch: (structure, nodeId, patch, tags, metadata) => {
+        commitStructuralEffect({
+          type: 'tree.node.patch',
+          structure,
+          nodeId,
+          patch,
+          ...(tags === undefined ? {} : { tags }),
+          ...(metadata?.delta === undefined ? {} : { delta: metadata.delta }),
+          ...(metadata?.footprint === undefined ? {} : { footprint: metadata.footprint })
+        })
       }
     }
   }

@@ -4,19 +4,19 @@ import type {
 import {
   document as documentApi
 } from '@dataview/core/document'
-import type { DocumentOperation } from '@dataview/core/op'
 import {
-  compile
-} from '@dataview/core/compile'
+  compile,
+  createDataviewProgramWriter
+} from '@dataview/core/mutation'
 import {
   entities
 } from '@dataview/core/entities'
 import {
-  createDataviewProgramWriter
-} from '@dataview/core/programWriter'
-import {
   dataviewStructures as structures
-} from '@dataview/core/structures'
+} from '@dataview/core/mutation/adapters'
+import type {
+  DocumentOperation
+} from '@dataview/core/types'
 import {
   MutationEngine
 } from '@shared/mutation'
@@ -57,7 +57,7 @@ import {
 } from '@dataview/core/document/reader'
 import type {
   DataviewProgramWriter
-} from '@dataview/core/programWriter'
+} from '@dataview/core/mutation'
 import type {
   DataviewIntentTable,
   DataviewErrorCode

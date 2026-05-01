@@ -33,7 +33,6 @@ test('WhiteboardProgramWriter lowers domain writes to shared program steps', () 
   writer.mindmap.tree.patch('mindmap_1', 'node_1', {
     collapsed: true
   })
-  writer.semantic.mindmap.layout('mindmap_1')
 
   assert.deepEqual(base.build(), {
     steps: [
@@ -85,11 +84,6 @@ test('WhiteboardProgramWriter lowers domain writes to shared program steps', () 
         patch: {
           collapsed: true
         }
-      },
-      {
-        type: 'semantic.change',
-        key: 'mindmap.layout',
-        change: ['mindmap_1']
       }
     ]
   })

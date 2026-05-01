@@ -17,12 +17,6 @@ test('DataviewProgramWriter lowers entity and ordered writes to shared program s
     before: 'field_2'
   })
   writer.field.option.delete('field_1', 'option_1')
-  writer.semantic.change('view.query', {
-    ids: ['view_1'],
-    paths: {
-      view_1: ['sort']
-    }
-  })
 
   assert.deepEqual(base.build(), {
     steps: [
@@ -61,16 +55,6 @@ test('DataviewProgramWriter lowers entity and ordered writes to shared program s
         type: 'ordered.delete',
         structure: 'field.options:field_1',
         itemId: 'option_1'
-      },
-      {
-        type: 'semantic.change',
-        key: 'view.query',
-        change: {
-          ids: ['view_1'],
-          paths: {
-            view_1: ['sort']
-          }
-        }
       }
     ]
   })

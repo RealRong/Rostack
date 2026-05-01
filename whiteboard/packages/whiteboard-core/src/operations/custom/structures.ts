@@ -3,7 +3,7 @@ import type {
   MutationStructureSource,
   MutationTreeSnapshot,
   MutationTreeSubtreeSnapshot
-} from '@shared/mutation'
+} from '@shared/mutation/engine'
 import {
   draft
 } from '@shared/draft'

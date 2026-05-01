@@ -1,11 +1,9 @@
 import type {
   CustomFieldId,
   CustomFieldKind,
-  FieldId
-} from '@dataview/core/types'
-import type {
+  FieldId,
   Intent as CoreIntent
-} from '@dataview/core/intent'
+} from '@dataview/core/types'
 import { createId } from '@shared/core'
 import {
   view as viewApi

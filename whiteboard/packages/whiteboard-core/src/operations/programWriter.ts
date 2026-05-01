@@ -20,7 +20,7 @@ import type {
   NodePatch,
 } from '@whiteboard/core/types'
 import type {
-  MutationChangeInput,
+  MutationDeltaInput,
   MutationFootprint,
   MutationOrderedAnchor,
   MutationProgramWriter,
@@ -183,14 +183,6 @@ export interface WhiteboardProgramWriter {
       ): void
     }
   }
-  semantic: {
-    tag(value: WhiteboardTag): void
-    change(key: string, change?: MutationChangeInput): void
-    footprint(footprint: readonly MutationFootprint[]): void
-    mindmap: {
-      layout(id: MindmapId): void
-    }
-  }
 }
 
 const toOrderedAnchor = (
@@ -223,7 +215,7 @@ export const createWhiteboardProgramWriter = (
   canvas: {
     order: {
       move: (ref, to, tags) => {
-        writer.structure.ordered.move(
+        writer.ordered.move(
           CANVAS_ORDER_STRUCTURE,
           canvasRefKey(ref),
           to,
@@ -231,7 +223,7 @@ export const createWhiteboardProgramWriter = (
         )
       },
       splice: (refs, to, tags) => {
-        writer.structure.ordered.splice(
+        writer.ordered.splice(
           CANVAS_ORDER_STRUCTURE,
           refs.map((ref) => canvasRefKey(ref)),
           to,
@@ -239,7 +231,7 @@ export const createWhiteboardProgramWriter = (
         )
       },
       delete: (ref, tags) => {
-        writer.structure.ordered.delete(
+        writer.ordered.delete(
           CANVAS_ORDER_STRUCTURE,
           canvasRefKey(ref),
           tags
@@ -288,7 +280,7 @@ export const createWhiteboardProgramWriter = (
     },
     label: {
       insert: (edgeId, label, to, tags) => {
-        writer.structure.ordered.insert(
+        writer.ordered.insert(
           edgeLabelsStructure(edgeId),
           label.id,
           label,
@@ -297,7 +289,7 @@ export const createWhiteboardProgramWriter = (
         )
       },
       move: (edgeId, labelId, to, tags) => {
-        writer.structure.ordered.move(
+        writer.ordered.move(
           edgeLabelsStructure(edgeId),
           labelId,
           toOrderedAnchor(to),
@@ -305,7 +297,7 @@ export const createWhiteboardProgramWriter = (
         )
       },
       splice: (edgeId, labelIds, to, tags) => {
-        writer.structure.ordered.splice(
+        writer.ordered.splice(
           edgeLabelsStructure(edgeId),
           labelIds,
           toOrderedAnchor(to),
@@ -313,7 +305,7 @@ export const createWhiteboardProgramWriter = (
         )
       },
       patch: (edgeId, labelId, patch, tags) => {
-        writer.structure.ordered.patch(
+        writer.ordered.patch(
           edgeLabelsStructure(edgeId),
           labelId,
           patch,
@@ -321,7 +313,7 @@ export const createWhiteboardProgramWriter = (
         )
       },
       delete: (edgeId, labelId, tags) => {
-        writer.structure.ordered.delete(
+        writer.ordered.delete(
           edgeLabelsStructure(edgeId),
           labelId,
           tags
@@ -330,7 +322,7 @@ export const createWhiteboardProgramWriter = (
     },
     route: {
       insert: (edgeId, point, to, tags) => {
-        writer.structure.ordered.insert(
+        writer.ordered.insert(
           edgeRoutePointsStructure(edgeId),
           point.id,
           point,
@@ -339,7 +331,7 @@ export const createWhiteboardProgramWriter = (
         )
       },
       move: (edgeId, pointId, to, tags) => {
-        writer.structure.ordered.move(
+        writer.ordered.move(
           edgeRoutePointsStructure(edgeId),
           pointId,
           toOrderedAnchor(to),
@@ -347,7 +339,7 @@ export const createWhiteboardProgramWriter = (
         )
       },
       splice: (edgeId, pointIds, to, tags) => {
-        writer.structure.ordered.splice(
+        writer.ordered.splice(
           edgeRoutePointsStructure(edgeId),
           pointIds,
           toOrderedAnchor(to),
@@ -355,7 +347,7 @@ export const createWhiteboardProgramWriter = (
         )
       },
       patch: (edgeId, pointId, patch, tags) => {
-        writer.structure.ordered.patch(
+        writer.ordered.patch(
           edgeRoutePointsStructure(edgeId),
           pointId,
           patch,
@@ -363,7 +355,7 @@ export const createWhiteboardProgramWriter = (
         )
       },
       delete: (edgeId, pointId, tags) => {
-        writer.structure.ordered.delete(
+        writer.ordered.delete(
           edgeRoutePointsStructure(edgeId),
           pointId,
           tags
@@ -412,7 +404,7 @@ export const createWhiteboardProgramWriter = (
     },
     tree: {
       insert: ({ mindmapId, nodeId, parentId, index, value, tags }) => {
-        writer.structure.tree.insert(
+        writer.tree.insert(
           mindmapTreeStructure(mindmapId),
           nodeId,
           parentId,
@@ -422,7 +414,7 @@ export const createWhiteboardProgramWriter = (
         )
       },
       move: ({ mindmapId, nodeId, parentId, index, tags }) => {
-        writer.structure.tree.move(
+        writer.tree.move(
           mindmapTreeStructure(mindmapId),
           nodeId,
           parentId,
@@ -431,36 +423,26 @@ export const createWhiteboardProgramWriter = (
         )
       },
       delete: (mindmapId, nodeId, tags) => {
-        writer.structure.tree.delete(
+        writer.tree.delete(
           mindmapTreeStructure(mindmapId),
           nodeId,
           tags
         )
       },
       restore: (mindmapId, snapshot, tags) => {
-        writer.structure.tree.restore(
+        writer.tree.restore(
           mindmapTreeStructure(mindmapId),
           snapshot,
           tags
         )
       },
       patch: (mindmapId, nodeId, patch, tags) => {
-        writer.structure.tree.patch(
+        writer.tree.patch(
           mindmapTreeStructure(mindmapId),
           nodeId,
           patch,
           tags
         )
-      }
-    }
-  },
-  semantic: {
-    tag: writer.semantic.tag,
-    change: writer.semantic.change,
-    footprint: writer.semantic.footprint,
-    mindmap: {
-      layout: (id) => {
-        writer.semantic.change('mindmap.layout', [id])
       }
     }
   }

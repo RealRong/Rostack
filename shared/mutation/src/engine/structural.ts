@@ -38,7 +38,9 @@ import {
   sameJsonValue,
 } from './contracts'
 import {
-  buildStructureDelta
+  buildStructureDelta,
+  mergeMutationDeltas,
+  normalizeMutationDelta
 } from './delta'
 import type {
   AppliedMutationProgram,
@@ -797,7 +799,7 @@ export const lowerStructuralOperation = (
 
   switch (operation.type) {
     case 'structural.ordered.insert':
-      builder.structure.ordered.insert(
+      builder.ordered.insert(
         readRequiredStructure(operation.structure),
         readRequiredItemId(operation.itemId),
         operation.value,
@@ -805,27 +807,27 @@ export const lowerStructuralOperation = (
       )
       break
     case 'structural.ordered.move':
-      builder.structure.ordered.move(
+      builder.ordered.move(
         readRequiredStructure(operation.structure),
         readRequiredItemId(operation.itemId),
         readRequiredOrderedAnchor(operation.to)
       )
       break
     case 'structural.ordered.splice':
-      builder.structure.ordered.splice(
+      builder.ordered.splice(
         readRequiredStructure(operation.structure),
         readOrderedSpliceItemIds(operation.itemIds),
         readRequiredOrderedAnchor(operation.to)
       )
       break
     case 'structural.ordered.delete':
-      builder.structure.ordered.delete(
+      builder.ordered.delete(
         readRequiredStructure(operation.structure),
         readRequiredItemId(operation.itemId)
       )
       break
     case 'structural.ordered.patch':
-      builder.structure.ordered.patch(
+      builder.ordered.patch(
         readRequiredStructure(operation.structure),
         readRequiredItemId(operation.itemId),
         readRequiredPatch(
@@ -835,7 +837,7 @@ export const lowerStructuralOperation = (
       )
       break
     case 'structural.tree.insert':
-      builder.structure.tree.insert(
+      builder.tree.insert(
         readRequiredStructure(operation.structure),
         readRequiredNodeId(operation.nodeId),
         readOptionalParentId(operation.parentId),
@@ -844,7 +846,7 @@ export const lowerStructuralOperation = (
       )
       break
     case 'structural.tree.move':
-      builder.structure.tree.move(
+      builder.tree.move(
         readRequiredStructure(operation.structure),
         readRequiredNodeId(operation.nodeId),
         readOptionalParentId(operation.parentId),
@@ -852,19 +854,19 @@ export const lowerStructuralOperation = (
       )
       break
     case 'structural.tree.delete':
-      builder.structure.tree.delete(
+      builder.tree.delete(
         readRequiredStructure(operation.structure),
         readRequiredNodeId(operation.nodeId)
       )
       break
     case 'structural.tree.restore':
-      builder.structure.tree.restore(
+      builder.tree.restore(
         readRequiredStructure(operation.structure),
         readTreeSubtreeSnapshot(operation.snapshot)
       )
       break
     case 'structural.tree.node.patch':
-      builder.structure.tree.patch(
+      builder.tree.patch(
         readRequiredStructure(operation.structure),
         readRequiredNodeId(operation.nodeId),
         readRequiredPatch(
@@ -1665,13 +1667,25 @@ export const applyStructuralEffectResult = <
     inverse: lowerStructuralOperationBatch(
       applied.data.inverse as readonly MutationStructuralCanonicalOperation[]
     ),
-    delta: buildStructureDelta(
-      'change' in spec
-        ? spec.change
-        : undefined
-    ),
+    delta: input.effect.delta === undefined
+      ? buildStructureDelta(
+          'change' in spec
+            ? spec.change
+            : undefined
+        )
+      : mergeMutationDeltas(
+          buildStructureDelta(
+            'change' in spec
+              ? spec.change
+              : undefined
+          ),
+          normalizeMutationDelta(input.effect.delta)
+        ),
     structural: applied.data.structural,
-    footprint: applied.data.footprint,
+    footprint: [
+      ...applied.data.footprint,
+      ...(input.effect.footprint ?? [])
+    ],
     issues: EMPTY_ISSUES,
     historyMode: applied.data.historyMode === 'track'
       ? 'track'
@@ -1731,9 +1745,6 @@ export const applyStructuralOperation = <
     const [effect] = program.steps
     if (
       !effect
-      || effect.type === 'semantic.tag'
-      || effect.type === 'semantic.change'
-      || effect.type === 'semantic.footprint'
       || effect.type === 'entity.create'
       || effect.type === 'entity.patch'
       || effect.type === 'entity.patchMany'

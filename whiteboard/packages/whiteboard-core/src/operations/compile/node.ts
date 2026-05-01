@@ -11,6 +11,10 @@ import type {
   WhiteboardCompileHandlerTable
 } from '@whiteboard/core/operations/compile/helpers'
 import {
+  appendWhiteboardOperation,
+  appendWhiteboardOperations
+} from './append'
+import {
   failCancelled,
   failInvalid,
   readCompileRegistries,
@@ -172,7 +176,7 @@ const compileNodeTextCommit = (
     return failInvalid(ctx, planned.error.message, readErrorDetails(planned.error))
   }
 
-  planned.data.forEach((op) => ctx.program.append(op))
+  appendWhiteboardOperations(ctx, ...planned.data)
 }
 
 type NodeIntentHandlers = Pick<
@@ -206,7 +210,7 @@ export const nodeIntentHandlers: NodeIntentHandlers = {
       return failInvalid(ctx, built.error.message, built.error.details)
     }
 
-    ctx.program.append(built.data.operation)
+    appendWhiteboardOperation(ctx, built.data.operation)
     ctx.output({
       nodeId: built.data.nodeId
     })
@@ -246,7 +250,7 @@ export const nodeIntentHandlers: NodeIntentHandlers = {
       if (!planned.ok) {
         return failInvalid(ctx, planned.error.message, readErrorDetails(planned.error))
       }
-      planned.data.forEach((op) => ctx.program.append(op))
+      appendWhiteboardOperations(ctx, ...planned.data)
     }
   },
   'node.move': (ctx) => {
@@ -278,7 +282,7 @@ export const nodeIntentHandlers: NodeIntentHandlers = {
 
       const mindmapId = getNodeMindmapId(node)
       if (!mindmapId) {
-        ctx.program.append(...nodeApi.update.createFieldsOperation(id, {
+        appendWhiteboardOperations(ctx, ...nodeApi.update.createFieldsOperation(id, {
           position: {
             x: node.position.x + intent.delta.x,
             y: node.position.y + intent.delta.y
@@ -291,7 +295,7 @@ export const nodeIntentHandlers: NodeIntentHandlers = {
         return failInvalid(ctx, 'Mindmap member move must use mindmap drag.')
       }
 
-      ctx.program.append({
+      appendWhiteboardOperation(ctx, {
         type: 'mindmap.move',
         id: mindmapId,
         position: {
@@ -313,7 +317,7 @@ export const nodeIntentHandlers: NodeIntentHandlers = {
       return failInvalid(ctx, built.error.message, built.error.details)
     }
 
-    built.data.operations.forEach((op) => ctx.program.append(op))
+    appendWhiteboardOperations(ctx, ...built.data.operations)
   },
   'node.distribute': (ctx) => {
     const document = ctx.document
@@ -326,7 +330,7 @@ export const nodeIntentHandlers: NodeIntentHandlers = {
       return failInvalid(ctx, built.error.message, built.error.details)
     }
 
-    built.data.operations.forEach((op) => ctx.program.append(op))
+    appendWhiteboardOperations(ctx, ...built.data.operations)
   },
   'node.delete': (ctx) => compileCanvasDelete(
     ctx.intent.ids.map((id) => ({ kind: 'node' as const, id })),

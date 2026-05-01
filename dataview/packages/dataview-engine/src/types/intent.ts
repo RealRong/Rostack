@@ -10,15 +10,13 @@ import type {
 } from '@shared/mutation/engine'
 import type {
   CustomFieldId,
+  Intent as CoreIntent,
   RecordId,
   ViewId
 } from '@dataview/core/types'
 import type {
-  Intent as CoreIntent
-} from '@dataview/core/intent'
-import type {
   ValidationCode
-} from '@dataview/core/compile'
+} from '@dataview/core/mutation'
 import type {
   EngineApplyCommit
 } from '@dataview/engine/contracts/write'

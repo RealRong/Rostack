@@ -9,6 +9,10 @@ import type {
   NodeId,
   Operation
 } from '@whiteboard/core/types'
+import type {
+  MutationDeltaInput,
+  MutationFootprint,
+} from '@shared/mutation'
 import {
   clone,
   entityKey,
@@ -27,12 +31,30 @@ import type {
   WhiteboardCustomPlanContext
 } from './types'
 
+const createIdDelta = (
+  key: string,
+  id: string
+): MutationDeltaInput => ({
+  changes: {
+    [key]: {
+      ids: [id]
+    }
+  }
+})
+
+const createMetadata = (
+  input: {
+    delta?: MutationDeltaInput
+    footprint?: readonly MutationFootprint[]
+  }
+) => input
+
 export const planMindmapCreate = (
   input: WhiteboardCustomPlanContext<
     Extract<Operation, { type: 'mindmap.create' }>
   >
 ): void => {
-  input.program.structure.ordered.insert(
+  input.program.ordered.insert(
     CANVAS_ORDER_STRUCTURE,
     canvasRefKey({
       kind: 'mindmap',
@@ -63,7 +85,7 @@ export const planMindmapRestore = (
     Extract<Operation, { type: 'mindmap.restore' }>
   >
 ): void => {
-  input.program.structure.ordered.insert(
+  input.program.ordered.insert(
     CANVAS_ORDER_STRUCTURE,
     canvasRefKey({
       kind: 'mindmap',
@@ -102,7 +124,7 @@ export const planMindmapDelete = (
   const connectedEdges = input.reader.edges.connectedToNodes(new Set(nodeIds))
   const edgeIds = connectedEdges.map((edge) => edge.id)
 
-  input.program.structure.ordered.delete(
+  input.program.ordered.delete(
     CANVAS_ORDER_STRUCTURE,
     canvasRefKey({
       kind: 'mindmap',
@@ -110,7 +132,7 @@ export const planMindmapDelete = (
     })
   )
   connectedEdges.forEach((edge) => {
-    input.program.structure.ordered.delete(
+    input.program.ordered.delete(
       CANVAS_ORDER_STRUCTURE,
       canvasRefKey({
         kind: 'edge',
@@ -160,8 +182,9 @@ export const planMindmapMove = (
     id: root.id
   }, {
     position: clone(input.op.position)!
-  })
-  input.program.semantic.change('mindmap.layout', [input.op.id])
+  }, undefined, createMetadata({
+    delta: createIdDelta('mindmap.layout', input.op.id)
+  }))
 }
 
 export const planMindmapLayout = (
@@ -224,7 +247,7 @@ export const planMindmapTopicInsert = (
       const side = input.op.input.parentId === current.root
         ? (input.op.input.options?.side ?? 'right')
         : undefined
-      input.program.structure.tree.insert(
+      input.program.tree.insert(
         structure,
         input.op.node.id,
         input.op.input.parentId,
@@ -251,7 +274,7 @@ export const planMindmapTopicInsert = (
       const side = parentId === current.root
         ? (target.side ?? 'right')
         : undefined
-      input.program.structure.tree.insert(
+      input.program.tree.insert(
         structure,
         input.op.node.id,
         parentId,
@@ -295,7 +318,7 @@ export const planMindmapTopicInsert = (
       const side = parentId === current.root
         ? (target.side ?? input.op.input.options?.side ?? 'right')
         : undefined
-      input.program.structure.tree.insert(
+      input.program.tree.insert(
         structure,
         input.op.node.id,
         parentId,
@@ -305,14 +328,14 @@ export const planMindmapTopicInsert = (
           branchStyle: resolveInsertedMindmapBranchStyle(current, parentId, target.side)
         }
       )
-      input.program.structure.tree.move(
+      input.program.tree.move(
         structure,
         input.op.input.nodeId,
         input.op.node.id,
         0
       )
       if (target.side !== undefined) {
-        input.program.structure.tree.patch(
+        input.program.tree.patch(
           structure,
           input.op.input.nodeId,
           {
@@ -343,7 +366,7 @@ export const planMindmapTopicRestore = (
       id: node.id
     }, node)
   })
-  input.program.structure.tree.restore(
+  input.program.tree.restore(
     mindmapTreeStructure(input.op.id),
     createMindmapTreeSubtreeSnapshot(
       current,
@@ -377,14 +400,14 @@ export const planMindmapTopicMove = (
     ? (input.op.input.side ?? member.side ?? 'right')
     : undefined
   const structure = mindmapTreeStructure(input.op.id)
-  input.program.structure.tree.move(
+  input.program.tree.move(
     structure,
     input.op.input.nodeId,
     input.op.input.parentId,
     input.op.input.index
   )
   if (!same(member.side, nextSide)) {
-    input.program.structure.tree.patch(
+    input.program.tree.patch(
       structure,
       input.op.input.nodeId,
       {
@@ -418,12 +441,12 @@ export const planMindmapTopicDelete = (
   const connectedEdges = input.reader.edges.connectedToNodes(new Set(nodeIds))
   const edgeIds = connectedEdges.map((edge) => edge.id)
 
-  input.program.structure.tree.delete(
+  input.program.tree.delete(
     mindmapTreeStructure(input.op.id),
     input.op.input.nodeId
   )
   connectedEdges.forEach((edge) => {
-    input.program.structure.ordered.delete(
+    input.program.ordered.delete(
       CANVAS_ORDER_STRUCTURE,
       canvasRefKey({
         kind: 'edge',
@@ -478,14 +501,6 @@ export const planMindmapTopicPatch = (
     return
   }
 
-  input.program.entity.patch({
-    table: 'node',
-    id: input.op.topicId
-  }, writes)
-  input.program.semantic.footprint([
-    entityKey('mindmap', input.op.id)
-  ])
-
   const relayoutNodeIds = readMindmapLayoutChangedNodeIds({
     before: input.document,
     after: {
@@ -497,9 +512,20 @@ export const planMindmapTopicPatch = (
     },
     id: input.op.id
   })
-  if (relayoutNodeIds.length > 0) {
-    input.program.semantic.change('mindmap.layout', [input.op.id])
-  }
+
+  input.program.entity.patch({
+    table: 'node',
+    id: input.op.topicId
+  }, writes, undefined, createMetadata({
+    footprint: [
+      entityKey('mindmap', input.op.id)
+    ],
+    ...(relayoutNodeIds.length > 0
+      ? {
+          delta: createIdDelta('mindmap.layout', input.op.id)
+        }
+      : {})
+  }))
 }
 
 export const planMindmapBranchPatch = (
@@ -542,7 +568,7 @@ export const planMindmapBranchPatch = (
     return
   }
 
-  input.program.structure.tree.patch(
+  input.program.tree.patch(
     mindmapTreeStructure(input.op.id),
     input.op.topicId,
     {
@@ -577,7 +603,7 @@ export const planMindmapTopicCollapse = (
     return
   }
 
-  input.program.structure.tree.patch(
+  input.program.tree.patch(
     mindmapTreeStructure(input.op.id),
     input.op.topicId,
     {

@@ -40,29 +40,30 @@ import {
 import {
   type IssueSource,
   type ValidationIssue
-} from './compile-contracts'
+} from './contracts'
 import {
   issue as compileIssue,
   reportIssues,
   requireValue,
-  type DataviewCompileInput
-} from './compile-base'
-import type { DocumentReader } from './document/reader'
+  type DataviewCompileContext,
+  type DataviewCompileContext as DataviewCompileInput
+} from './base'
+import type { DocumentReader } from '../../document/reader'
 import {
   documentViews
-} from './document/views'
+} from '../../document/views'
 import {
   writeViewUpdate
-} from './compile-view-ops'
+} from './viewProgram'
 import {
   applyRecordOrder,
   reorderRecordIds,
   spliceRecordIds
-} from './view/order'
+} from '../../view/order'
 import {
   resolveDefaultKanbanGroup,
   setViewType
-} from './view/update'
+} from '../../view/update'
 
 const readErrorMessage = (
   error: unknown,
@@ -693,7 +694,7 @@ const lowerViewCreate = (
   const view = finalizeView(reader, created)
   reportIssues(input, ...validateView(reader, input.source, view))
   input.program.view.create(view)
-  if (reader.document().activeViewId === undefined) {
+  if (input.document.activeViewId === undefined) {
     input.program.document.patch({
       activeViewId: view.id
     })
@@ -1888,9 +1889,9 @@ const lowerViewRemove = (
     return
   }
 
-  const nextDocument = documentViews.remove(reader.document(), view.id)
+  const nextDocument = documentViews.remove(input.document, view.id)
   input.program.view.delete(view.id)
-  if (reader.document().activeViewId !== nextDocument.activeViewId) {
+  if (input.document.activeViewId !== nextDocument.activeViewId) {
     input.program.document.patch({
       activeViewId: nextDocument.activeViewId
     })
@@ -1898,10 +1899,9 @@ const lowerViewRemove = (
 }
 
 export const compileViewIntent = (
-  intent: Intent,
-  input: DataviewCompileInput,
-  reader: DocumentReader
+  input: DataviewCompileContext
 ) => {
+  const { intent, reader } = input
   switch (intent.type) {
     case 'view.create':
       return lowerViewCreate(intent, input, reader)

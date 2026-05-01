@@ -8,17 +8,17 @@ import type { MutationCompileHandlerInput } from '@shared/mutation/engine'
 import { string } from '@shared/core'
 import {
   type DocumentReader
-} from './document/reader'
+} from '../../document/reader'
 import {
   type DataviewProgramWriter
-} from './programWriter'
+} from '../programWriter'
 import type {
   ValidationCode,
   ValidationIssue,
   ValidationSeverity
-} from './compile-contracts'
+} from './contracts'
 
-export type DataviewCompileInput<
+export type DataviewCompileContext<
   TIntent extends Intent = Intent,
   TOutput = unknown
 > = MutationCompileHandlerInput<
@@ -32,7 +32,7 @@ export type DataviewCompileInput<
 >
 
 export const pushIssue = (
-  input: DataviewCompileInput,
+  input: DataviewCompileContext,
   issue: ValidationIssue
 ): void => {
   input.issue({
@@ -46,7 +46,7 @@ export const pushIssue = (
 }
 
 export const issue = (
-  input: DataviewCompileInput,
+  input: DataviewCompileContext,
   code: ValidationCode,
   message: string,
   path?: string,
@@ -62,7 +62,7 @@ export const issue = (
 }
 
 export const reportIssues = (
-  input: DataviewCompileInput,
+  input: DataviewCompileContext,
   ...issues: readonly ValidationIssue[]
 ): void => {
   issues.forEach((nextIssue) => {
@@ -71,7 +71,7 @@ export const reportIssues = (
 }
 
 export const requireValue = <T,>(
-  input: DataviewCompileInput,
+  input: DataviewCompileContext,
   value: T | undefined,
   requirement: {
     code: ValidationCode
@@ -95,7 +95,7 @@ export const requireValue = <T,>(
 }
 
 export const resolveTarget = (
-  input: DataviewCompileInput,
+  input: DataviewCompileContext,
   reader: DocumentReader,
   target: EditTarget,
   path = 'target'

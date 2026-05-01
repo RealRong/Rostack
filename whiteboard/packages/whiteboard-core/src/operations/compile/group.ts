@@ -3,6 +3,10 @@ import type {
   WhiteboardCompileHandlerTable
 } from '@whiteboard/core/operations/compile/helpers'
 import {
+  appendWhiteboardOperation,
+  appendWhiteboardOperations
+} from './append'
+import {
   readCompileServices
 } from '@whiteboard/core/operations/compile/helpers'
 
@@ -16,7 +20,7 @@ type GroupIntentHandlers = Pick<
 export const groupIntentHandlers: GroupIntentHandlers = {
   'group.merge': (ctx) => {
     const groupId = readCompileServices(ctx).ids.group()
-    ctx.program.append({
+    appendWhiteboardOperation(ctx, {
       type: 'group.create',
       value: {
         id: groupId
@@ -24,12 +28,12 @@ export const groupIntentHandlers: GroupIntentHandlers = {
     })
 
     ctx.intent.target.nodeIds?.forEach((nodeId) => {
-      ctx.program.append(...nodeApi.update.createFieldsOperation(nodeId, {
+      appendWhiteboardOperations(ctx, ...nodeApi.update.createFieldsOperation(nodeId, {
         groupId
       }))
     })
     ctx.intent.target.edgeIds?.forEach((edgeId) => {
-      ctx.program.append({
+      appendWhiteboardOperation(ctx, {
         type: 'edge.patch',
         id: edgeId,
         patch: {
@@ -46,7 +50,7 @@ export const groupIntentHandlers: GroupIntentHandlers = {
     const refs = ctx.intent.ids.flatMap((groupId) =>
       ctx.reader.canvas.groupRefs(groupId)
     )
-    ctx.program.append({
+    appendWhiteboardOperation(ctx, {
       type: 'canvas.order.move',
       refs,
       to: ctx.intent.to
@@ -59,7 +63,7 @@ export const groupIntentHandlers: GroupIntentHandlers = {
 
     ctx.intent.ids.forEach((groupId) => {
       const refs = ctx.reader.canvas.groupRefs(groupId)
-      ctx.program.append({
+      appendWhiteboardOperation(ctx, {
         type: 'group.delete',
         id: groupId
       })
@@ -67,14 +71,14 @@ export const groupIntentHandlers: GroupIntentHandlers = {
       refs.forEach((ref) => {
         if (ref.kind === 'node') {
           nodeIds.push(ref.id)
-          ctx.program.append(...nodeApi.update.createFieldsOperation(ref.id, {
+          appendWhiteboardOperations(ctx, ...nodeApi.update.createFieldsOperation(ref.id, {
             groupId: undefined
           }))
           return
         }
 
         edgeIds.push(ref.id)
-        ctx.program.append({
+        appendWhiteboardOperation(ctx, {
           type: 'edge.patch',
           id: ref.id,
           patch: {

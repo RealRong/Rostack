@@ -14,7 +14,7 @@ import type {
   ViewSortRuleId,
 } from '@dataview/core/types'
 import type {
-  MutationChangeInput,
+  MutationDeltaInput,
   MutationFootprint,
   MutationOrderedAnchor,
   MutationProgramWriter,
@@ -25,7 +25,7 @@ import {
   viewFilterRulesStructure,
   viewOrdersStructure,
   viewSortRulesStructure,
-} from './structures'
+} from './adapters'
 
 type DataviewTag = string
 type DataviewTags = readonly DataviewTag[] | undefined
@@ -50,6 +50,44 @@ const toOrderedAnchor = <TId extends string>(
         kind: 'end'
       }
 }
+
+const createStructureFootprint = (
+  structure: string,
+  itemId?: string
+): readonly MutationFootprint[] => itemId === undefined
+  ? [{
+      kind: 'structure',
+      structure
+    }]
+  : [{
+      kind: 'structure',
+      structure
+    }, {
+      kind: 'structure-item',
+      structure,
+      id: itemId
+    }]
+
+const createIdPathDelta = (
+  key: string,
+  id: string,
+  path: string
+): MutationDeltaInput => ({
+  changes: {
+    [key]: {
+      ids: [id],
+      paths: {
+        [id]: [path]
+      }
+    }
+  }
+})
+
+const createExternalVersionDelta = (): MutationDeltaInput => ({
+  changes: {
+    'external.version': true
+  }
+})
 
 export type DataviewDocumentPatch = Partial<Pick<
   DataDoc,
@@ -237,10 +275,8 @@ export interface DataviewProgramWriter {
       ): void
     }
   }
-  semantic: {
-    tag(value: DataviewTag): void
-    change(key: string, change?: MutationChangeInput): void
-    footprint(footprint: readonly MutationFootprint[]): void
+  signal: {
+    externalVersion(tags?: DataviewTags): void
   }
 }
 
@@ -336,43 +372,68 @@ export const createDataviewProgramWriter = (
     },
     option: {
       insert: (fieldId, option, input, tags) => {
-        writer.structure.ordered.insert(
-          fieldOptionsStructure(fieldId),
+        const structure = fieldOptionsStructure(fieldId)
+        writer.ordered.insert(
+          structure,
           option.id,
           option,
           toOrderedAnchor(input),
-          tags
+          tags,
+          {
+            delta: createIdPathDelta('field.schema', fieldId, 'options'),
+            footprint: createStructureFootprint(structure, option.id)
+          }
         )
       },
       move: (fieldId, optionId, input, tags) => {
-        writer.structure.ordered.move(
-          fieldOptionsStructure(fieldId),
+        const structure = fieldOptionsStructure(fieldId)
+        writer.ordered.move(
+          structure,
           optionId,
           toOrderedAnchor(input),
-          tags
+          tags,
+          {
+            delta: createIdPathDelta('field.schema', fieldId, 'options'),
+            footprint: createStructureFootprint(structure, optionId)
+          }
         )
       },
       splice: (fieldId, optionIds, input, tags) => {
-        writer.structure.ordered.splice(
-          fieldOptionsStructure(fieldId),
+        const structure = fieldOptionsStructure(fieldId)
+        writer.ordered.splice(
+          structure,
           optionIds,
           toOrderedAnchor(input),
-          tags
+          tags,
+          {
+            delta: createIdPathDelta('field.schema', fieldId, 'options'),
+            footprint: optionIds.flatMap((optionId) => createStructureFootprint(structure, optionId))
+          }
         )
       },
       patch: (fieldId, optionId, patch, tags) => {
-        writer.structure.ordered.patch(
-          fieldOptionsStructure(fieldId),
+        const structure = fieldOptionsStructure(fieldId)
+        writer.ordered.patch(
+          structure,
           optionId,
           patch,
-          tags
+          tags,
+          {
+            delta: createIdPathDelta('field.schema', fieldId, 'options'),
+            footprint: createStructureFootprint(structure, optionId)
+          }
         )
       },
       delete: (fieldId, optionId, tags) => {
-        writer.structure.ordered.delete(
-          fieldOptionsStructure(fieldId),
+        const structure = fieldOptionsStructure(fieldId)
+        writer.ordered.delete(
+          structure,
           optionId,
-          tags
+          tags,
+          {
+            delta: createIdPathDelta('field.schema', fieldId, 'options'),
+            footprint: createStructureFootprint(structure, optionId)
+          }
         )
       }
     }
@@ -398,160 +459,255 @@ export const createDataviewProgramWriter = (
     },
     filter: {
       insert: (viewId, rule, input, tags) => {
-        writer.structure.ordered.insert(
-          viewFilterRulesStructure(viewId),
+        const structure = viewFilterRulesStructure(viewId)
+        writer.ordered.insert(
+          structure,
           rule.id,
           rule,
           toOrderedAnchor(input),
-          tags
+          tags,
+          {
+            delta: createIdPathDelta('view.query', viewId, 'filter'),
+            footprint: createStructureFootprint(structure, rule.id)
+          }
         )
       },
       move: (viewId, ruleId, input, tags) => {
-        writer.structure.ordered.move(
-          viewFilterRulesStructure(viewId),
+        const structure = viewFilterRulesStructure(viewId)
+        writer.ordered.move(
+          structure,
           ruleId,
           toOrderedAnchor(input),
-          tags
+          tags,
+          {
+            delta: createIdPathDelta('view.query', viewId, 'filter'),
+            footprint: createStructureFootprint(structure, ruleId)
+          }
         )
       },
       splice: (viewId, ruleIds, input, tags) => {
-        writer.structure.ordered.splice(
-          viewFilterRulesStructure(viewId),
+        const structure = viewFilterRulesStructure(viewId)
+        writer.ordered.splice(
+          structure,
           ruleIds,
           toOrderedAnchor(input),
-          tags
+          tags,
+          {
+            delta: createIdPathDelta('view.query', viewId, 'filter'),
+            footprint: ruleIds.flatMap((ruleId) => createStructureFootprint(structure, ruleId))
+          }
         )
       },
       patch: (viewId, ruleId, patch, tags) => {
-        writer.structure.ordered.patch(
-          viewFilterRulesStructure(viewId),
+        const structure = viewFilterRulesStructure(viewId)
+        writer.ordered.patch(
+          structure,
           ruleId,
           patch,
-          tags
+          tags,
+          {
+            delta: createIdPathDelta('view.query', viewId, 'filter'),
+            footprint: createStructureFootprint(structure, ruleId)
+          }
         )
       },
       delete: (viewId, ruleId, tags) => {
-        writer.structure.ordered.delete(
-          viewFilterRulesStructure(viewId),
+        const structure = viewFilterRulesStructure(viewId)
+        writer.ordered.delete(
+          structure,
           ruleId,
-          tags
+          tags,
+          {
+            delta: createIdPathDelta('view.query', viewId, 'filter'),
+            footprint: createStructureFootprint(structure, ruleId)
+          }
         )
       }
     },
     sort: {
       insert: (viewId, rule, input, tags) => {
-        writer.structure.ordered.insert(
-          viewSortRulesStructure(viewId),
+        const structure = viewSortRulesStructure(viewId)
+        writer.ordered.insert(
+          structure,
           rule.id,
           rule,
           toOrderedAnchor(input),
-          tags
+          tags,
+          {
+            delta: createIdPathDelta('view.query', viewId, 'sort'),
+            footprint: createStructureFootprint(structure, rule.id)
+          }
         )
       },
       move: (viewId, ruleId, input, tags) => {
-        writer.structure.ordered.move(
-          viewSortRulesStructure(viewId),
+        const structure = viewSortRulesStructure(viewId)
+        writer.ordered.move(
+          structure,
           ruleId,
           toOrderedAnchor(input),
-          tags
+          tags,
+          {
+            delta: createIdPathDelta('view.query', viewId, 'sort'),
+            footprint: createStructureFootprint(structure, ruleId)
+          }
         )
       },
       splice: (viewId, ruleIds, input, tags) => {
-        writer.structure.ordered.splice(
-          viewSortRulesStructure(viewId),
+        const structure = viewSortRulesStructure(viewId)
+        writer.ordered.splice(
+          structure,
           ruleIds,
           toOrderedAnchor(input),
-          tags
+          tags,
+          {
+            delta: createIdPathDelta('view.query', viewId, 'sort'),
+            footprint: ruleIds.flatMap((ruleId) => createStructureFootprint(structure, ruleId))
+          }
         )
       },
       patch: (viewId, ruleId, patch, tags) => {
-        writer.structure.ordered.patch(
-          viewSortRulesStructure(viewId),
+        const structure = viewSortRulesStructure(viewId)
+        writer.ordered.patch(
+          structure,
           ruleId,
           patch,
-          tags
+          tags,
+          {
+            delta: createIdPathDelta('view.query', viewId, 'sort'),
+            footprint: createStructureFootprint(structure, ruleId)
+          }
         )
       },
       delete: (viewId, ruleId, tags) => {
-        writer.structure.ordered.delete(
-          viewSortRulesStructure(viewId),
+        const structure = viewSortRulesStructure(viewId)
+        writer.ordered.delete(
+          structure,
           ruleId,
-          tags
+          tags,
+          {
+            delta: createIdPathDelta('view.query', viewId, 'sort'),
+            footprint: createStructureFootprint(structure, ruleId)
+          }
         )
       }
     },
     display: {
       insert: (viewId, fieldId, input, tags) => {
-        writer.structure.ordered.insert(
-          viewDisplayFieldsStructure(viewId),
+        const structure = viewDisplayFieldsStructure(viewId)
+        writer.ordered.insert(
+          structure,
           fieldId,
           fieldId,
           toOrderedAnchor(input),
-          tags
+          tags,
+          {
+            delta: createIdPathDelta('view.layout', viewId, 'display'),
+            footprint: createStructureFootprint(structure, fieldId)
+          }
         )
       },
       move: (viewId, fieldId, input, tags) => {
-        writer.structure.ordered.move(
-          viewDisplayFieldsStructure(viewId),
+        const structure = viewDisplayFieldsStructure(viewId)
+        writer.ordered.move(
+          structure,
           fieldId,
           toOrderedAnchor(input),
-          tags
+          tags,
+          {
+            delta: createIdPathDelta('view.layout', viewId, 'display'),
+            footprint: createStructureFootprint(structure, fieldId)
+          }
         )
       },
       splice: (viewId, fieldIds, input, tags) => {
-        writer.structure.ordered.splice(
-          viewDisplayFieldsStructure(viewId),
+        const structure = viewDisplayFieldsStructure(viewId)
+        writer.ordered.splice(
+          structure,
           fieldIds,
           toOrderedAnchor(input),
-          tags
+          tags,
+          {
+            delta: createIdPathDelta('view.layout', viewId, 'display'),
+            footprint: fieldIds.flatMap((fieldId) => createStructureFootprint(structure, fieldId))
+          }
         )
       },
       delete: (viewId, fieldId, tags) => {
-        writer.structure.ordered.delete(
-          viewDisplayFieldsStructure(viewId),
+        const structure = viewDisplayFieldsStructure(viewId)
+        writer.ordered.delete(
+          structure,
           fieldId,
-          tags
+          tags,
+          {
+            delta: createIdPathDelta('view.layout', viewId, 'display'),
+            footprint: createStructureFootprint(structure, fieldId)
+          }
         )
       }
     },
     order: {
       insert: (viewId, recordId, input, tags) => {
-        writer.structure.ordered.insert(
-          viewOrdersStructure(viewId),
+        const structure = viewOrdersStructure(viewId)
+        writer.ordered.insert(
+          structure,
           recordId,
           recordId,
           toOrderedAnchor(input),
-          tags
+          tags,
+          {
+            delta: createIdPathDelta('view.query', viewId, 'order'),
+            footprint: createStructureFootprint(structure, recordId)
+          }
         )
       },
       move: (viewId, recordId, input, tags) => {
-        writer.structure.ordered.move(
-          viewOrdersStructure(viewId),
+        const structure = viewOrdersStructure(viewId)
+        writer.ordered.move(
+          structure,
           recordId,
           toOrderedAnchor(input),
-          tags
+          tags,
+          {
+            delta: createIdPathDelta('view.query', viewId, 'order'),
+            footprint: createStructureFootprint(structure, recordId)
+          }
         )
       },
       splice: (viewId, recordIds, input, tags) => {
-        writer.structure.ordered.splice(
-          viewOrdersStructure(viewId),
+        const structure = viewOrdersStructure(viewId)
+        writer.ordered.splice(
+          structure,
           recordIds,
           toOrderedAnchor(input),
-          tags
+          tags,
+          {
+            delta: createIdPathDelta('view.query', viewId, 'order'),
+            footprint: recordIds.flatMap((recordId) => createStructureFootprint(structure, recordId))
+          }
         )
       },
       delete: (viewId, recordId, tags) => {
-        writer.structure.ordered.delete(
-          viewOrdersStructure(viewId),
+        const structure = viewOrdersStructure(viewId)
+        writer.ordered.delete(
+          structure,
           recordId,
-          tags
+          tags,
+          {
+            delta: createIdPathDelta('view.query', viewId, 'order'),
+            footprint: createStructureFootprint(structure, recordId)
+          }
         )
       }
     }
   },
-  semantic: {
-    tag: writer.semantic.tag,
-    change: writer.semantic.change,
-    footprint: writer.semantic.footprint
+  signal: {
+    externalVersion: (tags) => {
+      writer.entity.patch({
+        table: 'document',
+        id: 'document'
+      }, {}, tags, {
+        delta: createExternalVersionDelta()
+      })
+    }
   }
 })

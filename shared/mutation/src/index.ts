@@ -7,17 +7,12 @@ export type {
   MutationProgramWriter,
   MutationCompileProgramFactory,
   MutationOrderedProgramStep,
-  MutationSemanticProgramStep,
   MutationCompileHandlerTable,
   MutationCustomTable,
   MutationEntitySpec,
   MutationOrderedAnchor,
   MutationOrderedSlot,
   MutationReaderFactory,
-  MutationStructureSpec,
-  MutationStructureResolver,
-  MutationStructureSource,
-  MutationStructureTable,
   MutationStructuralCanonicalOperation,
   MutationStructuralFact,
   MutationStructuralOrderedDeleteOperation,
@@ -71,11 +66,6 @@ export type {
   MutationReplaceCommit,
   MutationReplaceResult,
 } from './write'
-export {
-  createDeltaBuilder,
-  createTypedMutationDelta,
-  defineEntityMutationSchema,
-} from './typed'
 export {
   assertMutationFootprint,
   assertMutationFootprintList,

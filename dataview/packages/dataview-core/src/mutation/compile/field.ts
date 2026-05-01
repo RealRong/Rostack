@@ -14,20 +14,21 @@ import {
 } from '@dataview/core/view'
 import type {
   DocumentReader
-} from './document/reader'
+} from '../../document/reader'
 import { validateField } from '@dataview/core/field/validate'
 import {
   createEntityPatch
-} from './compile-patch'
+} from './patch'
 import {
   issue,
   reportIssues,
-  type DataviewCompileInput
-} from './compile-base'
+  type DataviewCompileContext,
+  type DataviewCompileContext as DataviewCompileInput
+} from './base'
 import {
   writeViewDisplayInsert,
   writeViewUpdate
-} from './compile-view-ops'
+} from './viewProgram'
 
 const DEFAULT_OPTION_NAME = 'Option'
 
@@ -44,7 +45,7 @@ const createOptionName = (
 }
 
 const requireCustomField = (
-  input: DataviewCompileInput,
+  input: DataviewCompileContext,
   reader: DocumentReader,
   fieldId: string,
   path = 'fieldId'
@@ -64,7 +65,7 @@ const requireCustomField = (
 }
 
 const requireOptionField = (
-  input: DataviewCompileInput,
+  input: DataviewCompileContext,
   reader: DocumentReader,
   fieldId: string
 ) => {
@@ -108,7 +109,7 @@ const lowerFieldCreate = (
   input: DataviewCompileInput,
   reader: DocumentReader
 ) => {
-  const document = reader.document()
+  const document = input.document
   const explicitFieldId = string.trimToUndefined(intent.input.id)
 
   if (intent.input.id !== undefined && !explicitFieldId) {
@@ -148,7 +149,7 @@ const lowerFieldPatch = (
   input: DataviewCompileInput,
   reader: DocumentReader
 ) => {
-  const document = reader.document()
+  const document = input.document
   const field = requireCustomField(input, reader, intent.id, 'id')
   if (!field) {
     return
@@ -174,7 +175,7 @@ const lowerFieldReplace = (
   input: DataviewCompileInput,
   reader: DocumentReader
 ) => {
-  const document = reader.document()
+  const document = input.document
   if (!requireCustomField(input, reader, intent.id, 'id')) {
     return
   }
@@ -198,7 +199,7 @@ const lowerFieldSetKind = (
   input: DataviewCompileInput,
   reader: DocumentReader
 ) => {
-  const document = reader.document()
+  const document = input.document
   const views = reader.views.list()
   const field = requireCustomField(input, reader, intent.id, 'id')
   if (!field) {
@@ -223,7 +224,7 @@ const lowerFieldDuplicate = (
   input: DataviewCompileInput,
   reader: DocumentReader
 ) => {
-  const document = reader.document()
+  const document = input.document
   const views = reader.views.list()
   const records = reader.records.list()
   const sourceField = requireCustomField(input, reader, intent.id, 'id')
@@ -509,10 +510,9 @@ const lowerFieldRemove = (
 }
 
 export const compileFieldIntent = (
-  intent: Intent,
-  input: DataviewCompileInput,
-  reader: DocumentReader
+  input: DataviewCompileContext
 ) => {
+  const { intent, reader } = input
   switch (intent.type) {
     case 'field.create':
       return lowerFieldCreate(intent, input, reader)

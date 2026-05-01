@@ -5,14 +5,14 @@ import { MutationEngine } from '@shared/mutation'
 import type { DataDoc } from '@dataview/core/types'
 import {
   compile
-} from '@dataview/core/compile'
+} from '@dataview/core/mutation'
 import {
   entities
 } from '@dataview/core/entities'
 import {
   createDataviewProgramWriter,
   type DataviewProgramWriter
-} from '@dataview/core/programWriter'
+} from '@dataview/core/mutation'
 import {
   document as documentApi
 } from '@dataview/core/document'
@@ -21,11 +21,9 @@ import {
   type DocumentReader
 } from '@dataview/core/document/reader'
 import type {
+  DocumentOperation,
   Intent
-} from '@dataview/core/intent'
-import type {
-  DocumentOperation
-} from '@dataview/core/op'
+} from '@dataview/core/types'
 
 const createEmptyDocument = (): DataDoc => ({
   schemaVersion: 1,

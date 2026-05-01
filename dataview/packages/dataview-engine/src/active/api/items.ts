@@ -1,12 +1,10 @@
 import type {
   DataRecord,
   Field,
+  Intent as CoreIntent,
   RecordId,
   ViewGroup
 } from '@dataview/core/types'
-import type {
-  Intent as CoreIntent
-} from '@dataview/core/intent'
 import { field as fieldApi } from '@dataview/core/field'
 import { group as groupCore } from '@dataview/core/view'
 import { collection, equal } from '@shared/core'

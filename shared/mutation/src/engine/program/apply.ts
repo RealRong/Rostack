@@ -1,5 +1,6 @@
 import type {
   MutationDelta,
+  MutationDeltaInput,
   MutationFootprint,
   MutationIssue,
   MutationStructuralFact,
@@ -78,6 +79,22 @@ const mergeTagDelta = (
     })
   }
   return next
+}
+
+const mergeEffectDelta = (
+  delta: MutationDelta,
+  effect: {
+    tags?: readonly string[]
+    delta?: MutationDeltaInput
+  }
+): MutationDelta => {
+  const tagged = mergeTagDelta(delta, effect.tags)
+  return effect.delta === undefined
+    ? tagged
+    : mergeMutationDeltas(
+        tagged,
+        normalizeMutationDelta(effect.delta)
+      )
 }
 
 const isEntityEffect = (
@@ -354,7 +371,7 @@ const applyEntityEffect = <
 }): AppliedMutationProgram<Doc> => {
   if (input.effect.type === 'entity.patchMany') {
     let current = input.document
-    let delta = mergeTagDelta(EMPTY_DELTA, input.effect.tags)
+    let delta = mergeEffectDelta(EMPTY_DELTA, input.effect)
     const inverseSteps: MutationProgramStep[] = []
     const footprint: MutationFootprint[] = []
     let historyMode: 'track' | 'neutral' = 'neutral'
@@ -388,7 +405,10 @@ const applyEntityEffect = <
       inverse: createMutationProgram(inverseSteps),
       delta,
       structural: EMPTY_OUTPUTS as readonly MutationStructuralFact[],
-      footprint: dedupeFootprints(footprint),
+      footprint: dedupeFootprints([
+        ...footprint,
+        ...(input.effect.footprint ?? [])
+      ]),
       issues: EMPTY_ISSUES,
       historyMode
     }
@@ -451,23 +471,6 @@ export const applyMutationProgram = <
   try {
     for (let index = 0; index < input.program.steps.length; index += 1) {
       const effect = input.program.steps[index]!
-      if (effect.type === 'semantic.tag') {
-        delta = mergeTagDelta(delta, [effect.value])
-        continue
-      }
-      if (effect.type === 'semantic.change') {
-        delta = mergeMutationDeltas(delta, normalizeMutationDelta({
-          changes: {
-            [effect.key]: effect.change ?? true
-          }
-        }))
-        continue
-      }
-      if (effect.type === 'semantic.footprint') {
-        footprint.push(...effect.footprint)
-        continue
-      }
-
       const applied = isEntityEffect(effect)
         ? applyEntityEffect<Doc>({
             document: currentDocument,
@@ -490,11 +493,11 @@ export const applyMutationProgram = <
       currentDocument = applied.document
       delta = mergeMutationDeltas(
         delta,
-        mergeTagDelta(applied.delta, 'tags' in effect ? effect.tags : undefined)
+        mergeEffectDelta(applied.delta, effect)
       )
       structural.push(...applied.structural)
       inverseSteps.unshift(...applied.inverse.steps)
-      footprint.push(...applied.footprint)
+      footprint.push(...applied.footprint, ...(effect.footprint ?? []))
       issues.push(...applied.issues)
       if (applied.historyMode === 'track') {
         historyMode = 'track'

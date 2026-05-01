@@ -58,7 +58,6 @@ export type {
   MutationOrderedProgramStep,
   MutationProgram,
   MutationProgramStep,
-  MutationSemanticProgramStep,
   MutationTreeProgramStep,
 } from './program/program'
 export type {

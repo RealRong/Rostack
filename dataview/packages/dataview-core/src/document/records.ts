@@ -8,7 +8,7 @@ import type {
 import type {
   DocumentRecordFieldRestoreEntry,
   RecordFieldWriteManyOperationInput
-} from '@dataview/core/op'
+} from '@dataview/core/types/operations'
 import { entityTable as sharedEntityTable } from '@shared/core'
 import {
   EMPTY_RECORD_FIELD_WRITES,

@@ -18,7 +18,7 @@ import {
 } from '@shared/draft'
 import type {
   MutationStructureSource,
-} from '@shared/mutation'
+} from '@shared/mutation/engine'
 import {
   view as viewApi,
 } from '@dataview/core/view'

@@ -185,10 +185,6 @@ export const materializeMutationProgram = <
           patch: effect.patch
         }))
         return
-      case 'semantic.tag':
-      case 'semantic.change':
-      case 'semantic.footprint':
-        return
     }
   })
 

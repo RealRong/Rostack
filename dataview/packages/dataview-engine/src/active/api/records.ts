@@ -1,9 +1,7 @@
 import type {
+  Intent as CoreIntent,
   RecordId
 } from '@dataview/core/types'
-import type {
-  Intent as CoreIntent
-} from '@dataview/core/intent'
 import { createId } from '@shared/core'
 import type {
   ItemId,

@@ -5,7 +5,7 @@ import type {
 import type {
   MutationResult
 } from '@shared/mutation/engine'
-import type { DocumentOperation } from '@dataview/core/op'
+import type { DocumentOperation } from '@dataview/core/types'
 import type {
   EngineApplyCommit
 } from './write'

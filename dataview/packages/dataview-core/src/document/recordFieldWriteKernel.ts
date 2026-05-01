@@ -2,7 +2,7 @@ import { equal } from '@shared/core'
 import type {
   DocumentRecordFieldRestoreEntry,
   RecordFieldWriteManyOperationInput
-} from '@dataview/core/op'
+} from '@dataview/core/types/operations'
 import type {
   DataRecord,
   FieldId,

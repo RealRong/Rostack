@@ -666,7 +666,7 @@ const matchSelectionTap = <TField extends string>(
 }
 
 const applySelectionTap = (
-  ctx: Pick<EditorHostDeps, 'document' | 'projection' | 'runtime' | 'nodeType' | 'sceneDerived'>,
+  ctx: Pick<EditorHostDeps, 'document' | 'projection' | 'runtime' | 'nodeType' | 'ui'>,
   tap: SelectionTapAction<SelectionPressField>,
   input: Pick<PointerDownInput, 'client'>
 ) => {
@@ -710,7 +710,7 @@ const applySelectionTap = (
     }
     case 'edit-field': {
       const commands: EditorCommand[] = []
-      if (!selectionApi.target.equal(ctx.sceneDerived.selection.summary.get().target, tap.selection)) {
+      if (!selectionApi.target.equal(ctx.ui.selection.summary.get().target, tap.selection)) {
         commands.push({
           type: 'selection.set',
           selection: tap.selection
@@ -740,7 +740,7 @@ const applySelectionTap = (
 }
 
 const createSelectionPressSession = (
-  ctx: Pick<EditorHostDeps, 'engine' | 'document' | 'projection' | 'read' | 'snap' | 'write' | 'runtime' | 'sceneDerived' | 'nodeType'>,
+  ctx: Pick<EditorHostDeps, 'engine' | 'document' | 'projection' | 'read' | 'snap' | 'write' | 'runtime' | 'ui' | 'nodeType'>,
   start: PointerDownInput,
   resolved: {
     target: SelectionPressTarget<SelectionPressField>
@@ -791,7 +791,7 @@ const createSelectionPressSession = (
 })
 
 const tryStartSelectionPress = (
-  ctx: Pick<EditorHostDeps, 'engine' | 'document' | 'projection' | 'read' | 'snap' | 'write' | 'runtime' | 'sceneDerived' | 'nodeType'>,
+  ctx: Pick<EditorHostDeps, 'engine' | 'document' | 'projection' | 'read' | 'snap' | 'write' | 'runtime' | 'ui' | 'nodeType'>,
   input: PointerDownInput
 ): InteractionSession | null => {
   const tool = ctx.read.tool.get()
@@ -811,8 +811,8 @@ const tryStartSelectionPress = (
     return null
   }
 
-  const selectionSummary = ctx.sceneDerived.selection.summary.get()
-  const selectionAffordance = ctx.sceneDerived.selection.affordance.get()
+  const selectionSummary = ctx.ui.selection.summary.get()
+  const selectionAffordance = ctx.ui.selection.affordance.get()
   const deps: SelectionPressDeps = {
     node: {
       get: (nodeId) => ctx.document.node(nodeId),
@@ -851,7 +851,7 @@ const tryStartSelectionPress = (
 }
 
 export const createSelectionBinding = (
-  ctx: Pick<EditorHostDeps, 'engine' | 'document' | 'projection' | 'read' | 'snap' | 'write' | 'runtime' | 'sceneDerived' | 'nodeType'>
+  ctx: Pick<EditorHostDeps, 'engine' | 'document' | 'projection' | 'read' | 'snap' | 'write' | 'runtime' | 'ui' | 'nodeType'>
 ): InteractionBinding => ({
   key: 'selection',
   start: (input) => tryStartSelectionPress(ctx, input)

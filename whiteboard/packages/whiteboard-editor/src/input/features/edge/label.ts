@@ -67,10 +67,10 @@ type EdgeLabelDragState = {
 }
 
 const isSingleSelectedEdge = (
-  ctx: Pick<EditorHostDeps, 'sceneDerived'>,
+  ctx: Pick<EditorHostDeps, 'ui'>,
   edgeId: EdgeId
 ) => selectionApi.members.singleEdge(
-  ctx.sceneDerived.selection.summary.get().target
+  ctx.ui.selection.summary.get().target
 ) === edgeId
 
 const canEditEdgeLabel = (
@@ -310,7 +310,7 @@ export const createEdgeLabelPressSession = (
 })
 
 export const startEdgeLabelPress = (
-  ctx: Pick<EditorHostDeps, 'projection' | 'runtime' | 'sceneDerived'>,
+  ctx: Pick<EditorHostDeps, 'projection' | 'runtime' | 'ui'>,
   pointer: PointerDownInput
 ): {
   edgeId: EdgeId

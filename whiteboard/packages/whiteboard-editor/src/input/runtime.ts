@@ -17,7 +17,6 @@ import {
   isPreviewEqual,
   readPersistentPreviewState
 } from '@whiteboard/editor/preview/state'
-import type { EditorSceneDerived } from '@whiteboard/editor/editor/derived/types'
 import type { EditorProjection } from '@whiteboard/editor/editor/projection/types'
 import type { EditorStateRuntime } from '@whiteboard/editor/state-engine/runtime'
 import type { EditorInputHost } from '@whiteboard/editor/types/editor'
@@ -77,7 +76,7 @@ export type EditorHostDeps = {
   projection: EditorProjection
   read: EditorRead
   runtime: LocalEditorRuntime
-  sceneDerived: EditorSceneDerived
+  ui: EditorProjection['ui']
   layout: WhiteboardLayoutService
   write: EditorWrite
   tool: {
@@ -231,7 +230,7 @@ export const createEditorHost = (input: {
     projection: input.projection,
     read,
     runtime,
-    sceneDerived: input.projection.derived.scene,
+    ui: input.projection.ui,
     layout: input.layout,
     write: input.write,
     tool: input.tool,

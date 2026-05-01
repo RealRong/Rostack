@@ -12,25 +12,6 @@ import {
   toHoverStateFromPick
 } from '@whiteboard/editor/input/hover/store'
 
-const readSelectionIntent = (
-  selection: {
-    get: () => SelectionTarget
-  },
-  screen: {
-    x: number
-    y: number
-  }
-): Extract<ContextMenuIntent, { kind: 'selection' }> | null => {
-  const target = selection.get()
-
-  return target.nodeIds.length > 0 || target.edgeIds.length > 0
-    ? {
-        kind: 'selection',
-        screen
-      }
-    : null
-}
-
 export const createEditorInputHost = ({
   interaction,
   edgeHover,
@@ -102,7 +83,15 @@ export const createEditorInputHost = ({
 
       switch (input.pick.kind) {
         case 'selection-box': {
-          return readSelectionIntent(read.selection, input.screen) ?? {
+          const target = read.selection.get()
+          return (
+            target.nodeIds.length > 0 || target.edgeIds.length > 0
+              ? {
+                  kind: 'selection',
+                  screen: input.screen
+                }
+              : null
+          ) ?? {
             kind: 'canvas',
             screen: input.screen,
             world: input.world
@@ -112,13 +101,19 @@ export const createEditorInputHost = ({
           const current = read.selection.get()
           const reuseCurrentSelection = current.nodeIds.includes(input.pick.id)
           if (reuseCurrentSelection) {
-            return readSelectionIntent(read.selection, input.screen)
+            return {
+              kind: 'selection',
+              screen: input.screen
+            }
           }
 
           dispatchSelection({
             nodeIds: [input.pick.id]
           })
-          return readSelectionIntent(read.selection, input.screen)
+          return {
+            kind: 'selection',
+            screen: input.screen
+          }
         }
         case 'group': {
           const target = projection.groups.target(input.pick.id)
@@ -131,7 +126,10 @@ export const createEditorInputHost = ({
           }
 
           dispatchSelection(target)
-          return readSelectionIntent(read.selection, input.screen)
+          return {
+            kind: 'selection',
+            screen: input.screen
+          }
         }
         case 'edge':
           dispatchSelection({

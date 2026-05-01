@@ -103,139 +103,6 @@ const createFrame = (
   return true
 }
 
-const createSelectionActionHelpers = ({
-  read,
-  canvas,
-  group,
-  node,
-  selection,
-  dispatch,
-  defaults
-}: SelectionActionHelpersHost): SelectionActionHelpers => ({
-  duplicate: (input, options) => {
-    const target = selectionApi.target.normalize(input)
-    const refs = toCanvasRefs(target)
-    if (!refs.length) {
-      return false
-    }
-
-    const result = canvas.duplicate(refs)
-    if (!result.ok) {
-      return false
-    }
-
-    if (options?.selectInserted !== false) {
-      dispatch({
-        type: 'selection.set',
-        selection: {
-          nodeIds: result.data.roots.nodeIds.length > 0
-            ? result.data.roots.nodeIds
-            : result.data.allNodeIds,
-          edgeIds: result.data.roots.edgeIds.length > 0
-            ? result.data.roots.edgeIds
-            : result.data.allEdgeIds
-        }
-      })
-    }
-
-    return true
-  },
-  delete: (input, options) => {
-    const target = selectionApi.target.normalize(input)
-    const refs = toCanvasRefs(target)
-    if (!refs.length) {
-      return false
-    }
-
-    const result = canvas.delete(refs)
-    if (!result.ok) {
-      return false
-    }
-
-    if (options?.clearSelection !== false) {
-      dispatch({
-        type: 'selection.set',
-        selection: {
-          nodeIds: [],
-          edgeIds: []
-        }
-      })
-    }
-
-    return true
-  },
-  order: (input, mode) => {
-    const target = selectionApi.target.normalize(input)
-    const groupIds = read.groups.exact(target)
-    if (groupIds.length > 0) {
-      return orderGroups(group, groupIds, mode).ok
-    }
-
-    const refs = toCanvasRefs(target)
-    if (!refs.length) {
-      return false
-    }
-
-    return orderRefs(canvas, refs, mode).ok
-  },
-  group: (input, options) => {
-    const target = selectionApi.target.normalize(input)
-    const result = group.merge(target)
-    if (!result.ok) {
-      return false
-    }
-
-    if (options?.selectResult === false) {
-      return true
-    }
-
-    dispatch({
-      type: 'selection.set',
-      selection: target
-    })
-    return true
-  },
-  ungroup: (input, options) => {
-    const target = selectionApi.target.normalize(input)
-    const groupIds = [...read.groups.exact(target)]
-    if (!groupIds.length) {
-      return false
-    }
-
-    const result = group.ungroup(groupIds)
-    if (!result.ok) {
-      return false
-    }
-
-    if (options?.fallbackSelection === 'none') {
-      dispatch({
-        type: 'selection.set',
-        selection: {
-          nodeIds: [],
-          edgeIds: []
-        }
-      })
-      return true
-    }
-
-    dispatch({
-      type: 'selection.set',
-      selection: {
-        nodeIds: result.data.nodeIds,
-        edgeIds: result.data.edgeIds
-      }
-    })
-    return true
-  },
-  frame: (bounds, options) => createFrame(
-    node,
-    dispatch,
-    defaults,
-    bounds,
-    options?.padding ?? DEFAULT_FRAME_PADDING
-  )
-})
-
 export const createSelectionActions = (input: {
   document: Pick<import('@whiteboard/editor-scene').DocumentFrame, 'nodeIds' | 'edgeIds'>
   read: EditorScene
@@ -246,7 +113,6 @@ export const createSelectionActions = (input: {
   dispatch: SelectionActionHelpersHost['dispatch']
   defaults: EditorDefaults['templates']
 }): SelectionActions => {
-  const helpers = createSelectionActionHelpers(input)
   const applySelection = (
     mode: 'replace' | 'add' | 'subtract' | 'toggle',
     target: SelectionInput
@@ -290,6 +156,127 @@ export const createSelectionActions = (input: {
         edgeIds: []
       })
     },
-    ...helpers
+    duplicate: (value, options) => {
+      const target = selectionApi.target.normalize(value)
+      const refs = toCanvasRefs(target)
+      if (!refs.length) {
+        return false
+      }
+
+      const result = input.canvas.duplicate(refs)
+      if (!result.ok) {
+        return false
+      }
+
+      if (options?.selectInserted !== false) {
+        input.dispatch({
+          type: 'selection.set',
+          selection: {
+            nodeIds: result.data.roots.nodeIds.length > 0
+              ? result.data.roots.nodeIds
+              : result.data.allNodeIds,
+            edgeIds: result.data.roots.edgeIds.length > 0
+              ? result.data.roots.edgeIds
+              : result.data.allEdgeIds
+          }
+        })
+      }
+
+      return true
+    },
+    delete: (value, options) => {
+      const target = selectionApi.target.normalize(value)
+      const refs = toCanvasRefs(target)
+      if (!refs.length) {
+        return false
+      }
+
+      const result = input.canvas.delete(refs)
+      if (!result.ok) {
+        return false
+      }
+
+      if (options?.clearSelection !== false) {
+        input.dispatch({
+          type: 'selection.set',
+          selection: {
+            nodeIds: [],
+            edgeIds: []
+          }
+        })
+      }
+
+      return true
+    },
+    order: (value, mode) => {
+      const target = selectionApi.target.normalize(value)
+      const groupIds = input.read.groups.exact(target)
+      if (groupIds.length > 0) {
+        return orderGroups(input.group, groupIds, mode).ok
+      }
+
+      const refs = toCanvasRefs(target)
+      if (!refs.length) {
+        return false
+      }
+
+      return orderRefs(input.canvas, refs, mode).ok
+    },
+    group: (value, options) => {
+      const target = selectionApi.target.normalize(value)
+      const result = input.group.merge(target)
+      if (!result.ok) {
+        return false
+      }
+
+      if (options?.selectResult === false) {
+        return true
+      }
+
+      input.dispatch({
+        type: 'selection.set',
+        selection: target
+      })
+      return true
+    },
+    ungroup: (value, options) => {
+      const target = selectionApi.target.normalize(value)
+      const groupIds = [...input.read.groups.exact(target)]
+      if (!groupIds.length) {
+        return false
+      }
+
+      const result = input.group.ungroup(groupIds)
+      if (!result.ok) {
+        return false
+      }
+
+      if (options?.fallbackSelection === 'none') {
+        input.dispatch({
+          type: 'selection.set',
+          selection: {
+            nodeIds: [],
+            edgeIds: []
+          }
+        })
+        return true
+      }
+
+      input.dispatch({
+        type: 'selection.set',
+        selection: {
+          nodeIds: result.data.nodeIds,
+          edgeIds: result.data.edgeIds
+        }
+      })
+      return true
+    },
+    frame: (bounds, options) => createFrame(
+      input.node,
+      input.dispatch,
+      input.defaults,
+      bounds,
+      options?.padding ?? DEFAULT_FRAME_PADDING
+    )
   }
 }

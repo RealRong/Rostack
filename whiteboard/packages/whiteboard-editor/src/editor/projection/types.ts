@@ -1,6 +1,6 @@
 import type { EditorScene } from '@whiteboard/editor-scene'
-import type { EditorDerived } from '@whiteboard/editor/editor/derived/types'
+import type { EditorSceneUi } from '@whiteboard/editor/types/editor'
 
 export type EditorProjection = EditorScene & {
-  derived: EditorDerived
+  ui: Omit<EditorSceneUi, 'state'>
 }

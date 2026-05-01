@@ -31,8 +31,8 @@ const toTransformNodePatches = (
 }))
 
 const toSpatialSelectionPlan = (
-  ctx: Pick<EditorHostDeps, 'projection' | 'sceneDerived'>,
-  plan: NonNullable<ReturnType<EditorHostDeps['sceneDerived']['selection']['summary']['get']>['transformPlan']>
+  ctx: Pick<EditorHostDeps, 'projection' | 'ui'>,
+  plan: NonNullable<ReturnType<EditorHostDeps['ui']['selection']['summary']['get']>['transformPlan']>
 ) => ({
   ...plan,
   members: plan.members.flatMap((member) => {
@@ -51,7 +51,7 @@ const toSpatialSelectionPlan = (
 })
 
 const resolveTransformSpec = (
-  ctx: Pick<EditorHostDeps, 'projection' | 'read' | 'nodeType' | 'sceneDerived'>,
+  ctx: Pick<EditorHostDeps, 'projection' | 'read' | 'nodeType' | 'ui'>,
   input: PointerDownInput
 ): RuntimeTransformSpec | null => {
   const tool = ctx.read.tool.get()
@@ -94,7 +94,7 @@ const resolveTransformSpec = (
     }) ?? null
   }
 
-  const selection = ctx.sceneDerived.selection.summary.get()
+  const selection = ctx.ui.selection.summary.get()
   if (
     !selection.transformPlan
     || input.pick.handle.kind !== 'resize'
@@ -210,7 +210,7 @@ export const createTransformSession = (
 }
 
 export const createTransformBinding = (
-  ctx: Pick<EditorHostDeps, 'projection' | 'read' | 'layout' | 'snap' | 'write' | 'nodeType' | 'sceneDerived'>
+  ctx: Pick<EditorHostDeps, 'projection' | 'read' | 'layout' | 'snap' | 'write' | 'nodeType' | 'ui'>
 ): InteractionBinding => ({
   key: 'transform',
   start: (input) => {

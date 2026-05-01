@@ -1,13 +1,13 @@
 import type { NodeId } from '@whiteboard/core/types'
 import type { NodeTypeSupport } from '@whiteboard/editor/types/node'
-import type { EditorSceneDerived } from '@whiteboard/editor/editor/derived/types'
+import type { SelectionSummary } from '@whiteboard/core/selection'
 import type {
   SelectionNodeStats,
   SelectionNodeTypeInfo
 } from '@whiteboard/editor/types/selectionPresentation'
 
 export const createSelectionNodeStats = (input: {
-  summary: ReturnType<EditorSceneDerived['selection']['summary']['get']>
+  summary: SelectionSummary
   nodeType: Pick<NodeTypeSupport, 'meta'>
 }): SelectionNodeStats => {
   const nodes = input.summary.items.nodes

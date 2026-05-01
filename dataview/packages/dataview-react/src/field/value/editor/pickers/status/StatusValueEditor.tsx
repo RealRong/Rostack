@@ -208,7 +208,6 @@ export const StatusValueEditor = (
           value={query}
           onValueChange={value => {
             setQuery(value)
-            menuRef.current?.clearActive()
           }}
           placeholder={selectedOption
             ? ''
@@ -230,6 +229,7 @@ export const StatusValueEditor = (
           <Menu
             ref={menuRef}
             items={pickerItems}
+            defaultActive={normalizedQuery ? 'first' : 'preserve-or-first'}
             className="gap-0.5 px-1.5"
             autoFocus={false}
           />

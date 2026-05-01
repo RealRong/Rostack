@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import type {
   ActiveSource,
+  MenuActiveDefault,
   MenuItem,
   MenuPopoverContent,
   Path,
@@ -135,7 +136,81 @@ export const parsePath = (value: string | null): Path | null => {
 export const findInteractiveItem = (
   items: readonly MenuItem[],
   key: string
-) => items.find(item => isInteractive(item) && item.key === key)
+): Exclude<MenuItem, { kind: 'divider' | 'label' | 'custom' }> | undefined => items.find(
+  (item): item is Exclude<MenuItem, { kind: 'divider' | 'label' | 'custom' }> => (
+    isInteractive(item) && item.key === key
+  )
+)
+
+export const firstInteractiveKey = (items: readonly MenuItem[]) => (
+  items.find(
+    (item): item is Exclude<MenuItem, { kind: 'divider' | 'label' | 'custom' }> => (
+      isInteractive(item) && !item.disabled
+    )
+  )?.key ?? null
+)
+
+export const lastInteractiveKey = (items: readonly MenuItem[]) => {
+  for (let index = items.length - 1; index >= 0; index -= 1) {
+    const item = items[index]
+    if (item && isInteractive(item) && !item.disabled) {
+      return item.key
+    }
+  }
+
+  return null
+}
+
+export const resolveDefaultActiveKey = (input: {
+  items: readonly MenuItem[]
+  currentKey: string | null
+  defaultActive?: MenuActiveDefault
+}) => {
+  const { items, currentKey, defaultActive } = input
+  if (!defaultActive) {
+    return undefined
+  }
+
+  if (typeof defaultActive === 'function') {
+    return defaultActive(items, currentKey)
+  }
+
+  if (typeof defaultActive === 'object') {
+    const item = findInteractiveItem(items, defaultActive.key)
+    return item && !item.disabled
+      ? defaultActive.key
+      : null
+  }
+
+  switch (defaultActive) {
+    case 'first':
+      return firstInteractiveKey(items)
+    case 'last':
+      return lastInteractiveKey(items)
+    case 'preserve':
+      if (!currentKey) {
+        return null
+      }
+
+      {
+        const item = findInteractiveItem(items, currentKey)
+        return item && !item.disabled
+        ? currentKey
+        : null
+      }
+    case 'preserve-or-first':
+      if (!currentKey) {
+        return firstInteractiveKey(items)
+      }
+
+      {
+        const item = findInteractiveItem(items, currentKey)
+        return item && !item.disabled
+        ? currentKey
+        : firstInteractiveKey(items)
+      }
+  }
+}
 
 export const findAtPath = (
   items: readonly MenuItem[],

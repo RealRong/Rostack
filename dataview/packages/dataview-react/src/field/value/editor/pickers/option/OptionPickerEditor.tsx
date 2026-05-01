@@ -101,6 +101,7 @@ export const OptionPickerEditor = (
             <Menu
               ref={menuRef}
               items={controller.pickerItems}
+              defaultActive="first"
               selectionMode={props.mode === 'single' ? 'single' : 'multiple'}
               selectionAppearance="none"
               value={props.mode === 'single'
@@ -113,6 +114,7 @@ export const OptionPickerEditor = (
             <Menu
               ref={menuRef}
               items={controller.reorderableItems}
+              defaultActive="preserve-or-first"
               selectionMode={props.mode === 'single' ? 'single' : 'multiple'}
               selectionAppearance="none"
               value={props.mode === 'single'

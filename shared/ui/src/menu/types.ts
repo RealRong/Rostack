@@ -109,6 +109,13 @@ export type SelectionAppearance = 'none' | 'content' | 'row'
 export type SubmenuOpenSource = 'pointer' | 'keyboard'
 export type SubmenuCloseReason = 'trigger' | 'outside' | 'keyboard'
 export type MenuMove = 'next' | 'prev' | 'first' | 'last'
+export type MenuActiveDefault =
+  | 'first'
+  | 'last'
+  | 'preserve'
+  | 'preserve-or-first'
+  | { key: string }
+  | ((items: readonly MenuItem[], currentKey: string | null) => string | null)
 
 export interface Handle {
   move: (mode: MenuMove) => void
@@ -126,6 +133,7 @@ export interface DropdownProps extends Omit<PopoverProps, 'children'>, Omit<Popo
 
 export interface Props {
   items: readonly MenuItem[]
+  defaultActive?: MenuActiveDefault
   value?: string | readonly string[]
   defaultValue?: string | readonly string[]
   onValueChange?: (value: string | readonly string[]) => void

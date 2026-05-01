@@ -1,141 +1,254 @@
-# WHITEBOARD_EDITOR / EDITOR_SCENE 类型统一最终方案
+# WHITEBOARD_EDITOR / EDITOR_SCENE 最终统一方案
 
-## 1. 目标
+## 1. 这轮要解决什么
 
-这最后一轮只解决一件事：
+这最后一轮不是继续“能跑就行”的收口，而是把：
 
 - `whiteboard-editor`
 - `whiteboard-editor-scene`
 
-两边的**类型、职责、导出面、组合方式**彻底单源化，不再出现：
+之间所有**重复类型、重复协议、重复 façade、重复中转层**彻底理干净。
 
-- 同一份 read contract 在两边各写一遍
-- 同一份 runtime query 在两边各包一层
-- `editor-scene` 反向深度依赖 `whiteboard-editor/src/*` 内部文件
-- public facade 和 internal projection schema 混在一起
+目标只有四条：
 
-最终目标不是“能用就行”，而是：
+1. 同一类数据结构只能有一个 owner。
+2. 上下游必须同构，不能同一件事声明两次。
+3. `editor.create()` 只负责组装，不负责再发明一套新协议。
+4. `editor-scene` / `editor` 的职责边界必须一眼看清。
 
-1. 每类协议只有一个 owner
-2. 每类输出只有一个 canonical shape
-3. `editor.create()` 只做组装，不再发明第二套 schema
-4. `editor-scene` 只定义 projection/scene contract
-5. `whiteboard-editor` 只定义 editor engine / input / write / public facade
+这轮不要兼容层，不要过渡层，不要双轨实现。
 
 ---
 
-## 2. 现状结构
+## 2. 现状总览
 
-当前实际存在三层 scene/read 形状：
+当前实际链路大致是：
 
-### 2.1 `editor-scene` 基础 scene contract
+```ts
+Engine document
+  + EditorStateRuntime snapshot/delta
+    -> editor-scene projection runtime
+      -> EditorScene
+        -> whiteboard-editor projection extension
+          -> whiteboard-editor public scene api
+            -> Editor
+```
 
-来源：
+其中问题不是“层数多”，而是**同一类 contract 在不同层被重新声明**。
+
+---
+
+## 3. 现在各包实际在做什么
+
+## 3.1 `whiteboard-editor-scene`
+
+当前主要承担：
+
+- projection runtime
+- scene query contract
+- render/store contract
+- document + editor snapshot/delta 到 scene 的投影
+
+关键文件：
+
+- `whiteboard/packages/whiteboard-editor-scene/src/contracts/editor.ts`
+- `whiteboard/packages/whiteboard-editor-scene/src/projection/createProjectionRuntime.ts`
+- `whiteboard/packages/whiteboard-editor-scene/src/projection/query/index.ts`
+- `whiteboard/packages/whiteboard-editor-scene/src/projection/scene.ts`
+
+它本来应该是**scene 读模型的唯一 owner**。
+
+## 3.2 `whiteboard-editor`
+
+当前主要承担：
+
+- editor state engine
+- editor command / delta / snapshot
+- input host
+- write / action
+- public `Editor` façade
+
+关键文件：
+
+- `whiteboard/packages/whiteboard-editor/src/state-engine/*`
+- `whiteboard/packages/whiteboard-editor/src/editor/createEditor.ts`
+- `whiteboard/packages/whiteboard-editor/src/editor/projection.ts`
+- `whiteboard/packages/whiteboard-editor/src/types/editor.ts`
+
+它本来应该是**editor 可变状态协议的唯一 owner**，并在最后把 scene + editor UI 组合成 public api。
+
+---
+
+## 4. 当前重复和错位
+
+## 4.1 `editor-scene` 反向 deep import `whiteboard-editor/src/*`
+
+当前 `whiteboard-editor-scene/src/contracts/editor.ts` 直接依赖：
+
+- `../../../whiteboard-editor/src/session/draw/state`
+- `../../../whiteboard-editor/src/session/edit`
+- `../../../whiteboard-editor/src/state-engine/document`
+- `../../../whiteboard-editor/src/state-engine/delta`
+- `../../../whiteboard-editor/src/types/tool`
+- `../../../whiteboard-editor/src/input/core/types`
+
+这说明 scene contract 层没有稳定上游协议，而是在反向吃 editor 内部实现。
+
+这属于典型 owner 倒置：
+
+- `editor-scene` 是 contract / projection 包
+- 不应该依赖 `whiteboard-editor/src/*` 私有路径
+
+### 结论
+
+必须建立稳定协议出口，例如：
+
+```ts
+@whiteboard/editor/protocol
+```
+
+由 `whiteboard-editor` 显式导出它拥有的类型，`editor-scene` 只依赖这个稳定出口。
+
+---
+
+## 4.2 scene shape 被声明了三遍
+
+现在至少存在三层 scene/read 形状：
+
+### 第一层：`editor-scene` canonical scene contract
+
+位置：
 
 - `whiteboard/packages/whiteboard-editor-scene/src/contracts/editor.ts`
 
-核心类型：
+核心：
 
-- `SceneUpdateInput`
 - `RuntimeFrame`
+- `RuntimeStores`
 - `EditorScene`
-- `PreviewInput`
 - `SceneNodes / SceneEdges / SceneViewport / SceneOverlay / ...`
 
-这一层本来就应该是**projection 输出协议**。
+这层本来就是应该保留的 canonical shape。
 
-### 2.2 `whiteboard-editor` 内部 projection 扩展层
+### 第二层：`whiteboard-editor` internal projection 扩展层
 
-来源：
+位置：
 
 - `whiteboard/packages/whiteboard-editor/src/types/editor.ts`
 - `whiteboard/packages/whiteboard-editor/src/editor/projection.ts`
 
-核心类型：
+核心：
 
 - `EditorProjectionRuntimeFrame`
 - `EditorProjection`
 - `EditorDerived`
 
-这一层现在做了两件事：
+这层又给 scene 包了一层 runtime / derived 结构。
 
-1. 给 `EditorScene` 加 editor-local runtime read
-2. 给 `EditorScene` 加 derived stores
+### 第三层：`whiteboard-editor` public facade
 
-问题是这里又重新声明了一遍很多 runtime/query 形状。
-
-### 2.3 `editor.create()` 最终对外 facade
-
-来源：
+位置：
 
 - `whiteboard/packages/whiteboard-editor/src/types/editor.ts`
 - `whiteboard/packages/whiteboard-editor/src/editor/projection.ts`
 
-核心类型：
+核心：
 
 - `EditorSceneApi`
 - `EditorSceneEditorApi`
 - `EditorSceneSelectionApi`
 - `EditorSceneChromeApi`
 - `EditorSceneMindmapApi`
-- `Editor`
 
-这一层把：
+这一层又把 `EditorScene` 主体字段几乎原样手写了一遍。
 
-- `EditorScene`
-- runtime editor state stores
-- selection/chrome/mindmap derived stores
-- capture
+### 结论
 
-重新拼成了一个新的 public shape。
+scene base contract 只能保留一份：
+
+- `EditorScene` 作为唯一 canonical scene contract
+
+其他层只能“薄扩展”，不能重写主 schema。
 
 ---
 
-## 3. 当前重复点
+## 4.3 runtime contract 被声明了不止一份
 
-## 3.1 `RuntimeFrame` 和 `EditorProjectionRuntimeFrame` 重复
+当前 runtime 相关至少有这些名字：
 
-`editor-scene` 已有：
+- `RuntimeFrame`
+- `EditorProjectionRuntimeFrame`
+- `Runtime`
+- `EditorSceneRuntime`
 
-- `RuntimeFrame.editor.tool()`
-- `RuntimeFrame.editor.selection()`
-- `RuntimeFrame.editor.hover()`
-- `RuntimeFrame.editor.edit()`
-- `RuntimeFrame.editor.interaction()`
-- `RuntimeFrame.editor.preview()`
+### `RuntimeFrame`
 
 位置：
 
 - `whiteboard/packages/whiteboard-editor-scene/src/contracts/editor.ts`
 
-`whiteboard-editor` 又定义了：
+这是 scene query 读取 editor runtime 信息的合同。
 
-- `EditorProjectionRuntimeFrame.editor.tool()`
-- `draw()`
-- `selection()`
-- `hover()`
-- `edit()`
-- `interaction()`
-- `interactionState()`
-- `preview()`
-- `viewport.*`
+### `EditorProjectionRuntimeFrame`
 
 位置：
 
 - `whiteboard/packages/whiteboard-editor/src/types/editor.ts`
 
-这是最明显的一类重复：**同一 runtime read contract 在两边重复声明**。
+这是 `whiteboard-editor` 侧再次拼出来的一套 runtime read schema。
+
+### `Runtime`
+
+位置：
+
+- `whiteboard/packages/whiteboard-editor-scene/src/contracts/editor.ts`
+
+包含：
+
+- `stores`
+- `scene`
+- `revision`
+- `state`
+- `capture`
+- `update`
+- `subscribe`
+- `dispose`
+
+### `EditorSceneRuntime`
+
+位置：
+
+- `whiteboard/packages/whiteboard-editor-scene/src/contracts/runtime.ts`
+
+和 `Runtime` 高度重合，但字段又不完全一致。
 
 ### 结论
 
-`RuntimeFrame` 必须成为唯一 runtime read 合同。  
-`EditorProjectionRuntimeFrame` 必须删除。
+runtime 需要统一成两层，而且只能两层：
+
+1. `RuntimeFrame`
+   - scene 内部 query 读取 editor runtime 的只读合同
+2. `EditorSceneRuntime`
+   - projection runtime 的外部运行时 api
+
+必须删除：
+
+- `EditorProjectionRuntimeFrame`
+- `Runtime` 这个并列命名层
+
+最终应当只有：
+
+```ts
+createProjectionRuntime(): EditorSceneRuntime
+```
+
+不要再同时维护 `Runtime` 和 `EditorSceneRuntime` 两个近义接口。
 
 ---
 
-## 3.2 `EditorSceneApi` 和 `EditorScene` 大面积镜像重复
+## 4.4 `EditorSceneApi` 几乎在镜像重写 `EditorScene`
 
-`EditorSceneApi` 里直接重复透传了 `EditorScene` 的大部分字段：
+当前 `EditorSceneApi` 直接重复透传：
 
 - `document`
 - `stores`
@@ -150,16 +263,11 @@
 - `spatial`
 - `bounds`
 
-位置：
-
-- `whiteboard/packages/whiteboard-editor/src/types/editor.ts`
-
-这意味着 public facade 不是在**扩展** `EditorScene`，而是在**重写一份几乎相同的 scene schema**。
+这说明 public facade 不是在扩展 `EditorScene`，而是在重新声明一份 scene 主体结构。
 
 ### 结论
 
-`EditorSceneApi` 不能再手写一份并列 schema。  
-它必须变成：
+public scene api 必须改成薄扩展：
 
 ```ts
 type EditorSceneFacade = EditorScene & {
@@ -170,143 +278,143 @@ type EditorSceneFacade = EditorScene & {
 
 也就是：
 
-- `EditorScene` 负责 scene/query/stores/runtime 基础协议
-- facade 只负责加 editor-specific convenience
+- `EditorScene` 负责 scene/query/store/runtime contract
+- `EditorSceneFacade` 只负责 editor-specific convenience
 
 ---
 
-## 3.3 `EditorSceneStoresApi` 这类 alias 噪音没有必要
+## 4.5 viewport / ui state 暴露重复
 
-例如：
-
-- `EditorSceneStoresApi = EditorScene['stores']`
-
-这种 alias 没有引入新语义，只会让“真正 owner 在哪”更难看清。
-
-### 结论
-
-这类 alias 应该删除，直接引用 canonical contract。
-
----
-
-## 3.4 `EditorSceneEditorApi.viewport` 和 scene viewport / runtime viewport 语义交叉
-
-当前同时存在：
+当前 viewport 相关能力散在这些地方：
 
 1. `EditorScene['viewport']`
 2. `EditorSceneApi.editor.viewport`
 3. `EditorProjectionRuntimeFrame.editor.viewport`
-4. `EditorState.viewport` / `SessionViewportRead`
+4. `EditorState.viewport`
+5. `SessionViewportRead`
 
-这些都在暴露“viewport 读能力”，但来源和职责不一样：
+这把两种完全不同的东西混在了一起：
 
-- scene viewport：projection 后的 scene 视角 query
-- editor viewport：editor local state viewport 值
-- runtime viewport：client/screen/world 换算 helper
+- scene projection viewport query
+- editor local viewport state read
 
-### 结论
+### 正确拆法
 
-这里必须拆成两类，不再混写：
+只能保留两类：
 
-1. **scene query viewport**
-   - 属于 `EditorScene['viewport']`
-   - 负责 screen/worldRect/background/pick/visible
+1. scene viewport
+   - 走 `scene.viewport`
+   - 负责 `worldRect / visible / background / pick / screenRect`
 
-2. **editor state viewport**
-   - 属于 facade 的 `ui.state.viewport`
-   - 负责 editor local `Viewport` state store/read
-   - 如需 pointer/worldToScreen/screenPoint/size，可以挂这里
+2. editor viewport state
+   - 走 `scene.ui.state.viewport`
+   - 负责 editor local viewport state、pointer/world/screen conversion
 
-不要再在 `runtime.editor.viewport` 里单独发明第三套公开协议。
+不要再在 `runtime.editor.viewport` 里造第三套 public contract。
 
 ---
 
-## 3.5 `editor-scene` 正在深度依赖 `whiteboard-editor/src/*` 内部类型
+## 4.6 `types/editor.ts` 把 public 和 internal 混在一起
 
-当前 `editor-scene/contracts/editor.ts` 直接引用：
+当前 `whiteboard-editor/src/types/editor.ts` 同时承载：
 
-- `../../../whiteboard-editor/src/session/draw/state`
-- `../../../whiteboard-editor/src/session/edit`
-- `../../../whiteboard-editor/src/state-engine/document`
-- `../../../whiteboard-editor/src/state-engine/delta`
-- `../../../whiteboard-editor/src/types/tool`
-- `../../../whiteboard-editor/src/input/core/types`
+- public `Editor`
+- public input host 类型
+- scene facade 类型
+- internal projection runtime 类型
+- internal derived 类型
 
-这是严重的所有权倒置：
+这会让一个文件同时承担：
 
-- `editor-scene` 是 projection contract 层
-- 不应该直接 deep import `whiteboard-editor` 的内部文件路径
+1. public api
+2. internal assembly
+3. internal read model
 
 ### 结论
 
-必须引入**稳定的 editor protocol 导出面**，供 `editor-scene` 依赖。
+必须分层：
 
-最小方案：
+- `types/editor.ts`
+  - 只保留 public 顶层 editor api
 
-- `whiteboard-editor` 新增稳定协议子路径
-  - 例如 `@whiteboard/editor/protocol`
+- `editor/projection/*`
+  - internal projection/facade 组合类型
 
-由该子路径统一导出：
+- `editor/derived/*`
+  - internal derived read types
+
+---
+
+## 4.7 `ProjectionScene` 是合理的 internal read 层，但不能再向外变成第二套协议
+
+当前位置：
+
+- `whiteboard/packages/whiteboard-editor-scene/src/projection/query/index.ts`
+
+当前：
+
+```ts
+export interface ProjectionScene extends Omit<EditorScene, 'stores' | 'pick'> {
+  capture: ...
+  source: ...
+}
+```
+
+这个层本身可以接受，因为 projection 内部确实需要：
+
+- `capture`
+- `source`
+- 以及未封装成最终 `EditorScene` 前的 read 视图
+
+问题不在于有这个 internal 结构，而在于它容易继续长成第二套对外协议。
+
+### 结论
+
+`ProjectionScene` 可以保留，但必须满足：
+
+1. internal only
+2. 不从包根导出
+3. 只服务 projection 内部实现
+4. 不再被 `whiteboard-editor` 当成另一套 public schema 去扩展
+
+---
+
+## 4.8 `SceneUpdateInput` / `Input` 要区分 public 与 internal
+
+当前位置：
+
+- `whiteboard/packages/whiteboard-editor-scene/src/contracts/editor.ts`
+
+当前存在：
+
+- `SceneUpdateInput`
+- `Input`
+
+其中：
+
+- `SceneUpdateInput` 是 public 输入
+- `Input` 是 projection 内部归一化后的输入，额外带 `delta`
+
+这层不算坏，但必须明确 owner：
+
+- `SceneUpdateInput` 可以 public
+- `Input` 只允许 internal 使用
+
+不要让业务层直接接触 `Input`。
+
+---
+
+## 5. 最终 owner 划分
+
+## 5.1 `whiteboard-editor` 拥有的协议
+
+只拥有 editor mutable protocol：
 
 - `Tool`
 - `DrawState`
 - `EditSession`
 - `EditCaret`
 - `EditField`
-- `EditorStateDocument`
-- `EditorDelta`
-- `EditorEditDelta`
-- `EditorPreviewDelta`
-- `EditorTouchedIds`
-- `InteractionMode`
-
-然后 `editor-scene` 只依赖这个稳定子路径，**不再引用 `src/*` 内部文件**。
-
----
-
-## 3.6 `EditorState` / `EditorDerived` / `EditorSceneApi` 混合了 internal 与 public
-
-`whiteboard-editor/src/types/editor.ts` 现在同时放了：
-
-- public 顶层 `Editor`
-- public 输入 host 类型
-- internal projection runtime 扩展类型
-- internal derived store 类型
-- final scene facade 类型
-
-这会让一个文件同时承担三类职责：
-
-1. public editor api
-2. internal projection assembly
-3. internal derived read model
-
-### 结论
-
-这三类必须拆开：
-
-- `types/editor.ts`
-  - 只保留 public 顶层 editor api
-
-- `editor/projection/types.ts`
-  - internal projection assembly types
-
-- `editor/derived/types.ts`
-  - internal derived read types
-
-如果不想新建太多文件，至少也要做到：
-
-- `types/editor.ts` 不再定义 internal projection schema
-
----
-
-## 4. 最终所有权
-
-最终必须强制以下 owner 关系。
-
-## 4.1 `whiteboard-editor` 拥有的协议
-
-只拥有 **editor mutable protocol**：
-
 - `EditorStateDocument`
 - `EditorStableState`
 - `EditorOverlayState`
@@ -316,39 +424,43 @@ type EditorSceneFacade = EditorScene & {
 - `EditorTouchedIds`
 - `EditorEditDelta`
 - `EditorPreviewDelta`
-- editor input / action / write 协议
+- input / action / write contract
 
 也就是：
 
-- editor engine 读写什么
-- input dispatch 什么
-- document commit 后如何生产 editor delta
+- editor state 怎么长
+- editor command 怎么 dispatch
+- editor delta 怎么产出
 
-这些必须由 `whiteboard-editor` 拥有。
+这些必须由 `whiteboard-editor` 负责。
 
-## 4.2 `whiteboard-editor-scene` 拥有的协议
+## 5.2 `whiteboard-editor-scene` 拥有的协议
 
-只拥有 **projection read protocol**：
+只拥有 projection read protocol：
 
 - `SceneUpdateInput`
 - `RuntimeFrame`
 - `RuntimeStores`
 - `EditorScene`
-- `ProjectionScene`（internal）
+- `EditorSceneRuntime`
 - `PreviewInput`
-- `NodePreview / EdgePreview / EdgeGuidePreview / MindmapPreview`
-- scene query/view/render/store 合同
+- `NodePreview`
+- `EdgePreview`
+- `EdgeGuidePreview`
+- `MindmapPreview`
+- 各种 scene node/edge/mindmap/group/view/query/render/store contracts
 
 也就是：
 
-- projection 吃什么输入
-- projection 吐出什么 stores/query/runtime
+- projection 吃什么
+- projection 吐出什么
+- react/view 层怎么读 projection
 
-这些必须由 `whiteboard-editor-scene` 拥有。
+这些必须由 `whiteboard-editor-scene` 负责。
 
-## 4.3 `whiteboard-editor` public facade 拥有的协议
+## 5.3 `whiteboard-editor` public facade 拥有的协议
 
-只拥有 **顶层对外 editor api**：
+只拥有：
 
 - `Editor`
 - `EditorInputHost`
@@ -357,18 +469,47 @@ type EditorSceneFacade = EditorScene & {
 
 注意：
 
-- facade 是 public 组合层
-- 不是新一套 scene 底层协议
+- façade 是组合层
+- 不是第二套底层 contract
 
 ---
 
-## 5. 最终统一后的类型结构
+## 6. 最终统一后的类型结构
 
-## 5.1 `editor-scene` canonical scene contract
+## 6.1 `@whiteboard/editor/protocol`
 
-`whiteboard-editor-scene/src/contracts/editor.ts` 保留为唯一 scene 合同。
+新增稳定协议出口，专门给 `editor-scene` 依赖。
 
-建议最终结构：
+建议至少包含：
+
+```ts
+export type {
+  Tool,
+  DrawState,
+  EditCaret,
+  EditField,
+  EditSession,
+  EditorStateDocument,
+  EditorStableState,
+  EditorOverlayState,
+  EditorDelta,
+  EditorTouchedIds,
+  EditorEditDelta,
+  EditorPreviewDelta,
+  InteractionMode
+}
+```
+
+要求：
+
+1. `editor-scene` 只依赖这里，不再 deep import `src/*`
+2. 这是稳定 contract 出口，不是把整个 editor 内部随便暴露出去
+
+## 6.2 `@whiteboard/editor-scene` canonical scene contract
+
+`EditorScene` 保留为唯一 scene base contract。
+
+`RuntimeFrame` 需要吸收 `EditorProjectionRuntimeFrame` 里真正必要的 editor read：
 
 ```ts
 export interface RuntimeFrame {
@@ -391,42 +532,39 @@ export interface RuntimeFrame {
     chromeChanged(): boolean
   }
 }
+```
 
-export interface EditorScene {
+注意：
+
+- scene query viewport 一律走 `scene.viewport`
+- 不把 editor local viewport 再塞进 `runtime.editor.viewport`
+
+## 6.3 `@whiteboard/editor-scene` runtime api
+
+projection runtime 对外只保留一套名字：
+
+```ts
+export interface EditorSceneRuntime {
+  readonly stores: RuntimeStores
+  readonly scene: EditorScene
   revision(): Revision
-  stores: RuntimeStores
-  pick: ScenePickRuntime
-  document: DocumentFrame
-  runtime: RuntimeFrame
-  nodes: SceneNodes
-  edges: SceneEdges
-  mindmaps: SceneMindmaps
-  groups: SceneGroups
-  selection: SceneSelection
-  frame: SceneFrame
-  hit: SceneHit
-  viewport: SceneViewport
-  overlay: SceneOverlay
-  spatial: SceneSpatial
-  snap: SceneSnap
-  items(): State['items']
-  bounds(): Rect | undefined
+  state(): State
+  capture(): Capture
+  update(input: SceneUpdateInput): Result
+  subscribe(listener: (result: Result) => void): () => void
+  dispose(): void
 }
 ```
 
-关键点：
+因此：
 
-- `RuntimeFrame` 吃掉现在 `EditorProjectionRuntimeFrame` 中需要保留的 runtime read
-- `viewport` 不再挂到 `runtime.editor.viewport`
-- scene query 一律走 `scene.viewport`
+- 删除 `contracts/editor.ts` 里的 `Runtime`
+- `contracts/runtime.ts` 成为唯一 runtime api
+- `createProjectionRuntime()` 返回 `EditorSceneRuntime`
 
----
+## 6.4 `@whiteboard/editor` public scene facade
 
-## 5.2 `whiteboard-editor` public scene facade
-
-`whiteboard-editor` 对外不要再重写 `EditorScene`，只扩展。
-
-建议最终结构：
+public scene facade 不再平铺重写 scene 主体，而是薄扩展：
 
 ```ts
 export type EditorSceneFacade = EditorScene & {
@@ -472,32 +610,14 @@ export type EditorSceneFacade = EditorScene & {
 }
 ```
 
-核心变化：
+这样就很清楚：
 
-- 不再顶层平铺 `editor / selection / chrome / mindmap`
-- 统一收到 `scene.ui`
-- `EditorScene` 本体保持 scene contract 原样
+- scene 基础 query 在 `editor.scene.*`
+- editor convenience 在 `editor.scene.ui.*`
 
-这样：
+## 6.5 internal projection 结构
 
-- base scene query 在 `scene.*`
-- editor-specific convenience 在 `scene.ui.*`
-
-职责非常清楚。
-
----
-
-## 5.3 `EditorProjection` 只作为 internal assembly type
-
-`EditorProjection` 可以保留，但只能 internal 使用。
-
-约束：
-
-- 不从 package root 导出
-- 不定义新的 canonical contract
-- 只用于 `createEditor()` 内部装配
-
-建议最终形式：
+如果 `whiteboard-editor` 内部还需要 projection 组合类型，只能 internal：
 
 ```ts
 type EditorProjection = EditorScene & {
@@ -505,175 +625,163 @@ type EditorProjection = EditorScene & {
 }
 ```
 
-也就是说：
+要求：
 
-- 它是 `EditorScene` 的 internal 扩展
-- 不是另一套并列 scene 协议
-
-同时删除：
-
-- `EditorProjectionRuntimeFrame`
+1. 不从包根导出
+2. 不在 `types/editor.ts` 里声明
+3. 不再声明并列 runtime contract
 
 ---
 
-## 5.4 `types/editor.ts` 最终只保留 public 顶层类型
+## 7. 最终对外输出
 
-`whiteboard-editor/src/types/editor.ts` 最终只应该保留：
+## 7.1 `whiteboard-editor-scene` 对外输出
 
+只输出：
+
+- `createProjectionRuntime`
+- `EditorSceneRuntime`
+- `EditorScene`
+- `RuntimeFrame`
+- `RuntimeStores`
+- `SceneUpdateInput`
+- preview / render / store / scene query contracts
+
+不输出：
+
+- editor façade 概念
+- `ProjectionScene`
+- internal `Input`
+
+## 7.2 `whiteboard-editor` 对外输出
+
+只输出：
+
+- `editor.create`
+- clipboard serialize / parse
 - `Editor`
-- `EditorInputHost`
-- `EditorPointerDispatchResult`
-- `ToolRead`
-- `EditorInteractionState`
-- `EditorViewportStateRead`
 - `EditorSceneFacade`
+- `EditorInputHost`
+- public input/tool/node spec types
+- `@whiteboard/editor/protocol`
 
-不再放：
+不输出：
 
-- `EditorProjectionRuntimeFrame`
 - `EditorProjection`
 - `EditorDerived`
-- `EditorSceneDerived`
-- 大量 internal store composition type
-
-这些应搬到 internal 文件。
+- `EditorProjectionRuntimeFrame`
 
 ---
 
-## 6. 最终组合方式
+## 8. 最终组合方式
 
-最终组装链应该只有这一条：
+最终组合链只保留这一条：
 
 ```ts
-EditorStateRuntime
-  + Engine document
+EditorStateRuntime snapshot/delta
+  + Engine document snapshot/delta
     -> SceneUpdateInput
-      -> editor-scene projection runtime
-        -> EditorScene
-          + editor ui derived facade
-            -> EditorSceneFacade
-              -> Editor
+      -> createProjectionRuntime()
+        -> EditorSceneRuntime
+          -> EditorScene
+            + editor ui derived facade
+              -> EditorSceneFacade
+                -> Editor
 ```
 
-也就是：
+`createEditor()` 的职责被压缩成三件事：
 
-1. `state-engine` 负责 editor local document/command/delta
-2. `editor-scene` 负责 scene projection/store/query/runtime
-3. `whiteboard-editor` 只负责把 base scene + editor ui facade 组合成最终 public scene
+1. 维护 editor state runtime
+2. 把 document + editor snapshot/delta 喂给 `editor-scene`
+3. 把 `EditorScene` 和 editor UI stores 组合成 `EditorSceneFacade`
 
-`createEditor()` 不再拥有“协议发明权”，只拥有“装配权”。
+它不再拥有：
+
+- 第二套 scene 协议设计权
+- 第二套 runtime 协议设计权
+- 第二套 viewport/read schema 设计权
 
 ---
 
-## 7. 必删清单
+## 9. 必删 / 必收缩清单
 
-以下类型/层应删除或强收缩。
-
-## 7.1 必删
+## 9.1 必删
 
 - `EditorProjectionRuntimeFrame`
 - `EditorSceneStoresApi`
+- `whiteboard-editor-scene/contracts/editor.ts` 里的 `Runtime`
 
-## 7.2 改为 `EditorScene` 薄扩展
+## 9.2 必改成薄扩展
 
 - `EditorSceneApi`
 
-不再重写 scene 主体字段。
+最终改成 `EditorSceneFacade = EditorScene & { ui: ...; capture(): Capture }`
 
-## 7.3 改为 internal only
+## 9.3 必限制为 internal only
 
+- `ProjectionScene`
+- `Input`
 - `EditorProjection`
 - `EditorDerived`
 - `EditorSceneDerived`
 - `EditorPolicyDerived`
 
-这些不应再停留在 public-facing `types/editor.ts`。
+## 9.4 必消灭的路径依赖
 
-## 7.4 必删除的深路径依赖
-
-`editor-scene` 里所有：
+`editor-scene` 内所有：
 
 - `../../../whiteboard-editor/src/...`
 
-都必须改成稳定协议导出路径。
+必须全部替换为稳定协议出口。
 
 ---
 
-## 8. 最终对外输出
+## 10. 实施顺序
 
-## 8.1 `whiteboard-editor-scene` 对外输出
+## Phase A：先收 owner
 
-只输出：
+1. 建 `@whiteboard/editor/protocol`
+2. `editor-scene` 改为只依赖这个协议出口
+3. 删除所有 deep import
 
-- projection runtime 创建器
-- scene contract
-- scene store/query/render contracts
+## Phase B：收 runtime
 
-不输出 editor facade 概念。
-
-## 8.2 `whiteboard-editor` 对外输出
-
-只输出：
-
-- `editor.create`
-- clipboard serialize/parse
-- public input/tool/node spec types
-- `Editor`
-- `EditorSceneFacade`
-
-如果需要给 `editor-scene` 复用 editor-owned 协议，则额外输出：
-
-- `@whiteboard/editor/protocol`
-
-这个子路径只给 contract 层用，不给业务层乱用。
-
----
-
-## 9. 实施顺序
-
-## Phase A：收合同 owner
-
-1. 在 `whiteboard-editor` 建稳定 protocol 子路径
-2. `editor-scene/contracts/editor.ts` 改为只依赖稳定 protocol 子路径
-3. 去掉所有 `../../../whiteboard-editor/src/*` 深路径 type import
-
-## Phase B：收 runtime contract
-
-1. 扩充 `editor-scene/contracts/editor.ts` 的 `RuntimeFrame.editor`
+1. `RuntimeFrame` 吃掉真正需要的 editor runtime read
 2. 删 `EditorProjectionRuntimeFrame`
-3. `projection.ts` / `createEditor()` 统一改读 `EditorScene['runtime']`
+3. 把 `Runtime` / `EditorSceneRuntime` 收成一套
+4. `createProjectionRuntime(): EditorSceneRuntime`
 
-## Phase C：收 public scene facade
+## Phase C：收 public facade
 
-1. 把 `EditorSceneApi` 改成 `EditorScene & { ui: ...; capture(): Capture }`
-2. 不再手写镜像字段
-3. 把 editor-specific stores 全收进 `scene.ui`
+1. `EditorSceneApi` 改成薄扩展
+2. scene 主体字段不再镜像重写
+3. editor-specific read 全收到 `scene.ui`
 
 ## Phase D：收 internal types
 
-1. `EditorProjection` / `EditorDerived` 等移出 `types/editor.ts`
-2. 只保留 public editor facade types
-3. internal projection/derived 类型就近放到 `editor/projection` / `editor/derived`
+1. `types/editor.ts` 只保留 public 类型
+2. projection/derived internal 类型迁回实现附近
+3. internal helper contract 不从包根暴露
 
 ---
 
-## 10. 完成判定
+## 11. 完成判定
 
-满足以下条件，才算这轮类型统一完成：
+满足以下条件，才算这轮真正完成：
 
-1. `RuntimeFrame` 是唯一 runtime read 合同
-2. `EditorProjectionRuntimeFrame` 已删除
-3. `EditorScene` 是唯一 scene base contract
-4. `EditorSceneFacade` 只是 `EditorScene` 的薄扩展，不再镜像重写
-5. `editor-scene` 不再 deep import `whiteboard-editor/src/*`
-6. `types/editor.ts` 不再混放 internal projection schema
-7. `createEditor()` 只组装，不再定义第二套 scene/read 类型
+1. `editor-scene` 不再 deep import `whiteboard-editor/src/*`
+2. `RuntimeFrame` 是唯一 scene runtime read contract
+3. `EditorSceneRuntime` 是唯一 projection runtime api
+4. `EditorProjectionRuntimeFrame` 已删除
+5. `Runtime` 并列接口已删除
+6. `EditorScene` 是唯一 scene base contract
+7. `EditorSceneFacade` 只是 `EditorScene` 的薄扩展
+8. `types/editor.ts` 不再混放 internal projection / derived 类型
+9. `ProjectionScene` / `Input` 没有泄漏为第二套 public 协议
+10. `createEditor()` 只做组装，不再定义第二套 schema
 
 ---
 
-## 11. 最终原则
+## 12. 一句话原则
 
-一句话定死：
-
-**`editor-scene` 定义 scene contract，`whiteboard-editor` 定义 editor engine contract，public facade 只做组合，不再重复定义协议。**
-
+**`whiteboard-editor` 只拥有 editor mutable protocol，`whiteboard-editor-scene` 只拥有 scene projection protocol，public facade 只做组合，不再重复定义同一件事。**

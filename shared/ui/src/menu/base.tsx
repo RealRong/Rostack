@@ -12,6 +12,7 @@ import { Level } from '@shared/ui/menu/level'
 import {
   appendPath,
   firstEnabledPath,
+  findInteractiveItem,
   isPathPrefix,
   isSamePath,
   isVisiblePath,
@@ -19,6 +20,7 @@ import {
   normalizeExpandedPath,
   normalizeValue,
   parentPath,
+  resolveDefaultActiveKey,
   serializePath,
   toValueResult,
   toggleSelection
@@ -92,6 +94,50 @@ export const Base = forwardRef<Handle, Props>((props, ref) => {
       setActiveSource(null)
     }
   }, [activePath, openPath, props.items])
+
+  useEffect(() => {
+    if (!open) {
+      return
+    }
+
+    const currentKey = activePath.length === 1
+      ? activePath[0] ?? null
+      : null
+    const nextKey = resolveDefaultActiveKey({
+      items: props.items,
+      currentKey,
+      defaultActive: props.defaultActive
+    })
+
+    if (nextKey === undefined) {
+      return
+    }
+
+    if (!nextKey) {
+      if (activePath.length) {
+        setActivePath([])
+        setActiveSource(null)
+      }
+      return
+    }
+
+    const nextItem = findInteractiveItem(props.items, nextKey)
+    if (!nextItem) {
+      if (activePath.length) {
+        setActivePath([])
+        setActiveSource(null)
+      }
+      return
+    }
+
+    const nextPath: Path = [nextKey]
+    if (isSamePath(activePath, nextPath) && activeSource === 'keyboard') {
+      return
+    }
+
+    setActivePath(nextPath)
+    setActiveSource('keyboard')
+  }, [activePath, activeSource, open, props.defaultActive, props.items])
 
   useEffect(() => {
     if (open) {

@@ -1,19 +1,20 @@
-import { selection as selectionApi, type SelectionTarget } from '@whiteboard/core/selection'
+import { selection as selectionApi, type SelectionInput, type SelectionTarget } from '@whiteboard/core/selection'
 import type {
   CanvasOrderAnchor,
   CanvasItemRef,
   GroupId
 } from '@whiteboard/core/types'
+import type { EditorCommand } from '@whiteboard/editor/state-engine/intents'
 import type { EditorScene } from '@whiteboard/editor-scene'
 import type { EditorDefaults } from '@whiteboard/editor/types/defaults'
+import type { EditorState } from '@whiteboard/editor/types/editor'
 import type {
   CanvasWrite,
   GroupWrite,
   NodeWrite
 } from '@whiteboard/editor/write/types'
 import type {
-  SelectionActions,
-  SelectionCommands
+  SelectionActions
 } from '@whiteboard/editor/action/types'
 
 const DEFAULT_FRAME_PADDING = 32
@@ -28,7 +29,8 @@ type SelectionActionHelpersHost = {
   canvas: CanvasWrite
   group: GroupWrite
   node: Pick<NodeWrite, 'create'>
-  session: Pick<SelectionCommands, 'replace' | 'clear'>
+  selection: Pick<EditorState['selection'], 'get'>
+  dispatch: (command: EditorCommand | readonly EditorCommand[]) => void
   defaults: EditorDefaults['templates']
 }
 
@@ -67,7 +69,7 @@ const toCanvasRefs = (
 
 const createFrame = (
   node: Pick<NodeWrite, 'create'>,
-  session: Pick<SelectionCommands, 'replace'>,
+  dispatch: SelectionActionHelpersHost['dispatch'],
   defaults: EditorDefaults['templates'],
   bounds: {
     x: number
@@ -91,8 +93,12 @@ const createFrame = (
     return false
   }
 
-  session.replace({
-    nodeIds: [result.data.nodeId]
+  dispatch({
+    type: 'selection.set',
+    selection: {
+      nodeIds: [result.data.nodeId],
+      edgeIds: []
+    }
   })
   return true
 }
@@ -102,7 +108,8 @@ const createSelectionActionHelpers = ({
   canvas,
   group,
   node,
-  session,
+  selection,
+  dispatch,
   defaults
 }: SelectionActionHelpersHost): SelectionActionHelpers => ({
   duplicate: (input, options) => {
@@ -118,13 +125,16 @@ const createSelectionActionHelpers = ({
     }
 
     if (options?.selectInserted !== false) {
-      session.replace({
-        nodeIds: result.data.roots.nodeIds.length > 0
-          ? result.data.roots.nodeIds
-          : result.data.allNodeIds,
-        edgeIds: result.data.roots.edgeIds.length > 0
-          ? result.data.roots.edgeIds
-          : result.data.allEdgeIds
+      dispatch({
+        type: 'selection.set',
+        selection: {
+          nodeIds: result.data.roots.nodeIds.length > 0
+            ? result.data.roots.nodeIds
+            : result.data.allNodeIds,
+          edgeIds: result.data.roots.edgeIds.length > 0
+            ? result.data.roots.edgeIds
+            : result.data.allEdgeIds
+        }
       })
     }
 
@@ -143,7 +153,13 @@ const createSelectionActionHelpers = ({
     }
 
     if (options?.clearSelection !== false) {
-      session.clear()
+      dispatch({
+        type: 'selection.set',
+        selection: {
+          nodeIds: [],
+          edgeIds: []
+        }
+      })
     }
 
     return true
@@ -173,7 +189,10 @@ const createSelectionActionHelpers = ({
       return true
     }
 
-    session.replace(target)
+    dispatch({
+      type: 'selection.set',
+      selection: target
+    })
     return true
   },
   ungroup: (input, options) => {
@@ -189,19 +208,28 @@ const createSelectionActionHelpers = ({
     }
 
     if (options?.fallbackSelection === 'none') {
-      session.clear()
+      dispatch({
+        type: 'selection.set',
+        selection: {
+          nodeIds: [],
+          edgeIds: []
+        }
+      })
       return true
     }
 
-    session.replace({
-      nodeIds: result.data.nodeIds,
-      edgeIds: result.data.edgeIds
+    dispatch({
+      type: 'selection.set',
+      selection: {
+        nodeIds: result.data.nodeIds,
+        edgeIds: result.data.edgeIds
+      }
     })
     return true
   },
   frame: (bounds, options) => createFrame(
     node,
-    session,
+    dispatch,
     defaults,
     bounds,
     options?.padding ?? DEFAULT_FRAME_PADDING
@@ -214,32 +242,53 @@ export const createSelectionActions = (input: {
   canvas: CanvasWrite
   group: GroupWrite
   node: Pick<NodeWrite, 'create'>
-  session: SelectionCommands
+  selection: Pick<EditorState['selection'], 'get'>
+  dispatch: SelectionActionHelpersHost['dispatch']
   defaults: EditorDefaults['templates']
 }): SelectionActions => {
   const helpers = createSelectionActionHelpers(input)
+  const applySelection = (
+    mode: 'replace' | 'add' | 'subtract' | 'toggle',
+    target: SelectionInput
+  ) => {
+    const selection = mode === 'replace'
+      ? selectionApi.target.normalize(target)
+      : selectionApi.target.apply(
+          input.selection.get(),
+          selectionApi.target.normalize(target),
+          mode
+        )
+
+    input.dispatch({
+      type: 'selection.set',
+      selection
+    })
+  }
 
   return {
     replace: (target) => {
-      input.session.replace(selectionApi.target.normalize(target))
+      applySelection('replace', target)
     },
     add: (target) => {
-      input.session.add(selectionApi.target.normalize(target))
+      applySelection('add', target)
     },
     remove: (target) => {
-      input.session.remove(selectionApi.target.normalize(target))
+      applySelection('subtract', target)
     },
     toggle: (target) => {
-      input.session.toggle(selectionApi.target.normalize(target))
+      applySelection('toggle', target)
     },
     selectAll: () => {
-      input.session.replace({
+      applySelection('replace', {
         nodeIds: input.document.nodeIds(),
         edgeIds: input.document.edgeIds()
       })
     },
     clear: () => {
-      input.session.clear()
+      applySelection('replace', {
+        nodeIds: [],
+        edgeIds: []
+      })
     },
     ...helpers
   }

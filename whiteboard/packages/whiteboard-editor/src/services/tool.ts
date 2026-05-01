@@ -5,6 +5,7 @@ import type {
 import type {
   DrawMode
 } from '@whiteboard/editor/session/draw/model'
+import type { EditorCommand } from '@whiteboard/editor/state-engine/intents'
 import type { EditorSession } from '@whiteboard/editor/session/runtime'
 import type {
   InsertTemplate,
@@ -59,24 +60,43 @@ const isSameTool = (
 export const createToolService = ({
   session
 }: {
-  session: Pick<EditorSession, 'state' | 'mutate'>
+  session: Pick<EditorSession, 'state' | 'dispatch'>
 }): ToolService => {
   const set = (
     nextTool: Tool
   ) => {
     const currentTool = session.state.tool.get()
     const toolChanged = !isSameTool(currentTool, nextTool)
+    const commands: EditorCommand[] = []
 
     if (toolChanged || nextTool.type === 'draw') {
-      session.mutate.edit.clear()
-      session.mutate.selection.clear()
+      commands.push(
+        {
+          type: 'edit.set',
+          edit: null
+        },
+        {
+          type: 'selection.set',
+          selection: {
+            nodeIds: [],
+            edgeIds: []
+          }
+        }
+      )
     }
 
-    if (!toolChanged) {
+    if (toolChanged) {
+      commands.push({
+        type: 'tool.set',
+        tool: nextTool
+      })
+    }
+
+    if (commands.length === 0) {
       return
     }
 
-    session.mutate.tool.set(nextTool)
+    session.dispatch(commands)
   }
 
   return {

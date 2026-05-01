@@ -1,6 +1,7 @@
 import { equal } from '@shared/core'
 import { isCheckpointProgram } from '@whiteboard/core/mutation'
 import type { DocumentFrame } from '@whiteboard/editor-scene'
+import type { EditorCommand } from '@whiteboard/editor/state-engine/intents'
 import type { Engine } from '@whiteboard/engine'
 import type { EditorSession } from '@whiteboard/editor/session/runtime'
 import type { EditorEvents } from '@whiteboard/editor/types/editor'
@@ -11,33 +12,43 @@ export type EditorEventRuntime = {
 }
 
 const reconcileSessionAfterWrite = (
-  session: Pick<EditorSession, 'state' | 'mutate'>,
+  session: Pick<EditorSession, 'state' | 'dispatch'>,
   document: Pick<DocumentFrame, 'node' | 'edge'>
 ) => {
   const selection = session.state.selection.get()
   const nextNodeIds = selection.nodeIds.filter((id) => Boolean(document.node(id)))
   const nextEdgeIds = selection.edgeIds.filter((id) => Boolean(document.edge(id)))
+  const commands: EditorCommand[] = []
 
   if (
     !equal.sameOrder(nextNodeIds, selection.nodeIds)
     || !equal.sameOrder(nextEdgeIds, selection.edgeIds)
   ) {
-    session.mutate.selection.replace({
-      nodeIds: nextNodeIds,
-      edgeIds: nextEdgeIds
+    commands.push({
+      type: 'selection.set',
+      selection: {
+        nodeIds: nextNodeIds,
+        edgeIds: nextEdgeIds
+      }
     })
   }
 
   const currentEdit = session.state.edit.get()
-  if (!currentEdit) {
-    return
+  if (
+    currentEdit
+    && (
+      (currentEdit.kind === 'node' && !document.node(currentEdit.nodeId))
+      || (currentEdit.kind === 'edge-label' && !document.edge(currentEdit.edgeId))
+    )
+  ) {
+    commands.push({
+      type: 'edit.set',
+      edit: null
+    })
   }
 
-  if (
-    (currentEdit.kind === 'node' && !document.node(currentEdit.nodeId))
-    || (currentEdit.kind === 'edge-label' && !document.edge(currentEdit.edgeId))
-  ) {
-    session.mutate.edit.clear()
+  if (commands.length > 0) {
+    session.dispatch(commands)
   }
 }
 

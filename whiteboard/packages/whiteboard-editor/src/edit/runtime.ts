@@ -1,11 +1,12 @@
 import type { EdgeLabel, EdgeId, NodeId } from '@whiteboard/core/types'
 import type { DocumentFrame } from '@whiteboard/editor-scene'
 import type { EditCaret, EditField } from '@whiteboard/editor/session/edit'
+import type { EditorCommand } from '@whiteboard/editor/state-engine/intents'
 import type { EditorSession } from '@whiteboard/editor/session/runtime'
 import type { NodeTypeSupport } from '@whiteboard/editor/types/node'
 
 export const startNodeEdit = (input: {
-  session: Pick<EditorSession, 'mutate'>
+  session: Pick<EditorSession, 'dispatch'>
   document: Pick<DocumentFrame, 'node'>
   nodeType: Pick<NodeTypeSupport, 'edit'>
   nodeId: NodeId
@@ -23,18 +24,21 @@ export const startNodeEdit = (input: {
   }
 
   const value = committed.data?.[input.field]
-  input.session.mutate.edit.set({
-    kind: 'node',
-    nodeId: input.nodeId,
-    field: input.field,
-    text: typeof value === 'string' ? value : '',
-    composing: false,
-    caret: input.caret ?? { kind: 'end' }
-  })
+  input.session.dispatch({
+    type: 'edit.set',
+    edit: {
+      kind: 'node',
+      nodeId: input.nodeId,
+      field: input.field,
+      text: typeof value === 'string' ? value : '',
+      composing: false,
+      caret: input.caret ?? { kind: 'end' }
+    }
+  } satisfies EditorCommand)
 }
 
 export const startEdgeLabelEdit = (input: {
-  session: Pick<EditorSession, 'mutate'>
+  session: Pick<EditorSession, 'dispatch'>
   document: Pick<DocumentFrame, 'edge'>
   edgeId: EdgeId
   labelId: string
@@ -46,12 +50,15 @@ export const startEdgeLabelEdit = (input: {
     return
   }
 
-  input.session.mutate.edit.set({
-    kind: 'edge-label',
-    edgeId: input.edgeId,
-    labelId: input.labelId,
-    text: typeof label.text === 'string' ? label.text : '',
-    composing: false,
-    caret: input.caret ?? { kind: 'end' }
-  })
+  input.session.dispatch({
+    type: 'edit.set',
+    edit: {
+      kind: 'edge-label',
+      edgeId: input.edgeId,
+      labelId: input.labelId,
+      text: typeof label.text === 'string' ? label.text : '',
+      composing: false,
+      caret: input.caret ?? { kind: 'end' }
+    }
+  } satisfies EditorCommand)
 }

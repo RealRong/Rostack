@@ -211,7 +211,7 @@ const readDragState = (
   const mode = store.read(session.interaction.read.mode)
   const selection = store.read(session.state.selection)
   const edit = store.read(session.state.edit)
-  const preview = store.read(session.preview.state)
+  const preview = store.read(session.preview)
 
   switch (mode) {
     case 'node-drag':
@@ -339,7 +339,7 @@ export const buildEditorSceneSourceSnapshot = (input: {
   engine: Pick<Engine, 'doc' | 'rev'>
   session: Pick<EditorSession, 'state' | 'interaction' | 'preview' | 'viewport'>
 }): EditorSceneSourceSnapshot => {
-  const preview = store.read(input.session.preview.state)
+  const preview = store.read(input.session.preview)
   const viewport = input.session.viewport.read.get()
   const current = {
     rev: input.engine.rev(),

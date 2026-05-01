@@ -25,6 +25,7 @@ import type { EditorActions as EditorWrite } from '@whiteboard/editor/action/typ
 import type { EditSession } from '@whiteboard/editor/session/edit'
 import type { DrawState } from '@whiteboard/editor/session/draw/state'
 import type { EdgeGuide } from '@whiteboard/editor/session/preview/types'
+import type { EditorCommand } from '@whiteboard/editor/state-engine/intents'
 import type {
   ContextMenuInput,
   ContextMenuIntent,
@@ -194,6 +195,7 @@ export type Editor = {
   input: EditorInputHost
   write: EditorWrite
   events: EditorEvents
+  dispatch: (command: EditorCommand | readonly EditorCommand[]) => void
   dispose: () => void
 }
 

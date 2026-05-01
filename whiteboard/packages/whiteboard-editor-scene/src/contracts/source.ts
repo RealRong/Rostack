@@ -53,7 +53,14 @@ export interface EditorSceneSourcePreviewChange {
   hover: boolean
 }
 
-export interface EditorSceneSourceChange {
+export interface EditorSceneSourceHoverChange {
+  touchedNodeIds: readonly NodeId[]
+  touchedEdgeIds: readonly EdgeId[]
+  touchedMindmapIds: readonly MindmapId[]
+}
+
+export interface EditorSceneSourceEvent {
+  source: EditorSceneSourceSnapshot
   document?: {
     rev: Revision
     delta: MutationDelta
@@ -62,14 +69,13 @@ export interface EditorSceneSourceChange {
   editor?: {
     delta: MutationDelta
     edit?: EditorSceneSourceEditChange
-  }
-  session?: {
     preview?: EditorSceneSourcePreviewChange
+    hover?: EditorSceneSourceHoverChange
   }
   view?: true
 }
 
 export interface EditorSceneSource {
   get(): EditorSceneSourceSnapshot
-  subscribe(listener: (change: EditorSceneSourceChange) => void): () => void
+  subscribe(listener: (event: EditorSceneSourceEvent) => void): () => void
 }

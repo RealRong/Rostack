@@ -22,6 +22,15 @@ import {
   createSelectionActions
 } from '@whiteboard/editor/action/selection'
 import type { EditorScene } from '@whiteboard/editor-scene'
+import type { EditorCommand } from '@whiteboard/editor/state-engine/intents'
+import {
+  DEFAULT_DRAW_BRUSH,
+  hasDrawBrush
+} from '@whiteboard/editor/session/draw/model'
+import {
+  patchDrawStyle,
+  setDrawSlot
+} from '@whiteboard/editor/session/draw/state'
 import type { EditorSession } from '@whiteboard/editor/session/runtime'
 import type { ToolService } from '@whiteboard/editor/services/tool'
 import type { EditorTaskRuntime } from '@whiteboard/editor/tasks/runtime'
@@ -54,13 +63,39 @@ export const createEditorActionsApi = ({
   nodeType,
   defaults
 }: CreateEditorActionsApiDeps): EditorActions => {
+  const dispatchDraw = (
+    state: ReturnType<EditorSession['state']['draw']['get']>
+  ) => {
+    session.dispatch({
+      type: 'draw.set',
+      state
+    } satisfies EditorCommand)
+  }
+
+  const readActiveDrawBrush = () => {
+    const tool = session.state.tool.get()
+    return tool.type === 'draw' && hasDrawBrush(tool.mode)
+      ? tool.mode
+      : DEFAULT_DRAW_BRUSH
+  }
+
+  const dispatchViewport = (
+    viewport: ReturnType<EditorSession['viewport']['read']['get']>
+  ) => {
+    session.dispatch({
+      type: 'viewport.set',
+      viewport
+    } satisfies EditorCommand)
+  }
+
   const selection = createSelectionActions({
     document,
     read: graph,
     canvas: write.canvas,
     group: write.group,
     node: write.node,
-    session: session.commands.selection,
+    selection: state.selection,
+    dispatch: session.dispatch,
     defaults
   })
   const edit = createEditController({
@@ -88,7 +123,7 @@ export const createEditorActionsApi = ({
     editor: {
       documentSource: document,
       document: write.document,
-      session: session.commands.selection,
+      dispatch: session.dispatch,
       selection: {
         delete: selection.delete
       },
@@ -109,18 +144,51 @@ export const createEditorActionsApi = ({
       hand: () => tool.hand()
     },
     viewport: {
-      set: (viewport) => session.viewport.commands.set(viewport),
-      panBy: (delta) => session.viewport.commands.panBy(delta),
-      zoomTo: (input) => session.viewport.commands.zoomTo(input),
-      fit: (rect, options) => session.viewport.commands.fit(rect, options),
-      reset: () => session.viewport.commands.reset(),
+      set: (viewport) => {
+        dispatchViewport(session.viewport.resolve.set(viewport))
+      },
+      panBy: (delta) => {
+        const next = session.viewport.resolve.panBy(delta)
+        if (next) {
+          dispatchViewport(next)
+        }
+      },
+      zoomTo: (zoom, anchor) => {
+        const next = session.viewport.resolve.zoomTo(zoom, anchor)
+        if (next) {
+          dispatchViewport(next)
+        }
+      },
+      fit: (rect, options) => {
+        dispatchViewport(session.viewport.resolve.fit(rect, options))
+      },
+      reset: () => {
+        dispatchViewport(session.viewport.resolve.reset())
+      },
       setRect: (rect) => session.viewport.setRect(rect),
       setLimits: (limits) => session.viewport.setLimits(limits)
     },
     draw: {
-      set: (nextState) => session.mutate.draw.set(nextState),
-      slot: (slot) => session.mutate.draw.slot(slot),
-      patch: (patch) => session.mutate.draw.patch(patch)
+      set: (nextState) => {
+        dispatchDraw(nextState)
+      },
+      slot: (slot) => {
+        dispatchDraw(setDrawSlot(
+          session.state.draw.get(),
+          readActiveDrawBrush(),
+          slot
+        ))
+      },
+      patch: (patch) => {
+        const brush = readActiveDrawBrush()
+        const currentSlot = session.state.draw.get()[brush].slot
+        dispatchDraw(patchDrawStyle(
+          session.state.draw.get(),
+          brush,
+          currentSlot,
+          patch
+        ))
+      }
     },
     selection,
     edit: edit.actions,

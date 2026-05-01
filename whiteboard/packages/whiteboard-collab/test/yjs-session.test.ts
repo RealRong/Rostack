@@ -186,7 +186,8 @@ test('session records duplicate and rejected shared changes deterministically', 
       steps: [{
         type: 'entity.patch' as const,
         entity: {
-          table: 'document',
+          kind: 'entity',
+          type: 'document',
           id: 'document'
         },
         writes: {
@@ -215,7 +216,8 @@ test('session records duplicate and rejected shared changes deterministically', 
         steps: [{
           type: 'entity.patch' as const,
           entity: {
-            table: 'node',
+            kind: 'entity',
+            type: 'node',
             id: 'node_missing'
           },
           writes: {

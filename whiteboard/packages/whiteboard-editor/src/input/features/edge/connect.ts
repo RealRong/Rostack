@@ -436,8 +436,12 @@ const commitConnectState = (
   }
 
   ctx.tool.select()
-  ctx.session.commands.selection.replace({
-    edgeIds: [result.data.edgeId]
+  ctx.session.dispatch({
+    type: 'selection.set',
+    selection: {
+      nodeIds: [],
+      edgeIds: [result.data.edgeId]
+    }
   })
 }
 

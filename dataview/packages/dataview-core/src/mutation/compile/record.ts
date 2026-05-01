@@ -13,30 +13,34 @@ import {
 } from '@dataview/core/field/spec'
 import { createId, string } from '@shared/core'
 import type {
-  DataviewCompileReader
-} from './reader'
-import type {
   DataviewCompileContext
 } from './contracts'
 import {
   writeViewUpdate
 } from './viewDiff'
 
+type RecordIntentType = Extract<Intent['type'], `record.${string}`>
+type DataviewRecordIntentHandlers = {
+  [K in RecordIntentType]: (
+    input: DataviewCompileContext<Extract<Intent, { type: K }>>
+  ) => void
+}
+
 const resolveDefaultRecordType = (
-  reader: DataviewCompileReader
-) => reader.records.list().find(
+  input: DataviewCompileContext
+) => input.reader.records.list().find(
   (record) => typeof record.type === 'string' && record.type.length
 )?.type
 
 const resolveRecordCreateValues = (
-  reader: DataviewCompileReader,
+  input: DataviewCompileContext,
   explicitValues: Extract<Intent, { type: 'record.create' }>['input']['values']
 ) => {
   const nextValues: Partial<Record<FieldId, unknown>> = {
     ...(explicitValues ?? {})
   }
 
-  reader.fields.list().forEach((field) => {
+  input.reader.fields.list().forEach((field) => {
     if (!fieldApi.kind.isCustom(field)) {
       return
     }
@@ -57,7 +61,6 @@ const resolveRecordCreateValues = (
 
 const requireRecordIds = (
   input: DataviewCompileContext,
-  reader: DataviewCompileReader,
   recordIds: readonly string[],
   path: string
 ): readonly RecordId[] | undefined => {
@@ -75,7 +78,7 @@ const requireRecordIds = (
 
   const resolved: RecordId[] = []
   nextRecordIds.forEach((recordId, index) => {
-    if (!reader.records.has(recordId)) {
+    if (!input.reader.records.has(recordId)) {
       input.issue({
         source: input.source,
         code: 'record.notFound',
@@ -96,7 +99,6 @@ const requireRecordIds = (
 
 const validateWritableField = (
   input: DataviewCompileContext,
-  reader: DataviewCompileReader,
   fieldId: string,
   path: string
 ): fieldId is FieldId => {
@@ -111,7 +113,7 @@ const validateWritableField = (
     return false
   }
 
-  if (fieldId !== TITLE_FIELD_ID && !reader.fields.has(fieldId)) {
+  if (fieldId !== TITLE_FIELD_ID && !input.reader.fields.has(fieldId)) {
     input.issue({
       source: input.source,
       code: 'field.notFound',
@@ -126,10 +128,9 @@ const validateWritableField = (
 }
 
 const lowerRecordCreate = (
-  intent: Extract<Intent, { type: 'record.create' }>,
-  input: DataviewCompileContext,
-  reader: DataviewCompileReader
+  input: DataviewCompileContext<Extract<Intent, { type: 'record.create' }>>
 ) => {
+  const { intent } = input
   const explicitRecordId = string.trimToUndefined(intent.input.id)
 
   if (intent.input.id !== undefined && !explicitRecordId) {
@@ -141,7 +142,7 @@ const lowerRecordCreate = (
       severity: 'error'
     })
   }
-  if (explicitRecordId && reader.records.has(explicitRecordId)) {
+  if (explicitRecordId && input.reader.records.has(explicitRecordId)) {
     input.issue({
       source: input.source,
       code: 'record.duplicateId',
@@ -150,15 +151,15 @@ const lowerRecordCreate = (
       severity: 'error'
     })
   }
-  if ((intent.input.id !== undefined && !explicitRecordId) || (explicitRecordId && reader.records.has(explicitRecordId))) {
+  if ((intent.input.id !== undefined && !explicitRecordId) || (explicitRecordId && input.reader.records.has(explicitRecordId))) {
     return
   }
 
   const record = {
     id: explicitRecordId || createId('record'),
     title: string.trimToUndefined(intent.input.title) ?? '',
-    type: intent.input.type ?? resolveDefaultRecordType(reader),
-    values: resolveRecordCreateValues(reader, intent.input.values),
+    type: intent.input.type ?? resolveDefaultRecordType(input),
+    values: resolveRecordCreateValues(input, intent.input.values),
     meta: intent.input.meta
   } satisfies DataRecord
 
@@ -169,11 +170,10 @@ const lowerRecordCreate = (
 }
 
 const lowerRecordPatch = (
-  intent: Extract<Intent, { type: 'record.patch' }>,
-  input: DataviewCompileContext,
-  reader: DataviewCompileReader
+  input: DataviewCompileContext<Extract<Intent, { type: 'record.patch' }>>
 ) => {
-  const recordIds = reader.records.require(intent.target)
+  const { intent } = input
+  const recordIds = input.reader.records.require(intent.target)
   if (!recordIds) {
     return
   }
@@ -203,17 +203,16 @@ const lowerRecordPatch = (
 }
 
 const lowerRecordRemove = (
-  intent: Extract<Intent, { type: 'record.remove' }>,
-  input: DataviewCompileContext,
-  reader: DataviewCompileReader
+  input: DataviewCompileContext<Extract<Intent, { type: 'record.remove' }>>
 ) => {
-  const recordIds = requireRecordIds(input, reader, intent.recordIds, 'recordIds')
+  const { intent } = input
+  const recordIds = requireRecordIds(input, intent.recordIds, 'recordIds')
   if (!recordIds) {
     return
   }
 
   const removedRecordIds = new Set(recordIds)
-  reader.views.list().forEach((view) => {
+  input.reader.views.list().forEach((view) => {
     const nextOrders = view.orders.filter((recordId) => !removedRecordIds.has(recordId))
     if (nextOrders.length === view.orders.length) {
       return
@@ -231,16 +230,15 @@ const lowerRecordRemove = (
 }
 
 const lowerRecordFieldsWriteMany = (
-  intent: Extract<Intent, { type: 'record.fields.writeMany' }>,
-  input: DataviewCompileContext,
-  reader: DataviewCompileReader
+  input: DataviewCompileContext<Extract<Intent, { type: 'record.fields.writeMany' }>>
 ) => {
-  const recordIds = requireRecordIds(input, reader, intent.recordIds, 'recordIds')
+  const { intent } = input
+  const recordIds = requireRecordIds(input, intent.recordIds, 'recordIds')
   const nextSet: Partial<Record<FieldId, unknown>> = {}
   const nextClear = new Set<FieldId>()
 
   Object.entries(intent.set ?? {}).forEach(([fieldId, value], indexOfField) => {
-    if (!validateWritableField(input, reader, fieldId, `set.${indexOfField}`)) {
+    if (!validateWritableField(input, fieldId, `set.${indexOfField}`)) {
       return
     }
 
@@ -253,7 +251,7 @@ const lowerRecordFieldsWriteMany = (
   })
 
   ;(intent.clear ?? []).forEach((fieldId, indexOfField) => {
-    if (!validateWritableField(input, reader, fieldId, `clear.${indexOfField}`)) {
+    if (!validateWritableField(input, fieldId, `clear.${indexOfField}`)) {
       return
     }
 
@@ -289,20 +287,9 @@ const lowerRecordFieldsWriteMany = (
   })
 }
 
-export const compileRecordIntent = (
-  input: DataviewCompileContext
-) => {
-  const { intent, reader } = input
-  switch (intent.type) {
-    case 'record.create':
-      return lowerRecordCreate(intent, input, reader)
-    case 'record.patch':
-      return lowerRecordPatch(intent, input, reader)
-    case 'record.remove':
-      return lowerRecordRemove(intent, input, reader)
-    case 'record.fields.writeMany':
-      return lowerRecordFieldsWriteMany(intent, input, reader)
-    default:
-      throw new Error(`Unsupported record intent: ${intent.type}`)
-  }
+export const dataviewRecordIntentHandlers: DataviewRecordIntentHandlers = {
+  'record.create': lowerRecordCreate,
+  'record.patch': lowerRecordPatch,
+  'record.remove': lowerRecordRemove,
+  'record.fields.writeMany': lowerRecordFieldsWriteMany
 }

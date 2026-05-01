@@ -136,12 +136,3 @@ export type EditorInputPreviewState = {
     preview?: MindmapPreviewState
   }
 }
-
-export type EditorInputPreviewWrite = {
-  set: (
-    next:
-      | EditorInputPreviewState
-      | ((current: EditorInputPreviewState) => EditorInputPreviewState)
-  ) => void
-  reset: () => void
-}

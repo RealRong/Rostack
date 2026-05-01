@@ -187,16 +187,33 @@ const readTouchedValueFields = (
   }
 
   const fields = new Set<FieldId>()
-  Object.values(changes ?? {}).forEach((value) => {
+  for (const value of Object.values(changes ?? {})) {
     if (value === 'all') {
-      return
+      return 'all'
     }
 
-    value.forEach((fieldId) => {
-      fields.add(fieldId as FieldId)
+    value.forEach((fieldPath) => {
+      const fieldId = normalizeRecordValueFieldId(fieldPath)
+      if (fieldId) {
+        fields.add(fieldId)
+      }
     })
-  })
+  }
   return fields
+}
+
+const normalizeRecordValueFieldId = (
+  fieldPath: string
+): FieldId | undefined => {
+  if (!fieldPath) {
+    return undefined
+  }
+
+  return fieldPath.startsWith('values.')
+    ? fieldPath.slice('values.'.length) as FieldId
+    : fieldPath === 'values'
+      ? undefined
+      : fieldPath as FieldId
 }
 
 const unionTouchedFields = (
@@ -326,7 +343,9 @@ export const createDataviewMutationDelta = (
             return changedKey(normalized, 'record.values', recordId)
           }
           const paths = readChangedPaths(normalized, 'record.values', recordId)
-          return paths === 'all' || (paths ?? []).includes(fieldId)
+          return paths === 'all' || (paths ?? []).some((path) => (
+            path === fieldId || normalizeRecordValueFieldId(path) === fieldId
+          ))
         }
       }
     },

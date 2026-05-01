@@ -1,6 +1,7 @@
 import { geometry as geometryApi, type ContainerRect, type ViewportLimits, type WheelInput } from '@whiteboard/core/geometry'
-import { selection as selectionApi, type SelectionInput, type SelectionTarget } from '@whiteboard/core/selection'
+import { selection as selectionApi, type SelectionTarget } from '@whiteboard/core/selection'
 import type { Point, Viewport } from '@whiteboard/core/types'
+import { record as draftRecord } from '@shared/draft'
 import {
   MutationEngine,
   type MutationCompileHandlerTable,
@@ -12,32 +13,14 @@ import type {
   MutationCommitRecord
 } from '@shared/mutation'
 import { equal, store } from '@shared/core'
-import type { InteractionMode } from '@whiteboard/editor/input/core/types'
-import {
-  EMPTY_HOVER_STATE,
-  type HoverState
-} from '@whiteboard/editor/input/hover/store'
 import type {
-  BrushStylePatch,
   DrawState
 } from '@whiteboard/editor/session/draw/state'
-import {
-  patchDrawStyle,
-  setDrawSlot
-} from '@whiteboard/editor/session/draw/state'
-import type { DrawBrush, DrawSlot } from '@whiteboard/editor/session/draw/model'
 import type { Tool } from '@whiteboard/editor/types/tool'
-import type {
-  EditCaret,
-  EditSession
-} from '@whiteboard/editor/session/edit'
+import type { EditSession } from '@whiteboard/editor/session/edit'
 import type {
   EditorInputPreviewState
 } from '@whiteboard/editor/session/preview/types'
-import {
-  EMPTY_PREVIEW_STATE
-} from '@whiteboard/editor/session/preview/state'
-import type { EditorSessionState } from '@whiteboard/editor/session/runtime'
 import type {
   ViewportInputRuntime,
   ViewportRead,
@@ -62,6 +45,7 @@ import {
 } from './document'
 import { editorStateRegistry } from './entities'
 import type {
+  EditorCommand,
   EditorStateMutationTable
 } from './intents'
 
@@ -83,66 +67,108 @@ const compileHandlers: MutationCompileHandlerTable<
 > = {
   'tool.set': (input) => {
     const {
+      document,
       intent,
       program
     } = input
-    program.tool.patch({
-      value: intent.tool
-    })
+    program.tool.patch(draftRecord.diff(
+      {
+        value: document.tool.value
+      },
+      {
+        value: intent.tool
+      }
+    ))
   },
   'draw.set': (input) => {
     const {
+      document,
       intent,
       program
     } = input
-    program.draw.patch({
-      value: intent.state
-    })
+    program.draw.patch(draftRecord.diff(
+      {
+        value: document.draw.value
+      },
+      {
+        value: intent.state
+      }
+    ))
   },
   'selection.set': (input) => {
     const {
+      document,
       intent,
       program
     } = input
-    program.selection.patch({
-      value: intent.selection
-    })
+    program.selection.patch(draftRecord.diff(
+      {
+        value: document.selection.value
+      },
+      {
+        value: intent.selection
+      }
+    ))
   },
   'edit.set': (input) => {
     const {
+      document,
       intent,
       program
     } = input
-    program.edit.patch({
-      value: intent.edit
-    })
+    program.edit.patch(draftRecord.diff(
+      {
+        value: document.edit.value
+      },
+      {
+        value: intent.edit
+      }
+    ))
   },
   'interaction.set': (input) => {
     const {
+      document,
       intent,
       program
     } = input
-    program.interaction.patch({
-      value: intent.interaction
-    })
+    program.interaction.patch(draftRecord.diff(
+      {
+        value: document.interaction.value
+      },
+      {
+        value: intent.interaction
+      }
+    ))
   },
   'preview.set': (input) => {
     const {
+      document,
       intent,
       program
     } = input
-    program.preview.patch({
-      value: intent.preview
-    })
+    program.preview.patch(draftRecord.diff(
+      {
+        value: document.preview.value
+      },
+      {
+        value: intent.preview
+      }
+    ))
   },
   'viewport.set': (input) => {
     const {
+      document,
       intent,
       program
     } = input
-    program.viewport.patch({
-      value: intent.viewport
-    })
+    program.viewport.patch(draftRecord.diff(
+      {
+        value: document.viewport.value
+      },
+      {
+        value: intent.viewport
+      }
+    ))
   }
 }
 
@@ -154,6 +180,16 @@ const assertEditorStateCommit = <T,>(
   }
 
   return result.data
+}
+
+const toCommandList = (
+  command: EditorCommand | readonly EditorCommand[]
+): readonly EditorCommand[] => {
+  if (Array.isArray(command)) {
+    return command
+  }
+
+  return [command as EditorCommand]
 }
 
 const syncStateStore = <T,>(
@@ -270,89 +306,82 @@ const createViewportRuntime = (input: {
     size: () => ({
       width: rect.width,
       height: rect.height
-    }),
-    panScreenBy: (deltaScreen) => {
-      if (!Number.isFinite(deltaScreen.x) || !Number.isFinite(deltaScreen.y)) {
-        return
+    })
+  }
+
+  const resolve = {
+    set: (viewport: Viewport): Viewport => geometryApi.viewport.normalize(
+      viewport,
+      limits
+    ),
+    panBy: (delta: Point): Viewport | null => {
+      if (!Number.isFinite(delta.x) || !Number.isFinite(delta.y)) {
+        return null
       }
 
-      setViewport(
-        geometryApi.viewport.applyScreenPan(
-          readViewport(),
-          deltaScreen
-        )
+      return geometryApi.viewport.pan(
+        readViewport(),
+        delta
+      )
+    },
+    zoomTo: (
+      zoom: number,
+      anchor?: Point
+    ): Viewport | null => {
+      if (!Number.isFinite(zoom) || zoom <= 0) {
+        return null
+      }
+
+      const current = readViewport()
+      const factor = current.zoom === 0
+        ? zoom
+        : zoom / current.zoom
+      if (!Number.isFinite(factor) || factor <= 0) {
+        return null
+      }
+
+      return geometryApi.viewport.zoom(
+        current,
+        factor,
+        anchor
+      )
+    },
+    fit: (
+      bounds: ReturnType<ViewportRead['worldRect']>,
+      padding: number = geometryApi.viewport.fitPadding
+    ): Viewport => geometryApi.viewport.fitToRect({
+      viewport: readViewport(),
+      rect,
+      bounds,
+      limits,
+      padding
+    }),
+    reset: (): Viewport => initialViewport,
+    panScreenBy: (deltaScreen: Point) => {
+      if (!Number.isFinite(deltaScreen.x) || !Number.isFinite(deltaScreen.y)) {
+        return null
+      }
+
+      return geometryApi.viewport.applyScreenPan(
+        readViewport(),
+        deltaScreen
       )
     },
     wheel: (
       wheelInput: WheelInput,
       wheelSensitivity: number
-    ) => {
-      setViewport(
-        geometryApi.viewport.applyWheelInput({
-          viewport: readViewport(),
-          input: wheelInput,
-          rect,
-          limits,
-          wheelSensitivity: Math.max(0, wheelSensitivity)
-        })
-      )
-    }
+    ): Viewport => geometryApi.viewport.applyWheelInput({
+      viewport: readViewport(),
+      input: wheelInput,
+      rect,
+      limits,
+      wheelSensitivity: Math.max(0, wheelSensitivity)
+    })
   }
 
   return {
     read,
-    commands: {
-      set: (viewport) => {
-        setViewport(viewport)
-      },
-      panBy: (delta) => {
-        if (!Number.isFinite(delta.x) || !Number.isFinite(delta.y)) {
-          return
-        }
-
-        setViewport(
-          geometryApi.viewport.pan(
-            readViewport(),
-            delta
-          )
-        )
-      },
-      zoomTo: (zoom, anchor) => {
-        if (!Number.isFinite(zoom) || zoom <= 0) {
-          return
-        }
-
-        const current = readViewport()
-        const factor = current.zoom === 0
-          ? zoom
-          : zoom / current.zoom
-        if (!Number.isFinite(factor) || factor <= 0) {
-          return
-        }
-
-        setViewport(
-          geometryApi.viewport.zoom(
-            current,
-            factor,
-            anchor
-          )
-        )
-      },
-      fit: (bounds, padding = geometryApi.viewport.fitPadding) => {
-        setViewport(
-          geometryApi.viewport.fitToRect({
-            viewport: readViewport(),
-            rect,
-            bounds,
-            limits,
-            padding
-          })
-        )
-      },
-      reset: () => {
-        setViewport(initialViewport)
-      }
-    },
+    resolve,
     input: inputRuntime,
     setRect: (nextRect: ContainerRect) => {
       if (equal.sameBox(rect, nextRect)) {
@@ -392,52 +421,15 @@ export interface EditorStateRuntime {
     EditorStateProgram
   >
   stores: ReturnType<typeof createStateStores>
-  state: Pick<EditorSessionState, 'tool' | 'draw' | 'selection' | 'edit'>
-  mutate: {
-    tool: {
-      set: (tool: Tool) => void
-    }
-    draw: {
-      set: (state: DrawState) => void
-      slot: (brush: DrawBrush, slot: DrawSlot) => void
-      patch: (brush: DrawBrush, slot: DrawSlot, patch: BrushStylePatch) => void
-    }
-    selection: {
-      replace: (input: SelectionInput) => boolean
-      add: (input: SelectionInput) => boolean
-      remove: (input: SelectionInput) => boolean
-      toggle: (input: SelectionInput) => boolean
-      clear: () => boolean
-    }
-    edit: {
-      set: (session: NonNullable<EditSession>) => void
-      input: (text: string) => void
-      caret: (caret: EditCaret) => void
-      composing: (composing: boolean) => void
-      clear: () => void
-    }
-    interaction: {
-      setActive: (meta: {
-        mode: Exclude<InteractionMode, 'idle'>
-        chrome?: boolean
-      } | null) => void
-      setSpace: (value: boolean) => void
-      setHover: (
-        next:
-          | HoverState
-          | ((current: HoverState) => HoverState)
-      ) => void
-      reset: () => void
-    }
-    preview: {
-      set: (
-        next:
-          | EditorInputPreviewState
-          | ((current: EditorInputPreviewState) => EditorInputPreviewState)
-      ) => void
-      reset: () => void
-    }
+  state: {
+    tool: ReturnType<typeof createStateStores>['tool']['store']
+    draw: ReturnType<typeof createStateStores>['draw']['store']
+    selection: ReturnType<typeof createStateStores>['selection']['store']
+    edit: ReturnType<typeof createStateStores>['edit']['store']
   }
+  dispatch: (
+    command: EditorCommand | readonly EditorCommand[]
+  ) => void
   commits: {
     subscribe: (
       listener: (commit: MutationCommitRecord<EditorStateDocument, EditorStateOperation>) => void
@@ -484,63 +476,6 @@ export const createEditorStateRuntime = (input: {
     syncStateStore(stores.viewport, () => current.document.viewport.value)
   })
 
-  const setTool = (
-    nextTool: Tool
-  ) => {
-    const current = stores.tool.read()
-    const normalized = normalizeTool(nextTool)
-    if (isToolEqual(current, normalized)) {
-      return
-    }
-
-    assertEditorStateCommit(engine.execute({
-      type: 'tool.set',
-      tool: normalized
-    }))
-  }
-
-  const setDraw = (
-    nextState: DrawState
-  ) => {
-    if (isDrawEqual(stores.draw.read(), nextState)) {
-      return
-    }
-
-    assertEditorStateCommit(engine.execute({
-      type: 'draw.set',
-      state: nextState
-    }))
-  }
-
-  const setSelection = (
-    nextSelection: SelectionTarget
-  ): boolean => {
-    const normalized = selectionApi.target.normalize(nextSelection)
-    if (isSelectionEqual(stores.selection.read(), normalized)) {
-      return false
-    }
-
-    assertEditorStateCommit(engine.execute({
-      type: 'selection.set',
-      selection: normalized
-    }))
-    return true
-  }
-
-  const setEdit = (
-    nextEdit: EditSession
-  ) => {
-    const normalized = normalizeEditSession(nextEdit)
-    if (isEditSessionEqual(stores.edit.read(), normalized)) {
-      return
-    }
-
-    assertEditorStateCommit(engine.execute({
-      type: 'edit.set',
-      edit: normalized
-    }))
-  }
-
   const setViewport = (
     nextViewport: Viewport
   ): boolean => {
@@ -549,38 +484,19 @@ export const createEditorStateRuntime = (input: {
       return false
     }
 
-    assertEditorStateCommit(engine.execute({
+    dispatch({
       type: 'viewport.set',
       viewport: normalized
-    }))
+    })
     return true
   }
 
-  const setInteraction = (
-    nextInteraction: EditorInteractionStateValue
+  const dispatch = (
+    command: EditorCommand | readonly EditorCommand[]
   ) => {
-    const normalized = normalizeInteractionStateValue(nextInteraction)
-    if (isInteractionStateEqual(stores.interaction.read(), normalized)) {
-      return
-    }
-
-    assertEditorStateCommit(engine.execute({
-      type: 'interaction.set',
-      interaction: normalized
-    }))
-  }
-
-  const setPreview = (
-    nextPreview: EditorInputPreviewState
-  ) => {
-    if (isPreviewEqual(stores.preview.read(), nextPreview)) {
-      return
-    }
-
-    assertEditorStateCommit(engine.execute({
-      type: 'preview.set',
-      preview: nextPreview
-    }))
+    toCommandList(command).forEach((entry) => {
+      assertEditorStateCommit(engine.execute(entry))
+    })
   }
 
   const viewport = createViewportRuntime({
@@ -598,169 +514,7 @@ export const createEditorStateRuntime = (input: {
       selection: stores.selection.store,
       edit: stores.edit.store
     },
-    mutate: {
-      tool: {
-        set: setTool
-      },
-      draw: {
-        set: setDraw,
-        slot: (brush: DrawBrush, slot: DrawSlot) => {
-          const nextState = setDrawSlot(
-            stores.draw.read(),
-            brush,
-            slot
-          )
-          if (isDrawEqual(stores.draw.read(), nextState)) {
-            return
-          }
-
-          setDraw(nextState)
-        },
-        patch: (brush: DrawBrush, slot: DrawSlot, patch: BrushStylePatch) => {
-          const nextState = patchDrawStyle(
-            stores.draw.read(),
-            brush,
-            slot,
-            patch
-          )
-          if (isDrawEqual(stores.draw.read(), nextState)) {
-            return
-          }
-
-          setDraw(nextState)
-        }
-      },
-      selection: {
-        replace: (nextSelection: SelectionInput) => setSelection(
-          selectionApi.target.normalize(nextSelection)
-        ),
-        add: (nextSelection: SelectionInput) => setSelection(
-          selectionApi.target.apply(
-            stores.selection.read(),
-            nextSelection,
-            'add'
-          )
-        ),
-        remove: (nextSelection: SelectionInput) => setSelection(
-          selectionApi.target.apply(
-            stores.selection.read(),
-            nextSelection,
-            'subtract'
-          )
-        ),
-        toggle: (nextSelection: SelectionInput) => setSelection(
-          selectionApi.target.apply(
-            stores.selection.read(),
-            nextSelection,
-            'toggle'
-          )
-        ),
-        clear: () => setSelection(selectionApi.target.empty)
-      },
-      edit: {
-        set: (session) => {
-          setEdit(session)
-        },
-        input: (text) => {
-          const current = stores.edit.read()
-          if (!current || current.text === text) {
-            return
-          }
-
-          setEdit({
-            ...current,
-            text
-          })
-        },
-        caret: (caret: EditCaret) => {
-          const current = stores.edit.read()
-          if (!current) {
-            return
-          }
-
-          const next = normalizeEditSession({
-            ...current,
-            caret
-          })
-          if (isEditSessionEqual(current, next)) {
-            return
-          }
-
-          setEdit(next)
-        },
-        composing: (composing) => {
-          const current = stores.edit.read()
-          if (!current || current.composing === composing) {
-            return
-          }
-
-          setEdit({
-            ...current,
-            composing
-          })
-        },
-        clear: () => {
-          if (stores.edit.read() === null) {
-            return
-          }
-
-          setEdit(null)
-        }
-      },
-      interaction: {
-        setActive: (meta) => {
-          const current = stores.interaction.read()
-          setInteraction({
-            ...current,
-            mode: meta?.mode ?? 'idle',
-            chrome: meta === null
-              ? true
-              : Boolean(meta.chrome)
-          })
-        },
-        setSpace: (value) => {
-          const current = stores.interaction.read()
-          if (current.space === value) {
-            return
-          }
-
-          setInteraction({
-            ...current,
-            space: value
-          })
-        },
-        setHover: (next) => {
-          const current = stores.interaction.read()
-          setInteraction({
-            ...current,
-            hover: typeof next === 'function'
-              ? next(current.hover)
-              : next
-          })
-        },
-        reset: () => {
-          const current = stores.interaction.read()
-          setInteraction({
-            ...current,
-            mode: 'idle',
-            chrome: true,
-            space: false,
-            hover: EMPTY_HOVER_STATE
-          })
-        }
-      },
-      preview: {
-        set: (next) => {
-          const current = stores.preview.read()
-          setPreview(typeof next === 'function'
-            ? next(current)
-            : next)
-        },
-        reset: () => {
-          setPreview(EMPTY_PREVIEW_STATE)
-        }
-      }
-    },
+    dispatch,
     commits: {
       subscribe: (listener) => engine.subscribe(listener)
     },

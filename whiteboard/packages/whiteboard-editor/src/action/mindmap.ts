@@ -63,7 +63,7 @@ const readBranchScopeIds = (input: {
 export const createMindmapActionApi = (input: {
   graph: EditorScene
   document: Pick<DocumentFrame, 'node'>
-  session: Pick<EditorSession, 'preview'>
+  session: Pick<EditorSession, 'preview' | 'dispatch'>
   tasks: EditorTaskRuntime
   write: Pick<EditorWrite, 'mindmap'>
   edit: Pick<EditController, 'focusMindmapNode' | 'focusMindmapRoot'>

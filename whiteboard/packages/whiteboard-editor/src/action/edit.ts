@@ -9,10 +9,8 @@ import {
 } from '@whiteboard/editor/edit/runtime'
 import type { DocumentFrame } from '@whiteboard/editor-scene'
 import type { EditField } from '@whiteboard/editor/session/edit'
-import type {
-  EditorSession,
-  EditorSessionSelectionCommands
-} from '@whiteboard/editor/session/runtime'
+import type { EditorCommand } from '@whiteboard/editor/state-engine/intents'
+import type { EditorSession } from '@whiteboard/editor/session/runtime'
 import type { NodeTypeSupport } from '@whiteboard/editor/types/node'
 import type { EditorWrite } from '@whiteboard/editor/write'
 
@@ -65,15 +63,47 @@ export interface EditController {
 }
 
 export const createEditController = (input: {
-  session: Pick<EditorSession, 'state' | 'mutate'> & {
-    commands: {
-      selection: EditorSessionSelectionCommands
-    }
-  }
+  session: Pick<EditorSession, 'state' | 'dispatch'>
   document: Pick<DocumentFrame, 'node' | 'edge'>
   nodeType: Pick<NodeTypeSupport, 'edit'>
   write: Pick<EditorWrite, 'node' | 'edge'>
 }): EditController => {
+  const clearEdit = () => {
+    input.session.dispatch({
+      type: 'edit.set',
+      edit: null
+    } satisfies EditorCommand)
+  }
+
+  const replaceSelection = (
+    selection: {
+      nodeIds?: readonly string[]
+      edgeIds?: readonly string[]
+    }
+  ) => {
+    input.session.dispatch({
+      type: 'selection.set',
+      selection: {
+        nodeIds: selection.nodeIds ? [...selection.nodeIds] : [],
+        edgeIds: selection.edgeIds ? [...selection.edgeIds] : []
+      }
+    } satisfies EditorCommand)
+  }
+
+  const updateEdit = (
+    patch: (current: NonNullable<ReturnType<typeof input.session.state.edit.get>>) => NonNullable<ReturnType<typeof input.session.state.edit.get>>
+  ) => {
+    const current = input.session.state.edit.get()
+    if (!current) {
+      return
+    }
+
+    input.session.dispatch({
+      type: 'edit.set',
+      edit: patch(current)
+    } satisfies EditorCommand)
+  }
+
   const startNode = ({
     nodeId,
     field,
@@ -117,7 +147,7 @@ export const createEditController = (input: {
       && currentEdit.edgeId === edgeId
       && currentEdit.labelId === labelId
     ) {
-      input.session.mutate.edit.clear()
+      clearEdit()
     }
   }
 
@@ -133,7 +163,7 @@ export const createEditController = (input: {
       return
     }
 
-    input.session.commands.selection.replace({
+    replaceSelection({
       nodeIds: [nodeId]
     })
 
@@ -156,7 +186,7 @@ export const createEditController = (input: {
       return
     }
 
-    input.session.commands.selection.replace({
+    replaceSelection({
       nodeIds: [nodeId]
     })
 
@@ -174,7 +204,7 @@ export const createEditController = (input: {
       return
     }
 
-    input.session.mutate.edit.clear()
+    clearEdit()
 
     if (currentEdit.kind !== 'edge-label') {
       return
@@ -199,7 +229,7 @@ export const createEditController = (input: {
     if (currentEdit.kind === 'node') {
       const committed = input.document.node(currentEdit.nodeId)
       if (!committed) {
-        input.session.mutate.edit.clear()
+        clearEdit()
         return
       }
 
@@ -208,11 +238,11 @@ export const createEditController = (input: {
         currentEdit.field
       )
       if (!capability) {
-        input.session.mutate.edit.clear()
+        clearEdit()
         return
       }
 
-      input.session.mutate.edit.clear()
+      clearEdit()
       input.write.node.text.commit({
         nodeId: currentEdit.nodeId,
         field: currentEdit.field,
@@ -225,7 +255,7 @@ export const createEditController = (input: {
       return
     }
 
-    input.session.mutate.edit.clear()
+    clearEdit()
 
     if (!currentEdit.text.trim()) {
       input.write.edge.label.delete(currentEdit.edgeId, currentEdit.labelId)
@@ -259,9 +289,18 @@ export const createEditController = (input: {
           caret: options?.caret
         })
       },
-      input: (text) => input.session.mutate.edit.input(text),
-      composing: (composing) => input.session.mutate.edit.composing(composing),
-      caret: (caret) => input.session.mutate.edit.caret(caret),
+      input: (text) => updateEdit((current) => ({
+        ...current,
+        text
+      })),
+      composing: (composing) => updateEdit((current) => ({
+        ...current,
+        composing
+      })),
+      caret: (caret) => updateEdit((current) => ({
+        ...current,
+        caret
+      })),
       cancel,
       commit
     },

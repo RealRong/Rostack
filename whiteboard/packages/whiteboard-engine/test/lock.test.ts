@@ -236,7 +236,8 @@ test('engine allows remote unlock then delete in the same operation batch', () =
     steps: [{
       type: 'entity.patch',
       entity: {
-        table: 'node',
+        kind: 'entity',
+        type: 'node',
         id: 'node_locked'
       },
       writes: {
@@ -245,7 +246,8 @@ test('engine allows remote unlock then delete in the same operation batch', () =
     }, {
       type: 'entity.delete',
       entity: {
-        table: 'node',
+        kind: 'entity',
+        type: 'node',
         id: 'node_locked'
       }
     }]
@@ -296,7 +298,8 @@ test('engine allows remote unlock then edge update in the same batch', () => {
     steps: [{
       type: 'entity.patch',
       entity: {
-        table: 'edge',
+        kind: 'entity',
+        type: 'edge',
         id: 'edge_locked'
       },
       writes: {
@@ -305,7 +308,8 @@ test('engine allows remote unlock then edge update in the same batch', () => {
     }, {
       type: 'entity.patch',
       entity: {
-        table: 'edge',
+        kind: 'entity',
+        type: 'edge',
         id: 'edge_locked'
       },
       writes: {

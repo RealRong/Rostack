@@ -636,10 +636,19 @@ const applySelectionTap = (
 ) => {
   switch (tap.kind) {
     case 'clear':
-      ctx.session.commands.selection.clear()
+      ctx.session.dispatch({
+        type: 'selection.set',
+        selection: {
+          nodeIds: [],
+          edgeIds: []
+        }
+      })
       return
     case 'select':
-      ctx.session.commands.selection.replace(tap.target)
+      ctx.session.dispatch({
+        type: 'selection.set',
+        selection: tap.target
+      })
       return
     case 'edit-node': {
       const field = resolveSelectionEditField(
@@ -664,7 +673,10 @@ const applySelectionTap = (
     }
     case 'edit-field':
       if (!selectionApi.target.equal(ctx.sceneDerived.selection.summary.get().target, tap.selection)) {
-        ctx.session.commands.selection.replace(tap.selection)
+        ctx.session.dispatch({
+          type: 'selection.set',
+          selection: tap.selection
+        })
       }
       startNodeEdit({
         session: ctx.session,

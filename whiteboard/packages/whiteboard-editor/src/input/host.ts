@@ -3,11 +3,13 @@ import type {
   EditorState
 } from '@whiteboard/editor/types/editor'
 import type { EditorScene } from '@whiteboard/editor-scene'
+import type { EditorCommand } from '@whiteboard/editor/state-engine/intents'
 import type { EditorSession } from '@whiteboard/editor/session/runtime'
 import type { ContextMenuIntent } from '@whiteboard/editor/types/input'
 import type { InteractionRuntime } from '@whiteboard/editor/input/core/types'
 import type { EdgeHoverService } from '@whiteboard/editor/input/hover/edge'
 import {
+  EMPTY_HOVER_STATE,
   isHoverTargetEqual,
   toHoverTargetFromPick
 } from '@whiteboard/editor/input/hover/store'
@@ -38,14 +40,59 @@ export const createEditorInputHost = ({
   interaction: InteractionRuntime
   edgeHover: EdgeHoverService
   projection: EditorScene
-  session: Pick<EditorSession, 'state' | 'viewport' | 'interaction' | 'commands'>
+  session: Pick<EditorSession, 'state' | 'viewport' | 'interaction' | 'transient' | 'dispatch'>
 }): EditorInputHost => {
+  const dispatchSelection = (
+    selection: {
+      nodeIds?: readonly string[]
+      edgeIds?: readonly string[]
+    }
+  ) => {
+    session.dispatch({
+      type: 'selection.set',
+      selection: {
+        nodeIds: selection.nodeIds ? [...selection.nodeIds] : [],
+        edgeIds: selection.edgeIds ? [...selection.edgeIds] : []
+      }
+    } satisfies EditorCommand)
+  }
+
+  const updateInteraction = (
+    update: (
+      current: ReturnType<EditorSession['interaction']['read']['hover']['get']>
+    ) => ReturnType<EditorSession['interaction']['read']['hover']['get']>
+  ) => {
+    const currentInteraction = {
+      mode: session.interaction.read.mode.get(),
+      chrome: session.interaction.read.chrome.get(),
+      space: session.interaction.read.space.get(),
+      hover: session.interaction.read.hover.get()
+    }
+
+    session.dispatch({
+      type: 'interaction.set',
+      interaction: {
+        ...currentInteraction,
+        hover: update(currentInteraction.hover)
+      }
+    } satisfies EditorCommand)
+  }
+
+  const dispatchViewport = (
+    viewport: ReturnType<EditorSession['viewport']['read']['get']>
+  ) => {
+    session.dispatch({
+      type: 'viewport.set',
+      viewport
+    } satisfies EditorCommand)
+  }
+
   const writePointer = (sample: {
     client: { x: number, y: number }
     screen: { x: number, y: number }
     world: { x: number, y: number }
   }) => {
-    session.interaction.write.setPointer({
+    session.transient.setPointer({
       client: sample.client,
       screen: sample.screen,
       world: sample.world
@@ -53,12 +100,24 @@ export const createEditorInputHost = ({
   }
 
   const clearPointer = () => {
-    session.interaction.write.setPointer(null)
+    session.transient.setPointer(null)
   }
 
   const clearTransientState = () => {
     clearPointer()
-    session.interaction.write.clearHover()
+    const currentInteraction = {
+      mode: session.interaction.read.mode.get(),
+      chrome: session.interaction.read.chrome.get(),
+      space: session.interaction.read.space.get(),
+      hover: session.interaction.read.hover.get()
+    }
+    session.dispatch({
+      type: 'interaction.set',
+      interaction: {
+        ...currentInteraction,
+        hover: EMPTY_HOVER_STATE
+      }
+    } satisfies EditorCommand)
     edgeHover.clear()
   }
 
@@ -91,7 +150,7 @@ export const createEditorInputHost = ({
             return readSelectionIntent(session.state.selection, input.screen)
           }
 
-          session.commands.selection.replace({
+          dispatchSelection({
             nodeIds: [input.pick.id]
           })
           return readSelectionIntent(session.state.selection, input.screen)
@@ -106,11 +165,11 @@ export const createEditorInputHost = ({
             }
           }
 
-          session.commands.selection.replace(target)
+          dispatchSelection(target)
           return readSelectionIntent(session.state.selection, input.screen)
         }
         case 'edge':
-          session.commands.selection.replace({
+          dispatchSelection({
             edgeIds: [input.pick.id]
           })
           return {
@@ -132,7 +191,7 @@ export const createEditorInputHost = ({
 
       const handled = interaction.handlePointerDown(input)
       if (handled) {
-        session.interaction.write.clearHover()
+        updateInteraction(() => ({}))
         edgeHover.clear()
       }
 
@@ -145,13 +204,13 @@ export const createEditorInputHost = ({
       writePointer(input)
       const handled = interaction.handlePointerMove(input)
       if (handled) {
-        session.interaction.write.clearHover()
+        updateInteraction(() => ({}))
         edgeHover.clear()
         return true
       }
 
       const target = toHoverTargetFromPick(input.pick)
-      session.interaction.write.setHover((current) => (
+      updateInteraction((current) => (
         isHoverTargetEqual(current.target, target)
           ? current
           : {
@@ -186,7 +245,7 @@ export const createEditorInputHost = ({
         return true
       }
 
-      session.viewport.input.wheel(
+      dispatchViewport(session.viewport.resolve.wheel(
         {
           deltaX: input.deltaX,
           deltaY: input.deltaY,
@@ -196,7 +255,7 @@ export const createEditorInputHost = ({
           clientY: input.client.y
         },
         1
-      )
+      ))
       return true
     },
     keyDown: (input) => interaction.handleKeyDown(input),

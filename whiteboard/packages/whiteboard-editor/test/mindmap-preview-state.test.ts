@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { createEditorSession } from '../src/session/runtime'
 import { createGesture } from '../src/input/core/gesture'
 import { DEFAULT_DRAW_STATE } from '../src/session/draw/state'
+import { EMPTY_HOVER_STATE } from '../src/input/hover/store'
 
 describe('mindmap preview state', () => {
   it('projects interaction mindmap drag gesture into preview state', () => {
@@ -16,11 +17,16 @@ describe('mindmap preview state', () => {
       }
     })
 
-    session.interaction.write.setActive({
-      mode: 'mindmap-drag',
-      chrome: false
+    session.dispatch({
+      type: 'interaction.set',
+      interaction: {
+        mode: 'mindmap-drag',
+        chrome: false,
+        space: false,
+        hover: EMPTY_HOVER_STATE
+      }
     })
-    session.interaction.write.setGesture(createGesture('mindmap-drag', {
+    session.transient.setGesture(createGesture('mindmap-drag', {
       mindmap: {
         rootMove: {
           treeId: 'mind-1',
@@ -32,7 +38,7 @@ describe('mindmap preview state', () => {
       }
     }))
 
-    expect(session.preview.state.get().mindmap.preview).toEqual({
+    expect(session.preview.get().mindmap.preview).toEqual({
       rootMove: {
         treeId: 'mind-1',
         delta: {

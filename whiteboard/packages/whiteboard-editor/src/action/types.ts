@@ -41,10 +41,6 @@ import type {
   EditField
 } from '@whiteboard/editor/session/edit'
 import type {
-  EditorSessionSelectionCommands
-} from '@whiteboard/editor/session/runtime'
-import type { ViewportCommands } from '@whiteboard/editor/session/viewport'
-import type {
   InsertTemplate,
   Tool
 } from '@whiteboard/editor/types/tool'
@@ -84,8 +80,6 @@ export type MindmapInsertRelation =
   | 'sibling'
   | 'parent'
 
-export type SelectionCommands = EditorSessionSelectionCommands
-
 export type AppActions = {
   replace: (document: Document) => IntentResult
 }
@@ -105,7 +99,12 @@ export type DrawActions = {
   patch: (patch: BrushStylePatch) => void
 }
 
-export type ViewportActions = ViewportCommands & {
+export type ViewportActions = {
+  set: (viewport: import('@whiteboard/core/types').Viewport) => void
+  panBy: (delta: Point) => void
+  zoomTo: (zoom: number, anchor?: Point) => void
+  fit: (bounds: import('@whiteboard/core/types').Rect, padding?: number) => void
+  reset: () => void
   setRect: (rect: ContainerRect) => void
   setLimits: (limits: ViewportLimits) => void
 }

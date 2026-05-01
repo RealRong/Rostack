@@ -130,6 +130,7 @@ export const createEditor = (input: {
     input: host,
     write: actions,
     events: events.events,
+    dispatch: session.dispatch,
     dispose: () => {
       events.dispose()
       tasks.dispose()

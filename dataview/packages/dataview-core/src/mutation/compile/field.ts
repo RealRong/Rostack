@@ -14,9 +14,6 @@ import {
 } from '@dataview/core/view'
 import { validateField } from '@dataview/core/field/validate'
 import type {
-  DataviewCompileReader
-} from './reader'
-import type {
   DataviewCompileContext
 } from './contracts'
 import {
@@ -24,6 +21,12 @@ import {
 } from './viewDiff'
 
 const DEFAULT_OPTION_NAME = 'Option'
+type FieldIntentType = Extract<Intent['type'], `field.${string}`>
+type DataviewFieldIntentHandlers = {
+  [K in FieldIntentType]: (
+    input: DataviewCompileContext<Extract<Intent, { type: K }>>
+  ) => void
+}
 
 const toBeforeAnchor = (
   before?: string
@@ -48,11 +51,10 @@ const createOptionName = (
 
 const requireCustomField = (
   input: DataviewCompileContext,
-  reader: DataviewCompileReader,
   fieldId: string,
   path = 'fieldId'
 ): CustomField | undefined => {
-  const field = reader.fields.require(fieldId, path)
+  const field = input.reader.fields.require(fieldId, path)
   if (!fieldApi.kind.isCustom(field)) {
     input.issue({
       source: input.source,
@@ -69,10 +71,9 @@ const requireCustomField = (
 
 const requireOptionField = (
   input: DataviewCompileContext,
-  reader: DataviewCompileReader,
   fieldId: string
 ) => {
-  const field = requireCustomField(input, reader, fieldId)
+  const field = requireCustomField(input, fieldId)
   if (!field) {
     return undefined
   }
@@ -109,10 +110,10 @@ const applyFieldPatch = (
 }
 
 const lowerFieldCreate = (
-  intent: Extract<Intent, { type: 'field.create' }>,
-  input: DataviewCompileContext,
-  reader: DataviewCompileReader
+  input: DataviewCompileContext<Extract<Intent, { type: 'field.create' }>>
 ) => {
+  const { intent } = input
+  const { reader } = input
   const document = input.document
   const explicitFieldId = string.trimToUndefined(intent.input.id)
 
@@ -151,12 +152,11 @@ const lowerFieldCreate = (
 }
 
 const lowerFieldPatch = (
-  intent: Extract<Intent, { type: 'field.patch' }>,
-  input: DataviewCompileContext,
-  reader: DataviewCompileReader
+  input: DataviewCompileContext<Extract<Intent, { type: 'field.patch' }>>
 ) => {
+  const { intent } = input
   const document = input.document
-  const field = requireCustomField(input, reader, intent.id, 'id')
+  const field = requireCustomField(input, intent.id, 'id')
   if (!field) {
     return
   }
@@ -178,12 +178,11 @@ const lowerFieldPatch = (
 }
 
 const lowerFieldReplace = (
-  intent: Extract<Intent, { type: 'field.replace' }>,
-  input: DataviewCompileContext,
-  reader: DataviewCompileReader
+  input: DataviewCompileContext<Extract<Intent, { type: 'field.replace' }>>
 ) => {
+  const { intent } = input
   const document = input.document
-  if (!requireCustomField(input, reader, intent.id, 'id')) {
+  if (!requireCustomField(input, intent.id, 'id')) {
     return
   }
 
@@ -193,7 +192,7 @@ const lowerFieldReplace = (
   } satisfies CustomField
 
   input.issue(...validateField(document, input.source, field, 'field'))
-  const current = reader.fields.get(intent.id)
+  const current = input.reader.fields.get(intent.id)
   if (!current || !fieldApi.kind.isCustom(current)) {
     return
   }
@@ -202,13 +201,13 @@ const lowerFieldReplace = (
 }
 
 const lowerFieldSetKind = (
-  intent: Extract<Intent, { type: 'field.setKind' }>,
-  input: DataviewCompileContext,
-  reader: DataviewCompileReader
+  input: DataviewCompileContext<Extract<Intent, { type: 'field.setKind' }>>
 ) => {
+  const { intent } = input
+  const { reader } = input
   const document = input.document
   const views = reader.views.list()
-  const field = requireCustomField(input, reader, intent.id, 'id')
+  const field = requireCustomField(input, intent.id, 'id')
   if (!field) {
     return
   }
@@ -227,14 +226,14 @@ const lowerFieldSetKind = (
 }
 
 const lowerFieldDuplicate = (
-  intent: Extract<Intent, { type: 'field.duplicate' }>,
-  input: DataviewCompileContext,
-  reader: DataviewCompileReader
+  input: DataviewCompileContext<Extract<Intent, { type: 'field.duplicate' }>>
 ) => {
+  const { intent } = input
+  const { reader } = input
   const document = input.document
   const views = reader.views.list()
   const records = reader.records.list()
-  const sourceField = requireCustomField(input, reader, intent.id, 'id')
+  const sourceField = requireCustomField(input, intent.id, 'id')
   if (!sourceField) {
     return
   }
@@ -292,11 +291,10 @@ const lowerFieldDuplicate = (
 }
 
 const lowerFieldOptionCreate = (
-  intent: Extract<Intent, { type: 'field.option.create' }>,
-  input: DataviewCompileContext,
-  reader: DataviewCompileReader
+  input: DataviewCompileContext<Extract<Intent, { type: 'field.option.create' }>>
 ) => {
-  const context = requireOptionField(input, reader, intent.field)
+  const { intent } = input
+  const context = requireOptionField(input, intent.field)
   if (!context) {
     return
   }
@@ -326,11 +324,10 @@ const lowerFieldOptionCreate = (
 }
 
 const lowerFieldOptionMove = (
-  intent: Extract<Intent, { type: 'field.option.move' }>,
-  input: DataviewCompileContext,
-  reader: DataviewCompileReader
+  input: DataviewCompileContext<Extract<Intent, { type: 'field.option.move' }>>
 ) => {
-  const context = requireOptionField(input, reader, intent.field)
+  const { intent } = input
+  const context = requireOptionField(input, intent.field)
   if (!context) {
     return
   }
@@ -378,11 +375,10 @@ const lowerFieldOptionMove = (
 }
 
 const lowerFieldOptionPatch = (
-  intent: Extract<Intent, { type: 'field.option.patch' }>,
-  input: DataviewCompileContext,
-  reader: DataviewCompileReader
+  input: DataviewCompileContext<Extract<Intent, { type: 'field.option.patch' }>>
 ) => {
-  const context = requireOptionField(input, reader, intent.field)
+  const { intent } = input
+  const context = requireOptionField(input, intent.field)
   if (!context) {
     return
   }
@@ -424,11 +420,11 @@ const lowerFieldOptionPatch = (
 }
 
 const lowerFieldOptionRemove = (
-  intent: Extract<Intent, { type: 'field.option.remove' }>,
-  input: DataviewCompileContext,
-  reader: DataviewCompileReader
+  input: DataviewCompileContext<Extract<Intent, { type: 'field.option.remove' }>>
 ) => {
-  const context = requireOptionField(input, reader, intent.field)
+  const { intent } = input
+  const { reader } = input
+  const context = requireOptionField(input, intent.field)
   if (!context) {
     return
   }
@@ -490,12 +486,12 @@ const lowerFieldOptionRemove = (
 }
 
 const lowerFieldRemove = (
-  intent: Extract<Intent, { type: 'field.remove' }>,
-  input: DataviewCompileContext,
-  reader: DataviewCompileReader
+  input: DataviewCompileContext<Extract<Intent, { type: 'field.remove' }>>
 ) => {
+  const { intent } = input
+  const { reader } = input
   const views = reader.views.list()
-  const field = requireCustomField(input, reader, intent.id, 'id')
+  const field = requireCustomField(input, intent.id, 'id')
   if (!field) {
     return
   }
@@ -521,32 +517,15 @@ const lowerFieldRemove = (
   input.program.field.delete(intent.id)
 }
 
-export const compileFieldIntent = (
-  input: DataviewCompileContext
-) => {
-  const { intent, reader } = input
-  switch (intent.type) {
-    case 'field.create':
-      return lowerFieldCreate(intent, input, reader)
-    case 'field.patch':
-      return lowerFieldPatch(intent, input, reader)
-    case 'field.replace':
-      return lowerFieldReplace(intent, input, reader)
-    case 'field.setKind':
-      return lowerFieldSetKind(intent, input, reader)
-    case 'field.duplicate':
-      return lowerFieldDuplicate(intent, input, reader)
-    case 'field.option.create':
-      return lowerFieldOptionCreate(intent, input, reader)
-    case 'field.option.move':
-      return lowerFieldOptionMove(intent, input, reader)
-    case 'field.option.patch':
-      return lowerFieldOptionPatch(intent, input, reader)
-    case 'field.option.remove':
-      return lowerFieldOptionRemove(intent, input, reader)
-    case 'field.remove':
-      return lowerFieldRemove(intent, input, reader)
-    default:
-      throw new Error(`Unsupported field intent: ${intent.type}`)
-  }
+export const dataviewFieldIntentHandlers: DataviewFieldIntentHandlers = {
+  'field.create': lowerFieldCreate,
+  'field.patch': lowerFieldPatch,
+  'field.replace': lowerFieldReplace,
+  'field.setKind': lowerFieldSetKind,
+  'field.duplicate': lowerFieldDuplicate,
+  'field.option.create': lowerFieldOptionCreate,
+  'field.option.move': lowerFieldOptionMove,
+  'field.option.patch': lowerFieldOptionPatch,
+  'field.option.remove': lowerFieldOptionRemove,
+  'field.remove': lowerFieldRemove
 }

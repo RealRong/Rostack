@@ -18,7 +18,6 @@ import { resolveLockDecision } from '@whiteboard/core/mutation/lock'
 import type { CanvasItemRef } from '@whiteboard/core/types'
 import { emitEdgeMovePatchOps } from './edge'
 import {
-  canvasRefKey,
   toCanvasOrderAnchor
 } from '@whiteboard/core/mutation/targets'
 
@@ -32,6 +31,11 @@ const failLockedModification = (
       ? 'Locked edges cannot be modified.'
       : 'Locked node relations cannot be modified.'
 )
+
+const sameCanvasRef = (
+  left: CanvasItemRef,
+  right: CanvasItemRef
+) => left.kind === right.kind && left.id === right.id
 
 export const compileCanvasDelete = (
   refs: readonly CanvasItemRef[],
@@ -298,7 +302,7 @@ export const canvasIntentHandlers: CanvasIntentHandlers = {
   'canvas.order.move': (ctx) => {
     const currentOrder = ctx.reader.canvas.order()
     const existingRefs = ctx.intent.refs.filter((ref) => (
-      currentOrder.some((entry) => canvasRefKey(entry) === canvasRefKey(ref))
+      currentOrder.some((entry) => sameCanvasRef(entry, ref))
     ))
     if (existingRefs.length === 0) {
       return

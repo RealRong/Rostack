@@ -4,6 +4,7 @@ import type {
 } from '@whiteboard/editor/input/core/types'
 import { FINISH } from '@whiteboard/editor/input/session/result'
 import type { EditorHostDeps } from '@whiteboard/editor/input/runtime'
+import type { EditorCommand } from '@whiteboard/editor/state-engine/intents'
 
 type PanState = {
   lastClient: {
@@ -46,10 +47,18 @@ const updatePan = (
     x: input.client.x,
     y: input.client.y
   }
-  ctx.session.viewport.input.panScreenBy({
+  const nextViewport = ctx.session.viewport.resolve.panScreenBy({
     x: -deltaX,
     y: -deltaY
   })
+  if (!nextViewport) {
+    return
+  }
+
+  ctx.session.dispatch({
+    type: 'viewport.set',
+    viewport: nextViewport
+  } satisfies EditorCommand)
 }
 
 export const createViewportBinding = (

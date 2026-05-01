@@ -1,6 +1,7 @@
 import type { Engine } from '@whiteboard/engine'
 import type { WhiteboardLayoutService } from '@whiteboard/core/layout'
 import type { DocumentFrame } from '@whiteboard/editor-scene'
+import type { EditorCommand } from '@whiteboard/editor/state-engine/intents'
 import { createInteractionRuntime } from '@whiteboard/editor/input/core/runtime'
 import { createSnapRuntime, type SnapRuntime } from '@whiteboard/editor/input/core/snap'
 import { createDrawBinding } from '@whiteboard/editor/input/features/draw'
@@ -105,8 +106,26 @@ export const createEditorHost = (input: {
     snap
   }
 
+  const dispatchViewport = (
+    viewport: ReturnType<EditorSession['viewport']['read']['get']>
+  ) => {
+    input.session.dispatch({
+      type: 'viewport.set',
+      viewport
+    } satisfies EditorCommand)
+  }
+
   const interaction = createInteractionRuntime({
-    getViewport: () => input.session.viewport.input,
+    getViewport: () => ({
+      screenPoint: input.session.viewport.input.screenPoint,
+      size: input.session.viewport.input.size,
+      panScreenBy: (deltaScreen) => {
+        const next = input.session.viewport.resolve.panScreenBy(deltaScreen)
+        if (next) {
+          dispatchViewport(next)
+        }
+      }
+    }),
     getBindings: () => ([
       createViewportBinding(deps),
       createDrawBinding(deps),
@@ -115,7 +134,14 @@ export const createEditorHost = (input: {
       createSelectionBinding(deps)
     ]),
     state: {
-      ...input.session.interaction.write,
+      readInteraction: () => ({
+        mode: input.session.interaction.read.mode.get(),
+        chrome: input.session.interaction.read.chrome.get(),
+        space: input.session.interaction.read.space.get(),
+        hover: input.session.interaction.read.hover.get()
+      }),
+      dispatch: input.session.dispatch,
+      setGesture: input.session.transient.setGesture,
       getSpace: () => input.state.interaction.get().space
     }
   })
@@ -125,7 +151,15 @@ export const createEditorHost = (input: {
       readTool: input.session.state.tool.get,
       snap
     },
-    input.session.interaction.write
+    {
+      read: () => ({
+        mode: input.session.interaction.read.mode.get(),
+        chrome: input.session.interaction.read.chrome.get(),
+        space: input.session.interaction.read.space.get(),
+        hover: input.session.interaction.read.hover.get()
+      }),
+      dispatch: input.session.dispatch
+    }
   )
 
   return createEditorInputHost({

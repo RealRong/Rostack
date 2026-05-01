@@ -12,6 +12,7 @@ import type {
   MindmapInsertBehavior
 } from '@whiteboard/editor/action/types'
 import type { EditorScene } from '@whiteboard/editor-scene'
+import type { EditorCommand } from '@whiteboard/editor/state-engine/intents'
 import {
   clearNodePresentation,
   updateNodePresentation
@@ -27,7 +28,7 @@ const DEFAULT_MINDMAP_ENTER_DURATION_MS = 220
 
 type MindmapActionDeps = {
   graph: EditorScene
-  session: Pick<EditorSession, 'preview'>
+  session: Pick<EditorSession, 'preview' | 'dispatch'>
   tasks: EditorTaskRuntime
   write: Pick<EditorWrite, 'mindmap'>
   focusNode: (input: {
@@ -75,24 +76,28 @@ const readProgress = (
 }
 
 const withNodePresentation = (
-  session: Pick<EditorSession, 'preview'>,
+  session: Pick<EditorSession, 'preview' | 'dispatch'>,
   nodeId: MindmapNodeId,
   position?: Point
 ) => {
-  session.preview.write.set((current) => {
-    const nextNode = position
-      ? updateNodePresentation(current.node, nodeId, {
-          position
-        })
-      : clearNodePresentation(current.node, nodeId)
+  const current = session.preview.get()
+  const nextNode = position
+    ? updateNodePresentation(current.node, nodeId, {
+        position
+      })
+    : clearNodePresentation(current.node, nodeId)
 
-    return nextNode === current.node
-      ? current
-      : {
-          ...current,
-          node: nextNode
-        }
-  })
+  if (nextNode === current.node) {
+    return
+  }
+
+  session.dispatch({
+    type: 'preview.set',
+    preview: {
+      ...current,
+      node: nextNode
+    }
+  } satisfies EditorCommand)
 }
 
 const readInsertAnchorId = (
@@ -166,7 +171,7 @@ const resolveEnterJob = async (input: {
 }
 
 const animateEnter = async (input: {
-  session: Pick<EditorSession, 'preview'>
+  session: Pick<EditorSession, 'preview' | 'dispatch'>
   tasks: EditorTaskRuntime
   job: MindmapEnterJob
 }) => {

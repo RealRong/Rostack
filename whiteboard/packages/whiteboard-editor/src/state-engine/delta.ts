@@ -32,7 +32,13 @@ export type EditorStateMutationDelta = MutationDelta & {
 const changedKey = (
   delta: MutationDelta,
   key: string
-): boolean => delta.reset === true || delta.has(key)
+): boolean => (
+  delta.reset === true
+  || delta.has(key)
+  || Object.keys(delta.changes).some((currentKey) => (
+    currentKey.startsWith(`${key}.`)
+  ))
+)
 
 const CACHE = new WeakMap<MutationDelta, EditorStateMutationDelta>()
 

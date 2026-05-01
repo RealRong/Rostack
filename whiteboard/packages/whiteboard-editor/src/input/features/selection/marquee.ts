@@ -185,7 +185,10 @@ const syncMarqueeInteraction = (
   next: MarqueeSelectionState
 ) => {
   if (!selectionApi.target.equal(previous.selection, next.selection)) {
-    ctx.session.commands.selection.replace(next.selection)
+    ctx.session.dispatch({
+      type: 'selection.set',
+      selection: next.selection
+    })
   }
 
   interaction.gesture = next.kind === 'active'
@@ -217,7 +220,13 @@ export const createMarqueeSession = (
   let interaction = null as InteractionSession | null
 
   if (input.action.clearOnStart) {
-    ctx.session.commands.selection.clear()
+    ctx.session.dispatch({
+      type: 'selection.set',
+      selection: {
+        nodeIds: [],
+        edgeIds: []
+      }
+    })
   }
 
   const dispatch = (

@@ -3,8 +3,9 @@ import type {
   MindmapId,
   NodeId
 } from '@whiteboard/core/types'
+import { normalizeMutationDelta } from '@shared/mutation'
 import type {
-  EditorSceneSourceChange,
+  EditorSceneSourceEvent,
   EditorSceneSourceSnapshot
 } from '@whiteboard/editor-scene'
 import type { MutationCommitRecord } from '@shared/mutation'
@@ -13,9 +14,22 @@ import { isMindmapPreviewEqual } from './sourceSnapshot'
 
 const EMPTY_IDS: readonly string[] = Object.freeze([])
 
-type SourcePreviewChange = NonNullable<
-  NonNullable<EditorSceneSourceChange['session']>['preview']
->
+type SourcePreviewChange = {
+  touchedNodeIds: readonly NodeId[]
+  touchedEdgeIds: readonly EdgeId[]
+  touchedMindmapIds: readonly MindmapId[]
+  marquee: boolean
+  guides: boolean
+  draw: boolean
+  edgeGuide: boolean
+  hover: boolean
+}
+
+type SourceHoverChange = {
+  touchedNodeIds: readonly NodeId[]
+  touchedEdgeIds: readonly EdgeId[]
+  touchedMindmapIds: readonly MindmapId[]
+}
 
 export const unionIds = <TId extends string>(
   ...values: readonly Iterable<TId>[]
@@ -80,11 +94,61 @@ export const createPreviewChange = (input: {
   hover: input.hover
 })
 
-export const createDocumentCommitSourceChange = (input: {
+const createHoverChange = (input: {
+  previous: EditorSceneSourceSnapshot['interaction']['hover']
+  next: EditorSceneSourceSnapshot['interaction']['hover']
+}): SourceHoverChange => {
+  const touchedNodeIds = new Set<NodeId>()
+  const touchedEdgeIds = new Set<EdgeId>()
+  const touchedMindmapIds = new Set<MindmapId>()
+
+  const append = (
+    hover: EditorSceneSourceSnapshot['interaction']['hover']
+  ) => {
+    switch (hover.kind) {
+      case 'node':
+        touchedNodeIds.add(hover.nodeId)
+        return
+      case 'edge':
+        touchedEdgeIds.add(hover.edgeId)
+        return
+      case 'mindmap':
+        touchedMindmapIds.add(hover.mindmapId)
+        return
+      default:
+        return
+    }
+  }
+
+  append(input.previous)
+  append(input.next)
+
+  return {
+    touchedNodeIds: [...touchedNodeIds],
+    touchedEdgeIds: [...touchedEdgeIds],
+    touchedMindmapIds: [...touchedMindmapIds]
+  }
+}
+
+const createPreviewDelta = (
+  preview: SourcePreviewChange
+) => normalizeMutationDelta({
+  changes: {
+    'preview.value': {
+      ids: [
+        ...preview.touchedNodeIds,
+        ...preview.touchedEdgeIds,
+        ...preview.touchedMindmapIds
+      ]
+    }
+  }
+})
+
+export const createDocumentCommitSourceEvent = (input: {
   commit: MutationCommitRecord<unknown, unknown>
   previous: EditorSceneSourceSnapshot
   next: EditorSceneSourceSnapshot
-}): EditorSceneSourceChange => {
+}): Omit<EditorSceneSourceEvent, 'source'> => {
   const preview = !isMindmapPreviewEqual(
     input.previous.session.preview.mindmap,
     input.next.session.preview.mindmap
@@ -108,7 +172,8 @@ export const createDocumentCommitSourceChange = (input: {
     },
     ...(preview
       ? {
-          session: {
+          editor: {
+            delta: createPreviewDelta(preview),
             preview
           }
         }
@@ -116,12 +181,18 @@ export const createDocumentCommitSourceChange = (input: {
   }
 }
 
-export const createEditorStateCommitSourceChange = (input: {
+export const createEditorStateCommitSourceEvent = (input: {
   commit: MutationCommitRecord<unknown, unknown>
   previous: EditorSceneSourceSnapshot
   next: EditorSceneSourceSnapshot
-}): EditorSceneSourceChange => {
+}): Omit<EditorSceneSourceEvent, 'source'> => {
   const delta = createEditorStateMutationDelta(input.commit.delta)
+  const hover = delta.interaction.changed()
+    ? createHoverChange({
+        previous: input.previous.interaction.hover,
+        next: input.next.interaction.hover
+      })
+    : undefined
 
   return {
     ...(delta.tool.changed()
@@ -142,6 +213,11 @@ export const createEditorStateCommitSourceChange = (input: {
                     )
                   }
                 }
+              : {}),
+            ...(hover
+              ? {
+                  hover
+                }
               : {})
           }
         }
@@ -154,28 +230,32 @@ export const createEditorStateCommitSourceChange = (input: {
   }
 }
 
-export const createTransientPreviewSourceChange = (input: {
+export const createTransientPreviewSourceEvent = (input: {
   previous: EditorSceneSourceSnapshot
   next: EditorSceneSourceSnapshot
-}): EditorSceneSourceChange => ({
-  session: {
-    preview: createPreviewChange({
-      previous: input.previous.session.preview,
-      next: input.next.session.preview,
-      marquee: true,
-      guides: true,
-      draw: true,
-      edgeGuide: true,
-      hover: true
-    })
-  }
-})
+}): Omit<EditorSceneSourceEvent, 'source'> => {
+  const preview = createPreviewChange({
+    previous: input.previous.session.preview,
+    next: input.next.session.preview,
+    marquee: true,
+    guides: true,
+    draw: true,
+    edgeGuide: true,
+    hover: true
+  })
 
-export const hasSourceChange = (
-  change: EditorSceneSourceChange
+  return {
+    editor: {
+      delta: createPreviewDelta(preview),
+      preview
+    }
+  }
+}
+
+export const hasSourceEvent = (
+  event: Omit<EditorSceneSourceEvent, 'source'> | EditorSceneSourceEvent
 ): boolean => (
-  change.document !== undefined
-  || change.editor !== undefined
-  || change.session !== undefined
-  || change.view !== undefined
+  event.document !== undefined
+  || event.editor !== undefined
+  || event.view !== undefined
 )

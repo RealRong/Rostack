@@ -22,13 +22,9 @@ import {
 } from '@whiteboard/engine/mutation'
 import { createRuntimeFacts } from './runtimeFacts'
 import type {
-  EditorSceneSourceChange,
+  EditorSceneSourceEvent,
   EditorSceneSourceSnapshot
 } from '../contracts/source'
-
-const EMPTY_MUTATION_CHANGES = Object.freeze(
-  Object.create(null)
-) as Record<string, never>
 
 const BOOTSTRAP_DOCUMENT_DELTA: MutationDelta = normalizeMutationDelta({
   reset: true
@@ -79,6 +75,22 @@ const readPreviewMindmapIds = (
   return ids
 }
 
+const readEventPreviewIds = (
+  preview: Pick<NonNullable<EditorSceneSourceEvent['editor']>, 'preview'>
+) => ({
+  nodes: new Set(preview.preview?.touchedNodeIds ?? []),
+  edges: new Set(preview.preview?.touchedEdgeIds ?? []),
+  mindmaps: new Set(preview.preview?.touchedMindmapIds ?? [])
+})
+
+const readEventHoverIds = (
+  hover: Pick<NonNullable<EditorSceneSourceEvent['editor']>, 'hover'>
+) => ({
+  nodes: new Set(hover.hover?.touchedNodeIds ?? []),
+  edges: new Set(hover.hover?.touchedEdgeIds ?? []),
+  mindmaps: new Set(hover.hover?.touchedMindmapIds ?? [])
+})
+
 export const createBootstrapRuntimeInputDelta = (
   source: EditorSceneSourceSnapshot
 ): EditorSceneRuntimeDelta => {
@@ -115,13 +127,13 @@ export const createBootstrapRuntimeInputDelta = (
   return delta
 }
 
-export const createSourceRuntimeInputDelta = (input: {
+export const createEditorRuntimeInputDelta = (input: {
   source: EditorSceneSourceSnapshot
-  change: EditorSceneSourceChange
+  event: Pick<EditorSceneSourceEvent, 'editor'>
 }): EditorSceneRuntimeDelta => {
   const delta = createEmptyEditorSceneRuntimeDelta()
 
-  const editorDelta = input.change.editor?.delta
+  const editorDelta = input.event.editor?.delta
   if (editorDelta) {
     if (editorDelta.has('tool.value')) {
       delta.session.tool = true
@@ -131,7 +143,7 @@ export const createSourceRuntimeInputDelta = (input: {
     }
     if (editorDelta.has('edit.value')) {
       delta.session.edit = true
-      const touchedDraftEdgeIds = input.change.editor?.edit?.touchedDraftEdgeIds
+      const touchedDraftEdgeIds = input.event.editor?.edit?.touchedDraftEdgeIds
         ?? [...readEditedEdgeIds(input.source.session.edit)]
       if (touchedDraftEdgeIds.length > 0) {
         delta.session.draft.edges = createTouchedIdDelta(touchedDraftEdgeIds)
@@ -140,11 +152,32 @@ export const createSourceRuntimeInputDelta = (input: {
     if (editorDelta.has('interaction.value')) {
       delta.session.interaction = true
       delta.session.hover = true
+      const hoverIds = readEventHoverIds({
+        hover: input.event.editor?.hover
+      })
+      if (hoverIds.nodes.size > 0) {
+        delta.session.preview.nodes = createTouchedIdDelta(hoverIds.nodes)
+      }
+      if (hoverIds.edges.size > 0) {
+        delta.session.preview.edges = createTouchedIdDelta(hoverIds.edges)
+      }
+      if (hoverIds.mindmaps.size > 0) {
+        delta.session.preview.mindmaps = createTouchedIdDelta(hoverIds.mindmaps)
+      }
     }
     if (editorDelta.has('preview.value')) {
-      const previewNodeIds = readPreviewNodeIds(input.source.session.preview)
-      const previewEdgeIds = readPreviewEdgeIds(input.source.session.preview)
-      const previewMindmapIds = readPreviewMindmapIds(input.source.session.preview.mindmap)
+      const previewIds = readEventPreviewIds({
+        preview: input.event.editor?.preview
+      })
+      const previewNodeIds = previewIds.nodes.size > 0
+        ? previewIds.nodes
+        : readPreviewNodeIds(input.source.session.preview)
+      const previewEdgeIds = previewIds.edges.size > 0
+        ? previewIds.edges
+        : readPreviewEdgeIds(input.source.session.preview)
+      const previewMindmapIds = previewIds.mindmaps.size > 0
+        ? previewIds.mindmaps
+        : readPreviewMindmapIds(input.source.session.preview.mindmap)
 
       if (previewNodeIds.size > 0) {
         delta.session.preview.nodes = createTouchedIdDelta(previewNodeIds)
@@ -161,25 +194,6 @@ export const createSourceRuntimeInputDelta = (input: {
       delta.session.preview.draw = true
       delta.session.preview.edgeGuide = true
     }
-  }
-
-  const previewChange = input.change.session?.preview
-  if (previewChange) {
-    if (previewChange.touchedNodeIds.length > 0) {
-      delta.session.preview.nodes = createTouchedIdDelta(previewChange.touchedNodeIds)
-    }
-    if (previewChange.touchedEdgeIds.length > 0) {
-      delta.session.preview.edges = createTouchedIdDelta(previewChange.touchedEdgeIds)
-    }
-    if (previewChange.touchedMindmapIds.length > 0) {
-      delta.session.preview.mindmaps = createTouchedIdDelta(previewChange.touchedMindmapIds)
-    }
-
-    delta.session.preview.marquee = previewChange.marquee
-    delta.session.preview.guides = previewChange.guides
-    delta.session.preview.draw = previewChange.draw
-    delta.session.preview.edgeGuide = previewChange.edgeGuide
-    delta.session.hover = delta.session.hover || previewChange.hover
   }
 
   return delta
@@ -224,8 +238,8 @@ export const createSceneInput = (input: {
   }
 }
 
-export const readSourceMutationDelta = (
-  change: EditorSceneSourceChange
-): MutationDelta => change.document?.delta ?? EMPTY_DOCUMENT_DELTA
+export const readEventDocumentDelta = (
+  event: Pick<EditorSceneSourceEvent, 'document'>
+): MutationDelta => event.document?.delta ?? EMPTY_DOCUMENT_DELTA
 
 export const readBootstrapMutationDelta = (): MutationDelta => BOOTSTRAP_DOCUMENT_DELTA

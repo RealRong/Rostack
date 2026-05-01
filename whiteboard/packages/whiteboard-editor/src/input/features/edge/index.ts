@@ -17,8 +17,12 @@ const selectEdge = (
   ctx: Pick<EditorHostDeps, 'session'>,
   edgeId: string
 ) => {
-  ctx.session.commands.selection.replace({
-    edgeIds: [edgeId]
+  ctx.session.dispatch({
+    type: 'selection.set',
+    selection: {
+      nodeIds: [],
+      edgeIds: [edgeId]
+    }
   })
 }
 

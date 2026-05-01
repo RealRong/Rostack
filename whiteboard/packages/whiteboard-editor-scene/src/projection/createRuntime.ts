@@ -4,14 +4,17 @@ import type {
   EditorSceneLayout
 } from '../contracts/editor'
 import type { EditorSceneRuntime } from '../contracts/runtime'
-import type { EditorSceneSource } from '../contracts/source'
+import type {
+  EditorSceneSource,
+  EditorSceneSourceEvent
+} from '../contracts/source'
 import { createProjectionRuntime } from './createProjectionRuntime'
 import {
   createBootstrapRuntimeInputDelta,
+  createEditorRuntimeInputDelta,
   createSceneInput,
-  createSourceRuntimeInputDelta,
   readBootstrapMutationDelta,
-  readSourceMutationDelta
+  readEventDocumentDelta
 } from './input'
 
 export const createRuntime = (input: {
@@ -28,17 +31,15 @@ export const createRuntime = (input: {
 
   let lastResult: Result | null = null
 
-  const publish = (change: Parameters<EditorSceneSource['subscribe']>[0] extends (value: infer TValue) => void
-    ? TValue
-    : never) => {
-    currentSource = input.source.get()
-    const runtimeDelta = createSourceRuntimeInputDelta({
+  const publish = (event: EditorSceneSourceEvent) => {
+    currentSource = event.source
+    const runtimeDelta = createEditorRuntimeInputDelta({
       source: currentSource,
-      change
+      event
     })
     lastResult = runtime.update(createSceneInput({
       source: currentSource,
-      delta: readSourceMutationDelta(change),
+      delta: readEventDocumentDelta(event),
       runtimeDelta
     }))
   }
@@ -49,8 +50,8 @@ export const createRuntime = (input: {
     runtimeDelta: createBootstrapRuntimeInputDelta(currentSource)
   }))
 
-  const unsubscribe = input.source.subscribe((change) => {
-    publish(change)
+  const unsubscribe = input.source.subscribe((event) => {
+    publish(event)
   })
 
   void lastResult

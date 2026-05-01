@@ -1,7 +1,9 @@
 import { scheduler } from '@shared/core'
 import type { Point } from '@whiteboard/core/types'
+import type { InteractionMode } from '@whiteboard/editor/input/core/types'
 import type { SnapRuntime } from '@whiteboard/editor/input/core/snap'
 import type { HoverState } from '@whiteboard/editor/input/hover/store'
+import type { EditorCommand } from '@whiteboard/editor/state-engine/intents'
 import type { Tool } from '@whiteboard/editor/types/tool'
 
 export type EdgeHoverService = {
@@ -14,19 +16,39 @@ export const createEdgeHoverService = (
     readTool: () => Tool
     snap: SnapRuntime
   },
-  hover: {
-    setHover: (
-      next:
-        | HoverState
-        | ((current: HoverState) => HoverState)
-    ) => void
+  interaction: {
+    read: () => {
+      mode: InteractionMode
+      chrome: boolean
+      space: boolean
+      hover: HoverState
+    }
+    dispatch: (command: EditorCommand | readonly EditorCommand[]) => void
   }
 ): EdgeHoverService => {
   let hoverPoint: Point | null = null
 
+  const updateHover = (
+    update: (current: HoverState) => HoverState
+  ) => {
+    const currentInteraction = interaction.read()
+    const nextHover = update(currentInteraction.hover)
+    if (nextHover === currentInteraction.hover) {
+      return
+    }
+
+    interaction.dispatch({
+      type: 'interaction.set',
+      interaction: {
+        ...currentInteraction,
+        hover: nextHover
+      }
+    })
+  }
+
   const hoverTask = scheduler.createFrameTask(() => {
     if (!hoverPoint || ctx.readTool().type !== 'edge') {
-      hover.setHover((current) => (
+      updateHover((current) => (
         current.edgeGuide === undefined
           ? current
           : {
@@ -49,7 +71,7 @@ export const createEdgeHoverService = (
             }
           }
         : undefined
-    hover.setHover((current) => (
+    updateHover((current) => (
       current.edgeGuide === edgeGuide
         ? current
         : {
@@ -62,7 +84,7 @@ export const createEdgeHoverService = (
   const clear = () => {
     hoverTask.cancel()
     hoverPoint = null
-    hover.setHover((current) => (
+    updateHover((current) => (
       current.edgeGuide === undefined
         ? current
         : {

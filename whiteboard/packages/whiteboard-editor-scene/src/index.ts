@@ -4,7 +4,7 @@ export type {
 } from './contracts/runtime'
 export type {
   EditorSceneSource,
-  EditorSceneSourceChange,
+  EditorSceneSourceEvent,
   EditorSceneSourceSnapshot
 } from './contracts/source'
 

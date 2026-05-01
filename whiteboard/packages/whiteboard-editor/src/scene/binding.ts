@@ -1,6 +1,6 @@
 import type {
   EditorSceneSource,
-  EditorSceneSourceChange,
+  EditorSceneSourceEvent,
   EditorSceneSourceSnapshot
 } from '@whiteboard/editor-scene'
 import type {
@@ -11,11 +11,11 @@ import {
   buildEditorSceneSourceSnapshot
 } from './sourceSnapshot'
 import {
-  createDocumentCommitSourceChange,
-  createEditorStateCommitSourceChange,
-  createTransientPreviewSourceChange,
-  hasSourceChange
-} from './sourceChange'
+  createDocumentCommitSourceEvent,
+  createEditorStateCommitSourceEvent,
+  createTransientPreviewSourceEvent,
+  hasSourceEvent
+} from './sourceEvent'
 
 export interface EditorSceneBinding extends EditorSceneSource {
   dispose(): void
@@ -26,9 +26,9 @@ export const createEditorSceneBinding = ({
   session
 }: {
   engine: Pick<Engine, 'doc' | 'rev' | 'commits'>
-  session: Pick<EditorSession, 'state' | 'interaction' | 'preview' | 'viewport' | 'stateEngine'>
+  session: Pick<EditorSession, 'state' | 'interaction' | 'preview' | 'viewport' | 'commits'>
 }): EditorSceneBinding => {
-  const listeners = new Set<(change: EditorSceneSourceChange) => void>()
+  const listeners = new Set<(event: EditorSceneSourceEvent) => void>()
   let disposed = false
   const buildSnapshot = (): EditorSceneSourceSnapshot => buildEditorSceneSourceSnapshot({
     engine,
@@ -36,13 +36,13 @@ export const createEditorSceneBinding = ({
   })
   let currentSource = buildSnapshot()
 
-  const notify = (change: EditorSceneSourceChange) => {
+  const notify = (event: EditorSceneSourceEvent) => {
     if (disposed) {
       return
     }
 
     listeners.forEach((listener) => {
-      listener(change)
+      listener(event)
     })
   }
 
@@ -50,40 +50,43 @@ export const createEditorSceneBinding = ({
     compile: (input: {
       previous: EditorSceneSourceSnapshot
       next: EditorSceneSourceSnapshot
-    }) => EditorSceneSourceChange
+    }) => Omit<EditorSceneSourceEvent, 'source'>
   ) => {
     const previous = currentSource
     const next = buildSnapshot()
     currentSource = next
 
-    const change = compile({
-      previous,
-      next
-    })
-    if (!hasSourceChange(change)) {
+    const event = {
+      ...compile({
+        previous,
+        next
+      }),
+      source: next
+    } satisfies EditorSceneSourceEvent
+    if (!hasSourceEvent(event)) {
       return
     }
 
-    notify(change)
+    notify(event)
   }
 
   const unsubscribes = [
     engine.commits.subscribe((commit) => {
-      publish(({ previous, next }) => createDocumentCommitSourceChange({
+      publish(({ previous, next }) => createDocumentCommitSourceEvent({
         commit,
         previous,
         next
       }))
     }),
-    session.stateEngine.commits.subscribe((commit) => {
-      publish(({ previous, next }) => createEditorStateCommitSourceChange({
+    session.commits.subscribe((commit) => {
+      publish(({ previous, next }) => createEditorStateCommitSourceEvent({
         commit,
         previous,
         next
       }))
     }),
-    session.preview.state.subscribe(() => {
-      publish(({ previous, next }) => createTransientPreviewSourceChange({
+    session.preview.subscribe(() => {
+      publish(({ previous, next }) => createTransientPreviewSourceEvent({
         previous,
         next
       }))

@@ -7,7 +7,8 @@ import {
   view as viewApi
 } from '@dataview/core/view'
 import {
-  equal
+  equal,
+  json
 } from '@shared/core'
 import type {
   DataviewMutationPorts,
@@ -369,9 +370,11 @@ export const writeViewUpdate = (
     patch.search = viewApi.search.state.clone(next.search)
   }
   if (!viewApi.group.state.same(current.group, next.group)) {
-    patch.group = next.group
-      ? viewApi.group.state.clone(next.group)!
-      : undefined
+    patch.group = current.group && next.group
+      ? json.diff(current.group, next.group) as DataviewViewPatch['group']
+      : next.group
+        ? viewApi.group.state.clone(next.group)!
+        : undefined
   }
   if (!viewApi.calc.same(current.calc, next.calc)) {
     patch.calc = structuredClone(next.calc)

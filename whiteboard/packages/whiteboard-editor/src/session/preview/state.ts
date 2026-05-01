@@ -1,4 +1,3 @@
-import { store } from '@shared/core'
 import {
   type ActiveGesture
 } from '@whiteboard/editor/input/core/gesture'
@@ -21,10 +20,7 @@ import {
   isSelectionFeedbackStateEqual,
   normalizeSelectionFeedbackState,
 } from '@whiteboard/editor/session/preview/selection'
-import type {
-  EditorInputPreviewState,
-  EditorInputPreviewWrite
-} from '@whiteboard/editor/session/preview/types'
+import type { EditorInputPreviewState } from '@whiteboard/editor/session/preview/types'
 import {
   EMPTY_EDGE_FEEDBACK_ENTRIES
 } from '@whiteboard/editor/session/preview/edge'
@@ -153,41 +149,4 @@ export const composeEditorInputPreviewState = ({
       )
     }
   })
-}
-
-export const createPreviewState = ({
-  gesture,
-  hover
-}: {
-  gesture: Pick<store.ReadStore<ActiveGesture | null>, 'get' | 'subscribe'>
-  hover: Pick<store.ReadStore<HoverState>, 'get' | 'subscribe'>
-}): Pick<store.ReadStore<EditorInputPreviewState>, 'get' | 'subscribe'> & EditorInputPreviewWrite => {
-  const baseState = store.createValueStore<EditorInputPreviewState>(EMPTY_PREVIEW_STATE, {
-    isEqual: isEditorInputPreviewStateEqual
-  })
-  const composedState = store.createDerivedStore<EditorInputPreviewState>({
-    get: () => composeEditorInputPreviewState({
-      base: store.read(baseState),
-      gesture: store.read(gesture),
-      hover: store.read(hover)
-    }),
-    isEqual: isEditorInputPreviewStateEqual
-  })
-  let current = EMPTY_PREVIEW_STATE
-
-  return {
-    get: composedState.get,
-    subscribe: composedState.subscribe,
-    set: (next) => {
-      const resolved = typeof next === 'function'
-        ? next(current)
-        : next
-      current = normalizeEditorInputPreviewState(resolved)
-      baseState.set(current)
-    },
-    reset: () => {
-      current = EMPTY_PREVIEW_STATE
-      baseState.set(EMPTY_PREVIEW_STATE)
-    }
-  }
 }

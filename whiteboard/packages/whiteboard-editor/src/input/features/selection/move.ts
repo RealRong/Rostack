@@ -87,7 +87,10 @@ export const createMoveInteraction = (
     input.visibility.kind === 'show'
     || input.visibility.kind === 'temporary'
   ) {
-    ctx.session.commands.selection.replace(input.visibility.selection)
+    ctx.session.dispatch({
+      type: 'selection.set',
+      selection: input.visibility.selection
+    })
   }
 
   if (pickedNodeId) {
@@ -107,7 +110,10 @@ export const createMoveInteraction = (
       session.cleanup = () => {
         cleanup?.()
         if (restoreSelection) {
-          ctx.session.commands.selection.replace(restoreSelection)
+          ctx.session.dispatch({
+            type: 'selection.set',
+            selection: restoreSelection
+          })
         }
       }
 
@@ -199,7 +205,10 @@ export const createMoveInteraction = (
     },
     cleanup: () => {
       if (restoreSelection) {
-        ctx.session.commands.selection.replace(restoreSelection)
+        ctx.session.dispatch({
+          type: 'selection.set',
+          selection: restoreSelection
+        })
       }
     }
   }

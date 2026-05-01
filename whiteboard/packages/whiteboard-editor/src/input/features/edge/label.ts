@@ -245,8 +245,12 @@ export const createEdgeLabelPressSession = (
     )
   },
   onTap: (nextInput) => {
-    ctx.session.commands.selection.replace({
-      edgeIds: [input.edgeId]
+    ctx.session.dispatch({
+      type: 'selection.set',
+      selection: {
+        nodeIds: [],
+        edgeIds: [input.edgeId]
+      }
     })
     startEdgeLabelEdit({
       session: ctx.session,
@@ -279,8 +283,12 @@ export const startEdgeLabelPress = (
   }
 
   if (!isSingleSelectedEdge(ctx, pointer.pick.id)) {
-    ctx.session.commands.selection.replace({
-      edgeIds: [pointer.pick.id]
+    ctx.session.dispatch({
+      type: 'selection.set',
+      selection: {
+        nodeIds: [],
+        edgeIds: [pointer.pick.id]
+      }
     })
     return 'handled'
   }

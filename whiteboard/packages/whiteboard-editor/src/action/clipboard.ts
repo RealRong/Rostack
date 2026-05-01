@@ -7,8 +7,8 @@ import type { EditorState } from '@whiteboard/editor/types/editor'
 import type {
   ClipboardActions,
   ClipboardTarget,
-  SelectionCommands
 } from '@whiteboard/editor/action/types'
+import type { EditorCommand } from '@whiteboard/editor/state-engine/intents'
 import {
   createClipboardPacket,
   type ClipboardPacket
@@ -19,7 +19,7 @@ import type { DocumentWrite } from '@whiteboard/editor/write/types'
 type ClipboardActionHelpersHost = {
   documentSource: Pick<DocumentFrame, 'slice'>
   document: Pick<DocumentWrite, 'insert'>
-  session: Pick<SelectionCommands, 'replace' | 'clear'>
+  dispatch: (command: EditorCommand | readonly EditorCommand[]) => void
   selection: Pick<SelectionActionHelpers, 'delete'>
   state: Pick<EditorState, 'viewport' | 'selection'>
 }
@@ -40,14 +40,23 @@ const applyInsertedRoots = (input: {
     : input.inserted.allEdgeIds
 
   if (nodeIds.length > 0 || edgeIds.length > 0) {
-    input.editor.session.replace({
-      nodeIds,
-      edgeIds
+    input.editor.dispatch({
+      type: 'selection.set',
+      selection: {
+        nodeIds,
+        edgeIds
+      }
     })
     return
   }
 
-  input.editor.session.clear()
+  input.editor.dispatch({
+    type: 'selection.set',
+    selection: {
+      nodeIds: [],
+      edgeIds: []
+    }
+  })
 }
 
 const readSelectionTarget = (

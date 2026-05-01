@@ -17,6 +17,9 @@ import {
   createDocumentReader,
   type DocumentReader
 } from '../../document/reader'
+import type {
+  ValidationCode
+} from './contracts'
 type DataviewCompileReaderTools = MutationCompileReaderTools
 
 type RequireById<TId extends string, TEntity> = DocumentReader['fields'] & {

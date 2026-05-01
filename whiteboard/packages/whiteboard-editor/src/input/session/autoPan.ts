@@ -1,7 +1,6 @@
 import { resolveEdgePressureVector } from '@shared/dom'
 import { scheduler } from '@shared/core'
 import type { Point } from '@whiteboard/core/types'
-import type { ViewportInputRuntime } from '@whiteboard/editor/session/viewport'
 import type { InteractionSession } from '@whiteboard/editor/input/core/types'
 
 type PanVector = Point
@@ -68,7 +67,14 @@ type AutoPan = Readonly<{
 export const createAutoPan = ({
   getViewport
 }: {
-  getViewport: () => Pick<ViewportInputRuntime, 'panScreenBy' | 'screenPoint' | 'size'> | null
+  getViewport: () => {
+    screenPoint: (clientX: number, clientY: number) => Point
+    size: () => {
+      width: number
+      height: number
+    }
+    panScreenBy: (deltaScreen: Point) => void
+  } | null
 }): AutoPan => {
   let lastFrameTime = 0
   let active: AutoPanSessionState | null = null

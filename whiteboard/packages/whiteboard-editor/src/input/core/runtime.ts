@@ -1,8 +1,10 @@
-import { store } from '@shared/core'
-import type { ViewportInputRuntime } from '@whiteboard/editor/session/viewport'
+import type { ActiveGesture } from '@whiteboard/editor/input/core/gesture'
 import { createAutoPan } from '@whiteboard/editor/input/session/autoPan'
+import type { HoverState } from '@whiteboard/editor/input/hover/store'
+import type { EditorCommand } from '@whiteboard/editor/state-engine/intents'
 import type {
   InteractionBinding,
+  InteractionMode,
   InteractionRuntime,
   InteractionSession,
   InteractionSessionTransition
@@ -47,12 +49,30 @@ export const createInteractionRuntime = ({
   getBindings,
   state
 }: {
-  getViewport: () => Pick<ViewportInputRuntime, 'panScreenBy' | 'screenPoint' | 'size'> | null
+  getViewport: () => {
+    screenPoint: (clientX: number, clientY: number) => {
+      x: number
+      y: number
+    }
+    size: () => {
+      width: number
+      height: number
+    }
+    panScreenBy: (deltaScreen: {
+      x: number
+      y: number
+    }) => void
+  } | null
   getBindings: () => readonly InteractionBinding[]
-  state: Pick<
-    import('@whiteboard/editor/session/runtime').EditorSessionInteractionWrite,
-    'setActive' | 'setGesture' | 'setSpace'
-  > & {
+  state: {
+    readInteraction: () => {
+      mode: InteractionMode
+      chrome: boolean
+      space: boolean
+      hover: HoverState
+    }
+    dispatch: (command: EditorCommand | readonly EditorCommand[]) => void
+    setGesture: (gesture: ActiveGesture | null) => void
     getSpace: () => boolean
   }
 }): InteractionRuntime => {
@@ -74,15 +94,27 @@ export const createInteractionRuntime = ({
   ) => pointerId === undefined || input.pointerId === pointerId
 
   const syncActive = (running: RunningSession | null) => {
+    const current = state.readInteraction()
     if (!running) {
-      state.setActive(null)
+      state.dispatch({
+        type: 'interaction.set',
+        interaction: {
+          ...current,
+          mode: 'idle',
+          chrome: true
+        }
+      })
       syncGesture(null)
       return
     }
 
-    state.setActive({
-      mode: running.session.mode,
-      chrome: running.session.chrome
+    state.dispatch({
+      type: 'interaction.set',
+      interaction: {
+        ...current,
+        mode: running.session.mode,
+        chrome: Boolean(running.session.chrome)
+      }
     })
     syncGesture(running)
   }
@@ -301,7 +333,14 @@ export const createInteractionRuntime = ({
 
       if (input.code === 'Space') {
         if (!state.getSpace()) {
-          state.setSpace(true)
+          const current = state.readInteraction()
+          state.dispatch({
+            type: 'interaction.set',
+            interaction: {
+              ...current,
+              space: true
+            }
+          })
         }
         handled = true
       }
@@ -327,7 +366,14 @@ export const createInteractionRuntime = ({
 
       if (input.code === 'Space') {
         if (state.getSpace()) {
-          state.setSpace(false)
+          const current = state.readInteraction()
+          state.dispatch({
+            type: 'interaction.set',
+            interaction: {
+              ...current,
+              space: false
+            }
+          })
         }
         handled = true
       }
@@ -345,7 +391,14 @@ export const createInteractionRuntime = ({
     },
     handleBlur: () => {
       if (state.getSpace()) {
-        state.setSpace(false)
+        const currentInteraction = state.readInteraction()
+        state.dispatch({
+          type: 'interaction.set',
+          interaction: {
+            ...currentInteraction,
+            space: false
+          }
+        })
       }
 
       const running = current

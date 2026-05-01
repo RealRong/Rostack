@@ -76,3 +76,5 @@ export type EditorStateMutationTable = {
 
 export type EditorStateIntent<K extends EditorStateIntentKind = EditorStateIntentKind> =
   EditorStateIntentTable[K]['intent']
+
+export type EditorCommand = EditorStateIntent

@@ -3,7 +3,7 @@ import type {
   DataRecord,
   Search
 } from '@dataview/core/types'
-import { buildRecordTexts } from '@dataview/core/view/searchText'
+import { buildRecordTexts } from './text'
 
 export const matchSearchRecord = (
   record: DataRecord,

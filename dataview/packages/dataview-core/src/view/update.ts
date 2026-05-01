@@ -50,7 +50,7 @@ export const setViewType = (input: {
     search: viewApi.search.state.clone(current.search),
     filter: viewApi.filter.state.clone(current.filter),
     sort: {
-      rules: viewApi.sort.rules.clone(current.sort.rules)
+      rules: viewApi.sort.rules.read.clone(current.sort.rules)
     },
     calc: viewApi.calc.clone(current.calc),
     display: viewApi.display.clone(current.display),

@@ -20,7 +20,7 @@ const EdgeMaskDef = memo(({
 }) => {
   const editor = useEditorRuntime()
   const mask = useKeyedStoreValue(
-    editor.projection.stores.render.edge.masks.byId,
+    editor.scene.stores.render.edge.masks.byId,
     edgeId
   )
   if (!mask || mask.rects.length === 0) {
@@ -64,7 +64,7 @@ EdgeMaskDef.displayName = 'EdgeMaskDef'
 
 export const EdgeSceneLayer = memo(() => {
   const editor = useEditorRuntime()
-  const maskIds = useStoreValue(editor.projection.stores.render.edge.masks.ids)
+  const maskIds = useStoreValue(editor.scene.stores.render.edge.masks.ids)
 
   return (
     <div className="wb-edge-scene">

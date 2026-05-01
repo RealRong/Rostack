@@ -67,35 +67,26 @@ describe('resolvePoint', () => {
       ))
     }
     const editor: ResolvePointEditor = {
-      state: {
-        viewport: {
-          pointer: vi.fn((input: { clientX: number, clientY: number }) => ({
-            screen: {
-              x: input.clientX,
-              y: input.clientY
-            },
-            world: {
-              x: input.clientX / 2,
-              y: input.clientY / 2
-            }
-          })),
-          get: () => ({
-            center: { x: 0, y: 0 },
-            zoom: 1
-          })
-        },
-        selection: {
-          get: () => ({
-            nodeIds: [],
-            edgeIds: []
-          })
-        }
-      },
       scene: {
-        query: {
-          hit: {
-            edge: vi.fn(() => undefined)
+        editor: {
+          viewport: {
+            get: () => ({
+              center: { x: 0, y: 0 },
+              zoom: 1
+            })
+          },
+          selection: {
+            get: () => ({
+              nodeIds: [],
+              edgeIds: []
+            })
           }
+        },
+        viewport: {
+          screenPoint: vi.fn((point: { x: number, y: number }) => point)
+        },
+        hit: {
+          edge: vi.fn(() => undefined)
         }
       }
     }
@@ -147,35 +138,26 @@ describe('resolvePoint', () => {
       })
     }
     const editor: ResolvePointEditor = {
-      state: {
-        viewport: {
-          pointer: vi.fn((input: { clientX: number, clientY: number }) => ({
-            screen: {
-              x: input.clientX,
-              y: input.clientY
-            },
-            world: {
-              x: input.clientX,
-              y: input.clientY
-            }
-          })),
-          get: () => ({
-            center: { x: 0, y: 0 },
-            zoom: 1
-          })
-        },
-        selection: {
-          get: () => ({
-            nodeIds: ['node-1'],
-            edgeIds: []
-          })
-        }
-      },
       scene: {
-        query: {
-          hit: {
-            edge: vi.fn(() => undefined)
+        editor: {
+          viewport: {
+            get: () => ({
+              center: { x: 0, y: 0 },
+              zoom: 1
+            })
+          },
+          selection: {
+            get: () => ({
+              nodeIds: ['node-1'],
+              edgeIds: []
+            })
           }
+        },
+        viewport: {
+          screenPoint: vi.fn((point: { x: number, y: number }) => point)
+        },
+        hit: {
+          edge: vi.fn(() => undefined)
         }
       }
     }

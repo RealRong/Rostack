@@ -72,7 +72,7 @@ export type NodeOverlayView = {
   canRotate: NodeView['canRotate']
 }
 type RuntimeNodeView = NonNullable<
-  ReturnType<ReturnType<typeof useEditorRuntime>['projection']['stores']['render']['node']['byId']['get']>
+  ReturnType<ReturnType<typeof useEditorRuntime>['scene']['stores']['render']['node']['byId']['get']>
 >
 
 const resolveNodeCapability = (
@@ -163,7 +163,7 @@ export const useNodeView = (
   const editor = useEditorRuntime()
   const nodes = useNodeSpec()
   const view = useOptionalKeyedStoreValue(
-    editor.projection.stores.render.node.byId,
+    editor.scene.stores.render.node.byId,
     nodeId,
     undefined
   )
@@ -191,7 +191,7 @@ export const useNodeOverlayView = (
   const editor = useEditorRuntime()
   const nodes = useNodeSpec()
   const view = useOptionalKeyedStoreValue(
-    editor.projection.stores.render.node.byId,
+    editor.scene.stores.render.node.byId,
     nodeId,
     undefined
   )

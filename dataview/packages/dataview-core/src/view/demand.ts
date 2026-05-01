@@ -22,7 +22,7 @@ export const viewFilterFields = (
 export const viewSortFields = (
   view: View
 ): ReadonlySet<FieldId> => new Set(
-  sort.rules.list(view.sort.rules).map(rule => rule.fieldId)
+  sort.rules.read.list(view.sort.rules).map(rule => rule.fieldId)
 )
 
 export const viewCalcFields = (

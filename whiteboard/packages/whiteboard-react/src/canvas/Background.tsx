@@ -8,11 +8,11 @@ const EMPTY_STYLE: CSSProperties = {
 
 export const Background = () => {
   const editor = useEditor()
-  const background = useStoreValue(editor.projection.stores.document.background)
-  const viewport = useStoreValue(editor.projection.stores.runtime.editor.viewport)
+  const background = useStoreValue(editor.scene.stores.document.background)
+  const viewport = useStoreValue(editor.scene.editor.viewport)
   void background
   void viewport
-  const view = editor.projection.viewport.background()
+  const view = editor.scene.viewport.background()
 
   const style = useMemo<CSSProperties>(() => {
     if (view.type === 'none') {

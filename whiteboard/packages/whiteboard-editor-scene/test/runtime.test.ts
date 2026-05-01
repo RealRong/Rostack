@@ -23,7 +23,11 @@ import {
 import {
   createEditorSceneHarness
 } from '../src/testing/runtime'
-import { createEmptyInput } from '../src/testing/input'
+import {
+  createEmptyInput,
+  toProjectionUpdateInput
+} from '../src/testing/input'
+import type { ProjectionUpdateInput } from '../src/contracts/editor'
 import {
   createProjectionRuntime
 } from '../src/projection/createProjectionRuntime'
@@ -98,7 +102,7 @@ const createHarness = () => createEditorSceneHarness({
 const createInput = (
   engine: ReturnType<typeof createEngine>,
   options: RuntimeInputOptions = {}
-): EditorSceneInput => {
+): ProjectionUpdateInput => {
   setCurrentMeasureState({
     nodeMeasures: options.nodeMeasures,
     edgeLabelMeasures: options.edgeLabelMeasures
@@ -124,7 +128,7 @@ const createInput = (
   value.delta = createWhiteboardMutationDelta(
     options.documentDelta ?? createMutationDelta()
   )
-  return value
+  return toProjectionUpdateInput(value)
 }
 
 const DOCUMENT_DELTA = createMutationDelta({

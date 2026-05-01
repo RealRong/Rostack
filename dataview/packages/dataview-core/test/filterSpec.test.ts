@@ -73,81 +73,67 @@ const multiSelectField: MultiSelectField = {
   ]
 }
 
-test('number and date filter specs share sorted demand and lookup semantics', () => {
+test('number and date filters share sorted query semantics', () => {
   assert.deepEqual(
-    filter.rule.planDemand(numberField, {
+    filter.rule.analyze(numberField, {
       fieldId: numberField.id,
       presetId: 'eq',
       value: 3
-    }),
+    }).query,
     {
-      sorted: true
-    }
-  )
-  assert.deepEqual(
-    filter.rule.sortLookup(numberField, {
-      fieldId: numberField.id,
-      presetId: 'eq',
-      value: 3
-    }),
-    {
+      kind: 'sort',
       mode: 'eq',
       value: 3
     }
   )
   assert.deepEqual(
-    filter.rule.planDemand(dateField, {
+    filter.rule.analyze(dateField, {
       fieldId: dateField.id,
       presetId: 'exists_true'
-    }),
+    }).query,
     {
-      sorted: true
-    }
-  )
-  assert.deepEqual(
-    filter.rule.sortLookup(dateField, {
-      fieldId: dateField.id,
-      presetId: 'exists_true'
-    }),
-    {
+      kind: 'sort',
       mode: 'exists'
     }
   )
 })
 
-test('option bucket filter specs share bucket lookup semantics', () => {
+test('option filters share bucket query semantics', () => {
   const selectValue = filter.value.optionSet.create(['todo'])
   const multiSelectValue = filter.value.optionSet.create(['bug'])
 
   assert.deepEqual(
-    filter.rule.bucketLookup(selectField, {
+    filter.rule.analyze(selectField, {
       fieldId: selectField.id,
       presetId: 'eq',
       value: selectValue
-    }),
+    }).query,
     {
+      kind: 'bucket',
       mode: 'include',
       keys: ['todo']
     }
   )
   assert.deepEqual(
-    filter.rule.bucketLookup(selectField, {
+    filter.rule.analyze(selectField, {
       fieldId: selectField.id,
       presetId: 'neq',
       value: selectValue
-    }),
+    }).query,
     {
+      kind: 'bucket',
       mode: 'exclude',
       keys: ['todo']
     }
   )
   assert.deepEqual(
-    filter.rule.bucketLookup(multiSelectField, {
+    filter.rule.analyze(multiSelectField, {
       fieldId: multiSelectField.id,
       presetId: 'contains',
       value: multiSelectValue
-    }),
+    }).query,
     {
+      kind: 'bucket',
       mode: 'include',
       keys: ['bug']
     }
@@ -155,20 +141,23 @@ test('option bucket filter specs share bucket lookup semantics', () => {
 })
 
 test('fixed presets still clear editable value and keep none preview fallback', () => {
-  const nextRule = filter.rule.applyPreset(textField, {
+  const nextRule = filter.rule.patch(textField, {
     id: 'filter_rule_1',
     fieldId: textField.id,
     presetId: 'contains',
     value: 'hello'
-  }, 'exists_true')
+  }, {
+    presetId: 'exists_true'
+  })
 
   assert.deepEqual(nextRule, {
     id: 'filter_rule_1',
     fieldId: textField.id,
     presetId: 'exists_true'
   })
-  assert.equal(filter.rule.editorKind(textField, nextRule), 'none')
-  assert.deepEqual(filter.rule.project(textField, nextRule), {
+  const analysis = filter.rule.analyze(textField, nextRule)
+  assert.equal(analysis.editorKind, 'none')
+  assert.deepEqual(analysis.project, {
     kind: 'none'
   })
 })

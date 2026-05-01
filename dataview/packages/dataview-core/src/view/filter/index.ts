@@ -1,22 +1,15 @@
 import {
-  applyFilterPreset,
+  analyzeFilterRule,
+  cloneFilterRule,
   createFilterRule,
   createFilterOptionSetValue,
-  deriveFilterRuleDefaultValue,
-  getFilterBucketLookup,
-  getFilterEditorKind,
-  getFilterPlanDemand,
   getFilterPresetIds,
-  getFilterSortLookup,
-  getFilterSpec,
   hasFilterPreset,
-  isFilterRuleEffective,
   matchFilterRule,
-  normalizeFilterRule,
-  projectFilterRuleValue,
+  patchFilterRule,
   readFilterOptionSetValue,
-  setFilterRuleValue
-} from './spec'
+  sameFilterRule
+} from './rule'
 import {
   cloneFilterRules,
   cloneFilterState,
@@ -25,7 +18,6 @@ import {
   normalizeFilterState,
   sameFilterRules,
   sameFilterState,
-  sameFilterRule,
   writeFilterClear,
   writeFilterCreate,
   writeFilterInsert,
@@ -34,22 +26,18 @@ import {
   writeFilterPatch,
   writeFilterRemove
 } from './state'
-import { planFilterCandidateLookup } from './plan'
+import {
+  filterConfig
+} from './config'
 
 export type {
-  FilterBucketLookup,
-  FilterCandidateSpec,
-  FilterCreateSpec,
   FilterEditorKind,
-  FilterPlanDemand,
-  FilterPlanSpec,
+  FilterFamily,
+  FilterFamilyConfig,
   FilterPreset,
-  FilterSortLookup,
-  FilterSpec
+  FilterQueryAnalysis,
+  FilterRuleAnalysis
 } from './types'
-export type {
-  FilterCandidateLookupPlan
-} from './plan'
 
 export const filter = {
   state: {
@@ -62,21 +50,13 @@ export const filter = {
   },
   rule: {
     same: sameFilterRule,
-    spec: getFilterSpec,
+    clone: cloneFilterRule,
     presetIds: getFilterPresetIds,
     hasPreset: hasFilterPreset,
     create: createFilterRule,
-    applyPreset: applyFilterPreset,
-    editorKind: getFilterEditorKind,
-    effective: isFilterRuleEffective,
+    patch: patchFilterRule,
     match: matchFilterRule,
-    project: projectFilterRuleValue,
-    planDemand: getFilterPlanDemand,
-    bucketLookup: getFilterBucketLookup,
-    sortLookup: getFilterSortLookup,
-    defaultValue: deriveFilterRuleDefaultValue,
-    setValue: setFilterRuleValue,
-    normalize: normalizeFilterRule
+    analyze: analyzeFilterRule
   },
   rules: {
     read: {
@@ -99,10 +79,7 @@ export const filter = {
       create: createFilterOptionSetValue,
       read: readFilterOptionSetValue
     }
-  },
-  plan: {
-    candidateLookup: planFilterCandidateLookup
   }
 } as const
 
-export { planFilterCandidateLookup }
+export { filterConfig }

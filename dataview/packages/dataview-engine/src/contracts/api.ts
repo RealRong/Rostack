@@ -18,8 +18,8 @@ import type {
   fieldKindSpec
 } from '@dataview/core/field/kind/spec'
 import type {
-  filterSpec
-} from '@dataview/core/view/filter/spec'
+  filterConfig
+} from '@dataview/core/view/filter/config'
 import type {
   viewTypeSpec
 } from '@dataview/core/view/typeSpec'
@@ -91,7 +91,7 @@ export type {
 export interface DataviewSpec {
   viewTypes: typeof viewTypeSpec
   fieldKinds: typeof fieldKindSpec
-  filters: typeof filterSpec
+  filters: typeof filterConfig
   fieldValues: Record<string, unknown>
   models: {
     page: Record<string, unknown>

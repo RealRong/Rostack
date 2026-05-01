@@ -1,4 +1,4 @@
-import { matchSearchRecord } from './searchExecute'
+import { matchSearchRecord } from './execute'
 import {
   buildFieldText,
   buildRecordDefaultText,
@@ -9,17 +9,17 @@ import {
   normalizeTokens,
   SEARCH_TOKEN_SEPARATOR,
   splitText
-} from './searchText'
+} from './text'
 import {
   cloneSearchState,
   normalizeSearchState,
   sameSearchState,
   setSearchQuery
-} from './searchState'
+} from './state'
 
 export type {
   SearchTextContext
-} from './searchText'
+} from './text'
 
 export const search = {
   state: {

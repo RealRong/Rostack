@@ -3,7 +3,8 @@ import type { Edge } from '@whiteboard/core/types'
 import {
   createEditorActionsApi
 } from '../src/action'
-import { createToolService } from '../src/services/tool'
+import { EMPTY_PREVIEW_STATE } from '../src/session/preview/state'
+import { DEFAULT_DRAW_STATE } from '../src/session/draw/state'
 import { createEditorTaskRuntime } from '../src/tasks/runtime'
 
 const okResult = () => ({ ok: true }) as const
@@ -62,81 +63,6 @@ const createActions = (edge = createEdge()) => {
       fromSelection: vi.fn(() => undefined)
     }
   } as never
-  const session = {
-    mutate: {
-      tool: {
-        set: vi.fn()
-      },
-      draw: {
-        set: vi.fn(),
-        slot: vi.fn(),
-        patch: vi.fn()
-      },
-      selection: {
-        replace: vi.fn(() => true),
-        add: vi.fn(() => true),
-        remove: vi.fn(() => true),
-        toggle: vi.fn(() => true),
-        clear: vi.fn(() => true)
-      },
-      edit: {
-        set: vi.fn(),
-        input: vi.fn(),
-        caret: vi.fn(),
-        composing: vi.fn(),
-        clear: vi.fn()
-      }
-    },
-    commands: {
-      selection: {
-        replace: vi.fn(() => true),
-        add: vi.fn(() => true),
-        remove: vi.fn(() => true),
-        toggle: vi.fn(() => true),
-        clear: vi.fn(() => true)
-      }
-    },
-    state: {
-      tool: {
-        get: vi.fn(() => ({ type: 'select' }))
-      },
-      selection: {
-        get: vi.fn(() => ({
-          nodeIds: [],
-          edgeIds: []
-        }))
-      },
-      edit: {
-        get: vi.fn(() => undefined)
-      }
-    },
-    preview: {
-      state: {
-        get: vi.fn(() => ({
-          mindmap: {
-            preview: undefined
-          }
-        }))
-      }
-    },
-    viewport: {
-      commands: {
-        set: vi.fn(),
-        panBy: vi.fn(),
-        zoomTo: vi.fn(),
-        fit: vi.fn(),
-        reset: vi.fn()
-      },
-      setRect: vi.fn(),
-      setLimits: vi.fn(),
-      read: {
-        get: vi.fn(() => ({
-          center: { x: 0, y: 0 },
-          zoom: 1
-        }))
-      }
-    }
-  } as never
   const graph = {
     nodes: {
       get: vi.fn(() => undefined)
@@ -161,6 +87,50 @@ const createActions = (edge = createEdge()) => {
     groups: {
       exact: vi.fn(() => []),
       target: vi.fn(() => undefined)
+    }
+  } as never
+  const editor = {
+    tool: {
+      get: vi.fn(() => ({ type: 'select' }))
+    },
+    draw: {
+      get: vi.fn(() => DEFAULT_DRAW_STATE)
+    },
+    edit: {
+      get: vi.fn(() => null)
+    },
+    selection: {
+      get: vi.fn(() => ({
+        nodeIds: [],
+        edgeIds: []
+      }))
+    },
+    preview: {
+      get: vi.fn(() => EMPTY_PREVIEW_STATE)
+    },
+    dispatch: vi.fn(),
+    viewport: {
+      read: {
+        get: vi.fn(() => ({
+          center: { x: 0, y: 0 },
+          zoom: 1
+        }))
+      },
+      resolve: {
+        set: vi.fn((viewport) => viewport),
+        panBy: vi.fn(() => undefined),
+        zoomTo: vi.fn(() => undefined),
+        fit: vi.fn(() => ({
+          center: { x: 0, y: 0 },
+          zoom: 1
+        })),
+        reset: vi.fn(() => ({
+          center: { x: 0, y: 0 },
+          zoom: 1
+        }))
+      },
+      setRect: vi.fn(),
+      setLimits: vi.fn()
     }
   } as never
   const layout = {
@@ -294,16 +264,9 @@ const createActions = (edge = createEdge()) => {
   const tasks = createEditorTaskRuntime()
   const actions = createEditorActionsApi({
     document,
-    state: {
-      viewport: session.viewport.read,
-      selection: session.state.selection
-    } as never,
-    session,
-    graph,
+    projection: graph,
+    editor,
     tasks,
-    tool: createToolService({
-      session
-    }),
     write,
     nodeType: {
       edit: vi.fn(() => undefined)

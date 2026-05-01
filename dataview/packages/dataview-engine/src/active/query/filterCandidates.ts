@@ -6,8 +6,7 @@ import type {
 import { field as fieldApi } from '@dataview/core/field'
 import { filter as filterApi } from '@dataview/core/view'
 import {
-  planFilterCandidateLookup,
-  type FilterCandidateLookupPlan
+  type FilterQueryAnalysis
 } from '@dataview/core/view'
 import type {
   EffectiveFilterRule
@@ -79,7 +78,7 @@ const matchesFilter = (input: {
 
 const resolveBucketFilterCandidates = (input: {
   fieldId: string
-  lookup: Extract<FilterCandidateLookupPlan, { kind: 'bucket' }>
+  lookup: Extract<FilterQueryAnalysis, { kind: 'bucket' }>
   index: IndexState
 }): FilterCandidate | undefined => {
   const bucketIndex = readBucketIndex(input.index.bucket, bucket.normalize({
@@ -150,7 +149,7 @@ const lowerBoundByFilter = (input: {
 const resolveSortedFilterCandidates = (input: {
   field: Field | undefined
   fieldId: string
-  lookup: Extract<FilterCandidateLookupPlan, { kind: 'sort' }>
+  lookup: Extract<FilterQueryAnalysis, { kind: 'sort' }>
   index: IndexState
 }): FilterCandidate | undefined => {
   const sortIndex = input.index.sort.fields.get(input.fieldId)
@@ -267,10 +266,10 @@ const resolveFilterCandidatesForRule = (input: {
   rule: EffectiveFilterRule
   index: IndexState
 }): FilterCandidate | undefined => {
-  const lookup = planFilterCandidateLookup({
-    field: input.rule.field,
-    rule: input.rule.rule
-  })
+  const lookup = filterApi.rule.analyze(
+    input.rule.field,
+    input.rule.rule
+  ).query
 
   switch (lookup.kind) {
     case 'bucket':

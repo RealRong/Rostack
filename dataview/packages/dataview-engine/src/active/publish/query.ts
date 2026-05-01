@@ -41,19 +41,19 @@ const createFilterRuleProjection = (
   field: Field | undefined,
   rule: FilterRule
 ): FilterRuleProjection => {
-  const editorKind = filterApi.rule.editorKind(field, rule)
+  const analysis = filterApi.rule.analyze(field, rule)
 
   return {
     rule,
     field,
     fieldMissing: !field,
     activePresetId: rule.presetId,
-    effective: filterApi.rule.effective(field, rule),
-    editorKind,
-    value: filterApi.rule.project(field, rule),
-    bodyLayout: editorKind === 'none'
+    effective: analysis.effective,
+    editorKind: analysis.editorKind,
+    value: analysis.project,
+    bodyLayout: analysis.editorKind === 'none'
       ? 'none'
-      : editorKind === 'option-set'
+      : analysis.editorKind === 'option-set'
         ? 'flush'
         : 'inset',
     conditions: filterApi.rule.presetIds(field).map((id: string) => ({

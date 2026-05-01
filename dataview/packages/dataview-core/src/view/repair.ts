@@ -48,7 +48,7 @@ export const repairViewForRemovedField = (
       .filter(rule => rule.fieldId !== fieldId)
   )
   const nextSortRules = entityTable.normalize.list(
-    sortApi.rules
+    sortApi.rules.read
       .list(view.sort.rules)
       .filter(rule => rule.fieldId !== fieldId)
   )

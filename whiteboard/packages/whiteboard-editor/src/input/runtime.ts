@@ -151,19 +151,19 @@ const createLocalEditorSession = (
   const gesture = store.createValueStore<import('@whiteboard/editor/input/core/gesture').ActiveGesture | null>(null)
   const pointer = store.createValueStore<import('@whiteboard/editor/types/input').PointerSample | null>(null)
   const mode = store.createDerivedStore({
-    get: () => runtime.stores.interaction.store.get().mode,
+    get: () => store.read(runtime.stores.interaction.store).mode,
     isEqual: (left, right) => left === right
   })
   const chrome = store.createDerivedStore({
-    get: () => runtime.stores.interaction.store.get().chrome,
+    get: () => store.read(runtime.stores.interaction.store).chrome,
     isEqual: (left, right) => left === right
   })
   const space = store.createDerivedStore({
-    get: () => runtime.stores.interaction.store.get().space,
+    get: () => store.read(runtime.stores.interaction.store).space,
     isEqual: (left, right) => left === right
   })
   const busy = store.createDerivedStore({
-    get: () => runtime.stores.interaction.store.get().mode !== 'idle',
+    get: () => store.read(runtime.stores.interaction.store).mode !== 'idle',
     isEqual: (left, right) => left === right
   })
 

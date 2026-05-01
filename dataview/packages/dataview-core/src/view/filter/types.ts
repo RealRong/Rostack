@@ -1,10 +1,9 @@
 import type {
-  Field,
   FieldId,
-  FilterValuePreview,
   FilterOperator,
   FilterPresetId,
-  FilterRule
+  FilterRule,
+  FilterValuePreview
 } from '@dataview/core/types'
 
 export interface FilterPreset {
@@ -21,59 +20,44 @@ export type FilterEditorKind =
   | 'date'
   | 'option-set'
 
-export interface FilterPlanDemand {
-  bucket?: true
-  sorted?: true
+export type FilterFamily =
+  | 'text'
+  | 'comparable-number'
+  | 'comparable-date'
+  | 'single-option'
+  | 'multi-option'
+  | 'boolean'
+  | 'presence'
+
+export interface FilterFamilyConfig {
+  family: FilterFamily
+  defaultPresetId: FilterPresetId
+  presets: readonly FilterPreset[]
+  editableValueKind: FilterEditorKind
 }
 
-export interface FilterPlanSpec {
-  demandOf: (input: {
-    field: Field | undefined
-    rule: FilterRule
-  }) => FilterPlanDemand
-}
+export type FilterQueryAnalysis =
+  | {
+      kind: 'scan'
+    }
+  | {
+      kind: 'bucket'
+      mode: 'include' | 'exclude'
+      keys: readonly string[]
+    }
+  | {
+      kind: 'sort'
+      mode: 'exists' | 'eq' | 'gt' | 'gte' | 'lt' | 'lte'
+      value?: unknown
+    }
 
-export interface FilterBucketLookup {
-  mode: 'include' | 'exclude'
-  keys: readonly string[]
-}
-
-export interface FilterSortLookup {
-  mode: 'exists' | 'eq' | 'gt' | 'gte' | 'lt' | 'lte'
-  value?: FilterRule['value']
-}
-
-export interface FilterCandidateSpec {
-  bucketLookupOf?: (input: {
-    field: Field | undefined
-    rule: FilterRule
-  }) => FilterBucketLookup | undefined
-  sortLookupOf?: (input: {
-    field: Field | undefined
-    rule: FilterRule
-  }) => FilterSortLookup | undefined
-}
-
-export interface FilterCreateSpec {
-  deriveDefaultValue?: (input: {
-    field: Field
-    rule: FilterRule
-  }) => {
+export interface FilterRuleAnalysis {
+  effective: boolean
+  editorKind: FilterEditorKind
+  project: FilterValuePreview
+  query: FilterQueryAnalysis
+  recordDefault?: {
     fieldId: FieldId
     value: unknown
-  } | undefined
-}
-
-export interface FilterSpec {
-  presets: readonly FilterPreset[]
-  getDefaultRule: (field: Field) => Omit<FilterRule, 'id'>
-  getActivePreset: (field: Field | undefined, rule: FilterRule) => FilterPreset
-  applyPreset: (field: Field | undefined, rule: FilterRule, presetId: FilterPresetId) => FilterRule
-  getEditorKind: (field: Field | undefined, rule: FilterRule) => FilterEditorKind
-  isEffective: (field: Field | undefined, rule: FilterRule) => boolean
-  match: (field: Field | undefined, recordValue: unknown, rule: FilterRule) => boolean
-  projectValue: (field: Field | undefined, rule: FilterRule) => FilterValuePreview
-  plan: FilterPlanSpec
-  candidate?: FilterCandidateSpec
-  create?: FilterCreateSpec
+  }
 }

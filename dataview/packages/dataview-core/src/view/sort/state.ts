@@ -48,6 +48,15 @@ export const cloneSortRule = (
   direction: rule.direction
 })
 
+export const sameSortRule = (
+  left: SortRule,
+  right: SortRule
+): boolean => (
+  left.id === right.id
+  && left.fieldId === right.fieldId
+  && left.direction === right.direction
+)
+
 export const cloneSortRules = (
   rules: EntityTable<ViewSortRuleId, SortRule>
 ): EntityTable<ViewSortRuleId, SortRule> => entityTable.clone.table(rules)
@@ -99,19 +108,17 @@ export const sameSortRules = (
       rightId
       && leftRule
       && rightRule
-      && leftRule.id === rightRule.id
-      && leftRule.fieldId === rightRule.fieldId
-      && leftRule.direction === rightRule.direction
+      && sameSortRule(leftRule, rightRule)
     )
   })
 )
 
-const getSortRule = (
+export const getSortRule = (
   rules: EntityTable<ViewSortRuleId, SortRule>,
   id: ViewSortRuleId
 ): SortRule | undefined => entityTable.read.get(rules, id)
 
-const listSortRules = (
+export const listSortRules = (
   rules: EntityTable<ViewSortRuleId, SortRule>
 ): SortRule[] => entityTable.read.list(rules)
 
@@ -127,7 +134,13 @@ const findSortRuleIdByFieldId = (
   return rules.byId[ruleId]?.fieldId === fieldId
 })
 
-const assertSortFieldAvailable = (
+export const hasSortField = (
+  rules: EntityTable<ViewSortRuleId, SortRule>,
+  fieldId: FieldId,
+  exceptId?: ViewSortRuleId
+): boolean => Boolean(findSortRuleIdByFieldId(rules, fieldId, exceptId))
+
+export const assertSortFieldAvailable = (
   rules: EntityTable<ViewSortRuleId, SortRule>,
   fieldId: FieldId,
   exceptId?: ViewSortRuleId
@@ -137,11 +150,30 @@ const assertSortFieldAvailable = (
   }
 }
 
-const createSortState = (
-  rules: EntityTable<ViewSortRuleId, SortRule>
+export const cloneSortState = (
+  sort: Sort
 ): Sort => ({
-  rules
+  rules: cloneSortRules(sort.rules)
 })
+
+export const sameSortState = (
+  left: Sort,
+  right: Sort
+): boolean => sameSortRules(left.rules, right.rules)
+
+export const normalizeSortState = (
+  sort: unknown
+): Sort => {
+  const source = typeof sort === 'object' && sort !== null
+    ? sort as {
+        rules?: unknown
+      }
+    : undefined
+
+  return {
+    rules: normalizeSortRules(source?.rules)
+  }
+}
 
 export const writeSortCreate = (
   sort: Sort,
@@ -203,10 +235,12 @@ export const writeSortInsert = (
 
   return {
     id,
-    sort: createSortState({
-      byId: inserted.byId,
-      ids: nextIds
-    })
+    sort: {
+      rules: {
+        byId: inserted.byId,
+        ids: nextIds
+      }
+    }
   }
 }
 
@@ -237,7 +271,9 @@ export const writeSortPatch = (
     return sort
   }
 
-  return createSortState(entityTable.write.patch(sort.rules, id, nextRule))
+  return {
+    rules: entityTable.write.patch(sort.rules, id, nextRule)
+  }
 }
 
 export const writeSortMove = (
@@ -265,12 +301,14 @@ export const writeSortMove = (
 
   return nextIds.every((ruleId, index) => ruleId === sort.rules.ids[index])
     ? sort
-    : createSortState({
-        byId: {
-          ...sort.rules.byId
-        },
-        ids: nextIds
-      })
+    : {
+        rules: {
+          byId: {
+            ...sort.rules.byId
+          },
+          ids: nextIds
+        }
+      }
 }
 
 export const writeSortRemove = (
@@ -282,24 +320,17 @@ export const writeSortRemove = (
     throw new Error(`Unknown sort rule ${id}`)
   }
 
-  return createSortState(nextRules)
+  return {
+    rules: nextRules
+  }
 }
 
 export const writeSortClear = (
   sort: Sort
 ): Sort => (
   sort.rules.ids.length
-    ? createSortState(EMPTY_SORT_RULES)
+    ? {
+        rules: EMPTY_SORT_RULES
+      }
     : sort
 )
-
-export const sortRuleAccess = {
-  list: listSortRules,
-  get: getSortRule,
-  hasField: (
-    rules: EntityTable<ViewSortRuleId, SortRule>,
-    fieldId: FieldId,
-    exceptId?: ViewSortRuleId
-  ) => Boolean(findSortRuleIdByFieldId(rules, fieldId, exceptId)),
-  assertFieldAvailable: assertSortFieldAvailable
-} as const

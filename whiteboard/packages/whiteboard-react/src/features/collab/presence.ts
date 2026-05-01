@@ -9,8 +9,8 @@ import type {
 export const getSelectionSnapshot = (
   editor: WhiteboardRuntime
 ) => ({
-  nodeIds: [...editor.projection.runtime.editor.selection().nodeIds],
-  edgeIds: [...editor.projection.runtime.editor.selection().edgeIds]
+  nodeIds: [...editor.scene.editor.selection.get().nodeIds],
+  edgeIds: [...editor.scene.editor.selection.get().edgeIds]
 })
 
 export const serializePresenceTool = (
@@ -43,7 +43,7 @@ export const resolvePresenceActivity = (
   editor: WhiteboardRuntime,
   fallback: WhiteboardPresenceActivity = 'idle'
 ): WhiteboardPresenceActivity => (
-  editor.projection.runtime.editor.edit()
+  editor.scene.editor.edit.get()
     ? 'editing'
     : fallback
 )

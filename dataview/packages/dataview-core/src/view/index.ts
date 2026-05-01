@@ -166,4 +166,3 @@ export const view = {
 
 export { active, filter, sort, search, group, calc as calculation }
 export { viewTypeSpec, getViewTypeSpec }
-export { planFilterCandidateLookup } from '@dataview/core/view/filter'

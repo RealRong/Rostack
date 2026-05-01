@@ -337,14 +337,14 @@ describe('node edit selection chrome', () => {
     })
     editor.write.edit.startNode('text-1', 'text')
 
-    expect(editor.derived.editor.selection.toolbar.get()).toMatchObject({
+    expect(editor.scene.chrome.selection.toolbar.get()).toMatchObject({
       selectionKind: 'nodes',
       target: {
         nodeIds: ['text-1'],
         edgeIds: []
       }
     })
-    expect(editor.derived.editor.selection.overlay.get()).toMatchObject({
+    expect(editor.scene.chrome.selection.overlay.get()).toMatchObject({
       kind: 'node',
       nodeId: 'text-1',
       handles: false
@@ -359,14 +359,14 @@ describe('node edit selection chrome', () => {
     })
     editor.write.edit.startNode('root-1', 'text')
 
-    expect(editor.derived.editor.selection.toolbar.get()).toMatchObject({
+    expect(editor.scene.chrome.selection.toolbar.get()).toMatchObject({
       selectionKind: 'nodes',
       target: {
         nodeIds: ['root-1'],
         edgeIds: []
       }
     })
-    expect(editor.derived.editor.selection.overlay.get()).toMatchObject({
+    expect(editor.scene.chrome.selection.overlay.get()).toMatchObject({
       kind: 'node',
       nodeId: 'root-1',
       handles: false
@@ -381,7 +381,7 @@ describe('node edit selection chrome', () => {
     })
     editor.write.edit.startEdgeLabel('edge-1', 'label-1')
 
-    expect(editor.derived.editor.selection.toolbar.get()).toBeUndefined()
+    expect(editor.scene.chrome.selection.toolbar.get()).toBeUndefined()
   })
 
   it('keeps node drag and toolbar style writes working for a selected shape', () => {
@@ -425,7 +425,7 @@ describe('node edit selection chrome', () => {
       }
     }))
 
-    expect(editor.document.snapshot().nodes['shape-1']?.position).toEqual({
+    expect(editor.scene.document.snapshot().nodes['shape-1']?.position).toEqual({
       x: 128,
       y: 152
     })
@@ -434,7 +434,7 @@ describe('node edit selection chrome', () => {
       y: 152
     })
 
-    const toolbar = editor.derived.editor.selection.toolbar.get()
+    const toolbar = editor.scene.chrome.selection.toolbar.get()
     expect(toolbar?.defaultScopeKey).toBe('nodes')
     const scope = toolbar?.scopes.find((entry) => entry.key === toolbar.defaultScopeKey)
     expect(scope?.node?.nodeIds).toEqual(['shape-1'])
@@ -443,7 +443,7 @@ describe('node edit selection chrome', () => {
     editor.write.node.style.stroke(scope!.node!.nodeIds, '#ef4444')
     editor.write.node.style.strokeWidth(scope!.node!.nodeIds, 3)
 
-    expect(editor.document.snapshot().nodes['shape-1']?.style).toMatchObject({
+    expect(editor.scene.document.snapshot().nodes['shape-1']?.style).toMatchObject({
       fill: '#22c55e',
       stroke: '#ef4444',
       strokeWidth: 3
@@ -496,7 +496,7 @@ describe('node edit selection chrome', () => {
       }
     }))
 
-    expect(editor.document.snapshot().nodes['root-1']?.position).toEqual({
+    expect(editor.scene.document.snapshot().nodes['root-1']?.position).toEqual({
       x: 248,
       y: 212
     })
@@ -513,7 +513,7 @@ describe('node edit selection chrome', () => {
       nodeIds: ['root-1']
     })
 
-    const toolbar = editor.derived.editor.selection.toolbar.get()
+    const toolbar = editor.scene.chrome.selection.toolbar.get()
     expect(toolbar?.defaultScopeKey).toBe('nodes')
     const scope = toolbar?.scopes.find((entry) => entry.key === toolbar.defaultScopeKey)
     expect(scope?.node?.nodeIds).toEqual(['root-1'])
@@ -530,7 +530,7 @@ describe('node edit selection chrome', () => {
 
     expect(result?.ok).toBe(true)
 
-    expect(editor.document.snapshot().nodes['root-1']?.style).toMatchObject({
+    expect(editor.scene.document.snapshot().nodes['root-1']?.style).toMatchObject({
       frameKind: 'underline',
       stroke: '#ef4444',
       strokeWidth: 3,

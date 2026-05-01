@@ -381,7 +381,7 @@ const TransformChrome = ({
   showRotateHandle
 }: TransformChromeProps) => {
   const editor = useEditor()
-  const zoom = useStoreValue(editor.projection.stores.runtime.editor.viewport).zoom
+  const zoom = useStoreValue(editor.scene.editor.viewport).zoom
 
   const handles = nodeApi.transform.buildHandles({
     rect,

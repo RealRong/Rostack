@@ -103,7 +103,7 @@ describe('mindmap root move', () => {
 
     const { mindmapId, rootId } = created.data
     const beforeTree = editor.scene.mindmaps.get(mindmapId)?.tree.bbox
-    const beforeRoot = editor.document.snapshot().nodes[rootId]?.position
+    const beforeRoot = editor.scene.document.snapshot().nodes[rootId]?.position
 
     expect(beforeTree).toBeDefined()
     expect(beforeRoot).toBeDefined()
@@ -119,7 +119,7 @@ describe('mindmap root move', () => {
     })
 
     const afterTree = editor.scene.mindmaps.get(mindmapId)?.tree.bbox
-    const afterRoot = editor.document.snapshot().nodes[rootId]?.position
+    const afterRoot = editor.scene.document.snapshot().nodes[rootId]?.position
 
     expect(afterTree).toBeDefined()
     expect(afterTree!.x - beforeTree!.x).toBe(120)

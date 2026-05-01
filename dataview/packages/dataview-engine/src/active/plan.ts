@@ -120,7 +120,7 @@ const resolveEffectiveFilterRules = (
   for (let index = 0; index < filterRules.length; index += 1) {
     const rule = filterRules[index]!
     const field = reader.fields.get(rule.fieldId)
-    if (!filterApi.rule.effective(field, rule)) {
+    if (!filterApi.rule.analyze(field, rule).effective) {
       continue
     }
 
@@ -148,7 +148,7 @@ const resolveIndexedFilterRules = (
     }
 
     const field = reader.fields.get(rule.fieldId)
-    if (!filterApi.rule.effective(field, rule)) {
+    if (!filterApi.rule.analyze(field, rule).effective) {
       continue
     }
 
@@ -237,7 +237,7 @@ export const compileDataviewResolvedActive = (
     : []
   const filterBucketSpecs = collection.uniqueSorted(
     indexedFilters.flatMap(entry => (
-      filterApi.rule.planDemand(entry.field, entry.rule).bucket
+      filterApi.rule.analyze(entry.field, entry.rule).query.kind === 'bucket'
         ? [entry.fieldId]
         : []
     ))
@@ -266,7 +266,7 @@ export const compileDataviewResolvedActive = (
   const sortFields = collection.unique([
     ...viewApi.demand.sort(view),
     ...indexedFilters.flatMap(entry => (
-      filterApi.rule.planDemand(entry.field, entry.rule).sorted
+      filterApi.rule.analyze(entry.field, entry.rule).query.kind === 'sort'
         ? [entry.fieldId]
         : []
     ))

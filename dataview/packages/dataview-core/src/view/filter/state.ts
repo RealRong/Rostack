@@ -6,11 +6,12 @@ import type {
   FilterRule,
   ViewFilterRuleId
 } from '@dataview/core/types'
-import { createId, entityTable, equal } from '@shared/core'
+import { createId, entityTable } from '@shared/core'
 import {
   createFilterRule,
-  patchFilterRule
-} from './spec'
+  patchFilterRule,
+  sameFilterRule
+} from './rule'
 
 const createFilterRuleId = (): ViewFilterRuleId => createId('filter') as ViewFilterRuleId
 
@@ -82,16 +83,6 @@ const assertFilterFieldAvailable = (
     throw new Error(`Filter rule already exists for field ${fieldId}`)
   }
 }
-
-export const sameFilterRule = (
-  left: FilterRule,
-  right: FilterRule
-) => (
-  left.id === right.id
-  && left.fieldId === right.fieldId
-  && left.presetId === right.presetId
-  && equal.sameJsonValue(left.value, right.value)
-)
 
 export const sameFilterRules = (
   left: EntityTable<ViewFilterRuleId, FilterRule>,
@@ -202,9 +193,8 @@ export const writeFilterInsert = (
     throw new Error(`Filter rule already exists: ${id}`)
   }
 
-  const rule = createFilterRule({
+  const rule = createFilterRule(field, {
     id,
-    field,
     ...(input.presetId !== undefined
       ? { presetId: input.presetId }
       : {}),
@@ -259,11 +249,7 @@ export const writeFilterPatch = (
     assertFilterFieldAvailable(filter.rules, patch.fieldId, id)
   }
 
-  const nextRule = patchFilterRule({
-    field,
-    rule: currentRule,
-    patch
-  })
+  const nextRule = patchFilterRule(field, currentRule, patch)
 
   if (sameFilterRule(currentRule, nextRule)) {
     return filter

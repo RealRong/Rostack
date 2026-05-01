@@ -63,7 +63,7 @@ const normalizeView = (
     search: search.state.normalize(view.search),
     filter: filter.state.normalize(view.filter),
     sort: {
-      rules: sort.rules.normalize(view.sort.rules)
+      rules: sort.rules.read.normalize(view.sort.rules)
     },
     calc: calculation.view.normalize(view.calc, {
       fields: new Map(fields.map(fieldEntry => [fieldEntry.id, fieldEntry] as const))

@@ -8,7 +8,10 @@ import { isCheckpointProgram } from '@whiteboard/core/mutation'
 import type { Viewport } from '@whiteboard/core/types'
 import type { WhiteboardLayoutService } from '@whiteboard/core/layout'
 import { createEditorActionsApi } from '@whiteboard/editor/action'
-import { createEditorProjection } from '@whiteboard/editor/editor/projection'
+import {
+  createEditorProjection,
+  createEditorSceneApi
+} from '@whiteboard/editor/editor/projection'
 import {
   buildEditorProjectionSnapshot,
   collectEditorProjectionCommitFlags,
@@ -179,6 +182,11 @@ export const createEditor = (input: {
     runtime: stateRuntime,
     nodeType,
     defaults: defaults.selection
+  })
+  const scene = createEditorSceneApi({
+    projection,
+    runtime: stateRuntime,
+    capture: sceneRuntime.capture
   })
   const document = projection.document
   const writeRuntime = createEditorWrite({
@@ -364,7 +372,7 @@ export const createEditor = (input: {
   })
 
   return {
-    projection,
+    scene,
     history: input.history,
     input: host,
     write: actions,

@@ -24,13 +24,13 @@ import {
   normalizeTokens,
   SEARCH_TOKEN_SEPARATOR,
   splitJoinedTokens
-} from '@dataview/core/view/searchTokens'
+} from './tokens'
 
 export {
   joinTokens,
   normalizeTokens,
   SEARCH_TOKEN_SEPARATOR
-} from '@dataview/core/view/searchTokens'
+} from './tokens'
 
 const EMPTY_TEXTS = [] as readonly string[]
 const EMPTY_FIELDS = [] as readonly CustomField[]

@@ -131,7 +131,7 @@ const applyFilterDefaults = (input: {
       return false
     }
 
-    const next = filterApi.rule.defaultValue(field, projection.rule)
+    const next = filterApi.rule.analyze(field, projection.rule).recordDefault
     if (!next) {
       return false
     }

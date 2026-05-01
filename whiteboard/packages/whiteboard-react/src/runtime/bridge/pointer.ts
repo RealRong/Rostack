@@ -25,8 +25,8 @@ const isViewportPanStart = (
 
   const leftDrag = event.button === 0 || (event.buttons & 1) === 1
   return leftDrag && (
-    editor.projection.runtime.editor.interaction().space
-    || editor.projection.runtime.editor.tool().type === 'hand'
+    editor.scene.editor.interaction.get().space
+    || editor.scene.editor.tool.is('hand')
   )
 }
 
@@ -38,7 +38,7 @@ const scheduleScenePick = (
     world: Point
   }
 ) => {
-  editor.projection.pick.schedule({
+  editor.scene.pick.schedule({
     client: input.client,
     screen: input.screen,
     world: input.world
@@ -251,13 +251,13 @@ export const createPointerBridge = ({
         return
       }
 
-      editor.projection.pick.clear()
+      editor.scene.pick.clear()
       point.clear()
       editor.input.pointerLeave()
     },
     cancel: () => {
       clearSession()
-      editor.projection.pick.clear()
+      editor.scene.pick.clear()
       point.clear()
       editor.input.cancel()
     }

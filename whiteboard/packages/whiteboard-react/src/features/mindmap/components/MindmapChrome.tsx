@@ -18,7 +18,7 @@ export const MindmapChrome = memo(({
 }: MindmapChromeProps) => {
   const editor = useEditorRuntime()
   const chrome = useOptionalKeyedStoreValue(
-    editor.projection.derived.scene.mindmap.chrome,
+    editor.scene.mindmap.chrome.addChildTargets,
     mindmapId,
     undefined
   )

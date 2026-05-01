@@ -257,7 +257,7 @@ const validateSort = (
 ) => {
   const issues: ValidationIssue[] = []
   const seen = new Set<string>()
-  viewApi.sort.rules.list(sort.rules).forEach((rule, index) => {
+  viewApi.sort.rules.read.list(sort.rules).forEach((rule, index) => {
     if (!string.isNonEmptyString(rule.fieldId)) {
       issues.push(createValidationIssue(source, 'view.invalidProjection', `Sort field must be a non-empty string (${rule.id})`, `${path}.rules.${index}.fieldId`))
     } else if (!reader.fields.has(rule.fieldId)) {
@@ -510,11 +510,11 @@ const normalizeView = (
   const normalizedShared = {
     id: view.id,
     name: view.name,
-    search: viewApi.search.state.normalize(view.search),
-    filter: viewApi.filter.state.normalize(view.filter),
-    sort: {
-      rules: viewApi.sort.rules.normalize(view.sort.rules)
-    },
+      search: viewApi.search.state.normalize(view.search),
+      filter: viewApi.filter.state.normalize(view.filter),
+      sort: {
+        rules: viewApi.sort.rules.read.normalize(view.sort.rules)
+      },
     calc: calculation.view.normalize(view.calc, {
       fields: new Map(fields.map((field) => [field.id, field] as const))
     }),
@@ -903,7 +903,7 @@ const handleViewFilterClear: DataviewViewIntentHandlers['view.filter.clear'] = c
 const handleViewSortClear: DataviewViewIntentHandlers['view.sort.clear'] = createViewUpdateHandler(
   (input, view) => finalizeView(input.reader, {
     ...view,
-    sort: viewApi.sort.write.clear(view.sort)
+    sort: viewApi.sort.rules.write.clear(view.sort)
   })
 )
 
@@ -1304,7 +1304,7 @@ const lowerViewSortCreate = (
   }
 
   try {
-    const created = viewApi.sort.write.insert(view.sort, {
+    const created = viewApi.sort.rules.write.insert(view.sort, {
       ...(explicitRuleId !== undefined
         ? { id: explicitRuleId }
         : {}),
@@ -1349,7 +1349,7 @@ const lowerViewSortPatch = (
   }
 
   try {
-    const nextSort = viewApi.sort.write.patch(
+    const nextSort = viewApi.sort.rules.write.patch(
       view.sort,
       intent.rule,
       intent.patch
@@ -1381,7 +1381,7 @@ const lowerViewSortMove = (
   }
 
   try {
-    const nextSort = viewApi.sort.write.move(
+    const nextSort = viewApi.sort.rules.write.move(
       view.sort,
       intent.rule,
       intent.before
@@ -1409,7 +1409,7 @@ const lowerViewSortRemove = (
   try {
     const nextView = finalizeView(reader, {
       ...view,
-      sort: viewApi.sort.write.remove(view.sort, intent.rule)
+      sort: viewApi.sort.rules.write.remove(view.sort, intent.rule)
     })
     return emitValidatedViewUpdate(input, view, nextView)
   } catch (error) {

@@ -53,7 +53,7 @@ export type CreateEditorActionsApiDeps = {
       get: () => DrawState
     }
     edit: {
-      get: () => EditSession
+      get: () => EditSession | null
     }
     selection: {
       get: () => import('@whiteboard/core/selection').SelectionTarget

@@ -269,7 +269,7 @@ describe('text wrap runtime', () => {
     editor.write.edit.startNode('text-1', 'text')
     editor.write.edit.input('hello world!!!')
 
-    expect(editor.state.edit.get()).toMatchObject({
+    expect(editor.scene.editor.edit.get()).toMatchObject({
       kind: 'node',
       nodeId: 'text-1'
     })
@@ -277,7 +277,7 @@ describe('text wrap runtime', () => {
       width: 280,
       height: 24
     })
-    expect(editor.document.snapshot().nodes['text-1']?.size).toMatchObject({
+    expect(editor.scene.document.snapshot().nodes['text-1']?.size).toMatchObject({
       width: 100,
       height: 24
     })
@@ -299,7 +299,7 @@ describe('text wrap runtime', () => {
       }
     })
 
-    expect(editor.document.snapshot().nodes['text-1']?.data).toMatchObject({
+    expect(editor.scene.document.snapshot().nodes['text-1']?.data).toMatchObject({
       widthMode: 'wrap',
       wrapWidth: 180
     })
@@ -311,7 +311,7 @@ describe('text wrap runtime', () => {
     editor.write.edit.startNode('text-1', 'text')
     editor.write.edit.input('this stays wrapped at the committed width')
 
-    expect(editor.state.edit.get()).toMatchObject({
+    expect(editor.scene.editor.edit.get()).toMatchObject({
       kind: 'node',
       nodeId: 'text-1'
     })
@@ -342,7 +342,7 @@ describe('text wrap runtime', () => {
       value: 20
     })
 
-    expect(editor.document.snapshot().nodes['text-1']?.style).toMatchObject({
+    expect(editor.scene.document.snapshot().nodes['text-1']?.style).toMatchObject({
       fontSize: 20
     })
     expect(editor.scene.nodes.get('text-1')?.geometry.rect).toMatchObject({
@@ -376,7 +376,7 @@ describe('text wrap runtime', () => {
       }
     )
 
-    expect(editor.document.snapshot().nodes['text-1']?.style).toMatchObject({
+    expect(editor.scene.document.snapshot().nodes['text-1']?.style).toMatchObject({
       fontSize: 20
     })
     expect(editor.scene.nodes.get('text-1')?.geometry.rect).toMatchObject({
@@ -399,8 +399,8 @@ describe('sticky fit runtime', () => {
       }
     )
 
-    expect(editor.document.snapshot().nodes['sticky-1']?.rotation).toBe(45)
-    expect(editor.document.snapshot().nodes['sticky-1']?.style).toMatchObject({
+    expect(editor.scene.document.snapshot().nodes['sticky-1']?.rotation).toBe(45)
+    expect(editor.scene.document.snapshot().nodes['sticky-1']?.style).toMatchObject({
       fontSize: 28
     })
   })
@@ -420,7 +420,7 @@ describe('sticky fit runtime', () => {
       }
     )
 
-    expect(editor.document.snapshot().nodes['sticky-1']?.style).toMatchObject({
+    expect(editor.scene.document.snapshot().nodes['sticky-1']?.style).toMatchObject({
       fontSize: 18
     })
     expect(editor.scene.nodes.get('sticky-1')?.geometry.rect).toMatchObject({
@@ -441,10 +441,10 @@ describe('sticky fit runtime', () => {
       }
     )
 
-    expect(editor.document.snapshot().nodes['sticky-1']?.data).toMatchObject({
+    expect(editor.scene.document.snapshot().nodes['sticky-1']?.data).toMatchObject({
       fontMode: 'fixed'
     })
-    expect(editor.document.snapshot().nodes['sticky-1']?.style).toMatchObject({
+    expect(editor.scene.document.snapshot().nodes['sticky-1']?.style).toMatchObject({
       fontSize: 32
     })
   })

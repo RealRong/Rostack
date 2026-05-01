@@ -9,8 +9,8 @@ import {
   toggle,
   toggleGroupBucketCollapsed,
   type ViewGroupPatch
-} from './groupState'
-import { group as groupWrite, type GroupWriteResult } from './groupWrite'
+} from './state'
+import { group as groupWrite, type GroupWriteResult } from './write'
 
 export const group = {
   state: {

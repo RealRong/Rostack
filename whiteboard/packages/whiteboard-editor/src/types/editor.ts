@@ -202,10 +202,12 @@ export type EditorProjectionStores = EditorScene['stores'] & {
 export type EditorProjectionRuntimeFrame = EditorScene['runtime'] & {
   editor: {
     tool(): Tool
+    hover(): import('@whiteboard/editor-scene').HoverState
+    interaction(): import('@whiteboard/editor-scene').InteractionInput
     draw(): DrawState
     selection(): SelectionTarget
     edit(): EditSession | null
-    interaction(): EditorInteractionStateValue
+    interactionState(): EditorInteractionStateValue
     preview(): PreviewInput
     viewport: {
       get(): Viewport

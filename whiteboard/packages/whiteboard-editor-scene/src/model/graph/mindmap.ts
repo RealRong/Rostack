@@ -106,7 +106,7 @@ const buildMindmapEntry = (
     return undefined
   }
 
-  const preview = input.runtime.session.preview.mindmap
+  const preview = input.runtime.editor.state.preview.mindmap
   const rootEntry = readNodeEntry(
     input,
     working,
@@ -133,7 +133,7 @@ const buildMindmapEntry = (
     working,
     entry: rootEntry,
     nodeId: tree.rootNodeId,
-    edit: input.runtime.session.edit
+    edit: input.runtime.editor.state.edit
   })
   const rootRect = readProjectedNodeRect({
     entry: rootEntry,
@@ -157,7 +157,7 @@ const buildMindmapEntry = (
               working,
               entry: nodeEntry,
               nodeId,
-              edit: input.runtime.session.edit
+              edit: input.runtime.editor.state.edit
             })
           })
         : {

@@ -33,17 +33,17 @@ import {
 } from '../src/projection/createProjectionRuntime'
 
 type RuntimeInputOptions = {
-  edit?: EditorSceneInput['runtime']['session']['edit']
+  edit?: EditorSceneInput['runtime']['editor']['state']['edit']
   nodeMeasures?: ReadonlyMap<NodeId, Size>
   edgeLabelMeasures?: ReadonlyMap<EdgeId, ReadonlyMap<string, Size>>
-  selection?: EditorSceneInput['runtime']['interaction']['selection']
-  hover?: EditorSceneInput['runtime']['interaction']['hover']
-  draw?: EditorSceneInput['runtime']['session']['preview']['draw']
-  edgeGuide?: EditorSceneInput['runtime']['session']['preview']['edgeGuide']
-  marquee?: EditorSceneInput['runtime']['session']['preview']['selection']['marquee']
+  selection?: EditorSceneInput['runtime']['editor']['interaction']['selection']
+  hover?: EditorSceneInput['runtime']['editor']['interaction']['hover']
+  draw?: EditorSceneInput['runtime']['editor']['state']['preview']['draw']
+  edgeGuide?: EditorSceneInput['runtime']['editor']['state']['preview']['edgeGuide']
+  marquee?: EditorSceneInput['runtime']['editor']['state']['preview']['selection']['marquee']
   guides?: readonly Guide[]
-  mindmapPreview?: EditorSceneInput['runtime']['session']['preview']['mindmap']
-  delta?: EditorSceneInput['runtime']['delta']
+  mindmapPreview?: EditorSceneInput['runtime']['editor']['state']['preview']['mindmap']
+  delta?: EditorSceneInput['runtime']['editor']['delta']
   documentDelta?: EditorSceneInput['delta'] | MutationDelta
 }
 
@@ -111,20 +111,20 @@ const createInput = (
   const value = createEmptyInput()
   value.document.rev = engine.rev()
   value.document.doc = engine.doc()
-  value.runtime.session.edit = options.edit ?? null
-  value.runtime.session.preview.draw = options.draw ?? null
-  value.runtime.session.preview.edgeGuide = options.edgeGuide
-  value.runtime.session.preview.selection.marquee = options.marquee
-  value.runtime.session.preview.selection.guides = options.guides ?? []
-  value.runtime.session.preview.mindmap = options.mindmapPreview ?? null
-  value.runtime.interaction.selection = options.selection ?? {
+  value.runtime.editor.state.edit = options.edit ?? null
+  value.runtime.editor.state.preview.draw = options.draw ?? null
+  value.runtime.editor.state.preview.edgeGuide = options.edgeGuide
+  value.runtime.editor.state.preview.selection.marquee = options.marquee
+  value.runtime.editor.state.preview.selection.guides = options.guides ?? []
+  value.runtime.editor.state.preview.mindmap = options.mindmapPreview ?? null
+  value.runtime.editor.interaction.selection = options.selection ?? {
     nodeIds: [],
     edgeIds: []
   }
-  value.runtime.interaction.hover = options.hover ?? {
+  value.runtime.editor.interaction.hover = options.hover ?? {
     kind: 'none'
   }
-  value.runtime.delta = options.delta ?? createEditorRuntimeDelta()
+  value.runtime.editor.delta = options.delta ?? createEditorRuntimeDelta()
   value.delta = createWhiteboardMutationDelta(
     options.documentDelta ?? createMutationDelta()
   )

@@ -47,7 +47,7 @@ const EMPTY_DRAW_STATE: EditorDrawState = {
 }
 
 const readInteractionMode = (
-  input: Input['runtime']['interaction']
+  input: Input['runtime']['editor']['interaction']
 ): EditorInteractionMode => {
   switch (input.drag.kind) {
     case 'selection-move':
@@ -88,7 +88,7 @@ const readTouchedIds = <TId extends string>(
 export const toSceneUpdateInput = (
   input: Input
 ): SceneUpdateInput => {
-  const previewDelta = input.runtime.delta.session.preview
+  const previewDelta = input.runtime.editor.delta.preview
   const hasPreviewDelta =
     idDelta.hasAny(previewDelta.nodes)
     || idDelta.hasAny(previewDelta.edges)
@@ -98,30 +98,30 @@ export const toSceneUpdateInput = (
     || previewDelta.draw
     || previewDelta.edgeGuide
   const hasInteractionDelta =
-    input.runtime.delta.session.interaction
-    || input.runtime.delta.session.hover
+    input.runtime.editor.delta.interaction
+    || input.runtime.editor.delta.hover
 
   const delta: EditorProjectionDelta = {}
 
-  if (input.runtime.delta.session.tool) {
+  if (input.runtime.editor.delta.tool) {
     delta.tool = true
   }
-  if (input.runtime.delta.session.selection) {
+  if (input.runtime.editor.delta.selection) {
     delta.selection = true
   }
-  if (input.runtime.delta.session.edit) {
+  if (input.runtime.editor.delta.edit) {
     delta.edit = {
-      touchedDraftEdgeIds: readTouchedIds(input.runtime.delta.session.draft.edges)
+      touchedDraftEdgeIds: readTouchedIds(input.runtime.editor.delta.draft.edges)
     }
   }
   if (hasInteractionDelta) {
     delta.interaction = {
-      mode: input.runtime.delta.session.interaction || undefined,
-      chrome: input.runtime.delta.session.interaction || undefined,
+      mode: input.runtime.editor.delta.interaction || undefined,
+      chrome: input.runtime.editor.delta.interaction || undefined,
       space: undefined
     }
   }
-  if (input.runtime.delta.session.hover) {
+  if (input.runtime.editor.delta.hover) {
     delta.hover = true
   }
   if (hasPreviewDelta) {
@@ -146,24 +146,24 @@ export const toSceneUpdateInput = (
     editor: {
       snapshot: {
         state: {
-          tool: input.runtime.session.tool,
+          tool: input.runtime.editor.state.tool,
           draw: EMPTY_DRAW_STATE,
-          selection: input.runtime.interaction.selection,
-          edit: input.runtime.session.edit,
+          selection: input.runtime.editor.interaction.selection,
+          edit: input.runtime.editor.state.edit,
           interaction: {
-            mode: readInteractionMode(input.runtime.interaction),
-            chrome: input.runtime.interaction.chrome,
+            mode: readInteractionMode(input.runtime.editor.interaction),
+            chrome: input.runtime.editor.interaction.chrome,
             space: false
           },
           viewport: {
-            center: input.runtime.view.center,
-            zoom: input.runtime.view.zoom
+            center: input.runtime.editor.view.center,
+            zoom: input.runtime.editor.view.zoom
           }
         },
         overlay: {
-          hover: input.runtime.interaction.hover,
+          hover: input.runtime.editor.interaction.hover,
           preview: {
-            base: input.runtime.session.preview,
+            base: input.runtime.editor.state.preview,
             transient: {
               nodes: {},
               edges: {},
@@ -181,12 +181,12 @@ export const toSceneUpdateInput = (
   }
 }
 
-export const createEmptyRuntimeInputDelta = (): Input['runtime']['delta'] => (
+export const createEmptyRuntimeInputDelta = (): Input['runtime']['editor']['delta'] => (
   createEmptyEditorSceneRuntimeDelta()
 )
 
 export const createEmptyInput = (): Input => {
-  const session: Input['runtime']['session'] = {
+  const state: Input['runtime']['editor']['state'] = {
     edit: null,
     draft: {
       edges: new Map()
@@ -205,7 +205,7 @@ export const createEmptyInput = (): Input => {
       type: 'select'
     }
   }
-  const interaction: Input['runtime']['interaction'] = {
+  const interaction: Input['runtime']['editor']['interaction'] = {
     selection: {
       nodeIds: [],
       edgeIds: []
@@ -227,27 +227,29 @@ export const createEmptyInput = (): Input => {
       doc: createEmptyDocumentSnapshot().document
     },
     runtime: {
-      session,
-      interaction,
-      view: {
-        zoom: 1,
-        center: {
-          x: 0,
-          y: 0
-        },
-        worldRect: {
-          x: 0,
-          y: 0,
-          width: 0,
-          height: 0
-        }
-      },
-      facts: createRuntimeFacts({
-        session,
+      editor: {
+        state,
         interaction,
+        view: {
+          zoom: 1,
+          center: {
+            x: 0,
+            y: 0
+          },
+          worldRect: {
+            x: 0,
+            y: 0,
+            width: 0,
+            height: 0
+          }
+        },
+        facts: createRuntimeFacts({
+          state,
+          interaction,
+          delta
+        }),
         delta
-      }),
-      delta
+      }
     },
     delta: createWhiteboardMutationDelta({
       changes: EMPTY_MUTATION_CHANGES

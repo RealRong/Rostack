@@ -10,10 +10,10 @@ import type {
 } from '@whiteboard/core/types'
 import type { GraphPhaseDelta } from '../../contracts/delta'
 import type {
+  EditorStateInput,
   EdgeView,
   Input,
-  NodeView,
-  SessionInput
+  NodeView
 } from '../../contracts/editor'
 import type {
   GraphEdgeEntry,
@@ -208,8 +208,8 @@ export const readEdgeEntry = (
       edge,
       nodes: indexes.edgeNodesByEdge.get(edgeId) ?? {}
     },
-    draft: input.runtime.session.draft.edges.get(edgeId),
-    preview: input.runtime.session.preview.edges[edgeId]
+    draft: input.runtime.editor.state.draft.edges.get(edgeId),
+    preview: input.runtime.editor.state.preview.edges[edgeId]
   }
 }
 
@@ -219,7 +219,7 @@ export const buildEdgeView = (input: {
   nodes: Pick<WorkingState['graph']['nodes'], 'get'>
   nodeSnapshotCache?: Map<NodeId, EdgeNodeSnapshot>
   layout?: WorkingState['layout']
-  edit: SessionInput['edit']
+  edit: EditorStateInput['edit']
 }): EdgeView => {
   const edge = readProjectedEdge(input.entry)
   const sourceNodeId = edge.source.kind === 'node'
@@ -300,7 +300,7 @@ export const patchEdge = (input: {
         nodes: input.working.graph.nodes,
         nodeSnapshotCache: input.nodeSnapshotCache,
         layout: input.working.layout,
-        edit: input.input.runtime.session.edit
+        edit: input.input.runtime.editor.state.edit
       })
     : undefined
 

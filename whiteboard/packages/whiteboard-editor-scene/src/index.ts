@@ -91,7 +91,7 @@ export type {
   SelectionMembersView,
   SelectionPreview,
   SelectionState,
-  SessionInput,
+  EditorStateInput,
   EditorSceneLayout,
   ToolState
 } from './contracts/editor'

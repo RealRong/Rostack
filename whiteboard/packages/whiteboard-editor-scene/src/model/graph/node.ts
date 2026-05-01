@@ -9,11 +9,11 @@ import type {
 } from '@whiteboard/core/types'
 import type { GraphPhaseDelta } from '../../contracts/delta'
 import type {
+  EditorStateInput,
   Input,
   NodeDraftMeasure,
   NodePreview,
   OwnerRef,
-  SessionInput,
   NodeView
 } from '../../contracts/editor'
 import type {
@@ -48,7 +48,7 @@ const toNodeModel = (
 
 const readNodeTextDraft = (input: {
   entry: GraphNodeEntry
-  edit: SessionInput['edit']
+  edit: EditorStateInput['edit']
   draftMeasure?: NodeDraftMeasure
 }) => {
   const { edit, entry, draftMeasure } = input
@@ -134,7 +134,7 @@ export const readNodeEntry = (
       node,
       owner: ownerByNode.get(nodeId)
     },
-    preview: input.runtime.session.preview.nodes[nodeId]
+    preview: input.runtime.editor.state.preview.nodes[nodeId]
   }
 }
 
@@ -198,7 +198,7 @@ export const readNodeDraftMeasure = (input: {
   entry: GraphNodeEntry
   nodeId: NodeId
   treeRect?: Rect
-  edit: SessionInput['edit']
+  edit: EditorStateInput['edit']
 }): NodeDraftMeasure | undefined => {
   if (
     !input.working.layout
@@ -231,7 +231,7 @@ export const buildNodeView = (input: {
   entry: GraphNodeEntry
   draftMeasure?: NodeDraftMeasure
   treeRect?: Rect
-  edit: SessionInput['edit']
+  edit: EditorStateInput['edit']
 }): NodeView => {
   const geometry = buildProjectedNodeGeometry(input)
   const previewItem = nodeApi.patch.applyTextPreview({
@@ -297,7 +297,7 @@ export const patchNode = (input: {
         entry,
         nodeId: input.nodeId,
         treeRect,
-        edit: input.input.runtime.session.edit
+        edit: input.input.runtime.editor.state.edit
       })
     : undefined
   const next = entry
@@ -305,7 +305,7 @@ export const patchNode = (input: {
         entry,
         draftMeasure,
         treeRect,
-        edit: input.input.runtime.session.edit
+        edit: input.input.runtime.editor.state.edit
       })
     : undefined
 

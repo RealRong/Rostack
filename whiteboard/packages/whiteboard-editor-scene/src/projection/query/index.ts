@@ -120,22 +120,22 @@ const createDocumentRead = (input: {
 const createRuntimeRead = (input: {
   state: () => WorkingState
 }): RuntimeFrame => ({
-  session: {
-    tool: () => input.state().runtime.session.tool,
-    selection: () => input.state().runtime.interaction.selection,
-    hover: () => input.state().runtime.interaction.hover,
-    edit: () => input.state().runtime.session.edit,
-    interaction: () => input.state().runtime.interaction,
-    preview: () => input.state().runtime.session.preview
+  editor: {
+    tool: () => input.state().runtime.editor.state.tool,
+    selection: () => input.state().runtime.editor.interaction.selection,
+    hover: () => input.state().runtime.editor.interaction.hover,
+    edit: () => input.state().runtime.editor.state.edit,
+    interaction: () => input.state().runtime.editor.interaction,
+    preview: () => input.state().runtime.editor.state.preview
   },
   facts: {
-    touchedNodeIds: () => input.state().runtime.facts.touchedNodeIds,
-    touchedEdgeIds: () => input.state().runtime.facts.touchedEdgeIds,
-    touchedMindmapIds: () => input.state().runtime.facts.touchedMindmapIds,
-    activeEdgeIds: () => input.state().runtime.facts.activeEdgeIds,
-    uiChanged: () => input.state().runtime.facts.uiChanged,
-    overlayChanged: () => input.state().runtime.facts.overlayChanged,
-    chromeChanged: () => input.state().runtime.facts.chromeChanged
+    touchedNodeIds: () => input.state().runtime.editor.facts.touchedNodeIds,
+    touchedEdgeIds: () => input.state().runtime.editor.facts.touchedEdgeIds,
+    touchedMindmapIds: () => input.state().runtime.editor.facts.touchedMindmapIds,
+    activeEdgeIds: () => input.state().runtime.editor.facts.activeEdgeIds,
+    uiChanged: () => input.state().runtime.editor.facts.uiChanged,
+    overlayChanged: () => input.state().runtime.editor.facts.overlayChanged,
+    chromeChanged: () => input.state().runtime.editor.facts.chromeChanged
   }
 })
 

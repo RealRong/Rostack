@@ -41,7 +41,7 @@ export const createRenderContext = (input: {
     facts: input.facts,
     reset: input.reset,
     working: input.working,
-    active: input.current.runtime.facts.activeEdgeIds,
+    active: input.current.runtime.editor.facts.activeEdgeIds,
     touched: {
       node: resolveScope(input.facts.node, () => input.working.graph.nodes.keys()) as ReadonlySet<NodeId>,
       edge: {

@@ -80,7 +80,7 @@ export const createVisibleTitleFieldStore = (input: {
   source: EngineSource
 }): store.ReadStore<TitleField | undefined> => store.createDerivedStore({
   get: () => {
-    const field = store.read(input.source.active.fields, TITLE_FIELD_ID)
+    const field = store.read(input.source.document.fields, TITLE_FIELD_ID)
     return field && field.kind === 'title'
       ? field
       : undefined

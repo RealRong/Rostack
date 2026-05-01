@@ -50,7 +50,7 @@ const buildNodeRenderView = (
   }
 
   const state = context.working.ui.nodes.get(nodeId)
-  const presentation = context.current.runtime.session.preview.nodes[nodeId]?.presentation
+  const presentation = context.current.runtime.editor.state.preview.nodes[nodeId]?.presentation
 
   return {
     id: nodeId,

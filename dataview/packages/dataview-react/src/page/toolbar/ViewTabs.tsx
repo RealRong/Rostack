@@ -130,7 +130,7 @@ export const ToolbarTabs = () => {
   const page = dataView.session.page
   const pageModel = usePageModel()
   const toolbar = useStoreValue(pageModel.toolbar)
-  const currentView = toolbar.view
+  const currentViewId = toolbar.viewId
   const views = toolbar.views
   const [tabMenuViewId, setTabMenuViewId] = useState<ViewId | null>(null)
 
@@ -146,7 +146,7 @@ export const ToolbarTabs = () => {
         <ViewTab
           key={view.id}
           view={view}
-          active={view.id === currentView?.id}
+          active={view.id === currentViewId}
           menuOpen={tabMenuViewId === view.id}
           canRemove={views.length > 1}
           onClick={() => engine.views.open(view.id)}

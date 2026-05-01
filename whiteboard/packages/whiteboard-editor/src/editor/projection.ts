@@ -259,10 +259,12 @@ export const createEditorProjection = (input: {
       ...input.scene.runtime,
       editor: {
         tool: runtimeStores.tool.get,
+        hover: () => input.scene.runtime.editor.hover(),
+        interaction: () => input.scene.runtime.editor.interaction(),
         draw: runtimeStores.draw.get,
         selection: runtimeStores.selection.get,
         edit: runtimeStores.edit.get,
-        interaction: runtimeStores.interaction.get,
+        interactionState: runtimeStores.interaction.get,
         preview: runtimeStores.preview.get,
         viewport: {
           get: runtimeStores.viewport.get,

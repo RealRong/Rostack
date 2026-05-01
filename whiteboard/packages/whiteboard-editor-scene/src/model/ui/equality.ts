@@ -7,6 +7,7 @@ import type {
   ChromeOverlay,
   ChromeView,
   DrawPreview,
+  EditorStateInput,
   EditCaret,
   EdgeGuidePreview,
   EdgeLabelUiView,
@@ -16,8 +17,7 @@ import type {
   MindmapPreview,
   NodeUiEdit,
   NodeUiView,
-  SelectionState,
-  SessionInput
+  SelectionState
 } from '../../contracts/editor'
 import type {
   GraphEdgeEntry,
@@ -68,8 +68,8 @@ const isEditCaretEqual = (
 )
 
 const isEditSessionEqual = (
-  left: SessionInput['edit'],
-  right: SessionInput['edit']
+  left: EditorStateInput['edit'],
+  right: EditorStateInput['edit']
 ): boolean => {
   if (left === right) {
     return true
@@ -244,7 +244,7 @@ const isMindmapPreviewEqual = (
 
 const readNodeUiEdit = (
   nodeId: NodeId,
-  edit: SessionInput['edit']
+  edit: EditorStateInput['edit']
 ): NodeUiEdit | undefined => edit?.kind === 'node' && edit.nodeId === nodeId
   ? {
       field: edit.field,
@@ -255,7 +255,7 @@ const readNodeUiEdit = (
 const isEditingEdgeLabel = (
   edgeId: EdgeId,
   labelId: string,
-  edit: SessionInput['edit']
+  edit: EditorStateInput['edit']
 ) => edit?.kind === 'edge-label'
   && edit.edgeId === edgeId
   && edit.labelId === labelId
@@ -271,8 +271,8 @@ const isEdgeLabelUiViewEqual = (
 export const buildNodeUiView = (input: {
   nodeId: NodeId
   preview?: GraphNodeEntry['preview']
-  draw: SessionInput['preview']['draw']
-  edit: SessionInput['edit']
+  draw: EditorStateInput['preview']['draw']
+  edit: EditorStateInput['edit']
   selection: SelectionState
   hover: HoverState
 }): NodeUiView => {
@@ -300,7 +300,7 @@ export const buildEdgeUiView = (input: {
   edgeId: EdgeId
   entry: GraphEdgeEntry
   view: EdgeView
-  edit: SessionInput['edit']
+  edit: EditorStateInput['edit']
   selection: SelectionState
 }): EdgeUiView => {
   const labelIds = new Set<string>()
@@ -339,7 +339,7 @@ export const buildEdgeUiView = (input: {
 }
 
 export const buildChromeView = (input: {
-  session: SessionInput
+  state: EditorStateInput
   selection: SelectionState
   hover: HoverState
 }): ChromeView => {
@@ -360,33 +360,33 @@ export const buildChromeView = (input: {
     })
   }
 
-  if (input.session.preview.selection.guides.length > 0) {
+  if (input.state.preview.selection.guides.length > 0) {
     overlays.push({
       kind: 'guide'
     })
   }
 
-  if (input.session.preview.selection.marquee) {
+  if (input.state.preview.selection.marquee) {
     overlays.push({
       kind: 'marquee'
     })
   }
 
-  if (input.session.preview.draw) {
+  if (input.state.preview.draw) {
     overlays.push({
       kind: 'draw'
     })
   }
 
-  if (input.session.edit) {
+  if (input.state.edit) {
     overlays.push({
       kind: 'edit'
     })
   }
 
   if (
-    input.session.preview.mindmap?.rootMove
-    || input.session.preview.mindmap?.subtreeMove
+    input.state.preview.mindmap?.rootMove
+    || input.state.preview.mindmap?.subtreeMove
   ) {
     overlays.push({
       kind: 'mindmap-drop'
@@ -397,13 +397,13 @@ export const buildChromeView = (input: {
     overlays,
     hover: input.hover,
     preview: {
-      edgeGuide: input.session.preview.edgeGuide,
-      marquee: input.session.preview.selection.marquee,
-      guides: input.session.preview.selection.guides,
-      draw: input.session.preview.draw,
-      mindmap: input.session.preview.mindmap
+      edgeGuide: input.state.preview.edgeGuide,
+      marquee: input.state.preview.selection.marquee,
+      guides: input.state.preview.selection.guides,
+      draw: input.state.preview.draw,
+      mindmap: input.state.preview.mindmap
     },
-    edit: input.session.edit
+    edit: input.state.edit
   }
 }
 

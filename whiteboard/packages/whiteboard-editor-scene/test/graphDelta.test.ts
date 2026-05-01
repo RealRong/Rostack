@@ -94,9 +94,9 @@ const createGroup = (input: {
 
 const createInput = (input: {
   engine: ReturnType<typeof createEngine>
-  delta: Input['runtime']['delta']
+  delta: Input['runtime']['editor']['delta']
   documentDelta?: Input['delta'] | MutationDelta
-  edit?: Input['runtime']['session']['edit']
+  edit?: Input['runtime']['editor']['state']['edit']
   nodeMeasures?: ReadonlyMap<NodeId, Size>
 }): Input => {
   currentMeasureState = {
@@ -115,8 +115,8 @@ const createInput = (input: {
   const value = createEmptyInput()
   value.document.rev = input.engine.rev()
   value.document.doc = input.engine.doc()
-  value.runtime.session.edit = input.edit ?? null
-  value.runtime.delta = input.delta
+  value.runtime.editor.state.edit = input.edit ?? null
+  value.runtime.editor.delta = input.delta
   value.delta = createWhiteboardMutationDelta(
     input.documentDelta ?? createMutationDelta()
   )
@@ -172,8 +172,8 @@ describe('graph delta patching', () => {
       }))
 
     const liveDelta = createEmptyRuntimeInputDelta()
-    liveDelta.session.edit = true
-    idDelta.update(liveDelta.session.preview.nodes, firstId)
+    liveDelta.edit = true
+    idDelta.update(liveDelta.preview.nodes, firstId)
 
     const live = runtime.update(createInput({
         engine,

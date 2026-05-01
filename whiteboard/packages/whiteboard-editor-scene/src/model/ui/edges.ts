@@ -29,12 +29,12 @@ const buildCurrentEdgeUiView = (input: {
         edge: view.base.edge,
         nodes: view.base.nodes
       },
-      draft: input.context.current.runtime.session.draft.edges.get(input.edgeId),
-      preview: input.context.current.runtime.session.preview.edges[input.edgeId]
+      draft: input.context.current.runtime.editor.state.draft.edges.get(input.edgeId),
+      preview: input.context.current.runtime.editor.state.preview.edges[input.edgeId]
     },
     view,
-    edit: input.context.current.runtime.session.edit,
-    selection: input.context.current.runtime.interaction.selection
+    edit: input.context.current.runtime.editor.state.edit,
+    selection: input.context.current.runtime.editor.interaction.selection
   })
 
   return input.previous && isEdgeUiViewEqual(input.previous, next)

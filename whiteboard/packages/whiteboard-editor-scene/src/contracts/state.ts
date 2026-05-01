@@ -61,10 +61,12 @@ export interface State {
 }
 
 export interface RuntimeState {
-  session: import('./editor').SessionInput
-  interaction: import('./editor').InteractionInput
-  view: import('./editor').SceneViewSnapshot
-  facts: import('./editor').SceneRuntimeFacts
+  editor: {
+    state: import('./editor').EditorStateInput
+    interaction: import('./editor').InteractionInput
+    view: import('./editor').SceneViewSnapshot
+    facts: import('./editor').SceneRuntimeFacts
+  }
 }
 
 export interface SceneItemsState {

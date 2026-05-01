@@ -10,24 +10,22 @@ import type { SceneItemKey } from './delta'
 export type SceneScope<TId extends string> = ReadonlySet<TId> | 'all'
 
 export interface EditorSceneRuntimeDelta {
-  session: {
-    tool: boolean
-    selection: boolean
-    hover: boolean
-    edit: boolean
-    interaction: boolean
-    draft: {
-      edges: IdDelta<EdgeId>
-    }
-    preview: {
-      nodes: IdDelta<NodeId>
-      edges: IdDelta<EdgeId>
-      mindmaps: IdDelta<MindmapId>
-      marquee: boolean
-      guides: boolean
-      draw: boolean
-      edgeGuide: boolean
-    }
+  tool: boolean
+  selection: boolean
+  hover: boolean
+  edit: boolean
+  interaction: boolean
+  draft: {
+    edges: IdDelta<EdgeId>
+  }
+  preview: {
+    nodes: IdDelta<NodeId>
+    edges: IdDelta<EdgeId>
+    mindmaps: IdDelta<MindmapId>
+    marquee: boolean
+    guides: boolean
+    draw: boolean
+    edgeGuide: boolean
   }
 }
 
@@ -97,24 +95,22 @@ export interface EditorSceneFacts {
 const createEmptyScope = <TId extends string>(): SceneScope<TId> => new Set<TId>()
 
 export const createEmptyEditorSceneRuntimeDelta = (): EditorSceneRuntimeDelta => ({
-  session: {
-    tool: false,
-    selection: false,
-    hover: false,
-    edit: false,
-    interaction: false,
-    draft: {
-      edges: idDelta.create<EdgeId>()
-    },
-    preview: {
-      nodes: idDelta.create<NodeId>(),
-      edges: idDelta.create<EdgeId>(),
-      mindmaps: idDelta.create<MindmapId>(),
-      marquee: false,
-      guides: false,
-      draw: false,
-      edgeGuide: false
-    }
+  tool: false,
+  selection: false,
+  hover: false,
+  edit: false,
+  interaction: false,
+  draft: {
+    edges: idDelta.create<EdgeId>()
+  },
+  preview: {
+    nodes: idDelta.create<NodeId>(),
+    edges: idDelta.create<EdgeId>(),
+    mindmaps: idDelta.create<MindmapId>(),
+    marquee: false,
+    guides: false,
+    draw: false,
+    edgeGuide: false
   }
 })
 

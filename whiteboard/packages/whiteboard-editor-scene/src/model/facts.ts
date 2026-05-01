@@ -77,7 +77,7 @@ const collectItemChangeScope = (
 export const createInputFacts = (
   input: Input
 ): EditorSceneInputFacts => {
-  const runtimeFacts = input.runtime.facts
+  const runtimeFacts = input.runtime.editor.facts
   const nodeTargets = sceneScopeUnion(
     input.delta.node.create.touchedIds(),
     input.delta.node.delete.touchedIds(),
@@ -135,15 +135,15 @@ export const createInputFacts = (
   appendIds(nodeTargetIds, runtimeFacts.touchedNodeIds)
   appendIds(mindmapTargetIds, runtimeFacts.touchedMindmapIds)
 
-  appendIds(edgeTargetIds, input.runtime.session.draft.edges.keys())
-  appendIds(nodeTargetIds, Object.keys(input.runtime.session.preview.nodes))
-  appendIds(edgeTargetIds, Object.keys(input.runtime.session.preview.edges))
+  appendIds(edgeTargetIds, input.runtime.editor.state.draft.edges.keys())
+  appendIds(nodeTargetIds, Object.keys(input.runtime.editor.state.preview.nodes))
+  appendIds(edgeTargetIds, Object.keys(input.runtime.editor.state.preview.edges))
 
-  if (input.runtime.session.preview.mindmap?.rootMove) {
-    mindmapTargetIds.add(input.runtime.session.preview.mindmap.rootMove.mindmapId)
+  if (input.runtime.editor.state.preview.mindmap?.rootMove) {
+    mindmapTargetIds.add(input.runtime.editor.state.preview.mindmap.rootMove.mindmapId)
   }
-  if (input.runtime.session.preview.mindmap?.subtreeMove) {
-    mindmapTargetIds.add(input.runtime.session.preview.mindmap.subtreeMove.mindmapId)
+  if (input.runtime.editor.state.preview.mindmap?.subtreeMove) {
+    mindmapTargetIds.add(input.runtime.editor.state.preview.mindmap.subtreeMove.mindmapId)
   }
 
   return {
@@ -190,11 +190,11 @@ export const createGraphFacts = (input: {
     }
   }
 
-  const editingNode = input.current.runtime.session.edit?.kind === 'node'
-    ? sceneScopeFromValues([input.current.runtime.session.edit.nodeId])
+  const editingNode = input.current.runtime.editor.state.edit?.kind === 'node'
+    ? sceneScopeFromValues([input.current.runtime.editor.state.edit.nodeId])
     : new Set<NodeId>()
-  const editingEdge = input.current.runtime.session.edit?.kind === 'edge-label'
-    ? sceneScopeFromValues([input.current.runtime.session.edit.edgeId])
+  const editingEdge = input.current.runtime.editor.state.edit?.kind === 'edge-label'
+    ? sceneScopeFromValues([input.current.runtime.editor.state.edit.edgeId])
     : new Set<EdgeId>()
 
   return {
@@ -253,7 +253,7 @@ export const createUiTargets = (input: {
     }
   }
 
-  const runtimeFacts = input.current.runtime.facts
+  const runtimeFacts = input.current.runtime.editor.facts
   const graphFacts = input.working.facts.graph
   const node = new Set<NodeId>()
   const edge = new Set<EdgeId>()
@@ -339,7 +339,7 @@ export const createRenderFacts = (input: {
   }
 
   const graphFacts = input.working.facts.graph
-  const runtimeFacts = input.current.runtime.facts
+  const runtimeFacts = input.current.runtime.editor.facts
   const uiFacts = input.working.facts.ui
   const node = new Set<NodeId>()
   const edgeStatics = new Set<EdgeId>()

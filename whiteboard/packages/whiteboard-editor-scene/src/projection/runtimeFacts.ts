@@ -39,7 +39,7 @@ const readPreviewMindmapIds = (
 }
 
 export const createRuntimeFacts = (input: {
-  session: {
+  state: {
     edit: EditSession | null
     preview: PreviewInput
   }
@@ -55,51 +55,51 @@ export const createRuntimeFacts = (input: {
   delta: EditorSceneRuntimeDelta
 }): SceneRuntimeFacts => {
   const touchedNodeIds = new Set<NodeId>([
-    ...idDelta.touched(input.delta.session.preview.nodes),
-    ...readEditedNodeIds(input.session.edit)
+    ...idDelta.touched(input.delta.preview.nodes),
+    ...readEditedNodeIds(input.state.edit)
   ])
   const touchedEdgeIds = new Set<EdgeId>([
-    ...idDelta.touched(input.delta.session.draft.edges),
-    ...idDelta.touched(input.delta.session.preview.edges),
-    ...readEditedEdgeIds(input.session.edit)
+    ...idDelta.touched(input.delta.draft.edges),
+    ...idDelta.touched(input.delta.preview.edges),
+    ...readEditedEdgeIds(input.state.edit)
   ])
   const touchedMindmapIds = new Set<MindmapId>([
-    ...idDelta.touched(input.delta.session.preview.mindmaps),
-    ...readPreviewMindmapIds(input.session.preview.mindmap)
+    ...idDelta.touched(input.delta.preview.mindmaps),
+    ...readPreviewMindmapIds(input.state.preview.mindmap)
   ])
 
   const activeEdgeIds = new Set<EdgeId>([
     ...input.interaction.selection.edgeIds,
-    ...readEditedEdgeIds(input.session.edit)
+    ...readEditedEdgeIds(input.state.edit)
   ])
   if (input.interaction.hover.kind === 'edge' && input.interaction.hover.edgeId) {
     activeEdgeIds.add(input.interaction.hover.edgeId)
   }
 
   const uiChanged = Boolean(
-    input.delta.session.tool
-    || input.delta.session.selection
-    || input.delta.session.hover
-    || input.delta.session.edit
-    || input.delta.session.interaction
-    || input.delta.session.preview.marquee
-    || input.delta.session.preview.guides
-    || input.delta.session.preview.draw
-    || input.delta.session.preview.edgeGuide
-    || input.delta.session.preview.mindmaps.added.size > 0
-    || input.delta.session.preview.mindmaps.updated.size > 0
-    || input.delta.session.preview.mindmaps.removed.size > 0
+    input.delta.tool
+    || input.delta.selection
+    || input.delta.hover
+    || input.delta.edit
+    || input.delta.interaction
+    || input.delta.preview.marquee
+    || input.delta.preview.guides
+    || input.delta.preview.draw
+    || input.delta.preview.edgeGuide
+    || input.delta.preview.mindmaps.added.size > 0
+    || input.delta.preview.mindmaps.updated.size > 0
+    || input.delta.preview.mindmaps.removed.size > 0
   )
 
   const overlayChanged = Boolean(
-    input.delta.session.hover
-    || input.delta.session.preview.marquee
-    || input.delta.session.preview.guides
-    || input.delta.session.preview.draw
-    || input.delta.session.preview.edgeGuide
-    || input.delta.session.preview.mindmaps.added.size > 0
-    || input.delta.session.preview.mindmaps.updated.size > 0
-    || input.delta.session.preview.mindmaps.removed.size > 0
+    input.delta.hover
+    || input.delta.preview.marquee
+    || input.delta.preview.guides
+    || input.delta.preview.draw
+    || input.delta.preview.edgeGuide
+    || input.delta.preview.mindmaps.added.size > 0
+    || input.delta.preview.mindmaps.updated.size > 0
+    || input.delta.preview.mindmaps.removed.size > 0
   )
 
   return {

@@ -7,25 +7,25 @@ import type { WorkingState } from '../../contracts/working'
 import { appendIds } from '../scope'
 
 const readHoveredNodeId = (
-  hover: WorkingState['ui']['chrome']['hover'] | Input['runtime']['interaction']['hover']
+  hover: WorkingState['ui']['chrome']['hover'] | Input['runtime']['editor']['interaction']['hover']
 ): NodeId | undefined => hover.kind === 'node'
   ? hover.nodeId
   : undefined
 
 const readHoveredEdgeId = (
-  hover: WorkingState['ui']['chrome']['hover'] | Input['runtime']['interaction']['hover']
+  hover: WorkingState['ui']['chrome']['hover'] | Input['runtime']['editor']['interaction']['hover']
 ): EdgeId | undefined => hover.kind === 'edge'
   ? hover.edgeId
   : undefined
 
 const readEditingEdgeId = (
-  edit: Input['runtime']['session']['edit'] | WorkingState['ui']['chrome']['edit']
+  edit: Input['runtime']['editor']['state']['edit'] | WorkingState['ui']['chrome']['edit']
 ): EdgeId | undefined => edit?.kind === 'edge-label'
   ? edit.edgeId
   : undefined
 
 const readEditingNodeId = (
-  edit: Input['runtime']['session']['edit'] | WorkingState['ui']['chrome']['edit']
+  edit: Input['runtime']['editor']['state']['edit'] | WorkingState['ui']['chrome']['edit']
 ): NodeId | undefined => edit?.kind === 'node'
   ? edit.nodeId
   : undefined
@@ -85,18 +85,18 @@ export const collectUiRuntimeTouch = (input: {
 
   appendIds(node, collectSelectedNodeIds(input.working))
   appendIds(edge, collectSelectedEdgeIds(input.working))
-  appendIds(node, input.current.runtime.interaction.selection.nodeIds)
-  appendIds(edge, input.current.runtime.interaction.selection.edgeIds)
+  appendIds(node, input.current.runtime.editor.interaction.selection.nodeIds)
+  appendIds(edge, input.current.runtime.editor.interaction.selection.edgeIds)
 
   const chrome = hasSelection(input.working) !== (
-    input.current.runtime.interaction.selection.nodeIds.length > 0
-    || input.current.runtime.interaction.selection.edgeIds.length > 0
+    input.current.runtime.editor.interaction.selection.nodeIds.length > 0
+    || input.current.runtime.editor.interaction.selection.edgeIds.length > 0
   )
 
   const previousNodeId = readHoveredNodeId(input.working.ui.chrome.hover)
-  const nextNodeId = readHoveredNodeId(input.current.runtime.interaction.hover)
+  const nextNodeId = readHoveredNodeId(input.current.runtime.editor.interaction.hover)
   const previousEdgeId = readHoveredEdgeId(input.working.ui.chrome.hover)
-  const nextEdgeId = readHoveredEdgeId(input.current.runtime.interaction.hover)
+  const nextEdgeId = readHoveredEdgeId(input.current.runtime.editor.interaction.hover)
 
   if (previousNodeId) {
     node.add(previousNodeId)
@@ -117,13 +117,13 @@ export const collectUiRuntimeTouch = (input: {
   )
   appendIds(
     node,
-    input.current.runtime.session.preview.draw?.hiddenNodeIds ?? []
+    input.current.runtime.editor.state.preview.draw?.hiddenNodeIds ?? []
   )
 
   const previousEditingNode = readEditingNodeId(input.working.ui.chrome.edit)
-  const nextEditingNode = readEditingNodeId(input.current.runtime.session.edit)
+  const nextEditingNode = readEditingNodeId(input.current.runtime.editor.state.edit)
   const previousEditingEdge = readEditingEdgeId(input.working.ui.chrome.edit)
-  const nextEditingEdge = readEditingEdgeId(input.current.runtime.session.edit)
+  const nextEditingEdge = readEditingEdgeId(input.current.runtime.editor.state.edit)
 
   if (previousEditingNode) {
     node.add(previousEditingNode)

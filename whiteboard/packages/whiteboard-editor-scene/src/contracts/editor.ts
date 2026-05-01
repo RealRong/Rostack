@@ -86,11 +86,13 @@ export interface Input {
     doc: WhiteboardDocument
   }
   runtime: {
-    session: SessionInput
-    interaction: InteractionInput
-    view: SceneViewSnapshot
-    facts: SceneRuntimeFacts
-    delta: EditorSceneRuntimeDelta
+    editor: {
+      state: EditorStateInput
+      interaction: InteractionInput
+      view: SceneViewSnapshot
+      facts: SceneRuntimeFacts
+      delta: EditorSceneRuntimeDelta
+    }
   }
   delta: WhiteboardMutationDelta
 }
@@ -252,7 +254,7 @@ export type GroupItemRef =
       id: EdgeId
     }
 
-export interface SessionInput {
+export interface EditorStateInput {
   edit: EditSession | null
   draft: DraftInput
   preview: PreviewInput
@@ -793,7 +795,7 @@ export interface DocumentFrame {
 }
 
 export interface RuntimeFrame {
-  session: {
+  editor: {
     tool(): ToolState
     selection(): SelectionTarget
     hover(): HoverState

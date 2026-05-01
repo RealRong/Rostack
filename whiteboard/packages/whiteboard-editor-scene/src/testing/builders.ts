@@ -26,18 +26,18 @@ export type EditorRuntimeDeltaFlags = Partial<{
 
 export const createEditorRuntimeDelta = (
   input: EditorRuntimeDeltaFlags = {}
-): Input['runtime']['delta'] => {
+): Input['runtime']['editor']['delta'] => {
   const delta = createEmptyRuntimeInputDelta()
 
   if (input.graph) {
-    delta.session.preview.nodes = {
+    delta.preview.nodes = {
       added: new Set(),
       updated: new Set(['__graph__']),
       removed: new Set()
     }
   }
   if (input.ui) {
-    delta.session.selection = true
+    delta.selection = true
   }
   return delta
 }

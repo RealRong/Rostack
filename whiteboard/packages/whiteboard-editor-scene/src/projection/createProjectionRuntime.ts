@@ -167,40 +167,40 @@ const createEditorRuntimeInputDelta = (input: {
   const delta = createEmptyEditorSceneRuntimeDelta()
 
   if (input.delta.tool) {
-    delta.session.tool = true
+    delta.tool = true
   }
   if (input.delta.selection) {
-    delta.session.selection = true
+    delta.selection = true
   }
   if (input.delta.edit) {
-    delta.session.edit = true
+    delta.edit = true
     const touchedDraftEdgeIds = input.delta.edit === true
       ? [...readEditedEdgeIds(input.snapshot.edit)]
       : input.delta.edit.touchedDraftEdgeIds
     if (touchedDraftEdgeIds.length > 0) {
-      delta.session.draft.edges = createTouchedIdDelta(touchedDraftEdgeIds)
+      delta.draft.edges = createTouchedIdDelta(touchedDraftEdgeIds)
     }
   }
 
   const interaction = input.delta.interaction
   if (interaction) {
     if (interaction.mode || interaction.chrome || interaction.space) {
-      delta.session.interaction = true
+      delta.interaction = true
     }
   }
 
   if (input.delta.hover) {
-    delta.session.hover = true
+    delta.hover = true
     const hover = readHoverDelta(input.delta.hover)
     if (hover) {
       if (hover.touchedNodeIds.length > 0) {
-        delta.session.preview.nodes = createTouchedIdDelta(hover.touchedNodeIds)
+        delta.preview.nodes = createTouchedIdDelta(hover.touchedNodeIds)
       }
       if (hover.touchedEdgeIds.length > 0) {
-        delta.session.preview.edges = createTouchedIdDelta(hover.touchedEdgeIds)
+        delta.preview.edges = createTouchedIdDelta(hover.touchedEdgeIds)
       }
       if (hover.touchedMindmapIds.length > 0) {
-        delta.session.preview.mindmaps = createTouchedIdDelta(hover.touchedMindmapIds)
+        delta.preview.mindmaps = createTouchedIdDelta(hover.touchedMindmapIds)
       }
     }
   }
@@ -218,19 +218,19 @@ const createEditorRuntimeInputDelta = (input: {
       : readPreviewMindmapIds(input.snapshot.preview.mindmap)
 
     if (previewNodeIds.size > 0) {
-      delta.session.preview.nodes = createTouchedIdDelta(previewNodeIds)
+      delta.preview.nodes = createTouchedIdDelta(previewNodeIds)
     }
     if (previewEdgeIds.size > 0) {
-      delta.session.preview.edges = createTouchedIdDelta(previewEdgeIds)
+      delta.preview.edges = createTouchedIdDelta(previewEdgeIds)
     }
     if (previewMindmapIds.size > 0) {
-      delta.session.preview.mindmaps = createTouchedIdDelta(previewMindmapIds)
+      delta.preview.mindmaps = createTouchedIdDelta(previewMindmapIds)
     }
 
-    delta.session.preview.marquee = preview?.marquee ?? true
-    delta.session.preview.guides = preview?.guides ?? true
-    delta.session.preview.draw = preview?.draw ?? true
-    delta.session.preview.edgeGuide = preview?.edgeGuide ?? true
+    delta.preview.marquee = preview?.marquee ?? true
+    delta.preview.guides = preview?.guides ?? true
+    delta.preview.draw = preview?.draw ?? true
+    delta.preview.edgeGuide = preview?.edgeGuide ?? true
   }
 
   return delta
@@ -326,7 +326,7 @@ const toProjectionInput = (input: {
     snapshot: editorSnapshot,
     delta: input.update.editor.delta
   })
-  const session: Input['runtime']['session'] = {
+  const state: Input['runtime']['editor']['state'] = {
     edit: editorSnapshot.edit,
     draft: {
       edges: new Map()
@@ -334,7 +334,7 @@ const toProjectionInput = (input: {
     preview: editorSnapshot.preview,
     tool: editorSnapshot.tool
   }
-  const interaction: Input['runtime']['interaction'] = {
+  const interaction: Input['runtime']['editor']['interaction'] = {
     selection: editorSnapshot.selection,
     hover: editorSnapshot.interaction.hover,
     drag: readDragState({
@@ -351,15 +351,17 @@ const toProjectionInput = (input: {
       doc: input.update.document.snapshot
     },
     runtime: {
-      session,
-      interaction,
-      view: editorSnapshot.view,
-      facts: createRuntimeFacts({
-        session,
+      editor: {
+        state,
         interaction,
+        view: editorSnapshot.view,
+        facts: createRuntimeFacts({
+          state,
+          interaction,
+          delta: runtimeDelta
+        }),
         delta: runtimeDelta
-      }),
-      delta: runtimeDelta
+      }
     },
     delta: createWhiteboardMutationDelta(input.update.document.delta)
   }

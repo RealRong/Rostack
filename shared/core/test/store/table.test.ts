@@ -1,9 +1,9 @@
 import { describe, expect, test } from 'vitest'
-import { store } from '@shared/core'
+import { createTableStore } from '../../src/store/table'
 
 describe('createTableStore', () => {
   test('apply updates projected keyed reads', () => {
-    const table = store.createTableStore<string, {
+    const table = createTableStore<string, {
       value: number
       label: string
     }>()

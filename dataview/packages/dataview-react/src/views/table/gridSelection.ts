@@ -36,13 +36,12 @@ export const createGridSelection = (
   itemsStore: coreStore.ReadStore<ItemList>,
   fieldsStore: coreStore.ReadStore<TableDisplayedFields | undefined>
 ): GridSelectionStore => {
-  const selectionStore = coreStore.createValueStore<GridSelection | null>({
-    initial: null,
+  const selectionStore = coreStore.value<GridSelection | null>(null, {
     isEqual: gridSelection.equal
   })
   const readItems = () => coreStore.peek(itemsStore)
   const readFields = () => coreStore.peek(fieldsStore)
-  const unsubscribe = coreStore.joinUnsubscribes([
+  const unsubscribe = coreStore.join([
     itemsStore.subscribe(() => {
       const fields = coreStore.read(fieldsStore)
       selectionStore.update(current => fields

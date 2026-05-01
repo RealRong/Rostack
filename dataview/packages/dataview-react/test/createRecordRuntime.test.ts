@@ -11,29 +11,27 @@ afterEach(() => {
 test('createRecord runtime retries opening until the created record becomes available', () => {
   vi.useFakeTimers()
 
-  const view = store.createValueStore({
-    initial: {
-      id: 'view_table',
-      type: 'table',
-      name: 'Table',
-      filter: {
-        mode: 'and',
-        rules: entityTable.normalize.list([])
-      },
-      search: {
-        query: ''
-      },
-      sort: {
-        rules: entityTable.normalize.list([])
-      },
-      calc: {},
-      display: {
-        fields: []
-      },
-      options: {},
-      orders: []
-    } as any
-  })
+  const view = store.value({
+    id: 'view_table',
+    type: 'table',
+    name: 'Table',
+    filter: {
+      mode: 'and',
+      rules: entityTable.normalize.list([])
+    },
+    search: {
+      query: ''
+    },
+    sort: {
+      rules: entityTable.normalize.list([])
+    },
+    calc: {},
+    display: {
+      fields: []
+    },
+    options: {},
+    orders: []
+  } as any)
   const runtime = createRecordWorkflow({
     view
   })
@@ -60,29 +58,27 @@ test('createRecord runtime retries opening until the created record becomes avai
 test('createRecord runtime cancels pending retries when the owner view changes', () => {
   vi.useFakeTimers()
 
-  const view = store.createValueStore({
-    initial: {
-      id: 'view_table',
-      type: 'table',
-      name: 'Table',
-      filter: {
-        mode: 'and',
-        rules: entityTable.normalize.list([])
-      },
-      search: {
-        query: ''
-      },
-      sort: {
-        rules: entityTable.normalize.list([])
-      },
-      calc: {},
-      display: {
-        fields: []
-      },
-      options: {},
-      orders: []
-    } as any
-  })
+  const view = store.value({
+    id: 'view_table',
+    type: 'table',
+    name: 'Table',
+    filter: {
+      mode: 'and',
+      rules: entityTable.normalize.list([])
+    },
+    search: {
+      query: ''
+    },
+    sort: {
+      rules: entityTable.normalize.list([])
+    },
+    calc: {},
+    display: {
+      fields: []
+    },
+    options: {},
+    orders: []
+  } as any)
   const runtime = createRecordWorkflow({
     view
   })

@@ -1,17 +1,7 @@
-import { scheduler } from '../../core/src/index'
 import {
-  createFamilyStore
-} from '../../core/src/store/familyStore'
-import {
-  createKeyedReadStore
-} from '../../core/src/store/keyed'
-import {
-  createValueStore
-} from '../../core/src/store/value'
-import type {
-  KeyedReadStore,
-  ReadStore
-} from '../../core/src/store/types'
+  scheduler,
+  store
+} from '../../core/src/index'
 import type {
   MutationDelta
 } from '@shared/mutation'
@@ -107,11 +97,11 @@ export type ProjectionStoreTree<TState> = {
 
 export type ProjectionStoreRead<TField> =
   TField extends ProjectionValueStoreSpec<any, infer TValue>
-    ? ReadStore<TValue>
+    ? store.ReadStore<TValue>
     : TField extends ProjectionFamilyStoreSpec<any, infer TKey, infer TValue>
       ? {
-          ids: ReadStore<readonly TKey[]>
-          byId: KeyedReadStore<TKey, TValue | undefined>
+          ids: store.ReadStore<readonly TKey[]>
+          byId: store.KeyedReadStore<TKey, TValue | undefined>
         }
       : TField extends ProjectionStoreTree<any>
         ? {
@@ -252,7 +242,7 @@ const createStoreRuntime = <
     Object.entries(currentStores).forEach(([key, spec]) => {
       if (isField(spec)) {
         if (spec.kind === 'value') {
-          const source = createValueStore(spec.read(currentState), {
+          const source = store.value(spec.read(currentState), {
             ...(spec.isEqual
               ? {
                   isEqual: spec.isEqual
@@ -273,7 +263,7 @@ const createStoreRuntime = <
           return
         }
 
-        const source = createFamilyStore({
+        const source = store.family({
           initial: spec.read(currentState),
           ...(spec.isEqual
             ? {
@@ -296,9 +286,9 @@ const createStoreRuntime = <
           source.write.apply(change)
         })
 
-        next[key] = {
+          next[key] = {
           ids: source.ids,
-          byId: createKeyedReadStore({
+          byId: store.keyed({
             get: source.byId.read.get,
             subscribe: source.byId.subscribe.key,
             ...(spec.isEqual

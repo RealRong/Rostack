@@ -95,12 +95,12 @@ export const useKanbanVisibility = (input: {
       ] as const)
     )
   }
-  const visibilityStore = useMemo(() => coreStore.createKeyedStore<SectionId, KanbanVisibility | undefined>({
+  const visibilityStore = useMemo(() => coreStore.keyed<SectionId, KanbanVisibility | undefined>({
     emptyValue: undefined,
     initial: initialRef.current ?? undefined,
     isEqual: sameVisibility
   }), [])
-  const version = useMemo(() => coreStore.createValueStore(0), [])
+  const version = useMemo(() => coreStore.value(0), [])
   const [expandedCountBySectionId, setExpandedCountBySectionId] = useState<Partial<Record<SectionId, number>>>({})
   const previousSectionLengthsRef = useRef(new Map<SectionId, number>())
   const sectionIdsByKey = useMemo(() => new Map(

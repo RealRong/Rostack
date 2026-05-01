@@ -1,22 +1,13 @@
-import {
-  batch
-} from './batch'
-import {
-  createDerivedStore
-} from './derived'
-import {
-  createKeyedDerivedStore
-} from './family'
-import {
-  createFamilyStore
-} from './familyStore'
+import type { Equality } from '../equality'
+import { batch } from './batch'
+import { createDerivedStore } from './derived'
+import { createKeyedDerivedStore } from './family'
+import { createFamilyStore } from './familyStore'
 import {
   createKeyedReadStore,
   createKeyedStore
 } from './keyed'
-import {
-  joinUnsubscribes
-} from './listeners'
+import { joinUnsubscribes } from './listeners'
 import {
   createProjectedKeyedStore,
   createProjectedStore
@@ -25,157 +16,166 @@ import {
   peek,
   read
 } from './read'
-import {
-  createStructKeyedStore,
-  createStructStore
-} from './struct'
-import {
-  createTableStore
-} from './table'
+import { createStructStore } from './struct'
 import type {
   KeyedReadStore,
-  ReadStore
+  KeyedStore,
+  ReadStore,
+  StoreFamily,
+  Unsubscribe,
+  ValueStore
 } from './types'
-import {
-  createNormalizedValue,
-  createReadStore,
-  createValueStore
-} from './value'
+import { createReadStore, createValueStore } from './value'
 
-export {
-  batch,
-  createDerivedStore,
-  createFamilyStore,
-  createKeyedDerivedStore,
-  createKeyedReadStore,
-  createKeyedStore,
-  createNormalizedValue,
-  createProjectedKeyedStore,
-  createProjectedStore,
-  createReadStore,
-  createStructKeyedStore,
-  createStructStore,
-  createTableStore,
-  createValueStore,
-  joinUnsubscribes,
-  peek,
-  read
+type ReadableValueSpec<T> = {
+  get: () => T
+  subscribe: (listener: () => void) => () => void
+  isEqual?: Equality<T>
 }
 
-export type * from './types'
+type WritableKeyedSpec<Key, T> = {
+  emptyValue: T
+  initial?: ReadonlyMap<Key, T>
+  isEqual?: Equality<T>
+}
 
-const NOOP_UNSUBSCRIBE = () => {}
-const NOOP_SUBSCRIBE = (
-  _listener: () => void
-) => NOOP_UNSUBSCRIBE
-const NOOP_KEYED_SUBSCRIBE = <TKey,>(
-  _key: TKey,
-  _listener: () => void
-) => NOOP_UNSUBSCRIBE
+type ReadableKeyedSpec<Key, T> = {
+  get: (key: Key) => T
+  subscribe: (key: Key, listener: () => void) => () => void
+  isEqual?: Equality<T>
+}
 
-const isReadStore = (
+const isReadableValueSpec = <T,>(
   value: unknown
-): value is ReadStore<unknown> => (
+): value is ReadableValueSpec<T> => (
   typeof value === 'object'
   && value !== null
   && 'get' in value
+  && typeof value.get === 'function'
   && 'subscribe' in value
+  && typeof value.subscribe === 'function'
 )
 
-const readObjectField = (
+const isWritableKeyedSpec = <Key, T>(
   value: unknown
-): unknown => {
-  if (isReadStore(value)) {
-    return read(value)
+): value is WritableKeyedSpec<Key, T> => (
+  typeof value === 'object'
+  && value !== null
+  && 'emptyValue' in value
+)
+
+const isReadableKeyedSpec = <Key, T>(
+  value: unknown
+): value is ReadableKeyedSpec<Key, T> => (
+  typeof value === 'object'
+  && value !== null
+  && 'get' in value
+  && typeof value.get === 'function'
+  && 'subscribe' in value
+  && typeof value.subscribe === 'function'
+)
+
+export function value<T>(
+  get: () => T,
+  options?: {
+    isEqual?: Equality<T>
+  }
+): ReadStore<T>
+export function value<T>(
+  spec: ReadableValueSpec<T>
+): ReadStore<T>
+export function value<T>(
+  initial: T,
+  options?: {
+    isEqual?: Equality<T>
+  }
+): ValueStore<T>
+export function value<T>(
+  input: T | (() => T) | ReadableValueSpec<T>,
+  options?: {
+    isEqual?: Equality<T>
+  }
+): ReadStore<T> | ValueStore<T> {
+  if (typeof input === 'function') {
+    return createDerivedStore({
+      get: input as () => T,
+      ...(options?.isEqual
+        ? {
+            isEqual: options.isEqual
+          }
+        : {})
+    })
   }
 
-  if (typeof value !== 'object' || value === null) {
-    return value
+  if (isReadableValueSpec<T>(input)) {
+    return createReadStore(input)
   }
 
-  const next: Record<string, unknown> = {}
-  for (const [key, child] of Object.entries(value)) {
-    next[key] = readObjectField(child)
-  }
-  return next
+  return createValueStore(input, options)
 }
 
-export const value = <T,>(spec: {
-  get(): T
-  subscribe?(listener: () => void): () => void
-  isEqual?(left: T, right: T): boolean
-}) => createReadStore({
-  get: spec.get,
-  subscribe: spec.subscribe ?? NOOP_SUBSCRIBE,
-  ...(spec.isEqual
-    ? {
-        isEqual: spec.isEqual
-      }
-    : {})
-})
+export function keyed<Key, T>(
+  get: (key: Key) => T,
+  options?: {
+    isEqual?: Equality<T>
+    keyOf?: (key: Key) => unknown
+  }
+): KeyedReadStore<Key, T>
+export function keyed<Key, T>(
+  spec: ReadableKeyedSpec<Key, T>
+): KeyedReadStore<Key, T>
+export function keyed<Key, T>(
+  options: WritableKeyedSpec<Key, T>
+): KeyedStore<Key, T>
+export function keyed<Key, T>(
+  input: WritableKeyedSpec<Key, T> | ((key: Key) => T) | ReadableKeyedSpec<Key, T>,
+  options?: {
+    isEqual?: Equality<T>
+    keyOf?: (key: Key) => unknown
+  }
+): KeyedStore<Key, T> | KeyedReadStore<Key, T> {
+  if (typeof input === 'function') {
+    return createKeyedDerivedStore({
+      get: input as (key: Key) => T,
+      ...(options?.isEqual
+        ? {
+            isEqual: options.isEqual
+          }
+        : {}),
+      ...(options?.keyOf
+        ? {
+            keyOf: options.keyOf
+          }
+        : {})
+    })
+  }
 
-export const keyed = <TKey, TValue>(spec: {
-  get(key: TKey): TValue
-  subscribe?(key: TKey, listener: () => void): () => void
-  isEqual?(left: TValue, right: TValue): boolean
-}): KeyedReadStore<TKey, TValue> => createKeyedReadStore({
-  get: spec.get,
-  subscribe: spec.subscribe ?? NOOP_KEYED_SUBSCRIBE<TKey>,
-  ...(spec.isEqual
-    ? {
-        isEqual: spec.isEqual
-      }
-    : {})
-})
+  if (isReadableKeyedSpec<Key, T>(input)) {
+    return createKeyedReadStore(input)
+  }
 
-export const family = <TId extends string, TValue>(spec: {
-  ids(): readonly TId[]
-  get(id: TId): TValue | undefined
-  subscribeIds?(listener: () => void): () => void
-  subscribeKey?(id: TId, listener: () => void): () => void
-  isEqual?(left: TValue | undefined, right: TValue | undefined): boolean
-}) => ({
-  ids: createReadStore({
-    get: spec.ids,
-    subscribe: spec.subscribeIds ?? NOOP_SUBSCRIBE
-  }),
-  byId: createKeyedReadStore({
-    get: spec.get,
-    subscribe: spec.subscribeKey ?? NOOP_KEYED_SUBSCRIBE<TId>,
-    ...(spec.isEqual
-      ? {
-          isEqual: spec.isEqual
-        }
-      : {})
-  })
-})
+  if (isWritableKeyedSpec<Key, T>(input)) {
+    return createKeyedStore(input)
+  }
 
-export const object = <TFields extends Record<string, unknown>>(
-  fields: TFields
-): ReadStore<{ [TKey in keyof TFields]: unknown }> => createDerivedStore({
-  get: () => readObjectField(fields) as { [TKey in keyof TFields]: unknown }
-})
+  throw new Error('Invalid store.keyed() input.')
+}
 
-export const store = {
-  peek,
-  read,
+export const family = <Key, Value>(options?: {
+  initial?: StoreFamily<Key, Value>
+  isEqual?: Equality<Value>
+}) => createFamilyStore(options)
+
+export const projected = createProjectedStore
+export const projectedKeyed = createProjectedKeyedStore
+export const combine = createStructStore
+export const join = (
+  unsubscribes: readonly Unsubscribe[]
+): Unsubscribe => joinUnsubscribes(unsubscribes)
+
+export type * from './types'
+export {
   batch,
-  value,
-  keyed,
-  family,
-  object,
-  createNormalizedValue,
-  createReadStore,
-  createValueStore,
-  createKeyedReadStore,
-  createKeyedStore,
-  createDerivedStore,
-  createKeyedDerivedStore,
-  createProjectedStore,
-  createProjectedKeyedStore,
-  createStructStore,
-  createStructKeyedStore,
-  createTableStore,
-  createFamilyStore,
-  joinUnsubscribes
-} as const
+  peek,
+  read
+}

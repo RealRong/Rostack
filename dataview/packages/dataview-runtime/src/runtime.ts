@@ -65,7 +65,7 @@ const bindInlineSessionToView = (input: {
   }
 
   sync()
-  return store.joinUnsubscribes([
+  return store.join([
     input.view.subscribe(sync),
     input.items.ids.subscribe(sync)
   ])
@@ -74,7 +74,7 @@ const bindInlineSessionToView = (input: {
 const bindInlineSessionToSelection = (input: {
   selection: ItemSelectionController
   inlineSession: InlineSessionApi
-}) => store.joinUnsubscribes([
+}) => store.join([
   input.inlineSession.store.subscribe(() => {
     const session = input.inlineSession.store.get()
     if (!session) {
@@ -164,7 +164,7 @@ export const createDataViewRuntime = (
     })
   }
 
-  const disposeBindings = store.joinUnsubscribes([
+  const disposeBindings = store.join([
     bindInlineSessionToSelection({
       selection,
       inlineSession: inline

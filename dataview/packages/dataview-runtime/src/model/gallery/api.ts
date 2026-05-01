@@ -1,191 +1,136 @@
-import { equal, store } from '@shared/core'
-import {
-  type ItemId
-} from '@dataview/engine'
-import type {
-  GalleryModel,
-  GalleryBody,
-  GalleryCard,
-  GallerySection
-} from '@dataview/runtime/model/gallery/types'
-import {
-  createItemCardContentStore,
-  createRecordCardPropertiesStore,
-  createVisibleCustomFieldsStore,
-  createVisibleTitleFieldStore
-} from '@dataview/runtime/model/card'
-import type {
-  EngineSource
-} from '@dataview/engine'
-
-const EMPTY_SECTIONS = [] as const
-
-const sameBody = (
-  left: GalleryBody | null,
-  right: GalleryBody | null
-) => left === right || (
-  !!left
-  && !!right
-  && left.viewId === right.viewId
-  && left.empty === right.empty
-  && left.grouped === right.grouped
-  && left.size === right.size
-  && left.canDrag === right.canDrag
-  && left.groupUsesOptionColors === right.groupUsesOptionColors
-)
-
-const sameSection = (
-  left: GallerySection | undefined,
-  right: GallerySection | undefined
-) => left === right || (
-  !!left
-  && !!right
-  && left.id === right.id
-  && left.label === right.label
-  && left.count === right.count
-)
-
-const sameCard = (
-  left: GalleryCard | undefined,
-  right: GalleryCard | undefined
-) => left === right || (
-  !!left
-  && !!right
-  && left.viewId === right.viewId
-  && left.itemId === right.itemId
-  && left.recordId === right.recordId
-  && left.size === right.size
-  && left.layout === right.layout
-  && left.wrap === right.wrap
-  && left.canDrag === right.canDrag
-  && left.selected === right.selected
-  && left.editing === right.editing
-)
-
+import { equal, store } from '@shared/core';
+import { type ItemId } from '@dataview/engine';
+import type { GalleryModel, GalleryBody, GalleryCard, GallerySection } from '@dataview/runtime/model/gallery/types';
+import { createItemCardContentStore, createRecordCardPropertiesStore, createVisibleCustomFieldsStore, createVisibleTitleFieldStore } from '@dataview/runtime/model/card';
+import type { EngineSource } from '@dataview/engine';
+const EMPTY_SECTIONS = [] as const;
+const sameBody = (left: GalleryBody | null, right: GalleryBody | null) => left === right || (!!left
+    && !!right
+    && left.viewId === right.viewId
+    && left.empty === right.empty
+    && left.grouped === right.grouped
+    && left.size === right.size
+    && left.canDrag === right.canDrag
+    && left.groupUsesOptionColors === right.groupUsesOptionColors);
+const sameSection = (left: GallerySection | undefined, right: GallerySection | undefined) => left === right || (!!left
+    && !!right
+    && left.id === right.id
+    && left.label === right.label
+    && left.count === right.count);
+const sameCard = (left: GalleryCard | undefined, right: GalleryCard | undefined) => left === right || (!!left
+    && !!right
+    && left.viewId === right.viewId
+    && left.itemId === right.itemId
+    && left.recordId === right.recordId
+    && left.size === right.size
+    && left.layout === right.layout
+    && left.wrap === right.wrap
+    && left.canDrag === right.canDrag
+    && left.selected === right.selected
+    && left.editing === right.editing);
 export const createGalleryModel = (input: {
-  source: EngineSource
-  selectionMembershipStore: store.KeyedReadStore<ItemId, boolean>
-  previewSelectionMembershipStore: store.KeyedReadStore<ItemId, boolean | null>
-  inlineEditingStore: store.KeyedReadStore<string, boolean>
-  inlineKey: (input: {
-    viewId: string
-    itemId: ItemId
-  }) => string
+    source: EngineSource;
+    selectionMembershipStore: store.KeyedReadStore<ItemId, boolean>;
+    previewSelectionMembershipStore: store.KeyedReadStore<ItemId, boolean | null>;
+    inlineEditingStore: store.KeyedReadStore<string, boolean>;
+    inlineKey: (input: {
+        viewId: string;
+        itemId: ItemId;
+    }) => string;
 }): GalleryModel => {
-  const visibleFields = createVisibleCustomFieldsStore({
-    source: input.source
-  })
-  const titleField = createVisibleTitleFieldStore({
-    source: input.source
-  })
-  const sectionList = input.source.active.sections.list
-  const sections = store.createDerivedStore({
-    get: () => (
-      store.read(input.source.active.viewType) === 'gallery'
+    const visibleFields = createVisibleCustomFieldsStore({
+        source: input.source
+    });
+    const titleField = createVisibleTitleFieldStore({
+        source: input.source
+    });
+    const sectionList = input.source.active.sections.list;
+    const sections = store.value(() => (store.read(input.source.active.viewType) === 'gallery'
         ? store.read(sectionList).all
-        : EMPTY_SECTIONS
-    ),
-    isEqual: equal.sameOrder
-  })
-  const properties = createRecordCardPropertiesStore({
-    source: input.source,
-    fields: visibleFields
-  })
-  const body = store.createDerivedStore<GalleryBody | null>({
-    get: () => {
-      if (store.read(input.source.active.viewType) !== 'gallery') {
-        return null
-      }
-
-      const viewId = store.read(input.source.active.viewId)
-      if (!viewId) {
-        return null
-      }
-
-      const gallery = store.read(input.source.active.gallery)
-      return {
-        viewId,
-        empty: store.read(input.source.active.items.list).count === 0,
-        grouped: Boolean(store.read(input.source.active.query).group),
-        size: gallery.size,
-        canDrag: gallery.canReorder,
-        groupUsesOptionColors: gallery.groupUsesOptionColors
-      }
-    },
-    isEqual: sameBody
-  })
-
-  const section = store.createKeyedDerivedStore<string, GallerySection | undefined>({
-    get: key => {
-      if (store.read(input.source.active.viewType) !== 'gallery') {
-        return undefined
-      }
-
-      const value = store.read(input.source.active.sections, key)
-      return value
-        ? {
-            id: value.id,
-            label: value.label,
-            count: value.itemIds.length
-          }
-        : undefined
-    },
-    isEqual: sameSection
-  })
-
-  const card = store.createKeyedDerivedStore<ItemId, GalleryCard | undefined>({
-    get: itemId => {
-      if (store.read(input.source.active.viewType) !== 'gallery') {
-        return undefined
-      }
-
-      const viewId = store.read(input.source.active.viewId)
-      if (!viewId) {
-        return undefined
-      }
-
-      const recordId = store.read(input.source.active.items.read.record, itemId)
-      if (!recordId) {
-        return undefined
-      }
-
-      const gallery = store.read(input.source.active.gallery)
-      return {
-        viewId,
-        itemId,
-        recordId,
-        size: gallery.size,
-        layout: gallery.layout,
-        wrap: gallery.wrap,
-        canDrag: gallery.canReorder,
-        selected: (
-          store.read(input.previewSelectionMembershipStore, itemId)
-          ?? store.read(input.selectionMembershipStore, itemId)
-        ),
-        editing: store.read(
-          input.inlineEditingStore,
-          input.inlineKey({
+        : EMPTY_SECTIONS), {
+        isEqual: equal.sameOrder
+    });
+    const properties = createRecordCardPropertiesStore({
+        source: input.source,
+        fields: visibleFields
+    });
+    const body = store.value<GalleryBody | null>(() => {
+        if (store.read(input.source.active.viewType) !== 'gallery') {
+            return null;
+        }
+        const viewId = store.read(input.source.active.viewId);
+        if (!viewId) {
+            return null;
+        }
+        const gallery = store.read(input.source.active.gallery);
+        return {
             viewId,
-            itemId
-          })
-        )
-      }
-    },
-    isEqual: sameCard
-  })
-
-  const content = createItemCardContentStore({
-    source: input.source,
-    viewType: 'gallery',
-    properties,
-    titleField
-  })
-
-  return {
-    body,
-    sections,
-    section,
-    card,
-    content
-  }
-}
+            empty: store.read(input.source.active.items.list).count === 0,
+            grouped: Boolean(store.read(input.source.active.query).group),
+            size: gallery.size,
+            canDrag: gallery.canReorder,
+            groupUsesOptionColors: gallery.groupUsesOptionColors
+        };
+    }, {
+        isEqual: sameBody
+    });
+    const section = store.keyed<string, GallerySection | undefined>(key => {
+        if (store.read(input.source.active.viewType) !== 'gallery') {
+            return undefined;
+        }
+        const value = store.read(input.source.active.sections, key);
+        return value
+            ? {
+                id: value.id,
+                label: value.label,
+                count: value.itemIds.length
+            }
+            : undefined;
+    }, {
+        isEqual: sameSection
+    });
+    const card = store.keyed<ItemId, GalleryCard | undefined>(itemId => {
+        if (store.read(input.source.active.viewType) !== 'gallery') {
+            return undefined;
+        }
+        const viewId = store.read(input.source.active.viewId);
+        if (!viewId) {
+            return undefined;
+        }
+        const recordId = store.read(input.source.active.items.read.record, itemId);
+        if (!recordId) {
+            return undefined;
+        }
+        const gallery = store.read(input.source.active.gallery);
+        return {
+            viewId,
+            itemId,
+            recordId,
+            size: gallery.size,
+            layout: gallery.layout,
+            wrap: gallery.wrap,
+            canDrag: gallery.canReorder,
+            selected: (store.read(input.previewSelectionMembershipStore, itemId)
+                ?? store.read(input.selectionMembershipStore, itemId)),
+            editing: store.read(input.inlineEditingStore, input.inlineKey({
+                viewId,
+                itemId
+            }))
+        };
+    }, {
+        isEqual: sameCard
+    });
+    const content = createItemCardContentStore({
+        source: input.source,
+        viewType: 'gallery',
+        properties,
+        titleField
+    });
+    return {
+        body,
+        sections,
+        section,
+        card,
+        content
+    };
+};

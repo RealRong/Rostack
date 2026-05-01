@@ -1,14 +1,15 @@
 import { describe, expect, test } from 'vitest'
 import { store } from '@shared/core'
+import { createStructKeyedStore } from '../../src/store/struct'
 
 describe('struct stores', () => {
   test('reuses previous struct value when all fields are equal', () => {
-    const left = store.createValueStore({
+    const left = store.value({
       x: 0,
       y: 0
     })
-    const right = store.createValueStore(1)
-    const combined = store.createStructStore({
+    const right = store.value(1)
+    const combined = store.combine({
       fields: {
         point: {
           get: () => store.read(left),
@@ -50,12 +51,12 @@ describe('struct stores', () => {
   })
 
   test('reuses keyed struct entries when the selected fields stay equal', () => {
-    const source = store.createValueStore(new Map([
+    const source = store.value(new Map([
       ['left', 1],
       ['right', 2]
     ]))
-    const shared = store.createValueStore('stable')
-    const combined = store.createStructKeyedStore<string, {
+    const shared = store.value('stable')
+    const combined = createStructKeyedStore<string, {
       count: number
       label: string
     }>({

@@ -3,7 +3,7 @@ import { store } from '@shared/core'
 
 describe('createFamilyStore', () => {
   test('applies keyed patches without rebuilding untouched ids', () => {
-    const family = store.createFamilyStore({
+    const family = store.family({
       initial: {
         ids: ['a', 'b'],
         byId: new Map([
@@ -33,7 +33,7 @@ describe('createFamilyStore', () => {
   })
 
   test('notifies only touched keys on patch updates and removals', () => {
-    const family = store.createFamilyStore({
+    const family = store.family({
       initial: {
         ids: ['a', 'b'],
         byId: new Map([
@@ -60,7 +60,7 @@ describe('createFamilyStore', () => {
   })
 
   test('replaces and clears the family state as a single store surface', () => {
-    const family = store.createFamilyStore<string, number>()
+    const family = store.family<string, number>()
     const idsSpy = vi.fn()
     const valueSpy = vi.fn()
     const next = {

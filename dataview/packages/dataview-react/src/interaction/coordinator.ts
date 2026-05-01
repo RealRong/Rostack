@@ -116,11 +116,10 @@ export interface InteractionDomain {
 }
 
 export const createInteractionCoordinator = (): InteractionDomain => {
-  const stateStore = coreStore.createValueStore<InteractionState>({
-    initial: {
-      mode: 'idle',
-      gesture: 'idle'
-    },
+  const stateStore = coreStore.value<InteractionState>({
+    mode: 'idle',
+    gesture: 'idle'
+  }, {
     isEqual: equalState
   })
   let nextId = 1

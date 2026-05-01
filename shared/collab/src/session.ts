@@ -183,8 +183,8 @@ export const createMutationCollabSession = <
     throw new Error('createMutationCollabSession requires a non-empty actor.id.')
   }
 
-  const status = store.createValueStore<CollabStatus>('idle')
-  const diagnostics = store.createValueStore<CollabDiagnostics>({
+  const status = store.value<CollabStatus>('idle')
+  const diagnostics = store.value<CollabDiagnostics>({
     duplicateChangeIds: [],
     rejectedChangeIds: []
   })

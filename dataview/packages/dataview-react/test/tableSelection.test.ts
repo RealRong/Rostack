@@ -70,8 +70,8 @@ const createSelectionRuntimeStub = (input: {
 }) => {
   const rowIds = input.rowIds ?? []
   const grid = input.grid ?? null
-  const modeStore = store.createValueStore<typeof input.mode>(input.mode)
-  const cellStore = store.createValueStore<ReturnType<typeof gridSelection.set> | null>(grid)
+  const modeStore = store.value<typeof input.mode>(input.mode)
+  const cellStore = store.value<ReturnType<typeof gridSelection.set> | null>(grid)
   const domain = createItemArraySelectionDomain(rowIds)
   const selection = rowIds.length
     ? selectionSnapshot.replaceIds(
@@ -154,19 +154,13 @@ test('table selection runtime keeps row and cell selection mutually exclusive', 
       subscribe: () => () => {}
     }
   })
-  const gridStore = store.createValueStore({
-    initial: createGridStub({
-      itemIds: ['row_1', 'row_2']
-    })
-  })
+  const gridStore = store.value(createGridStub({
+    itemIds: ['row_1', 'row_2']
+  }))
   const grid = gridStore.get()
   const runtime = createTableSelectionRuntime({
-    itemsStore: store.createValueStore({
-      initial: grid.items
-    }),
-    fieldsStore: store.createValueStore({
-      initial: grid.fields
-    }),
+    itemsStore: store.value(grid.items),
+    fieldsStore: store.value(grid.fields),
     rowSelection
   })
 

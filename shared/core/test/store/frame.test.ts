@@ -1,7 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { store as coreStore } from '@shared/core'
-
-
+import { createFrameValueStore } from '../../src/store/frame'
 
 const flushMicrotasks = async () => {
   await Promise.resolve()
@@ -10,7 +8,7 @@ const flushMicrotasks = async () => {
 
 describe('frame stores', () => {
   test('microtask fallback flushes staged writes asynchronously', async () => {
-    const frameStore = coreStore.createFrameValueStore({
+    const frameStore = createFrameValueStore({
       initial: 0,
       fallback: 'microtask'
     })
@@ -33,7 +31,7 @@ describe('frame stores', () => {
   })
 
   test('clear cancels pending frame work and restores the initial value immediately', async () => {
-    const frameStore = coreStore.createFrameValueStore({
+    const frameStore = createFrameValueStore({
       initial: 0,
       fallback: 'microtask'
     })

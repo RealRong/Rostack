@@ -1,133 +1,106 @@
-import { store } from '@shared/core'
-import type {
-  ItemList
-} from '@dataview/engine'
-import {
-  createGridSelection,
-  type GridSelectionStore
-} from '@dataview/react/views/table/gridSelection'
-import type {
-  ItemSelectionController,
-  ItemSelectionSnapshot
-} from '@dataview/runtime'
-import type { TableDisplayedFields } from '@dataview/react/views/table/displayFields'
-
-export type TableSelectionMode =
-  | 'none'
-  | 'rows'
-  | 'cells'
-
-export type TableRowSelectionApi = ItemSelectionController
-
+import { store } from '@shared/core';
+import type { ItemList } from '@dataview/engine';
+import { createGridSelection, type GridSelectionStore } from '@dataview/react/views/table/gridSelection';
+import type { ItemSelectionController, ItemSelectionSnapshot } from '@dataview/runtime';
+import type { TableDisplayedFields } from '@dataview/react/views/table/displayFields';
+export type TableSelectionMode = 'none' | 'rows' | 'cells';
+export type TableRowSelectionApi = ItemSelectionController;
 export interface TableSelectionRuntime {
-  mode: store.ReadStore<TableSelectionMode>
-  rows: TableRowSelectionApi
-  cells: GridSelectionStore
-  clear: () => void
-  dispose: () => void
+    mode: store.ReadStore<TableSelectionMode>;
+    rows: TableRowSelectionApi;
+    cells: GridSelectionStore;
+    clear: () => void;
+    dispose: () => void;
 }
-
-const hasRows = (
-  selection: ItemSelectionSnapshot
-) => selection.selectedCount > 0
-
+const hasRows = (selection: ItemSelectionSnapshot) => selection.selectedCount > 0;
 export const createTableSelectionRuntime = (input: {
-  itemsStore: store.ReadStore<ItemList>
-  fieldsStore: store.ReadStore<TableDisplayedFields | undefined>
-  rowSelection: ItemSelectionController
+    itemsStore: store.ReadStore<ItemList>;
+    fieldsStore: store.ReadStore<TableDisplayedFields | undefined>;
+    rowSelection: ItemSelectionController;
 }): TableSelectionRuntime => {
-  const baseCells = createGridSelection(
-    input.itemsStore,
-    input.fieldsStore
-  )
-  const clearRows = () => {
-    if (!hasRows(input.rowSelection.state.getSnapshot())) {
-      return
-    }
-
-    input.rowSelection.command.clear()
-  }
-  const clearCells = () => {
-    if (!store.peek(baseCells.store)) {
-      return
-    }
-
-    baseCells.clear()
-  }
-  const rows: TableRowSelectionApi = {
-    state: input.rowSelection.state,
-    query: input.rowSelection.query,
-    enumerate: input.rowSelection.enumerate,
-    store: input.rowSelection.store,
-    command: {
-      restore: snapshot => {
-        clearCells()
-        input.rowSelection.command.restore(snapshot)
-      },
-      clear: input.rowSelection.command.clear,
-      selectAll: () => {
-        clearCells()
-        input.rowSelection.command.selectAll()
-      },
-      applyIds: (mode, ids, options) => {
-        clearCells()
-        input.rowSelection.command.applyIds(mode, ids, options)
-      },
-      applyScope: (mode, scope, options) => {
-        clearCells()
-        input.rowSelection.command.applyScope(mode, scope, options)
-      },
-      range: {
-        extendTo: id => {
-          clearCells()
-          input.rowSelection.command.range.extendTo(id)
-        },
-        step: (delta, options) => {
-          clearCells()
-          return input.rowSelection.command.range.step(delta, options)
+    const baseCells = createGridSelection(input.itemsStore, input.fieldsStore);
+    const clearRows = () => {
+        if (!hasRows(input.rowSelection.state.getSnapshot())) {
+            return;
         }
-      }
-    }
-  }
-  const cells: GridSelectionStore = {
-    store: baseCells.store,
-    get: baseCells.get,
-    clear: baseCells.clear,
-    set: (cell, anchor) => {
-      clearRows()
-      baseCells.set(cell, anchor)
-    },
-    move: (rowDelta, columnDelta, options) => {
-      clearRows()
-      baseCells.move(rowDelta, columnDelta, options)
-    },
-    first: rowId => {
-      clearRows()
-      baseCells.first(rowId)
-    },
-    dispose: baseCells.dispose
-  }
-  const mode = store.createDerivedStore<TableSelectionMode>({
-    get: () => (
-      store.read(cells.store)
+        input.rowSelection.command.clear();
+    };
+    const clearCells = () => {
+        if (!store.peek(baseCells.store)) {
+            return;
+        }
+        baseCells.clear();
+    };
+    const rows: TableRowSelectionApi = {
+        state: input.rowSelection.state,
+        query: input.rowSelection.query,
+        enumerate: input.rowSelection.enumerate,
+        store: input.rowSelection.store,
+        command: {
+            restore: snapshot => {
+                clearCells();
+                input.rowSelection.command.restore(snapshot);
+            },
+            clear: input.rowSelection.command.clear,
+            selectAll: () => {
+                clearCells();
+                input.rowSelection.command.selectAll();
+            },
+            applyIds: (mode, ids, options) => {
+                clearCells();
+                input.rowSelection.command.applyIds(mode, ids, options);
+            },
+            applyScope: (mode, scope, options) => {
+                clearCells();
+                input.rowSelection.command.applyScope(mode, scope, options);
+            },
+            range: {
+                extendTo: id => {
+                    clearCells();
+                    input.rowSelection.command.range.extendTo(id);
+                },
+                step: (delta, options) => {
+                    clearCells();
+                    return input.rowSelection.command.range.step(delta, options);
+                }
+            }
+        }
+    };
+    const cells: GridSelectionStore = {
+        store: baseCells.store,
+        get: baseCells.get,
+        clear: baseCells.clear,
+        set: (cell, anchor) => {
+            clearRows();
+            baseCells.set(cell, anchor);
+        },
+        move: (rowDelta, columnDelta, options) => {
+            clearRows();
+            baseCells.move(rowDelta, columnDelta, options);
+        },
+        first: rowId => {
+            clearRows();
+            baseCells.first(rowId);
+        },
+        dispose: baseCells.dispose
+    };
+    const mode = store.value<TableSelectionMode>(() => (store.read(cells.store)
         ? 'cells'
         : hasRows(store.read(input.rowSelection.state.store))
-          ? 'rows'
-          : 'none'
-    ),
-    isEqual: Object.is
-  })
-
-  return {
-    mode,
-    rows,
-    cells,
-    clear: () => {
-      baseCells.clear()
-      input.rowSelection.command.clear()
-    },
-    dispose: () => {
-      baseCells.dispose()
-    }
-  }
-}
+            ? 'rows'
+            : 'none'), {
+        isEqual: Object.is
+    });
+    return {
+        mode,
+        rows,
+        cells,
+        clear: () => {
+            baseCells.clear();
+            input.rowSelection.command.clear();
+        },
+        dispose: () => {
+            baseCells.dispose();
+        }
+    };
+};

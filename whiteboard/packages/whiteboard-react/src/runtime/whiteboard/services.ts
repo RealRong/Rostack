@@ -70,7 +70,7 @@ export type WhiteboardRuntimeServices = WhiteboardServicesContextValue & {
 const createSwitchableHistoryPort = (
   initial: HistoryPort<IntentResult>
 ) => {
-  const state = store.createValueStore(initial.get())
+  const state = store.value(initial.get())
   let current = initial
   let unsubscribe = current.subscribe(() => {
     state.set(current.get())

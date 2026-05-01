@@ -5,9 +5,7 @@ import type {
 } from '@dataview/react/page/drag/types'
 
 export const createDragApi = (): DragApi => {
-  const stateStore = store.createValueStore<DragSpec | null>({
-    initial: null
-  })
+  const stateStore = store.value<DragSpec | null>(null)
 
   return {
     store: stateStore,

@@ -13,22 +13,22 @@ export const createTableCanRuntime = (
   state: store.ReadStore<Capabilities>
 ): TableCanRuntime => ({
   state,
-  hover: store.createProjectedStore({
+  hover: store.projected({
     source: state,
     select: current => current.canHover,
     isEqual: Object.is
   }),
-  rowDrag: store.createProjectedStore({
+  rowDrag: store.projected({
     source: state,
     select: current => current.canRowDrag,
     isEqual: Object.is
   }),
-  columnResize: store.createProjectedStore({
+  columnResize: store.projected({
     source: state,
     select: current => current.canColumnResize,
     isEqual: Object.is
   }),
-  fill: store.createProjectedStore({
+  fill: store.projected({
     source: state,
     select: current => current.showFillHandle,
     isEqual: Object.is

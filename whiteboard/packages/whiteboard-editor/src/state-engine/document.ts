@@ -24,7 +24,7 @@ import {
   EMPTY_PREVIEW_STATE,
   isEditorPreviewStateEqual,
   normalizeEditorPreviewState
-} from '@whiteboard/editor/session/preview/state'
+} from '@whiteboard/editor/preview/state'
 import type {
   EditCaret,
   EditSession

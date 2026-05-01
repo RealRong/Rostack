@@ -8,11 +8,7 @@ import { flushSync } from 'react-dom'
 import { field as fieldApi } from '@dataview/core/field'
 import { meta } from '@dataview/meta'
 import {
-  order
-} from '@shared/core'
-import {
-  type MenuItem,
-  type MenuReorderItem
+  type MenuItem
 } from '@shared/ui/menu'
 import { useDataView } from '@dataview/react/dataview'
 import type { EditorSubmitTrigger } from '@dataview/react/interaction'
@@ -53,7 +49,6 @@ export interface OptionPickerControllerInput extends FieldValueDraftEditorProps<
 }
 
 type OptionPickerEntry = MenuItem
-type ReorderableOptionPickerItem = MenuReorderItem
 
 export const useOptionPickerController = (
   input: OptionPickerControllerInput
@@ -314,13 +309,11 @@ export const useOptionPickerController = (
     query,
     t
   ])
-  const reorderableItems = useMemo<ReorderableOptionPickerItem[]>(() => options.map(option => ({
-    ...buildOptionItem(option),
-    handleAriaLabel: t(meta.ui.field.options.reorder(readOptionLabel(option, t)))
-  })), [
+  const reorderableItems = useMemo<OptionPickerEntry[]>(() => options.map(option => (
+    buildOptionItem(option)
+  )), [
     buildOptionItem,
-    options,
-    t
+    options
   ])
 
   const handleCommit = useCallback((
@@ -399,17 +392,11 @@ export const useOptionPickerController = (
     selectOption
   ])
 
-  const reorderOptions = useCallback((from: number, to: number) => {
-    const reordered = order.moveAt(options, from, to)
-    const moved = reordered[to]
-    if (!moved) {
-      return
-    }
-
+  const reorderOptions = useCallback((key: string, before?: string) => {
     editor.fields.options.move({
       field: fieldId,
-      option: moved.id,
-      before: reordered[to + 1]?.id
+      option: key,
+      before
     })
   }, [editor.fields.options, fieldId, options])
 

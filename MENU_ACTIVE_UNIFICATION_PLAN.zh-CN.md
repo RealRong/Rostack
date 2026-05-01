@@ -125,10 +125,10 @@
 
 更推荐第一种，因为简单：
 
-- `reorder?: { onMove(...) }`
+- `reorder?: (input) => void`
 
 没有 reorder 时，就是普通 menu。
-有 reorder 时，就是支持拖拽/重排 handle 的 menu。
+有 reorder 时，就是支持拖拽/重排 handle 的 menu，也就直接进入 reorder 模式。
 
 这样更自然，也更符合“reorder 只是变体”的目标。
 
@@ -186,13 +186,10 @@ type MenuActiveDefault =
 ### 3. `reorder`
 
 ```ts
-reorder?: {
-  onMove: (input: {
-    key: string
-    before?: string
-  }) => void
-  handleLabel?: (key: string) => string
-}
+reorder?: (input: {
+  key: string
+  before?: string
+}) => void
 ```
 
 这就够了。
@@ -201,10 +198,26 @@ reorder?: {
 
 - item 显示 reorder handle
 - menu 启用 reorder 交互
+- `reorder` 本身就是 move 回调，不再包一层对象
+- 是否处于 reorder 模式，由 `reorder` 是否存在直接决定
 
 没有 `reorder`：
 
 - 普通 menu
+
+这里不再保留 `handleLabel`。
+
+原因是：
+
+- reorder handle 的文案不应变成业务层协议
+- `Menu` 既然承接 reorder 模式，就应该自己统一可访问性文案
+- 否则只是把第二套实现从组件层挪到了 prop 层
+
+最终约束应是：
+
+- 业务层只提供 `reorder({ key, before })`
+- `Menu` 内部根据 item 自身 label / text / aria 信息生成 handle label
+- 如果 item 缺少必要文本，再由 `MenuItem` 基础结构补齐，而不是给 reorder 单独开口
 
 不需要第二个 `Menu.Reorder` 组件。
 
@@ -251,11 +264,10 @@ activeKey: string | null
 为了支持 picker 的键盘宿主，`Menu` 应统一暴露一个简单 handle：
 
 ```ts
+type MenuMove = 'next' | 'prev' | 'first' | 'last'
+
 interface MenuHandle {
-  moveNext(): void
-  movePrev(): void
-  moveFirst(): void
-  moveLast(): void
+  move(mode: MenuMove): void
   getActiveKey(): string | null
 }
 ```
@@ -341,7 +353,7 @@ items 一建立或重建，就 active 第一项。
 
 - `items = 全部已有 options`
 - `defaultActive = 'preserve-or-first'`
-- `reorder = { onMove }`
+- `reorder = ({ key, before }) => { ... }`
 
 结果：
 
@@ -421,7 +433,9 @@ items 一建立或重建，就 active 第一项。
 - `selectionMode`
 - `defaultActive`
 - `reorder`
+- `MenuMove`
 - `MenuHandle`
+- `move`
 - `getActiveKey`
 
 不推荐引入过重命名：
@@ -488,4 +502,3 @@ items 一建立或重建，就 active 第一项。
 推荐一句话概括：
 
 - **Menu 自己管怎么走，业务层只告诉它起点应该落哪。**
-

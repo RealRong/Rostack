@@ -21,7 +21,7 @@ import type {
 } from '@whiteboard/editor/state-engine/intents'
 import {
   updatePreviewNodePresentation
-} from '@whiteboard/editor/session/preview/state'
+} from '@whiteboard/editor/preview/state'
 import type { EditorWrite } from '@whiteboard/editor/write'
 import type { EditorTaskRuntime } from './runtime'
 import {

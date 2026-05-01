@@ -51,7 +51,7 @@ const createDeps = () => {
           get: vi.fn(() => undefined)
         }
       },
-      sessionRead: {
+      read: {
         viewport: {
           pointer: ({
             clientX,

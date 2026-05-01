@@ -34,12 +34,14 @@ export const createEditorInputHost = ({
   interaction,
   edgeHover,
   projection,
-  session
+  read,
+  runtime
 }: {
   interaction: InteractionRuntime
   edgeHover: EdgeHoverService
   projection: EditorProjection
-  session: EditorHostDeps['session']
+  read: EditorHostDeps['read']
+  runtime: EditorHostDeps['runtime']
 }): EditorInputHost => {
   const dispatchSelection = (
     selection: {
@@ -47,7 +49,7 @@ export const createEditorInputHost = ({
       edgeIds?: readonly string[]
     }
   ) => {
-    session.dispatch({
+    runtime.dispatch({
       type: 'selection.set',
       selection: {
         nodeIds: selection.nodeIds ? [...selection.nodeIds] : [],
@@ -58,43 +60,26 @@ export const createEditorInputHost = ({
 
   const updateInteraction = (
     update: (
-      current: ReturnType<EditorHostDeps['session']['interaction']['read']['hover']['get']>
-    ) => ReturnType<EditorHostDeps['session']['interaction']['read']['hover']['get']>
+      current: ReturnType<EditorHostDeps['read']['interaction']['hover']['get']>
+    ) => ReturnType<EditorHostDeps['read']['interaction']['hover']['get']>
   ) => {
-    session.dispatch({
+    runtime.dispatch({
       type: 'overlay.hover.set',
-      hover: update(session.interaction.read.hover.get())
+      hover: update(read.interaction.hover.get())
     } satisfies EditorCommand)
   }
 
   const dispatchViewport = (
-    viewport: ReturnType<EditorHostDeps['session']['viewport']['read']['get']>
+    viewport: ReturnType<EditorHostDeps['runtime']['viewport']['read']['get']>
   ) => {
-    session.dispatch({
+    runtime.dispatch({
       type: 'viewport.set',
       viewport
     } satisfies EditorCommand)
   }
 
-  const writePointer = (sample: {
-    client: { x: number, y: number }
-    screen: { x: number, y: number }
-    world: { x: number, y: number }
-  }) => {
-    session.transient.setPointer({
-      client: sample.client,
-      screen: sample.screen,
-      world: sample.world
-    })
-  }
-
-  const clearPointer = () => {
-    session.transient.setPointer(null)
-  }
-
   const clearTransientState = () => {
-    clearPointer()
-    session.dispatch({
+    runtime.dispatch({
       type: 'overlay.hover.set',
       hover: EMPTY_HOVER_STATE
     } satisfies EditorCommand)
@@ -108,32 +93,31 @@ export const createEditorInputHost = ({
       interaction.cancel()
     },
     contextMenu: (input) => {
-      writePointer(input)
       edgeHover.clear()
 
-      if (session.interaction.read.busy.get() || input.ignoreContextMenu) {
+      if (read.interaction.busy.get() || input.ignoreContextMenu) {
         return null
       }
 
       switch (input.pick.kind) {
         case 'selection-box': {
-          return readSelectionIntent(session.state.selection, input.screen) ?? {
+          return readSelectionIntent(read.selection, input.screen) ?? {
             kind: 'canvas',
             screen: input.screen,
             world: input.world
           }
         }
         case 'node': {
-          const current = session.state.selection.get()
+          const current = read.selection.get()
           const reuseCurrentSelection = current.nodeIds.includes(input.pick.id)
           if (reuseCurrentSelection) {
-            return readSelectionIntent(session.state.selection, input.screen)
+            return readSelectionIntent(read.selection, input.screen)
           }
 
           dispatchSelection({
             nodeIds: [input.pick.id]
           })
-          return readSelectionIntent(session.state.selection, input.screen)
+          return readSelectionIntent(read.selection, input.screen)
         }
         case 'group': {
           const target = projection.groups.target(input.pick.id)
@@ -146,7 +130,7 @@ export const createEditorInputHost = ({
           }
 
           dispatchSelection(target)
-          return readSelectionIntent(session.state.selection, input.screen)
+          return readSelectionIntent(read.selection, input.screen)
         }
         case 'edge':
           dispatchSelection({
@@ -167,8 +151,6 @@ export const createEditorInputHost = ({
       }
     },
     pointerDown: (input) => {
-      writePointer(input)
-
       const handled = interaction.handlePointerDown(input)
       if (handled) {
         updateInteraction(() => EMPTY_HOVER_STATE)
@@ -177,11 +159,10 @@ export const createEditorInputHost = ({
 
       return {
         handled,
-        continuePointer: handled && session.interaction.read.busy.get()
+        continuePointer: handled && read.interaction.busy.get()
       }
     },
     pointerMove: (input) => {
-      writePointer(input)
       const handled = interaction.handlePointerMove(input)
       if (handled) {
         updateInteraction(() => EMPTY_HOVER_STATE)
@@ -196,17 +177,14 @@ export const createEditorInputHost = ({
           : target
       ))
 
-      if (session.state.tool.get().type === 'edge') {
+      if (read.tool.get().type === 'edge') {
         edgeHover.move(input.world)
       } else {
         edgeHover.clear()
       }
       return false
     },
-    pointerUp: (input) => {
-      writePointer(input)
-      return interaction.handlePointerUp(input)
-    },
+    pointerUp: (input) => interaction.handlePointerUp(input),
     pointerCancel: (input) => {
       clearTransientState()
       return interaction.handlePointerCancel(input)
@@ -216,13 +194,11 @@ export const createEditorInputHost = ({
       interaction.handlePointerLeave()
     },
     wheel: (input) => {
-      writePointer(input)
-
       if (interaction.handleWheel(input)) {
         return true
       }
 
-      dispatchViewport(session.viewport.resolve.wheel(
+      dispatchViewport(runtime.viewport.resolve.wheel(
         {
           deltaX: input.deltaX,
           deltaY: input.deltaY,

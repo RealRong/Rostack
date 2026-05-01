@@ -125,7 +125,7 @@ const readMoveGesture = (
   : null
 
 export const createEdgeMoveSession = (
-  ctx: Pick<EditorHostDeps, 'projection' | 'sessionRead' | 'write'>,
+  ctx: Pick<EditorHostDeps, 'projection' | 'read' | 'write'>,
   initial: EdgeMoveState
 ): InteractionSession => {
   let state = initial
@@ -150,7 +150,7 @@ export const createEdgeMoveSession = (
     chrome: false,
     gesture: null,
     autoPan: {
-      frame: (pointer) => step(ctx.sessionRead.viewport.pointer(pointer).world)
+      frame: (pointer) => step(ctx.read.viewport.pointer(pointer).world)
     },
     move: (input) => {
       const transition = step(input.world)

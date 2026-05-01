@@ -42,7 +42,7 @@ const createInteractionDeps = () => {
           get: vi.fn(() => undefined)
         }
       },
-      sessionRead: {
+      read: {
         viewport: {
           get: () => ({
             zoom: 1
@@ -51,6 +51,9 @@ const createInteractionDeps = () => {
             world: { x: 0, y: 0 }
           })
         }
+      },
+      runtime: {
+        dispatch: vi.fn()
       },
       snap: {
         edge: {

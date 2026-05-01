@@ -120,7 +120,7 @@ const createTransformContext = ({
           : undefined
       }
     },
-    sessionRead: {
+    read: {
       viewport: {
         get: () => ({
           zoom: 1

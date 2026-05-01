@@ -9,7 +9,7 @@ import type {
   NodeTextPreviewState,
   TextPreviewEntry,
   TextPreviewPatch
-} from '@whiteboard/editor/session/preview/types'
+} from '@whiteboard/editor/preview/types'
 
 export const EMPTY_NODE_PATCHES: readonly NodePreviewEntry[] = []
 export const EMPTY_TEXT_PREVIEW_PATCHES: readonly TextPreviewEntry[] = []

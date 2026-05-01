@@ -23,7 +23,7 @@ import type {
 } from '@whiteboard/editor/session/viewport'
 import {
   EMPTY_PREVIEW_STATE
-} from '@whiteboard/editor/session/preview/state'
+} from '@whiteboard/editor/preview/state'
 import {
   buildEditorStateDocument,
   isViewportEqual,
@@ -392,7 +392,6 @@ export const createEditorStateRuntime = (input: {
 
   let stagedDocument = engine.document()
   let pendingCommands: EditorCommand[] = []
-  let flushScheduled = false
   const commitListeners = new Set<(
     commit: MutationCommitRecord<EditorStateDocument, EditorStateOperation>
   ) => void>()
@@ -486,19 +485,7 @@ export const createEditorStateRuntime = (input: {
     }
   }
 
-  const scheduleFlush = () => {
-    if (flushScheduled) {
-      return
-    }
-
-    flushScheduled = true
-    queueMicrotask(() => {
-      flush()
-    })
-  }
-
   const flush = () => {
-    flushScheduled = false
     if (pendingCommands.length === 0) {
       return
     }
@@ -525,7 +512,7 @@ export const createEditorStateRuntime = (input: {
       pendingCommands.push(entry)
     })
 
-    scheduleFlush()
+    flush()
   }
 
   const dispatchNow = (

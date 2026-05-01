@@ -450,12 +450,12 @@ const commitEdgeRoute = (
 }
 
 const readViewportWorld = (
-  ctx: Pick<EditorHostDeps, 'sessionRead'>,
+  ctx: Pick<EditorHostDeps, 'read'>,
   pointer: {
     clientX: number
     clientY: number
   }
-) => ctx.sessionRead.viewport.pointer(pointer).world
+) => ctx.read.viewport.pointer(pointer).world
 
 const readRouteGesture = (
   state: EdgeRouteHandleState,
@@ -500,7 +500,7 @@ const submitEdgeRouteCommit = (
 }
 
 const createEdgeRouteSession = (
-  ctx: Pick<EditorHostDeps, 'projection' | 'sessionRead' | 'write'>,
+  ctx: Pick<EditorHostDeps, 'projection' | 'read' | 'write'>,
   initial: EdgeRouteHandleState
 ): InteractionSession => {
   let state = initial
@@ -570,7 +570,7 @@ const createEdgeRouteSession = (
 }
 
 const createInsertedRouteSession = (
-  ctx: Pick<EditorHostDeps, 'projection' | 'sessionRead' | 'write'>,
+  ctx: Pick<EditorHostDeps, 'projection' | 'read' | 'write'>,
   input: Extract<EdgeRouteStart, { kind: 'insert' }>
 ) => createEdgeRouteSession(
   ctx,
@@ -610,7 +610,7 @@ const commitInsertedRoute = (
 }
 
 export const createEdgeRoutePressSession = (
-  ctx: Pick<EditorHostDeps, 'projection' | 'sessionRead' | 'write'>,
+  ctx: Pick<EditorHostDeps, 'projection' | 'read' | 'write'>,
   start: PointerDownInput,
   plan: Extract<EdgeRouteStart, { kind: 'session' | 'insert' }>
 ): InteractionSession => createPressDragSession({

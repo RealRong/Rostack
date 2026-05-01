@@ -45,16 +45,16 @@ export const OptionPickerEditor = (
   const onKeyDown = usePickerKeydown({
     editingBlocked: Boolean(controller.editingOptionId),
     onMoveNext: () => {
-      menuRef.current?.moveNext()
+      menuRef.current?.move('next')
     },
     onMovePrev: () => {
-      menuRef.current?.movePrev()
+      menuRef.current?.move('prev')
     },
     onMoveFirst: () => {
-      menuRef.current?.moveFirst()
+      menuRef.current?.move('first')
     },
     onMoveLast: () => {
-      menuRef.current?.moveLast()
+      menuRef.current?.move('last')
     },
     onCancel: props.onCancel,
     onCommit: trigger => {
@@ -110,7 +110,8 @@ export const OptionPickerEditor = (
               autoFocus={false}
             />
           ) : (
-            <Menu.Reorder
+            <Menu
+              ref={menuRef}
               items={controller.reorderableItems}
               selectionMode={props.mode === 'single' ? 'single' : 'multiple'}
               selectionAppearance="none"
@@ -118,7 +119,9 @@ export const OptionPickerEditor = (
                 ? props.draft
                 : controller.selectedOptions.map(option => option.id)}
               className="gap-0.5"
-              onMove={controller.reorderOptions}
+              reorder={({ key, before }) => {
+                controller.reorderOptions(key, before)
+              }}
             />
           )}
         </div>

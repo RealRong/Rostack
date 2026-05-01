@@ -51,10 +51,10 @@ const toSpatialSelectionPlan = (
 })
 
 const resolveTransformSpec = (
-  ctx: Pick<EditorHostDeps, 'projection' | 'sessionRead' | 'nodeType' | 'sceneDerived'>,
+  ctx: Pick<EditorHostDeps, 'projection' | 'read' | 'nodeType' | 'sceneDerived'>,
   input: PointerDownInput
 ): RuntimeTransformSpec | null => {
-  const tool = ctx.sessionRead.tool.get()
+  const tool = ctx.read.tool.get()
   if (
     tool.type !== 'select'
     || (input.pick.kind !== 'node' && input.pick.kind !== 'selection-box')
@@ -114,7 +114,7 @@ const resolveTransformSpec = (
 }
 
 export const createTransformSession = (
-  ctx: Pick<EditorHostDeps, 'projection' | 'sessionRead' | 'layout' | 'snap' | 'write'>,
+  ctx: Pick<EditorHostDeps, 'projection' | 'read' | 'layout' | 'snap' | 'write'>,
   spec: TransformSpec<Node>,
   start: Pick<PointerDownInput, 'modifiers'>
 ): InteractionSession => {
@@ -134,7 +134,7 @@ export const createTransformSession = (
         alt: input.modifiers.alt,
         shift: input.modifiers.shift
       },
-      zoom: ctx.sessionRead.viewport.get().zoom,
+      zoom: ctx.read.viewport.get().zoom,
       minSize: RESIZE_MIN_SIZE,
       snap: (resize) => {
         const snapped = ctx.snap.node.resize(resize)
@@ -177,8 +177,8 @@ export const createTransformSession = (
     autoPan: {
       frame: (pointer) => {
         project({
-          screen: ctx.sessionRead.viewport.screenPoint(pointer.clientX, pointer.clientY),
-          world: ctx.sessionRead.viewport.pointer(pointer).world,
+          screen: ctx.read.viewport.screenPoint(pointer.clientX, pointer.clientY),
+          world: ctx.read.viewport.pointer(pointer).world,
           modifiers
         })
       }
@@ -210,7 +210,7 @@ export const createTransformSession = (
 }
 
 export const createTransformBinding = (
-  ctx: Pick<EditorHostDeps, 'projection' | 'sessionRead' | 'layout' | 'snap' | 'write' | 'nodeType' | 'sceneDerived'>
+  ctx: Pick<EditorHostDeps, 'projection' | 'read' | 'layout' | 'snap' | 'write' | 'nodeType' | 'sceneDerived'>
 ): InteractionBinding => ({
   key: 'transform',
   start: (input) => {

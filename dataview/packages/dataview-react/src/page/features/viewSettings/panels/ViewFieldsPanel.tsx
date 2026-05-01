@@ -6,15 +6,14 @@ import { useMemo, useState } from 'react'
 import type { Field } from '@dataview/core/types'
 import { Button } from '@shared/ui/button'
 import { Input } from '@shared/ui/input'
-import { Menu, type MenuItem, type MenuReorderItem } from '@shared/ui/menu'
+import { Menu, type MenuItem } from '@shared/ui/menu'
 import {
   useDataView,
   usePageModel
 } from '@dataview/react/dataview'
 import { meta } from '@dataview/meta'
 import {
-  buildFieldActionItem,
-  buildFieldReorderItem
+  buildFieldActionItem
 } from '@dataview/react/menu-builders'
 import { useTranslation } from '@shared/i18n/react'
 import {
@@ -93,9 +92,8 @@ export const ViewFieldsPanel = () => {
       }
     })
   )), [currentViewDomain?.display, filteredVisibleFields])
-  const reorderVisibleItems = useMemo<readonly MenuReorderItem[]>(() => visibleFields.map(field => (
-    buildFieldReorderItem(field, {
-      handleAriaLabel: t(meta.ui.viewSettings.fieldsPanel.reorder(field.name)),
+  const reorderVisibleItems = useMemo<readonly MenuItem[]>(() => visibleFields.map(field => (
+    buildFieldActionItem(field, {
       accessory: buildVisibilityAccessory(field, true),
       onSelect: () => {
         currentViewDomain?.display.hide(field.id)
@@ -148,22 +146,17 @@ export const ViewFieldsPanel = () => {
                 className="gap-1"
               />
             ) : (
-              <Menu.Reorder
+              <Menu
                 items={reorderVisibleItems}
-                onMove={(from, to) => {
-                  const fieldId = displayFieldIds[from]
-                  const beforeFieldId = displayFieldIds[to]
-                  if (!fieldId || !beforeFieldId || fieldId === beforeFieldId) {
+                reorder={({ key, before }) => {
+                  if (!key) {
                     return
                   }
 
-                  const nextBeforeFieldId = from < to
-                    ? displayFieldIds[to + 1] ?? null
-                    : beforeFieldId
                   currentViewDomain?.display.move(
-                    [fieldId],
+                    [key],
                     {
-                      before: nextBeforeFieldId
+                      before: before ?? null
                     }
                   )
                 }}

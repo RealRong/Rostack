@@ -4,7 +4,7 @@ import type {
   EdgeGuide,
   EdgeFeedbackEntry,
   EdgePreviewState
-} from '@whiteboard/editor/session/preview/types'
+} from '@whiteboard/editor/preview/types'
 
 export const EMPTY_EDGE_FEEDBACK_ENTRIES: readonly EdgeFeedbackEntry[] = []
 export const EMPTY_EDGE_GUIDE: EdgeGuide = {}

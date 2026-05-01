@@ -1,15 +1,15 @@
 import type { Guide } from '@whiteboard/core/node'
 import {
   EMPTY_EDGE_FEEDBACK_ENTRIES
-} from '@whiteboard/editor/session/preview/edge'
+} from '@whiteboard/editor/preview/edge'
 import {
   EMPTY_NODE_PATCHES,
   EMPTY_NODE_SELECTION_FEEDBACK
-} from '@whiteboard/editor/session/preview/node'
+} from '@whiteboard/editor/preview/node'
 import type {
   MarqueePreviewState,
   SelectionPreviewState
-} from '@whiteboard/editor/session/preview/types'
+} from '@whiteboard/editor/preview/types'
 
 export const EMPTY_GUIDES: readonly Guide[] = []
 

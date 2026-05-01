@@ -179,13 +179,13 @@ const reduceMarqueeSelection = (
 }
 
 const syncMarqueeInteraction = (
-  ctx: Pick<EditorHostDeps, 'session'>,
+  ctx: Pick<EditorHostDeps, 'runtime'>,
   interaction: InteractionSession,
   previous: MarqueeSelectionState,
   next: MarqueeSelectionState
 ) => {
   if (!selectionApi.target.equal(previous.selection, next.selection)) {
-    ctx.session.dispatch({
+    ctx.runtime.dispatch({
       type: 'selection.set',
       selection: next.selection
     })
@@ -203,7 +203,7 @@ const syncMarqueeInteraction = (
 }
 
 export const createMarqueeSession = (
-  ctx: Pick<EditorHostDeps, 'projection' | 'sessionRead' | 'session'>,
+  ctx: Pick<EditorHostDeps, 'projection' | 'read' | 'runtime'>,
   input: {
     start: PointerDownInput
     action: SelectionMarqueeAction
@@ -220,7 +220,7 @@ export const createMarqueeSession = (
   let interaction = null as InteractionSession | null
 
   if (input.action.clearOnStart) {
-    ctx.session.dispatch({
+    ctx.runtime.dispatch({
       type: 'selection.set',
       selection: {
         nodeIds: [],
@@ -264,7 +264,7 @@ export const createMarqueeSession = (
           return
         }
 
-        const sample = ctx.sessionRead.viewport.pointer(pointer)
+        const sample = ctx.read.viewport.pointer(pointer)
         step({
           screen: sample.screen,
           world: sample.world

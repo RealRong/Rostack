@@ -5,10 +5,6 @@ import { editor as editorApi } from '../src'
 import type { NodeSpec, PointerInput } from '../src'
 import { createEditorTestLayout } from './support'
 
-const flushEditor = async (): Promise<void> => {
-  await Promise.resolve()
-}
-
 const nodes: NodeSpec = {
   text: {
     meta: {
@@ -340,7 +336,6 @@ describe('node edit selection chrome', () => {
       nodeIds: ['text-1']
     })
     editor.write.edit.startNode('text-1', 'text')
-    await flushEditor()
 
     expect(editor.scene.chrome.selection.toolbar.get()).toMatchObject({
       selectionKind: 'nodes',
@@ -363,7 +358,6 @@ describe('node edit selection chrome', () => {
       nodeIds: ['root-1']
     })
     editor.write.edit.startNode('root-1', 'text')
-    await flushEditor()
 
     expect(editor.scene.chrome.selection.toolbar.get()).toMatchObject({
       selectionKind: 'nodes',
@@ -386,7 +380,6 @@ describe('node edit selection chrome', () => {
       edgeIds: ['edge-1']
     })
     editor.write.edit.startEdgeLabel('edge-1', 'label-1')
-    await flushEditor()
 
     expect(editor.scene.chrome.selection.toolbar.get()).toBeUndefined()
   })
@@ -397,7 +390,6 @@ describe('node edit selection chrome', () => {
     editor.write.selection.replace({
       nodeIds: ['shape-1']
     })
-    await flushEditor()
 
     const beforeRect = editor.scene.nodes.get('shape-1')?.geometry.rect
     expect(beforeRect).toBeDefined()
@@ -432,7 +424,6 @@ describe('node edit selection chrome', () => {
         part: 'body'
       }
     }))
-    await flushEditor()
 
     expect(editor.scene.document.snapshot().nodes['shape-1']?.position).toEqual({
       x: 128,
@@ -451,7 +442,6 @@ describe('node edit selection chrome', () => {
     editor.write.node.style.fill(scope!.node!.nodeIds, '#22c55e')
     editor.write.node.style.stroke(scope!.node!.nodeIds, '#ef4444')
     editor.write.node.style.strokeWidth(scope!.node!.nodeIds, 3)
-    await flushEditor()
 
     expect(editor.scene.document.snapshot().nodes['shape-1']?.style).toMatchObject({
       fill: '#22c55e',
@@ -471,7 +461,6 @@ describe('node edit selection chrome', () => {
     editor.write.selection.replace({
       nodeIds: ['root-1']
     })
-    await flushEditor()
 
     const beforeRect = editor.scene.nodes.get('root-1')?.geometry.rect
     expect(beforeRect).toBeDefined()
@@ -506,7 +495,6 @@ describe('node edit selection chrome', () => {
         part: 'body'
       }
     }))
-    await flushEditor()
 
     expect(editor.scene.document.snapshot().nodes['root-1']?.position).toEqual({
       x: 248,
@@ -524,7 +512,6 @@ describe('node edit selection chrome', () => {
     editor.write.selection.replace({
       nodeIds: ['root-1']
     })
-    await flushEditor()
 
     const toolbar = editor.scene.chrome.selection.toolbar.get()
     expect(toolbar?.defaultScopeKey).toBe('nodes')
@@ -540,7 +527,6 @@ describe('node edit selection chrome', () => {
         fill: '#22c55e'
       }
     })
-    await flushEditor()
 
     expect(result?.ok).toBe(true)
 
@@ -575,12 +561,10 @@ describe('node edit selection chrome', () => {
       },
       buttons: 0
     }))
-    await flushEditor()
 
     expect(editor.scene.stores.graph.state.node.byId.get('shape-1')?.hovered).toBe(true)
 
     editor.input.pointerLeave()
-    await flushEditor()
 
     expect(editor.scene.stores.graph.state.node.byId.get('shape-1')?.hovered).toBe(false)
   })

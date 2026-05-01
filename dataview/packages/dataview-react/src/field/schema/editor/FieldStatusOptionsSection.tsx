@@ -12,25 +12,17 @@ import { field as fieldApi } from '@dataview/core/field'
 import { useDataView } from '@dataview/react/dataview'
 import { meta } from '@dataview/meta'
 import { Button } from '@shared/ui/button'
-import {
-  Menu,
-  type MenuReorderItem
-} from '@shared/ui/menu'
+import { Menu } from '@shared/ui/menu'
 import { cn } from '@shared/ui/utils'
 import { useTranslation } from '@shared/i18n/react'
-import {
-  order
-} from '@shared/core'
 import {
   OptionEditorPanel,
 } from '@dataview/react/field/options'
 import {
-  buildOptionPanelReorderItem,
+  buildOptionPanelItem,
   readOptionLabel
 } from '@dataview/react/menu-builders'
 import { FIELD_DROPDOWN_MENU_PROPS } from '@dataview/react/field/dropdown'
-
-type StatusSectionItem = MenuReorderItem
 
 export const FieldStatusOptionsSection = (props: {
   field: CustomField
@@ -85,8 +77,8 @@ export const FieldStatusOptionsSection = (props: {
             </div>
 
             {section.options.length ? (
-              <Menu.Reorder
-                items={section.options.map<StatusSectionItem>(option => buildOptionPanelReorderItem({
+              <Menu
+                items={section.options.map(option => buildOptionPanelItem({
                   option,
                   t,
                   className: editingOptionId === option.id
@@ -94,9 +86,6 @@ export const FieldStatusOptionsSection = (props: {
                     : undefined,
                   ...FIELD_DROPDOWN_MENU_PROPS,
                   offset: 8,
-                  handleAriaLabel: t(meta.ui.field.options.reorder(
-                    readOptionLabel(option, t)
-                  )),
                   variant: 'status',
                   content: () => (
                     <OptionEditorPanel
@@ -121,16 +110,15 @@ export const FieldStatusOptionsSection = (props: {
                   )
                 }))}
                 className="gap-0.5"
-                openItemKey={editingOptionId ?? null}
-                onOpenItemChange={key => {
+                openSubmenuKey={editingOptionId ?? null}
+                onOpenSubmenuChange={key => {
                   setEditingOptionId(key ?? undefined)
                 }}
-                onMove={(from, to) => {
-                  const reordered = order.moveAt(section.options, from, to)
+                reorder={({ key, before }) => {
                   editor.fields.options.move({
                     field: props.field.id,
-                    option: reordered[to]!.id,
-                    before: reordered[to + 1]?.id,
+                    option: key,
+                    before,
                     category: section.category
                   })
                 }}

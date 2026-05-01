@@ -11,7 +11,7 @@ import { FINISH } from '@whiteboard/editor/input/session/result'
 import { createGesture } from '@whiteboard/editor/input/core/gesture'
 import type { PointerDownInput } from '@whiteboard/editor/types/input'
 import type { Tool } from '@whiteboard/editor/types/tool'
-import type { MindmapPreviewState } from '@whiteboard/editor/session/preview/types'
+import type { MindmapPreviewState } from '@whiteboard/editor/preview/types'
 import type { EditorHostDeps } from '@whiteboard/editor/input/runtime'
 import type { Node } from '@whiteboard/core/types'
 
@@ -243,7 +243,7 @@ const commitMindmapDrag = (
 }
 
 export const createMindmapDragSession = (
-  ctx: Pick<EditorHostDeps, 'document' | 'projection' | 'sessionRead' | 'write'>,
+  ctx: Pick<EditorHostDeps, 'document' | 'projection' | 'read' | 'write'>,
   initial: MindmapDragState
 ): InteractionSession => {
   let state = initial
@@ -277,7 +277,7 @@ export const createMindmapDragSession = (
     autoPan: {
       frame: (pointer) => {
         project(
-          ctx.sessionRead.viewport.pointer(pointer).world
+          ctx.read.viewport.pointer(pointer).world
         )
       }
     },

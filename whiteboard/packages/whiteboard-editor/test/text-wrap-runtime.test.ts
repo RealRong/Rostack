@@ -8,10 +8,6 @@ import type {
 } from '../src'
 import { createEditorTestLayout } from './support'
 
-const flushEditor = async (): Promise<void> => {
-  await Promise.resolve()
-}
-
 const createNodes = (): NodeSpec => ({
   text: {
     meta: {
@@ -272,7 +268,6 @@ describe('text wrap runtime', () => {
 
     editor.write.edit.startNode('text-1', 'text')
     editor.write.edit.input('hello world!!!')
-    await flushEditor()
 
     expect(editor.scene.editor.edit.get()).toMatchObject({
       kind: 'node',
@@ -303,7 +298,6 @@ describe('text wrap runtime', () => {
         'data.wrapWidth': 180
       }
     })
-    await flushEditor()
 
     expect(editor.scene.document.snapshot().nodes['text-1']?.data).toMatchObject({
       widthMode: 'wrap',
@@ -316,7 +310,6 @@ describe('text wrap runtime', () => {
 
     editor.write.edit.startNode('text-1', 'text')
     editor.write.edit.input('this stays wrapped at the committed width')
-    await flushEditor()
 
     expect(editor.scene.editor.edit.get()).toMatchObject({
       kind: 'node',

@@ -386,7 +386,7 @@ const commitEdgeConnect = (
 ) => edgeApi.connect.toCommit(state)
 
 const commitConnectState = (
-  ctx: Pick<EditorHostDeps, 'write' | 'tool' | 'session'>,
+  ctx: Pick<EditorHostDeps, 'write' | 'tool' | 'runtime'>,
   state: EdgeConnectState,
   reconnectDraftPatch?: EdgePatch
 ) => {
@@ -436,7 +436,7 @@ const commitConnectState = (
   }
 
   ctx.tool.select()
-  ctx.session.dispatch({
+  ctx.runtime.dispatch({
     type: 'selection.set',
     selection: {
       nodeIds: [],
@@ -446,7 +446,7 @@ const commitConnectState = (
 }
 
 export const createEdgeConnectSession = (
-  ctx: Pick<EditorHostDeps, 'projection' | 'sessionRead' | 'snap' | 'write' | 'tool' | 'session'>,
+  ctx: Pick<EditorHostDeps, 'projection' | 'read' | 'snap' | 'write' | 'tool' | 'runtime'>,
   initial: EdgeConnectState
 ): InteractionSession => {
   let state = initial
@@ -466,7 +466,7 @@ export const createEdgeConnectSession = (
   ) => Math.hypot(
     world.x - originWorld.x,
     world.y - originWorld.y
-  ) > 3 / Math.max(ctx.sessionRead.viewport.get().zoom, 0.0001)
+  ) > 3 / Math.max(ctx.read.viewport.get().zoom, 0.0001)
 
   const project = ({
     world,
@@ -542,7 +542,7 @@ export const createEdgeConnectSession = (
     autoPan: {
       frame: (pointer) => {
         interaction.gesture = project({
-          world: ctx.sessionRead.viewport.pointer(pointer).world,
+          world: ctx.read.viewport.pointer(pointer).world,
           modifiers: lastModifiers,
           allowLatch: true,
           pointerId: state.pointerId

@@ -9,7 +9,6 @@ import { json } from '@shared/core'
 import type {
   EdgeGuidePreview,
   EdgePreview,
-  HoverState,
   MindmapPreview,
   NodePreview,
   PreviewInput
@@ -20,17 +19,17 @@ import type {
 import {
   EMPTY_EDGE_GUIDE,
   isEdgeGuideEqual
-} from '@whiteboard/editor/session/preview/edge'
+} from '@whiteboard/editor/preview/edge'
 import {
   EMPTY_NODE_HIDDEN,
   EMPTY_NODE_PATCHES
-} from '@whiteboard/editor/session/preview/node'
+} from '@whiteboard/editor/preview/node'
 import {
   EMPTY_GUIDES
-} from '@whiteboard/editor/session/preview/selection'
+} from '@whiteboard/editor/preview/selection'
 import type {
   MindmapPreviewState
-} from '@whiteboard/editor/session/preview/types'
+} from '@whiteboard/editor/preview/types'
 
 type NodePreviewRecord = PreviewInput['nodes']
 type EdgePreviewRecord = PreviewInput['edges']
@@ -488,7 +487,6 @@ const readDrawPreview = (
 export const composeEditorPreviewState = (input: {
   base: PreviewInput
   gesture: ActiveGesture | null
-  hover: HoverState
   edgeGuide?: EdgeGuidePreview
   readDocument: () => Document
 }): PreviewInput => {

@@ -101,18 +101,6 @@ export type MenuItem =
   | LabelItem
   | CustomItem
 
-export interface ReorderItem extends Omit<Item, 'kind'> {
-  handleAriaLabel: string
-  handleIcon?: ReactNode
-  content?: MenuPopoverContent
-  size?: PopoverSurfaceSize
-  padding?: PopoverSurfacePadding
-  contentClassName?: string
-  presentation?: MenuPresentation
-  placement?: Placement
-  offset?: PopoverOffset
-}
-
 export type SubmenuOpenPolicy = 'hover' | 'click'
 export type SurfaceSize = PopoverSurfaceSize
 export type SurfacePadding = PopoverSurfacePadding
@@ -120,12 +108,10 @@ export type SelectionMode = 'none' | 'single' | 'multiple'
 export type SelectionAppearance = 'none' | 'content' | 'row'
 export type SubmenuOpenSource = 'pointer' | 'keyboard'
 export type SubmenuCloseReason = 'trigger' | 'outside' | 'keyboard'
+export type MenuMove = 'next' | 'prev' | 'first' | 'last'
 
 export interface Handle {
-  moveNext: () => void
-  movePrev: () => void
-  moveFirst: () => void
-  moveLast: () => void
+  move: (mode: MenuMove) => void
   clearActive: () => void
   getActiveKey: () => string | null
 }
@@ -152,20 +138,10 @@ export interface Props {
   open?: boolean
   openSubmenuKey?: string | null
   onOpenSubmenuChange?: (key: string | null) => void
-}
-
-export interface ReorderProps {
-  items: readonly ReorderItem[]
-  value?: string | readonly string[]
-  defaultValue?: string | readonly string[]
-  onValueChange?: (value: string | readonly string[]) => void
-  selectionMode?: SelectionMode
-  selectionAppearance?: SelectionAppearance
-  onMove: (from: number, to: number) => void
-  onClose?: () => void
-  className?: string
-  openItemKey?: string | null
-  onOpenItemChange?: (key: string | null) => void
+  reorder?: (input: {
+    key: string
+    before?: string
+  }) => void
 }
 
 export type Path = readonly string[]
@@ -200,4 +176,7 @@ export interface LevelProps {
   onRequestClose?: () => void
   submenuOpenPolicy: SubmenuOpenPolicy
   controller: Controller
+  reorder?: {
+    onMove: (from: number, to: number) => void
+  }
 }

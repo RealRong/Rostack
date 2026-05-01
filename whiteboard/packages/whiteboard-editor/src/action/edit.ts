@@ -83,15 +83,13 @@ export const createEditController = (input: {
       nodeIds?: readonly string[]
       edgeIds?: readonly string[]
     }
-  ) => {
-    input.editor.dispatch({
-      type: 'selection.set',
-      selection: {
-        nodeIds: selection.nodeIds ? [...selection.nodeIds] : [],
-        edgeIds: selection.edgeIds ? [...selection.edgeIds] : []
-      }
-    } satisfies EditorCommand)
-  }
+  ): EditorCommand => ({
+    type: 'selection.set',
+    selection: {
+      nodeIds: selection.nodeIds ? [...selection.nodeIds] : [],
+      edgeIds: selection.edgeIds ? [...selection.edgeIds] : []
+    }
+  })
 
   const updateEdit = (
     patch: (current: NonNullable<ReturnType<typeof input.editor.edit.get>>) => NonNullable<ReturnType<typeof input.editor.edit.get>>
@@ -113,19 +111,19 @@ export const createEditController = (input: {
     nodeId,
     field,
     caret
-  }: StartNodeEditInput) => {
+  }: StartNodeEditInput): EditorCommand | null => {
     const committed = input.document.node(nodeId)
     if (!committed) {
-      return
+      return null
     }
 
     const capability = input.nodeType.edit(committed.type, field)
     if (!capability) {
-      return
+      return null
     }
 
     const value = committed.data?.[field]
-    input.editor.dispatch({
+    return {
       type: 'edit.set',
       edit: {
         kind: 'node',
@@ -137,21 +135,21 @@ export const createEditController = (input: {
           kind: 'end'
         }
       }
-    } satisfies EditorCommand)
+    } satisfies EditorCommand
   }
 
   const startEdgeLabel = ({
     edgeId,
     labelId,
     caret
-  }: StartEdgeLabelEditInput) => {
+  }: StartEdgeLabelEditInput): EditorCommand | null => {
     const edge = input.document.edge(edgeId)
     const label = edge?.labels?.find((entry: EdgeLabel) => entry.id === labelId)
     if (!edge || !label) {
-      return
+      return null
     }
 
-    input.editor.dispatch({
+    return {
       type: 'edit.set',
       edit: {
         kind: 'edge-label',
@@ -163,7 +161,7 @@ export const createEditController = (input: {
           kind: 'end'
         }
       }
-    } satisfies EditorCommand)
+    } satisfies EditorCommand
   }
 
   const clearEditingEdgeLabel = ({
@@ -196,16 +194,25 @@ export const createEditController = (input: {
       return
     }
 
-    replaceSelection({
-      nodeIds: [nodeId]
-    })
-
     if (focus === 'edit-new') {
-      startNode({
+      const startEdit = startNode({
         nodeId,
         field: 'text'
       })
+      if (startEdit) {
+        input.editor.dispatch([
+          replaceSelection({
+            nodeIds: [nodeId]
+          }),
+          startEdit
+        ])
+      }
+      return
     }
+
+    input.editor.dispatch(replaceSelection({
+      nodeIds: [nodeId]
+    }))
   }
 
   const focusMindmapRoot = ({
@@ -219,16 +226,25 @@ export const createEditController = (input: {
       return
     }
 
-    replaceSelection({
-      nodeIds: [nodeId]
-    })
-
     if (focus === 'edit-root') {
-      startNode({
+      const startEdit = startNode({
         nodeId,
         field: 'text'
       })
+      if (startEdit) {
+        input.editor.dispatch([
+          replaceSelection({
+            nodeIds: [nodeId]
+          }),
+          startEdit
+        ])
+      }
+      return
     }
+
+    input.editor.dispatch(replaceSelection({
+      nodeIds: [nodeId]
+    }))
   }
 
   const cancel = () => {
@@ -309,18 +325,24 @@ export const createEditController = (input: {
   return {
     actions: {
       startNode: (nodeId, field, options) => {
-        startNode({
+        const command = startNode({
           nodeId,
           field,
           caret: options?.caret
         })
+        if (command) {
+          input.editor.dispatch(command)
+        }
       },
       startEdgeLabel: (edgeId, labelId, options) => {
-        startEdgeLabel({
+        const command = startEdgeLabel({
           edgeId,
           labelId,
           caret: options?.caret
         })
+        if (command) {
+          input.editor.dispatch(command)
+        }
       },
       input: (text) => updateEdit((current) => ({
         ...current,

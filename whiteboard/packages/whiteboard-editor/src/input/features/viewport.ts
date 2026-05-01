@@ -22,14 +22,14 @@ type PanPointer = {
 
 type ViewportServices = Pick<
   EditorHostDeps,
-  'sessionRead' | 'session'
+  'read' | 'runtime'
 >
 
 const allowsLeftDrag = (
   ctx: ViewportServices
 ) => (
-  ctx.sessionRead.space.get()
-  || ctx.sessionRead.tool.is('hand')
+  ctx.read.space.get()
+  || ctx.read.tool.is('hand')
 )
 
 const updatePan = (
@@ -47,7 +47,7 @@ const updatePan = (
     x: input.client.x,
     y: input.client.y
   }
-  const nextViewport = ctx.session.viewport.resolve.panScreenBy({
+  const nextViewport = ctx.runtime.viewport.resolve.panScreenBy({
     x: -deltaX,
     y: -deltaY
   })
@@ -55,7 +55,7 @@ const updatePan = (
     return
   }
 
-  ctx.session.dispatch({
+  ctx.runtime.dispatch({
     type: 'viewport.set',
     viewport: nextViewport
   } satisfies EditorCommand)

@@ -1,6 +1,5 @@
 export {
   buildFieldActionItem,
-  buildFieldReorderItem,
   buildFieldToggleItem
 } from '@dataview/react/menu-builders/field'
 export {
@@ -15,7 +14,6 @@ export {
 export {
   buildOptionColorItems,
   buildOptionPanelItem,
-  buildOptionPanelReorderItem,
   buildOptionTagLabel,
   buildStatusCategoryToggleItems,
   readOptionLabel,

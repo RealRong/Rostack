@@ -15,6 +15,7 @@ import {
   isPathPrefix,
   isSamePath,
   isVisiblePath,
+  isInteractive,
   normalizeExpandedPath,
   normalizeValue,
   parentPath,
@@ -25,6 +26,7 @@ import {
 import type {
   Controller,
   Handle,
+  MenuMove,
   Path,
   Props,
   SubmenuCloseReason,
@@ -189,6 +191,28 @@ export const Base = forwardRef<Handle, Props>((props, ref) => {
     props.onValueChange?.(nextValue)
   }, [props.onValueChange, props.value, selectedKeys, selectionMode])
 
+  const onRootReorderMove = useCallback((from: number, to: number) => {
+    if (!props.reorder || from === to) {
+      return
+    }
+
+    const reorderedItems = [...props.items]
+    const moved = reorderedItems.splice(from, 1)[0]
+    if (!moved) {
+      return
+    }
+
+    reorderedItems.splice(to, 0, moved)
+    const before = reorderedItems
+      .slice(to + 1)
+      .find(isInteractive)
+
+    props.reorder({
+      key: moved.key,
+      before: before?.key
+    })
+  }, [props.items, props.reorder])
+
   const trimOpenPath = useCallback((path: Path) => {
     if (!isPathPrefix(path, openPath) || isSamePath(path, openPath)) {
       return
@@ -237,14 +261,21 @@ export const Base = forwardRef<Handle, Props>((props, ref) => {
   }, [rootEnabledPaths, setActiveKeyboardPath, trimOpenPath])
 
   useImperativeHandle(ref, () => ({
-    moveNext: () => {
-      moveRootActive(1)
+    move: (mode: MenuMove) => {
+      switch (mode) {
+        case 'next':
+          moveRootActive(1)
+          return
+        case 'prev':
+          moveRootActive(-1)
+          return
+        case 'first':
+          moveRootFirst()
+          return
+        case 'last':
+          moveRootLast()
+      }
     },
-    movePrev: () => {
-      moveRootActive(-1)
-    },
-    moveFirst: moveRootFirst,
-    moveLast: moveRootLast,
     clearActive: () => {
       clearActivePath()
     },
@@ -343,6 +374,11 @@ export const Base = forwardRef<Handle, Props>((props, ref) => {
         autoFocus={props.autoFocus ?? true}
         submenuOpenPolicy={submenuOpenPolicy}
         controller={controller}
+        reorder={props.reorder
+          ? {
+              onMove: onRootReorderMove
+            }
+          : undefined}
       />
     </div>
   )

@@ -6,10 +6,6 @@ import { editor as editorApi } from '../src'
 import type { NodeSpec, PointerInput } from '../src'
 import { createEditorTestLayout } from './support'
 
-const flushEditor = async (): Promise<void> => {
-  await Promise.resolve()
-}
-
 const nodes: NodeSpec = {
   text: {
     meta: {
@@ -165,7 +161,6 @@ describe('mindmap layout preview runtime', () => {
           field: 'text'
         }
       }))
-      await flushEditor()
 
       expect(editor.scene.nodes.get(created.data.rootId)?.geometry.rect).toEqual({
         ...beforeRoot!,

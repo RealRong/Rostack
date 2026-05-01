@@ -154,7 +154,7 @@ describe('mindmap root move', () => {
           }
         }
       },
-      sessionRead: {
+      read: {
         viewport: {
           pointer: vi.fn()
         }

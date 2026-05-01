@@ -21,7 +21,6 @@ import type { NodeTypeSupport } from '@whiteboard/editor/types/node'
 import type {
   EditorSceneApi,
   EditorProjection,
-  EditorProjectionStores,
   EditorState,
   ToolRead
 } from '@whiteboard/editor/types/editor'
@@ -65,64 +64,51 @@ const readPreviewValue = (
   snapshot: EditorStateDocument
 ) => snapshot.overlay.preview
 
-const createProjectionStateStores = (
+const createEditorStateStores = (
   runtime: EditorStateRuntime
-) => {
-  const initialSnapshot = runtime.snapshot()
-  const tool = store.createValueStore(initialSnapshot.state.tool, {
+) => ({
+  tool: store.value({
+    get: () => runtime.snapshot().state.tool,
+    subscribe: runtime.commits.subscribe,
     isEqual: isToolEqual
-  })
-  const draw = store.createValueStore(initialSnapshot.state.draw, {
+  }),
+  draw: store.value({
+    get: () => runtime.snapshot().state.draw,
+    subscribe: runtime.commits.subscribe,
     isEqual: isDrawEqual
-  })
-  const selection = store.createValueStore(initialSnapshot.state.selection, {
+  }),
+  selection: store.value({
+    get: () => runtime.snapshot().state.selection,
+    subscribe: runtime.commits.subscribe,
     isEqual: isSelectionEqual
-  })
-  const edit = store.createValueStore(initialSnapshot.state.edit, {
+  }),
+  edit: store.value({
+    get: () => runtime.snapshot().state.edit,
+    subscribe: runtime.commits.subscribe,
     isEqual: isEditSessionEqual
-  })
-  const interaction = store.createValueStore(readInteractionValue(initialSnapshot), {
+  }),
+  interaction: store.value({
+    get: () => readInteractionValue(runtime.snapshot()),
+    subscribe: runtime.commits.subscribe,
     isEqual: (left, right) => (
       isInteractionStateEqual(left, right)
       && isHoverStateEqual(left.hover, right.hover)
     )
-  })
-  const preview = store.createValueStore(readPreviewValue(initialSnapshot), {
+  }),
+  preview: store.value({
+    get: () => readPreviewValue(runtime.snapshot()),
+    subscribe: runtime.commits.subscribe,
     isEqual: isPreviewEqual
-  })
-  const viewport = store.createValueStore(initialSnapshot.state.viewport, {
+  }),
+  viewport: store.value({
+    get: () => runtime.snapshot().state.viewport,
+    subscribe: runtime.commits.subscribe,
     isEqual: isViewportEqual
   })
-
-  const sync = () => {
-    const snapshot = runtime.snapshot()
-    tool.set(snapshot.state.tool)
-    draw.set(snapshot.state.draw)
-    selection.set(snapshot.state.selection)
-    edit.set(snapshot.state.edit)
-    interaction.set(readInteractionValue(snapshot))
-    preview.set(readPreviewValue(snapshot))
-    viewport.set(snapshot.state.viewport)
-  }
-
-  const unsubscribe = runtime.commits.subscribe(() => {
-    sync()
-  })
-
-  return {
-    tool,
-    draw,
-    selection,
-    edit,
-    interaction,
-    preview,
-    viewport,
-    dispose: unsubscribe
-  }
-}
+})
 
 const createToolRead = (
-  source: Pick<ReturnType<typeof createProjectionStateStores>['tool'], 'get' | 'subscribe'>
+  source: Pick<ReturnType<typeof createEditorStateStores>['tool'], 'get' | 'subscribe'>
 ): ToolRead => ({
   get: source.get,
   subscribe: source.subscribe,
@@ -216,9 +202,9 @@ export const createEditorProjection = (input: {
   nodeType: NodeTypeSupport
   defaults: EditorDefaults['selection']
 }): EditorProjection => {
-  const runtimeStores = createProjectionStateStores(input.runtime)
+  const stateStores = createEditorStateStores(input.runtime)
   const state = createEditorStateView({
-    stores: runtimeStores,
+    stores: stateStores,
     runtime: input.runtime
   })
   const sceneDerived = createEditorSceneDerived({
@@ -233,37 +219,21 @@ export const createEditorProjection = (input: {
     defaults: input.defaults
   })
 
-  const stores: EditorProjectionStores = {
-    ...input.scene.stores,
-    runtime: {
-      editor: {
-        tool: runtimeStores.tool,
-        draw: runtimeStores.draw,
-        selection: runtimeStores.selection,
-        edit: runtimeStores.edit,
-        interaction: runtimeStores.interaction,
-        preview: runtimeStores.preview,
-        viewport: runtimeStores.viewport
-      }
-    }
-  }
-
   return {
     ...input.scene,
-    stores,
     runtime: {
       ...input.scene.runtime,
       editor: {
-        tool: runtimeStores.tool.get,
+        tool: () => input.runtime.snapshot().state.tool,
         hover: () => input.scene.runtime.editor.hover(),
         interaction: () => input.scene.runtime.editor.interaction(),
-        draw: runtimeStores.draw.get,
-        selection: runtimeStores.selection.get,
-        edit: runtimeStores.edit.get,
-        interactionState: runtimeStores.interaction.get,
-        preview: runtimeStores.preview.get,
+        draw: () => input.runtime.snapshot().state.draw,
+        selection: () => input.runtime.snapshot().state.selection,
+        edit: () => input.runtime.snapshot().state.edit,
+        interactionState: () => readInteractionValue(input.runtime.snapshot()),
+        preview: () => readPreviewValue(input.runtime.snapshot()),
         viewport: {
-          get: runtimeStores.viewport.get,
+          get: input.runtime.viewport.read.get,
           pointer: input.runtime.viewport.read.pointer,
           worldToScreen: input.runtime.viewport.read.worldToScreen,
           worldRect: input.runtime.viewport.read.worldRect,
@@ -284,16 +254,9 @@ export const createEditorSceneApi = (input: {
   runtime: EditorStateRuntime
   capture: () => import('@whiteboard/editor-scene').Capture
 }): EditorSceneApi => {
+  const stateStores = createEditorStateStores(input.runtime)
   const editorState = createEditorStateView({
-    stores: {
-      tool: input.projection.stores.runtime.editor.tool,
-      draw: input.projection.stores.runtime.editor.draw,
-      selection: input.projection.stores.runtime.editor.selection,
-      edit: input.projection.stores.runtime.editor.edit,
-      interaction: input.projection.stores.runtime.editor.interaction,
-      preview: input.projection.stores.runtime.editor.preview,
-      viewport: input.projection.stores.runtime.editor.viewport
-    },
+    stores: stateStores,
     runtime: input.runtime
   })
 
@@ -307,13 +270,13 @@ export const createEditorSceneApi = (input: {
     },
     editor: {
       tool: editorState.tool,
-      draw: input.projection.stores.runtime.editor.draw,
-      selection: input.projection.stores.runtime.editor.selection,
-      edit: input.projection.stores.runtime.editor.edit,
+      draw: stateStores.draw,
+      selection: stateStores.selection,
+      edit: stateStores.edit,
       interaction: editorState.interaction,
-      preview: input.projection.stores.runtime.editor.preview,
+      preview: stateStores.preview,
       viewport: Object.assign(
-        input.projection.stores.runtime.editor.viewport,
+        stateStores.viewport,
         {
           pointer: input.runtime.viewport.read.pointer,
           worldToScreen: input.runtime.viewport.read.worldToScreen,

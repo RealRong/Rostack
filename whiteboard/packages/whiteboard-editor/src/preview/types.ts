@@ -123,16 +123,3 @@ export type SelectionPreviewState = {
   marquee?: MarqueePreviewState
   guides: readonly Guide[]
 }
-
-export type EditorInputPreviewState = {
-  node: NodePreviewState
-  edge: EdgePreviewState
-  draw: {
-    preview: DrawPreview | null
-    hidden: readonly NodeId[]
-  }
-  selection: SelectionPreviewState
-  mindmap: {
-    preview?: MindmapPreviewState
-  }
-}

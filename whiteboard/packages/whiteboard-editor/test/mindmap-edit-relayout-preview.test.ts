@@ -6,10 +6,6 @@ import { editor as editorApi } from '../src'
 import type { LayoutBackend, NodeSpec } from '../src'
 import { createEditorTestLayout } from './support'
 
-const flushEditor = async (): Promise<void> => {
-  await Promise.resolve()
-}
-
 const nodes: NodeSpec = {
   text: {
     meta: {
@@ -149,7 +145,6 @@ describe('mindmap edit relayout preview', () => {
 
     editor.write.edit.startNode(created.data.rootId, 'text')
     editor.write.edit.input('Central topic with much longer live width')
-    await flushEditor()
 
     const liveRoot = editor.scene.nodes.get(created.data.rootId)?.geometry.rect
     const liveChild = editor.scene.nodes.get(insert.data.nodeId)?.geometry.rect
@@ -218,7 +213,6 @@ describe('mindmap edit relayout preview', () => {
 
     editor.write.edit.startNode(insert.data.nodeId, 'text')
     editor.write.edit.input('Child topic with much longer text')
-    await flushEditor()
 
     const liveChild = editor.scene.nodes.get(insert.data.nodeId)?.geometry.rect
     const liveScene = editor.scene.mindmaps.get(created.data.mindmapId)?.tree.bbox
@@ -328,7 +322,6 @@ describe('mindmap edit relayout preview', () => {
 
     editor.write.edit.startNode(first.data.nodeId, 'text')
     editor.write.edit.input('First branch now wraps into multiple visual lines')
-    await flushEditor()
 
     const liveFirst = editor.scene.nodes.get(first.data.nodeId)?.geometry.rect
     const liveSecond = editor.scene.nodes.get(second.data.nodeId)?.geometry.rect
@@ -441,7 +434,6 @@ describe('mindmap edit relayout preview', () => {
 
     editor.write.edit.startNode(first.data.nodeId, 'text')
     editor.write.edit.input('First branch now wraps into multiple visual lines')
-    await flushEditor()
 
     unsubscribe()
 

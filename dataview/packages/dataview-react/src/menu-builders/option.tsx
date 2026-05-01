@@ -7,7 +7,6 @@ import type { TokenTranslator } from '@shared/i18n'
 import { resolveOptionDotStyle, resolveOptionColorToken } from '@shared/ui/color'
 import type {
   MenuItem,
-  MenuReorderItem,
   MenuSurfacePadding,
   MenuSurfaceSize
 } from '@shared/ui/menu'
@@ -69,38 +68,6 @@ export const buildOptionPanelItem = (input: {
   size: input.size,
   padding: input.padding,
   surface: input.surface,
-  presentation: input.presentation,
-  placement: input.placement,
-  offset: input.offset,
-  trailing: input.trailing,
-  className: input.className,
-  contentClassName: input.contentClassName,
-  content: input.content
-})
-
-export const buildOptionPanelReorderItem = (input: {
-  option: MenuOptionLike
-  t: TokenTranslator
-  content: () => ReactNode
-  handleAriaLabel: string
-  leading?: ReactNode
-  size?: MenuSurfaceSize
-  presentation?: 'cascade' | 'dropdown'
-  placement?: import('@floating-ui/react').Placement
-  offset?: import('@shared/ui/popover').PopoverOffset
-  trailing?: ReactNode
-  className?: string
-  variant?: FieldOptionTagProps['variant']
-  contentClassName?: string
-}): MenuReorderItem => ({
-  key: input.option.id,
-  label: buildOptionTagLabel(input.option, input.t, {
-    variant: input.variant,
-    className: 'max-w-full'
-  }),
-  handleAriaLabel: input.handleAriaLabel,
-  leading: input.leading,
-  size: input.size,
   presentation: input.presentation,
   placement: input.placement,
   offset: input.offset,

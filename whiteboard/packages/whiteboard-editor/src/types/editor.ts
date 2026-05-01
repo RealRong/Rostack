@@ -28,7 +28,7 @@ import type { EditSession } from '@whiteboard/editor/session/edit'
 import type { DrawState } from '@whiteboard/editor/session/draw/state'
 import type {
   EdgeGuide
-} from '@whiteboard/editor/session/preview/types'
+} from '@whiteboard/editor/preview/types'
 import type { EditorCommand } from '@whiteboard/editor/state-engine/intents'
 import type { EditorDispatchInput } from '@whiteboard/editor/state-engine/intents'
 import type { EditorInteractionStateValue } from '@whiteboard/editor/state-engine/document'
@@ -186,20 +186,6 @@ export type EditorDerived = {
   editor: EditorPolicyDerived
 }
 
-export type EditorProjectionStores = EditorScene['stores'] & {
-  runtime: {
-    editor: {
-      tool: store.ReadStore<Tool>
-      draw: store.ReadStore<DrawState>
-      selection: store.ReadStore<SelectionTarget>
-      edit: store.ReadStore<EditSession | null>
-      interaction: store.ReadStore<EditorInteractionStateValue>
-      preview: store.ReadStore<PreviewInput>
-      viewport: store.ReadStore<Viewport>
-    }
-  }
-}
-
 export type EditorProjectionRuntimeFrame = EditorScene['runtime'] & {
   editor: {
     tool(): Tool
@@ -230,8 +216,7 @@ export type EditorProjectionRuntimeFrame = EditorScene['runtime'] & {
   }
 }
 
-export type EditorProjection = Omit<EditorScene, 'stores' | 'runtime'> & {
-  stores: EditorProjectionStores
+export type EditorProjection = Omit<EditorScene, 'runtime'> & {
   runtime: EditorProjectionRuntimeFrame
   derived: EditorDerived
 }

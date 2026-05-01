@@ -9,7 +9,7 @@ import type {
   MarqueePreviewState,
   MindmapPreviewState,
   NodePreviewEntry
-} from '@whiteboard/editor/session/preview/types'
+} from '@whiteboard/editor/preview/types'
 
 export type GestureKind =
   | 'selection-move'

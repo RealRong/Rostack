@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { Popover } from '@shared/ui/popover'
 import { renderListStructuralItem } from '@shared/ui/list-structure'
 import { closestTarget } from '@shared/dom'
+import { VerticalReorderList, type VerticalReorderItemState } from '@shared/ui/vertical-reorder-list'
 import { cn } from '@shared/ui/utils'
 import {
   DROPDOWN_SUBMENU_OFFSET,
@@ -18,8 +19,15 @@ import {
   resolvePresentation,
   resolveSurface
 } from '@shared/ui/menu/shared'
-import { submenuArrow, Row, checkTrailing, handleActivationKey, switchTrailing } from '@shared/ui/menu/row'
-import type { Item, LevelProps, SelectionAppearance } from '@shared/ui/menu/types'
+import {
+  Handle,
+  Row,
+  checkTrailing,
+  handleActivationKey,
+  submenuArrow,
+  switchTrailing
+} from '@shared/ui/menu/row'
+import type { Item, LevelProps, MenuItem, SelectionAppearance } from '@shared/ui/menu/types'
 
 const itemTrailing = (
   item: Item,
@@ -80,8 +88,8 @@ export const Level = (props: LevelProps) => {
     firstPath,
     hasActiveDescendant,
     props.autoFocus,
-    setActiveKeyboardPath,
-    props.open
+    props.open,
+    setActiveKeyboardPath
   ])
 
   const moveActive = useCallback((currentPath: readonly string[], delta: number) => {
@@ -205,335 +213,346 @@ export const Level = (props: LevelProps) => {
     }
   }, [props.controller, props.parentPath])
 
+  const renderItem = useCallback((
+    item: MenuItem,
+    drag?: VerticalReorderItemState
+  ) => {
+    const path = appendPath(props.parentPath, item.key)
+    const pathKey = JSON.stringify(path)
+    const registerRef = (element: HTMLDivElement | null) => {
+      props.controller.registerItemRef(path, element)
+    }
+
+    if (item.kind === 'divider' || item.kind === 'label' || item.kind === 'custom') {
+      return renderListStructuralItem(item, () => {
+        if (props.submenuOpenPolicy === 'hover') {
+          props.controller.trimOpenPath(props.parentPath)
+        }
+        if (props.submenuOpenPolicy === 'hover' && props.controller.activeSource === 'pointer') {
+          props.controller.clearPointerActivePath()
+        }
+      })
+    }
+
+    const active = isSamePath(props.controller.activePath, path)
+    const selectionEnabled = props.selectionMode !== 'none'
+    const selected = selectionEnabled && props.selectedKeys.includes(item.key)
+    const start = drag
+      ? (
+          <Handle
+            onActive={() => {
+              props.controller.setActivePointerPath(path)
+            }}
+            attributes={drag.handle.attributes}
+            listeners={drag.handle.listeners}
+            setActivatorNodeRef={drag.handle.setActivatorNodeRef}
+          />
+        )
+      : undefined
+
+    if (item.kind === 'item') {
+      return (
+        <Row
+          key={item.key}
+          ref={registerRef}
+          {...{
+            [ITEM_PATH_ATTR]: pathKey
+          }}
+          role={props.selectionMode === 'multiple'
+            ? 'menuitemcheckbox'
+            : props.selectionMode === 'single'
+              ? 'menuitemradio'
+              : 'menuitem'}
+          aria-checked={selectionEnabled ? selected : undefined}
+          tabIndex={active ? 0 : -1}
+          label={item.label}
+          leading={item.leading}
+          suffix={item.suffix}
+          trailing={itemTrailing(item, selected, props.selectionAppearance)}
+          accessory={item.accessory}
+          tone={item.tone}
+          disabled={item.disabled}
+          active={active}
+          activeSource={active ? props.controller.activeSource : null}
+          selected={selected}
+          selectionAppearance={props.selectionAppearance}
+          className={item.className}
+          highlightedClassName={item.highlightedClassName}
+          start={start}
+          dragging={drag?.dragging}
+          onMouseEnter={() => {
+            if (props.submenuOpenPolicy === 'hover') {
+              props.controller.trimOpenPath(props.parentPath)
+            }
+            props.controller.setActivePointerPath(path)
+          }}
+          onClick={() => {
+            props.onItemValueToggle(item.key)
+            item.onSelect?.()
+            if (item.closeOnSelect !== false) {
+              props.onClose?.()
+            }
+          }}
+          onKeyDown={event => {
+            if (item.disabled || !handleActivationKey(event)) {
+              return
+            }
+
+            event.preventDefault()
+            event.stopPropagation()
+            props.onItemValueToggle(item.key)
+            item.onSelect?.()
+            if (item.closeOnSelect !== false) {
+              props.onClose?.()
+            }
+          }}
+        />
+      )
+    }
+
+    if (item.kind === 'action') {
+      return (
+        <Row
+          key={item.key}
+          ref={registerRef}
+          {...{
+            [ITEM_PATH_ATTR]: pathKey
+          }}
+          role="menuitem"
+          tabIndex={active ? 0 : -1}
+          label={item.label}
+          leading={item.leading}
+          suffix={item.suffix}
+          trailing={item.trailing}
+          accessory={item.accessory}
+          tone={item.tone}
+          disabled={item.disabled}
+          active={active}
+          activeSource={active ? props.controller.activeSource : null}
+          selectionAppearance={props.selectionAppearance}
+          className={item.className}
+          highlightedClassName={item.highlightedClassName}
+          start={start}
+          dragging={drag?.dragging}
+          onMouseEnter={() => {
+            if (props.submenuOpenPolicy === 'hover') {
+              props.controller.trimOpenPath(props.parentPath)
+            }
+            props.controller.setActivePointerPath(path)
+          }}
+          onClick={() => {
+            item.onSelect()
+            if (item.closeOnSelect !== false) {
+              props.onClose?.()
+            }
+          }}
+          onKeyDown={event => {
+            if (item.disabled || !handleActivationKey(event)) {
+              return
+            }
+
+            event.preventDefault()
+            event.stopPropagation()
+            item.onSelect()
+            if (item.closeOnSelect !== false) {
+              props.onClose?.()
+            }
+          }}
+        />
+      )
+    }
+
+    if (item.kind === 'toggle') {
+      return (
+        <Row
+          key={item.key}
+          ref={registerRef}
+          {...{
+            [ITEM_PATH_ATTR]: pathKey
+          }}
+          role={item.indicator === 'switch' ? 'switch' : 'menuitemcheckbox'}
+          aria-checked={item.checked}
+          tabIndex={active ? 0 : -1}
+          label={item.label}
+          leading={item.leading}
+          suffix={item.suffix}
+          accessory={item.accessory}
+          disabled={item.disabled}
+          active={active}
+          activeSource={active ? props.controller.activeSource : null}
+          selected={item.checked}
+          selectionAppearance={props.selectionAppearance}
+          className={item.className}
+          highlightedClassName={item.highlightedClassName}
+          start={start}
+          dragging={drag?.dragging}
+          trailing={item.indicator === 'switch'
+            ? switchTrailing(item.checked, item.disabled)
+            : item.checked
+              ? checkTrailing()
+              : undefined}
+          onMouseEnter={() => {
+            if (props.submenuOpenPolicy === 'hover') {
+              props.controller.trimOpenPath(props.parentPath)
+            }
+            props.controller.setActivePointerPath(path)
+          }}
+          onClick={() => {
+            item.onSelect()
+            props.onItemValueToggle(item.key)
+            if (item.closeOnSelect !== false) {
+              props.onClose?.()
+            }
+          }}
+          onKeyDown={event => {
+            if (item.disabled || !handleActivationKey(event)) {
+              return
+            }
+
+            event.preventDefault()
+            event.stopPropagation()
+            item.onSelect()
+            props.onItemValueToggle(item.key)
+            if (item.closeOnSelect !== false) {
+              props.onClose?.()
+            }
+          }}
+        />
+      )
+    }
+
+    const open = isPathPrefix(path, props.controller.openPath)
+      && props.controller.openPath.length === path.length
+    const presentation = resolvePresentation(item)
+
+    return (
+      <Popover
+        key={item.key}
+        open={open}
+        onOpenChange={nextOpen => {
+          if (nextOpen) {
+            props.controller.openSubmenuPath(path, item, 'pointer')
+            return
+          }
+
+          props.controller.closeSubmenuPath(
+            path,
+            props.controller.consumeTriggerPress(path)
+              ? 'trigger'
+              : 'outside'
+          )
+        }}
+        kind="menu"
+        placement={item.placement ?? (presentation === 'dropdown' ? 'bottom-end' : 'right-start')}
+        offset={item.offset ?? (presentation === 'dropdown' ? DROPDOWN_SUBMENU_OFFSET : SUBMENU_OFFSET)}
+      >
+        <Popover.Trigger>
+          <Row
+            ref={registerRef}
+            {...{
+              [ITEM_PATH_ATTR]: pathKey
+            }}
+            role="menuitem"
+            tabIndex={active ? 0 : -1}
+            aria-expanded={open}
+            label={item.label}
+            leading={item.leading}
+            suffix={item.suffix}
+            trailing={item.trailing ?? submenuArrow({
+              presentation,
+              open
+            })}
+            accessory={item.accessory}
+            tone={item.tone}
+            disabled={item.disabled}
+            active={active}
+            activeSource={active ? props.controller.activeSource : null}
+            selectionAppearance={props.selectionAppearance}
+            className={item.className}
+            highlightedClassName={item.highlightedClassName}
+            start={start}
+            dragging={drag?.dragging}
+            onPointerDown={event => {
+              if (event.button !== 0 || !open) {
+                return
+              }
+
+              props.controller.markTriggerPress(path)
+            }}
+            onMouseEnter={() => {
+              props.controller.setActivePointerPath(path)
+              if (props.submenuOpenPolicy === 'hover' && !item.disabled) {
+                props.controller.openSubmenuPath(path, item, 'pointer')
+              }
+              if (props.submenuOpenPolicy === 'click') {
+                props.controller.trimOpenPath(props.parentPath)
+              }
+            }}
+            onClick={() => {
+              if (item.disabled) {
+                return
+              }
+
+              props.controller.setActivePointerPath(path)
+              if (open) {
+                props.controller.closeSubmenuPath(path, 'trigger')
+                return
+              }
+
+              props.controller.openSubmenuPath(path, item, 'pointer')
+            }}
+          />
+        </Popover.Trigger>
+
+        <Popover.Content
+          padding={item.padding ?? (resolveSurface(item) === 'panel' ? 'none' : 'menu')}
+          size={item.size}
+          className={cn(resolveSurface(item) === 'panel' && 'min-w-[240px]', item.contentClassName)}
+        >
+          {item.items?.length ? (
+            <Level
+              items={item.items}
+              parentPath={path}
+              open={open}
+              autoFocus={props.autoFocus}
+              selectedKeys={props.selectedKeys}
+              selectionMode={props.selectionMode}
+              selectionAppearance={props.selectionAppearance}
+              onItemValueToggle={props.onItemValueToggle}
+              onClose={props.onClose}
+              onRequestClose={() => {
+                props.controller.closeSubmenuPath(path, 'keyboard')
+              }}
+              submenuOpenPolicy={props.submenuOpenPolicy}
+              controller={props.controller}
+            />
+          ) : renderContent(item.content)}
+        </Popover.Content>
+      </Popover>
+    )
+  }, [props])
+
   return (
     <div
       ref={rootRef}
       role="menu"
-      className="flex flex-col gap-0.5"
+      className="flex flex-col"
       onKeyDownCapture={onKeyDownCapture}
       onMouseLeave={onMouseLeave}
     >
-      {props.items.map(item => {
-        const path = appendPath(props.parentPath, item.key)
-        const pathKey = JSON.stringify(path)
-        const registerRef = (element: HTMLDivElement | null) => {
-          props.controller.registerItemRef(path, element)
-        }
-
-        if (item.kind === 'divider' || item.kind === 'label' || item.kind === 'custom') {
-          return renderListStructuralItem(item, () => {
-            if (props.submenuOpenPolicy === 'hover') {
-              props.controller.trimOpenPath(props.parentPath)
-            }
-            if (props.submenuOpenPolicy === 'hover' && props.controller.activeSource === 'pointer') {
-              props.controller.clearPointerActivePath()
-            }
-          })
-        }
-
-        const active = isSamePath(props.controller.activePath, path)
-
-        if (item.kind === 'item') {
-          const selectionEnabled = props.selectionMode !== 'none'
-          const selected = selectionEnabled && props.selectedKeys.includes(item.key)
-
-          return (
-            <Row
-              key={item.key}
-              ref={registerRef}
-              {...{
-                [ITEM_PATH_ATTR]: pathKey
-              }}
-              role={props.selectionMode === 'multiple'
-                ? 'menuitemcheckbox'
-                : props.selectionMode === 'single'
-                  ? 'menuitemradio'
-                  : 'menuitem'}
-              aria-checked={selectionEnabled ? selected : undefined}
-              tabIndex={active ? 0 : -1}
-              label={item.label}
-              leading={item.leading}
-              suffix={item.suffix}
-              trailing={itemTrailing(item, selected, props.selectionAppearance)}
-              accessory={item.accessory}
-              tone={item.tone}
-              disabled={item.disabled}
-              active={active}
-              activeSource={active ? props.controller.activeSource : null}
-              selected={selected}
-              selectionAppearance={props.selectionAppearance}
-              className={item.className}
-              highlightedClassName={item.highlightedClassName}
-              onMouseEnter={() => {
-                if (props.submenuOpenPolicy === 'hover') {
-                  props.controller.trimOpenPath(props.parentPath)
-                }
-                props.controller.setActivePointerPath(path)
-              }}
-              onClick={() => {
-                props.onItemValueToggle(item.key)
-                item.onSelect?.()
-                if (item.closeOnSelect !== false) {
-                  props.onClose?.()
-                }
-              }}
-              onKeyDown={event => {
-                if (item.disabled || !handleActivationKey(event)) {
-                  return
-                }
-
-                event.preventDefault()
-                event.stopPropagation()
-                props.onItemValueToggle(item.key)
-                item.onSelect?.()
-                if (item.closeOnSelect !== false) {
-                  props.onClose?.()
-                }
-              }}
-            />
-          )
-        }
-
-        if (item.kind === 'action') {
-          return (
-            <Row
-              key={item.key}
-              ref={registerRef}
-              {...{
-                [ITEM_PATH_ATTR]: pathKey
-              }}
-              role="menuitem"
-              tabIndex={active ? 0 : -1}
-              label={item.label}
-              leading={item.leading}
-              suffix={item.suffix}
-              trailing={item.trailing}
-              accessory={item.accessory}
-              tone={item.tone}
-              disabled={item.disabled}
-              active={active}
-              activeSource={active ? props.controller.activeSource : null}
-              selectionAppearance={props.selectionAppearance}
-              className={item.className}
-              highlightedClassName={item.highlightedClassName}
-              onMouseEnter={() => {
-                if (props.submenuOpenPolicy === 'hover') {
-                  props.controller.trimOpenPath(props.parentPath)
-                }
-                props.controller.setActivePointerPath(path)
-              }}
-              onClick={() => {
-                item.onSelect()
-                if (item.closeOnSelect !== false) {
-                  props.onClose?.()
-                }
-              }}
-              onKeyDown={event => {
-                if (item.disabled || !handleActivationKey(event)) {
-                  return
-                }
-
-                event.preventDefault()
-                event.stopPropagation()
-                item.onSelect()
-                if (item.closeOnSelect !== false) {
-                  props.onClose?.()
-                }
-              }}
-            />
-          )
-        }
-
-        if (item.kind === 'toggle') {
-          return (
-            <Row
-              key={item.key}
-              ref={registerRef}
-              {...{
-                [ITEM_PATH_ATTR]: pathKey
-              }}
-              role="menuitemcheckbox"
-              aria-checked={item.checked}
-              tabIndex={active ? 0 : -1}
-              label={item.label}
-              leading={item.leading}
-              suffix={item.suffix}
-              trailing={item.indicator === 'switch'
-                ? switchTrailing(item.checked, item.disabled)
-                : item.checked
-                  ? checkTrailing()
-                  : undefined}
-              accessory={item.accessory}
-              disabled={item.disabled}
-              active={active}
-              activeSource={active ? props.controller.activeSource : null}
-              selectionAppearance={props.selectionAppearance}
-              className={item.className}
-              highlightedClassName={item.highlightedClassName}
-              onMouseEnter={() => {
-                if (props.submenuOpenPolicy === 'hover') {
-                  props.controller.trimOpenPath(props.parentPath)
-                }
-                props.controller.setActivePointerPath(path)
-              }}
-              onClick={() => {
-                item.onSelect()
-                if (item.closeOnSelect !== false) {
-                  props.onClose?.()
-                }
-              }}
-              onKeyDown={event => {
-                if (item.disabled || !handleActivationKey(event)) {
-                  return
-                }
-
-                event.preventDefault()
-                event.stopPropagation()
-                item.onSelect()
-                if (item.closeOnSelect !== false) {
-                  props.onClose?.()
-                }
-              }}
-            />
-          )
-        }
-
-        const surface = resolveSurface(item)
-        const presentation = resolvePresentation(item)
-        const open = isPathPrefix(path, props.controller.openPath)
-        const arrow = submenuArrow({
-          presentation,
-          open
-        })
-
-        return (
-          <Popover
-            key={item.key}
-            open={open}
-            onOpenChange={nextOpen => {
-              if (nextOpen) {
-                props.controller.openSubmenuPath(path, item, 'pointer')
-                return
-              }
-
-              props.controller.closeSubmenuPath(
-                path,
-                props.controller.consumeTriggerPress(path)
-                  ? 'trigger'
-                  : 'outside'
-              )
-            }}
-            kind="menu"
-            placement={item.placement ?? (presentation === 'dropdown' ? 'bottom-end' : 'right-start')}
-            offset={item.offset ?? (presentation === 'dropdown' ? DROPDOWN_SUBMENU_OFFSET : SUBMENU_OFFSET)}
-          >
-            <Popover.Trigger>
-              <Row
-                ref={registerRef}
-                {...{
-                  [ITEM_PATH_ATTR]: pathKey
-                }}
-                role="menuitem"
-                aria-haspopup="menu"
-                aria-expanded={open}
-                tabIndex={active ? 0 : -1}
-                label={item.label}
-                leading={item.leading}
-                suffix={item.suffix}
-                trailing={item.trailing
-                  ? (
-                      <span className="inline-flex items-center gap-1.5">
-                        {item.trailing}
-                        {arrow}
-                      </span>
-                    )
-                  : arrow}
-                accessory={item.accessory}
-                tone={item.tone}
-                disabled={item.disabled}
-                active={active}
-                activeSource={active ? props.controller.activeSource : null}
-                selectionAppearance={props.selectionAppearance}
-                open={open}
-                className={item.className}
-                highlightedClassName={item.highlightedClassName}
-                onPointerDown={event => {
-                  if (event.button !== 0 || !open) {
-                    return
-                  }
-
-                  props.controller.markTriggerPress(path)
-                }}
-                onMouseEnter={() => {
-                  props.controller.setActivePointerPath(path)
-                  if (
-                    !item.disabled
-                    && presentation !== 'dropdown'
-                    && props.submenuOpenPolicy === 'hover'
-                  ) {
-                    props.controller.openSubmenuPath(path, item, 'pointer')
-                  } else if (
-                    props.submenuOpenPolicy === 'hover'
-                    && !(presentation === 'dropdown' && open)
-                  ) {
-                    props.controller.trimOpenPath(props.parentPath)
-                  }
-                }}
-                onKeyDown={event => {
-                  if (item.disabled || !handleActivationKey(event)) {
-                    return
-                  }
-
-                  event.preventDefault()
-                  event.stopPropagation()
-
-                  if (open) {
-                    props.controller.closeSubmenuPath(path, 'keyboard')
-                    return
-                  }
-
-                  props.controller.openSubmenuPath(path, item, 'keyboard')
-                }}
-              />
-            </Popover.Trigger>
-            <Popover.Content
-              initialFocus={surface === 'list' ? -1 : 0}
-              size={item.size ?? (surface === 'list' ? 'sm' : undefined)}
-              padding={item.padding ?? (surface === 'list' ? 'menu' : 'panel')}
-              contentClassName={cn('min-w-0', item.contentClassName)}
-            >
-              <div className="flex max-h-[72vh] flex-col">
-                {item.items?.length ? (
-                  <Level
-                    items={item.items}
-                    parentPath={path}
-                    open={open}
-                    selectedKeys={props.selectedKeys}
-                    selectionMode={props.selectionMode}
-                    selectionAppearance={props.selectionAppearance}
-                    onItemValueToggle={props.onItemValueToggle}
-                    onClose={() => {
-                      props.controller.closeSubmenuPath(
-                        path,
-                        props.controller.activeSource === 'keyboard'
-                          ? 'keyboard'
-                          : 'outside'
-                      )
-                      props.onClose?.()
-                    }}
-                    onRequestClose={() => {
-                      props.controller.closeSubmenuPath(path, 'keyboard')
-                    }}
-                    autoFocus={open && props.controller.activeSource !== 'pointer'}
-                    submenuOpenPolicy={props.submenuOpenPolicy}
-                    controller={props.controller}
-                  />
-                ) : renderContent(item.content)}
-              </div>
-            </Popover.Content>
-          </Popover>
-        )
-      })}
+      {props.reorder && props.parentPath.length === 0 ? (
+        <VerticalReorderList
+          items={props.items}
+          getItemId={item => item.key}
+          onMove={props.reorder.onMove}
+          className="gap-0.5"
+          renderItem={(item, drag) => renderItem(item, drag)}
+        />
+      ) : (
+        <div className="flex flex-col gap-0.5">
+          {props.items.map(item => renderItem(item))}
+        </div>
+      )}
     </div>
   )
 }

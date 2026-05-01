@@ -6,10 +6,6 @@ import { editor as editorApi, type LayoutBackend, type NodeSpec } from '../src'
 import { createNodeTypeSupport, resolveNodeEditorCapability } from '../src/types/node'
 import { createEditorTestLayout } from './support'
 
-const flushEditor = async (): Promise<void> => {
-  await Promise.resolve()
-}
-
 const nodes: NodeSpec = {
   text: {
     meta: {
@@ -132,7 +128,6 @@ describe('mindmap root render', () => {
     editor.write.selection.replace({
       nodeIds: [created.data.rootId]
     })
-    await flushEditor()
 
     const rootNode = editor.scene.nodes.get(created.data.rootId)?.base.node
     const rootCapability = rootNode

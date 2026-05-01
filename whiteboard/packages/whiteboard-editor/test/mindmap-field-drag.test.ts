@@ -108,17 +108,13 @@ describe('mindmap field drag', () => {
           }))
         }
       },
-      sessionRead: {
+      read: {
         tool: {
           is: () => true
         }
       },
-      session: {
-        commands: {
-          selection: {
-            replace: vi.fn()
-          }
-        }
+      runtime: {
+        dispatch: vi.fn()
       },
       write: {
         canvas: {

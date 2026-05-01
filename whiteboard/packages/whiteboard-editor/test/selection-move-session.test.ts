@@ -73,17 +73,16 @@ describe('createMoveInteraction', () => {
           tree: vi.fn(() => undefined)
         }
       },
-      sessionRead: {
+      read: {
         tool: {
           is: () => false
+        },
+        viewport: {
+          pointer: vi.fn()
         }
       },
-      session: {
-        commands: {
-          selection: {
-            replace: vi.fn()
-          }
-        }
+      runtime: {
+        dispatch: vi.fn()
       },
       snap: {
         node: {

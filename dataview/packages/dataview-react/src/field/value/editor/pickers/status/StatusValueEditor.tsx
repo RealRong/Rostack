@@ -166,16 +166,16 @@ export const StatusValueEditor = (
   const onKeyDown = usePickerKeydown({
     editingBlocked: Boolean(editingOptionId),
     onMoveNext: () => {
-      menuRef.current?.moveNext()
+      menuRef.current?.move('next')
     },
     onMovePrev: () => {
-      menuRef.current?.movePrev()
+      menuRef.current?.move('prev')
     },
     onMoveFirst: () => {
-      menuRef.current?.moveFirst()
+      menuRef.current?.move('first')
     },
     onMoveLast: () => {
-      menuRef.current?.moveLast()
+      menuRef.current?.move('last')
     },
     onCancel: props.onCancel,
     onCommit: trigger => {

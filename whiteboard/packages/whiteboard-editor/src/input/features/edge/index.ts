@@ -14,10 +14,10 @@ import {
 import type { EditorHostDeps } from '@whiteboard/editor/input/runtime'
 
 const selectEdge = (
-  ctx: Pick<EditorHostDeps, 'session'>,
+  ctx: Pick<EditorHostDeps, 'runtime'>,
   edgeId: string
 ) => {
-  ctx.session.dispatch({
+  ctx.runtime.dispatch({
     type: 'selection.set',
     selection: {
       nodeIds: [],
@@ -27,17 +27,17 @@ const selectEdge = (
 }
 
 export const createEdgeBinding = (
-  ctx: Pick<EditorHostDeps, 'engine' | 'document' | 'projection' | 'sessionRead' | 'write' | 'session' | 'tool' | 'snap' | 'nodeType' | 'sceneDerived'>
+  ctx: Pick<EditorHostDeps, 'engine' | 'document' | 'projection' | 'read' | 'write' | 'runtime' | 'tool' | 'snap' | 'nodeType' | 'sceneDerived'>
 ): InteractionBinding => ({
   key: 'edge',
   start: (input) => {
-    const tool = ctx.sessionRead.tool.get()
+    const tool = ctx.read.tool.get()
     const connect = tryStartEdgeConnect({
       tool,
       pointer: input,
       node: ctx,
       edge: ctx,
-      zoom: ctx.sessionRead.viewport.get().zoom,
+      zoom: ctx.read.viewport.get().zoom,
       config: ctx.engine.config.edge
     })
     if (connect) {

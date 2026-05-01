@@ -3,7 +3,7 @@ import type { Edge } from '@whiteboard/core/types'
 import {
   createEditorActionsApi
 } from '../src/action'
-import { EMPTY_PREVIEW_STATE } from '../src/session/preview/state'
+import { EMPTY_PREVIEW_STATE } from '../src/preview/state'
 import { DEFAULT_DRAW_STATE } from '../src/session/draw/state'
 import { createEditorTaskRuntime } from '../src/tasks/runtime'
 

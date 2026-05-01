@@ -13,7 +13,7 @@ import type {
 import {
   EMPTY_EDGE_GUIDE,
   isEdgeGuideEqual
-} from '@whiteboard/editor/session/preview/edge'
+} from '@whiteboard/editor/preview/edge'
 import type {
   EditorSelectionAffordanceView,
   EditorSelectionSummaryView,

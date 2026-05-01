@@ -14,10 +14,9 @@ import { createEditorInputHost } from '@whiteboard/editor/input/host'
 import { createEdgeHoverService } from '@whiteboard/editor/input/hover/edge'
 import {
   composeEditorPreviewState,
-  EMPTY_PREVIEW_STATE,
   isPreviewEqual,
   readPersistentPreviewState
-} from '@whiteboard/editor/session/preview/state'
+} from '@whiteboard/editor/preview/state'
 import type { EditorStateRuntime } from '@whiteboard/editor/state-engine/runtime'
 import type {
   EditorInputHost,
@@ -26,13 +25,24 @@ import type {
 import type { NodeTypeSupport } from '@whiteboard/editor/types/node'
 import type { EditorWrite } from '@whiteboard/editor/write/types'
 
-type SessionRead = {
+type EditorRead = {
   tool: {
     get: () => import('@whiteboard/editor/types/tool').Tool
     is: (type: import('@whiteboard/editor/types/tool').Tool['type'], value?: string) => boolean
   }
   draw: {
     get: () => import('@whiteboard/editor/session/draw/state').DrawState
+  }
+  selection: {
+    get: () => import('@whiteboard/core/selection').SelectionTarget
+  }
+  interaction: {
+    busy: {
+      get: () => boolean
+    }
+    hover: {
+      get: () => import('@whiteboard/editor/input/hover/store').HoverState
+    }
   }
   space: {
     get: () => boolean
@@ -47,42 +57,8 @@ type SessionRead = {
   }
 }
 
-type LocalEditorSession = {
-  state: {
-    tool: {
-      get: () => import('@whiteboard/editor/types/tool').Tool
-    }
-    draw: {
-      get: () => import('@whiteboard/editor/session/draw/state').DrawState
-    }
-    selection: {
-      get: () => import('@whiteboard/core/selection').SelectionTarget
-    }
-    edit: {
-      get: () => import('@whiteboard/editor/session/edit').EditSession
-    }
-  }
-  interaction: {
-    read: {
-      mode: {
-        get: () => import('@whiteboard/editor/input/core/types').InteractionMode
-      }
-      busy: {
-        get: () => boolean
-      }
-      chrome: {
-        get: () => boolean
-      }
-      hover: {
-        get: () => import('@whiteboard/editor/input/hover/store').HoverState
-      }
-      space: {
-        get: () => boolean
-      }
-    }
-  }
+type LocalEditorRuntime = {
   transient: {
-    setPointer: (sample: import('@whiteboard/editor/types/input').PointerSample | null) => void
     gesture: {
       get: () => import('@whiteboard/editor/input/core/gesture').ActiveGesture | null
     }
@@ -100,8 +76,8 @@ export type EditorHostDeps = {
   engine: Engine
   document: import('@whiteboard/editor-scene').DocumentFrame
   projection: EditorProjection
-  sessionRead: SessionRead
-  session: LocalEditorSession
+  read: EditorRead
+  runtime: LocalEditorRuntime
   sceneDerived: EditorProjection['derived']['scene']
   layout: WhiteboardLayoutService
   write: EditorWrite
@@ -119,9 +95,9 @@ export type EditorHostDeps = {
 
 export type EditorInputRuntimeHost = EditorInputHost
 
-const createSessionRead = (
+const createEditorRead = (
   runtime: EditorStateRuntime
-): SessionRead => ({
+): EditorRead => ({
   tool: {
     get: () => runtime.snapshot().state.tool,
     is: (type, value) => {
@@ -140,6 +116,17 @@ const createSessionRead = (
   draw: {
     get: () => runtime.snapshot().state.draw
   },
+  selection: {
+    get: () => runtime.snapshot().state.selection
+  },
+  interaction: {
+    busy: {
+      get: () => runtime.snapshot().state.interaction.mode !== 'idle'
+    },
+    hover: {
+      get: () => runtime.snapshot().overlay.hover
+    }
+  },
   space: {
     get: () => runtime.snapshot().state.interaction.space
   },
@@ -153,11 +140,10 @@ const createSessionRead = (
   }
 })
 
-const createLocalEditorSession = (input: {
+const createLocalEditorRuntime = (input: {
   runtime: EditorStateRuntime
   document: Pick<import('@whiteboard/editor-scene').DocumentFrame, 'snapshot'>
-}): LocalEditorSession => {
-  let pointer: import('@whiteboard/editor/types/input').PointerSample | null = null
+}): LocalEditorRuntime => {
   let gesture: import('@whiteboard/editor/input/core/gesture').ActiveGesture | null = null
   let edgeGuide: EdgeGuidePreview | undefined
 
@@ -168,7 +154,6 @@ const createLocalEditorSession = (input: {
     const nextPreview = composeEditorPreviewState({
       base: basePreview,
       gesture,
-      hover: input.runtime.snapshot().overlay.hover,
       edgeGuide,
       readDocument: input.document.snapshot
     })
@@ -184,44 +169,7 @@ const createLocalEditorSession = (input: {
   }
 
   return {
-    state: {
-      tool: {
-        get: () => input.runtime.snapshot().state.tool
-      },
-      draw: {
-        get: () => input.runtime.snapshot().state.draw
-      },
-      selection: {
-        get: () => input.runtime.snapshot().state.selection
-      },
-      edit: {
-        get: () => input.runtime.snapshot().state.edit
-      }
-    },
-    interaction: {
-      read: {
-        mode: {
-          get: () => input.runtime.snapshot().state.interaction.mode
-        },
-        busy: {
-          get: () => input.runtime.snapshot().state.interaction.mode !== 'idle'
-        },
-        chrome: {
-          get: () => input.runtime.snapshot().state.interaction.chrome
-        },
-        hover: {
-          get: () => input.runtime.snapshot().overlay.hover
-        },
-        space: {
-          get: () => input.runtime.snapshot().state.interaction.space
-        }
-      }
-    },
     transient: {
-      setPointer: (sample) => {
-        pointer = sample ?? null
-        void pointer
-      },
       gesture: {
         get: () => gesture
       },
@@ -268,11 +216,11 @@ export const createEditorHost = (input: {
   tool: EditorHostDeps['tool']
   nodeType: NodeTypeSupport
 }): EditorInputRuntimeHost => {
-  const session = createLocalEditorSession({
+  const runtime = createLocalEditorRuntime({
     runtime: input.runtime,
     document: input.document
   })
-  const sessionRead = createSessionRead(input.runtime)
+  const read = createEditorRead(input.runtime)
   const snap = createEditorSnapRuntime({
     engine: input.engine,
     projection: input.projection,
@@ -282,8 +230,8 @@ export const createEditorHost = (input: {
     engine: input.engine,
     document: input.document,
     projection: input.projection,
-    sessionRead,
-    session,
+    read,
+    runtime,
     sceneDerived: input.projection.derived.scene,
     layout: input.layout,
     write: input.write,
@@ -321,7 +269,7 @@ export const createEditorHost = (input: {
         hover: input.runtime.snapshot().overlay.hover
       }),
       dispatch: input.runtime.dispatch,
-      setGesture: session.transient.setGesture,
+      setGesture: runtime.transient.setGesture,
       getSpace: () => input.runtime.snapshot().state.interaction.space
     }
   })
@@ -332,8 +280,8 @@ export const createEditorHost = (input: {
       snap
     },
     {
-      read: session.transient.edgeGuide.get,
-      write: session.transient.setEdgeGuide
+      read: runtime.transient.edgeGuide.get,
+      write: runtime.transient.setEdgeGuide
     }
   )
 
@@ -341,6 +289,7 @@ export const createEditorHost = (input: {
     interaction,
     edgeHover,
     projection: input.projection,
-    session
+    read,
+    runtime
   })
 }

@@ -41,10 +41,6 @@ afterEach(() => {
   editors.clear()
 })
 
-const flushEditor = async (): Promise<void> => {
-  await Promise.resolve()
-}
-
 const createEdgeDocument = () => {
   const document = documentApi.create('doc_edge_selected_chrome')
   document.nodes['node-1'] = {
@@ -190,7 +186,6 @@ describe('edge.selectedChrome', () => {
     editor.write.selection.replace({
       edgeIds: ['edge-1']
     })
-    await flushEditor()
 
     expect(editor.scene.selection.edge.chrome.get()).toMatchObject({
       edgeId: 'edge-1',
@@ -208,7 +203,6 @@ describe('edge.selectedChrome', () => {
       edgeIds: ['edge-1']
     })
     editor.write.edit.startEdgeLabel('edge-1', 'label-1')
-    await flushEditor()
 
     expect(editor.scene.selection.edge.chrome.get()).toMatchObject({
       edgeId: 'edge-1',
@@ -223,7 +217,6 @@ describe('edge.selectedChrome', () => {
       edgeIds: ['edge-1']
     })
     editor.write.edit.startEdgeLabel('edge-2', 'label-2')
-    await flushEditor()
 
     expect(editor.scene.selection.edge.chrome.get()).toMatchObject({
       edgeId: 'edge-1',

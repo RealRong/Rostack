@@ -64,7 +64,7 @@ type MoveInteractionInput = {
 }
 
 export const createMoveInteraction = (
-  ctx: Pick<EditorHostDeps, 'engine' | 'document' | 'projection' | 'sessionRead' | 'snap' | 'write' | 'session'>,
+  ctx: Pick<EditorHostDeps, 'engine' | 'document' | 'projection' | 'read' | 'snap' | 'write' | 'runtime'>,
   input: MoveInteractionInput
 ): InteractionSession | null => {
   const pickedNodeId = (
@@ -87,7 +87,7 @@ export const createMoveInteraction = (
     input.visibility.kind === 'show'
     || input.visibility.kind === 'temporary'
   ) {
-    ctx.session.dispatch({
+    ctx.runtime.dispatch({
       type: 'selection.set',
       selection: input.visibility.selection
     })
@@ -110,7 +110,7 @@ export const createMoveInteraction = (
       session.cleanup = () => {
         cleanup?.()
         if (restoreSelection) {
-          ctx.session.dispatch({
+          ctx.runtime.dispatch({
             type: 'selection.set',
             selection: restoreSelection
           })
@@ -147,7 +147,7 @@ export const createMoveInteraction = (
     const result = nodeApi.move.state.step({
       state,
       pointerWorld: nextInput.world,
-      snap: ctx.sessionRead.tool.is('select')
+      snap: ctx.read.tool.is('select')
         ? ({ rect, excludeIds }) => {
             const snapped = ctx.snap.node.move({
               rect,
@@ -180,7 +180,7 @@ export const createMoveInteraction = (
     autoPan: {
       frame: (pointer) => {
         project({
-          world: ctx.sessionRead.viewport.pointer(pointer).world,
+          world: ctx.read.viewport.pointer(pointer).world,
           modifiers
         })
       }
@@ -205,7 +205,7 @@ export const createMoveInteraction = (
     },
     cleanup: () => {
       if (restoreSelection) {
-        ctx.session.dispatch({
+        ctx.runtime.dispatch({
           type: 'selection.set',
           selection: restoreSelection
         })

@@ -1,8 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { createGesture } from '../src/input/core/gesture'
 import { DEFAULT_DRAW_STATE } from '../src/session/draw/state'
-import { composeEditorPreviewState } from '../src/session/preview/state'
-import { EMPTY_HOVER_STATE } from '../src/input/hover/store'
+import { composeEditorPreviewState } from '../src/preview/state'
 import { createEditorStateRuntime } from '../src/state-engine/runtime'
 
 describe('mindmap preview state', () => {
@@ -39,7 +38,6 @@ describe('mindmap preview state', () => {
           }
         }
       }),
-      hover: EMPTY_HOVER_STATE,
       readDocument: () => ({
         nodes: {
           'mind-1': {

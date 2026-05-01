@@ -5,7 +5,6 @@ import type {
   Point
 } from '@whiteboard/core/types'
 import type { EdgeActions } from '@whiteboard/editor/action/types'
-import type { EditController } from '@whiteboard/editor/action/edit'
 import type { EditorScene } from '@whiteboard/editor-scene'
 import type {
   EditorCommand,
@@ -48,6 +47,32 @@ const writeRouteFromPoint = (input: {
   )
 }
 
+const createStartEdgeLabelCommand = (input: {
+  document: Pick<DocumentFrame, 'edge'>
+  edgeId: string
+  labelId: string
+}): EditorCommand | null => {
+  const edge = input.document.edge(input.edgeId)
+  const label = edge?.labels?.find((entry) => entry.id === input.labelId)
+  if (!edge || !label) {
+    return null
+  }
+
+  return {
+    type: 'edit.set',
+    edit: {
+      kind: 'edge-label',
+      edgeId: input.edgeId,
+      labelId: input.labelId,
+      text: typeof label.text === 'string' ? label.text : '',
+      composing: false,
+      caret: {
+        kind: 'end'
+      }
+    }
+  }
+}
+
 export const createEdgeActions = (input: {
   graph: EditorScene
   document: Pick<DocumentFrame, 'edge'>
@@ -58,7 +83,12 @@ export const createEdgeActions = (input: {
     dispatch: (command: EditorDispatchInput) => void
   }
   write: Pick<EditorWrite, 'edge'>
-  edit: Pick<EditController, 'startEdgeLabel' | 'clearEditingEdgeLabel'>
+  edit: {
+    clearEditingEdgeLabel: (input: {
+      edgeId: string
+      labelId: string
+    }) => void
+  }
 }): EdgeActions => ({
   create: (value) => input.write.edge.create(value),
   patch: (edgeIds, patch) => {
@@ -122,17 +152,31 @@ export const createEdgeActions = (input: {
         return undefined
       }
 
-      input.editor.dispatch({
-        type: 'selection.set',
-        selection: {
-          nodeIds: [],
-          edgeIds: [edgeId]
-        }
-      } satisfies EditorCommand)
-      input.edit.startEdgeLabel({
+      const editCommand = createStartEdgeLabelCommand({
+        document: input.document,
         edgeId,
         labelId: inserted.data.labelId
       })
+      if (editCommand) {
+        input.editor.dispatch([
+          {
+            type: 'selection.set',
+            selection: {
+              nodeIds: [],
+              edgeIds: [edgeId]
+            }
+          },
+          editCommand
+        ])
+      } else {
+        input.editor.dispatch({
+          type: 'selection.set',
+          selection: {
+            nodeIds: [],
+            edgeIds: [edgeId]
+          }
+        } satisfies EditorCommand)
+      }
       return inserted.data.labelId
     },
     patch: (edgeId, labelId, patch) => input.write.edge.label.update(

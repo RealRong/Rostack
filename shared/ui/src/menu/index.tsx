@@ -1,9 +1,7 @@
 import { Base } from '@shared/ui/menu/base'
 import { Dropdown } from '@shared/ui/menu/dropdown'
-import { Reorder } from '@shared/ui/menu/reorder'
 
 export const Menu = Object.assign(Base, {
-  Reorder,
   Dropdown
 })
 
@@ -18,10 +16,9 @@ export type {
   LabelItem as MenuLabelItem,
   LevelProps as MenuLevelProps,
   MenuItem,
+  MenuMove,
   Path as MenuPath,
   Props as MenuProps,
-  ReorderItem as MenuReorderItem,
-  ReorderProps as MenuReorderProps,
   SelectionAppearance as MenuSelectionAppearance,
   SelectionMode as MenuSelectionMode,
   SurfacePadding as MenuSurfacePadding,

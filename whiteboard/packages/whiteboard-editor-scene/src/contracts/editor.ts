@@ -58,23 +58,16 @@ import type {
 } from '@shared/projection'
 import { store } from '@shared/core'
 import type { WhiteboardMutationDelta } from '@whiteboard/engine/mutation'
-import type { DrawState } from '../../../whiteboard-editor/src/session/draw/state'
 import type {
+  DrawState,
   EditCaret,
   EditField,
-  EditSession
-} from '../../../whiteboard-editor/src/session/edit'
-import type {
-  EditorStateDocument as EditorSnapshot
-} from '../../../whiteboard-editor/src/state-engine/document'
-import type {
+  EditSession,
   EditorDelta,
-  EditorEditDelta,
-  EditorPreviewDelta,
-  EditorTouchedIds
-} from '../../../whiteboard-editor/src/state-engine/delta'
-import type { Tool } from '../../../whiteboard-editor/src/types/tool'
-import type { InteractionMode } from '../../../whiteboard-editor/src/input/core/types'
+  EditorStateDocument as EditorSnapshot,
+  InteractionMode,
+  Tool
+} from '@whiteboard/editor/protocol'
 import type { Capture } from './capture'
 import type { IdDelta, SceneItemKey } from './delta'
 import type {
@@ -93,20 +86,6 @@ export type NodeDraftMeasure = CoreNodeDraftMeasure
 import type { SpatialRead } from './spatial'
 import type { State } from './state'
 
-export type {
-  EditorSnapshot,
-  EditorDelta,
-  EditorEditDelta,
-  EditorPreviewDelta,
-  EditorTouchedIds,
-  DrawState,
-  EditCaret,
-  EditField,
-  EditSession
-}
-export type { Tool }
-export type { InsertTemplate } from '../../../whiteboard-editor/src/types/tool'
-
 export interface Input {
   document: SceneUpdateInput['document']
   editor: SceneUpdateInput['editor']
@@ -121,20 +100,12 @@ export interface SceneViewSnapshot {
 
 export type SceneViewInput = () => SceneViewSnapshot
 
-export type EditorInteractionMode = InteractionMode
-export type EditorDrawBrushState = DrawState[keyof DrawState]
-export type EditorDrawBrushStyle = EditorDrawBrushState['slots'][keyof EditorDrawBrushState['slots']]
-
 export interface EditorInteractionState {
-  mode: EditorInteractionMode
+  mode: InteractionMode
   chrome: boolean
   space: boolean
   hover: HoverState
 }
-
-export type EditorSceneTouchedIds = EditorTouchedIds
-export type EditorSceneEditDelta = EditorEditDelta
-export type EditorScenePreviewDelta = EditorPreviewDelta
 
 export interface SceneUpdateInput {
   document: {
@@ -567,17 +538,6 @@ export interface ChromeOverlay {
   id?: string
 }
 
-export interface Runtime {
-  readonly stores: RuntimeStores
-  readonly scene: EditorScene
-  revision(): Revision
-  state(): State
-  capture(): Capture
-  update(input: SceneUpdateInput): Result
-  subscribe(listener: (result: Result) => void): () => void
-  dispose(): void
-}
-
 export interface FamilyReadStore<
   TId extends string,
   TValue
@@ -651,6 +611,7 @@ export interface DocumentFrame {
 export interface RuntimeFrame {
   editor: {
     tool(): Tool
+    draw(): DrawState
     selection(): SelectionTarget
     hover(): HoverState
     edit(): EditSession | null

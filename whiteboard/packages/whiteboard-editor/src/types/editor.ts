@@ -8,7 +8,6 @@ import type {
   SelectionTarget
 } from '@whiteboard/core/selection'
 import type {
-  Document,
   MindmapId,
   NodeId,
   Point,
@@ -19,19 +18,15 @@ import type {
   Capture,
   DocumentFrame,
   DrawPreview,
-  EdgeGuidePreview,
   EditorScene,
   PreviewInput
 } from '@whiteboard/editor-scene'
 import type { EditorActions as EditorWrite } from '@whiteboard/editor/action/types'
-import type { EditSession } from '@whiteboard/editor/session/edit'
+import type { EdgeGuide } from '@whiteboard/editor/preview/types'
 import type { DrawState } from '@whiteboard/editor/session/draw/state'
-import type {
-  EdgeGuide
-} from '@whiteboard/editor/preview/types'
-import type { EditorCommand } from '@whiteboard/editor/state-engine/intents'
+import type { EditSession } from '@whiteboard/editor/session/edit'
 import type { EditorDispatchInput } from '@whiteboard/editor/state-engine/intents'
-import type { EditorInteractionStateValue } from '@whiteboard/editor/state-engine/document'
+import type { PointerMode } from '@whiteboard/editor/input/core/types'
 import type {
   ContextMenuInput,
   ContextMenuIntent,
@@ -41,7 +36,6 @@ import type {
   PointerUpInput,
   WheelInput
 } from '@whiteboard/editor/types/input'
-import type { PointerMode } from '@whiteboard/editor/input/core/types'
 import type {
   EditorSelectionView,
   SelectionEdgeStats,
@@ -98,7 +92,7 @@ export type ToolRead = {
   is: (type: Tool['type'], value?: string) => boolean
 }
 
-export type SessionViewportRead = {
+export type EditorViewportStateRead = {
   get: () => Viewport
   subscribe: (listener: () => void) => store.Unsubscribe
   pointer: (input: {
@@ -115,6 +109,9 @@ export type SessionViewportRead = {
     width: number
     height: number
   }
+  value: store.ReadStore<Viewport>
+  zoom: store.ReadStore<number>
+  center: store.ReadStore<Point>
 }
 
 export type EditorState = {
@@ -123,11 +120,8 @@ export type EditorState = {
   edit: store.ReadStore<EditSession | null>
   selection: store.ReadStore<SelectionTarget>
   interaction: store.ReadStore<EditorInteractionState>
-  viewport: SessionViewportRead & {
-    value: store.ReadStore<Viewport>
-    zoom: store.ReadStore<number>
-    center: store.ReadStore<Point>
-  }
+  preview: store.ReadStore<PreviewInput>
+  viewport: EditorViewportStateRead
 }
 
 export type EditorSelectionNodeRead = {
@@ -151,104 +145,7 @@ export type MindmapChrome = {
   addChildTargets: ReturnType<EditorScene['mindmaps']['addChildTargets']>
 }
 
-export type EditorSceneDerived = {
-  selection: {
-    members: store.ReadStore<SelectionMembers>
-    summary: store.ReadStore<SelectionSummary>
-    affordance: store.ReadStore<SelectionAffordance>
-    view: store.ReadStore<EditorSelectionView>
-    edge: {
-      chrome: store.ReadStore<SelectedEdgeChrome | undefined>
-    }
-  }
-  chrome: {
-    marquee: store.ReadStore<EditorMarqueePreview | undefined>
-    draw: store.ReadStore<DrawPreview | null>
-    edgeGuide: store.ReadStore<EdgeGuide>
-    snap: store.ReadStore<readonly Guide[]>
-  }
-  mindmap: {
-    chrome: store.KeyedReadStore<MindmapId, MindmapChrome | undefined>
-  }
-}
-
-export type EditorPolicyDerived = {
-  selection: {
-    toolbar: store.ReadStore<SelectionToolbarContext | undefined>
-    overlay: store.ReadStore<SelectionOverlay | undefined>
-    node: EditorSelectionNodeRead
-    edge: EditorSelectionEdgeRead
-  }
-}
-
-export type EditorDerived = {
-  scene: EditorSceneDerived
-  editor: EditorPolicyDerived
-}
-
-export type EditorProjectionRuntimeFrame = EditorScene['runtime'] & {
-  editor: {
-    tool(): Tool
-    hover(): import('@whiteboard/editor-scene').HoverState
-    interaction(): import('@whiteboard/editor-scene').InteractionInput
-    draw(): DrawState
-    selection(): SelectionTarget
-    edit(): EditSession | null
-    interactionState(): EditorInteractionStateValue
-    preview(): PreviewInput
-    viewport: {
-      get(): Viewport
-      pointer(input: {
-        clientX: number
-        clientY: number
-      }): {
-        screen: Point
-        world: Point
-      }
-      worldToScreen(point: Point): Point
-      worldRect(): Rect
-      screenPoint(clientX: number, clientY: number): Point
-      size(): {
-        width: number
-        height: number
-      }
-    }
-  }
-}
-
-export type EditorProjection = Omit<EditorScene, 'runtime'> & {
-  runtime: EditorProjectionRuntimeFrame
-  derived: EditorDerived
-}
-
-export type EditorSceneStoresApi = EditorScene['stores']
-
-export type EditorSceneEditorApi = {
-  tool: ToolRead
-  draw: store.ReadStore<DrawState>
-  selection: store.ReadStore<SelectionTarget>
-  edit: store.ReadStore<EditSession | null>
-  interaction: store.ReadStore<EditorInteractionState>
-  preview: store.ReadStore<PreviewInput>
-  viewport: store.ReadStore<Viewport> & {
-    pointer(input: {
-      clientX: number
-      clientY: number
-    }): {
-      screen: Point
-      world: Point
-    }
-    worldToScreen(point: Point): Point
-    worldRect(): Rect
-    screenPoint(clientX: number, clientY: number): Point
-    size(): {
-      width: number
-      height: number
-    }
-  }
-}
-
-export type EditorSceneSelectionApi = {
+export type EditorSceneUiSelection = {
   members: store.ReadStore<SelectionMembers>
   summary: store.ReadStore<SelectionSummary>
   affordance: store.ReadStore<SelectionAffordance>
@@ -259,7 +156,7 @@ export type EditorSceneSelectionApi = {
   }
 }
 
-export type EditorSceneChromeApi = {
+export type EditorSceneUiChrome = {
   selection: {
     marquee: store.ReadStore<EditorMarqueePreview | undefined>
     snapGuides: store.ReadStore<readonly Guide[]>
@@ -274,34 +171,24 @@ export type EditorSceneChromeApi = {
   }
 }
 
-export type EditorSceneMindmapApi = {
-  chrome: {
-    addChildTargets: store.KeyedReadStore<MindmapId, MindmapChrome | undefined>
-  }
+export type EditorSceneUiMindmap = {
+  addChildTargets: store.KeyedReadStore<MindmapId, MindmapChrome | undefined>
 }
 
-export type EditorSceneApi = {
-  document: DocumentFrame
-  stores: EditorSceneStoresApi
-  editor: EditorSceneEditorApi
-  viewport: EditorScene['viewport']
-  nodes: EditorScene['nodes']
-  edges: EditorScene['edges']
-  mindmaps: EditorScene['mindmaps']
-  groups: EditorScene['groups']
-  hit: EditorScene['hit']
-  pick: EditorScene['pick']
-  snap: EditorScene['snap']
-  spatial: EditorScene['spatial']
-  selection: EditorSceneSelectionApi
-  chrome: EditorSceneChromeApi
-  mindmap: EditorSceneMindmapApi
+export type EditorSceneUi = {
+  state: EditorState
+  selection: EditorSceneUiSelection
+  chrome: EditorSceneUiChrome
+  mindmap: EditorSceneUiMindmap
+}
+
+export type EditorSceneFacade = EditorScene & {
+  ui: EditorSceneUi
   capture(): Capture
-  bounds: EditorScene['bounds']
 }
 
 export type Editor = {
-  scene: EditorSceneApi
+  scene: EditorSceneFacade
   history: HistoryPort<IntentResult>
   input: EditorInputHost
   write: EditorWrite

@@ -30,7 +30,7 @@ export const Surface = ({
   presenceBinding?: WhiteboardPresenceBinding
 }) => {
   const editor = useEditorRuntime()
-  const viewport = useStoreValue(editor.scene.editor.viewport)
+  const viewport = useStoreValue(editor.scene.ui.state.viewport)
   const tool = useTool()
   const viewportInput = useMemo(
     () => ({

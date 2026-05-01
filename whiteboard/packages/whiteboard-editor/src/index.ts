@@ -27,7 +27,8 @@ export type {
   EditSession
 } from '@whiteboard/editor/session/edit'
 export type {
-  Editor
+  Editor,
+  EditorSceneFacade
 } from '@whiteboard/editor/types/editor'
 export type {
   ClipboardTarget

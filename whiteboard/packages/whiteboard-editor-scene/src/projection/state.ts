@@ -8,7 +8,6 @@ import type {
 } from '@whiteboard/core/types'
 import type { Revision } from '@shared/projection'
 import { family } from '@shared/core'
-import { DEFAULT_DRAW_STATE } from '../../../whiteboard-editor/src/session/draw/state'
 import {
   createDeltaState,
   createGraphPhaseDelta,
@@ -22,7 +21,6 @@ import type {
   EdgeStateView,
   EdgeUiView,
   EdgeView,
-  EditorSnapshot,
   EditorSceneLayout,
   GroupView,
   MindmapView,
@@ -31,12 +29,39 @@ import type {
   NodeView
 } from '../contracts/editor'
 import type {
+  EditorStateDocument as EditorSnapshot
+} from '@whiteboard/editor/protocol'
+import type {
   EdgeActiveView,
   NodeRenderView
 } from '../contracts/render'
 import type { WorkingState } from '../contracts/working'
 import { createSpatialState } from '../model/spatial/state'
 import { createSpatialDelta } from '../model/spatial/update'
+
+const DEFAULT_DRAW_STYLE = Object.freeze({
+  color: 'currentColor',
+  width: 2
+})
+
+const DEFAULT_DRAW_STATE = {
+  pen: {
+    slot: '1',
+    slots: {
+      '1': DEFAULT_DRAW_STYLE,
+      '2': DEFAULT_DRAW_STYLE,
+      '3': DEFAULT_DRAW_STYLE
+    }
+  },
+  highlighter: {
+    slot: '1',
+    slots: {
+      '1': DEFAULT_DRAW_STYLE,
+      '2': DEFAULT_DRAW_STYLE,
+      '3': DEFAULT_DRAW_STYLE
+    }
+  }
+} satisfies EditorSnapshot['state']['draw']
 
 export const createEmptyDocumentSnapshot = (): {
   revision: Revision

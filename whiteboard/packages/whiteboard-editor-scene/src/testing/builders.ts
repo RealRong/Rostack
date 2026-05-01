@@ -12,7 +12,7 @@ import type {
   NodeId,
   Size
 } from '@whiteboard/core/types'
-import type { EditorDelta } from '../contracts/editor'
+import type { EditorDelta } from '@whiteboard/editor/protocol'
 import { createEmptyRuntimeInputDelta } from './input'
 
 const EMPTY_MUTATION_CHANGES = Object.freeze(

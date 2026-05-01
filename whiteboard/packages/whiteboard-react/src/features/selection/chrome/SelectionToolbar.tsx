@@ -24,8 +24,8 @@ export const SelectionToolbar = ({
   containerRef: RefObject<HTMLDivElement | null>
 }) => {
   const editor = useEditorRuntime()
-  const toolbar = useStoreValue(editor.scene.chrome.selection.toolbar)
-  const viewport = useStoreValue(editor.scene.editor.viewport)
+  const toolbar = useStoreValue(editor.scene.ui.chrome.selection.toolbar)
+  const viewport = useStoreValue(editor.scene.ui.state.viewport)
   void viewport
   const [activeScopeKey, setActiveScopeKey] = useState<string | null>(null)
   const worldToScreen = useCallback(

@@ -1,7 +1,12 @@
 import { geometry as geometryApi } from '@whiteboard/core/geometry'
 import { store } from '@shared/core'
+import type {
+  EditorScene,
+  Capture
+} from '@whiteboard/editor-scene'
 import { createEditorPolicyDerived } from '@whiteboard/editor/editor/derived/policy'
 import { createEditorSceneDerived } from '@whiteboard/editor/editor/derived/scene'
+import type { EditorProjection } from '@whiteboard/editor/editor/projection/types'
 import { isHoverStateEqual } from '@whiteboard/editor/input/hover/store'
 import { isEdgeInteractionMode } from '@whiteboard/editor/input/interaction/mode'
 import {
@@ -19,8 +24,7 @@ import type { EditorStateRuntime } from '@whiteboard/editor/state-engine/runtime
 import type { EditorDefaults } from '@whiteboard/editor/types/defaults'
 import type { NodeTypeSupport } from '@whiteboard/editor/types/node'
 import type {
-  EditorSceneApi,
-  EditorProjection,
+  EditorSceneFacade,
   EditorState,
   ToolRead
 } from '@whiteboard/editor/types/editor'
@@ -181,6 +185,7 @@ const createEditorStateView = (input: {
     edit: input.stores.edit,
     selection: input.stores.selection,
     interaction,
+    preview: input.stores.preview,
     viewport: {
       get: input.stores.viewport.get,
       subscribe: input.stores.viewport.subscribe,
@@ -197,7 +202,7 @@ const createEditorStateView = (input: {
 }
 
 export const createEditorProjection = (input: {
-  scene: import('@whiteboard/editor-scene').EditorScene
+  scene: EditorScene
   runtime: EditorStateRuntime
   nodeType: NodeTypeSupport
   defaults: EditorDefaults['selection']
@@ -221,27 +226,6 @@ export const createEditorProjection = (input: {
 
   return {
     ...input.scene,
-    runtime: {
-      ...input.scene.runtime,
-      editor: {
-        tool: () => input.runtime.snapshot().state.tool,
-        hover: () => input.scene.runtime.editor.hover(),
-        interaction: () => input.scene.runtime.editor.interaction(),
-        draw: () => input.runtime.snapshot().state.draw,
-        selection: () => input.runtime.snapshot().state.selection,
-        edit: () => input.runtime.snapshot().state.edit,
-        interactionState: () => readInteractionValue(input.runtime.snapshot()),
-        preview: () => readPreviewValue(input.runtime.snapshot()),
-        viewport: {
-          get: input.runtime.viewport.read.get,
-          pointer: input.runtime.viewport.read.pointer,
-          worldToScreen: input.runtime.viewport.read.worldToScreen,
-          worldRect: input.runtime.viewport.read.worldRect,
-          screenPoint: input.runtime.viewport.input.screenPoint,
-          size: input.runtime.viewport.input.size
-        }
-      }
-    },
     derived: {
       scene: sceneDerived,
       editor: editorDerived
@@ -249,83 +233,54 @@ export const createEditorProjection = (input: {
   }
 }
 
-export const createEditorSceneApi = (input: {
+export const createEditorSceneFacade = (input: {
   projection: EditorProjection
   runtime: EditorStateRuntime
-  capture: () => import('@whiteboard/editor-scene').Capture
-}): EditorSceneApi => {
+  capture: () => Capture
+}): EditorSceneFacade => {
   const stateStores = createEditorStateStores(input.runtime)
   const editorState = createEditorStateView({
     stores: stateStores,
     runtime: input.runtime
   })
+  const {
+    derived,
+    ...scene
+  } = input.projection
 
   return {
-    document: input.projection.document,
-    stores: {
-      document: input.projection.stores.document,
-      graph: input.projection.stores.graph,
-      render: input.projection.stores.render,
-      items: input.projection.stores.items
-    },
-    editor: {
-      tool: editorState.tool,
-      draw: stateStores.draw,
-      selection: stateStores.selection,
-      edit: stateStores.edit,
-      interaction: editorState.interaction,
-      preview: stateStores.preview,
-      viewport: Object.assign(
-        stateStores.viewport,
-        {
-          pointer: input.runtime.viewport.read.pointer,
-          worldToScreen: input.runtime.viewport.read.worldToScreen,
-          worldRect: input.runtime.viewport.read.worldRect,
-          screenPoint: input.runtime.viewport.input.screenPoint,
-          size: input.runtime.viewport.input.size
-        }
-      )
-    },
-    viewport: input.projection.viewport,
-    nodes: input.projection.nodes,
-    edges: input.projection.edges,
-    mindmaps: input.projection.mindmaps,
-    groups: input.projection.groups,
-    hit: input.projection.hit,
-    pick: input.projection.pick,
-    snap: input.projection.snap,
-    spatial: input.projection.spatial,
-    selection: {
-      members: input.projection.derived.scene.selection.members,
-      summary: input.projection.derived.scene.selection.summary,
-      affordance: input.projection.derived.scene.selection.affordance,
-      view: input.projection.derived.scene.selection.view,
-      node: input.projection.derived.editor.selection.node,
-      edge: {
-        ...input.projection.derived.editor.selection.edge,
-        chrome: input.projection.derived.scene.selection.edge.chrome
-      }
-    },
-    chrome: {
+    ...scene,
+    ui: {
+      state: editorState,
       selection: {
-        marquee: input.projection.derived.scene.chrome.marquee,
-        snapGuides: input.projection.derived.scene.chrome.snap,
-        toolbar: input.projection.derived.editor.selection.toolbar,
-        overlay: input.projection.derived.editor.selection.overlay
+        members: derived.scene.selection.members,
+        summary: derived.scene.selection.summary,
+        affordance: derived.scene.selection.affordance,
+        view: derived.scene.selection.view,
+        node: derived.editor.selection.node,
+        edge: {
+          ...derived.editor.selection.edge,
+          chrome: derived.scene.selection.edge.chrome
+        }
       },
-      draw: {
-        preview: input.projection.derived.scene.chrome.draw
-      },
-      edge: {
-        guide: input.projection.derived.scene.chrome.edgeGuide
-      }
-    },
-    mindmap: {
       chrome: {
-        addChildTargets: input.projection.derived.scene.mindmap.chrome
+        selection: {
+          marquee: derived.scene.chrome.marquee,
+          snapGuides: derived.scene.chrome.snap,
+          toolbar: derived.editor.selection.toolbar,
+          overlay: derived.editor.selection.overlay
+        },
+        draw: {
+          preview: derived.scene.chrome.draw
+        },
+        edge: {
+          guide: derived.scene.chrome.edgeGuide
+        }
+      },
+      mindmap: {
+        addChildTargets: derived.scene.mindmap.chrome
       }
     },
-    capture: input.capture,
-    bounds: input.projection.bounds
+    capture: input.capture
   }
 }

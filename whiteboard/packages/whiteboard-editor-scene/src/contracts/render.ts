@@ -13,9 +13,11 @@ import type {
   Rect
 } from '@whiteboard/core/types'
 import type {
-  DrawPreview,
   EditCaret,
-  EditField,
+  EditField
+} from '@whiteboard/editor/protocol'
+import type {
+  DrawPreview,
   MindmapPreview,
   OwnerRef
 } from './editor'

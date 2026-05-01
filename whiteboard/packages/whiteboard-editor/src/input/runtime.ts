@@ -17,11 +17,10 @@ import {
   isPreviewEqual,
   readPersistentPreviewState
 } from '@whiteboard/editor/preview/state'
+import type { EditorSceneDerived } from '@whiteboard/editor/editor/derived/types'
+import type { EditorProjection } from '@whiteboard/editor/editor/projection/types'
 import type { EditorStateRuntime } from '@whiteboard/editor/state-engine/runtime'
-import type {
-  EditorInputHost,
-  EditorProjection
-} from '@whiteboard/editor/types/editor'
+import type { EditorInputHost } from '@whiteboard/editor/types/editor'
 import type { NodeTypeSupport } from '@whiteboard/editor/types/node'
 import type { EditorWrite } from '@whiteboard/editor/write/types'
 
@@ -78,7 +77,7 @@ export type EditorHostDeps = {
   projection: EditorProjection
   read: EditorRead
   runtime: LocalEditorRuntime
-  sceneDerived: EditorProjection['derived']['scene']
+  sceneDerived: EditorSceneDerived
   layout: WhiteboardLayoutService
   write: EditorWrite
   tool: {

@@ -68,18 +68,20 @@ describe('resolvePoint', () => {
     }
     const editor: ResolvePointEditor = {
       scene: {
-        editor: {
-          viewport: {
-            get: () => ({
-              center: { x: 0, y: 0 },
-              zoom: 1
-            })
-          },
-          selection: {
-            get: () => ({
-              nodeIds: [],
-              edgeIds: []
-            })
+        ui: {
+          state: {
+            viewport: {
+              get: () => ({
+                center: { x: 0, y: 0 },
+                zoom: 1
+              })
+            },
+            selection: {
+              get: () => ({
+                nodeIds: [],
+                edgeIds: []
+              })
+            }
           }
         },
         viewport: {
@@ -139,18 +141,20 @@ describe('resolvePoint', () => {
     }
     const editor: ResolvePointEditor = {
       scene: {
-        editor: {
-          viewport: {
-            get: () => ({
-              center: { x: 0, y: 0 },
-              zoom: 1
-            })
-          },
-          selection: {
-            get: () => ({
-              nodeIds: ['node-1'],
-              edgeIds: []
-            })
+        ui: {
+          state: {
+            viewport: {
+              get: () => ({
+                center: { x: 0, y: 0 },
+                zoom: 1
+              })
+            },
+            selection: {
+              get: () => ({
+                nodeIds: ['node-1'],
+                edgeIds: []
+              })
+            }
           }
         },
         viewport: {

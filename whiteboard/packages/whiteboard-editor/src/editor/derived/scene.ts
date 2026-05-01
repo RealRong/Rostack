@@ -3,10 +3,10 @@ import { geometry as geometryApi } from '@whiteboard/core/geometry'
 import { selection as selectionApi } from '@whiteboard/core/selection'
 import type { MindmapId } from '@whiteboard/core/types'
 import { equal, store } from '@shared/core'
-import type { EditorScene } from '@whiteboard/editor/types/editor'
+import type { EditorScene } from '@whiteboard/editor-scene'
+import type { EditorSceneDerived } from '@whiteboard/editor/editor/derived/types'
 import type {
   EditorMarqueePreview,
-  EditorSceneDerived,
   EditorState,
   MindmapChrome
 } from '@whiteboard/editor/types/editor'

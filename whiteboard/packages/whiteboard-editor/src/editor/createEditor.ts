@@ -10,7 +10,7 @@ import type { WhiteboardLayoutService } from '@whiteboard/core/layout'
 import { createEditorActionsApi } from '@whiteboard/editor/action'
 import {
   createEditorProjection,
-  createEditorSceneApi
+  createEditorSceneFacade
 } from '@whiteboard/editor/editor/projection'
 import { createEditorHost } from '@whiteboard/editor/input/runtime'
 import { createProjectionRuntime } from '@whiteboard/editor-scene'
@@ -176,7 +176,7 @@ export const createEditor = (input: {
     nodeType,
     defaults: defaults.selection
   })
-  const scene = createEditorSceneApi({
+  const scene = createEditorSceneFacade({
     projection,
     runtime: stateRuntime,
     capture: sceneRuntime.capture

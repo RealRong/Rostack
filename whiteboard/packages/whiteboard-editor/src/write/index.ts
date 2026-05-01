@@ -23,7 +23,7 @@ import {
   createNodeWrite
 } from '@whiteboard/editor/write/node'
 import type { DocumentFrame } from '@whiteboard/editor-scene'
-import type { EditorScene } from '@whiteboard/editor/types/editor'
+import type { EditorScene } from '@whiteboard/editor-scene'
 import type { EditorWrite } from '@whiteboard/editor/write/types'
 
 export type { EditorWrite } from '@whiteboard/editor/write/types'

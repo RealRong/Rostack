@@ -1,8 +1,6 @@
 import type { NodeId } from '@whiteboard/core/types'
 import type { NodeTypeSupport } from '@whiteboard/editor/types/node'
-import type {
-  EditorSceneDerived
-} from '@whiteboard/editor/types/editor'
+import type { EditorSceneDerived } from '@whiteboard/editor/editor/derived/types'
 import type {
   SelectionNodeStats,
   SelectionNodeTypeInfo

@@ -1,14 +1,16 @@
 import { selection as selectionApi } from '@whiteboard/core/selection'
 import type { MindmapId, NodeId } from '@whiteboard/core/types'
 import { store } from '@shared/core'
+import type {
+  EditorPolicyDerived,
+  EditorSceneDerived
+} from '@whiteboard/editor/editor/derived/types'
 import type { EditorDefaults } from '@whiteboard/editor/types/defaults'
 import type { NodeTypeSupport } from '@whiteboard/editor/types/node'
 import type {
-  EditorPolicyDerived,
-  EditorScene,
-  EditorSceneDerived,
   EditorState
 } from '@whiteboard/editor/types/editor'
+import type { EditorScene } from '@whiteboard/editor-scene'
 import type {
   SelectionEdgeStats,
   SelectionNodeStats

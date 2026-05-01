@@ -5,8 +5,10 @@ import type {
 } from '@whiteboard/core/types'
 import type {
   EditorDelta,
-  EditorSnapshot,
-  EditSession,
+  EditorStateDocument as EditorSnapshot,
+  EditSession
+} from '@whiteboard/editor/protocol'
+import type {
   PreviewInput,
   SceneRuntimeFacts
 } from '../contracts/editor'

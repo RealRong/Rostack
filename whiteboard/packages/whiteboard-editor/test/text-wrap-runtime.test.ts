@@ -269,7 +269,7 @@ describe('text wrap runtime', () => {
     editor.write.edit.startNode('text-1', 'text')
     editor.write.edit.input('hello world!!!')
 
-    expect(editor.scene.editor.edit.get()).toMatchObject({
+    expect(editor.scene.ui.state.edit.get()).toMatchObject({
       kind: 'node',
       nodeId: 'text-1'
     })
@@ -311,7 +311,7 @@ describe('text wrap runtime', () => {
     editor.write.edit.startNode('text-1', 'text')
     editor.write.edit.input('this stays wrapped at the committed width')
 
-    expect(editor.scene.editor.edit.get()).toMatchObject({
+    expect(editor.scene.ui.state.edit.get()).toMatchObject({
       kind: 'node',
       nodeId: 'text-1'
     })

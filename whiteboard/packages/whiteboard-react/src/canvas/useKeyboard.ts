@@ -81,7 +81,7 @@ export const useKeyboard = ({
       ) {
         if (
           event.code === 'Space'
-          && editor.scene.editor.interaction.get().space
+          && editor.scene.ui.state.interaction.get().space
         ) {
           editor.input.keyUp(resolveKeyboardInput(event))
         }

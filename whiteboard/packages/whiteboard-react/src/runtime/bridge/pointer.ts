@@ -25,8 +25,8 @@ const isViewportPanStart = (
 
   const leftDrag = event.button === 0 || (event.buttons & 1) === 1
   return leftDrag && (
-    editor.scene.editor.interaction.get().space
-    || editor.scene.editor.tool.is('hand')
+    editor.scene.ui.state.interaction.get().space
+    || editor.scene.ui.state.tool.is('hand')
   )
 }
 

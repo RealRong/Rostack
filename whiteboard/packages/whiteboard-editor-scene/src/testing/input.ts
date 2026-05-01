@@ -1,9 +1,11 @@
 import { createWhiteboardMutationDelta } from '@whiteboard/engine/mutation'
 import type {
-  EditorDelta,
-  DrawState,
   SceneUpdateInput
 } from '../contracts/editor'
+import type {
+  DrawState,
+  EditorDelta
+} from '@whiteboard/editor/protocol'
 import { createEmptyDocumentSnapshot } from '../projection/state'
 
 const EMPTY_MUTATION_CHANGES = Object.freeze(

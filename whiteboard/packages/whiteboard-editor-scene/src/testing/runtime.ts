@@ -3,10 +3,10 @@ import type {
   Input,
   EditorSceneLayout,
   SceneUpdateInput,
-  Result,
-  Runtime
+  Result
 } from '../contracts/editor'
 import type { Capture } from '../contracts/capture'
+import type { EditorSceneRuntime } from '../contracts/runtime'
 import type { WorkingState } from '../contracts/working'
 import { createWhiteboardMutationDelta } from '@whiteboard/engine/mutation'
 import { createProjection } from '../projection/createProjection'
@@ -34,7 +34,7 @@ const TEST_SCENE_VIEW = () => ({
 })
 
 export interface EditorSceneHarness {
-  runtime: Runtime
+  runtime: EditorSceneRuntime
   scene: EditorScene
   update(input: Input | SceneUpdateInput): Result
   capture(): Capture

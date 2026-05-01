@@ -122,6 +122,7 @@ const createRuntimeRead = (input: {
 }): RuntimeFrame => ({
   editor: {
     tool: () => input.state().runtime.editor.snapshot.state.tool,
+    draw: () => input.state().runtime.editor.snapshot.state.draw,
     selection: () => input.state().runtime.editor.interaction.selection,
     hover: () => input.state().runtime.editor.interaction.hover,
     edit: () => input.state().runtime.editor.snapshot.state.edit,

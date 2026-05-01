@@ -30,18 +30,20 @@ const createBackgroundInput = (): PointerDownInput => ({
 })
 
 const createEditor = (input: {
-  edit: DismissEditor['scene']['editor']['edit']['get']
-  selection: DismissEditor['scene']['editor']['selection']['get']
+  edit: DismissEditor['scene']['ui']['state']['edit']['get']
+  selection: DismissEditor['scene']['ui']['state']['selection']['get']
   commit: () => void
   clear: () => void
 }): DismissEditor => ({
   scene: {
-    editor: {
-      edit: {
-        get: input.edit
-      },
-      selection: {
-        get: input.selection
+    ui: {
+      state: {
+        edit: {
+          get: input.edit
+        },
+        selection: {
+          get: input.selection
+        }
       }
     }
   },

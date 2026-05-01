@@ -137,7 +137,7 @@ describe('mindmap root render', () => {
     expect(rootCapability?.resize).toBe(false)
     expect(rootCapability?.rotate).toBe(false)
 
-    const chrome = editor.scene.mindmap.chrome.addChildTargets.get(created.data.mindmapId)
+    const chrome = editor.scene.ui.mindmap.addChildTargets.get(created.data.mindmapId)
     expect(chrome?.addChildTargets.map((entry) => entry.placement)).toEqual([
       'left',
       'right'

@@ -3,12 +3,12 @@ import type {
   EdgeId,
   NodeId
 } from '@whiteboard/core/types'
+import type { EditCaret } from '@whiteboard/editor/protocol'
 import type {
   ChromeOverlay,
   ChromeView,
   DrawPreview,
   EditorStateInput,
-  EditCaret,
   EdgeGuidePreview,
   EdgeLabelUiView,
   EdgeUiView,

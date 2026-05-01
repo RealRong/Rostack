@@ -14,9 +14,11 @@ import type {
 } from '@whiteboard/core/types'
 import type { Revision } from '@shared/projection'
 import type {
+  EditorStateDocument as EditorSnapshot
+} from '@whiteboard/editor/protocol'
+import type {
   ChromeView,
   ChromeStateView,
-  EditorSnapshot,
   EdgeNodes,
   EdgeStateView,
   EdgePreview,

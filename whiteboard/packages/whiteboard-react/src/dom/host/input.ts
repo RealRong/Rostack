@@ -26,7 +26,7 @@ import {
 type TargetEvent = Pick<MouseEvent | PointerEvent | WheelEvent, 'target' | 'clientX' | 'clientY'>
 type ClientPointInput = Pick<MouseEvent | PointerEvent | WheelEvent, 'clientX' | 'clientY'>
 type PointResolveEditor = {
-  scene: Pick<WhiteboardRuntime['scene'], 'viewport' | 'hit' | 'stores' | 'editor'>
+  scene: Pick<WhiteboardRuntime['scene'], 'viewport' | 'hit' | 'stores' | 'ui'>
 }
 
 const BackgroundPick: EditorPick = {
@@ -64,7 +64,7 @@ const readPointerSnapshot = (
   input: ClientPointInput
 ) => {
   const point = editor.scene.viewport.screenPoint(readClientPoint(input))
-  const viewport = editor.scene.editor.viewport.get()
+  const viewport = editor.scene.ui.state.viewport.get()
 
   return {
     client: readClientPoint(input),
@@ -85,7 +85,7 @@ const isSelectedItemPick = (
   editor: PointResolveEditor,
   pick: EditorPick
 ) => {
-  const selection = editor.scene.editor.selection.get()
+  const selection = editor.scene.ui.state.selection.get()
 
   if (pick.kind === 'node') {
     return selection.nodeIds.includes(pick.id)
@@ -124,7 +124,7 @@ const resolveSceneEdgePick = (
 ): EditorPick | undefined => {
   const edgeId = editor.scene.hit.edge({
     point: world,
-    threshold: 8 / Math.max(editor.scene.editor.viewport.get().zoom, 0.0001)
+    threshold: 8 / Math.max(editor.scene.ui.state.viewport.get().zoom, 0.0001)
   })
 
   return edgeId

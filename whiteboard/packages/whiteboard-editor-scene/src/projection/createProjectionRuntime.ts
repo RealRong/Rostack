@@ -2,11 +2,11 @@ import { createWhiteboardMutationDelta } from '@whiteboard/engine/mutation'
 import type {
   Input,
   NodeCapabilityInput,
-  Runtime,
   SceneViewInput,
   EditorSceneLayout,
   SceneUpdateInput
 } from '../contracts/editor'
+import type { EditorSceneRuntime } from '../contracts/runtime'
 import type { State } from '../contracts/state'
 import type { WorkingState } from '../contracts/working'
 import { createProjection } from './createProjection'
@@ -42,7 +42,7 @@ export const createProjectionRuntime = (input: {
   layout?: EditorSceneLayout
   nodeCapability?: NodeCapabilityInput
   view: SceneViewInput
-}): Runtime => {
+}): EditorSceneRuntime => {
   const runtime = createProjection(input)
   const scene = createScene({
     read: runtime.read,

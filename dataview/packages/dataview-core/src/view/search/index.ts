@@ -1,15 +1,19 @@
-import { matchSearchRecord } from './execute'
 import {
-  buildFieldText,
-  buildRecordDefaultText,
-  buildRecordFieldText,
-  buildRecordTexts,
+  buildSearchFieldText,
+  buildSearchRecordDefaultText,
+  buildSearchRecordFieldText,
+  buildSearchRecordTexts,
   isDefaultSearchField,
+  matchSearchRecord,
+  resolveSearchScopeFields,
+  SearchTextContext
+} from './text'
+import {
   joinTokens,
   normalizeTokens,
   SEARCH_TOKEN_SEPARATOR,
-  splitText
-} from './text'
+  splitJoinedTokens
+} from './tokens'
 import {
   cloneSearchState,
   normalizeSearchState,
@@ -17,9 +21,7 @@ import {
   setSearchQuery
 } from './state'
 
-export type {
-  SearchTextContext
-} from './text'
+export type { SearchTextContext } from './text'
 
 export const search = {
   state: {
@@ -32,20 +34,17 @@ export const search = {
     separator: SEARCH_TOKEN_SEPARATOR,
     normalize: normalizeTokens,
     join: joinTokens,
-    split: splitText
+    split: splitJoinedTokens
   },
-  text: {
-    field: buildFieldText,
-    record: {
-      field: buildRecordFieldText,
-      default: buildRecordDefaultText,
-      all: buildRecordTexts
-    }
+  record: {
+    fieldText: buildSearchRecordFieldText,
+    defaultText: buildSearchRecordDefaultText,
+    texts: buildSearchRecordTexts,
+    valueText: buildSearchFieldText,
+    match: matchSearchRecord
   },
-  field: {
-    default: isDefaultSearchField
-  },
-  match: {
-    record: matchSearchRecord
+  scope: {
+    isDefaultField: isDefaultSearchField,
+    resolveFields: resolveSearchScopeFields
   }
 } as const

@@ -300,7 +300,7 @@ const buildFieldIndex = (
   return buildTextIndex({
     fieldId,
     ids: column.ids,
-    readText: recordId => search.text.field(
+    readText: recordId => search.record.valueText(
       field,
       column.byRecord.get(recordId)
     ),
@@ -383,7 +383,7 @@ export const syncSearchIndex = (
       previous: previousField,
       touchedRecords: context.touchedRecords,
       records,
-      readText: recordId => search.text.field(
+      readText: recordId => search.record.valueText(
         field,
         column?.byRecord.get(recordId)
       )

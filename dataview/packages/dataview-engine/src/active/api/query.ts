@@ -197,7 +197,7 @@ export const createGroupApi = (
       return
     }
 
-    const nextGroup = group.set(view.group, field)
+    const nextGroup = group.write.set(view.group, field)
     if (!nextGroup) {
       return
     }

@@ -186,7 +186,7 @@ const nextPresenceValue = (
     : { kind: 'invalid' }
 )
 
-export const groupWriteValue = (input: {
+export const writeGroupRecordValue = (input: {
   field: Field | undefined
   group: Pick<ViewGroup, 'mode'> | undefined
   currentValue: unknown
@@ -230,9 +230,3 @@ export const groupWriteValue = (input: {
       return { kind: 'invalid' }
   }
 }
-
-export const group = {
-  write: {
-    value: groupWriteValue
-  }
-} as const

@@ -39,7 +39,7 @@ const resolveDefaultKanbanGroup = (
 ) => {
   const fields = documentFields.list(document)
   for (let index = 0; index < fields.length; index += 1) {
-    const nextGroup = group.set(undefined, fields[index]!)
+    const nextGroup = group.write.set(undefined, fields[index]!)
     if (nextGroup) {
       return nextGroup
     }

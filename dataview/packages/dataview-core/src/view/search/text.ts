@@ -50,9 +50,7 @@ const joinSearchTokenSet = (
   ? Array.from(tokens).join(SEARCH_TOKEN_SEPARATOR)
   : undefined
 
-export const splitText = splitJoinedTokens
-
-export const buildFieldText = (
+export const buildSearchFieldText = (
   field: Field | undefined,
   value: unknown
 ): string | undefined => {
@@ -75,7 +73,7 @@ const buildRecordFieldTextFromField = (
     return undefined
   }
 
-  return buildFieldText(
+  return buildSearchFieldText(
     field,
     documentValues.get(record, fieldId)
   )
@@ -96,7 +94,7 @@ const readContextField = (
   return context.fields?.find(field => field.id === fieldId)
 }
 
-const readContextFields = (
+export const resolveSearchScopeFields = (
   context: SearchTextContext
 ): readonly CustomField[] => {
   if (context.fields) {
@@ -120,7 +118,7 @@ const readContextFields = (
   return fields
 }
 
-export const buildRecordFieldText = (
+export const buildSearchRecordFieldText = (
   record: DataRecord,
   fieldId: FieldId,
   context: SearchTextContext
@@ -166,12 +164,12 @@ const buildRecordDefaultTextFromFields = (
   return joinSearchTokenSet(tokens)
 }
 
-export const buildRecordDefaultText = (
+export const buildSearchRecordDefaultText = (
   record: DataRecord,
   context: SearchTextContext
-): string | undefined => buildRecordDefaultTextFromFields(record, readContextFields(context))
+): string | undefined => buildRecordDefaultTextFromFields(record, resolveSearchScopeFields(context))
 
-export const buildRecordTexts = (
+export const buildSearchRecordTexts = (
   record: DataRecord,
   search: Pick<Search, 'fields'>,
   context: SearchTextContext
@@ -181,7 +179,7 @@ export const buildRecordTexts = (
 
     for (let index = 0; index < search.fields.length; index += 1) {
       const fieldId = search.fields[index]!
-      const text = buildRecordFieldText(record, fieldId, context)
+      const text = buildSearchRecordFieldText(record, fieldId, context)
       if (text) {
         texts.push(text)
       }
@@ -192,6 +190,23 @@ export const buildRecordTexts = (
       : EMPTY_TEXTS
   }
 
-  const text = buildRecordDefaultText(record, context)
+  const text = buildSearchRecordDefaultText(record, context)
   return text ? [text] : EMPTY_TEXTS
+}
+
+export const matchSearchRecord = (
+  record: DataRecord,
+  search: Search,
+  document: DataDoc
+): boolean => {
+  const query = search.query.trim().toLowerCase()
+  if (!query) {
+    return true
+  }
+
+  const candidates = buildSearchRecordTexts(record, search, {
+    document
+  })
+
+  return candidates.some(candidate => candidate.includes(query))
 }

@@ -30,7 +30,7 @@ export const resolveDefaultKanbanGroup = (
   }, undefined)
 
   return best
-    ? viewApi.group.set(undefined, best)
+    ? viewApi.group.write.set(undefined, best)
     : undefined
 }
 

@@ -427,6 +427,7 @@ export interface EditorStateRuntime {
     selection: ReturnType<typeof createStateStores>['selection']['store']
     edit: ReturnType<typeof createStateStores>['edit']['store']
   }
+  snapshot(): EditorStateDocument
   dispatch: (
     command: EditorCommand | readonly EditorCommand[]
   ) => void
@@ -514,6 +515,7 @@ export const createEditorStateRuntime = (input: {
       selection: stores.selection.store,
       edit: stores.edit.store
     },
+    snapshot: () => engine.document(),
     dispatch,
     commits: {
       subscribe: (listener) => engine.subscribe(listener)

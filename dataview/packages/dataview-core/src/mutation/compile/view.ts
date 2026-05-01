@@ -917,7 +917,7 @@ const handleViewGroupSet: DataviewViewIntentHandlers['view.group.set'] = createV
 const handleViewGroupClear: DataviewViewIntentHandlers['view.group.clear'] = createViewUpdateHandler(
   (input, view) => finalizeView(input.reader, {
     ...view,
-    group: viewApi.group.clear(view.group)
+    group: viewApi.group.write.clear(view.group)
   } as View)
 )
 
@@ -931,14 +931,14 @@ const handleViewGroupToggle: DataviewViewIntentHandlers['view.group.toggle'] = (
 
   updateExistingView(input, (view) => finalizeView(input.reader, {
     ...view,
-    group: viewApi.group.toggle(view.group, field)
+    group: viewApi.group.write.toggle(view.group, field)
   } as View))
 }
 
 const handleViewGroupModeSet: DataviewViewIntentHandlers['view.group.mode.set'] = createGroupedViewHandler(
   'mode',
   'Unable to update group mode.',
-  (input, view, field) => viewApi.group.patch(view.group, field, {
+  (input, view, field) => viewApi.group.write.update(view.group, field, {
     mode: input.intent.mode
   })
 )
@@ -946,7 +946,7 @@ const handleViewGroupModeSet: DataviewViewIntentHandlers['view.group.mode.set'] 
 const handleViewGroupSortSet: DataviewViewIntentHandlers['view.group.sort.set'] = createGroupedViewHandler(
   'sort',
   'Unable to update group sort.',
-  (input, view, field) => viewApi.group.patch(view.group, field, {
+  (input, view, field) => viewApi.group.write.update(view.group, field, {
     bucketSort: input.intent.sort
   })
 )
@@ -954,7 +954,7 @@ const handleViewGroupSortSet: DataviewViewIntentHandlers['view.group.sort.set'] 
 const handleViewGroupIntervalSet: DataviewViewIntentHandlers['view.group.interval.set'] = createGroupedViewHandler(
   'interval',
   'Unable to update group interval.',
-  (input, view, field) => viewApi.group.patch(view.group, field, {
+  (input, view, field) => viewApi.group.write.update(view.group, field, {
     bucketInterval: input.intent.interval
   })
 )
@@ -962,7 +962,7 @@ const handleViewGroupIntervalSet: DataviewViewIntentHandlers['view.group.interva
 const handleViewGroupShowEmptySet: DataviewViewIntentHandlers['view.group.showEmpty.set'] = createGroupedViewHandler(
   'value',
   'Unable to update group empty-bucket visibility.',
-  (input, view, field) => viewApi.group.patch(view.group, field, {
+  (input, view, field) => viewApi.group.write.update(view.group, field, {
     showEmpty: input.intent.value
   })
 )
@@ -970,7 +970,7 @@ const handleViewGroupShowEmptySet: DataviewViewIntentHandlers['view.group.showEm
 const handleViewSectionShow: DataviewViewIntentHandlers['view.section.show'] = createGroupedViewHandler(
   'bucket',
   'Unable to update group section state.',
-  (input, view, field) => viewApi.group.bucket.patch(
+  (input, view, field) => viewApi.group.buckets.write.update(
     view.group,
     field,
     input.intent.bucket,
@@ -983,7 +983,7 @@ const handleViewSectionShow: DataviewViewIntentHandlers['view.section.show'] = c
 const handleViewSectionHide: DataviewViewIntentHandlers['view.section.hide'] = createGroupedViewHandler(
   'bucket',
   'Unable to update group section state.',
-  (input, view, field) => viewApi.group.bucket.patch(
+  (input, view, field) => viewApi.group.buckets.write.update(
     view.group,
     field,
     input.intent.bucket,
@@ -996,7 +996,7 @@ const handleViewSectionHide: DataviewViewIntentHandlers['view.section.hide'] = c
 const handleViewSectionCollapse: DataviewViewIntentHandlers['view.section.collapse'] = createGroupedViewHandler(
   'bucket',
   'Unable to update group section state.',
-  (input, view, field) => viewApi.group.bucket.patch(
+  (input, view, field) => viewApi.group.buckets.write.update(
     view.group,
     field,
     input.intent.bucket,
@@ -1009,7 +1009,7 @@ const handleViewSectionCollapse: DataviewViewIntentHandlers['view.section.collap
 const handleViewSectionExpand: DataviewViewIntentHandlers['view.section.expand'] = createGroupedViewHandler(
   'bucket',
   'Unable to update group section state.',
-  (input, view, field) => viewApi.group.bucket.patch(
+  (input, view, field) => viewApi.group.buckets.write.update(
     view.group,
     field,
     input.intent.bucket,

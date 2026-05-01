@@ -6,11 +6,11 @@ import type {
 } from '@whiteboard/core/types'
 import { createWhiteboardMutationDelta } from '@whiteboard/engine/mutation'
 import type {
-  EditorProjectionDelta,
-  EditorProjectionDrawState,
+  EditorSceneDelta,
+  EditorDrawState,
   Input,
-  ProjectionUpdateInput,
-  ProjectionInteractionMode
+  SceneUpdateInput,
+  EditorInteractionMode
 } from '../contracts/editor'
 import {
   createEmptyEditorSceneRuntimeDelta
@@ -27,7 +27,7 @@ const DEFAULT_DRAW_STYLE = Object.freeze({
   width: 2
 })
 
-const EMPTY_DRAW_STATE: EditorProjectionDrawState = {
+const EMPTY_DRAW_STATE: EditorDrawState = {
   pen: {
     slot: '1',
     slots: {
@@ -48,7 +48,7 @@ const EMPTY_DRAW_STATE: EditorProjectionDrawState = {
 
 const readInteractionMode = (
   input: Input['runtime']['interaction']
-): ProjectionInteractionMode => {
+): EditorInteractionMode => {
   switch (input.drag.kind) {
     case 'selection-move':
       return 'node-drag'
@@ -85,9 +85,9 @@ const readTouchedIds = <TId extends string>(
   removed: new Set(delta.removed)
 })]
 
-export const toProjectionUpdateInput = (
+export const toSceneUpdateInput = (
   input: Input
-): ProjectionUpdateInput => {
+): SceneUpdateInput => {
   const previewDelta = input.runtime.delta.session.preview
   const hasPreviewDelta =
     idDelta.hasAny(previewDelta.nodes)
@@ -101,7 +101,7 @@ export const toProjectionUpdateInput = (
     input.runtime.delta.session.interaction
     || input.runtime.delta.session.hover
 
-  const delta: EditorProjectionDelta = {}
+  const delta: EditorSceneDelta = {}
 
   if (input.runtime.delta.session.tool) {
     delta.tool = true

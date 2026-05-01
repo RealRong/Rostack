@@ -261,7 +261,7 @@ export const clear = (
     : group
 )
 
-export const set = (
+export const setGroupState = (
   group: ViewGroup | undefined,
   field: Field
 ): ViewGroup | undefined => {
@@ -285,10 +285,10 @@ export const toggle = (
 ): ViewGroup | undefined => (
   group?.fieldId === field.id
     ? clear(group)
-    : set(group, field)
+    : setGroupState(group, field)
 )
 
-export const patch = (
+export const updateGroupState = (
   group: ViewGroup | undefined,
   field: Field,
   patch: Partial<ViewGroupPatch>
@@ -299,7 +299,7 @@ export const patch = (
     : nextGroup
 }
 
-export const patchBucket = (
+export const updateGroupBucketState = (
   group: ViewGroup | undefined,
   field: Field,
   bucketId: ViewGroupBucketId,
@@ -326,7 +326,7 @@ export const toggleGroupBucketCollapsed = (
     return group
   }
 
-  return patchBucket(
+  return updateGroupBucketState(
     group,
     field,
     bucketId,

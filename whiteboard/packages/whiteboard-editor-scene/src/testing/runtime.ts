@@ -2,7 +2,7 @@ import type {
   EditorScene,
   Input,
   EditorSceneLayout,
-  ProjectionUpdateInput,
+  SceneUpdateInput,
   Result,
   Runtime
 } from '../contracts/editor'
@@ -12,7 +12,7 @@ import { createProjection } from '../projection/createProjection'
 import {
   createProjectionRuntime
 } from '../projection/createProjectionRuntime'
-import { toProjectionUpdateInput } from './input'
+import { toSceneUpdateInput } from './input'
 
 const TEST_SCENE_VIEW = () => ({
   zoom: 1,
@@ -31,7 +31,7 @@ const TEST_SCENE_VIEW = () => ({
 export interface EditorSceneHarness {
   runtime: Runtime
   scene: EditorScene
-  update(input: Input | ProjectionUpdateInput): Result
+  update(input: Input | SceneUpdateInput): Result
   capture(): Capture
   lastTrace(): Result['trace']
 }
@@ -59,7 +59,7 @@ export const createEditorSceneHarness = (input: {
       const result = runtime.update(
         'editor' in value
           ? value
-          : toProjectionUpdateInput(value)
+          : toSceneUpdateInput(value)
       )
       trace = result.trace
       return result

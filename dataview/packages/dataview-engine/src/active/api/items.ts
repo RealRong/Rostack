@@ -87,7 +87,7 @@ const createGroupValueActions = (input: {
     let currentValue = initialValue
 
     for (const itemId of itemIds) {
-      const next = groupCore.write.value({
+      const next = groupCore.record.writeValue({
         field: input.field,
         group: input.group,
         currentValue,

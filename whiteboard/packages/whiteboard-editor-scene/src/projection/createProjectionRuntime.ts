@@ -5,11 +5,11 @@ import type {
   SceneViewInput,
   EditorSceneLayout,
   Input,
-  ProjectionUpdateInput,
-  EditorProjectionSnapshot,
-  EditorProjectionDelta,
-  EditorProjectionTouchedIds,
-  EditorProjectionPreviewDelta,
+  SceneUpdateInput,
+  EditorSceneSnapshot,
+  EditorSceneDelta,
+  EditorSceneTouchedIds,
+  EditorScenePreviewDelta,
   DragState,
   EditSession
 } from '../contracts/editor'
@@ -39,7 +39,7 @@ const createEditorSceneStateReader = (input: {
 }
 
 const isEdgeInteractionMode = (
-  mode: EditorProjectionSnapshot['interaction']['mode']
+  mode: EditorSceneSnapshot['interaction']['mode']
 ): boolean => (
   mode === 'edge-drag'
   || mode === 'edge-label'
@@ -54,15 +54,15 @@ const readEditedEdgeIds = (
   : new Set()
 
 const readPreviewNodeIds = (
-  preview: EditorProjectionSnapshot['preview']
+  preview: EditorSceneSnapshot['preview']
 ): ReadonlySet<string> => new Set(preview.nodes.keys())
 
 const readPreviewEdgeIds = (
-  preview: EditorProjectionSnapshot['preview']
+  preview: EditorSceneSnapshot['preview']
 ): ReadonlySet<string> => new Set(preview.edges.keys())
 
 const readPreviewMindmapIds = (
-  preview: EditorProjectionSnapshot['preview']['mindmap']
+  preview: EditorSceneSnapshot['preview']['mindmap']
 ): ReadonlySet<string> => {
   const ids = new Set<string>()
 
@@ -85,24 +85,24 @@ const createTouchedIdDelta = <TId extends string>(
 })
 
 const readPreviewDelta = (
-  value: EditorProjectionDelta['preview']
-): EditorProjectionPreviewDelta | undefined => (
+  value: EditorSceneDelta['preview']
+): EditorScenePreviewDelta | undefined => (
   value && value !== true
     ? value
     : undefined
 )
 
 const readHoverDelta = (
-  value: NonNullable<EditorProjectionDelta['interaction']>['hover']
-): EditorProjectionTouchedIds | undefined => (
+  value: NonNullable<EditorSceneDelta['interaction']>['hover']
+): EditorSceneTouchedIds | undefined => (
   value && value !== true
     ? value
     : undefined
 )
 
 const createEditorRuntimeInputDelta = (input: {
-  snapshot: EditorProjectionSnapshot
-  delta: EditorProjectionDelta
+  snapshot: EditorSceneSnapshot
+  delta: EditorSceneDelta
 }) => {
   const delta = createEmptyEditorSceneRuntimeDelta()
 
@@ -176,8 +176,8 @@ const createEditorRuntimeInputDelta = (input: {
 }
 
 const readDragState = (input: {
-  document: ProjectionUpdateInput['document']['snapshot']
-  editor: EditorProjectionSnapshot
+  document: SceneUpdateInput['document']['snapshot']
+  editor: EditorSceneSnapshot
 }): DragState => {
   const {
     interaction,
@@ -253,7 +253,7 @@ const readDragState = (input: {
 }
 
 const toProjectionInput = (
-  input: ProjectionUpdateInput
+  input: SceneUpdateInput
 ): Input => {
   const runtimeDelta = createEditorRuntimeInputDelta({
     snapshot: input.editor.snapshot,

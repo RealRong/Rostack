@@ -2,15 +2,18 @@ import {
   clear,
   cloneGroupState,
   normalizeGroupState,
-  patch,
-  patchBucket,
   sameGroupState,
-  set,
   toggle,
   toggleGroupBucketCollapsed,
+  setGroupState,
+  updateGroupBucketState,
+  updateGroupState,
   type ViewGroupPatch
 } from './state'
-import { group as groupWrite, type GroupWriteResult } from './write'
+import {
+  type GroupWriteResult,
+  writeGroupRecordValue
+} from './write'
 
 export const group = {
   state: {
@@ -18,16 +21,20 @@ export const group = {
     normalize: normalizeGroupState,
     same: sameGroupState
   },
-  clear,
-  set,
-  toggle,
-  patch,
-  bucket: {
-    patch: patchBucket,
-    toggleCollapsed: toggleGroupBucketCollapsed
-  },
   write: {
-    value: groupWrite.write.value
+    clear,
+    set: setGroupState,
+    toggle,
+    update: updateGroupState
+  },
+  buckets: {
+    write: {
+      update: updateGroupBucketState,
+      toggleCollapsed: toggleGroupBucketCollapsed
+    }
+  },
+  record: {
+    writeValue: writeGroupRecordValue
   }
 } as const
 

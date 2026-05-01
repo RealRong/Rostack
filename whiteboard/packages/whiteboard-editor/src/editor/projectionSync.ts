@@ -6,9 +6,9 @@ import type {
   NodeId
 } from '@whiteboard/core/types'
 import type {
-  EditorProjectionDelta,
-  EditorProjectionPreviewDelta,
-  EditorProjectionSnapshot,
+  EditorSceneDelta,
+  EditorScenePreviewDelta,
+  EditorSceneSnapshot,
   HoverState,
   MindmapPreview,
   NodePreview,
@@ -272,11 +272,11 @@ const isMindmapPreviewEqual = (
   )
 )
 
-export const buildEditorProjectionSnapshot = (input: {
+export const buildEditorSceneSnapshot = (input: {
   engine: Pick<Engine, 'doc' | 'rev'>
   runtime: EditorStateRuntime
   preview: EditorInputPreviewState
-}): EditorProjectionSnapshot => {
+}): EditorSceneSnapshot => {
   const interaction = input.runtime.stores.interaction.store.get()
   const viewport = input.runtime.viewport.read.get()
 
@@ -336,21 +336,21 @@ const unionIds = <TId extends string>(
 )]
 
 const readEditedEdgeIds = (
-  edit: EditorProjectionSnapshot['edit']
+  edit: EditorSceneSnapshot['edit']
 ): readonly EdgeId[] => edit?.kind === 'edge-label'
   ? [edit.edgeId]
   : EMPTY_IDS as readonly EdgeId[]
 
 const readPreviewNodeIds = (
-  preview: EditorProjectionSnapshot['preview']
+  preview: EditorSceneSnapshot['preview']
 ): readonly NodeId[] => [...preview.nodes.keys()]
 
 const readPreviewEdgeIds = (
-  preview: EditorProjectionSnapshot['preview']
+  preview: EditorSceneSnapshot['preview']
 ): readonly EdgeId[] => [...preview.edges.keys()]
 
 const readPreviewMindmapIds = (
-  preview: EditorProjectionSnapshot['preview']['mindmap']
+  preview: EditorSceneSnapshot['preview']['mindmap']
 ): readonly MindmapId[] => {
   const ids = new Set<MindmapId>()
 
@@ -365,14 +365,14 @@ const readPreviewMindmapIds = (
 }
 
 const createPreviewDelta = (input: {
-  previous: EditorProjectionSnapshot['preview']
-  next: EditorProjectionSnapshot['preview']
+  previous: EditorSceneSnapshot['preview']
+  next: EditorSceneSnapshot['preview']
   marquee: boolean
   guides: boolean
   draw: boolean
   edgeGuide: boolean
   hover: boolean
-}): EditorProjectionPreviewDelta => ({
+}): EditorScenePreviewDelta => ({
   touchedNodeIds: unionIds(
     readPreviewNodeIds(input.previous),
     readPreviewNodeIds(input.next)
@@ -428,9 +428,9 @@ const createHoverDelta = (input: {
   }
 }
 
-export const createBootstrapEditorProjectionDelta = (
-  snapshot: EditorProjectionSnapshot
-): EditorProjectionDelta => ({
+export const createBootstrapEditorSceneDelta = (
+  snapshot: EditorSceneSnapshot
+): EditorSceneDelta => ({
   tool: true,
   draw: true,
   selection: true,
@@ -467,7 +467,7 @@ const toCommitFlags = (
   viewport: delta.viewport.changed()
 })
 
-export const collectEditorProjectionCommitFlags = (
+export const collectEditorSceneCommitFlags = (
   commits: readonly MutationDelta[]
 ): CommitFlags => commits.reduce<CommitFlags>((result, commit) => {
   const current = toCommitFlags(createEditorStateMutationDelta(commit))
@@ -490,12 +490,12 @@ export const collectEditorProjectionCommitFlags = (
   viewport: false
 })
 
-export const createEditorProjectionDeltaFromCommitFlags = (input: {
+export const createEditorSceneDeltaFromCommitFlags = (input: {
   flags: CommitFlags
-  previous: EditorProjectionSnapshot
-  next: EditorProjectionSnapshot
-}): EditorProjectionDelta => {
-  const delta: EditorProjectionDelta = {}
+  previous: EditorSceneSnapshot
+  next: EditorSceneSnapshot
+}): EditorSceneDelta => {
+  const delta: EditorSceneDelta = {}
 
   if (input.flags.tool) {
     delta.tool = true
@@ -552,10 +552,10 @@ export const createEditorProjectionDeltaFromCommitFlags = (input: {
   return delta
 }
 
-export const createDocumentProjectionDelta = (input: {
-  previous: EditorProjectionSnapshot
-  next: EditorProjectionSnapshot
-}): EditorProjectionDelta => {
+export const createDocumentEditorSceneDelta = (input: {
+  previous: EditorSceneSnapshot
+  next: EditorSceneSnapshot
+}): EditorSceneDelta => {
   if (isMindmapPreviewEqual(input.previous.preview.mindmap, input.next.preview.mindmap)) {
     return {}
   }
@@ -573,10 +573,10 @@ export const createDocumentProjectionDelta = (input: {
   }
 }
 
-export const mergeEditorProjectionDelta = (
-  left: EditorProjectionDelta,
-  right: EditorProjectionDelta
-): EditorProjectionDelta => ({
+export const mergeEditorSceneDelta = (
+  left: EditorSceneDelta,
+  right: EditorSceneDelta
+): EditorSceneDelta => ({
   ...(left.tool || right.tool
     ? {
         tool: true
@@ -700,8 +700,8 @@ export const mergeEditorProjectionDelta = (
     : {})
 })
 
-export const hasEditorProjectionDelta = (
-  delta: EditorProjectionDelta
+export const hasEditorSceneDelta = (
+  delta: EditorSceneDelta
 ): boolean => (
   delta.tool === true
   || delta.draw === true

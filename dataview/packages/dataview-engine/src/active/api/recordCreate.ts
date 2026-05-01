@@ -165,7 +165,7 @@ const applyGroupDefault = (input: {
   }
 
   const currentValue = readDraftValue(input.draft, group.fieldId)
-  const next = groupApi.write.value({
+  const next = groupApi.record.writeValue({
     field,
     group,
     currentValue,

@@ -13,12 +13,12 @@ import {
   createEditorSceneApi
 } from '@whiteboard/editor/editor/projection'
 import {
-  buildEditorProjectionSnapshot,
-  collectEditorProjectionCommitFlags,
-  createBootstrapEditorProjectionDelta,
-  createDocumentProjectionDelta,
-  createEditorProjectionDeltaFromCommitFlags,
-  mergeEditorProjectionDelta
+  buildEditorSceneSnapshot,
+  collectEditorSceneCommitFlags,
+  createBootstrapEditorSceneDelta,
+  createDocumentEditorSceneDelta,
+  createEditorSceneDeltaFromCommitFlags,
+  mergeEditorSceneDelta
 } from '@whiteboard/editor/editor/projectionSync'
 import { createEditorHost, type EditorInputRuntimeHost } from '@whiteboard/editor/input/runtime'
 import { EMPTY_HOVER_STATE } from '@whiteboard/editor/input/hover/store'
@@ -148,7 +148,7 @@ export const createEditor = (input: {
   const tasks = createEditorTaskRuntime()
 
   let host: EditorInputRuntimeHost | null = null
-  const readProjectionSnapshot = () => buildEditorProjectionSnapshot({
+  const readProjectionSnapshot = () => buildEditorSceneSnapshot({
     engine: input.engine,
     runtime: stateRuntime,
     preview: host?.preview.get() ?? stateRuntime.stores.preview.store.get()
@@ -173,7 +173,7 @@ export const createEditor = (input: {
     },
     editor: {
       snapshot: currentSnapshot,
-      delta: createBootstrapEditorProjectionDelta(currentSnapshot)
+      delta: createBootstrapEditorSceneDelta(currentSnapshot)
     }
   })
 
@@ -234,7 +234,7 @@ export const createEditor = (input: {
         },
         editor: {
           snapshot: next,
-          delta: createEditorProjectionDeltaFromCommitFlags({
+          delta: createEditorSceneDeltaFromCommitFlags({
             flags: {
               tool: false,
               draw: false,
@@ -284,8 +284,8 @@ export const createEditor = (input: {
       },
       editor: {
         snapshot: next,
-        delta: createEditorProjectionDeltaFromCommitFlags({
-          flags: collectEditorProjectionCommitFlags([commit.delta]),
+        delta: createEditorSceneDeltaFromCommitFlags({
+          flags: collectEditorSceneCommitFlags([commit.delta]),
           previous,
           next
         })
@@ -306,7 +306,7 @@ export const createEditor = (input: {
       },
       editor: {
         snapshot: next,
-        delta: createEditorProjectionDeltaFromCommitFlags({
+        delta: createEditorSceneDeltaFromCommitFlags({
           flags: {
             tool: false,
             draw: false,
@@ -346,13 +346,13 @@ export const createEditor = (input: {
 
     const next = readProjectionSnapshot()
     currentSnapshot = next
-    const editorDelta = mergeEditorProjectionDelta(
-      createEditorProjectionDeltaFromCommitFlags({
-        flags: collectEditorProjectionCommitFlags(suppressedCommitDeltas),
+    const editorDelta = mergeEditorSceneDelta(
+      createEditorSceneDeltaFromCommitFlags({
+        flags: collectEditorSceneCommitFlags(suppressedCommitDeltas),
         previous,
         next
       }),
-      createDocumentProjectionDelta({
+      createDocumentEditorSceneDelta({
         previous,
         next
       })

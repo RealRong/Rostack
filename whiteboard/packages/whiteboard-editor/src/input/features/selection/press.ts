@@ -10,9 +10,44 @@ import type {
 } from '@whiteboard/core/selection'
 import type { SelectionMode } from '@whiteboard/core/node'
 import type { GroupId, Node, NodeId } from '@whiteboard/core/types'
-import { startNodeEdit } from '@whiteboard/editor/edit/runtime'
 import type { EditorHostDeps } from '@whiteboard/editor/input/runtime'
 import { resolveNodeEditorCapability } from '@whiteboard/editor/types/node'
+
+const startNodeEdit = (input: {
+  ctx: Pick<EditorHostDeps, 'session' | 'document' | 'nodeType'>
+  nodeId: NodeId
+  field: 'text' | 'title'
+  caret: {
+    kind: 'point'
+    client: {
+      x: number
+      y: number
+    }
+  }
+}) => {
+  const committed = input.ctx.document.node(input.nodeId)
+  if (!committed) {
+    return
+  }
+
+  const capability = input.ctx.nodeType.edit(committed.type, input.field)
+  if (!capability) {
+    return
+  }
+
+  const value = committed.data?.[input.field]
+  input.ctx.session.dispatch({
+    type: 'edit.set',
+    edit: {
+      kind: 'node',
+      nodeId: input.nodeId,
+      field: input.field,
+      text: typeof value === 'string' ? value : '',
+      composing: false,
+      caret: input.caret
+    }
+  })
+}
 
 export type SelectionPressTarget<TField extends string = string> =
   | { kind: 'background' }
@@ -659,9 +694,7 @@ const applySelectionTap = (
       }
 
       startNodeEdit({
-        session: ctx.session,
-        document: ctx.document,
-        nodeType: ctx.nodeType,
+        ctx,
         nodeId: tap.nodeId,
         field,
         caret: {
@@ -679,9 +712,7 @@ const applySelectionTap = (
         })
       }
       startNodeEdit({
-        session: ctx.session,
-        document: ctx.document,
-        nodeType: ctx.nodeType,
+        ctx,
         nodeId: tap.nodeId,
         field: tap.field,
         caret: {

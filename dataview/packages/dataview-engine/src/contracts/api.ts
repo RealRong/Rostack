@@ -19,7 +19,7 @@ import type {
 } from '@dataview/core/field/kind/spec'
 import type {
   filterSpec
-} from '@dataview/core/view/filterSpec'
+} from '@dataview/core/view/filter/spec'
 import type {
   viewTypeSpec
 } from '@dataview/core/view/typeSpec'

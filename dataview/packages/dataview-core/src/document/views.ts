@@ -168,19 +168,6 @@ const resolveActiveViewId = (
   return document.views.ids[0]
 }
 
-const getActiveViewId = (
-  document: DataDoc
-): ViewId | undefined => resolveActiveViewId(document)
-
-const getActiveView = (
-  document: DataDoc
-): View | undefined => {
-  const viewId = getActiveViewId(document)
-  return viewId
-    ? getView(document, viewId)
-    : undefined
-}
-
 const setActiveViewId = (
   document: DataDoc,
   viewId?: ViewId
@@ -194,19 +181,6 @@ const setActiveViewId = (
     ...document,
     activeViewId: nextViewId
   }
-}
-
-const putView = (document: DataDoc, view: View): DataDoc => {
-  const nextDocument = replaceTable(
-    document,
-    'views',
-    sharedEntityTable.write.put(document.views, view)
-  )
-
-  return setActiveViewId(
-    nextDocument,
-    nextDocument.activeViewId ?? view.id
-  )
 }
 
 const removeView = (document: DataDoc, viewId: ViewId): DataDoc => {
@@ -232,19 +206,12 @@ export const documentViews = {
   list: listViews,
   ids: getViewIds,
   get: getView,
-  has: hasView,
-  put: putView,
   remove: removeView,
   normalize: normalizeViews,
   order: {
     normalize: normalizeOrders
   },
   activeId: {
-    resolve: resolveActiveViewId,
-    get: getActiveViewId,
-    set: setActiveViewId
-  },
-  active: {
-    get: getActiveView
+    resolve: resolveActiveViewId
   }
 } as const

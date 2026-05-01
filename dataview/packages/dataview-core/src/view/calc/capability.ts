@@ -1,12 +1,12 @@
 import type {
   CalculationDistributionItem,
   CalculationResult
-} from './calcContracts'
+} from './contracts'
 import type {
   CalculationDemand,
   FieldReducerState,
   ReducerCapabilitySet
-} from './calcReducer'
+} from './reducer'
 import type {
   CalculationMetric,
   Field,

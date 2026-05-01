@@ -96,11 +96,11 @@ const EdgeRoutePointHandle = ({
 
 export const EdgeOverlayLayer = memo(() => {
   const editor = useEditorRuntime()
-  const overlay = useStoreValue(editor.scene.stores.render.chrome.edge)
+  const overlay = useStoreValue(editor.projection.stores.render.chrome.edge)
   const previewPresentation = overlay.previewPath
     ? resolveEdgePathPresentation(overlay.previewPath.style)
     : undefined
-  const zoom = useStoreValue(editor.state.viewport.zoom)
+  const zoom = useStoreValue(editor.projection.stores.runtime.editor.viewport).zoom
   const snapRadius = 6 / Math.max(zoom, 0.0001)
 
   return (

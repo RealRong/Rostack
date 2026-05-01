@@ -43,16 +43,16 @@ const DEFAULT_SHORTCUT_INSERT_BEHAVIOR = {
 const readActiveMindmapShortcut = (
   editor: Editor
 ): ActiveMindmapShortcut | undefined => {
-  const selection = editor.state.selection.get()
+  const selection = editor.projection.runtime.editor.selection()
   if (
-    editor.state.edit.get() !== null
+    editor.projection.runtime.editor.edit() !== null
     || selection.edgeIds.length > 0
     || selection.nodeIds.length !== 1
   ) {
     return undefined
   }
 
-  const node = editor.scene.stores.render.node.byId.get(selection.nodeIds[0] ?? '')?.node
+  const node = editor.projection.stores.render.node.byId.get(selection.nodeIds[0] ?? '')?.node
   if (node?.owner?.kind !== 'mindmap' || node.type !== 'text') {
     return undefined
   }
@@ -66,7 +66,7 @@ const readActiveMindmapShortcut = (
 const readShortcutState = (
   editor: Editor
 ) => {
-  const selection = editor.state.selection.get()
+  const selection = editor.projection.runtime.editor.selection()
   const count = selection.nodeIds.length + selection.edgeIds.length
 
   return {
@@ -105,7 +105,7 @@ const canRunShortcut = (
     case 'selection.selectAll':
       return true
     case 'selection.clear':
-      return state.hasSelection || !editor.state.tool.is('select')
+      return state.hasSelection || editor.projection.runtime.editor.tool().type !== 'select'
     case 'selection.delete':
       return state.hasSelection && state.canDelete
     case 'selection.duplicate':
@@ -143,7 +143,7 @@ export const runShortcut = (
       editor.write.selection.selectAll()
       return true
     case 'selection.clear':
-      if (!editor.state.tool.is('select')) {
+      if (editor.projection.runtime.editor.tool().type !== 'select') {
         editor.write.tool.select()
       }
       editor.write.selection.clear()
@@ -171,7 +171,7 @@ export const runShortcut = (
         return false
       }
 
-      const structure = editor.scene.mindmaps.structure(activeMindmap.treeId)
+      const structure = editor.projection.mindmaps.structure(activeMindmap.treeId)
       const target = structure
         ? readMindmapNavigateTarget({
             tree: structure.tree,

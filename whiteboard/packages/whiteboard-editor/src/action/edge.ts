@@ -8,7 +8,7 @@ import type { EdgeActions } from '@whiteboard/editor/action/types'
 import type { EditController } from '@whiteboard/editor/action/edit'
 import type { EditorScene } from '@whiteboard/editor-scene'
 import type { EditorCommand } from '@whiteboard/editor/state-engine/intents'
-import type { EditorSession } from '@whiteboard/editor/session/runtime'
+import type { EditSession } from '@whiteboard/editor/session/edit'
 import type { DocumentFrame } from '@whiteboard/editor-scene'
 import type { EditorWrite } from '@whiteboard/editor/write'
 
@@ -48,7 +48,12 @@ const writeRouteFromPoint = (input: {
 export const createEdgeActions = (input: {
   graph: EditorScene
   document: Pick<DocumentFrame, 'edge'>
-  session: Pick<EditorSession, 'state' | 'dispatch'>
+  editor: {
+    edit: {
+      get: () => EditSession
+    }
+    dispatch: (command: EditorCommand | readonly EditorCommand[]) => void
+  }
   write: Pick<EditorWrite, 'edge'>
   edit: Pick<EditController, 'startEdgeLabel' | 'clearEditingEdgeLabel'>
 }): EdgeActions => ({
@@ -100,7 +105,7 @@ export const createEdgeActions = (input: {
   },
   label: {
     add: (edgeId) => {
-      const currentEdit = input.session.state.edit.get()
+      const currentEdit = input.editor.edit.get()
       if (
         currentEdit
         && currentEdit.kind === 'edge-label'
@@ -114,7 +119,7 @@ export const createEdgeActions = (input: {
         return undefined
       }
 
-      input.session.dispatch({
+      input.editor.dispatch({
         type: 'selection.set',
         selection: {
           nodeIds: [],

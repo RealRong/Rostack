@@ -228,7 +228,7 @@ const validateFilter = (
   path = 'view.filter'
 ) => {
   const issues: ValidationIssue[] = []
-  viewApi.filter.rules.list(filter.rules).forEach((rule, index) => {
+  viewApi.filter.rules.read.list(filter.rules).forEach((rule, index) => {
     if (!string.isNonEmptyString(rule.fieldId)) {
       issues.push(createValidationIssue(source, 'view.invalidProjection', `Filter field id must be a non-empty string (${rule.id})`, `${path}.rules.${index}.fieldId`))
       return
@@ -889,14 +889,14 @@ const handleViewSearchSet: DataviewViewIntentHandlers['view.search.set'] = creat
 const handleViewFilterModeSet: DataviewViewIntentHandlers['view.filter.mode.set'] = createViewUpdateHandler(
   (input, view) => finalizeView(input.reader, {
     ...view,
-    filter: viewApi.filter.write.mode(view.filter, input.intent.mode)
+    filter: viewApi.filter.state.write.mode(view.filter, input.intent.mode)
   })
 )
 
 const handleViewFilterClear: DataviewViewIntentHandlers['view.filter.clear'] = createViewUpdateHandler(
   (input, view) => finalizeView(input.reader, {
     ...view,
-    filter: viewApi.filter.write.clear(view.filter)
+    filter: viewApi.filter.rules.write.clear(view.filter)
   })
 )
 
@@ -1163,7 +1163,7 @@ const lowerViewFilterCreate = (
   }
 
   try {
-    const created = viewApi.filter.write.insert(view.filter, field, {
+    const created = viewApi.filter.rules.write.insert(view.filter, field, {
       ...(explicitRuleId !== undefined
         ? { id: explicitRuleId }
         : {}),
@@ -1218,7 +1218,7 @@ const lowerViewFilterPatch = (
   }
 
   try {
-    const nextFilter = viewApi.filter.write.patch(
+    const nextFilter = viewApi.filter.rules.write.patch(
       view.filter,
       intent.rule,
       intent.patch,
@@ -1245,7 +1245,7 @@ const lowerViewFilterMove = (
   }
 
   try {
-    const nextFilter = viewApi.filter.write.move(
+    const nextFilter = viewApi.filter.rules.write.move(
       view.filter,
       intent.rule,
       intent.before
@@ -1273,7 +1273,7 @@ const lowerViewFilterRemove = (
   try {
     const nextView = finalizeView(reader, {
       ...view,
-      filter: viewApi.filter.write.remove(view.filter, intent.rule)
+      filter: viewApi.filter.rules.write.remove(view.filter, intent.rule)
     })
     return emitValidatedViewUpdate(input, view, nextView)
   } catch (error) {

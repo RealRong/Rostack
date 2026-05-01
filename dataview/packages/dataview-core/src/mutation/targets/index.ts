@@ -235,7 +235,7 @@ export const dataviewMutationRegistry = defineMutationRegistry<DataDoc>()({
           throw new Error(`View ${viewId} not found.`)
         }
 
-        return viewApi.filter.rules.list(view.filter.rules)
+        return viewApi.filter.rules.read.list(view.filter.rules)
       },
       identify: (rule: FilterRule) => rule.id,
       clone: (rule: FilterRule) => structuredClone(rule),

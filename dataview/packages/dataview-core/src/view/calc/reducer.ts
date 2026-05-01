@@ -328,6 +328,16 @@ const applyNumberDelta = (
   builder.adjust(value, delta)
 }
 
+const applyOptionIdsDelta = (
+  builder: CounterMapBuilder<string>,
+  optionIds: readonly string[] | undefined,
+  delta: number
+) => {
+  optionIds?.forEach(optionId => {
+    applyCountDelta(builder, optionId, delta)
+  })
+}
+
 const finalizeCountState = (
   previous: CountReducerState | undefined,
   next: CountReducerState | undefined
@@ -467,163 +477,137 @@ const finalizeStringCounterTable = (
     : EMPTY_STRING_COUNTS
 }
 
-const buildCountStateFromDenseEntries = (input: {
-  entriesByIndex: readonly CalculationEntry[]
-  recordIndexes?: readonly number[]
-}): CountReducerState => {
-  let nonEmpty = 0
-  const entriesByIndex = input.entriesByIndex
-  const recordIndexes = input.recordIndexes
+interface FieldReducerAggregation {
+  nonEmpty: number
+  numericSum: number
+  uniqueCounts?: Map<string, number>
+  numericCounts?: Map<number, number>
+  optionCounts?: StringCounterTable
+}
 
-  if (recordIndexes) {
-    const length = recordIndexes.length
-    for (let index = 0; index < length; index += 1) {
-      if (entriesByIndex[recordIndexes[index]!]!.empty !== true) {
-        nonEmpty += 1
-      }
-    }
-
-    return {
-      count: length,
-      nonEmpty
-    }
+const incrementMapCount = <K,>(
+  counts: Map<K, number>,
+  key: K | undefined
+) => {
+  if (key === undefined) {
+    return
   }
 
-  const length = entriesByIndex.length
-  for (let index = 0; index < length; index += 1) {
-    if (entriesByIndex[index]!.empty !== true) {
-      nonEmpty += 1
-    }
+  const current = counts.get(key)
+  counts.set(key, current === undefined ? 1 : current + 1)
+}
+
+const incrementOptionIds = (
+  counts: StringCounterTable,
+  optionIds: readonly string[] | undefined
+) => {
+  if (!optionIds?.length) {
+    return
   }
 
-  return {
-    count: length,
-    nonEmpty
+  const firstOptionId = optionIds[0]
+  if (firstOptionId !== undefined) {
+    counts[firstOptionId] = (counts[firstOptionId] ?? 0) + 1
+  }
+
+  for (let optionIndex = 1; optionIndex < optionIds.length; optionIndex += 1) {
+    const optionId = optionIds[optionIndex]!
+    counts[optionId] = (counts[optionId] ?? 0) + 1
   }
 }
 
-const buildUniqueCountsFromDenseEntries = (input: {
-  entriesByIndex: readonly CalculationEntry[]
-  recordIndexes?: readonly number[]
-}): ReadonlyMap<string, number> => {
-  const counts = new Map<string, number>()
-  const entriesByIndex = input.entriesByIndex
-  const recordIndexes = input.recordIndexes
+const createFieldReducerAggregation = (
+  capabilities: ReducerCapabilitySet
+): FieldReducerAggregation => ({
+  nonEmpty: 0,
+  numericSum: 0,
+  ...(capabilities.unique ? { uniqueCounts: new Map<string, number>() } : {}),
+  ...(capabilities.numeric ? { numericCounts: new Map<number, number>() } : {}),
+  ...(capabilities.option ? { optionCounts: createStringCounterTable() } : {})
+})
 
-  if (recordIndexes) {
-    for (let index = 0; index < recordIndexes.length; index += 1) {
-      const uniqueKey = entriesByIndex[recordIndexes[index]!]!.uniqueKey
-      if (uniqueKey === undefined) {
-        continue
-      }
-
-      const current = counts.get(uniqueKey)
-      counts.set(uniqueKey, current === undefined ? 1 : current + 1)
+const accumulateCalculationEntry = (
+  aggregation: FieldReducerAggregation,
+  entry: CalculationEntry | undefined,
+  capabilities: ReducerCapabilitySet,
+  treatMissingAsNonEmpty = false
+) => {
+  if (!entry) {
+    if (treatMissingAsNonEmpty && capabilities.count) {
+      aggregation.nonEmpty += 1
     }
-  } else {
-    for (let index = 0; index < entriesByIndex.length; index += 1) {
-      const uniqueKey = entriesByIndex[index]!.uniqueKey
-      if (uniqueKey === undefined) {
-        continue
-      }
-
-      const current = counts.get(uniqueKey)
-      counts.set(uniqueKey, current === undefined ? 1 : current + 1)
-    }
+    return
   }
 
-  return counts.size
-    ? counts
-    : EMPTY_STRING_COUNTS
-}
-
-const buildNumericStateFromDenseEntries = (input: {
-  entriesByIndex: readonly CalculationEntry[]
-  recordIndexes?: readonly number[]
-}): {
-  counts: ReadonlyMap<number, number>
-  sum: number
-} => {
-  let sum = 0
-  const counts = new Map<number, number>()
-  const entriesByIndex = input.entriesByIndex
-  const recordIndexes = input.recordIndexes
-
-  if (recordIndexes) {
-    for (let index = 0; index < recordIndexes.length; index += 1) {
-      const number = entriesByIndex[recordIndexes[index]!]!.number
-      if (number === undefined) {
-        continue
-      }
-
-      sum += number
-      const current = counts.get(number)
-      counts.set(number, current === undefined ? 1 : current + 1)
-    }
-  } else {
-    for (let index = 0; index < entriesByIndex.length; index += 1) {
-      const number = entriesByIndex[index]!.number
-      if (number === undefined) {
-        continue
-      }
-
-      sum += number
-      const current = counts.get(number)
-      counts.set(number, current === undefined ? 1 : current + 1)
-    }
+  if (capabilities.count && entry.empty !== true) {
+    aggregation.nonEmpty += 1
   }
 
-  return {
-    counts: counts.size
-      ? counts
-      : EMPTY_NUMBER_COUNTS,
-    sum
+  if (aggregation.uniqueCounts) {
+    incrementMapCount(aggregation.uniqueCounts, entry.uniqueKey)
+  }
+
+  if (aggregation.numericCounts && entry.number !== undefined) {
+    aggregation.numericSum += entry.number
+    incrementMapCount(aggregation.numericCounts, entry.number)
+  }
+
+  if (aggregation.optionCounts) {
+    incrementOptionIds(aggregation.optionCounts, entry.optionIds)
   }
 }
 
-const buildOptionCountsFromDenseEntries = (input: {
-  entriesByIndex: readonly CalculationEntry[]
+const visitCalculationEntries = (input: {
+  entries?: ReadonlyMap<RecordId, CalculationEntry>
+  entriesByIndex?: readonly CalculationEntry[]
+  recordIds?: readonly RecordId[]
   recordIndexes?: readonly number[]
-}): ReadonlyMap<string, number> => {
-  const counts = createStringCounterTable()
-  const entriesByIndex = input.entriesByIndex
-  const recordIndexes = input.recordIndexes
+  visit: (entry: CalculationEntry | undefined) => void
+}): boolean => {
+  const {
+    entries,
+    entriesByIndex,
+    recordIds,
+    recordIndexes,
+    visit
+  } = input
 
-  if (recordIndexes) {
+  if (recordIndexes && entriesByIndex) {
     for (let index = 0; index < recordIndexes.length; index += 1) {
-      const optionIds: readonly string[] | undefined = entriesByIndex[recordIndexes[index]!]!.optionIds
-      if (!optionIds?.length) {
-        continue
-      }
-
-      const firstOptionId = optionIds[0]
-      if (firstOptionId !== undefined) {
-        counts[firstOptionId] = (counts[firstOptionId] ?? 0) + 1
-      }
-      for (let optionIndex = 1; optionIndex < optionIds.length; optionIndex += 1) {
-        const optionId = optionIds[optionIndex]!
-        counts[optionId] = (counts[optionId] ?? 0) + 1
-      }
+      visit(entriesByIndex[recordIndexes[index]!]!)
     }
-  } else {
-    for (let index = 0; index < entriesByIndex.length; index += 1) {
-      const optionIds: readonly string[] | undefined = entriesByIndex[index]!.optionIds
-      if (!optionIds?.length) {
-        continue
-      }
-
-      const firstOptionId = optionIds[0]
-      if (firstOptionId !== undefined) {
-        counts[firstOptionId] = (counts[firstOptionId] ?? 0) + 1
-      }
-      for (let optionIndex = 1; optionIndex < optionIds.length; optionIndex += 1) {
-        const optionId = optionIds[optionIndex]!
-        counts[optionId] = (counts[optionId] ?? 0) + 1
-      }
-    }
+    return true
   }
 
-  return finalizeStringCounterTable(counts)!
+  if (entriesByIndex) {
+    for (let index = 0; index < entriesByIndex.length; index += 1) {
+      visit(entriesByIndex[index]!)
+    }
+    return true
+  }
+
+  if (recordIds && entries && recordIds.length === entries.size) {
+    for (const entry of entries.values()) {
+      visit(entry)
+    }
+    return true
+  }
+
+  if (recordIds && entries) {
+    for (let index = 0; index < recordIds.length; index += 1) {
+      visit(entries.get(recordIds[index]!))
+    }
+    return true
+  }
+
+  if (entries) {
+    for (const entry of entries.values()) {
+      visit(entry)
+    }
+    return true
+  }
+
+  return false
 }
 
 export const buildFieldReducerState = (input: {
@@ -658,237 +642,21 @@ export const buildFieldReducerState = (input: {
   }
 
   const needsCount = capabilities.count === true
-  const needsUnique = capabilities.unique === true
-  const needsNumeric = capabilities.numeric === true
-  const needsOption = capabilities.option === true
-  const denseEntries = entriesByIndex
-  const indexedRecordIndexes = recordIndexes
-
-  if (denseEntries) {
-    if (needsCount && !needsUnique && !needsNumeric && !needsOption) {
-      return buildReducerState({
-        capabilities,
-        countState: buildCountStateFromDenseEntries({
-          entriesByIndex: denseEntries,
-          ...(indexedRecordIndexes ? { recordIndexes: indexedRecordIndexes } : {})
-        })
-      })
-    }
-
-    if (!needsCount && needsUnique && !needsNumeric && !needsOption) {
-      return buildReducerState({
-        capabilities,
-        uniqueCounts: buildUniqueCountsFromDenseEntries({
-          entriesByIndex: denseEntries,
-          ...(indexedRecordIndexes ? { recordIndexes: indexedRecordIndexes } : {})
-        })
-      })
-    }
-
-    if (!needsCount && !needsUnique && needsNumeric && !needsOption) {
-      const numericState = buildNumericStateFromDenseEntries({
-        entriesByIndex: denseEntries,
-        ...(indexedRecordIndexes ? { recordIndexes: indexedRecordIndexes } : {})
-      })
-      return buildReducerState({
-        capabilities,
-        numericCounts: numericState.counts,
-        numericSum: numericState.sum
-      })
-    }
-
-    if (!needsCount && !needsUnique && !needsNumeric && needsOption) {
-      return buildReducerState({
-        capabilities,
-        optionCounts: buildOptionCountsFromDenseEntries({
-          entriesByIndex: denseEntries,
-          ...(indexedRecordIndexes ? { recordIndexes: indexedRecordIndexes } : {})
-        })
-      })
-    }
-  }
-
-  let count = needsCount
+  const count = needsCount
     ? (recordIndexes?.length ?? recordIds?.length ?? entriesByIndex?.length ?? entries?.size ?? 0)
     : 0
-  let nonEmpty = 0
-  let numericSum = 0
-  const uniqueCounts = needsUnique
-    ? new Map<string, number>()
-    : undefined
-  const numericCounts = needsNumeric
-    ? new Map<number, number>()
-    : undefined
-  const optionCounts = needsOption
-    ? createStringCounterTable()
-    : undefined
+  const aggregation = createFieldReducerAggregation(capabilities)
+  const treatMissingAsNonEmpty = Boolean(recordIds && entries && recordIds.length !== entries.size)
 
-  if (indexedRecordIndexes && denseEntries) {
-    for (let index = 0; index < indexedRecordIndexes.length; index += 1) {
-      const entry = denseEntries[indexedRecordIndexes[index]!]!
-      if (needsCount && entry.empty !== true) {
-        nonEmpty += 1
-      }
-
-      const uniqueKey = entry.uniqueKey
-      if (uniqueCounts && uniqueKey !== undefined) {
-        const current = uniqueCounts.get(uniqueKey)
-        uniqueCounts.set(uniqueKey, current === undefined ? 1 : current + 1)
-      }
-
-      const number = entry.number
-      if (numericCounts && number !== undefined) {
-        numericSum += number
-        const current = numericCounts.get(number)
-        numericCounts.set(number, current === undefined ? 1 : current + 1)
-      }
-
-      const optionIds = entry.optionIds
-      if (optionCounts && optionIds?.length) {
-        const firstOptionId = optionIds[0]
-        if (firstOptionId !== undefined) {
-          optionCounts[firstOptionId] = (optionCounts[firstOptionId] ?? 0) + 1
-        }
-        for (let optionIndex = 1; optionIndex < optionIds.length; optionIndex += 1) {
-          const optionId = optionIds[optionIndex]!
-          optionCounts[optionId] = (optionCounts[optionId] ?? 0) + 1
-        }
-      }
+  if (!visitCalculationEntries({
+    entries,
+    entriesByIndex,
+    recordIds,
+    recordIndexes,
+    visit: entry => {
+      accumulateCalculationEntry(aggregation, entry, capabilities, treatMissingAsNonEmpty)
     }
-  } else if (denseEntries) {
-    for (let index = 0; index < denseEntries.length; index += 1) {
-      const entry = denseEntries[index]!
-      if (needsCount && entry.empty !== true) {
-        nonEmpty += 1
-      }
-
-      const uniqueKey = entry.uniqueKey
-      if (uniqueCounts && uniqueKey !== undefined) {
-        const current = uniqueCounts.get(uniqueKey)
-        uniqueCounts.set(uniqueKey, current === undefined ? 1 : current + 1)
-      }
-
-      const number = entry.number
-      if (numericCounts && number !== undefined) {
-        numericSum += number
-        const current = numericCounts.get(number)
-        numericCounts.set(number, current === undefined ? 1 : current + 1)
-      }
-
-      const optionIds = entry.optionIds
-      if (optionCounts && optionIds?.length) {
-        const firstOptionId = optionIds[0]
-        if (firstOptionId !== undefined) {
-          optionCounts[firstOptionId] = (optionCounts[firstOptionId] ?? 0) + 1
-        }
-        for (let optionIndex = 1; optionIndex < optionIds.length; optionIndex += 1) {
-          const optionId = optionIds[optionIndex]!
-          optionCounts[optionId] = (optionCounts[optionId] ?? 0) + 1
-        }
-      }
-    }
-  } else if (recordIds && entries && recordIds.length === entries.size) {
-    for (const entry of entries.values()) {
-      if (needsCount && entry.empty !== true) {
-        nonEmpty += 1
-      }
-
-      const uniqueKey = entry.uniqueKey
-      if (uniqueCounts && uniqueKey !== undefined) {
-        const current = uniqueCounts.get(uniqueKey)
-        uniqueCounts.set(uniqueKey, current === undefined ? 1 : current + 1)
-      }
-
-      const number = entry.number
-      if (numericCounts && number !== undefined) {
-        numericSum += number
-        const current = numericCounts.get(number)
-        numericCounts.set(number, current === undefined ? 1 : current + 1)
-      }
-
-      const optionIds = entry.optionIds
-      if (optionCounts && optionIds?.length) {
-        const firstOptionId = optionIds[0]
-        if (firstOptionId !== undefined) {
-          optionCounts[firstOptionId] = (optionCounts[firstOptionId] ?? 0) + 1
-        }
-        for (let optionIndex = 1; optionIndex < optionIds.length; optionIndex += 1) {
-          const optionId = optionIds[optionIndex]!
-          optionCounts[optionId] = (optionCounts[optionId] ?? 0) + 1
-        }
-      }
-    }
-  } else if (recordIds && entries) {
-    for (let index = 0; index < recordIds.length; index += 1) {
-      const entry = entries.get(recordIds[index]!)
-      if (!entry) {
-        if (needsCount) {
-          nonEmpty += 1
-        }
-        continue
-      }
-
-      if (needsCount && entry.empty !== true) {
-        nonEmpty += 1
-      }
-
-      const uniqueKey = entry.uniqueKey
-      if (uniqueCounts && uniqueKey !== undefined) {
-        const current = uniqueCounts.get(uniqueKey)
-        uniqueCounts.set(uniqueKey, current === undefined ? 1 : current + 1)
-      }
-
-      const number = entry.number
-      if (numericCounts && number !== undefined) {
-        numericSum += number
-        const current = numericCounts.get(number)
-        numericCounts.set(number, current === undefined ? 1 : current + 1)
-      }
-
-      const optionIds = entry.optionIds
-      if (optionCounts && optionIds?.length) {
-        const firstOptionId = optionIds[0]
-        if (firstOptionId !== undefined) {
-          optionCounts[firstOptionId] = (optionCounts[firstOptionId] ?? 0) + 1
-        }
-        for (let optionIndex = 1; optionIndex < optionIds.length; optionIndex += 1) {
-          const optionId = optionIds[optionIndex]!
-          optionCounts[optionId] = (optionCounts[optionId] ?? 0) + 1
-        }
-      }
-    }
-  } else if (entries) {
-    for (const entry of entries.values()) {
-      if (needsCount && entry.empty !== true) {
-        nonEmpty += 1
-      }
-
-      const uniqueKey = entry.uniqueKey
-      if (uniqueCounts && uniqueKey !== undefined) {
-        const current = uniqueCounts.get(uniqueKey)
-        uniqueCounts.set(uniqueKey, current === undefined ? 1 : current + 1)
-      }
-
-      const number = entry.number
-      if (numericCounts && number !== undefined) {
-        numericSum += number
-        const current = numericCounts.get(number)
-        numericCounts.set(number, current === undefined ? 1 : current + 1)
-      }
-
-      const optionIds = entry.optionIds
-      if (optionCounts && optionIds?.length) {
-        const firstOptionId = optionIds[0]
-        if (firstOptionId !== undefined) {
-          optionCounts[firstOptionId] = (optionCounts[firstOptionId] ?? 0) + 1
-        }
-        for (let optionIndex = 1; optionIndex < optionIds.length; optionIndex += 1) {
-          const optionId = optionIds[optionIndex]!
-          optionCounts[optionId] = (optionCounts[optionId] ?? 0) + 1
-        }
-      }
-    }
-  } else {
+  })) {
     return getEmptyFieldReducerState(capabilities)
   }
 
@@ -898,24 +666,24 @@ export const buildFieldReducerState = (input: {
       ? {
           countState: {
             count,
-            nonEmpty
+            nonEmpty: aggregation.nonEmpty
           }
         }
       : {}),
-    ...(uniqueCounts
+    ...(aggregation.uniqueCounts
       ? {
-          uniqueCounts
+          uniqueCounts: aggregation.uniqueCounts
         }
       : {}),
-    ...(numericCounts
+    ...(aggregation.numericCounts
       ? {
-          numericCounts,
-          numericSum
+          numericCounts: aggregation.numericCounts,
+          numericSum: aggregation.numericSum
         }
       : {}),
-    ...(optionCounts
+    ...(aggregation.optionCounts
       ? {
-          optionCounts: finalizeStringCounterTable(optionCounts)
+          optionCounts: finalizeStringCounterTable(aggregation.optionCounts)
         }
       : {})
   })
@@ -985,12 +753,8 @@ export const createFieldReducerBuilder = (input: {
       }
 
       if (optionCounts) {
-        previousEntry?.optionIds?.forEach(optionId => {
-          applyCountDelta(optionCounts, optionId, -1)
-        })
-        nextEntry?.optionIds?.forEach(optionId => {
-          applyCountDelta(optionCounts, optionId, 1)
-        })
+        applyOptionIdsDelta(optionCounts, previousEntry?.optionIds, -1)
+        applyOptionIdsDelta(optionCounts, nextEntry?.optionIds, 1)
       }
 
       return true

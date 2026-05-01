@@ -38,9 +38,9 @@ export const SelectionActionMenu = ({
 }) => {
   const editor = useEditorRuntime()
   const { clipboard } = useWhiteboardServices()
-  const target = useStoreValue(editor.state.selection)
-  const nodeStats = useStoreValue(editor.derived.editor.selection.node.stats)
-  const summary = useStoreValue(editor.derived.scene.selection.view).summary
+  const target = useStoreValue(editor.projection.stores.runtime.editor.selection)
+  const nodeStats = useStoreValue(editor.projection.derived.editor.selection.node.stats)
+  const summary = useStoreValue(editor.projection.derived.scene.selection.view).summary
   const nodeIds = target.nodeIds
   const edgeIds = target.edgeIds
   const count = nodeIds.length + edgeIds.length
@@ -48,7 +48,7 @@ export const SelectionActionMenu = ({
     editor,
     target
   })
-  const exactGroupIds = editor.scene.groups.exact(target)
+  const exactGroupIds = editor.projection.groups.exact(target)
   const pureNodeSelection =
     nodeIds.length > 0
     && edgeIds.length === 0

@@ -67,7 +67,7 @@ const createFilterProjection = (input: {
   view: View
   reader: DocumentReader
 }): ViewFilterProjection => ({
-  rules: filterApi.rules.list(input.view.filter.rules).map(rule => createFilterRuleProjection(
+  rules: filterApi.rules.read.list(input.view.filter.rules).map(rule => createFilterRuleProjection(
     input.reader.fields.get(rule.fieldId),
     rule
   ))

@@ -1,6 +1,6 @@
 import {
   applyFilterPreset,
-  createDefaultFilterRule,
+  createFilterRule,
   createFilterOptionSetValue,
   deriveFilterRuleDefaultValue,
   getFilterBucketLookup,
@@ -16,7 +16,7 @@ import {
   projectFilterRuleValue,
   readFilterOptionSetValue,
   setFilterRuleValue
-} from './filterSpec'
+} from './spec'
 import {
   cloneFilterRules,
   cloneFilterState,
@@ -33,8 +33,8 @@ import {
   writeFilterMode,
   writeFilterPatch,
   writeFilterRemove
-} from './filterState'
-import { planFilterCandidateLookup } from './filterPlan'
+} from './state'
+import { planFilterCandidateLookup } from './plan'
 
 export type {
   FilterBucketLookup,
@@ -46,23 +46,26 @@ export type {
   FilterPreset,
   FilterSortLookup,
   FilterSpec
-} from './filterTypes'
+} from './types'
 export type {
   FilterCandidateLookupPlan
-} from './filterPlan'
+} from './plan'
 
 export const filter = {
   state: {
     clone: cloneFilterState,
     normalize: normalizeFilterState,
-    same: sameFilterState
+    same: sameFilterState,
+    write: {
+      mode: writeFilterMode
+    }
   },
   rule: {
     same: sameFilterRule,
     spec: getFilterSpec,
     presetIds: getFilterPresetIds,
     hasPreset: hasFilterPreset,
-    create: createDefaultFilterRule,
+    create: createFilterRule,
     applyPreset: applyFilterPreset,
     editorKind: getFilterEditorKind,
     effective: isFilterRuleEffective,
@@ -76,19 +79,20 @@ export const filter = {
     normalize: normalizeFilterRule
   },
   rules: {
-    clone: cloneFilterRules,
-    normalize: normalizeFilterRules,
-    same: sameFilterRules,
-    ...filterRuleAccess
-  },
-  write: {
-    create: writeFilterCreate,
-    insert: writeFilterInsert,
-    move: writeFilterMove,
-    patch: writeFilterPatch,
-    mode: writeFilterMode,
-    remove: writeFilterRemove,
-    clear: writeFilterClear
+    read: {
+      clone: cloneFilterRules,
+      normalize: normalizeFilterRules,
+      same: sameFilterRules,
+      ...filterRuleAccess
+    },
+    write: {
+      create: writeFilterCreate,
+      insert: writeFilterInsert,
+      move: writeFilterMove,
+      patch: writeFilterPatch,
+      remove: writeFilterRemove,
+      clear: writeFilterClear
+    }
   },
   value: {
     optionSet: {

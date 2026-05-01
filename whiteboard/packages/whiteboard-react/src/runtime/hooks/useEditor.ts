@@ -6,8 +6,8 @@ import { useStoreValue } from '@shared/react'
 import { store } from '@shared/core'
 import { useWhiteboardServices } from '@whiteboard/react/runtime/hooks/useWhiteboard'
 
-type Tool = ReturnType<WhiteboardInstance['state']['tool']['get']>
-type InteractionState = ReturnType<WhiteboardInstance['state']['interaction']['get']>
+type Tool = ReturnType<WhiteboardInstance['projection']['stores']['runtime']['editor']['tool']['get']>
+type InteractionState = ReturnType<WhiteboardInstance['projection']['stores']['runtime']['editor']['interaction']['get']>
 
 export const useEditorRuntime = (): WhiteboardRuntime => {
   return useWhiteboardServices().editor
@@ -23,9 +23,9 @@ export const useEditorValue = <T,>(
 }
 
 export const useTool = (): Tool => {
-  return useEditorValue(editor => editor.state.tool)
+  return useEditorValue(editor => editor.projection.stores.runtime.editor.tool)
 }
 
 export const useInteraction = (): InteractionState => {
-  return useEditorValue(editor => editor.state.interaction)
+  return useEditorValue(editor => editor.projection.stores.runtime.editor.interaction)
 }

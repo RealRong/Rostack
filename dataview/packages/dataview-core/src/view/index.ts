@@ -56,7 +56,6 @@ import {
   clearDisplayFields,
   clearViewOrders,
   cloneDisplay,
-  cloneViewCalc,
   moveDisplayFields,
   hideDisplayField,
   normalizeViewDisplay,
@@ -65,9 +64,7 @@ import {
   patchTableLayout,
   replaceDisplayFields,
   sameDisplay,
-  sameViewCalc,
   sameViewOptions,
-  setViewCalcMetric,
   showDisplayField
 } from '@dataview/core/view/state'
 import { active } from '@dataview/core/view/active'
@@ -113,9 +110,9 @@ export const view = {
   },
   calc: {
     ...calc,
-    clone: cloneViewCalc,
-    same: sameViewCalc,
-    set: setViewCalcMetric
+    clone: calc.view.clone,
+    same: calc.view.same,
+    set: calc.view.set
   },
   order: {
     normalize: normalizeRecordOrderIds,

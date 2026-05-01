@@ -16,7 +16,7 @@ export const viewSearchFields = (
 export const viewFilterFields = (
   view: View
 ): ReadonlySet<FieldId> => new Set(
-  filter.rules.list(view.filter.rules).map(rule => rule.fieldId)
+  filter.rules.read.list(view.filter.rules).map(rule => rule.fieldId)
 )
 
 export const viewSortFields = (

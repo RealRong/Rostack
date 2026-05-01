@@ -15,13 +15,13 @@ const PresenceNodeSelection = ({
   color: string
 }) => {
   const editor = useEditorRuntime()
-  const item = useKeyedStoreValue(editor.scene.stores.render.node.byId, nodeId)
+  const item = useKeyedStoreValue(editor.projection.stores.render.node.byId, nodeId)
 
   if (!item) {
     return null
   }
 
-  const bounds = editor.scene.viewport.screenRect(item.bounds)
+  const bounds = editor.projection.viewport.screenRect(item.bounds)
 
   return (
     <div
@@ -46,7 +46,7 @@ const PresenceEdgeSelection = ({
   color: string
 }) => {
   const editor = useEditorRuntime()
-  const edge = useKeyedStoreValue(editor.scene.stores.graph.edge.byId, edgeId)
+  const edge = useKeyedStoreValue(editor.projection.stores.graph.edge.byId, edgeId)
 
   if (!edge) {
     return null
@@ -57,7 +57,7 @@ const PresenceEdgeSelection = ({
     return null
   }
 
-  const screenBounds = editor.scene.viewport.screenRect(bounds)
+  const screenBounds = editor.projection.viewport.screenRect(bounds)
 
   return (
     <div
@@ -85,7 +85,7 @@ const PresenceCursor = ({
     return null
   }
 
-  const cursor = editor.scene.viewport.screenPoint(peer.pointer.world)
+  const cursor = editor.projection.viewport.screenPoint(peer.pointer.world)
 
   return (
     <div
@@ -143,7 +143,7 @@ export const PresenceLayer = ({
   binding?: WhiteboardPresenceBinding
 }) => {
   const editor = useEditorRuntime()
-  const viewport = useStoreValue(editor.state.viewport)
+  const viewport = useStoreValue(editor.projection.stores.runtime.editor.viewport)
   void viewport
   const [version, setVersion] = useState(0)
 

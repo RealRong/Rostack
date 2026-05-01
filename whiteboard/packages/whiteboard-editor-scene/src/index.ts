@@ -1,12 +1,7 @@
-export { createRuntime } from './projection/createRuntime'
+export { createProjectionRuntime } from './projection/createProjectionRuntime'
 export type {
   EditorSceneRuntime
 } from './contracts/runtime'
-export type {
-  EditorSceneSource,
-  EditorSceneSourceEvent,
-  EditorSceneSourceSnapshot
-} from './contracts/source'
 
 export type * from './contracts/state'
 export type * from './contracts/capture'
@@ -24,6 +19,13 @@ export type {
   EdgeChromeView,
   EdgeBoxView,
   EdgeDraft,
+  EditorProjectionDelta,
+  EditorProjectionDrawBrushState,
+  EditorProjectionDrawState,
+  EditorProjectionInteraction,
+  EditorProjectionPreviewDelta,
+  EditorProjectionSnapshot,
+  EditorProjectionTouchedIds,
   EdgeGuidePreview,
   EdgeNodes,
   EdgePreview,
@@ -59,6 +61,8 @@ export type {
   NodeView,
   OwnerRef,
   PreviewInput,
+  ProjectionInteractionMode,
+  ProjectionUpdateInput,
   Result,
   RuntimeFrame,
   RuntimeStores,

@@ -17,7 +17,7 @@ const EdgeStaticItem = memo(({
 }) => {
   const editor = useEditorRuntime()
   const item = useKeyedStoreValue(
-    editor.scene.stores.render.edge.statics.byId,
+    editor.projection.stores.render.edge.statics.byId,
     staticId
   )
   if (!item) {
@@ -55,8 +55,8 @@ EdgeStaticItem.displayName = 'EdgeStaticItem'
 
 export const EdgeStaticLayer = memo(() => {
   const editor = useEditorRuntime()
-  const staticIds = useStoreValue(editor.scene.stores.render.edge.statics.ids)
-  const maskIds = useStoreValue(editor.scene.stores.render.edge.masks.ids)
+  const staticIds = useStoreValue(editor.projection.stores.render.edge.statics.ids)
+  const maskIds = useStoreValue(editor.projection.stores.render.edge.masks.ids)
   const maskedEdgeIds = useMemo(
     () => new Set(maskIds),
     [maskIds]

@@ -8,7 +8,8 @@ import type { EditController } from '@whiteboard/editor/action/edit'
 import type { MindmapActions } from '@whiteboard/editor/action/types'
 import { createMindmapActions as createMindmapWorkflowActions } from '@whiteboard/editor/tasks/mindmap'
 import type { EditorScene } from '@whiteboard/editor-scene'
-import type { EditorSession } from '@whiteboard/editor/session/runtime'
+import type { EditorInputPreviewState } from '@whiteboard/editor/session/preview/types'
+import type { EditorCommand } from '@whiteboard/editor/state-engine/intents'
 import type { EditorTaskRuntime } from '@whiteboard/editor/tasks/runtime'
 import type { DocumentFrame } from '@whiteboard/editor-scene'
 import type { EditorWrite } from '@whiteboard/editor/write'
@@ -63,14 +64,19 @@ const readBranchScopeIds = (input: {
 export const createMindmapActionApi = (input: {
   graph: EditorScene
   document: Pick<DocumentFrame, 'node'>
-  session: Pick<EditorSession, 'preview' | 'dispatch'>
+  editor: {
+    preview: {
+      get: () => EditorInputPreviewState
+    }
+    dispatch: (command: EditorCommand | readonly EditorCommand[]) => void
+  }
   tasks: EditorTaskRuntime
   write: Pick<EditorWrite, 'mindmap'>
   edit: Pick<EditController, 'focusMindmapNode' | 'focusMindmapRoot'>
 }): MindmapActions => {
   const workflow = createMindmapWorkflowActions({
     graph: input.graph,
-    session: input.session,
+    editor: input.editor,
     tasks: input.tasks,
     write: input.write,
     focusNode: input.edit.focusMindmapNode,

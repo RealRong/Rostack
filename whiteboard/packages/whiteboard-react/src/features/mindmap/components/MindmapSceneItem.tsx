@@ -15,7 +15,7 @@ export const MindmapSceneItem = memo(({
 }: MindmapSceneItemProps) => {
   const editor = useEditorRuntime()
   const scene = useOptionalKeyedStoreValue(
-    editor.scene.stores.graph.mindmap.byId,
+    editor.projection.stores.graph.mindmap.byId,
     mindmapId,
     undefined
   )

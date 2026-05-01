@@ -16,8 +16,38 @@ import type {
   PointerDownInput
 } from '@whiteboard/editor/types/input'
 import { createPressDragSession } from '@whiteboard/editor/input/session/press'
-import { startEdgeLabelEdit } from '@whiteboard/editor/edit/runtime'
 import type { EditorHostDeps } from '@whiteboard/editor/input/runtime'
+
+const startEdgeLabelEdit = (input: {
+  ctx: Pick<EditorHostDeps, 'session' | 'document'>
+  edgeId: EdgeId
+  labelId: string
+  caret: {
+    kind: 'point'
+    client: {
+      x: number
+      y: number
+    }
+  }
+}) => {
+  const edge = input.ctx.document.edge(input.edgeId)
+  const label = edge?.labels?.find((entry) => entry.id === input.labelId)
+  if (!edge || !label) {
+    return
+  }
+
+  input.ctx.session.dispatch({
+    type: 'edit.set',
+    edit: {
+      kind: 'edge-label',
+      edgeId: input.edgeId,
+      labelId: input.labelId,
+      text: typeof label.text === 'string' ? label.text : '',
+      composing: false,
+      caret: input.caret
+    }
+  })
+}
 
 type EdgeLabelDragDraft = {
   t: number
@@ -253,8 +283,7 @@ export const createEdgeLabelPressSession = (
       }
     })
     startEdgeLabelEdit({
-      session: ctx.session,
-      document: ctx.document,
+      ctx,
       edgeId: input.edgeId,
       labelId: input.labelId,
       caret: {

@@ -8,12 +8,9 @@ import type {
 } from '@dataview/core/types'
 import { createId, entityTable, equal } from '@shared/core'
 import {
-  applyFilterPreset,
-  cloneFilterRule,
-  createDefaultFilterRule,
-  normalizeFilterRule,
-  setFilterRuleValue
-} from '@dataview/core/view/filterSpec'
+  createFilterRule,
+  patchFilterRule
+} from './spec'
 
 const createFilterRuleId = (): ViewFilterRuleId => createId('filter') as ViewFilterRuleId
 
@@ -21,10 +18,6 @@ const EMPTY_FILTER_RULES: EntityTable<ViewFilterRuleId, FilterRule> = {
   byId: {} as Record<ViewFilterRuleId, FilterRule>,
   ids: []
 }
-
-const hasValue = (
-  value: unknown
-) => value !== undefined
 
 const normalizeFilterRuleShape = (
   value: unknown
@@ -209,13 +202,16 @@ export const writeFilterInsert = (
     throw new Error(`Filter rule already exists: ${id}`)
   }
 
-  let rule = createDefaultFilterRule(id, field)
-  if (input.presetId !== undefined) {
-    rule = applyFilterPreset(field, rule, input.presetId)
-  }
-  if (Object.prototype.hasOwnProperty.call(input, 'value')) {
-    rule = setFilterRuleValue(field, rule, input.value)
-  }
+  const rule = createFilterRule({
+    id,
+    field,
+    ...(input.presetId !== undefined
+      ? { presetId: input.presetId }
+      : {}),
+    ...(Object.prototype.hasOwnProperty.call(input, 'value')
+      ? { value: input.value }
+      : {})
+  })
 
   const inserted = entityTable.write.put(filter.rules, rule)
   const nextIds = inserted.ids.filter((ruleId) => ruleId !== id)
@@ -259,27 +255,15 @@ export const writeFilterPatch = (
     throw new Error(`Unknown filter rule ${id}`)
   }
 
-  let nextRule = currentRule
   if (patch.fieldId !== undefined) {
     assertFilterFieldAvailable(filter.rules, patch.fieldId, id)
-    nextRule = normalizeFilterRule(field, {
-      id,
-      fieldId: patch.fieldId,
-      presetId: patch.presetId ?? currentRule.presetId,
-      ...(hasValue(patch.value)
-        ? { value: patch.value }
-        : hasValue(currentRule.value)
-          ? { value: currentRule.value }
-          : {})
-    })
-  } else {
-    if (patch.presetId !== undefined) {
-      nextRule = applyFilterPreset(field, nextRule, patch.presetId)
-    }
-    if (Object.prototype.hasOwnProperty.call(patch, 'value')) {
-      nextRule = setFilterRuleValue(field, nextRule, patch.value)
-    }
   }
+
+  const nextRule = patchFilterRule({
+    field,
+    rule: currentRule,
+    patch
+  })
 
   if (sameFilterRule(currentRule, nextRule)) {
     return filter
@@ -287,7 +271,7 @@ export const writeFilterPatch = (
 
   return {
     mode: filter.mode,
-    rules: entityTable.write.patch(filter.rules, id, cloneFilterRule(nextRule))
+    rules: entityTable.write.patch(filter.rules, id, nextRule)
   }
 }
 

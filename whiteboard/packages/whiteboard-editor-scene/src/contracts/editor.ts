@@ -51,8 +51,10 @@ import type {
   NodeTemplate,
   Point,
   Rect,
-  Size
+  Size,
+  Viewport
 } from '@whiteboard/core/types'
+import type { MutationDelta } from '@shared/mutation'
 import type {
   ProjectionTrace,
   Revision
@@ -100,6 +102,98 @@ export interface SceneViewSnapshot {
 }
 
 export type SceneViewInput = () => SceneViewSnapshot
+
+export type ProjectionInteractionMode =
+  | 'idle'
+  | 'press'
+  | 'draw'
+  | 'viewport-pan'
+  | 'marquee'
+  | 'node-drag'
+  | 'mindmap-drag'
+  | 'node-transform'
+  | 'edge-drag'
+  | 'edge-label'
+  | 'edge-connect'
+  | 'edge-route'
+
+export type EditorProjectionBrushStyle = Readonly<{
+  color: string
+  width: number
+}>
+
+export type EditorProjectionDrawBrushState = Readonly<{
+  slot: '1' | '2' | '3'
+  slots: Readonly<Record<'1' | '2' | '3', EditorProjectionBrushStyle>>
+}>
+
+export type EditorProjectionDrawState = Readonly<{
+  pen: EditorProjectionDrawBrushState
+  highlighter: EditorProjectionDrawBrushState
+}>
+
+export interface EditorProjectionInteraction {
+  mode: ProjectionInteractionMode
+  chrome: boolean
+  space: boolean
+  hover: HoverState
+}
+
+export interface EditorProjectionSnapshot {
+  tool: ToolState
+  draw: EditorProjectionDrawState
+  selection: SelectionTarget
+  edit: EditSession | null
+  interaction: EditorProjectionInteraction
+  preview: PreviewInput
+  viewport: Viewport
+  view: SceneViewSnapshot
+}
+
+export interface EditorProjectionTouchedIds {
+  touchedNodeIds: readonly NodeId[]
+  touchedEdgeIds: readonly EdgeId[]
+  touchedMindmapIds: readonly MindmapId[]
+}
+
+export interface EditorProjectionEditDelta {
+  touchedDraftEdgeIds: readonly EdgeId[]
+}
+
+export interface EditorProjectionPreviewDelta extends EditorProjectionTouchedIds {
+  marquee: boolean
+  guides: boolean
+  draw: boolean
+  edgeGuide: boolean
+  hover: boolean
+}
+
+export interface EditorProjectionDelta {
+  tool?: true
+  draw?: true
+  selection?: true
+  edit?: true | EditorProjectionEditDelta
+  interaction?: {
+    mode?: true
+    chrome?: true
+    space?: true
+    hover?: true | EditorProjectionTouchedIds
+  }
+  preview?: true | EditorProjectionPreviewDelta
+  viewport?: true
+}
+
+export interface ProjectionUpdateInput {
+  document: {
+    snapshot: WhiteboardDocument
+    rev: Revision
+    delta: MutationDelta
+  }
+  editor: {
+    snapshot: EditorProjectionSnapshot
+    delta: EditorProjectionDelta
+  }
+}
 
 export type SceneBackgroundView =
   | {
@@ -602,7 +696,7 @@ export interface Runtime {
   revision(): Revision
   state(): State
   capture(): Capture
-  update(input: Input): Result
+  update(input: ProjectionUpdateInput): Result
   subscribe(listener: (result: Result) => void): () => void
   dispose(): void
 }

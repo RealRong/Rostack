@@ -3,14 +3,9 @@ import type {
   EditorEditActions,
   MindmapInsertBehavior
 } from '@whiteboard/editor/action/types'
-import {
-  startEdgeLabelEdit as startEdgeLabelSession,
-  startNodeEdit as startNodeSession
-} from '@whiteboard/editor/edit/runtime'
 import type { DocumentFrame } from '@whiteboard/editor-scene'
-import type { EditField } from '@whiteboard/editor/session/edit'
+import type { EditField, EditSession } from '@whiteboard/editor/session/edit'
 import type { EditorCommand } from '@whiteboard/editor/state-engine/intents'
-import type { EditorSession } from '@whiteboard/editor/session/runtime'
 import type { NodeTypeSupport } from '@whiteboard/editor/types/node'
 import type { EditorWrite } from '@whiteboard/editor/write'
 
@@ -63,13 +58,18 @@ export interface EditController {
 }
 
 export const createEditController = (input: {
-  session: Pick<EditorSession, 'state' | 'dispatch'>
+  editor: {
+    edit: {
+      get: () => EditSession
+    }
+    dispatch: (command: EditorCommand | readonly EditorCommand[]) => void
+  }
   document: Pick<DocumentFrame, 'node' | 'edge'>
   nodeType: Pick<NodeTypeSupport, 'edit'>
   write: Pick<EditorWrite, 'node' | 'edge'>
 }): EditController => {
   const clearEdit = () => {
-    input.session.dispatch({
+    input.editor.dispatch({
       type: 'edit.set',
       edit: null
     } satisfies EditorCommand)
@@ -81,7 +81,7 @@ export const createEditController = (input: {
       edgeIds?: readonly string[]
     }
   ) => {
-    input.session.dispatch({
+    input.editor.dispatch({
       type: 'selection.set',
       selection: {
         nodeIds: selection.nodeIds ? [...selection.nodeIds] : [],
@@ -91,14 +91,14 @@ export const createEditController = (input: {
   }
 
   const updateEdit = (
-    patch: (current: NonNullable<ReturnType<typeof input.session.state.edit.get>>) => NonNullable<ReturnType<typeof input.session.state.edit.get>>
+    patch: (current: NonNullable<ReturnType<typeof input.editor.edit.get>>) => NonNullable<ReturnType<typeof input.editor.edit.get>>
   ) => {
-    const current = input.session.state.edit.get()
+    const current = input.editor.edit.get()
     if (!current) {
       return
     }
 
-    input.session.dispatch({
+    input.editor.dispatch({
       type: 'edit.set',
       edit: patch(current)
     } satisfies EditorCommand)
@@ -109,14 +109,30 @@ export const createEditController = (input: {
     field,
     caret
   }: StartNodeEditInput) => {
-    startNodeSession({
-      session: input.session,
-      document: input.document,
-      nodeType: input.nodeType,
-      nodeId,
-      field,
-      caret
-    })
+    const committed = input.document.node(nodeId)
+    if (!committed) {
+      return
+    }
+
+    const capability = input.nodeType.edit(committed.type, field)
+    if (!capability) {
+      return
+    }
+
+    const value = committed.data?.[field]
+    input.editor.dispatch({
+      type: 'edit.set',
+      edit: {
+        kind: 'node',
+        nodeId,
+        field,
+        text: typeof value === 'string' ? value : '',
+        composing: false,
+        caret: caret ?? {
+          kind: 'end'
+        }
+      }
+    } satisfies EditorCommand)
   }
 
   const startEdgeLabel = ({
@@ -124,13 +140,25 @@ export const createEditController = (input: {
     labelId,
     caret
   }: StartEdgeLabelEditInput) => {
-    startEdgeLabelSession({
-      session: input.session,
-      document: input.document,
-      edgeId,
-      labelId,
-      caret
-    })
+    const edge = input.document.edge(edgeId)
+    const label = edge?.labels?.find((entry: EdgeLabel) => entry.id === labelId)
+    if (!edge || !label) {
+      return
+    }
+
+    input.editor.dispatch({
+      type: 'edit.set',
+      edit: {
+        kind: 'edge-label',
+        edgeId,
+        labelId,
+        text: typeof label.text === 'string' ? label.text : '',
+        composing: false,
+        caret: caret ?? {
+          kind: 'end'
+        }
+      }
+    } satisfies EditorCommand)
   }
 
   const clearEditingEdgeLabel = ({
@@ -140,7 +168,7 @@ export const createEditController = (input: {
     edgeId: string
     labelId: string
   }) => {
-    const currentEdit = input.session.state.edit.get()
+    const currentEdit = input.editor.edit.get()
     if (
       currentEdit
       && currentEdit.kind === 'edge-label'
@@ -199,7 +227,7 @@ export const createEditController = (input: {
   }
 
   const cancel = () => {
-    const currentEdit = input.session.state.edit.get()
+    const currentEdit = input.editor.edit.get()
     if (!currentEdit) {
       return
     }
@@ -221,7 +249,7 @@ export const createEditController = (input: {
   }
 
   const commit = () => {
-    const currentEdit = input.session.state.edit.get()
+    const currentEdit = input.editor.edit.get()
     if (!currentEdit) {
       return
     }

@@ -8,11 +8,11 @@ import type {
   ViewId
 } from '@dataview/core/types'
 import {
+  entityTable as sharedEntityTable
+} from '@shared/core'
+import {
   documentFields
 } from '@dataview/core/document/fields'
-import {
-  documentRecords
-} from '@dataview/core/document/records'
 import {
   documentValues
 } from '@dataview/core/document/values'
@@ -60,18 +60,6 @@ export interface DocumentReadContext {
   activeView?: View
 }
 
-const createEntityReader = <TId extends string, TEntity>(input: {
-  readDocument: () => DataDoc
-  ids: (document: DataDoc) => readonly TId[]
-  list: (document: DataDoc) => readonly TEntity[]
-  get: (document: DataDoc, id: TId) => TEntity | undefined
-}): EntityReader<TId, TEntity> => ({
-  ids: () => input.ids(input.readDocument()),
-  list: () => input.list(input.readDocument()),
-  get: id => input.get(input.readDocument(), id),
-  has: id => input.get(input.readDocument(), id) !== undefined
-})
-
 const toRecordIdSet = (
   validIds: RecordIdSource | undefined,
   fallback: () => readonly RecordId[]
@@ -86,45 +74,45 @@ const toRecordIdSet = (
 export const createDocumentReader = (
   readDocument: () => DataDoc
 ): DocumentReader => {
-  const records = createEntityReader({
-    readDocument,
-    ids: documentRecords.ids,
-    list: documentRecords.list,
-    get: documentRecords.get
-  })
-
   return {
     document: readDocument,
     records: {
-      ...records,
+      ids: () => sharedEntityTable.read.ids(readDocument().records),
+      list: () => sharedEntityTable.read.list(readDocument().records),
+      get: (id) => sharedEntityTable.read.get(readDocument().records, id),
+      has: (id) => sharedEntityTable.read.get(readDocument().records, id) !== undefined,
       normalize: (recordIds, validIds) => normalizeRecordOrderIds(
         recordIds,
-        toRecordIdSet(validIds, records.ids)
+        toRecordIdSet(validIds, () => sharedEntityTable.read.ids(readDocument().records))
       )
     },
     values: {
       get: (recordId, fieldId) => {
-        const record = records.get(recordId)
+        const record = sharedEntityTable.read.get(readDocument().records, recordId)
         return record
           ? documentValues.get(record, fieldId)
           : undefined
       }
     },
-    fields: createEntityReader({
-      readDocument,
-      ids: documentFields.ids,
-      list: documentFields.list,
-      get: documentFields.get
-    }),
+    fields: {
+      ids: () => documentFields.ids(readDocument()),
+      list: () => documentFields.list(readDocument()),
+      get: (id) => documentFields.get(readDocument(), id),
+      has: (id) => documentFields.get(readDocument(), id) !== undefined
+    },
     views: {
-      ...createEntityReader({
-        readDocument,
-        ids: documentViews.ids,
-        list: documentViews.list,
-        get: documentViews.get
-      }),
-      activeId: () => documentViews.activeId.get(readDocument()),
-      active: () => documentViews.active.get(readDocument())
+      ids: () => documentViews.ids(readDocument()),
+      list: () => documentViews.list(readDocument()),
+      get: (id) => documentViews.get(readDocument(), id),
+      has: (id) => documentViews.get(readDocument(), id) !== undefined,
+      activeId: () => documentViews.activeId.resolve(readDocument()),
+      active: () => {
+        const document = readDocument()
+        const viewId = documentViews.activeId.resolve(document)
+        return viewId
+          ? documentViews.get(document, viewId)
+          : undefined
+      }
     }
   }
 }

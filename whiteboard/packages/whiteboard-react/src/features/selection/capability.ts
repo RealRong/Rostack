@@ -24,12 +24,12 @@ export const readSelectionCan = ({
   editor: WhiteboardRuntime
   target: SelectionTarget
 }): SelectionCan => {
-  const reader = documentApi.reader(() => editor.document.snapshot())
+  const reader = documentApi.reader(() => editor.projection.document.snapshot())
   const pureNodeSelection =
     target.nodeIds.length > 0
     && target.edgeIds.length === 0
   const count = target.nodeIds.length + target.edgeIds.length
-  const exactGroupIds = editor.scene.groups.exact(target)
+  const exactGroupIds = editor.projection.groups.exact(target)
   const orderLock = resolveLockDecision({
     reader,
     target: {

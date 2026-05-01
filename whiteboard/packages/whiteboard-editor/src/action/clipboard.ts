@@ -1,9 +1,9 @@
 import type {
   SliceRoots
 } from '@whiteboard/core/document'
-import type { Point } from '@whiteboard/core/types'
+import type { SelectionTarget } from '@whiteboard/core/selection'
+import type { Point, Viewport } from '@whiteboard/core/types'
 import type { DocumentFrame } from '@whiteboard/editor-scene'
-import type { EditorState } from '@whiteboard/editor/types/editor'
 import type {
   ClipboardActions,
   ClipboardTarget,
@@ -21,7 +21,12 @@ type ClipboardActionHelpersHost = {
   document: Pick<DocumentWrite, 'insert'>
   dispatch: (command: EditorCommand | readonly EditorCommand[]) => void
   selection: Pick<SelectionActionHelpers, 'delete'>
-  state: Pick<EditorState, 'viewport' | 'selection'>
+  selectionState: {
+    get: () => SelectionTarget
+  }
+  viewportState: {
+    get: () => Viewport
+  }
 }
 
 const applyInsertedRoots = (input: {
@@ -62,7 +67,7 @@ const applyInsertedRoots = (input: {
 const readSelectionTarget = (
   editor: ClipboardActionHelpersHost
 ): Exclude<ClipboardTarget, 'selection'> | undefined => {
-  const target = editor.state.selection.get()
+  const target = editor.selectionState.get()
 
   if (target.nodeIds.length > 0 || target.edgeIds.length > 0) {
     return {
@@ -142,7 +147,9 @@ export const createClipboardActions = ({
       origin?: Point
     }
   ) => {
-    const origin = options?.origin ?? { ...editor.state.viewport.get().center }
+    const origin = options?.origin ?? {
+      ...editor.viewportState.get().center
+    }
     const inserted = editor.document.insert(packet.slice, {
       origin,
       roots: packet.roots

@@ -1,13 +1,10 @@
-import type {
-  EditorInputHost,
-  EditorState
-} from '@whiteboard/editor/types/editor'
-import type { EditorScene } from '@whiteboard/editor-scene'
+import type { SelectionTarget } from '@whiteboard/core/selection'
+import type { EditorInputHost, EditorProjection } from '@whiteboard/editor/types/editor'
 import type { EditorCommand } from '@whiteboard/editor/state-engine/intents'
-import type { EditorSession } from '@whiteboard/editor/session/runtime'
 import type { ContextMenuIntent } from '@whiteboard/editor/types/input'
 import type { InteractionRuntime } from '@whiteboard/editor/input/core/types'
 import type { EdgeHoverService } from '@whiteboard/editor/input/hover/edge'
+import type { EditorHostDeps } from '@whiteboard/editor/input/runtime'
 import {
   EMPTY_HOVER_STATE,
   isHoverTargetEqual,
@@ -15,7 +12,9 @@ import {
 } from '@whiteboard/editor/input/hover/store'
 
 const readSelectionIntent = (
-  selection: EditorState['selection'],
+  selection: {
+    get: () => SelectionTarget
+  },
   screen: {
     x: number
     y: number
@@ -39,8 +38,8 @@ export const createEditorInputHost = ({
 }: {
   interaction: InteractionRuntime
   edgeHover: EdgeHoverService
-  projection: EditorScene
-  session: Pick<EditorSession, 'state' | 'viewport' | 'interaction' | 'transient' | 'dispatch'>
+  projection: EditorProjection
+  session: EditorHostDeps['session']
 }): EditorInputHost => {
   const dispatchSelection = (
     selection: {
@@ -59,8 +58,8 @@ export const createEditorInputHost = ({
 
   const updateInteraction = (
     update: (
-      current: ReturnType<EditorSession['interaction']['read']['hover']['get']>
-    ) => ReturnType<EditorSession['interaction']['read']['hover']['get']>
+      current: ReturnType<EditorHostDeps['session']['interaction']['read']['hover']['get']>
+    ) => ReturnType<EditorHostDeps['session']['interaction']['read']['hover']['get']>
   ) => {
     const currentInteraction = {
       mode: session.interaction.read.mode.get(),
@@ -79,7 +78,7 @@ export const createEditorInputHost = ({
   }
 
   const dispatchViewport = (
-    viewport: ReturnType<EditorSession['viewport']['read']['get']>
+    viewport: ReturnType<EditorHostDeps['session']['viewport']['read']['get']>
   ) => {
     session.dispatch({
       type: 'viewport.set',

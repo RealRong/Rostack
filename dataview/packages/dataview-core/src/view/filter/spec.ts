@@ -24,7 +24,7 @@ import type {
   FilterPreset,
   FilterSortLookup,
   FilterSpec
-} from '@dataview/core/view/filterTypes'
+} from './types'
 import {
   normalizeOptionIdList
 } from '@dataview/core/field/option'
@@ -885,13 +885,32 @@ export const hasFilterPreset = (
   presetId: FilterPresetId
 ): boolean => getFilterSpec(field).presets.some(preset => preset.id === presetId)
 
-export const createDefaultFilterRule = (
+const createDefaultFilterRule = (
   id: ViewFilterRuleId,
   field: Field
 ): FilterRule => ({
   id,
   ...getFilterSpec(field).getDefaultRule(field)
 })
+
+export const createFilterRule = (input: {
+  id: ViewFilterRuleId
+  field: Field
+  presetId?: FilterPresetId
+  value?: unknown
+}): FilterRule => {
+  let rule = createDefaultFilterRule(input.id, input.field)
+
+  if (input.presetId !== undefined) {
+    rule = applyFilterPreset(input.field, rule, input.presetId)
+  }
+
+  if (Object.prototype.hasOwnProperty.call(input, 'value')) {
+    rule = setFilterRuleValue(input.field, rule, input.value)
+  }
+
+  return rule
+}
 
 export const applyFilterPreset = (
   field: Field | undefined,
@@ -998,6 +1017,41 @@ export const normalizeFilterRule = (
     if (nextValue !== undefined) {
       nextRule.value = nextValue
     }
+  }
+
+  return nextRule
+}
+
+export const patchFilterRule = (input: {
+  field?: Field
+  rule: FilterRule
+  patch: Partial<Pick<FilterRule, 'fieldId' | 'presetId' | 'value'>>
+}): FilterRule => {
+  const {
+    field,
+    rule,
+    patch
+  } = input
+
+  if (patch.fieldId !== undefined) {
+    return normalizeFilterRule(field, {
+      id: rule.id,
+      fieldId: patch.fieldId,
+      presetId: patch.presetId ?? rule.presetId,
+      ...(Object.prototype.hasOwnProperty.call(patch, 'value')
+        ? { value: patch.value }
+        : Object.prototype.hasOwnProperty.call(rule, 'value')
+          ? { value: rule.value }
+          : {})
+    })
+  }
+
+  let nextRule = rule
+  if (patch.presetId !== undefined) {
+    nextRule = applyFilterPreset(field, nextRule, patch.presetId)
+  }
+  if (Object.prototype.hasOwnProperty.call(patch, 'value')) {
+    nextRule = setFilterRuleValue(field, nextRule, patch.value)
   }
 
   return nextRule

@@ -81,7 +81,7 @@ NodeTransformOverlayItem.displayName = 'NodeTransformOverlayItem'
 
 const EdgeConnectOverlay = () => {
   const editor = useEditorRuntime()
-  const hint = useStoreValue(editor.derived.scene.chrome.edgeGuide)
+  const hint = useStoreValue(editor.projection.derived.scene.chrome.edgeGuide)
   const connect = hint.connect
   const view = useNodeOverlayView(connect?.focusedNodeId)
 
@@ -149,8 +149,8 @@ const SelectionHandlesOverlay = ({
 
 export const NodeOverlayLayer = memo(() => {
   const editor = useEditorRuntime()
-  const guides = useStoreValue(editor.derived.scene.chrome.snap)
-  const overlay = useStoreValue(editor.derived.editor.selection.overlay)
+  const guides = useStoreValue(editor.projection.derived.scene.chrome.snap)
+  const overlay = useStoreValue(editor.projection.derived.editor.selection.overlay)
 
   return (
     <>

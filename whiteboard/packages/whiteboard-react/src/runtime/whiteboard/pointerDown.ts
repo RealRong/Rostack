@@ -2,9 +2,13 @@ import type { WhiteboardRuntime } from '@whiteboard/react/types/runtime'
 
 type PointerDownInput = Parameters<WhiteboardRuntime['input']['pointerDown']>[0]
 type BackgroundDismissEditor = {
-  state: {
-    edit: Pick<WhiteboardRuntime['state']['edit'], 'get'>
-    selection: Pick<WhiteboardRuntime['state']['selection'], 'get'>
+  projection: {
+    runtime: {
+      editor: {
+        edit: WhiteboardRuntime['projection']['runtime']['editor']['edit']
+        selection: WhiteboardRuntime['projection']['runtime']['editor']['selection']
+      }
+    }
   }
   write: {
     edit: Pick<WhiteboardRuntime['write']['edit'], 'commit'>
@@ -29,13 +33,13 @@ export const dismissBackgroundEditSelection = ({
     return
   }
 
-  if (!editor.state.edit.get()) {
+  if (!editor.projection.runtime.editor.edit()) {
     return
   }
 
   editor.write.edit.commit()
 
-  const selection = editor.state.selection.get()
+  const selection = editor.projection.runtime.editor.selection()
   if (
     selection.nodeIds.length === 0
     && selection.edgeIds.length === 0

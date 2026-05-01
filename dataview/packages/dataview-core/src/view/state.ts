@@ -1,12 +1,10 @@
 import type {
-  CalculationMetric,
   FieldId,
   GalleryView,
   KanbanView,
   RecordId,
   TableOptions,
   TableView,
-  ViewCalc,
   ViewDisplay
 } from '@dataview/core/types'
 import type {
@@ -97,35 +95,6 @@ export const hideDisplayField = (
 export const clearDisplayFields = (): ViewDisplay => ({
   fields: []
 })
-
-export const setViewCalcMetric = (
-  calc: ViewCalc,
-  fieldId: FieldId,
-  metric: CalculationMetric | null
-): ViewCalc => {
-  const nextCalc = {
-    ...calc
-  }
-
-  if (metric === null) {
-    delete nextCalc[fieldId]
-  } else {
-    nextCalc[fieldId] = metric
-  }
-
-  return nextCalc
-}
-
-export const cloneViewCalc = (
-  calc: ViewCalc
-): ViewCalc => ({
-  ...calc
-})
-
-export const sameViewCalc = (
-  left: ViewCalc,
-  right: ViewCalc
-): boolean => equal.sameShallowRecord(left, right)
 
 export const clearViewOrders = (): RecordId[] => []
 

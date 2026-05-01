@@ -1,7 +1,7 @@
+import { store } from '@shared/core'
 import type { Engine } from '@whiteboard/engine'
 import type { WhiteboardLayoutService } from '@whiteboard/core/layout'
 import type { DocumentFrame } from '@whiteboard/editor-scene'
-import type { EditorCommand } from '@whiteboard/editor/state-engine/intents'
 import { createInteractionRuntime } from '@whiteboard/editor/input/core/runtime'
 import { createSnapRuntime, type SnapRuntime } from '@whiteboard/editor/input/core/snap'
 import { createDrawBinding } from '@whiteboard/editor/input/features/draw'
@@ -11,58 +11,216 @@ import { createTransformBinding } from '@whiteboard/editor/input/features/transf
 import { createViewportBinding } from '@whiteboard/editor/input/features/viewport'
 import { createEditorInputHost } from '@whiteboard/editor/input/host'
 import { createEdgeHoverService } from '@whiteboard/editor/input/hover/edge'
-import type { EditorSession } from '@whiteboard/editor/session/runtime'
-import type { ToolService } from '@whiteboard/editor/services/tool'
+import {
+  composeEditorInputPreviewState
+} from '@whiteboard/editor/session/preview/state'
+import type { EditorInputPreviewState } from '@whiteboard/editor/session/preview/types'
+import type { EditorStateRuntime } from '@whiteboard/editor/state-engine/runtime'
 import type {
   EditorInputHost,
-  EditorScene,
-  EditorSceneDerived,
-  EditorState
+  EditorProjection
 } from '@whiteboard/editor/types/editor'
 import type { NodeTypeSupport } from '@whiteboard/editor/types/node'
 import type { EditorWrite } from '@whiteboard/editor/write/types'
 
 type SessionRead = {
-  tool: EditorState['tool']
-  draw: EditorState['draw']
+  tool: {
+    get: () => import('@whiteboard/editor/types/tool').Tool
+    is: (type: import('@whiteboard/editor/types/tool').Tool['type'], value?: string) => boolean
+  }
+  draw: {
+    get: () => import('@whiteboard/editor/session/draw/state').DrawState
+  }
   space: {
     get: () => boolean
   }
-  viewport: EditorState['viewport']
+  viewport: {
+    get: () => import('@whiteboard/core/types').Viewport
+    pointer: EditorStateRuntime['viewport']['read']['pointer']
+    worldToScreen: EditorStateRuntime['viewport']['read']['worldToScreen']
+    worldRect: EditorStateRuntime['viewport']['read']['worldRect']
+    screenPoint: EditorStateRuntime['viewport']['input']['screenPoint']
+    size: EditorStateRuntime['viewport']['input']['size']
+  }
 }
 
-const createSessionRead = (
-  state: EditorState
-): SessionRead => ({
-  tool: state.tool,
-  draw: state.draw,
-  space: {
-    get: () => state.interaction.get().space
-  },
-  viewport: state.viewport
-})
+type LocalEditorSession = {
+  state: {
+    tool: EditorStateRuntime['stores']['tool']['store']
+    draw: EditorStateRuntime['stores']['draw']['store']
+    selection: EditorStateRuntime['stores']['selection']['store']
+    edit: EditorStateRuntime['stores']['edit']['store']
+  }
+  interaction: {
+    read: {
+      mode: store.ReadStore<ReturnType<EditorStateRuntime['stores']['interaction']['store']['get']>['mode']>
+      busy: store.ReadStore<boolean>
+      chrome: store.ReadStore<boolean>
+      hover: {
+        get: () => ReturnType<EditorStateRuntime['stores']['interaction']['store']['get']>['hover']
+        subscribe: (listener: () => void) => () => void
+      }
+      space: store.ReadStore<boolean>
+    }
+  }
+  transient: {
+    pointer: {
+      get: () => import('@whiteboard/editor/types/input').PointerSample | null
+      subscribe: (listener: () => void) => () => void
+    }
+    setPointer: (sample: import('@whiteboard/editor/types/input').PointerSample | null) => void
+    gesture: {
+      get: () => import('@whiteboard/editor/input/core/gesture').ActiveGesture | null
+      subscribe: (listener: () => void) => () => void
+    }
+    setGesture: (gesture: import('@whiteboard/editor/input/core/gesture').ActiveGesture | null) => void
+  }
+  preview: {
+    get: () => EditorInputPreviewState
+    subscribe: (listener: () => void) => () => void
+  }
+  dispatch: EditorStateRuntime['dispatch']
+  viewport: EditorStateRuntime['viewport']
+}
 
 export type EditorHostDeps = {
   engine: Engine
   document: DocumentFrame
-  projection: EditorScene
-  state: EditorState
+  projection: EditorProjection
   sessionRead: SessionRead
-  session: EditorSession
-  sceneDerived: EditorSceneDerived
+  session: LocalEditorSession
+  sceneDerived: EditorProjection['derived']['scene']
   layout: WhiteboardLayoutService
   write: EditorWrite
-  tool: ToolService
+  tool: {
+    set: (tool: import('@whiteboard/editor/types/tool').Tool) => void
+    select: () => void
+    draw: (mode: import('@whiteboard/editor/session/draw/model').DrawMode) => void
+    edge: (template: import('@whiteboard/core/types').EdgeTemplate) => void
+    insert: (template: import('@whiteboard/editor/types/tool').InsertTemplate) => void
+    hand: () => void
+  }
   nodeType: NodeTypeSupport
   snap: SnapRuntime
 }
 
+export type EditorInputRuntimeHost = EditorInputHost & {
+  preview: {
+    get: () => EditorInputPreviewState
+    subscribe: (listener: () => void) => () => void
+  }
+}
+
+const createSessionRead = (
+  runtime: EditorStateRuntime
+): SessionRead => ({
+  tool: {
+    get: runtime.stores.tool.store.get,
+    is: (type, value) => {
+      const tool = runtime.stores.tool.store.get()
+      if (tool.type !== type) {
+        return false
+      }
+
+      return value === undefined
+        ? true
+        : tool.type === 'draw'
+          ? tool.mode === value
+          : false
+    }
+  },
+  draw: {
+    get: runtime.stores.draw.store.get
+  },
+  space: {
+    get: () => runtime.stores.interaction.store.get().space
+  },
+  viewport: {
+    get: runtime.viewport.read.get,
+    pointer: runtime.viewport.read.pointer,
+    worldToScreen: runtime.viewport.read.worldToScreen,
+    worldRect: runtime.viewport.read.worldRect,
+    screenPoint: runtime.viewport.input.screenPoint,
+    size: runtime.viewport.input.size
+  }
+})
+
+const createLocalEditorSession = (
+  runtime: EditorStateRuntime
+): LocalEditorSession => {
+  const gesture = store.createValueStore<import('@whiteboard/editor/input/core/gesture').ActiveGesture | null>(null)
+  const pointer = store.createValueStore<import('@whiteboard/editor/types/input').PointerSample | null>(null)
+  const mode = store.createDerivedStore({
+    get: () => runtime.stores.interaction.store.get().mode,
+    isEqual: (left, right) => left === right
+  })
+  const chrome = store.createDerivedStore({
+    get: () => runtime.stores.interaction.store.get().chrome,
+    isEqual: (left, right) => left === right
+  })
+  const space = store.createDerivedStore({
+    get: () => runtime.stores.interaction.store.get().space,
+    isEqual: (left, right) => left === right
+  })
+  const busy = store.createDerivedStore({
+    get: () => runtime.stores.interaction.store.get().mode !== 'idle',
+    isEqual: (left, right) => left === right
+  })
+
+  return {
+    state: {
+      tool: runtime.stores.tool.store,
+      draw: runtime.stores.draw.store,
+      selection: runtime.stores.selection.store,
+      edit: runtime.stores.edit.store
+    },
+    interaction: {
+      read: {
+        mode,
+        busy,
+        chrome,
+        hover: {
+          get: () => runtime.stores.interaction.store.get().hover,
+          subscribe: runtime.stores.interaction.store.subscribe
+        },
+        space
+      }
+    },
+    transient: {
+      pointer: {
+        get: pointer.get,
+        subscribe: pointer.subscribe
+      },
+      setPointer: (sample) => {
+        pointer.set(sample ?? null)
+      },
+      gesture: {
+        get: gesture.get,
+        subscribe: gesture.subscribe
+      },
+      setGesture: (nextGesture) => {
+        gesture.set(nextGesture)
+      }
+    },
+    preview: {
+      get: () => composeEditorInputPreviewState({
+        base: runtime.stores.preview.store.get(),
+        gesture: gesture.get(),
+        hover: runtime.stores.interaction.store.get().hover
+      }),
+      subscribe: gesture.subscribe
+    },
+    dispatch: runtime.dispatch,
+    viewport: runtime.viewport
+  }
+}
+
 const createEditorSnapRuntime = (input: {
   engine: Engine
-  projection: EditorScene
-  state: Pick<EditorState, 'viewport'>
+  projection: EditorProjection
+  runtime: EditorStateRuntime
 }) => createSnapRuntime({
-  readZoom: () => input.state.viewport.get().zoom,
+  readZoom: () => input.runtime.viewport.read.get().zoom,
   node: {
     config: input.engine.config.node,
     query: input.projection.snap.candidates
@@ -76,29 +234,27 @@ const createEditorSnapRuntime = (input: {
 export const createEditorHost = (input: {
   engine: Engine
   document: DocumentFrame
-  projection: EditorScene
-  state: EditorState
-  session: EditorSession
-  sceneDerived: EditorSceneDerived
+  projection: EditorProjection
+  runtime: EditorStateRuntime
   layout: WhiteboardLayoutService
   write: EditorWrite
-  tool: ToolService
+  tool: EditorHostDeps['tool']
   nodeType: NodeTypeSupport
-}): EditorInputHost => {
-  const sessionRead = createSessionRead(input.state)
+}): EditorInputRuntimeHost => {
+  const session = createLocalEditorSession(input.runtime)
+  const sessionRead = createSessionRead(input.runtime)
   const snap = createEditorSnapRuntime({
     engine: input.engine,
     projection: input.projection,
-    state: input.state
+    runtime: input.runtime
   })
   const deps: EditorHostDeps = {
     engine: input.engine,
     document: input.document,
     projection: input.projection,
-    state: input.state,
     sessionRead,
-    session: input.session,
-    sceneDerived: input.sceneDerived,
+    session,
+    sceneDerived: input.projection.derived.scene,
     layout: input.layout,
     write: input.write,
     tool: input.tool,
@@ -106,23 +262,17 @@ export const createEditorHost = (input: {
     snap
   }
 
-  const dispatchViewport = (
-    viewport: ReturnType<EditorSession['viewport']['read']['get']>
-  ) => {
-    input.session.dispatch({
-      type: 'viewport.set',
-      viewport
-    } satisfies EditorCommand)
-  }
-
   const interaction = createInteractionRuntime({
     getViewport: () => ({
-      screenPoint: input.session.viewport.input.screenPoint,
-      size: input.session.viewport.input.size,
+      screenPoint: input.runtime.viewport.input.screenPoint,
+      size: input.runtime.viewport.input.size,
       panScreenBy: (deltaScreen) => {
-        const next = input.session.viewport.resolve.panScreenBy(deltaScreen)
+        const next = input.runtime.viewport.resolve.panScreenBy(deltaScreen)
         if (next) {
-          dispatchViewport(next)
+          input.runtime.dispatch({
+            type: 'viewport.set',
+            viewport: next
+          })
         }
       }
     }),
@@ -135,37 +285,41 @@ export const createEditorHost = (input: {
     ]),
     state: {
       readInteraction: () => ({
-        mode: input.session.interaction.read.mode.get(),
-        chrome: input.session.interaction.read.chrome.get(),
-        space: input.session.interaction.read.space.get(),
-        hover: input.session.interaction.read.hover.get()
+        mode: input.runtime.stores.interaction.store.get().mode,
+        chrome: input.runtime.stores.interaction.store.get().chrome,
+        space: input.runtime.stores.interaction.store.get().space,
+        hover: input.runtime.stores.interaction.store.get().hover
       }),
-      dispatch: input.session.dispatch,
-      setGesture: input.session.transient.setGesture,
-      getSpace: () => input.state.interaction.get().space
+      dispatch: input.runtime.dispatch,
+      setGesture: session.transient.setGesture,
+      getSpace: () => input.runtime.stores.interaction.store.get().space
     }
   })
 
   const edgeHover = createEdgeHoverService(
     {
-      readTool: input.session.state.tool.get,
+      readTool: input.runtime.stores.tool.store.get,
       snap
     },
     {
       read: () => ({
-        mode: input.session.interaction.read.mode.get(),
-        chrome: input.session.interaction.read.chrome.get(),
-        space: input.session.interaction.read.space.get(),
-        hover: input.session.interaction.read.hover.get()
+        mode: input.runtime.stores.interaction.store.get().mode,
+        chrome: input.runtime.stores.interaction.store.get().chrome,
+        space: input.runtime.stores.interaction.store.get().space,
+        hover: input.runtime.stores.interaction.store.get().hover
       }),
-      dispatch: input.session.dispatch
+      dispatch: input.runtime.dispatch
     }
   )
 
-  return createEditorInputHost({
+  const host = createEditorInputHost({
     interaction,
     edgeHover,
     projection: input.projection,
-    session: input.session
+    session
+  })
+
+  return Object.assign(host, {
+    preview: session.preview
   })
 }

@@ -115,7 +115,7 @@ const resolveEffectiveFilterRules = (
   view: View
 ): readonly EffectiveFilterRule[] => {
   const rules: EffectiveFilterRule[] = []
-  const filterRules = filterApi.rules.list(view.filter.rules)
+  const filterRules = filterApi.rules.read.list(view.filter.rules)
 
   for (let index = 0; index < filterRules.length; index += 1) {
     const rule = filterRules[index]!
@@ -139,7 +139,7 @@ const resolveIndexedFilterRules = (
   view: View
 ): readonly EffectiveFilterRule[] => {
   const rules: EffectiveFilterRule[] = []
-  const filterRules = filterApi.rules.list(view.filter.rules)
+  const filterRules = filterApi.rules.read.list(view.filter.rules)
 
   for (let index = 0; index < filterRules.length; index += 1) {
     const rule = filterRules[index]!

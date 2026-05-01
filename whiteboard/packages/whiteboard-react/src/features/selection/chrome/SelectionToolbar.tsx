@@ -24,12 +24,12 @@ export const SelectionToolbar = ({
   containerRef: RefObject<HTMLDivElement | null>
 }) => {
   const editor = useEditorRuntime()
-  const toolbar = useStoreValue(editor.derived.editor.selection.toolbar)
-  const viewport = useStoreValue(editor.state.viewport)
+  const toolbar = useStoreValue(editor.projection.derived.editor.selection.toolbar)
+  const viewport = useStoreValue(editor.projection.stores.runtime.editor.viewport)
   void viewport
   const [activeScopeKey, setActiveScopeKey] = useState<string | null>(null)
   const worldToScreen = useCallback(
-    (point: Point) => editor.scene.viewport.screenPoint(point),
+    (point: Point) => editor.projection.viewport.screenPoint(point),
     [editor]
   )
 

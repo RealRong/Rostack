@@ -17,7 +17,7 @@ import {
   clearNodePresentation,
   updateNodePresentation
 } from '@whiteboard/editor/session/preview/node'
-import type { EditorSession } from '@whiteboard/editor/session/runtime'
+import type { EditorInputPreviewState } from '@whiteboard/editor/session/preview/types'
 import type { EditorWrite } from '@whiteboard/editor/write'
 import type { EditorTaskRuntime } from './runtime'
 import {
@@ -28,7 +28,12 @@ const DEFAULT_MINDMAP_ENTER_DURATION_MS = 220
 
 type MindmapActionDeps = {
   graph: EditorScene
-  session: Pick<EditorSession, 'preview' | 'dispatch'>
+  editor: {
+    preview: {
+      get: () => EditorInputPreviewState
+    }
+    dispatch: (command: EditorCommand | readonly EditorCommand[]) => void
+  }
   tasks: EditorTaskRuntime
   write: Pick<EditorWrite, 'mindmap'>
   focusNode: (input: {
@@ -76,11 +81,11 @@ const readProgress = (
 }
 
 const withNodePresentation = (
-  session: Pick<EditorSession, 'preview' | 'dispatch'>,
+  editor: MindmapActionDeps['editor'],
   nodeId: MindmapNodeId,
   position?: Point
 ) => {
-  const current = session.preview.get()
+  const current = editor.preview.get()
   const nextNode = position
     ? updateNodePresentation(current.node, nodeId, {
         position
@@ -91,7 +96,7 @@ const withNodePresentation = (
     return
   }
 
-  session.dispatch({
+  editor.dispatch({
     type: 'preview.set',
     preview: {
       ...current,
@@ -171,11 +176,11 @@ const resolveEnterJob = async (input: {
 }
 
 const animateEnter = async (input: {
-  session: Pick<EditorSession, 'preview' | 'dispatch'>
+  editor: MindmapActionDeps['editor']
   tasks: EditorTaskRuntime
   job: MindmapEnterJob
 }) => {
-  withNodePresentation(input.session, input.job.nodeId, input.job.from)
+  withNodePresentation(input.editor, input.job.nodeId, input.job.from)
 
   try {
     while (true) {
@@ -198,14 +203,14 @@ const animateEnter = async (input: {
       }
 
       withNodePresentation(
-        input.session,
+        input.editor,
         input.job.nodeId,
         interpolatePoint(input.job.from, input.job.to, nextProgress)
       )
     }
   } finally {
     withNodePresentation(
-      input.session,
+      input.editor,
       input.job.nodeId
     )
   }
@@ -225,7 +230,7 @@ const runTask = (
 
 export const createMindmapActions = ({
   graph,
-  session,
+  editor,
   tasks,
   write,
   focusNode,
@@ -250,7 +255,7 @@ export const createMindmapActions = ({
 
     if (job) {
       await animateEnter({
-        session,
+        editor,
         tasks,
         job
       })

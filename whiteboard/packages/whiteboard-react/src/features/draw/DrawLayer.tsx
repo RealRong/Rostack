@@ -7,7 +7,7 @@ import { useEditorRuntime } from '@whiteboard/react/runtime/hooks'
 
 export const DrawLayer = memo(() => {
   const editor = useEditorRuntime()
-  const preview = useStoreValue(editor.derived.scene.chrome.draw)
+  const preview = useStoreValue(editor.projection.derived.scene.chrome.draw)
 
   return <DrawPreview preview={preview} />
 })

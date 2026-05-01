@@ -7,8 +7,7 @@ import type {
   Search
 } from '@dataview/core/types'
 import {
-  documentFields,
-  documentSchema
+  documentFields
 } from '@dataview/core/document/fields'
 import {
   documentValues
@@ -112,7 +111,7 @@ const readContextFields = (
 
   for (let index = 0; index < context.document.fields.ids.length; index += 1) {
     const fieldId = context.document.fields.ids[index]!
-    const field = documentSchema.fields.get(context.document, fieldId)
+    const field = context.document.fields.byId[fieldId]
     if (field && isDefaultSearchField(field)) {
       fields.push(field)
     }

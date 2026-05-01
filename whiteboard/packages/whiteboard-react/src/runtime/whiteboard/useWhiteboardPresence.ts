@@ -49,7 +49,7 @@ export const useWhiteboardPresence = (input: {
           user: prev?.user ?? binding.user,
           pointer,
           selection: getSelectionSnapshot(input.services.editor),
-          tool: serializePresenceTool(input.services.editor.state.tool.get()),
+          tool: serializePresenceTool(input.services.editor.projection.runtime.editor.tool()),
           activity,
           updatedAt: Date.now()
         }
@@ -72,7 +72,7 @@ export const useWhiteboardPresence = (input: {
       }
       lastPointerPublishAtRef.current = now
 
-      const pointer = input.services.editor.state.viewport.pointer({
+      const pointer = input.services.editor.projection.runtime.editor.viewport.pointer({
         clientX,
         clientY
       })
@@ -98,13 +98,13 @@ export const useWhiteboardPresence = (input: {
       activity: 'idle'
     })
 
-    const unsubscribeSelection = input.services.editor.state.selection.subscribe(() => {
+    const unsubscribeSelection = input.services.editor.projection.stores.runtime.editor.selection.subscribe(() => {
       syncPresence()
     })
-    const unsubscribeTool = input.services.editor.state.tool.subscribe(() => {
+    const unsubscribeTool = input.services.editor.projection.stores.runtime.editor.tool.subscribe(() => {
       syncPresence()
     })
-    const unsubscribeEdit = input.services.editor.state.edit.subscribe(() => {
+    const unsubscribeEdit = input.services.editor.projection.stores.runtime.editor.edit.subscribe(() => {
       syncPresence()
     })
 

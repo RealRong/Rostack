@@ -26,6 +26,7 @@ import type { EditSession } from '@whiteboard/editor/session/edit'
 import type { DrawState } from '@whiteboard/editor/session/draw/state'
 import type { EdgeGuide } from '@whiteboard/editor/session/preview/types'
 import type { EditorCommand } from '@whiteboard/editor/state-engine/intents'
+import type { EditorInteractionStateValue } from '@whiteboard/editor/state-engine/document'
 import type {
   ContextMenuInput,
   ContextMenuIntent,
@@ -48,7 +49,6 @@ import type {
 } from '@whiteboard/editor/types/selectionPresentation'
 import type { Tool } from '@whiteboard/editor/types/tool'
 import type { IntentResult } from '@whiteboard/engine'
-import type { EngineCommit } from '@whiteboard/engine/types/engineWrite'
 
 export type { EditorScene } from '@whiteboard/editor-scene'
 
@@ -181,20 +181,59 @@ export type EditorDerived = {
   editor: EditorPolicyDerived
 }
 
-export type EditorEvents = {
-  change: (listener: (document: Document, commit: EngineCommit) => void) => store.Unsubscribe
-  dispose: (listener: () => void) => store.Unsubscribe
+export type EditorProjectionStores = EditorScene['stores'] & {
+  runtime: {
+    editor: {
+      tool: store.ReadStore<Tool>
+      draw: store.ReadStore<DrawState>
+      selection: store.ReadStore<SelectionTarget>
+      edit: store.ReadStore<EditSession>
+      interaction: store.ReadStore<EditorInteractionStateValue>
+      preview: store.ReadStore<import('@whiteboard/editor/session/preview/types').EditorInputPreviewState>
+      viewport: store.ReadStore<Viewport>
+    }
+  }
+}
+
+export type EditorProjectionRuntimeFrame = EditorScene['runtime'] & {
+  editor: {
+    tool(): Tool
+    draw(): DrawState
+    selection(): SelectionTarget
+    edit(): EditSession
+    interaction(): EditorInteractionStateValue
+    preview(): import('@whiteboard/editor/session/preview/types').EditorInputPreviewState
+    viewport: {
+      get(): Viewport
+      pointer(input: {
+        clientX: number
+        clientY: number
+      }): {
+        screen: Point
+        world: Point
+      }
+      worldToScreen(point: Point): Point
+      worldRect(): Rect
+      screenPoint(clientX: number, clientY: number): Point
+      size(): {
+        width: number
+        height: number
+      }
+    }
+  }
+}
+
+export type EditorProjection = Omit<EditorScene, 'stores' | 'runtime'> & {
+  stores: EditorProjectionStores
+  runtime: EditorProjectionRuntimeFrame
+  derived: EditorDerived
 }
 
 export type Editor = {
-  document: DocumentFrame
-  scene: EditorScene
-  state: EditorState
-  derived: EditorDerived
+  projection: EditorProjection
   history: HistoryPort<IntentResult>
   input: EditorInputHost
   write: EditorWrite
-  events: EditorEvents
   dispatch: (command: EditorCommand | readonly EditorCommand[]) => void
   dispose: () => void
 }

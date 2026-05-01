@@ -43,7 +43,7 @@ export const repairViewForRemovedField = (
   fieldId: CustomFieldId
 ): View => {
   const nextFilterRules = entityTable.normalize.list(
-    filterApi.rules
+    filterApi.rules.read
       .list(view.filter.rules)
       .filter(rule => rule.fieldId !== fieldId)
   )
@@ -124,7 +124,7 @@ export const repairViewForConvertedField = (
 ): View => {
   const validPresetIds = new Set(filterApi.rule.presetIds(field))
   const nextFilterRules = entityTable.normalize.list(
-    filterApi.rules
+    filterApi.rules.read
       .list(view.filter.rules)
       .filter(rule => (
         rule.fieldId !== field.id || validPresetIds.has(rule.presetId)

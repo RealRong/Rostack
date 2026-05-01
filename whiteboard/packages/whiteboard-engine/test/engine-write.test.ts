@@ -48,6 +48,15 @@ test('engine exposes node create footprint through intent results', () => {
         kind: 'entity',
         family: 'node',
         id: result.data.nodeId
+      }),
+      serializeFootprint({
+        kind: 'structure',
+        structure: 'canvas.order'
+      }),
+      serializeFootprint({
+        kind: 'structure-item',
+        structure: 'canvas.order',
+        id: `node\u0000${result.data.nodeId}`
       })
     ])
   )

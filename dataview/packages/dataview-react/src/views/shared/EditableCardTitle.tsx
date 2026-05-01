@@ -25,7 +25,9 @@ import type {
   CardTitle
 } from '@dataview/runtime'
 import {
-  focusInputWithoutScroll
+  focusEditableEnd,
+  focusInputWithoutScroll,
+  readEditableText
 } from '@shared/dom'
 import { Button } from '@shared/ui/button'
 import { cn } from '@shared/ui/utils'
@@ -178,6 +180,8 @@ export interface EditableCardTitleProps {
 export const EditableCardTitle = (props: EditableCardTitleProps) => {
   const { t } = useTranslation()
   const inputRef = useRef<HTMLInputElement | null>(null)
+  const editableRef = useRef<HTMLDivElement | null>(null)
+  const syncEditableRef = useRef(false)
   const state = useEditableCardTitleState({
     viewId: props.viewId,
     itemId: props.itemId,
@@ -187,11 +191,30 @@ export const EditableCardTitle = (props: EditableCardTitleProps) => {
 
   useEffect(() => {
     if (!state.editing) {
+      syncEditableRef.current = false
+      return
+    }
+
+    if (props.wrap) {
+      syncEditableRef.current = true
+      if (editableRef.current) {
+        editableRef.current.textContent = state.titleDraft
+        focusEditableEnd(editableRef.current)
+      }
       return
     }
 
     focusInputWithoutScroll(inputRef.current)
-  }, [state.editing])
+  }, [props.wrap, state.editing])
+
+  useEffect(() => {
+    if (!props.wrap || !state.editing || !editableRef.current || !syncEditableRef.current) {
+      return
+    }
+
+    editableRef.current.textContent = state.titleDraft
+    syncEditableRef.current = false
+  }, [props.wrap, state.editing, state.titleDraft])
 
   return (
     <>
@@ -224,37 +247,74 @@ export const EditableCardTitle = (props: EditableCardTitleProps) => {
         </div>
       ) : null}
       {state.editing ? (
-        <input
-          ref={inputRef}
-          value={state.titleDraft}
-          placeholder={t(meta.ui.card.titlePlaceholder)}
-          className={cn(
-            'min-w-0',
-            props.rootClassName,
-            'h-auto rounded-none outline-none border-0 bg-transparent px-0 py-0 shadow-none focus-visible:ring-0',
-            props.inputClassName
-          )}
-          onClick={event => {
-            event.stopPropagation()
-          }}
-          onChange={event => {
-            state.setTitleDraft(event.target.value)
-          }}
-          onBlur={() => {
-            state.commitTitle()
-          }}
-          onKeyDown={event => {
-            event.stopPropagation()
-            if (event.key === 'Enter') {
-              event.preventDefault()
-              state.submitTitle()
-            }
-          }}
-        />
+        props.wrap ? (
+          <div
+            ref={editableRef}
+            contentEditable="plaintext-only"
+            suppressContentEditableWarning
+            data-placeholder={t(meta.ui.card.titlePlaceholder)}
+            className={cn(
+              'min-w-0 w-full whitespace-normal break-words [overflow-wrap:anywhere]',
+              'empty:before:pointer-events-none empty:before:text-muted-foreground empty:before:content-[attr(data-placeholder)]',
+              props.rootClassName,
+              'h-auto rounded-none outline-none border-0 bg-transparent px-0 py-0 shadow-none focus-visible:ring-0',
+              props.inputClassName
+            )}
+            onClick={event => {
+              event.stopPropagation()
+            }}
+            onInput={event => {
+              state.setTitleDraft(readEditableText(event.currentTarget))
+            }}
+            onBlur={() => {
+              state.commitTitle()
+            }}
+            onKeyDown={event => {
+              event.stopPropagation()
+              if (
+                event.key === 'Enter'
+                && (event.metaKey || event.ctrlKey)
+              ) {
+                event.preventDefault()
+                state.submitTitle()
+              }
+            }}
+          >
+            {state.titleDraft}
+          </div>
+        ) : (
+          <input
+            ref={inputRef}
+            value={state.titleDraft}
+            placeholder={t(meta.ui.card.titlePlaceholder)}
+            className={cn(
+              'min-w-0',
+              props.rootClassName,
+              'h-auto rounded-none outline-none border-0 bg-transparent px-0 py-0 shadow-none focus-visible:ring-0',
+              props.inputClassName
+            )}
+            onClick={event => {
+              event.stopPropagation()
+            }}
+            onChange={event => {
+              state.setTitleDraft(event.target.value)
+            }}
+            onBlur={() => {
+              state.commitTitle()
+            }}
+            onKeyDown={event => {
+              event.stopPropagation()
+              if (event.key === 'Enter') {
+                event.preventDefault()
+                state.submitTitle()
+              }
+            }}
+          />
+        )
       ) : (
         <div
           className={cn(
-            'min-w-0',
+            'min-w-0 w-full',
             props.wrap
               ? 'whitespace-normal break-words [overflow-wrap:anywhere]'
               : 'truncate',

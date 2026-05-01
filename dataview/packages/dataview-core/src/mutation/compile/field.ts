@@ -12,7 +12,6 @@ import { createId, equal, json, string } from '@shared/core'
 import {
   view as viewApi
 } from '@dataview/core/view'
-import { validateField } from '@dataview/core/field/validate'
 import type {
   DataviewCompileContext
 } from './contracts'
@@ -114,7 +113,6 @@ const lowerFieldCreate = (
 ) => {
   const { intent } = input
   const { reader } = input
-  const document = input.document
   const explicitFieldId = string.trimToUndefined(intent.input.id)
 
   if (intent.input.id !== undefined && !explicitFieldId) {
@@ -146,7 +144,6 @@ const lowerFieldCreate = (
     meta: intent.input.meta
   })
 
-  input.issue(...validateField(document, input.source, field, 'input'))
   input.program.field.create(field)
   input.output({ id: field.id })
 }
@@ -155,7 +152,6 @@ const lowerFieldPatch = (
   input: DataviewCompileContext<Extract<Intent, { type: 'field.patch' }>>
 ) => {
   const { intent } = input
-  const document = input.document
   const field = requireCustomField(input, intent.id, 'id')
   if (!field) {
     return
@@ -173,7 +169,9 @@ const lowerFieldPatch = (
   }
 
   const nextField = applyFieldPatch(field, intent.patch)
-  input.issue(...validateField(document, input.source, nextField, 'patch'))
+  if (equal.sameJsonValue(field, nextField)) {
+    return
+  }
   input.program.field.patch(intent.id, intent.patch)
 }
 
@@ -181,7 +179,6 @@ const lowerFieldReplace = (
   input: DataviewCompileContext<Extract<Intent, { type: 'field.replace' }>>
 ) => {
   const { intent } = input
-  const document = input.document
   if (!requireCustomField(input, intent.id, 'id')) {
     return
   }
@@ -191,7 +188,6 @@ const lowerFieldReplace = (
     id: intent.id
   } satisfies CustomField
 
-  input.issue(...validateField(document, input.source, field, 'field'))
   const current = input.reader.fields.get(intent.id)
   if (!current || !fieldApi.kind.isCustom(current)) {
     return
@@ -205,7 +201,6 @@ const lowerFieldSetKind = (
 ) => {
   const { intent } = input
   const { reader } = input
-  const document = input.document
   const views = reader.views.list()
   const field = requireCustomField(input, intent.id, 'id')
   if (!field) {
@@ -214,7 +209,9 @@ const lowerFieldSetKind = (
 
   const nextField = fieldApi.kind.convert(field, intent.kind)
   const patch = json.diff(field, nextField)
-  input.issue(...validateField(document, input.source, nextField, 'kind'))
+  if (!Object.keys(patch).length) {
+    return
+  }
 
   input.program.field.patch(intent.id, patch)
   views.forEach((view) => {
@@ -230,7 +227,6 @@ const lowerFieldDuplicate = (
 ) => {
   const { intent } = input
   const { reader } = input
-  const document = input.document
   const views = reader.views.list()
   const records = reader.records.list()
   const sourceField = requireCustomField(input, intent.id, 'id')
@@ -248,7 +244,6 @@ const lowerFieldDuplicate = (
     )
   } satisfies CustomField
 
-  input.issue(...validateField(document, input.source, nextField, 'field'))
   input.program.field.create(nextField)
 
   records.forEach((record) => {

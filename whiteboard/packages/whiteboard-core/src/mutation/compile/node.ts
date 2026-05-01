@@ -196,6 +196,10 @@ export const nodeIntentHandlers: NodeIntentHandlers = {
     }
 
     ctx.program.node.create(built.data.node)
+    ctx.program.canvasOrder().insert({
+      kind: 'node',
+      id: built.data.nodeId
+    })
     ctx.output({
       nodeId: built.data.nodeId
     })

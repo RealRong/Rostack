@@ -136,7 +136,6 @@ const compileMutationIntents = <
   registry?: MutationRegistry<Doc>
   entities: ReadonlyMap<string, CompiledEntitySpec>
   createReader: MutationReaderFactory<Doc, Reader>
-  normalize(doc: Doc): Doc
 }): CompiledIntentProgramResult<Doc, MutationOutputOf<Table>, Code> => {
   const appliedSteps: MutationProgramStep[] = []
   const inverseSteps: MutationProgramStep[] = []
@@ -272,8 +271,7 @@ const compileMutationIntents = <
       document: workingDocument,
       program: pendingProgram,
       entities: input.entities,
-      registry: input.registry,
-      normalize: input.normalize
+      registry: input.registry
     })
     if (!applied.ok) {
       issues.push(normalizeCompileIssue({
@@ -532,8 +530,7 @@ class MutationRuntime<
       services: this.services,
       registry: this.registry,
       entities: this.entities,
-      createReader: this.createReader,
-      normalize: this.normalize
+      createReader: this.createReader
     })
     const issues = (planned.issues ?? EMPTY_COMPILE_ISSUES).map(normalizeCompileIssue)
     const canApply = (
@@ -617,8 +614,7 @@ class MutationRuntime<
       document: this.documentState,
       program,
       entities: this.entities,
-      registry: this.registry,
-      normalize: this.normalize
+      registry: this.registry
     })
     if (!applied.ok) {
       return applied

@@ -137,7 +137,6 @@ const applyEntityCreateEffect = <
   document: Doc
   effect: Extract<MutationEntityProgramStep, { type: 'entity.create' }>
   spec: CompiledEntitySpec
-  normalize(doc: Doc): Doc
 }): AppliedMutationProgram<Doc> => {
   try {
     const { effect, spec } = input
@@ -145,7 +144,7 @@ const applyEntityCreateEffect = <
 
     if (spec.kind === 'singleton') {
       if (spec.family === 'document') {
-        const nextDocument = input.normalize(value as Doc)
+        const nextDocument = value as Doc
         const changedPaths = readEntitySnapshotPaths(spec, nextDocument)
         return {
           document: nextDocument,
@@ -175,7 +174,7 @@ const applyEntityCreateEffect = <
       })
       const changedPaths = readEntitySnapshotPaths(spec, value)
       return {
-        document: input.normalize(nextDocument),
+        document: nextDocument,
         inverse: createMutationProgram([{
           type: 'entity.delete',
           entity: {
@@ -209,7 +208,7 @@ const applyEntityCreateEffect = <
     const changedPaths = readEntitySnapshotPaths(spec, value)
 
     return {
-      document: input.normalize(nextDocument),
+      document: nextDocument,
       inverse: createMutationProgram([{
         type: 'entity.delete',
         entity: {
@@ -238,7 +237,6 @@ const applyEntityPatchEffect = <
   document: Doc
   effect: Extract<MutationEntityProgramStep, { type: 'entity.patch' }>
   spec: CompiledEntitySpec
-  normalize(doc: Doc): Doc
 }): AppliedMutationProgram<Doc> => {
   const { effect, spec } = input
   const entityId = spec.kind === 'singleton'
@@ -269,8 +267,8 @@ const applyEntityPatchEffect = <
   const inverseWrites = draft.record.inverse(current, entityWrites)
   const rootWrites = prefixRecordWrites(entityPath, entityWrites)
   const nextDocument = spec.family === 'document'
-    ? input.normalize(draft.record.apply(input.document, entityWrites))
-    : input.normalize(applyRootWrites(input.document, rootWrites))
+    ? draft.record.apply(input.document, entityWrites)
+    : applyRootWrites(input.document, rootWrites)
 
   return {
     document: nextDocument,
@@ -304,7 +302,6 @@ const applyEntityDeleteEffect = <
   document: Doc
   effect: Extract<MutationEntityProgramStep, { type: 'entity.delete' }>
   spec: CompiledEntitySpec
-  normalize(doc: Doc): Doc
 }): AppliedMutationProgram<Doc> => {
   const { effect, spec } = input
   if (spec.kind === 'singleton') {
@@ -321,7 +318,7 @@ const applyEntityDeleteEffect = <
     })
     const changedPaths = readEntitySnapshotPaths(spec, current)
     return {
-      document: input.normalize(nextDocument),
+      document: nextDocument,
       inverse: createMutationProgram([{
         type: 'entity.create',
         entity: {
@@ -356,7 +353,7 @@ const applyEntityDeleteEffect = <
   const changedPaths = readEntitySnapshotPaths(spec, current)
 
   return {
-    document: input.normalize(nextDocument),
+    document: nextDocument,
     inverse: createMutationProgram([{
       type: 'entity.create',
       entity: {
@@ -383,7 +380,6 @@ const applyEntityEffect = <
   document: Doc
   effect: MutationEntityProgramStep
   entities: ReadonlyMap<string, CompiledEntitySpec>
-  normalize(doc: Doc): Doc
 }): AppliedMutationProgram<Doc> => {
   if (input.effect.type === 'entity.patchMany') {
     let current = input.document
@@ -405,8 +401,7 @@ const applyEntityEffect = <
           },
           writes: update.writes
         },
-        entities: input.entities,
-        normalize: input.normalize
+        entities: input.entities
       })
       current = applied.document
       delta = mergeMutationDeltas(delta, applied.delta)
@@ -443,22 +438,19 @@ const applyEntityEffect = <
       return applyEntityCreateEffect({
         document: input.document,
         effect: input.effect,
-        spec,
-        normalize: input.normalize
+        spec
       })
     case 'entity.patch':
       return applyEntityPatchEffect({
         document: input.document,
         effect: input.effect,
-        spec,
-        normalize: input.normalize
+        spec
       })
     case 'entity.delete':
       return applyEntityDeleteEffect({
         document: input.document,
         effect: input.effect,
-        spec,
-        normalize: input.normalize
+        spec
       })
     default:
       throw new Error(`Unsupported entity effect "${(input.effect as { type: string }).type}".`)
@@ -475,7 +467,6 @@ export const applyMutationProgram = <
   program: MutationProgram<Tag>
   entities: ReadonlyMap<string, CompiledEntitySpec>
   registry?: MutationRegistry<Doc>
-  normalize(doc: Doc): Doc
 }): MutationApplyResult<Doc, Op, Code> => {
   let currentDocument = input.document
   let delta = EMPTY_DELTA
@@ -492,8 +483,7 @@ export const applyMutationProgram = <
         ? applyEntityEffect<Doc>({
             document: currentDocument,
             effect,
-            entities: input.entities,
-            normalize: input.normalize
+            entities: input.entities
           })
         : isStructuralEffect(effect)
           ? applyStructuralEffectResult<Doc>({

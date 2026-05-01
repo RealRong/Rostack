@@ -405,6 +405,10 @@ export const edgeIntentHandlers: EdgeIntentHandlers = {
     }
 
     ctx.program.edge.create(built.data.edge)
+    ctx.program.canvasOrder().insert({
+      kind: 'edge',
+      id: built.data.edgeId
+    })
     ctx.output({
       edgeId: built.data.edgeId
     })
@@ -510,6 +514,10 @@ export const edgeIntentHandlers: EdgeIntentHandlers = {
 
     ctx.intent.ids.forEach((id) => {
       ctx.program.edge.delete(id)
+      ctx.program.canvasOrder().deleteRef({
+        kind: 'edge',
+        id
+      })
     })
   },
   'edge.label.insert': (ctx) => {

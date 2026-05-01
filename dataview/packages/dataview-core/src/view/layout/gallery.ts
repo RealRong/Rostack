@@ -1,11 +1,11 @@
 import type { GalleryOptions } from '@dataview/core/types/state'
-import { cloneCardOptions, normalizeCardOptions } from '@dataview/core/view/card'
-import { isJsonObject } from '@dataview/core/view/shared'
+import { json } from '@shared/core'
+import { cloneCardOptions, normalizeCardOptions } from '@dataview/core/view/layout/card'
 
 export const normalizeGalleryOptions = (
   value: unknown
 ): GalleryOptions => {
-  const gallery = isJsonObject(value) ? value : undefined
+  const gallery = json.isJsonObject(value) ? value : undefined
   return {
     card: normalizeCardOptions(gallery?.card, {
       layout: 'stacked'

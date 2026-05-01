@@ -22,7 +22,7 @@ import type {
 } from '@dataview/core/view/filter/config'
 import type {
   viewTypeSpec
-} from '@dataview/core/view/typeSpec'
+} from '@dataview/core/view/model/typeSpec'
 import type {
   MutationOptions,
   MutationResult

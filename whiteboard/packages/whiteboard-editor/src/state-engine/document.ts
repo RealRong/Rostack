@@ -2,12 +2,15 @@ import { geometry as geometryApi } from '@whiteboard/core/geometry'
 import { selection as selectionApi, type SelectionTarget } from '@whiteboard/core/selection'
 import type { Viewport } from '@whiteboard/core/types'
 import { json } from '@shared/core'
+import type {
+  HoverState,
+  PreviewInput
+} from '@whiteboard/editor-scene'
 import type { InteractionMode } from '@whiteboard/editor/input/core/types'
 import {
   EMPTY_HOVER_STATE,
   isHoverStateEqual,
-  normalizeHoverState,
-  type HoverState
+  normalizeHoverState
 } from '@whiteboard/editor/input/hover/store'
 import type { Tool } from '@whiteboard/editor/types/tool'
 import type {
@@ -19,12 +22,9 @@ import {
 } from '@whiteboard/editor/session/draw/state'
 import {
   EMPTY_PREVIEW_STATE,
-  isEditorInputPreviewStateEqual,
-  normalizeEditorInputPreviewState
+  isEditorPreviewStateEqual,
+  normalizeEditorPreviewState
 } from '@whiteboard/editor/session/preview/state'
-import type {
-  EditorInputPreviewState
-} from '@whiteboard/editor/session/preview/types'
 import type {
   EditCaret,
   EditSession
@@ -40,7 +40,7 @@ export interface EditorStateDocument {
   selection: EditorStateValueBox<SelectionTarget>
   edit: EditorStateValueBox<EditSession>
   interaction: EditorStateValueBox<EditorInteractionStateValue>
-  preview: EditorStateValueBox<EditorInputPreviewState>
+  preview: EditorStateValueBox<PreviewInput>
   viewport: EditorStateValueBox<Viewport>
 }
 
@@ -266,7 +266,7 @@ export const buildEditorStateDocument = (input: {
   selection?: SelectionTarget
   edit?: EditSession
   interaction?: EditorInteractionStateValue
-  preview?: EditorInputPreviewState
+  preview?: PreviewInput
   viewport: Viewport
 }): EditorStateDocument => normalizeEditorStateDocument({
   tool: {
@@ -316,7 +316,7 @@ export const normalizeEditorStateDocument = (
     value: normalizeInteractionStateValue(value.interaction.value)
   },
   preview: {
-    value: normalizeEditorInputPreviewState(value.preview.value)
+    value: normalizeEditorPreviewState(value.preview.value)
   },
   viewport: {
     value: normalizeViewportValue(value.viewport.value)
@@ -326,4 +326,4 @@ export const normalizeEditorStateDocument = (
 export const isSelectionEqual = selectionApi.target.equal
 export const isDrawEqual = isDrawStateEqual
 export const isViewportEqual = geometryApi.viewport.isSame
-export const isPreviewEqual = isEditorInputPreviewStateEqual
+export const isPreviewEqual = isEditorPreviewStateEqual

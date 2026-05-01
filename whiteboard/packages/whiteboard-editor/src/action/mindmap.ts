@@ -7,8 +7,10 @@ import type {
 import type { EditController } from '@whiteboard/editor/action/edit'
 import type { MindmapActions } from '@whiteboard/editor/action/types'
 import { createMindmapActions as createMindmapWorkflowActions } from '@whiteboard/editor/tasks/mindmap'
-import type { EditorScene } from '@whiteboard/editor-scene'
-import type { EditorInputPreviewState } from '@whiteboard/editor/session/preview/types'
+import type {
+  EditorScene,
+  PreviewInput
+} from '@whiteboard/editor-scene'
 import type { EditorCommand } from '@whiteboard/editor/state-engine/intents'
 import type { EditorTaskRuntime } from '@whiteboard/editor/tasks/runtime'
 import type { DocumentFrame } from '@whiteboard/editor-scene'
@@ -66,7 +68,7 @@ export const createMindmapActionApi = (input: {
   document: Pick<DocumentFrame, 'node'>
   editor: {
     preview: {
-      get: () => EditorInputPreviewState
+      get: () => PreviewInput
     }
     dispatch: (command: EditorCommand | readonly EditorCommand[]) => void
   }

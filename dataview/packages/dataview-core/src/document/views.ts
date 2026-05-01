@@ -13,8 +13,12 @@ import { group } from '@dataview/core/view'
 import { search } from '@dataview/core/view'
 import { sort } from '@dataview/core/view'
 import { normalizeRecordOrderIds } from '@dataview/core/view/order'
-import { normalizeViewOptions } from '@dataview/core/view/normalize'
-import { normalizeViewDisplay } from '@dataview/core/view/state'
+import {
+  normalizeViewOptions
+} from '@dataview/core/view/options'
+import {
+  normalizeViewDisplay
+} from '@dataview/core/view/display'
 
 const replaceTable = <TKey extends 'fields' | 'records' | 'views'>(
   document: DataDoc,

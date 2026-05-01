@@ -3,7 +3,7 @@ import type {
   CardOptions,
   CardSize
 } from '@dataview/core/types/state'
-import { isJsonObject } from '@dataview/core/view/shared'
+import { json } from '@shared/core'
 
 const DEFAULT_WRAP = false
 const DEFAULT_SIZE: CardSize = 'md'
@@ -35,7 +35,7 @@ export const normalizeCardOptions = (
     layout: CardLayout
   }
 ): CardOptions => {
-  const card = isJsonObject(value) ? value : undefined
+  const card = json.isJsonObject(value) ? value : undefined
 
   return {
     wrap: typeof card?.wrap === 'boolean'

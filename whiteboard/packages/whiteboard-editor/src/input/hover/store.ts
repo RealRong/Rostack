@@ -1,42 +1,10 @@
 import { store as coreStore } from '@shared/core'
 import type {
-  EdgeId,
-  GroupId,
-  MindmapId,
-  NodeId
-} from '@whiteboard/core/types'
-import {
-  EMPTY_EDGE_GUIDE,
-  isEdgeGuideEqual
-} from '@whiteboard/editor/session/preview/edge'
-import type { EdgeGuide } from '@whiteboard/editor/session/preview/types'
+  HoverState
+} from '@whiteboard/editor-scene'
 import type { EditorPick } from '@whiteboard/editor/types/pick'
 
-export type HoverTarget =
-  | {
-      kind: 'node'
-      nodeId: NodeId
-    }
-  | {
-      kind: 'edge'
-      edgeId: EdgeId
-    }
-  | {
-      kind: 'mindmap'
-      mindmapId: MindmapId
-    }
-  | {
-      kind: 'group'
-      groupId: GroupId
-    }
-  | {
-      kind: 'selection-box'
-    }
-
-export type HoverState = {
-  target?: HoverTarget
-  edgeGuide?: EdgeGuide
-}
+export type { HoverState } from '@whiteboard/editor-scene'
 
 export type HoverStore = Pick<coreStore.ReadStore<HoverState>, 'get' | 'subscribe'> & {
   set: (
@@ -47,16 +15,15 @@ export type HoverStore = Pick<coreStore.ReadStore<HoverState>, 'get' | 'subscrib
   reset: () => void
 }
 
-export const EMPTY_HOVER_STATE: HoverState = {}
+export const EMPTY_HOVER_STATE: HoverState = {
+  kind: 'none'
+}
 
-export const isHoverTargetEqual = (
-  left: HoverTarget | undefined,
-  right: HoverTarget | undefined
+export const isHoverStateEqual = (
+  left: HoverState,
+  right: HoverState
 ): boolean => {
-  if (left === right) {
-    return true
-  }
-  if (!left || !right || left.kind !== right.kind) {
+  if (left.kind !== right.kind) {
     return false
   }
 
@@ -71,15 +38,48 @@ export const isHoverTargetEqual = (
       return right.kind === 'group' && left.groupId === right.groupId
     case 'selection-box':
       return right.kind === 'selection-box'
+    default:
+      return true
   }
 }
 
-export const toHoverTargetFromPick = (
+export const normalizeHoverState = (
+  value: HoverState
+): HoverState => {
+  switch (value.kind) {
+    case 'node':
+      return {
+        kind: 'node',
+        nodeId: value.nodeId
+      }
+    case 'edge':
+      return {
+        kind: 'edge',
+        edgeId: value.edgeId
+      }
+    case 'mindmap':
+      return {
+        kind: 'mindmap',
+        mindmapId: value.mindmapId
+      }
+    case 'group':
+      return {
+        kind: 'group',
+        groupId: value.groupId
+      }
+    case 'selection-box':
+      return {
+        kind: 'selection-box'
+      }
+    default:
+      return EMPTY_HOVER_STATE
+  }
+}
+
+export const toHoverStateFromPick = (
   pick: EditorPick
-): HoverTarget | undefined => {
+): HoverState => {
   switch (pick.kind) {
-    case 'background':
-      return undefined
     case 'selection-box':
       return {
         kind: 'selection-box'
@@ -104,45 +104,16 @@ export const toHoverTargetFromPick = (
         kind: 'mindmap',
         mindmapId: pick.treeId
       }
+    default:
+      return EMPTY_HOVER_STATE
   }
 }
-
-export const isHoverStateEqual = (
-  left: HoverState,
-  right: HoverState
-): boolean => (
-  isHoverTargetEqual(left.target, right.target)
-  && isEdgeGuideEqual(
-    left.edgeGuide ?? EMPTY_EDGE_GUIDE,
-    right.edgeGuide ?? EMPTY_EDGE_GUIDE
-  )
-)
-
-export const normalizeHoverState = (
-  value: HoverState
-): HoverState => (
-  value.target === undefined
-  && value.edgeGuide === undefined
-)
-  ? EMPTY_HOVER_STATE
-  : {
-      ...(value.target === undefined
-        ? {}
-        : {
-            target: value.target
-          }),
-      ...(value.edgeGuide === undefined
-        ? {}
-        : {
-            edgeGuide: value.edgeGuide
-          })
-    }
 
 export const createHoverStore = (): HoverStore => {
   const hoverStore = coreStore.createValueStore<HoverState>(EMPTY_HOVER_STATE, {
     isEqual: isHoverStateEqual
   })
-  let current = EMPTY_HOVER_STATE
+  let current: HoverState = EMPTY_HOVER_STATE
 
   return {
     get: hoverStore.get,

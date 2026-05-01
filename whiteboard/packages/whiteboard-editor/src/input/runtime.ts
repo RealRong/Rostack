@@ -1,7 +1,11 @@
 import { store } from '@shared/core'
 import type { Engine } from '@whiteboard/engine'
 import type { WhiteboardLayoutService } from '@whiteboard/core/layout'
-import type { DocumentFrame } from '@whiteboard/editor-scene'
+import type {
+  DocumentFrame,
+  EdgeGuidePreview,
+  PreviewInput
+} from '@whiteboard/editor-scene'
 import { createInteractionRuntime } from '@whiteboard/editor/input/core/runtime'
 import { createSnapRuntime, type SnapRuntime } from '@whiteboard/editor/input/core/snap'
 import { createDrawBinding } from '@whiteboard/editor/input/features/draw'
@@ -12,9 +16,11 @@ import { createViewportBinding } from '@whiteboard/editor/input/features/viewpor
 import { createEditorInputHost } from '@whiteboard/editor/input/host'
 import { createEdgeHoverService } from '@whiteboard/editor/input/hover/edge'
 import {
-  composeEditorInputPreviewState
+  composeEditorPreviewState
 } from '@whiteboard/editor/session/preview/state'
-import type { EditorInputPreviewState } from '@whiteboard/editor/session/preview/types'
+import {
+  isEdgeGuideEqual
+} from '@whiteboard/editor/session/preview/edge'
 import type { EditorStateRuntime } from '@whiteboard/editor/state-engine/runtime'
 import type {
   EditorInputHost,
@@ -74,9 +80,14 @@ type LocalEditorSession = {
       subscribe: (listener: () => void) => () => void
     }
     setGesture: (gesture: import('@whiteboard/editor/input/core/gesture').ActiveGesture | null) => void
+    edgeGuide: {
+      get: () => EdgeGuidePreview | undefined
+      subscribe: (listener: () => void) => () => void
+    }
+    setEdgeGuide: (edgeGuide: EdgeGuidePreview | undefined) => void
   }
   preview: {
-    get: () => EditorInputPreviewState
+    get: () => PreviewInput
     subscribe: (listener: () => void) => () => void
   }
   dispatch: EditorStateRuntime['dispatch']
@@ -106,7 +117,7 @@ export type EditorHostDeps = {
 
 export type EditorInputRuntimeHost = EditorInputHost & {
   preview: {
-    get: () => EditorInputPreviewState
+    get: () => PreviewInput
     subscribe: (listener: () => void) => () => void
   }
 }
@@ -146,33 +157,39 @@ const createSessionRead = (
 })
 
 const createLocalEditorSession = (
-  runtime: EditorStateRuntime
+  input: {
+    runtime: EditorStateRuntime
+    document: Pick<DocumentFrame, 'snapshot'>
+  }
 ): LocalEditorSession => {
   const gesture = store.createValueStore<import('@whiteboard/editor/input/core/gesture').ActiveGesture | null>(null)
   const pointer = store.createValueStore<import('@whiteboard/editor/types/input').PointerSample | null>(null)
+  const edgeGuide = store.createValueStore<EdgeGuidePreview | undefined>(undefined, {
+    isEqual: (left, right) => isEdgeGuideEqual(left ?? {}, right ?? {})
+  })
   const mode = store.createDerivedStore({
-    get: () => store.read(runtime.stores.interaction.store).mode,
+    get: () => store.read(input.runtime.stores.interaction.store).mode,
     isEqual: (left, right) => left === right
   })
   const chrome = store.createDerivedStore({
-    get: () => store.read(runtime.stores.interaction.store).chrome,
+    get: () => store.read(input.runtime.stores.interaction.store).chrome,
     isEqual: (left, right) => left === right
   })
   const space = store.createDerivedStore({
-    get: () => store.read(runtime.stores.interaction.store).space,
+    get: () => store.read(input.runtime.stores.interaction.store).space,
     isEqual: (left, right) => left === right
   })
   const busy = store.createDerivedStore({
-    get: () => store.read(runtime.stores.interaction.store).mode !== 'idle',
+    get: () => store.read(input.runtime.stores.interaction.store).mode !== 'idle',
     isEqual: (left, right) => left === right
   })
 
   return {
     state: {
-      tool: runtime.stores.tool.store,
-      draw: runtime.stores.draw.store,
-      selection: runtime.stores.selection.store,
-      edit: runtime.stores.edit.store
+      tool: input.runtime.stores.tool.store,
+      draw: input.runtime.stores.draw.store,
+      selection: input.runtime.stores.selection.store,
+      edit: input.runtime.stores.edit.store
     },
     interaction: {
       read: {
@@ -180,8 +197,8 @@ const createLocalEditorSession = (
         busy,
         chrome,
         hover: {
-          get: () => runtime.stores.interaction.store.get().hover,
-          subscribe: runtime.stores.interaction.store.subscribe
+          get: () => input.runtime.stores.interaction.store.get().hover,
+          subscribe: input.runtime.stores.interaction.store.subscribe
         },
         space
       }
@@ -200,18 +217,36 @@ const createLocalEditorSession = (
       },
       setGesture: (nextGesture) => {
         gesture.set(nextGesture)
+      },
+      edgeGuide: {
+        get: edgeGuide.get,
+        subscribe: edgeGuide.subscribe
+      },
+      setEdgeGuide: (nextEdgeGuide) => {
+        edgeGuide.set(nextEdgeGuide)
       }
     },
     preview: {
-      get: () => composeEditorInputPreviewState({
-        base: runtime.stores.preview.store.get(),
+      get: () => composeEditorPreviewState({
+        base: input.runtime.stores.preview.store.get(),
         gesture: gesture.get(),
-        hover: runtime.stores.interaction.store.get().hover
+        hover: input.runtime.stores.interaction.store.get().hover,
+        edgeGuide: edgeGuide.get(),
+        readDocument: input.document.snapshot
       }),
-      subscribe: gesture.subscribe
+      subscribe: (listener) => {
+        const unsubscribeGesture = gesture.subscribe(listener)
+        const unsubscribeEdgeGuide = edgeGuide.subscribe(listener)
+        const unsubscribeBasePreview = input.runtime.stores.preview.store.subscribe(listener)
+        return () => {
+          unsubscribeGesture()
+          unsubscribeEdgeGuide()
+          unsubscribeBasePreview()
+        }
+      }
     },
-    dispatch: runtime.dispatch,
-    viewport: runtime.viewport
+    dispatch: input.runtime.dispatch,
+    viewport: input.runtime.viewport
   }
 }
 
@@ -241,7 +276,10 @@ export const createEditorHost = (input: {
   tool: EditorHostDeps['tool']
   nodeType: NodeTypeSupport
 }): EditorInputRuntimeHost => {
-  const session = createLocalEditorSession(input.runtime)
+  const session = createLocalEditorSession({
+    runtime: input.runtime,
+    document: input.document
+  })
   const sessionRead = createSessionRead(input.runtime)
   const snap = createEditorSnapRuntime({
     engine: input.engine,
@@ -302,13 +340,8 @@ export const createEditorHost = (input: {
       snap
     },
     {
-      read: () => ({
-        mode: input.runtime.stores.interaction.store.get().mode,
-        chrome: input.runtime.stores.interaction.store.get().chrome,
-        space: input.runtime.stores.interaction.store.get().space,
-        hover: input.runtime.stores.interaction.store.get().hover
-      }),
-      dispatch: input.runtime.dispatch
+      read: session.transient.edgeGuide.get,
+      write: session.transient.setEdgeGuide
     }
   )
 

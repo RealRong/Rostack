@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { createGesture } from '../src/input/core/gesture'
 import { DEFAULT_DRAW_STATE } from '../src/session/draw/state'
-import { composeEditorInputPreviewState } from '../src/session/preview/state'
+import { composeEditorPreviewState } from '../src/session/preview/state'
 import { EMPTY_HOVER_STATE } from '../src/input/hover/store'
 import { createEditorStateRuntime } from '../src/state-engine/runtime'
 
@@ -27,7 +27,7 @@ describe('mindmap preview state', () => {
         hover: EMPTY_HOVER_STATE
       }
     })
-    const preview = composeEditorInputPreviewState({
+    const preview = composeEditorPreviewState({
       base: runtime.stores.preview.store.get(),
       gesture: createGesture('mindmap-drag', {
         mindmap: {
@@ -40,12 +40,23 @@ describe('mindmap preview state', () => {
           }
         }
       }),
-      hover: runtime.stores.interaction.store.get().hover
+      hover: runtime.stores.interaction.store.get().hover,
+      readDocument: () => ({
+        nodes: {
+          'mind-1': {
+            owner: {
+              kind: 'mindmap',
+              id: 'mind-1'
+            }
+          }
+        },
+        mindmaps: {}
+      }) as never
     })
 
-    expect(preview.mindmap.preview).toEqual({
+    expect(preview.mindmap).toEqual({
       rootMove: {
-        treeId: 'mind-1',
+        mindmapId: 'mind-1',
         delta: {
           x: 60,
           y: 40

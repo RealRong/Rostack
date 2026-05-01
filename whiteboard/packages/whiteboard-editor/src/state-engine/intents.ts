@@ -1,11 +1,9 @@
 import type { Viewport } from '@whiteboard/core/types'
+import type { PreviewInput } from '@whiteboard/editor-scene'
 import type { Tool } from '@whiteboard/editor/types/tool'
 import type {
   DrawState
 } from '@whiteboard/editor/session/draw/state'
-import type {
-  EditorInputPreviewState
-} from '@whiteboard/editor/session/preview/types'
 import type {
   EditSession
 } from '@whiteboard/editor/session/edit'
@@ -52,7 +50,7 @@ export type EditorStateIntentTable = {
   'preview.set': {
     intent: {
       type: 'preview.set'
-      preview: EditorInputPreviewState
+      preview: PreviewInput
     }
     output: void
   }

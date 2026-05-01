@@ -1,6 +1,7 @@
 import { geometry as geometryApi, type ContainerRect, type ViewportLimits, type WheelInput } from '@whiteboard/core/geometry'
 import { selection as selectionApi, type SelectionTarget } from '@whiteboard/core/selection'
 import type { Point, Viewport } from '@whiteboard/core/types'
+import type { PreviewInput } from '@whiteboard/editor-scene'
 import { record as draftRecord } from '@shared/draft'
 import {
   MutationEngine,
@@ -18,9 +19,6 @@ import type {
 } from '@whiteboard/editor/session/draw/state'
 import type { Tool } from '@whiteboard/editor/types/tool'
 import type { EditSession } from '@whiteboard/editor/session/edit'
-import type {
-  EditorInputPreviewState
-} from '@whiteboard/editor/session/preview/types'
 import type {
   ViewportInputRuntime,
   ViewportRead,
@@ -228,7 +226,7 @@ const createStateStores = (
     normalize: normalizeInteractionStateValue,
     isEqual: isInteractionStateEqual
   }),
-  preview: store.createNormalizedValue<EditorInputPreviewState>({
+  preview: store.createNormalizedValue<PreviewInput>({
     initial: document.preview.value,
     isEqual: isPreviewEqual
   }),
@@ -473,7 +471,6 @@ export const createEditorStateRuntime = (input: {
     syncStateStore(stores.selection, () => current.document.selection.value)
     syncStateStore(stores.edit, () => current.document.edit.value)
     syncStateStore(stores.interaction, () => current.document.interaction.value)
-    syncStateStore(stores.preview, () => current.document.preview.value)
     syncStateStore(stores.viewport, () => current.document.viewport.value)
   })
 
@@ -496,6 +493,11 @@ export const createEditorStateRuntime = (input: {
     command: EditorCommand | readonly EditorCommand[]
   ) => {
     toCommandList(command).forEach((entry) => {
+      if (entry.type === 'preview.set') {
+        stores.preview.set(entry.preview)
+        return
+      }
+
       assertEditorStateCommit(engine.execute(entry))
     })
   }

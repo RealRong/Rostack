@@ -1,4 +1,3 @@
-import { mindmap as mindmapApi } from '@whiteboard/core/mindmap'
 import type { MutationDelta } from '@shared/mutation'
 import type {
   EdgeId,
@@ -10,16 +9,9 @@ import type {
   EditorScenePreviewDelta,
   EditorSceneSnapshot,
   HoverState,
-  MindmapPreview,
-  NodePreview,
-  EdgePreview
+  MindmapPreview
 } from '@whiteboard/editor-scene'
 import type { Engine } from '@whiteboard/engine'
-import type { HoverState as EditorHoverState } from '@whiteboard/editor/input/hover/store'
-import type {
-  NodePresentationEntry,
-  EditorInputPreviewState
-} from '@whiteboard/editor/session/preview/types'
 import {
   createEditorStateMutationDelta,
   type EditorStateMutationDelta
@@ -40,153 +32,6 @@ type CommitFlags = {
   interaction: boolean
   preview: boolean
   viewport: boolean
-}
-
-const mergeNodePreviewPatch = (
-  current: NodePreview | undefined,
-  patch: Record<string, unknown>
-): NodePreview => ({
-  patch: {
-    ...(current?.patch ?? {}),
-    ...patch
-  },
-  presentation: current?.presentation,
-  hovered: current?.hovered ?? false,
-  hidden: current?.hidden ?? false
-})
-
-const mergeNodePresentation = (
-  current: NodePreview | undefined,
-  entry: NodePresentationEntry
-): NodePreview => ({
-  patch: current?.patch,
-  presentation: entry.presentation,
-  hovered: current?.hovered ?? false,
-  hidden: current?.hidden ?? false
-})
-
-const readNodePreviews = (
-  preview: EditorInputPreviewState
-): ReadonlyMap<string, NodePreview> => {
-  const byId = new Map<string, NodePreview>()
-
-  preview.selection.node.patches.forEach((entry) => {
-    byId.set(entry.id, mergeNodePreviewPatch(byId.get(entry.id), entry.patch))
-  })
-  preview.node.text.patches.forEach((entry) => {
-    byId.set(entry.id, mergeNodePreviewPatch(byId.get(entry.id), entry.patch))
-  })
-  preview.node.presentation.forEach((entry) => {
-    byId.set(entry.id, mergeNodePresentation(byId.get(entry.id), entry))
-  })
-  preview.draw.hidden.forEach((nodeId) => {
-    const current = byId.get(nodeId)
-    byId.set(nodeId, {
-      patch: current?.patch,
-      presentation: current?.presentation,
-      hovered: current?.hovered ?? false,
-      hidden: true
-    })
-  })
-
-  return byId
-}
-
-const readEdgePreviews = (
-  preview: EditorInputPreviewState
-): ReadonlyMap<string, EdgePreview> => {
-  const byId = new Map<string, EdgePreview>()
-
-  preview.selection.edge.forEach((entry) => {
-    byId.set(entry.id, {
-      patch: entry.patch,
-      activeRouteIndex: entry.activeRouteIndex
-    })
-  })
-
-  return byId
-}
-
-const readDrawPreview = (
-  preview: EditorInputPreviewState
-) => {
-  const current = preview.draw.preview
-  if (!current) {
-    return null
-  }
-
-  return {
-    kind: current.kind,
-    style: current.style,
-    points: current.points,
-    hiddenNodeIds: preview.draw.hidden
-  }
-}
-
-const readMindmapPreview = (input: {
-  document: Pick<Engine, 'doc'>
-  preview: EditorInputPreviewState['mindmap']['preview']
-}): MindmapPreview | null => {
-  if (!input.preview) {
-    return null
-  }
-
-  const rootMoveMindmapId = input.preview.rootMove
-    ? mindmapApi.tree.resolveId(input.document.doc(), input.preview.rootMove.treeId)
-    : undefined
-  const subtreeMoveMindmapId = input.preview.subtreeMove
-    ? mindmapApi.tree.resolveId(input.document.doc(), input.preview.subtreeMove.treeId)
-    : undefined
-
-  return {
-    rootMove: rootMoveMindmapId && input.preview.rootMove
-      ? {
-          mindmapId: rootMoveMindmapId,
-          delta: input.preview.rootMove.delta
-        }
-      : undefined,
-    subtreeMove: subtreeMoveMindmapId && input.preview.subtreeMove
-      ? {
-          mindmapId: subtreeMoveMindmapId,
-          nodeId: input.preview.subtreeMove.nodeId,
-          ghost: input.preview.subtreeMove.ghost,
-          drop: input.preview.subtreeMove.drop
-        }
-      : undefined
-  }
-}
-
-const readInteractionHover = (
-  hover: EditorHoverState
-): HoverState => {
-  switch (hover.target?.kind) {
-    case 'node':
-      return {
-        kind: 'node',
-        nodeId: hover.target.nodeId
-      }
-    case 'edge':
-      return {
-        kind: 'edge',
-        edgeId: hover.target.edgeId
-      }
-    case 'mindmap':
-      return {
-        kind: 'mindmap',
-        mindmapId: hover.target.mindmapId
-      }
-    case 'group':
-      return {
-        kind: 'group',
-        groupId: hover.target.groupId
-      }
-    case 'selection-box':
-      return {
-        kind: 'selection-box'
-      }
-    default:
-      return EMPTY_HOVER_STATE
-  }
 }
 
 const isHoverEqual = (
@@ -275,7 +120,7 @@ const isMindmapPreviewEqual = (
 export const buildEditorSceneSnapshot = (input: {
   engine: Pick<Engine, 'doc' | 'rev'>
   runtime: EditorStateRuntime
-  preview: EditorInputPreviewState
+  preview: EditorSceneSnapshot['preview']
 }): EditorSceneSnapshot => {
   const interaction = input.runtime.stores.interaction.store.get()
   const viewport = input.runtime.viewport.read.get()
@@ -289,37 +134,9 @@ export const buildEditorSceneSnapshot = (input: {
       mode: interaction.mode,
       chrome: interaction.chrome,
       space: interaction.space,
-      hover: readInteractionHover(interaction.hover)
+      hover: interaction.hover
     },
-    preview: {
-      nodes: new Map(readNodePreviews(input.preview)),
-      edges: new Map(readEdgePreviews(input.preview)),
-      edgeGuide: input.preview.edge.guide
-        ? {
-            path: input.preview.edge.guide.path,
-            connect: input.preview.edge.guide.connect
-              ? {
-                  focusedNodeId: input.preview.edge.guide.connect.focusedNodeId,
-                  resolution: input.preview.edge.guide.connect.resolution
-                }
-              : undefined
-          }
-        : undefined,
-      draw: readDrawPreview(input.preview),
-      selection: {
-        marquee: input.preview.selection.marquee
-          ? {
-              worldRect: input.preview.selection.marquee.worldRect,
-              match: input.preview.selection.marquee.match
-            }
-          : undefined,
-        guides: input.preview.selection.guides
-      },
-      mindmap: readMindmapPreview({
-        document: input.engine,
-        preview: input.preview.mindmap.preview
-      })
-    },
+    preview: input.preview,
     viewport,
     view: {
       zoom: viewport.zoom,

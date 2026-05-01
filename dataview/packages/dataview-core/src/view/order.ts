@@ -39,3 +39,5 @@ export const spliceRecordIds = (
     ? { before: options.beforeRecordId }
     : {})
 })
+
+export const clearViewOrders = (): RecordId[] => []

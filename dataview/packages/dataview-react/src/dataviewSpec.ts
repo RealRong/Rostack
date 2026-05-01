@@ -5,8 +5,8 @@ import {
   fieldKindSpec
 } from '@dataview/core/field/kind/spec'
 import {
-  filterSpec
-} from '@dataview/core/view/filterSpec'
+  filterConfig
+} from '@dataview/core/view/filter'
 import {
   viewTypeSpec
 } from '@dataview/core/view'
@@ -21,7 +21,7 @@ import {
 export const dataviewSpec = {
   viewTypes: viewTypeSpec,
   fieldKinds: fieldKindSpec,
-  filters: filterSpec,
+  filters: filterConfig,
   fieldValues: fieldValueSpec,
   models: {
     page: pageModelSpec,

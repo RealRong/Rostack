@@ -2,10 +2,8 @@ import type {
   KanbanCardsPerColumn,
   KanbanOptions
 } from '@dataview/core/types/state'
-import { cloneCardOptions, normalizeCardOptions } from '@dataview/core/view/card'
-import {
-  isJsonObject
-} from '@dataview/core/view/shared'
+import { json } from '@shared/core'
+import { cloneCardOptions, normalizeCardOptions } from '@dataview/core/view/layout/card'
 import {
   KANBAN_CARDS_PER_COLUMN_OPTIONS
 } from '@dataview/core/types/state'
@@ -26,7 +24,7 @@ const normalizeCardsPerColumn = (
 export const normalizeKanbanOptions = (
   value: unknown
 ): KanbanOptions => {
-  const kanban = isJsonObject(value) ? value : undefined
+  const kanban = json.isJsonObject(value) ? value : undefined
 
   return {
     card: normalizeCardOptions(kanban?.card, {

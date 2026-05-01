@@ -7,8 +7,8 @@ import type { EdgeHoverService } from '@whiteboard/editor/input/hover/edge'
 import type { EditorHostDeps } from '@whiteboard/editor/input/runtime'
 import {
   EMPTY_HOVER_STATE,
-  isHoverTargetEqual,
-  toHoverTargetFromPick
+  isHoverStateEqual,
+  toHoverStateFromPick
 } from '@whiteboard/editor/input/hover/store'
 
 const readSelectionIntent = (
@@ -190,7 +190,7 @@ export const createEditorInputHost = ({
 
       const handled = interaction.handlePointerDown(input)
       if (handled) {
-        updateInteraction(() => ({}))
+        updateInteraction(() => EMPTY_HOVER_STATE)
         edgeHover.clear()
       }
 
@@ -203,19 +203,16 @@ export const createEditorInputHost = ({
       writePointer(input)
       const handled = interaction.handlePointerMove(input)
       if (handled) {
-        updateInteraction(() => ({}))
+        updateInteraction(() => EMPTY_HOVER_STATE)
         edgeHover.clear()
         return true
       }
 
-      const target = toHoverTargetFromPick(input.pick)
+      const target = toHoverStateFromPick(input.pick)
       updateInteraction((current) => (
-        isHoverTargetEqual(current.target, target)
+        isHoverStateEqual(current, target)
           ? current
-          : {
-              ...current,
-              target
-            }
+          : target
       ))
 
       if (session.state.tool.get().type === 'edge') {

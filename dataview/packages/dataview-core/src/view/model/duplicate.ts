@@ -8,10 +8,10 @@ import type {
 import { createId, entityTable } from '@shared/core'
 import {
   createDuplicateViewPreferredName
-} from '@dataview/core/view/naming'
+} from '@dataview/core/view/model/naming'
 import {
   cloneViewOptions
-} from '@dataview/core/view/shared'
+} from '@dataview/core/view/options'
 
 const createFilterRuleId = (): string => createId('filter')
 const createSortRuleId = (): string => createId('sort')

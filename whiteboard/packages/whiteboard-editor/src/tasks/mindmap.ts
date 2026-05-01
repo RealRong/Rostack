@@ -11,13 +11,14 @@ import type {
   MindmapActions,
   MindmapInsertBehavior
 } from '@whiteboard/editor/action/types'
-import type { EditorScene } from '@whiteboard/editor-scene'
+import type {
+  EditorScene,
+  PreviewInput
+} from '@whiteboard/editor-scene'
 import type { EditorCommand } from '@whiteboard/editor/state-engine/intents'
 import {
-  clearNodePresentation,
-  updateNodePresentation
-} from '@whiteboard/editor/session/preview/node'
-import type { EditorInputPreviewState } from '@whiteboard/editor/session/preview/types'
+  updatePreviewNodePresentation
+} from '@whiteboard/editor/session/preview/state'
 import type { EditorWrite } from '@whiteboard/editor/write'
 import type { EditorTaskRuntime } from './runtime'
 import {
@@ -30,7 +31,7 @@ type MindmapActionDeps = {
   graph: EditorScene
   editor: {
     preview: {
-      get: () => EditorInputPreviewState
+      get: () => PreviewInput
     }
     dispatch: (command: EditorCommand | readonly EditorCommand[]) => void
   }
@@ -86,22 +87,19 @@ const withNodePresentation = (
   position?: Point
 ) => {
   const current = editor.preview.get()
-  const nextNode = position
-    ? updateNodePresentation(current.node, nodeId, {
-        position
-      })
-    : clearNodePresentation(current.node, nodeId)
+  const nextPreview = updatePreviewNodePresentation(
+    current,
+    nodeId,
+    position
+  )
 
-  if (nextNode === current.node) {
+  if (nextPreview === current) {
     return
   }
 
   editor.dispatch({
     type: 'preview.set',
-    preview: {
-      ...current,
-      node: nextNode
-    }
+    preview: nextPreview
   } satisfies EditorCommand)
 }
 

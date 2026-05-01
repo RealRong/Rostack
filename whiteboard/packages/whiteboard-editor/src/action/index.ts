@@ -21,7 +21,10 @@ import {
 import {
   createSelectionActions
 } from '@whiteboard/editor/action/selection'
-import type { EditorScene } from '@whiteboard/editor-scene'
+import type {
+  EditorScene,
+  PreviewInput
+} from '@whiteboard/editor-scene'
 import { json } from '@shared/core'
 import type { EditorCommand } from '@whiteboard/editor/state-engine/intents'
 import {
@@ -59,7 +62,7 @@ export type CreateEditorActionsApiDeps = {
       get: () => import('@whiteboard/core/selection').SelectionTarget
     }
     preview: {
-      get: () => import('@whiteboard/editor/session/preview/types').EditorInputPreviewState
+      get: () => PreviewInput
     }
     dispatch: (command: EditorCommand | readonly EditorCommand[]) => void
     viewport: EditorStateRuntime['viewport']

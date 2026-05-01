@@ -21,8 +21,8 @@ import {
   fieldSpec
 } from '@dataview/core/field/spec'
 import {
-  isJsonObject
-} from '@dataview/core/view/shared'
+  json
+} from '@shared/core'
 import type {
   Token
 } from '@shared/i18n'
@@ -446,7 +446,7 @@ export const normalizeViewCalculations = (
     fields?: ReadonlyMap<FieldId, Field>
   } = {}
 ): ViewCalc => {
-  if (!isJsonObject(value)) {
+  if (!json.isJsonObject(value)) {
     return {}
   }
 

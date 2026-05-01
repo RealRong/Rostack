@@ -61,7 +61,7 @@ import {
 import {
   resolveDefaultKanbanGroup,
   setViewType
-} from '../../view/update'
+} from '../../view/model/update'
 
 type DataviewCompileInput = DataviewCompileContext
 type DocumentReader = DataviewCompileReader

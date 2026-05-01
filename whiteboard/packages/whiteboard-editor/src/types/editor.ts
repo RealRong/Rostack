@@ -20,14 +20,14 @@ import type {
   DocumentFrame,
   DrawPreview,
   EdgeGuidePreview,
-  EditorScene
+  EditorScene,
+  PreviewInput
 } from '@whiteboard/editor-scene'
 import type { EditorActions as EditorWrite } from '@whiteboard/editor/action/types'
 import type { EditSession } from '@whiteboard/editor/session/edit'
 import type { DrawState } from '@whiteboard/editor/session/draw/state'
 import type {
-  EdgeGuide,
-  EditorInputPreviewState
+  EdgeGuide
 } from '@whiteboard/editor/session/preview/types'
 import type { EditorCommand } from '@whiteboard/editor/state-engine/intents'
 import type { EditorInteractionStateValue } from '@whiteboard/editor/state-engine/document'
@@ -193,7 +193,7 @@ export type EditorProjectionStores = EditorScene['stores'] & {
       selection: store.ReadStore<SelectionTarget>
       edit: store.ReadStore<EditSession | null>
       interaction: store.ReadStore<EditorInteractionStateValue>
-      preview: store.ReadStore<EditorInputPreviewState>
+      preview: store.ReadStore<PreviewInput>
       viewport: store.ReadStore<Viewport>
     }
   }
@@ -206,7 +206,7 @@ export type EditorProjectionRuntimeFrame = EditorScene['runtime'] & {
     selection(): SelectionTarget
     edit(): EditSession | null
     interaction(): EditorInteractionStateValue
-    preview(): EditorInputPreviewState
+    preview(): PreviewInput
     viewport: {
       get(): Viewport
       pointer(input: {
@@ -241,7 +241,7 @@ export type EditorSceneEditorApi = {
   selection: store.ReadStore<SelectionTarget>
   edit: store.ReadStore<EditSession | null>
   interaction: store.ReadStore<EditorInteractionState>
-  preview: store.ReadStore<EditorInputPreviewState>
+  preview: store.ReadStore<PreviewInput>
   viewport: store.ReadStore<Viewport> & {
     pointer(input: {
       clientX: number

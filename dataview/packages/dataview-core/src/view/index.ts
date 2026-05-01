@@ -1,35 +1,32 @@
 import {
   cloneCardOptions,
   normalizeCardOptions
-} from '@dataview/core/view/card'
+} from '@dataview/core/view/layout'
 import {
   viewCalcFields,
   viewDisplayFields,
   viewFilterFields,
   viewSearchFields,
   viewSortFields
-} from '@dataview/core/view/demand'
+} from '@dataview/core/view/model/demand'
 import {
   createDuplicateViewInput
-} from '@dataview/core/view/duplicate'
+} from '@dataview/core/view/model/duplicate'
 import {
   cloneGalleryOptions,
   normalizeGalleryOptions
-} from '@dataview/core/view/gallery'
+} from '@dataview/core/view/layout'
 import {
   cloneKanbanOptions,
   normalizeKanbanOptions
-} from '@dataview/core/view/kanban'
+} from '@dataview/core/view/layout'
 import {
   createDuplicateViewPreferredName,
   resolveUniqueViewName
-} from '@dataview/core/view/naming'
-import {
-  normalizeViewOptions,
-  type NormalizeViewOptionsContext
-} from '@dataview/core/view/normalize'
+} from '@dataview/core/view/model/naming'
 import {
   applyRecordOrder,
+  clearViewOrders,
   normalizeRecordOrderIds,
   spliceRecordIds,
   reorderRecordIds
@@ -38,36 +35,35 @@ import {
   cloneTableOptions,
   createDefaultViewDisplay,
   createDefaultViewOptions,
-  pruneFieldFromViewOptions
+  cloneViewOptions,
+  normalizeViewOptions,
+  patchGalleryLayout,
+  patchKanbanLayout,
+  patchTableLayout,
+  pruneFieldFromViewOptions,
+  sameViewOptions,
+  type NormalizeViewOptionsContext
 } from '@dataview/core/view/options'
 import {
   getViewTypeSpec,
   viewTypeSpec
-} from '@dataview/core/view/typeSpec'
+} from '@dataview/core/view/model/typeSpec'
 import {
   repairViewForConvertedField,
   repairViewForRemovedField
-} from '@dataview/core/view/repair'
+} from '@dataview/core/view/model/repair'
 import {
-  cloneViewOptions,
-  resolveDisplayInsertBeforeFieldId
-} from '@dataview/core/view/shared'
-import {
-  clearDisplayFields,
-  clearViewOrders,
-  cloneDisplay,
-  moveDisplayFields,
-  hideDisplayField,
+  clearViewDisplayFields,
+  cloneViewDisplay,
+  hideViewDisplayField,
+  moveViewDisplayFields,
   normalizeViewDisplay,
-  patchGalleryLayout,
-  patchKanbanLayout,
-  patchTableLayout,
-  replaceDisplayFields,
-  sameDisplay,
-  sameViewOptions,
-  showDisplayField
-} from '@dataview/core/view/state'
-import { active } from '@dataview/core/view/active'
+  replaceViewDisplayFields,
+  resolveDisplayInsertBeforeFieldId,
+  sameViewDisplay,
+  showViewDisplayField
+} from '@dataview/core/view/display'
+import { active } from '@dataview/core/view/model/active'
 import { filter } from '@dataview/core/view/filter'
 import { sort } from '@dataview/core/view/sort'
 import { search } from '@dataview/core/view/search'
@@ -98,14 +94,14 @@ export const view = {
     input: createDuplicateViewInput
   },
   display: {
-    clone: cloneDisplay,
-    same: sameDisplay,
+    clone: cloneViewDisplay,
+    same: sameViewDisplay,
     normalize: normalizeViewDisplay,
-    replace: replaceDisplayFields,
-    move: moveDisplayFields,
-    show: showDisplayField,
-    hide: hideDisplayField,
-    clear: clearDisplayFields,
+    replace: replaceViewDisplayFields,
+    move: moveViewDisplayFields,
+    show: showViewDisplayField,
+    hide: hideViewDisplayField,
+    clear: clearViewDisplayFields,
     insertBefore: resolveDisplayInsertBeforeFieldId
   },
   calc: {

@@ -8,9 +8,6 @@ export {
   whiteboardMutationRegistry
 } from '@whiteboard/core/operations/targets'
 export {
-  whiteboardStructures
-} from '@whiteboard/core/operations/targets'
-export {
   validateWhiteboardOperationBatch
 } from '@whiteboard/core/operations/validate'
 export {

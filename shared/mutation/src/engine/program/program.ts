@@ -7,11 +7,13 @@ import type {
   MutationStructuralFact,
   MutationTreeSubtreeSnapshot,
 } from '../../write'
+import type {
+  MutationEntityTarget,
+  MutationOrderedTarget,
+  MutationTreeTarget,
+} from '../registry'
 
-export interface MutationEntityRef {
-  table: string
-  id: string
-}
+export type MutationEntityRef = MutationEntityTarget
 
 type MutationProgramStepMetadata<
   Tag extends string = string
@@ -36,7 +38,7 @@ export type MutationEntityProgramStep<
     } & MutationProgramStepMetadata<Tag>
   | {
       type: 'entity.patchMany'
-      table: string
+      entityType: string
       updates: readonly {
         id: string
         writes: Readonly<Record<string, unknown>>
@@ -52,31 +54,31 @@ export type MutationOrderedProgramStep<
 > =
   | {
       type: 'ordered.insert'
-      structure: string
+      target: MutationOrderedTarget
       itemId: string
       value: unknown
       to: MutationOrderedAnchor
     } & MutationProgramStepMetadata<Tag>
   | {
       type: 'ordered.move'
-      structure: string
+      target: MutationOrderedTarget
       itemId: string
       to: MutationOrderedAnchor
     } & MutationProgramStepMetadata<Tag>
   | {
       type: 'ordered.splice'
-      structure: string
+      target: MutationOrderedTarget
       itemIds: readonly string[]
       to: MutationOrderedAnchor
     } & MutationProgramStepMetadata<Tag>
   | {
       type: 'ordered.delete'
-      structure: string
+      target: MutationOrderedTarget
       itemId: string
     } & MutationProgramStepMetadata<Tag>
   | {
       type: 'ordered.patch'
-      structure: string
+      target: MutationOrderedTarget
       itemId: string
       patch: unknown
     } & MutationProgramStepMetadata<Tag>
@@ -86,7 +88,7 @@ export type MutationTreeProgramStep<
 > =
   | {
       type: 'tree.insert'
-      structure: string
+      target: MutationTreeTarget
       nodeId: string
       parentId?: string
       index?: number
@@ -94,27 +96,33 @@ export type MutationTreeProgramStep<
     } & MutationProgramStepMetadata<Tag>
   | {
       type: 'tree.move'
-      structure: string
+      target: MutationTreeTarget
       nodeId: string
       parentId?: string
       index?: number
     } & MutationProgramStepMetadata<Tag>
   | {
       type: 'tree.delete'
-      structure: string
+      target: MutationTreeTarget
       nodeId: string
     } & MutationProgramStepMetadata<Tag>
   | {
       type: 'tree.restore'
-      structure: string
+      target: MutationTreeTarget
       snapshot: MutationTreeSubtreeSnapshot
     } & MutationProgramStepMetadata<Tag>
   | {
       type: 'tree.node.patch'
-      structure: string
+      target: MutationTreeTarget
       nodeId: string
       patch: unknown
     } & MutationProgramStepMetadata<Tag>
+
+export type MutationSignalProgramStep<
+  Tag extends string = string
+> = {
+  type: 'signal'
+} & MutationProgramStepMetadata<Tag>
 
 export type MutationProgramStep<
   Tag extends string = string
@@ -122,6 +130,7 @@ export type MutationProgramStep<
   | MutationEntityProgramStep<Tag>
   | MutationOrderedProgramStep<Tag>
   | MutationTreeProgramStep<Tag>
+  | MutationSignalProgramStep<Tag>
 
 export const isMutationProgramStep = (
   value: {
@@ -143,6 +152,7 @@ export const isMutationProgramStep = (
     case 'tree.delete':
     case 'tree.restore':
     case 'tree.node.patch':
+    case 'signal':
       return true
     default:
       return false

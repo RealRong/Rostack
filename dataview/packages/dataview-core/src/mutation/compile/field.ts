@@ -22,6 +22,7 @@ import {
 import {
   issue,
   reportIssues,
+  writeRecordValuesMany,
   type DataviewCompileContext,
   type DataviewCompileContext as DataviewCompileInput
 } from './base'
@@ -31,6 +32,15 @@ import {
 } from './viewDiff'
 
 const DEFAULT_OPTION_NAME = 'Option'
+
+const toBeforeAnchor = (
+  before?: string
+) => before === undefined
+  ? undefined
+  : {
+      kind: 'before' as const,
+      itemId: before
+    }
 
 const createOptionName = (
   options: Extract<CustomField, { kind: 'select' | 'multiSelect' | 'status' }>['options']
@@ -250,7 +260,7 @@ const lowerFieldDuplicate = (
       return
     }
 
-    input.program.record.value.writeMany({
+    writeRecordValuesMany(input.program, {
       recordIds: [record.id],
       set: {
         [nextFieldId]: structuredClone(record.values[sourceField.id])
@@ -310,7 +320,7 @@ const lowerFieldOptionCreate = (
     options: context.options,
     name: explicitName ?? createOptionName(context.options)
   })
-  input.program.field.option.insert(intent.field, nextOption)
+  input.program.fieldOptions(intent.field).insert(nextOption)
   input.output({ id: nextOption.id })
 }
 
@@ -352,20 +362,15 @@ const lowerFieldOptionMove = (
   if (context.field.kind === 'status' && intent.category !== undefined) {
     const category = fieldApi.status.category.get(context.field, optionId)
     if (category !== intent.category) {
-      input.program.field.option.patch(intent.field, optionId, {
+      input.program.fieldOptions(intent.field).patch(optionId, {
         category: intent.category
       })
     }
   }
 
-  input.program.field.option.move(
-    intent.field,
+  input.program.fieldOptions(intent.field).move(
     optionId,
-    before === undefined
-      ? undefined
-      : {
-          before
-        }
+    toBeforeAnchor(before)
   )
 }
 
@@ -410,7 +415,7 @@ const lowerFieldOptionPatch = (
     return
   }
 
-  input.program.field.option.patch(intent.field, optionId, intent.patch)
+  input.program.fieldOptions(intent.field).patch(optionId, intent.patch)
 }
 
 const lowerFieldOptionRemove = (
@@ -454,7 +459,7 @@ const lowerFieldOptionRemove = (
       return
     }
 
-    input.program.record.value.writeMany({
+    writeRecordValuesMany(input.program, {
       recordIds: [record.id],
       ...(nextValue.kind === 'clear'
         ? {
@@ -474,7 +479,7 @@ const lowerFieldOptionRemove = (
     })
   }
 
-  input.program.field.option.delete(intent.field, optionId)
+  input.program.fieldOptions(intent.field).delete(optionId)
 }
 
 const lowerFieldRemove = (
@@ -493,7 +498,7 @@ const lowerFieldRemove = (
       return
     }
 
-    input.program.record.value.writeMany({
+    writeRecordValuesMany(input.program, {
       recordIds: [record.id],
       clear: [field.id]
     })

@@ -18,6 +18,7 @@ import type {
 import {
   issue,
   resolveTarget,
+  writeRecordValuesMany,
   type DataviewCompileContext,
   type DataviewCompileContext as DataviewCompileInput
 } from './base'
@@ -268,7 +269,7 @@ const lowerRecordFieldsWriteMany = (
     return
   }
 
-  input.program.record.value.writeMany({
+  writeRecordValuesMany(input.program, {
     recordIds,
     ...(Object.keys(nextSet).length
       ? {

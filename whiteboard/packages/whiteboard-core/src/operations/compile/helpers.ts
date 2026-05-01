@@ -1,7 +1,7 @@
 import type {
   MutationCompileControl,
   MutationCompileHandlerTable,
-  MutationProgramWriter,
+  MutationPorts,
 } from '@shared/mutation/engine'
 import type {
   MutationCompileHandlerInput
@@ -34,6 +34,14 @@ import type {
   WhiteboardCustomOperation,
   WhiteboardCustomPlanContext,
 } from '@whiteboard/core/operations/custom/types'
+import type {
+  WhiteboardMutationRegistry
+} from '@whiteboard/core/operations/targets'
+
+export type WhiteboardMutationPorts = MutationPorts<
+  WhiteboardMutationRegistry,
+  string
+>
 
 export type WhiteboardCompileCode = ResultCode
 
@@ -57,7 +65,7 @@ export type WhiteboardCompileContext<
 > = MutationCompileHandlerInput<
   Document,
   WhiteboardIntent<K>,
-  MutationProgramWriter<string>,
+  WhiteboardMutationPorts,
   WhiteboardIntentOutput<K>,
   DocumentReader,
   WhiteboardCompileServices,
@@ -67,7 +75,7 @@ export type WhiteboardCompileContext<
 export type WhiteboardCompileHandlerTable = MutationCompileHandlerTable<
   WhiteboardMutationTable,
   Document,
-  MutationProgramWriter<string>,
+  WhiteboardMutationPorts,
   DocumentReader,
   WhiteboardCompileServices,
   WhiteboardCompileCode

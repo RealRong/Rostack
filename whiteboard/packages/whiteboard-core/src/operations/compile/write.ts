@@ -20,18 +20,16 @@ import type {
 } from '@whiteboard/core/types'
 import type {
   MutationOrderedAnchor,
-  MutationProgramWriter,
   MutationTreeSubtreeSnapshot,
 } from '@shared/mutation'
 import {
-  CANVAS_ORDER_STRUCTURE,
   canvasRefKey,
-  edgeLabelsStructure,
-  edgeRoutePointsStructure,
-  mindmapTreeStructure,
-  toStructuralOrderedAnchor,
+  toMutationOrderedAnchor,
   type WhiteboardMindmapTreeValue,
 } from '@whiteboard/core/operations/targets'
+import type {
+  WhiteboardMutationPorts
+} from './helpers'
 
 const toOrderedAnchor = (
   input: MutationOrderedAnchor | EdgeLabelAnchor | EdgeRoutePointAnchor
@@ -40,291 +38,206 @@ const toOrderedAnchor = (
   && (input.kind === 'before' || input.kind === 'after')
   && !('itemId' in input)
 )
-  ? toStructuralOrderedAnchor(input)
+  ? toMutationOrderedAnchor(input)
   : input as MutationOrderedAnchor
 
 export const writeDocumentCreate = (
-  program: MutationProgramWriter<string>,
+  program: WhiteboardMutationPorts,
   value: Document
 ) => {
-  program.entity.create({
-    table: 'document',
-    id: 'document'
-  }, value)
+  program.document.create(value)
 }
 
 export const writeDocumentPatch = (
-  program: MutationProgramWriter<string>,
+  program: WhiteboardMutationPorts,
   patch: DocumentPatch
 ) => {
-  program.entity.patch({
-    table: 'document',
-    id: 'document'
-  }, patch)
+  program.document.patch(patch)
 }
 
 export const writeNodeCreate = (
-  program: MutationProgramWriter<string>,
+  program: WhiteboardMutationPorts,
   value: Node
 ) => {
-  program.entity.create({
-    table: 'node',
-    id: value.id
-  }, value)
+  program.node.create(value)
 }
 
 export const writeNodePatch = (
-  program: MutationProgramWriter<string>,
+  program: WhiteboardMutationPorts,
   id: NodeId,
   patch: NodePatch
 ) => {
-  program.entity.patch({
-    table: 'node',
-    id
-  }, patch)
+  program.node.patch(id, patch)
 }
 
 export const writeNodeDelete = (
-  program: MutationProgramWriter<string>,
+  program: WhiteboardMutationPorts,
   id: NodeId
 ) => {
-  program.entity.delete({
-    table: 'node',
-    id
-  })
+  program.node.delete(id)
 }
 
 export const writeEdgeCreate = (
-  program: MutationProgramWriter<string>,
+  program: WhiteboardMutationPorts,
   value: Edge
 ) => {
-  program.entity.create({
-    table: 'edge',
-    id: value.id
-  }, value)
+  program.edge.create(value)
 }
 
 export const writeEdgePatch = (
-  program: MutationProgramWriter<string>,
+  program: WhiteboardMutationPorts,
   id: EdgeId,
   patch: EdgePatch
 ) => {
-  program.entity.patch({
-    table: 'edge',
-    id
-  }, patch)
+  program.edge.patch(id, patch)
 }
 
 export const writeEdgeDelete = (
-  program: MutationProgramWriter<string>,
+  program: WhiteboardMutationPorts,
   id: EdgeId
 ) => {
-  program.entity.delete({
-    table: 'edge',
-    id
-  })
+  program.edge.delete(id)
 }
 
 export const writeGroupCreate = (
-  program: MutationProgramWriter<string>,
+  program: WhiteboardMutationPorts,
   value: Group
 ) => {
-  program.entity.create({
-    table: 'group',
-    id: value.id
-  }, value)
+  program.group.create(value)
 }
 
 export const writeGroupPatch = (
-  program: MutationProgramWriter<string>,
+  program: WhiteboardMutationPorts,
   id: GroupId,
   patch: GroupPatch
 ) => {
-  program.entity.patch({
-    table: 'group',
-    id
-  }, patch)
+  program.group.patch(id, patch)
 }
 
 export const writeGroupDelete = (
-  program: MutationProgramWriter<string>,
+  program: WhiteboardMutationPorts,
   id: GroupId
 ) => {
-  program.entity.delete({
-    table: 'group',
-    id
-  })
+  program.group.delete(id)
 }
 
 export const writeMindmapCreate = (
-  program: MutationProgramWriter<string>,
+  program: WhiteboardMutationPorts,
   value: MindmapRecord
 ) => {
-  program.entity.create({
-    table: 'mindmap',
-    id: value.id
-  }, value)
+  program.mindmap.create(value)
 }
 
 export const writeMindmapPatch = (
-  program: MutationProgramWriter<string>,
+  program: WhiteboardMutationPorts,
   id: MindmapId,
   patch: Partial<Omit<MindmapRecord, 'id'>>
 ) => {
-  program.entity.patch({
-    table: 'mindmap',
-    id
-  }, patch)
+  program.mindmap.patch(id, patch)
 }
 
 export const writeMindmapDelete = (
-  program: MutationProgramWriter<string>,
+  program: WhiteboardMutationPorts,
   id: MindmapId
 ) => {
-  program.entity.delete({
-    table: 'mindmap',
-    id
-  })
+  program.mindmap.delete(id)
 }
 
 export const writeCanvasOrderMove = (
-  program: MutationProgramWriter<string>,
+  program: WhiteboardMutationPorts,
   ref: { kind: 'node' | 'edge' | 'mindmap'; id: string },
   to: MutationOrderedAnchor
 ) => {
-  program.ordered.move(
-    CANVAS_ORDER_STRUCTURE,
-    canvasRefKey(ref),
-    to
-  )
+  program.canvasOrder().move(canvasRefKey(ref), to)
 }
 
 export const writeCanvasOrderSplice = (
-  program: MutationProgramWriter<string>,
+  program: WhiteboardMutationPorts,
   refs: readonly { kind: 'node' | 'edge' | 'mindmap'; id: string }[],
   to: MutationOrderedAnchor
 ) => {
-  program.ordered.splice(
-    CANVAS_ORDER_STRUCTURE,
-    refs.map((ref) => canvasRefKey(ref)),
-    to
-  )
+  program.canvasOrder().splice(refs.map((ref) => canvasRefKey(ref)), to)
 }
 
 export const writeCanvasOrderDelete = (
-  program: MutationProgramWriter<string>,
+  program: WhiteboardMutationPorts,
   ref: { kind: 'node' | 'edge' | 'mindmap'; id: string }
 ) => {
-  program.ordered.delete(
-    CANVAS_ORDER_STRUCTURE,
-    canvasRefKey(ref)
-  )
+  program.canvasOrder().delete(canvasRefKey(ref))
 }
 
 export const writeEdgeLabelInsert = (
-  program: MutationProgramWriter<string>,
+  program: WhiteboardMutationPorts,
   edgeId: EdgeId,
   label: EdgeLabel,
   to: EdgeLabelAnchor | MutationOrderedAnchor
 ) => {
-  program.ordered.insert(
-    edgeLabelsStructure(edgeId),
-    label.id,
-    label,
-    toOrderedAnchor(to)
-  )
+  program.edgeLabels(edgeId).insert(label, toOrderedAnchor(to))
 }
 
 export const writeEdgeLabelMove = (
-  program: MutationProgramWriter<string>,
+  program: WhiteboardMutationPorts,
   edgeId: EdgeId,
   labelId: string,
   to: EdgeLabelAnchor | MutationOrderedAnchor
 ) => {
-  program.ordered.move(
-    edgeLabelsStructure(edgeId),
-    labelId,
-    toOrderedAnchor(to)
-  )
+  program.edgeLabels(edgeId).move(labelId, toOrderedAnchor(to))
 }
 
 export const writeEdgeLabelPatch = (
-  program: MutationProgramWriter<string>,
+  program: WhiteboardMutationPorts,
   edgeId: EdgeId,
   labelId: string,
   patch: EdgeLabelPatch
 ) => {
-  program.ordered.patch(
-    edgeLabelsStructure(edgeId),
-    labelId,
-    patch
-  )
+  program.edgeLabels(edgeId).patch(labelId, patch)
 }
 
 export const writeEdgeLabelDelete = (
-  program: MutationProgramWriter<string>,
+  program: WhiteboardMutationPorts,
   edgeId: EdgeId,
   labelId: string
 ) => {
-  program.ordered.delete(
-    edgeLabelsStructure(edgeId),
-    labelId
-  )
+  program.edgeLabels(edgeId).delete(labelId)
 }
 
 export const writeEdgeRouteInsert = (
-  program: MutationProgramWriter<string>,
+  program: WhiteboardMutationPorts,
   edgeId: EdgeId,
   point: EdgeRoutePoint,
   to: EdgeRoutePointAnchor | MutationOrderedAnchor
 ) => {
-  program.ordered.insert(
-    edgeRoutePointsStructure(edgeId),
-    point.id,
-    point,
-    toOrderedAnchor(to)
-  )
+  program.edgeRoute(edgeId).insert(point, toOrderedAnchor(to))
 }
 
 export const writeEdgeRouteMove = (
-  program: MutationProgramWriter<string>,
+  program: WhiteboardMutationPorts,
   edgeId: EdgeId,
   pointId: string,
   to: EdgeRoutePointAnchor | MutationOrderedAnchor
 ) => {
-  program.ordered.move(
-    edgeRoutePointsStructure(edgeId),
-    pointId,
-    toOrderedAnchor(to)
-  )
+  program.edgeRoute(edgeId).move(pointId, toOrderedAnchor(to))
 }
 
 export const writeEdgeRoutePatch = (
-  program: MutationProgramWriter<string>,
+  program: WhiteboardMutationPorts,
   edgeId: EdgeId,
   pointId: string,
   patch: Partial<Omit<EdgeRoutePoint, 'id'>>
 ) => {
-  program.ordered.patch(
-    edgeRoutePointsStructure(edgeId),
-    pointId,
-    patch
-  )
+  program.edgeRoute(edgeId).patch(pointId, patch)
 }
 
 export const writeEdgeRouteDelete = (
-  program: MutationProgramWriter<string>,
+  program: WhiteboardMutationPorts,
   edgeId: EdgeId,
   pointId: string
 ) => {
-  program.ordered.delete(
-    edgeRoutePointsStructure(edgeId),
-    pointId
-  )
+  program.edgeRoute(edgeId).delete(pointId)
 }
 
 export const writeMindmapTreeInsert = (
-  program: MutationProgramWriter<string>,
+  program: WhiteboardMutationPorts,
   input: {
     mindmapId: MindmapId
     nodeId: NodeId
@@ -333,8 +246,7 @@ export const writeMindmapTreeInsert = (
     value?: WhiteboardMindmapTreeValue
   }
 ) => {
-  program.tree.insert(
-    mindmapTreeStructure(input.mindmapId),
+  program.mindmapTree(input.mindmapId).insert(
     input.nodeId,
     input.parentId,
     input.index,
@@ -343,7 +255,7 @@ export const writeMindmapTreeInsert = (
 }
 
 export const writeMindmapTreeMove = (
-  program: MutationProgramWriter<string>,
+  program: WhiteboardMutationPorts,
   input: {
     mindmapId: MindmapId
     nodeId: NodeId
@@ -351,8 +263,7 @@ export const writeMindmapTreeMove = (
     index?: number
   }
 ) => {
-  program.tree.move(
-    mindmapTreeStructure(input.mindmapId),
+  program.mindmapTree(input.mindmapId).move(
     input.nodeId,
     input.parentId,
     input.index
@@ -360,36 +271,26 @@ export const writeMindmapTreeMove = (
 }
 
 export const writeMindmapTreeDelete = (
-  program: MutationProgramWriter<string>,
+  program: WhiteboardMutationPorts,
   mindmapId: MindmapId,
   nodeId: NodeId
 ) => {
-  program.tree.delete(
-    mindmapTreeStructure(mindmapId),
-    nodeId
-  )
+  program.mindmapTree(mindmapId).delete(nodeId)
 }
 
 export const writeMindmapTreeRestore = (
-  program: MutationProgramWriter<string>,
+  program: WhiteboardMutationPorts,
   mindmapId: MindmapId,
   snapshot: MutationTreeSubtreeSnapshot<WhiteboardMindmapTreeValue>
 ) => {
-  program.tree.restore(
-    mindmapTreeStructure(mindmapId),
-    snapshot
-  )
+  program.mindmapTree(mindmapId).restore(snapshot)
 }
 
 export const writeMindmapTreePatch = (
-  program: MutationProgramWriter<string>,
+  program: WhiteboardMutationPorts,
   mindmapId: MindmapId,
   nodeId: NodeId,
   patch: Partial<WhiteboardMindmapTreeValue>
 ) => {
-  program.tree.patch(
-    mindmapTreeStructure(mindmapId),
-    nodeId,
-    patch
-  )
+  program.mindmapTree(mindmapId).patch(nodeId, patch)
 }

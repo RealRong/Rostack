@@ -12,11 +12,11 @@ import {
   equal
 } from '@shared/core'
 import type {
-  DataviewProgramWriter,
+  DataviewMutationPorts,
   DataviewFilterRulePatch,
   DataviewSortRulePatch,
   DataviewViewPatch
-} from '../programWriter'
+} from '../program'
 
 const insertBefore = <T,>(
   items: readonly T[],
@@ -39,6 +39,15 @@ const insertBefore = <T,>(
     ...next.slice(index)
   ]
 }
+
+const toBeforeAnchor = (
+  before?: string
+) => before === undefined
+  ? undefined
+  : {
+      kind: 'before' as const,
+      itemId: before
+    }
 
 const cloneFilterValue = (
   value: FilterRule['value']
@@ -157,7 +166,7 @@ const sameViewOptions = (
 }
 
 const writeViewFilter = (
-  writer: DataviewProgramWriter,
+  writer: DataviewMutationPorts,
   current: View,
   next: View
 ) => {
@@ -178,7 +187,7 @@ const writeViewFilter = (
       return
     }
 
-    writer.view.filter.delete(current.id, ruleId)
+    writer.viewFilter(current.id).delete(ruleId)
     workingIds = workingIds.filter((entry) => entry !== ruleId)
   })
 
@@ -189,14 +198,9 @@ const writeViewFilter = (
     const currentRule = current.filter.rules.byId[ruleId]
 
     if (!workingIds.includes(ruleId)) {
-      writer.view.filter.insert(
-        current.id,
+      writer.viewFilter(current.id).insert(
         cloneFilterRule(nextRule),
-        before === undefined
-          ? undefined
-          : {
-              before
-            }
+        toBeforeAnchor(before)
       )
       workingIds = [...insertBefore(workingIds, ruleId, before)]
       continue
@@ -204,19 +208,14 @@ const writeViewFilter = (
 
     const patch = createFilterRulePatch(currentRule, nextRule)
     if (patch) {
-      writer.view.filter.patch(current.id, ruleId, patch)
+      writer.viewFilter(current.id).patch(ruleId, patch)
     }
 
     const reordered = insertBefore(workingIds, ruleId, before)
     if (!equal.sameOrder(workingIds, reordered)) {
-      writer.view.filter.move(
-        current.id,
+      writer.viewFilter(current.id).move(
         ruleId,
-        before === undefined
-          ? undefined
-          : {
-              before
-            }
+        toBeforeAnchor(before)
       )
       workingIds = [...reordered]
     }
@@ -224,7 +223,7 @@ const writeViewFilter = (
 }
 
 const writeViewSort = (
-  writer: DataviewProgramWriter,
+  writer: DataviewMutationPorts,
   current: View,
   next: View
 ) => {
@@ -236,7 +235,7 @@ const writeViewSort = (
       return
     }
 
-    writer.view.sort.delete(current.id, ruleId)
+    writer.viewSort(current.id).delete(ruleId)
     workingIds = workingIds.filter((entry) => entry !== ruleId)
   })
 
@@ -247,14 +246,9 @@ const writeViewSort = (
     const currentRule = current.sort.rules.byId[ruleId]
 
     if (!workingIds.includes(ruleId)) {
-      writer.view.sort.insert(
-        current.id,
+      writer.viewSort(current.id).insert(
         cloneSortRule(nextRule),
-        before === undefined
-          ? undefined
-          : {
-              before
-            }
+        toBeforeAnchor(before)
       )
       workingIds = [...insertBefore(workingIds, ruleId, before)]
       continue
@@ -262,19 +256,14 @@ const writeViewSort = (
 
     const patch = createSortRulePatch(currentRule, nextRule)
     if (patch) {
-      writer.view.sort.patch(current.id, ruleId, patch)
+      writer.viewSort(current.id).patch(ruleId, patch)
     }
 
     const reordered = insertBefore(workingIds, ruleId, before)
     if (!equal.sameOrder(workingIds, reordered)) {
-      writer.view.sort.move(
-        current.id,
+      writer.viewSort(current.id).move(
         ruleId,
-        before === undefined
-          ? undefined
-          : {
-              before
-            }
+        toBeforeAnchor(before)
       )
       workingIds = [...reordered]
     }
@@ -282,7 +271,7 @@ const writeViewSort = (
 }
 
 const writeViewDisplay = (
-  writer: DataviewProgramWriter,
+  writer: DataviewMutationPorts,
   current: View,
   next: View
 ) => {
@@ -294,7 +283,7 @@ const writeViewDisplay = (
       return
     }
 
-    writer.view.display.delete(current.id, fieldId)
+    writer.viewDisplay(current.id).delete(fieldId)
     working = working.filter((entry) => entry !== fieldId)
   })
 
@@ -302,14 +291,9 @@ const writeViewDisplay = (
     const fieldId = next.display.fields[index]!
     const before = next.display.fields[index + 1]
     if (!working.includes(fieldId)) {
-      writer.view.display.insert(
-        current.id,
+      writer.viewDisplay(current.id).insert(
         fieldId,
-        before === undefined
-          ? undefined
-          : {
-              before
-            }
+        toBeforeAnchor(before)
       )
       working = [...insertBefore(working, fieldId, before)]
       continue
@@ -320,21 +304,16 @@ const writeViewDisplay = (
       continue
     }
 
-    writer.view.display.move(
-      current.id,
+    writer.viewDisplay(current.id).move(
       fieldId,
-      before === undefined
-        ? undefined
-        : {
-            before
-          }
+      toBeforeAnchor(before)
     )
     working = [...reordered]
   }
 }
 
 const writeViewOrder = (
-  writer: DataviewProgramWriter,
+  writer: DataviewMutationPorts,
   current: View,
   next: View
 ) => {
@@ -346,7 +325,7 @@ const writeViewOrder = (
       return
     }
 
-    writer.view.order.delete(current.id, recordId)
+    writer.viewOrder(current.id).delete(recordId)
     working = working.filter((entry) => entry !== recordId)
   })
 
@@ -354,14 +333,9 @@ const writeViewOrder = (
     const recordId = next.orders[index]!
     const before = next.orders[index + 1]
     if (!working.includes(recordId)) {
-      writer.view.order.insert(
-        current.id,
+      writer.viewOrder(current.id).insert(
         recordId,
-        before === undefined
-          ? undefined
-          : {
-              before
-            }
+        toBeforeAnchor(before)
       )
       working = [...insertBefore(working, recordId, before)]
       continue
@@ -372,21 +346,16 @@ const writeViewOrder = (
       continue
     }
 
-    writer.view.order.move(
-      current.id,
+    writer.viewOrder(current.id).move(
       recordId,
-      before === undefined
-        ? undefined
-        : {
-            before
-          }
+      toBeforeAnchor(before)
     )
     working = [...reordered]
   }
 }
 
 export const writeViewUpdate = (
-  writer: DataviewProgramWriter,
+  writer: DataviewMutationPorts,
   current: View,
   next: View
 ) => {
@@ -430,31 +399,21 @@ export const writeViewUpdate = (
 }
 
 export const writeViewDisplayInsert = (
-  writer: DataviewProgramWriter,
+  writer: DataviewMutationPorts,
   viewId: string,
   fieldId: FieldId,
   before?: FieldId
-) => writer.view.display.insert(
-  viewId,
+) => writer.viewDisplay(viewId).insert(
   fieldId,
-  before === undefined
-    ? undefined
-    : {
-        before
-      }
+  toBeforeAnchor(before)
 )
 
 export const writeViewOrderInsert = (
-  writer: DataviewProgramWriter,
+  writer: DataviewMutationPorts,
   viewId: string,
   recordId: RecordId,
   before?: RecordId
-) => writer.view.order.insert(
-  viewId,
+) => writer.viewOrder(viewId).insert(
   recordId,
-  before === undefined
-    ? undefined
-    : {
-        before
-      }
+  toBeforeAnchor(before)
 )

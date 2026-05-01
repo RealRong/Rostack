@@ -8,7 +8,7 @@ import { node as nodeApi } from '@whiteboard/core/node'
 import { document as documentApi } from '@whiteboard/core/document'
 import { mindmap as mindmapApi } from '@whiteboard/core/mindmap'
 import {
-  whiteboardEntities
+  whiteboardMutationRegistry
 } from '@whiteboard/core/operations'
 import type { Document } from '@whiteboard/core/types'
 
@@ -55,7 +55,7 @@ const applyOperations = (
     document: doc,
     normalize: documentApi.normalize,
     createReader: (readDocument: () => Document) => readDocument(),
-    entities: whiteboardEntities,
+    registry: whiteboardMutationRegistry,
     history: false
   })
   return engine.apply(program, {
@@ -71,7 +71,7 @@ const replayInverse = (
     document: doc,
     normalize: documentApi.normalize,
     createReader: (readDocument: () => Document) => readDocument(),
-    entities: whiteboardEntities,
+    registry: whiteboardMutationRegistry,
     history: false
   })
 
@@ -86,7 +86,8 @@ test('node.update reducer 为 set(path) 生成精确 inverse 并可回放', () =
     steps: [{
       type: 'entity.patch',
       entity: {
-        table: 'node',
+        kind: 'entity',
+        type: 'node',
         id: 'node_1'
       },
       writes: {
@@ -100,7 +101,8 @@ test('node.update reducer 为 set(path) 生成精确 inverse 并可回放', () =
     steps: [{
       type: 'entity.patch',
       entity: {
-        table: 'node',
+        kind: 'entity',
+        type: 'node',
         id: 'node_1'
       },
       writes: {
@@ -221,7 +223,8 @@ test('node.update 会为 direct mindmap data mutation 标记 node.value', () => 
     steps: [{
       type: 'entity.patch',
       entity: {
-        table: 'node',
+        kind: 'entity',
+        type: 'node',
         id: 'mind_1'
       },
       writes: {

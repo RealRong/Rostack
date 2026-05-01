@@ -5,8 +5,7 @@ import {
   document as documentApi
 } from '@dataview/core/document'
 import {
-  compile,
-  createDataviewProgramWriter
+  compile
 } from '@dataview/core/mutation'
 import {
   dataviewMutationRegistry
@@ -53,7 +52,7 @@ import {
   type DocumentReader
 } from '@dataview/core/document/reader'
 import type {
-  DataviewProgramWriter
+  DataviewMutationPorts
 } from '@dataview/core/mutation'
 import type {
   MutationProgram
@@ -88,15 +87,13 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
     DocumentReader,
     void,
     DataviewErrorCode,
-    DataviewProgramWriter
+    DataviewMutationPorts
   >({
     document: options.document,
     normalize: documentApi.normalize,
     createReader: createDocumentReader,
-    entities: dataviewMutationRegistry.entities,
-    structures: dataviewMutationRegistry.structures,
+    registry: dataviewMutationRegistry,
     compile: compile.handlers,
-    createProgram: createDataviewProgramWriter,
     history: historyConfig.enabled
       ? {
           capacity: historyConfig.capacity,

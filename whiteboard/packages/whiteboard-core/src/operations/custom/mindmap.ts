@@ -19,10 +19,8 @@ import {
   same
 } from './common'
 import {
-  CANVAS_ORDER_STRUCTURE,
   canvasRefKey,
   createMindmapTreeSubtreeSnapshot,
-  mindmapTreeStructure,
   readCanvasOrderAnchorFromSlot,
   readMindmapLayoutChangedNodeIds,
   resolveInsertedMindmapBranchStyle,
@@ -54,12 +52,7 @@ export const planMindmapCreate = (
     Extract<Operation, { type: 'mindmap.create' }>
   >
 ): void => {
-  input.program.ordered.insert(
-    CANVAS_ORDER_STRUCTURE,
-    canvasRefKey({
-      kind: 'mindmap',
-      id: input.op.mindmap.id
-    }),
+  input.program.canvasOrder().insert(
     {
       kind: 'mindmap',
       id: input.op.mindmap.id
@@ -69,15 +62,9 @@ export const planMindmapCreate = (
     }
   )
   input.op.nodes.forEach((node) => {
-    input.program.entity.create({
-      table: 'node',
-      id: node.id
-    }, node)
+    input.program.node.create(node)
   })
-  input.program.entity.create({
-    table: 'mindmap',
-    id: input.op.mindmap.id
-  }, input.op.mindmap)
+  input.program.mindmap.create(input.op.mindmap)
 }
 
 export const planMindmapRestore = (
@@ -85,12 +72,7 @@ export const planMindmapRestore = (
     Extract<Operation, { type: 'mindmap.restore' }>
   >
 ): void => {
-  input.program.ordered.insert(
-    CANVAS_ORDER_STRUCTURE,
-    canvasRefKey({
-      kind: 'mindmap',
-      id: input.op.snapshot.mindmap.id
-    }),
+  input.program.canvasOrder().insert(
     {
       kind: 'mindmap',
       id: input.op.snapshot.mindmap.id
@@ -98,15 +80,9 @@ export const planMindmapRestore = (
     readCanvasOrderAnchorFromSlot(input.op.snapshot.slot)
   )
   input.op.snapshot.nodes.forEach((node) => {
-    input.program.entity.create({
-      table: 'node',
-      id: node.id
-    }, node)
+    input.program.node.create(node)
   })
-  input.program.entity.create({
-    table: 'mindmap',
-    id: input.op.snapshot.mindmap.id
-  }, input.op.snapshot.mindmap)
+  input.program.mindmap.create(input.op.snapshot.mindmap)
 }
 
 export const planMindmapDelete = (
@@ -124,16 +100,14 @@ export const planMindmapDelete = (
   const connectedEdges = input.reader.edges.connectedToNodes(new Set(nodeIds))
   const edgeIds = connectedEdges.map((edge) => edge.id)
 
-  input.program.ordered.delete(
-    CANVAS_ORDER_STRUCTURE,
+  input.program.canvasOrder().delete(
     canvasRefKey({
       kind: 'mindmap',
       id: input.op.id
     })
   )
   connectedEdges.forEach((edge) => {
-    input.program.ordered.delete(
-      CANVAS_ORDER_STRUCTURE,
+    input.program.canvasOrder().delete(
       canvasRefKey({
         kind: 'edge',
         id: edge.id
@@ -141,21 +115,12 @@ export const planMindmapDelete = (
     )
   })
   edgeIds.forEach((edgeId) => {
-    input.program.entity.delete({
-      table: 'edge',
-      id: edgeId
-    })
+    input.program.edge.delete(edgeId)
   })
   nodeIds.forEach((nodeId) => {
-    input.program.entity.delete({
-      table: 'node',
-      id: nodeId
-    })
+    input.program.node.delete(nodeId)
   })
-  input.program.entity.delete({
-    table: 'mindmap',
-    id: input.op.id
-  })
+  input.program.mindmap.delete(input.op.id)
 }
 
 export const planMindmapMove = (
@@ -177,10 +142,7 @@ export const planMindmapMove = (
     return
   }
 
-  input.program.entity.patch({
-    table: 'node',
-    id: root.id
-  }, {
+  input.program.node.patch(root.id, {
     position: clone(input.op.position)!
   }, undefined, createMetadata({
     delta: createIdDelta('mindmap.layout', input.op.id)
@@ -208,10 +170,7 @@ export const planMindmapLayout = (
     return
   }
 
-  input.program.entity.patch({
-    table: 'mindmap',
-    id: input.op.id
-  }, {
+  input.program.mindmap.patch(input.op.id, {
     layout: nextLayout
   })
 }
@@ -229,11 +188,8 @@ export const planMindmapTopicInsert = (
     })
   }
 
-  input.program.entity.create({
-    table: 'node',
-    id: input.op.node.id
-  }, input.op.node)
-  const structure = mindmapTreeStructure(input.op.id)
+  input.program.node.create(input.op.node)
+  const tree = input.program.mindmapTree(input.op.id)
 
   switch (input.op.input.kind) {
     case 'child': {
@@ -247,8 +203,7 @@ export const planMindmapTopicInsert = (
       const side = input.op.input.parentId === current.root
         ? (input.op.input.options?.side ?? 'right')
         : undefined
-      input.program.tree.insert(
-        structure,
+      tree.insert(
         input.op.node.id,
         input.op.input.parentId,
         input.op.input.options?.index,
@@ -274,8 +229,7 @@ export const planMindmapTopicInsert = (
       const side = parentId === current.root
         ? (target.side ?? 'right')
         : undefined
-      input.program.tree.insert(
-        structure,
+      tree.insert(
         input.op.node.id,
         parentId,
         currentIndex < 0
@@ -318,8 +272,7 @@ export const planMindmapTopicInsert = (
       const side = parentId === current.root
         ? (target.side ?? input.op.input.options?.side ?? 'right')
         : undefined
-      input.program.tree.insert(
-        structure,
+      tree.insert(
         input.op.node.id,
         parentId,
         siblingIndex,
@@ -328,15 +281,13 @@ export const planMindmapTopicInsert = (
           branchStyle: resolveInsertedMindmapBranchStyle(current, parentId, target.side)
         }
       )
-      input.program.tree.move(
-        structure,
+      tree.move(
         input.op.input.nodeId,
         input.op.node.id,
         0
       )
       if (target.side !== undefined) {
-        input.program.tree.patch(
-          structure,
+        tree.patch(
           input.op.input.nodeId,
           {
             side: undefined
@@ -361,13 +312,9 @@ export const planMindmapTopicRestore = (
   }
 
   input.op.snapshot.nodes.forEach((node) => {
-    input.program.entity.create({
-      table: 'node',
-      id: node.id
-    }, node)
+    input.program.node.create(node)
   })
-  input.program.tree.restore(
-    mindmapTreeStructure(input.op.id),
+  input.program.mindmapTree(input.op.id).restore(
     createMindmapTreeSubtreeSnapshot(
       current,
       input.op.snapshot
@@ -399,16 +346,14 @@ export const planMindmapTopicMove = (
   const nextSide = input.op.input.parentId === current.root
     ? (input.op.input.side ?? member.side ?? 'right')
     : undefined
-  const structure = mindmapTreeStructure(input.op.id)
-  input.program.tree.move(
-    structure,
+  const tree = input.program.mindmapTree(input.op.id)
+  tree.move(
     input.op.input.nodeId,
     input.op.input.parentId,
     input.op.input.index
   )
   if (!same(member.side, nextSide)) {
-    input.program.tree.patch(
-      structure,
+    tree.patch(
       input.op.input.nodeId,
       {
         side: nextSide
@@ -441,13 +386,9 @@ export const planMindmapTopicDelete = (
   const connectedEdges = input.reader.edges.connectedToNodes(new Set(nodeIds))
   const edgeIds = connectedEdges.map((edge) => edge.id)
 
-  input.program.tree.delete(
-    mindmapTreeStructure(input.op.id),
-    input.op.input.nodeId
-  )
+  input.program.mindmapTree(input.op.id).delete(input.op.input.nodeId)
   connectedEdges.forEach((edge) => {
-    input.program.ordered.delete(
-      CANVAS_ORDER_STRUCTURE,
+    input.program.canvasOrder().delete(
       canvasRefKey({
         kind: 'edge',
         id: edge.id
@@ -455,16 +396,10 @@ export const planMindmapTopicDelete = (
     )
   })
   edgeIds.forEach((edgeId) => {
-    input.program.entity.delete({
-      table: 'edge',
-      id: edgeId
-    })
+    input.program.edge.delete(edgeId)
   })
   nodeIds.forEach((nodeId) => {
-    input.program.entity.delete({
-      table: 'node',
-      id: nodeId
-    })
+    input.program.node.delete(nodeId)
   })
 }
 
@@ -513,10 +448,7 @@ export const planMindmapTopicPatch = (
     id: input.op.id
   })
 
-  input.program.entity.patch({
-    table: 'node',
-    id: input.op.topicId
-  }, writes, undefined, createMetadata({
+  input.program.node.patch(input.op.topicId, writes, undefined, createMetadata({
     footprint: [
       entityKey('mindmap', input.op.id)
     ],
@@ -568,8 +500,7 @@ export const planMindmapBranchPatch = (
     return
   }
 
-  input.program.tree.patch(
-    mindmapTreeStructure(input.op.id),
+  input.program.mindmapTree(input.op.id).patch(
     input.op.topicId,
     {
       branchStyle: nextBranchStyle
@@ -603,8 +534,7 @@ export const planMindmapTopicCollapse = (
     return
   }
 
-  input.program.tree.patch(
-    mindmapTreeStructure(input.op.id),
+  input.program.mindmapTree(input.op.id).patch(
     input.op.topicId,
     {
       collapsed: nextCollapsed

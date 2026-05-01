@@ -11,49 +11,31 @@ import {
   field as fieldApi,
 } from '@dataview/core/field'
 import {
+  view as viewApi,
+} from '@dataview/core/view'
+import {
   entityTable,
 } from '@shared/core'
 import {
   draft,
 } from '@shared/draft'
-import type {
-  MutationStructureSource,
-} from '@shared/mutation/engine'
 import {
   defineMutationRegistry,
 } from '@shared/mutation/engine'
 import {
-  view as viewApi,
-} from '@dataview/core/view'
-import {
   dataviewEntities
 } from '@dataview/core/entities'
 
-const FIELD_OPTIONS_STRUCTURE_PREFIX = 'field.options:'
-const VIEW_ORDERS_STRUCTURE_PREFIX = 'view.orders:'
-const VIEW_DISPLAY_FIELDS_STRUCTURE_PREFIX = 'view.display.fields:'
-const VIEW_FILTER_RULES_STRUCTURE_PREFIX = 'view.filter.rules:'
-const VIEW_SORT_RULES_STRUCTURE_PREFIX = 'view.sort.rules:'
+const readRequiredKey = (
+  key: string | undefined,
+  label: string
+): string => {
+  if (typeof key !== 'string' || key.length === 0) {
+    throw new Error(`${label} requires a non-empty key.`)
+  }
 
-export const fieldOptionsStructure = (
-  fieldId: string
-) => `${FIELD_OPTIONS_STRUCTURE_PREFIX}${fieldId}`
-
-export const viewOrdersStructure = (
-  viewId: string
-) => `${VIEW_ORDERS_STRUCTURE_PREFIX}${viewId}`
-
-export const viewDisplayFieldsStructure = (
-  viewId: string
-) => `${VIEW_DISPLAY_FIELDS_STRUCTURE_PREFIX}${viewId}`
-
-export const viewFilterRulesStructure = (
-  viewId: string
-) => `${VIEW_FILTER_RULES_STRUCTURE_PREFIX}${viewId}`
-
-export const viewSortRulesStructure = (
-  viewId: string
-) => `${VIEW_SORT_RULES_STRUCTURE_PREFIX}${viewId}`
+  return key
+}
 
 const setView = (
   document: DataDoc,
@@ -128,14 +110,13 @@ const fieldSchemaChange = (
   }
 }) as const
 
-export const dataviewStructures: MutationStructureSource<DataDoc> = (
-  structure
-) => {
-  if (structure.startsWith(FIELD_OPTIONS_STRUCTURE_PREFIX)) {
-    const fieldId = structure.slice(FIELD_OPTIONS_STRUCTURE_PREFIX.length)
-    return {
-      kind: 'ordered' as const,
-      read: (document: DataDoc) => {
+export const dataviewMutationRegistry = defineMutationRegistry<DataDoc>()({
+  entity: dataviewEntities,
+  ordered: {
+    fieldOptions: {
+      type: 'field.options',
+      read: (document, key) => {
+        const fieldId = readRequiredKey(key, 'field.options')
         const field = document.fields.byId[fieldId]
         if (!fieldApi.kind.hasOptions(field)) {
           throw new Error(`Field ${fieldId} does not support options.`)
@@ -153,34 +134,37 @@ export const dataviewStructures: MutationStructureSource<DataDoc> = (
         before,
         after
       ) as Partial<Omit<FieldOption, 'id'>>,
-      write: (document: DataDoc, options: readonly FieldOption[]) => setOptionField(
-        document,
-        fieldId,
-        (field) => {
-          if (field.kind === 'status') {
+      write: (document, key, options) => {
+        const fieldId = readRequiredKey(key, 'field.options')
+        return setOptionField(
+          document,
+          fieldId,
+          (field) => {
+            if (field.kind === 'status') {
+              return {
+                ...field,
+                options: options.map((option) => structuredClone(option)) as typeof field.options
+              }
+            }
+
             return {
               ...field,
               options: options.map((option) => structuredClone(option)) as typeof field.options
             }
           }
-
-          return {
-            ...field,
-            options: options.map((option) => structuredClone(option)) as typeof field.options
-          }
-        }
-      ),
-      change: [
-        fieldSchemaChange(fieldId, 'options')
-      ]
-    }
-  }
-
-  if (structure.startsWith(VIEW_ORDERS_STRUCTURE_PREFIX)) {
-    const viewId = structure.slice(VIEW_ORDERS_STRUCTURE_PREFIX.length)
-    return {
-      kind: 'ordered' as const,
-      read: (document: DataDoc) => {
+        )
+      },
+      change: (key) => {
+        const fieldId = readRequiredKey(key, 'field.options')
+        return [
+          fieldSchemaChange(fieldId, 'options')
+        ]
+      }
+    },
+    viewOrder: {
+      type: 'view.orders',
+      read: (document, key) => {
+        const viewId = readRequiredKey(key, 'view.orders')
         const view = document.views.byId[viewId]
         if (!view) {
           throw new Error(`View ${viewId} not found.`)
@@ -190,25 +174,28 @@ export const dataviewStructures: MutationStructureSource<DataDoc> = (
       },
       identify: (recordId: RecordId) => recordId,
       clone: (recordId: RecordId) => recordId,
-      write: (document: DataDoc, recordIds: readonly RecordId[]) => setView(
-        document,
-        viewId,
-        (view) => ({
-          ...view,
-          orders: [...recordIds]
-        })
-      ),
-      change: [
-        viewQueryChange(viewId, 'orders')
-      ]
-    }
-  }
-
-  if (structure.startsWith(VIEW_DISPLAY_FIELDS_STRUCTURE_PREFIX)) {
-    const viewId = structure.slice(VIEW_DISPLAY_FIELDS_STRUCTURE_PREFIX.length)
-    return {
-      kind: 'ordered' as const,
-      read: (document: DataDoc) => {
+      write: (document, key, recordIds) => {
+        const viewId = readRequiredKey(key, 'view.orders')
+        return setView(
+          document,
+          viewId,
+          (view) => ({
+            ...view,
+            orders: [...recordIds] as RecordId[]
+          })
+        )
+      },
+      change: (key) => {
+        const viewId = readRequiredKey(key, 'view.orders')
+        return [
+          viewQueryChange(viewId, 'orders')
+        ]
+      }
+    },
+    viewDisplay: {
+      type: 'view.display.fields',
+      read: (document, key) => {
+        const viewId = readRequiredKey(key, 'view.display.fields')
         const view = document.views.byId[viewId]
         if (!view) {
           throw new Error(`View ${viewId} not found.`)
@@ -218,28 +205,31 @@ export const dataviewStructures: MutationStructureSource<DataDoc> = (
       },
       identify: (fieldId: FieldId) => fieldId,
       clone: (fieldId: FieldId) => fieldId,
-      write: (document: DataDoc, fieldIds: readonly FieldId[]) => setView(
-        document,
-        viewId,
-        (view) => ({
-          ...view,
-          display: {
-            ...view.display,
-            fields: [...fieldIds]
-          }
-        })
-      ),
-      change: [
-        viewLayoutChange(viewId, 'display.fields')
-      ]
-    }
-  }
-
-  if (structure.startsWith(VIEW_FILTER_RULES_STRUCTURE_PREFIX)) {
-    const viewId = structure.slice(VIEW_FILTER_RULES_STRUCTURE_PREFIX.length)
-    return {
-      kind: 'ordered' as const,
-      read: (document: DataDoc) => {
+      write: (document, key, fieldIds) => {
+        const viewId = readRequiredKey(key, 'view.display.fields')
+        return setView(
+          document,
+          viewId,
+          (view) => ({
+            ...view,
+            display: {
+              ...view.display,
+              fields: [...fieldIds] as FieldId[]
+            }
+          })
+        )
+      },
+      change: (key) => {
+        const viewId = readRequiredKey(key, 'view.display.fields')
+        return [
+          viewLayoutChange(viewId, 'display.fields')
+        ]
+      }
+    },
+    viewFilter: {
+      type: 'view.filter.rules',
+      read: (document, key) => {
+        const viewId = readRequiredKey(key, 'view.filter.rules')
         const view = document.views.byId[viewId]
         if (!view) {
           throw new Error(`View ${viewId} not found.`)
@@ -257,28 +247,33 @@ export const dataviewStructures: MutationStructureSource<DataDoc> = (
         before,
         after
       ) as Partial<Omit<FilterRule, 'id'>>,
-      write: (document: DataDoc, rules: readonly FilterRule[]) => setView(
-        document,
-        viewId,
-        (view) => ({
-          ...view,
-          filter: {
-            ...view.filter,
-            rules: entityTable.normalize.list(rules.map((rule) => structuredClone(rule)))
-          }
-        })
-      ),
-      change: [
-        viewQueryChange(viewId, 'filter.rules')
-      ]
-    }
-  }
-
-  if (structure.startsWith(VIEW_SORT_RULES_STRUCTURE_PREFIX)) {
-    const viewId = structure.slice(VIEW_SORT_RULES_STRUCTURE_PREFIX.length)
-    return {
-      kind: 'ordered' as const,
-      read: (document: DataDoc) => {
+      write: (document, key, rules) => {
+        const viewId = readRequiredKey(key, 'view.filter.rules')
+        return setView(
+          document,
+          viewId,
+          (view) => ({
+            ...view,
+            filter: {
+              ...view.filter,
+              rules: entityTable.normalize.list(
+                (rules as readonly FilterRule[]).map((rule) => structuredClone(rule))
+              ) as typeof view.filter.rules
+            }
+          })
+        )
+      },
+      change: (key) => {
+        const viewId = readRequiredKey(key, 'view.filter.rules')
+        return [
+          viewQueryChange(viewId, 'filter.rules')
+        ]
+      }
+    },
+    viewSort: {
+      type: 'view.sort.rules',
+      read: (document, key) => {
+        const viewId = readRequiredKey(key, 'view.sort.rules')
         const view = document.views.byId[viewId]
         if (!view) {
           throw new Error(`View ${viewId} not found.`)
@@ -296,27 +291,30 @@ export const dataviewStructures: MutationStructureSource<DataDoc> = (
         before,
         after
       ) as Partial<Omit<SortRule, 'id'>>,
-      write: (document: DataDoc, rules: readonly SortRule[]) => setView(
-        document,
-        viewId,
-        (view) => ({
-          ...view,
-          sort: {
-            ...view.sort,
-            rules: entityTable.normalize.list(rules.map((rule) => structuredClone(rule)))
-          }
-        })
-      ),
-      change: [
-        viewQueryChange(viewId, 'sort.rules')
-      ]
+      write: (document, key, rules) => {
+        const viewId = readRequiredKey(key, 'view.sort.rules')
+        return setView(
+          document,
+          viewId,
+          (view) => ({
+            ...view,
+            sort: {
+              ...view.sort,
+              rules: entityTable.normalize.list(
+                (rules as readonly SortRule[]).map((rule) => structuredClone(rule))
+              ) as typeof view.sort.rules
+            }
+          })
+        )
+      },
+      change: (key) => {
+        const viewId = readRequiredKey(key, 'view.sort.rules')
+        return [
+          viewQueryChange(viewId, 'sort.rules')
+        ]
+      }
     }
   }
-
-  return undefined
-}
-
-export const dataviewMutationRegistry = defineMutationRegistry<DataDoc>()({
-  entities: dataviewEntities,
-  structures: dataviewStructures
 })
+
+export type DataviewMutationRegistry = typeof dataviewMutationRegistry

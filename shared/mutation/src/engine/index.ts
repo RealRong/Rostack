@@ -26,10 +26,6 @@ export type {
   MutationOrderedSlot,
   MutationOptions,
   MutationOutputOf,
-  MutationStructureSpec,
-  MutationStructureResolver,
-  MutationStructureSource,
-  MutationStructureTable,
   MutationStructuralFact,
   MutationTreeNodeSnapshot,
   MutationTreeSnapshot,
@@ -37,11 +33,24 @@ export type {
   MutationResult
 } from './contracts'
 export type {
-  MutationRegistry
+  MutationEntityRegistrySpec,
+  MutationEntityTarget,
+  MutationOrderedRegistrySpec,
+  MutationOrderedTarget,
+  MutationRegistry,
+  MutationTarget,
+  MutationTreeRegistrySpec,
+  MutationTreeTarget,
 } from './registry'
 export {
   defineMutationRegistry
 } from './registry'
+export type {
+  MutationPorts
+} from './ports'
+export {
+  createMutationPorts
+} from './ports'
 export type {
   AppliedMutationProgram,
   MutationEntityProgramStep,
@@ -74,9 +83,6 @@ export {
   mutationFootprintBatchConflicts,
   mutationFootprintConflicts
 } from './footprint'
-export {
-  applyStructuralEffectResult,
-} from './structural'
 export {
   MutationEngine
 } from './runtime'

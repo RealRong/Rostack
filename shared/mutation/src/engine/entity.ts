@@ -3,6 +3,10 @@ import {
   type RecordWrite
 } from '@shared/draft'
 import {
+  readEntityTargetType,
+  type MutationEntityRegistrySpec
+} from './registry'
+import {
   createMutationProgramWriter
 } from './program/writer'
 import {
@@ -234,14 +238,21 @@ const compileEntitySpec = (
 }
 
 export const compileEntities = (
-  entities: Readonly<Record<string, MutationEntitySpec>> | undefined
+  entities: Readonly<Record<string, MutationEntitySpec | MutationEntityRegistrySpec>> | undefined
 ): ReadonlyMap<string, CompiledEntitySpec> => {
   const compiled = new Map<string, CompiledEntitySpec>()
   const entries = Object.entries(entities ?? {})
 
   for (let index = 0; index < entries.length; index += 1) {
-    const [family, spec] = entries[index]!
-    compiled.set(family, compileEntitySpec(family, spec))
+    const [key, spec] = entries[index]!
+    const family = readEntityTargetType(
+      key,
+      spec as MutationEntityRegistrySpec
+    )
+    compiled.set(
+      family,
+      compileEntitySpec(family, spec as MutationEntitySpec)
+    )
   }
 
   return compiled
@@ -285,7 +296,8 @@ export const lowerCanonicalEntityOperation = (input: {
     const value = readRequiredValue(input.spec.family, 'create', input.operation)
     builder.entity.create(
       {
-        table: input.spec.family,
+        kind: 'entity',
+        type: input.spec.family,
         id: input.spec.kind === 'singleton'
           ? input.spec.family
           : readEntityIdFromValue(input.spec.family, value)
@@ -297,7 +309,8 @@ export const lowerCanonicalEntityOperation = (input: {
 
   if (input.kind === 'delete') {
     builder.entity.delete({
-      table: input.spec.family,
+      kind: 'entity',
+      type: input.spec.family,
       id: input.spec.kind === 'singleton'
         ? input.spec.family
         : readRequiredId(input.spec.family, input.operation)
@@ -308,7 +321,8 @@ export const lowerCanonicalEntityOperation = (input: {
   const patch = readRequiredPatch(input.spec.family, input.operation)
   builder.entity.patch(
     {
-      table: input.spec.family,
+      kind: 'entity',
+      type: input.spec.family,
       id: input.spec.kind === 'singleton'
         ? input.spec.family
         : readRequiredId(input.spec.family, input.operation)

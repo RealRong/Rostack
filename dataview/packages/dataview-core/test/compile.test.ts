@@ -10,8 +10,8 @@ import {
   compile
 } from '@dataview/core/mutation'
 import {
-  entities
-} from '@dataview/core/entities'
+  dataviewMutationRegistry
+} from '@dataview/core/mutation'
 import {
   createDocumentReader
 } from '@dataview/core/document/reader'
@@ -30,9 +30,8 @@ test('MutationEngine.compile lowers field.create into executable operations', ()
     document: createEmptyDocument(),
     normalize: document => document,
     createReader: createDocumentReader,
-    entities,
+    registry: dataviewMutationRegistry,
     compile: compile.handlers,
-    createProgram: compile.createProgram
   })
   const result = mutation.execute([{
     type: 'field.create',

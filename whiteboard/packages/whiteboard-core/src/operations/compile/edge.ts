@@ -19,11 +19,6 @@ import {
   readCompileServices,
   requireEdge
 } from '@whiteboard/core/operations/compile/helpers'
-import {
-  edgeLabelsStructure,
-  edgeRoutePointsStructure,
-  toStructuralOrderedAnchor
-} from '@whiteboard/core/operations/targets'
 import { resolveLockDecision } from '@whiteboard/core/operations/lock'
 import {
   writeEdgeCreate,
@@ -202,7 +197,6 @@ const emitEdgeRouteDiffOps = (
   nextPoints: readonly Point[],
   ctx: WhiteboardCompileContext
 ) => {
-  const structure = edgeRoutePointsStructure(edgeId)
   const samePoint = (left: Point | undefined, right: Point | undefined) => (
     left?.x === right?.x && left?.y === right?.y
   )

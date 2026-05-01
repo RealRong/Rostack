@@ -12,9 +12,8 @@ import type {
   DocumentReader
 } from '../../document/reader'
 import {
-  createDataviewProgramWriter,
-  type DataviewProgramWriter
-} from '../programWriter'
+  type DataviewMutationPorts
+} from '../program'
 import {
   issue,
   type DataviewCompileContext
@@ -62,13 +61,17 @@ const compileExternalBump = (
     )
   }
 
-  input.program.signal.externalVersion()
+  input.program.signal({
+    changes: {
+      'external.version': true
+    }
+  })
 }
 
 export const dataviewIntentHandlers: MutationCompileHandlerTable<
   DataviewCompileTable,
   DataDoc,
-  DataviewProgramWriter,
+  DataviewMutationPorts,
   DocumentReader,
   void,
   ValidationCode
@@ -138,8 +141,7 @@ export const dataviewIntentHandlers: MutationCompileHandlerTable<
 }
 
 export const compile = {
-  handlers: dataviewIntentHandlers,
-  createProgram: createDataviewProgramWriter
+  handlers: dataviewIntentHandlers
 } as const
 
 export type {

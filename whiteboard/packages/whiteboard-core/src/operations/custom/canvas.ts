@@ -1,7 +1,6 @@
 import {
-  CANVAS_ORDER_STRUCTURE,
   canvasRefKey,
-  toStructuralCanvasAnchor,
+  toCanvasOrderAnchor,
 } from '@whiteboard/core/operations/targets'
 import type {
   WhiteboardCustomPlanContext
@@ -20,18 +19,13 @@ export const planCanvasOrderMove = (
     return
   }
 
-  const anchor = toStructuralCanvasAnchor(currentOrder, existingRefs, input.op.to)
+  const anchor = toCanvasOrderAnchor(currentOrder, existingRefs, input.op.to)
   if (existingRefs.length === 1) {
-    input.program.ordered.move(
-      CANVAS_ORDER_STRUCTURE,
-      canvasRefKey(existingRefs[0]!),
-      anchor
-    )
+    input.program.canvasOrder().move(canvasRefKey(existingRefs[0]!), anchor)
     return
   }
 
-  input.program.ordered.splice(
-    CANVAS_ORDER_STRUCTURE,
+  input.program.canvasOrder().splice(
     existingRefs.map((ref) => canvasRefKey(ref)),
     anchor
   )

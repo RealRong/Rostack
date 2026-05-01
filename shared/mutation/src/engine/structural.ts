@@ -1,36 +1,17 @@
-import type {
-  MutationApplyResult,
-  MutationFailure,
-  MutationFootprint,
-  MutationOrderedAnchor,
-  MutationOrderedSlot,
-  MutationStructureSpec,
-  MutationStructureSource,
-  MutationStructureTable,
-  MutationStructuralCanonicalOperation,
-  MutationStructuralFact,
-  MutationStructuralOrderedDeleteOperation,
-  MutationStructuralOrderedInsertOperation,
-  MutationStructuralOrderedMoveOperation,
-  MutationStructuralOrderedPatchOperation,
-  MutationStructuralOrderedSpliceOperation,
-  MutationStructuralTreeDeleteOperation,
-  MutationStructuralTreeInsertOperation,
-  MutationStructuralTreeMoveOperation,
-  MutationStructuralTreeNodePatchOperation,
-  MutationStructuralTreeRestoreOperation,
-  MutationTreeNodeSnapshot,
-  MutationTreeSnapshot,
-  MutationTreeSubtreeSnapshot,
-} from './contracts'
 import {
   draft
 } from '@shared/draft'
+import type {
+  MutationFootprint,
+  MutationIssue,
+  MutationOrderedAnchor,
+  MutationOrderedSlot,
+  MutationStructuralFact,
+  MutationTreeNodeSnapshot,
+  MutationTreeSnapshot,
+  MutationTreeSubtreeSnapshot,
+} from '../write'
 import {
-  createMutationProgramWriter
-} from './program/writer'
-import {
-  cloneValue,
   EMPTY_DELTA,
   EMPTY_ISSUES,
   EMPTY_OUTPUTS,
@@ -39,44 +20,44 @@ import {
 } from './contracts'
 import {
   buildStructureDelta,
-  mergeMutationDeltas,
-  normalizeMutationDelta
 } from './delta'
 import type {
   AppliedMutationProgram,
   MutationOrderedProgramStep,
   MutationProgram,
+  MutationProgramStep,
   MutationTreeProgramStep,
 } from './program/program'
-
-type StructuralDescriptor =
-  | {
-      kind: 'ordered'
-      action: 'insert' | 'move' | 'splice' | 'delete' | 'patch'
-    }
-  | {
-      kind: 'tree'
-      action: 'insert' | 'move' | 'delete' | 'restore' | 'patch'
-    }
-
-type StructuralOperationApplyResult<
-  Doc,
-  Op,
-  Code extends string = string
-> =
-  | {
-      ok: true
-      data: {
-        document: Doc
-        inverse: readonly Op[]
-        structural: readonly MutationStructuralFact[]
-        footprint: readonly MutationFootprint[]
-        historyMode: 'track' | 'skip' | 'neutral'
-      }
-    }
-  | MutationFailure<Code>
+import {
+  readOrderedTargetType,
+  readTreeTargetType,
+  serializeMutationTarget,
+  type MutationOrderedRegistrySpec,
+  type MutationRegistry,
+  type MutationTreeRegistrySpec,
+} from './registry'
 
 const ROOT_PARENT_ID = '$root'
+
+const createMutationProgram = <
+  Tag extends string = string
+>(
+  steps: readonly MutationProgramStep<Tag>[] = EMPTY_OUTPUTS as readonly MutationProgramStep<Tag>[]
+): MutationProgram<Tag> => ({
+  steps
+})
+
+type StructuralApplyData<Doc> = {
+  document: Doc
+  inverse: MutationProgram
+  structural: readonly MutationStructuralFact[]
+  footprint: readonly MutationFootprint[]
+  historyMode: 'track' | 'neutral'
+}
+
+const cloneValue = <T,>(
+  value: T
+): T => structuredClone(value)
 
 const cloneOrderedItem = <TItem,>(
   item: TItem,
@@ -137,16 +118,6 @@ const readPatchDiff = <TValue, TPatch>(
   ) as TPatch
 }
 
-const readRequiredStructure = (
-  value: unknown
-): string => {
-  if (typeof value !== 'string' || value.length === 0) {
-    throw new Error('Structural mutation operation requires a non-empty structure.')
-  }
-
-  return value
-}
-
 const readRequiredItemId = (
   value: unknown
 ): string => {
@@ -155,17 +126,6 @@ const readRequiredItemId = (
   }
 
   return value
-}
-
-const readRequiredPatch = (
-  value: unknown,
-  label: string
-): unknown => {
-  if (value === undefined) {
-    throw new Error(`${label} requires a patch.`)
-  }
-
-  return cloneValue(value)
 }
 
 const readRequiredNodeId = (
@@ -430,21 +390,6 @@ const createOrderedMovePlan = (input: {
   return moves
 }
 
-const orderedSpliceFootprint = (
-  structure: string,
-  itemIds: readonly string[]
-): readonly MutationFootprint[] => [
-  {
-    kind: 'structure',
-    structure
-  },
-  ...itemIds.map((itemId) => ({
-    kind: 'structure-item' as const,
-    structure,
-    id: itemId
-  }))
-]
-
 const cloneTreeNode = <TValue,>(
   node: MutationTreeNodeSnapshot<TValue>
 ): MutationTreeNodeSnapshot<TValue> => ({
@@ -612,6 +557,21 @@ const orderedFootprint = (
   id: itemId
 }]
 
+const orderedSpliceFootprint = (
+  structure: string,
+  itemIds: readonly string[]
+): readonly MutationFootprint[] => [
+  {
+    kind: 'structure',
+    structure
+  },
+  ...itemIds.map((itemId) => ({
+    kind: 'structure-item' as const,
+    structure,
+    id: itemId
+  }))
+]
+
 const treeFootprint = (
   structure: string,
   nodeId: string,
@@ -629,306 +589,90 @@ const treeFootprint = (
   }))
 ]
 
-const structuralSuccess = <
-  Doc,
-  Op
->(input: {
+const structuralSuccess = <Doc extends object>(input: {
   document: Doc
-  forward?: readonly Op[]
-  inverse: readonly Op[]
+  inverse: MutationProgram
   structural: readonly MutationStructuralFact[]
   footprint: readonly MutationFootprint[]
-  historyMode?: 'track' | 'skip' | 'neutral'
-}): StructuralOperationApplyResult<Doc, Op> => ({
-  ok: true,
-  data: {
-    document: input.document,
-    inverse: input.inverse,
-    structural: input.structural,
-    footprint: input.footprint,
-    historyMode: input.historyMode ?? 'track'
-  }
+  historyMode?: 'track' | 'neutral'
+}): StructuralApplyData<Doc> => ({
+  document: input.document,
+  inverse: input.inverse,
+  structural: input.structural,
+  footprint: input.footprint,
+  historyMode: input.historyMode ?? 'track'
 })
 
-export const readStructuralOperation = (
+const isOrderedEffect = (
+  effect: MutationOrderedProgramStep | MutationTreeProgramStep
+): effect is MutationOrderedProgramStep => effect.target.kind === 'ordered'
+
+const resolveOrderedRegistrySpec = <Doc extends object>(
+  registry: MutationRegistry<Doc> | undefined,
   type: string
-): StructuralDescriptor | undefined => {
-  switch (type) {
-    case 'structural.ordered.insert':
-      return {
-        kind: 'ordered',
-        action: 'insert'
-      }
-    case 'structural.ordered.move':
-      return {
-        kind: 'ordered',
-        action: 'move'
-      }
-    case 'structural.ordered.splice':
-      return {
-        kind: 'ordered',
-        action: 'splice'
-      }
-    case 'structural.ordered.delete':
-      return {
-        kind: 'ordered',
-        action: 'delete'
-      }
-    case 'structural.ordered.patch':
-      return {
-        kind: 'ordered',
-        action: 'patch'
-      }
-    case 'structural.tree.insert':
-      return {
-        kind: 'tree',
-        action: 'insert'
-      }
-    case 'structural.tree.move':
-      return {
-        kind: 'tree',
-        action: 'move'
-      }
-    case 'structural.tree.delete':
-      return {
-        kind: 'tree',
-        action: 'delete'
-      }
-    case 'structural.tree.restore':
-      return {
-        kind: 'tree',
-        action: 'restore'
-      }
-    case 'structural.tree.node.patch':
-      return {
-        kind: 'tree',
-        action: 'patch'
-      }
-    default:
-      return undefined
+): MutationOrderedRegistrySpec<Doc, unknown, unknown> | undefined => {
+  const entries = Object.entries(registry?.ordered ?? {})
+  for (let index = 0; index < entries.length; index += 1) {
+    const [name, spec] = entries[index]!
+    if (readOrderedTargetType(name, spec) === type) {
+      return spec
+    }
   }
+  return undefined
 }
 
-const resolveStructureSpec = <Doc,>(
-  source: MutationStructureSource<Doc> | undefined,
-  structure: string
-): MutationStructureSpec<Doc> | undefined => {
-  if (!source) {
-    return undefined
+const resolveTreeRegistrySpec = <Doc extends object>(
+  registry: MutationRegistry<Doc> | undefined,
+  type: string
+): MutationTreeRegistrySpec<Doc, unknown, unknown> | undefined => {
+  const entries = Object.entries(registry?.tree ?? {})
+  for (let index = 0; index < entries.length; index += 1) {
+    const [name, spec] = entries[index]!
+    if (readTreeTargetType(name, spec) === type) {
+      return spec
+    }
   }
-
-  return typeof source === 'function'
-    ? source(structure)
-    : source[structure]
+  return undefined
 }
 
-export const createStructuralOrderedInsertOperation = <Op extends { type: string }>(
-  input: Omit<MutationStructuralOrderedInsertOperation, 'type'>
-): Op => ({
-  type: 'structural.ordered.insert',
-  ...input
-}) as unknown as Op
+const readStructureChanges = (
+  change: MutationOrderedRegistrySpec<unknown, unknown, unknown>['change']
+    | MutationTreeRegistrySpec<unknown, unknown, unknown>['change'],
+  key: string | undefined
+) => typeof change === 'function'
+  ? change(key)
+  : change
 
-export const createStructuralOrderedMoveOperation = <Op extends { type: string }>(
-  input: Omit<MutationStructuralOrderedMoveOperation, 'type'>
-): Op => ({
-  type: 'structural.ordered.move',
-  ...input
-}) as unknown as Op
-
-export const createStructuralOrderedSpliceOperation = <Op extends { type: string }>(
-  input: Omit<MutationStructuralOrderedSpliceOperation, 'type'>
-): Op => ({
-  type: 'structural.ordered.splice',
-  ...input
-}) as unknown as Op
-
-export const createStructuralOrderedDeleteOperation = <Op extends { type: string }>(
-  input: Omit<MutationStructuralOrderedDeleteOperation, 'type'>
-): Op => ({
-  type: 'structural.ordered.delete',
-  ...input
-}) as unknown as Op
-
-export const createStructuralOrderedPatchOperation = <Op extends { type: string }>(
-  input: Omit<MutationStructuralOrderedPatchOperation, 'type'>
-): Op => ({
-  type: 'structural.ordered.patch',
-  ...input
-}) as unknown as Op
-
-export const createStructuralTreeInsertOperation = <Op extends { type: string }>(
-  input: Omit<MutationStructuralTreeInsertOperation, 'type'>
-): Op => ({
-  type: 'structural.tree.insert',
-  ...input
-}) as unknown as Op
-
-export const createStructuralTreeMoveOperation = <Op extends { type: string }>(
-  input: Omit<MutationStructuralTreeMoveOperation, 'type'>
-): Op => ({
-  type: 'structural.tree.move',
-  ...input
-}) as unknown as Op
-
-export const createStructuralTreeDeleteOperation = <Op extends { type: string }>(
-  input: Omit<MutationStructuralTreeDeleteOperation, 'type'>
-): Op => ({
-  type: 'structural.tree.delete',
-  ...input
-}) as unknown as Op
-
-export const createStructuralTreeRestoreOperation = <Op extends { type: string }>(
-  input: Omit<MutationStructuralTreeRestoreOperation, 'type'>
-): Op => ({
-  type: 'structural.tree.restore',
-  ...input
-}) as unknown as Op
-
-export const createStructuralTreeNodePatchOperation = <Op extends { type: string }>(
-  input: Omit<MutationStructuralTreeNodePatchOperation, 'type'>
-): Op => ({
-  type: 'structural.tree.node.patch',
-  ...input
-}) as unknown as Op
-
-export const lowerStructuralOperation = (
-  operation: MutationStructuralCanonicalOperation
-): MutationProgram => {
-  const builder = createMutationProgramWriter()
-
-  switch (operation.type) {
-    case 'structural.ordered.insert':
-      builder.ordered.insert(
-        readRequiredStructure(operation.structure),
-        readRequiredItemId(operation.itemId),
-        operation.value,
-        readRequiredOrderedAnchor(operation.to)
-      )
-      break
-    case 'structural.ordered.move':
-      builder.ordered.move(
-        readRequiredStructure(operation.structure),
-        readRequiredItemId(operation.itemId),
-        readRequiredOrderedAnchor(operation.to)
-      )
-      break
-    case 'structural.ordered.splice':
-      builder.ordered.splice(
-        readRequiredStructure(operation.structure),
-        readOrderedSpliceItemIds(operation.itemIds),
-        readRequiredOrderedAnchor(operation.to)
-      )
-      break
-    case 'structural.ordered.delete':
-      builder.ordered.delete(
-        readRequiredStructure(operation.structure),
-        readRequiredItemId(operation.itemId)
-      )
-      break
-    case 'structural.ordered.patch':
-      builder.ordered.patch(
-        readRequiredStructure(operation.structure),
-        readRequiredItemId(operation.itemId),
-        readRequiredPatch(
-          operation.patch,
-          'Structural ordered patch operation'
-        )
-      )
-      break
-    case 'structural.tree.insert':
-      builder.tree.insert(
-        readRequiredStructure(operation.structure),
-        readRequiredNodeId(operation.nodeId),
-        readOptionalParentId(operation.parentId),
-        readOptionalIndex(operation.index),
-        operation.value
-      )
-      break
-    case 'structural.tree.move':
-      builder.tree.move(
-        readRequiredStructure(operation.structure),
-        readRequiredNodeId(operation.nodeId),
-        readOptionalParentId(operation.parentId),
-        readOptionalIndex(operation.index)
-      )
-      break
-    case 'structural.tree.delete':
-      builder.tree.delete(
-        readRequiredStructure(operation.structure),
-        readRequiredNodeId(operation.nodeId)
-      )
-      break
-    case 'structural.tree.restore':
-      builder.tree.restore(
-        readRequiredStructure(operation.structure),
-        readTreeSubtreeSnapshot(operation.snapshot)
-      )
-      break
-    case 'structural.tree.node.patch':
-      builder.tree.patch(
-        readRequiredStructure(operation.structure),
-        readRequiredNodeId(operation.nodeId),
-        readRequiredPatch(
-          operation.patch,
-          'Structural tree node patch operation'
-        )
-      )
-      break
-  }
-
-  return builder.build()
-}
-
-const readOrderedOperationResult = <
-  Doc extends object,
-  Op extends {
-    type: string
-  }
->(input: {
+const applyOrderedStep = <Doc extends object>(input: {
   document: Doc
-  operation: Op
-  spec: Extract<MutationStructureSpec<Doc>, { kind: 'ordered' }>
-  action: 'insert' | 'move' | 'splice' | 'delete' | 'patch'
-}): StructuralOperationApplyResult<Doc, Op> => {
-  const operation = input.operation as unknown as MutationStructuralOrderedInsertOperation
-    | MutationStructuralOrderedMoveOperation
-    | MutationStructuralOrderedSpliceOperation
-    | MutationStructuralOrderedDeleteOperation
-    | MutationStructuralOrderedPatchOperation
-  const structure = readRequiredStructure(operation.structure)
-  const items = input.spec.read(input.document)
+  effect: MutationOrderedProgramStep
+  spec: MutationOrderedRegistrySpec<Doc, unknown, unknown>
+}): StructuralApplyData<Doc> => {
+  const structure = serializeMutationTarget(input.effect.target)
+  const items = input.spec.read(input.document, input.effect.target.key)
   const identify = input.spec.identify
   const itemIds = items.map((item) => identify(item))
 
-  if (input.action === 'insert') {
-    const insertOperation = operation as MutationStructuralOrderedInsertOperation
-    const itemId = readRequiredItemId(insertOperation.itemId)
-    const currentIndex = itemIds.indexOf(itemId)
-    if (currentIndex >= 0) {
-      return mutationFailure(
-        'mutation_engine.apply.invalid_operation',
-        `Structural ordered insert found an existing item "${itemId}" in "${structure}".`
-      )
+  if (input.effect.type === 'ordered.insert') {
+    const itemId = readRequiredItemId(input.effect.itemId)
+    if (itemIds.includes(itemId)) {
+      throw new Error(`Structural ordered insert found an existing item "${itemId}" in "${structure}".`)
     }
 
-    const nextValue = cloneOrderedItem(insertOperation.value, input.spec)
+    const nextValue = cloneOrderedItem(input.effect.value, input.spec)
     if (identify(nextValue) !== itemId) {
-      return mutationFailure(
-        'mutation_engine.apply.invalid_operation',
-        `Structural ordered insert value id does not match itemId "${itemId}".`
-      )
+      throw new Error(`Structural ordered insert value id does not match itemId "${itemId}".`)
     }
 
-    const anchor = readRequiredOrderedAnchor(insertOperation.to)
+    const anchor = readRequiredOrderedAnchor(input.effect.to)
     const nextItems = insertOrderedItem(items, nextValue, anchor, identify)
     return structuralSuccess({
-      document: input.spec.write(input.document, nextItems),
-      forward: [input.operation],
-      inverse: [createStructuralOrderedDeleteOperation<Op>({
-        structure,
+      document: input.spec.write(input.document, input.effect.target.key, nextItems),
+      inverse: createMutationProgram([{
+        type: 'ordered.delete',
+        target: input.effect.target,
         itemId
-      })],
+      }]),
       structural: [{
         kind: 'ordered',
         action: 'insert',
@@ -940,24 +684,19 @@ const readOrderedOperationResult = <
     })
   }
 
-  if (input.action === 'splice') {
-    const spliceOperation = operation as MutationStructuralOrderedSpliceOperation
-    const movingIds = readOrderedSpliceItemIds(spliceOperation.itemIds)
+  if (input.effect.type === 'ordered.splice') {
+    const movingIds = readOrderedSpliceItemIds(input.effect.itemIds)
     const missingId = movingIds.find((movingId) => !itemIds.includes(movingId))
     if (missingId) {
-      return mutationFailure(
-        'mutation_engine.apply.invalid_operation',
-        `Structural ordered splice cannot find item "${missingId}" in "${structure}".`
-      )
+      throw new Error(`Structural ordered splice cannot find item "${missingId}" in "${structure}".`)
     }
 
-    const anchor = readRequiredOrderedAnchor(spliceOperation.to)
+    const anchor = readRequiredOrderedAnchor(input.effect.to)
     const nextItems = insertOrderedBlock(items, movingIds, anchor, identify)
     if (sameJsonValue(nextItems, items)) {
       return structuralSuccess({
         document: input.document,
-        forward: [input.operation],
-        inverse: [],
+        inverse: createMutationProgram(),
         structural: [],
         footprint: [],
         historyMode: 'neutral'
@@ -968,16 +707,16 @@ const readOrderedOperationResult = <
     const inverseMoves = createOrderedMovePlan({
       currentIds: nextItemIds,
       targetIds: itemIds
-    }).map(({ itemId, to }) => createStructuralOrderedMoveOperation<Op>({
-      structure,
+    }).map(({ itemId, to }) => ({
+      type: 'ordered.move' as const,
+      target: input.effect.target,
       itemId,
       to
     }))
 
     return structuralSuccess({
-      document: input.spec.write(input.document, nextItems),
-      forward: [input.operation],
-      inverse: inverseMoves,
+      document: input.spec.write(input.document, input.effect.target.key, nextItems),
+      inverse: createMutationProgram(inverseMoves),
       structural: movingIds.map((movingId) => ({
         kind: 'ordered' as const,
         action: 'move' as const,
@@ -990,38 +729,27 @@ const readOrderedOperationResult = <
     })
   }
 
-  if (input.action === 'patch') {
-    const patchOperation = operation as MutationStructuralOrderedPatchOperation
-    const itemId = readRequiredItemId(patchOperation.itemId)
+  if (input.effect.type === 'ordered.patch') {
+    const itemId = readRequiredItemId(input.effect.itemId)
     const currentIndex = itemIds.indexOf(itemId)
     if (currentIndex < 0) {
-      return mutationFailure(
-        'mutation_engine.apply.invalid_operation',
-        `Structural ordered patch cannot find item "${itemId}" in "${structure}".`
-      )
+      throw new Error(`Structural ordered patch cannot find item "${itemId}" in "${structure}".`)
     }
 
     const current = items[currentIndex]!
-    const patch = readRequiredPatch(
-      patchOperation.patch,
-      'Structural ordered patch operation'
-    )
     const next = applyPatchedValue({
       current,
-      patch,
+      patch: cloneValue(input.effect.patch),
       apply: input.spec.patch,
       label: 'Structural ordered patch operation'
     })
     if (identify(next) !== itemId) {
-      return mutationFailure(
-        'mutation_engine.apply.invalid_operation',
-        `Structural ordered patch cannot change item id "${itemId}".`
-      )
+      throw new Error(`Structural ordered patch cannot change item id "${itemId}".`)
     }
     if (sameJsonValue(next, current)) {
       return structuralSuccess({
         document: input.document,
-        inverse: [],
+        inverse: createMutationProgram(),
         structural: [],
         footprint: [],
         historyMode: 'neutral'
@@ -1038,12 +766,13 @@ const readOrderedOperationResult = <
     nextItems[currentIndex] = cloneOrderedItem(next, input.spec)
 
     return structuralSuccess({
-      document: input.spec.write(input.document, nextItems),
-      inverse: [createStructuralOrderedPatchOperation<Op>({
-        structure,
+      document: input.spec.write(input.document, input.effect.target.key, nextItems),
+      inverse: createMutationProgram([{
+        type: 'ordered.patch',
+        target: input.effect.target,
         itemId,
         patch: inversePatch
-      })],
+      }]),
       structural: [{
         kind: 'ordered',
         action: 'patch',
@@ -1054,32 +783,26 @@ const readOrderedOperationResult = <
     })
   }
 
-  const itemId = readRequiredItemId(
-    (operation as MutationStructuralOrderedMoveOperation | MutationStructuralOrderedDeleteOperation).itemId
-  )
+  const itemId = readRequiredItemId(input.effect.itemId)
   const currentIndex = itemIds.indexOf(itemId)
-
   if (currentIndex < 0) {
-    return mutationFailure(
-      'mutation_engine.apply.invalid_operation',
-      `Structural ordered operation cannot find item "${itemId}" in "${structure}".`
-    )
+    throw new Error(`Structural ordered operation cannot find item "${itemId}" in "${structure}".`)
   }
 
   const currentSlot = readOrderedSlot(itemIds, itemId)
 
-  if (input.action === 'delete') {
+  if (input.effect.type === 'ordered.delete') {
     const value = cloneOrderedItem(items[currentIndex]!, input.spec)
     const nextItems = removeOrderedItem(items, itemId, identify)
     return structuralSuccess({
-      document: input.spec.write(input.document, nextItems),
-      forward: [input.operation],
-      inverse: [createStructuralOrderedInsertOperation<Op>({
-        structure,
+      document: input.spec.write(input.document, input.effect.target.key, nextItems),
+      inverse: createMutationProgram([{
+        type: 'ordered.insert',
+        target: input.effect.target,
         itemId,
         value,
         to: anchorFromSlot(currentSlot)
-      })],
+      }]),
       structural: [{
         kind: 'ordered',
         action: 'delete',
@@ -1091,8 +814,7 @@ const readOrderedOperationResult = <
     })
   }
 
-  const moveOperation = operation as MutationStructuralOrderedMoveOperation
-  const anchor = readRequiredOrderedAnchor(moveOperation.to)
+  const anchor = readRequiredOrderedAnchor(input.effect.to)
   const nextItems = insertOrderedItem(
     items,
     items[currentIndex]!,
@@ -1102,8 +824,7 @@ const readOrderedOperationResult = <
   if (sameJsonValue(nextItems, items)) {
     return structuralSuccess({
       document: input.document,
-      forward: [input.operation],
-      inverse: [],
+      inverse: createMutationProgram(),
       structural: [],
       footprint: [],
       historyMode: 'neutral'
@@ -1111,13 +832,13 @@ const readOrderedOperationResult = <
   }
 
   return structuralSuccess({
-    document: input.spec.write(input.document, nextItems),
-    forward: [input.operation],
-    inverse: [createStructuralOrderedMoveOperation<Op>({
-      structure,
+    document: input.spec.write(input.document, input.effect.target.key, nextItems),
+    inverse: createMutationProgram([{
+      type: 'ordered.move',
+      target: input.effect.target,
       itemId,
       to: anchorFromSlot(currentSlot)
-    })],
+    }]),
     structural: [{
       kind: 'ordered',
       action: 'move',
@@ -1130,38 +851,25 @@ const readOrderedOperationResult = <
   })
 }
 
-const readTreeOperationResult = <
-  Doc extends object,
-  Op extends {
-    type: string
-  }
->(input: {
+const applyTreeStep = <Doc extends object>(input: {
   document: Doc
-  operation: Op
-  spec: Extract<MutationStructureSpec<Doc>, { kind: 'tree' }>
-  action: 'insert' | 'move' | 'delete' | 'restore' | 'patch'
-}): StructuralOperationApplyResult<Doc, Op> => {
-  const structure = readRequiredStructure(
-    (input.operation as unknown as MutationStructuralCanonicalOperation).structure
+  effect: MutationTreeProgramStep
+  spec: MutationTreeRegistrySpec<Doc, unknown, unknown>
+}): StructuralApplyData<Doc> => {
+  const structure = serializeMutationTarget(input.effect.target)
+  const currentTree = cloneTreeSnapshot(
+    input.spec.read(input.document, input.effect.target.key)
   )
-  const currentTree = cloneTreeSnapshot(input.spec.read(input.document))
 
-  if (input.action === 'insert') {
-    const operation = input.operation as unknown as MutationStructuralTreeInsertOperation
-    const nodeId = readRequiredNodeId(operation.nodeId)
-    const parentId = readOptionalParentId(operation.parentId)
-    const index = readOptionalIndex(operation.index)
+  if (input.effect.type === 'tree.insert') {
+    const nodeId = readRequiredNodeId(input.effect.nodeId)
+    const parentId = readOptionalParentId(input.effect.parentId)
+    const index = readOptionalIndex(input.effect.index)
     if (currentTree.nodes[nodeId]) {
-      return mutationFailure(
-        'mutation_engine.apply.invalid_operation',
-        `Structural tree insert found an existing node "${nodeId}" in "${structure}".`
-      )
+      throw new Error(`Structural tree insert found an existing node "${nodeId}" in "${structure}".`)
     }
     if (parentId && !currentTree.nodes[parentId]) {
-      return mutationFailure(
-        'mutation_engine.apply.invalid_operation',
-        `Structural tree insert cannot find parent "${parentId}" in "${structure}".`
-      )
+      throw new Error(`Structural tree insert cannot find parent "${parentId}" in "${structure}".`)
     }
 
     const nextTree: MutationTreeSnapshot = {
@@ -1175,12 +883,12 @@ const readTreeOperationResult = <
                 parentId
               }),
           children: [],
-          ...(operation.value === undefined
+          ...(input.effect.value === undefined
             ? {}
             : {
                 value: input.spec.clone
-                  ? input.spec.clone(operation.value)
-                  : cloneValue(operation.value)
+                  ? input.spec.clone(input.effect.value)
+                  : cloneValue(input.effect.value)
               })
         }
       }
@@ -1193,12 +901,12 @@ const readTreeOperationResult = <
     const writtenTree = writeParentChildren(nextTree, parentId, nextChildren)
     const nextIndex = readNodeIndex(writtenTree, parentId, nodeId)
     return structuralSuccess({
-      document: input.spec.write(input.document, writtenTree),
-      forward: [input.operation],
-      inverse: [createStructuralTreeDeleteOperation<Op>({
-        structure,
+      document: input.spec.write(input.document, input.effect.target.key, writtenTree),
+      inverse: createMutationProgram([{
+        type: 'tree.delete',
+        target: input.effect.target,
         nodeId
-      })],
+      }]),
       structural: [{
         kind: 'tree',
         action: 'insert',
@@ -1211,20 +919,13 @@ const readTreeOperationResult = <
     })
   }
 
-  if (input.action === 'restore') {
-    const operation = input.operation as unknown as MutationStructuralTreeRestoreOperation
-    const snapshot = readTreeSubtreeSnapshot(operation.snapshot)
+  if (input.effect.type === 'tree.restore') {
+    const snapshot = readTreeSubtreeSnapshot(input.effect.snapshot)
     if (currentTree.nodes[snapshot.rootId]) {
-      return mutationFailure(
-        'mutation_engine.apply.invalid_operation',
-        `Structural tree restore found an existing node "${snapshot.rootId}" in "${structure}".`
-      )
+      throw new Error(`Structural tree restore found an existing node "${snapshot.rootId}" in "${structure}".`)
     }
     if (snapshot.parentId && !currentTree.nodes[snapshot.parentId]) {
-      return mutationFailure(
-        'mutation_engine.apply.invalid_operation',
-        `Structural tree restore cannot find parent "${snapshot.parentId}" in "${structure}".`
-      )
+      throw new Error(`Structural tree restore cannot find parent "${snapshot.parentId}" in "${structure}".`)
     }
 
     const nextTree: MutationTreeSnapshot = {
@@ -1247,12 +948,12 @@ const readTreeOperationResult = <
     const writtenTree = writeParentChildren(nextTree, snapshot.parentId, nextChildren)
     const nextIndex = readNodeIndex(writtenTree, snapshot.parentId, snapshot.rootId)
     return structuralSuccess({
-      document: input.spec.write(input.document, writtenTree),
-      forward: [input.operation],
-      inverse: [createStructuralTreeDeleteOperation<Op>({
-        structure,
+      document: input.spec.write(input.document, input.effect.target.key, writtenTree),
+      inverse: createMutationProgram([{
+        type: 'tree.delete',
+        target: input.effect.target,
         nodeId: snapshot.rootId
-      })],
+      }]),
       structural: [{
         kind: 'tree',
         action: 'restore',
@@ -1265,37 +966,26 @@ const readTreeOperationResult = <
     })
   }
 
-  if (input.action === 'patch') {
-    const operation = input.operation as unknown as MutationStructuralTreeNodePatchOperation
-    const nodeId = readRequiredNodeId(operation.nodeId)
+  if (input.effect.type === 'tree.node.patch') {
+    const nodeId = readRequiredNodeId(input.effect.nodeId)
     const currentNode = currentTree.nodes[nodeId]
     if (!currentNode) {
-      return mutationFailure(
-        'mutation_engine.apply.invalid_operation',
-        `Structural tree node patch cannot find node "${nodeId}" in "${structure}".`
-      )
+      throw new Error(`Structural tree node patch cannot find node "${nodeId}" in "${structure}".`)
     }
     if (currentNode.value === undefined) {
-      return mutationFailure(
-        'mutation_engine.apply.invalid_operation',
-        `Structural tree node patch cannot patch missing value for "${nodeId}" in "${structure}".`
-      )
+      throw new Error(`Structural tree node patch cannot patch missing value for "${nodeId}" in "${structure}".`)
     }
 
-    const patch = readRequiredPatch(
-      operation.patch,
-      'Structural tree node patch operation'
-    )
     const nextValue = applyPatchedValue({
       current: currentNode.value,
-      patch,
+      patch: cloneValue(input.effect.patch),
       apply: input.spec.patch,
       label: 'Structural tree node patch operation'
     })
     if (sameJsonValue(nextValue, currentNode.value)) {
       return structuralSuccess({
         document: input.document,
-        inverse: [],
+        inverse: createMutationProgram(),
         structural: [],
         footprint: [],
         historyMode: 'neutral'
@@ -1322,12 +1012,13 @@ const readTreeOperationResult = <
     }
 
     return structuralSuccess({
-      document: input.spec.write(input.document, nextTree),
-      inverse: [createStructuralTreeNodePatchOperation<Op>({
-        structure,
+      document: input.spec.write(input.document, input.effect.target.key, nextTree),
+      inverse: createMutationProgram([{
+        type: 'tree.node.patch',
+        target: input.effect.target,
         nodeId,
         patch: inversePatch
-      })],
+      }]),
       structural: [{
         kind: 'tree',
         action: 'patch',
@@ -1338,17 +1029,13 @@ const readTreeOperationResult = <
     })
   }
 
-  const operation = input.operation as unknown as MutationStructuralTreeMoveOperation | MutationStructuralTreeDeleteOperation
-  const nodeId = readRequiredNodeId(operation.nodeId)
+  const nodeId = readRequiredNodeId(input.effect.nodeId)
   const currentNode = currentTree.nodes[nodeId]
   if (!currentNode) {
-    return mutationFailure(
-      'mutation_engine.apply.invalid_operation',
-      `Structural tree operation cannot find node "${nodeId}" in "${structure}".`
-    )
+    throw new Error(`Structural tree operation cannot find node "${nodeId}" in "${structure}".`)
   }
 
-  if (input.action === 'delete') {
+  if (input.effect.type === 'tree.delete') {
     const snapshot = createTreeSubtreeSnapshot(currentTree, nodeId)
     const subtreeIds = collectSubtreeIds(currentTree, nodeId)
     let nextTree = removeFromParent(currentTree, currentNode.parentId, nodeId)
@@ -1359,12 +1046,12 @@ const readTreeOperationResult = <
       )
     }
     return structuralSuccess({
-      document: input.spec.write(input.document, nextTree),
-      forward: [input.operation],
-      inverse: [createStructuralTreeRestoreOperation<Op>({
-        structure,
+      document: input.spec.write(input.document, input.effect.target.key, nextTree),
+      inverse: createMutationProgram([{
+        type: 'tree.restore',
+        target: input.effect.target,
         snapshot
-      })],
+      }]),
       structural: [{
         kind: 'tree',
         action: 'delete',
@@ -1377,20 +1064,13 @@ const readTreeOperationResult = <
     })
   }
 
-  const moveOperation = input.operation as unknown as MutationStructuralTreeMoveOperation
-  const parentId = readOptionalParentId(moveOperation.parentId)
-  const index = readOptionalIndex(moveOperation.index)
+  const parentId = readOptionalParentId(input.effect.parentId)
+  const index = readOptionalIndex(input.effect.index)
   if (parentId && !currentTree.nodes[parentId]) {
-    return mutationFailure(
-      'mutation_engine.apply.invalid_operation',
-      `Structural tree move cannot find parent "${parentId}" in "${structure}".`
-    )
+    throw new Error(`Structural tree move cannot find parent "${parentId}" in "${structure}".`)
   }
   if (isTreeAncestor(currentTree, nodeId, parentId)) {
-    return mutationFailure(
-      'mutation_engine.apply.invalid_operation',
-      `Structural tree move cannot move node "${nodeId}" into its own subtree.`
-    )
+    throw new Error(`Structural tree move cannot move node "${nodeId}" into its own subtree.`)
   }
 
   const previousParentId = currentNode.parentId
@@ -1437,8 +1117,7 @@ const readTreeOperationResult = <
   ) {
     return structuralSuccess({
       document: input.document,
-      forward: [input.operation],
-      inverse: [],
+      inverse: createMutationProgram(),
       structural: [],
       footprint: [],
       historyMode: 'neutral'
@@ -1447,14 +1126,22 @@ const readTreeOperationResult = <
 
   const nextIndex = readNodeIndex(nextTree, parentId, nodeId)
   return structuralSuccess({
-    document: input.spec.write(input.document, nextTree),
-    forward: [input.operation],
-    inverse: [createStructuralTreeMoveOperation<Op>({
-      structure,
+    document: input.spec.write(input.document, input.effect.target.key, nextTree),
+    inverse: createMutationProgram([{
+      type: 'tree.move',
+      target: input.effect.target,
       nodeId,
-      parentId: previousParentId,
-      index: previousIndex < 0 ? undefined : previousIndex
-    })],
+      ...(previousParentId === undefined
+        ? {}
+        : {
+            parentId: previousParentId
+          }),
+      ...(previousIndex < 0
+        ? {}
+        : {
+            index: previousIndex
+          })
+    }]),
     structural: [{
       kind: 'tree',
       action: 'move',
@@ -1469,227 +1156,75 @@ const readTreeOperationResult = <
   })
 }
 
-export const readStructuralOperationResult = <
-  Doc extends object,
-  Op extends {
-    type: string
-  },
-  Code extends string = string
->(input: {
-  document: Doc
-  operation: Op
-  structures?: MutationStructureSource<Doc>
-  descriptor: StructuralDescriptor
-}): StructuralOperationApplyResult<Doc, Op, Code> => {
-  try {
-    const structureName = readRequiredStructure(
-      (input.operation as unknown as MutationStructuralCanonicalOperation).structure
-    )
-    const spec = resolveStructureSpec(input.structures, structureName)
-    if (!spec) {
-      return mutationFailure(
-        'mutation_engine.apply.unknown_structure' as Code,
-        `Unknown mutation structure "${structureName}".`
-      )
-    }
-
-    if (input.descriptor.kind === 'ordered') {
-      if (spec.kind !== 'ordered') {
-        return mutationFailure(
-          'mutation_engine.apply.invalid_operation' as Code,
-          `Mutation structure "${structureName}" is not ordered.`
-        )
-      }
-
-      return readOrderedOperationResult({
-        document: input.document,
-        operation: input.operation,
-        spec,
-        action: input.descriptor.action
-      }) as StructuralOperationApplyResult<Doc, Op, Code>
-    }
-
-    if (spec.kind !== 'tree') {
-      return mutationFailure(
-        'mutation_engine.apply.invalid_operation' as Code,
-        `Mutation structure "${structureName}" is not a tree.`
-      )
-    }
-
-    return readTreeOperationResult({
-      document: input.document,
-      operation: input.operation,
-      spec,
-      action: input.descriptor.action
-    }) as StructuralOperationApplyResult<Doc, Op, Code>
-  } catch (error) {
-    return mutationFailure(
-      'mutation_engine.apply.invalid_operation' as Code,
-      error instanceof Error
-        ? error.message
-        : 'MutationEngine.apply received an invalid structural operation.'
-    )
-  }
-}
-
-const lowerStructuralOperationBatch = (
-  operations: readonly MutationStructuralCanonicalOperation[]
-): MutationProgram => {
-  const steps = operations.flatMap((operation) => lowerStructuralOperation(operation).steps)
-  return {
-    steps
-  }
-}
-
 export const applyStructuralEffectResult = <
   Doc extends object
 >(input: {
   document: Doc
   effect: MutationOrderedProgramStep | MutationTreeProgramStep
-  structures?: MutationStructureSource<Doc>
+  registry?: MutationRegistry<Doc>
 }): AppliedMutationProgram<Doc> => {
-  const operation: MutationStructuralCanonicalOperation = (() => {
-    switch (input.effect.type) {
-      case 'ordered.insert':
-        return {
-          type: 'structural.ordered.insert',
-          structure: input.effect.structure,
-          itemId: input.effect.itemId,
-          value: input.effect.value,
-          to: input.effect.to
-        }
-      case 'ordered.move':
-        return {
-          type: 'structural.ordered.move',
-          structure: input.effect.structure,
-          itemId: input.effect.itemId,
-          to: input.effect.to
-        }
-      case 'ordered.splice':
-        return {
-          type: 'structural.ordered.splice',
-          structure: input.effect.structure,
-          itemIds: input.effect.itemIds,
-          to: input.effect.to
-        }
-      case 'ordered.delete':
-        return {
-          type: 'structural.ordered.delete',
-          structure: input.effect.structure,
-          itemId: input.effect.itemId
-        }
-      case 'ordered.patch':
-        return {
-          type: 'structural.ordered.patch',
-          structure: input.effect.structure,
-          itemId: input.effect.itemId,
-          patch: input.effect.patch
-        }
-      case 'tree.insert':
-        return {
-          type: 'structural.tree.insert',
-          structure: input.effect.structure,
-          nodeId: input.effect.nodeId,
-          ...(input.effect.parentId === undefined
-            ? {}
-            : {
-                parentId: input.effect.parentId
-              }),
-          ...(input.effect.index === undefined
-            ? {}
-            : {
-                index: input.effect.index
-              }),
-          ...(input.effect.value === undefined
-            ? {}
-            : {
-                value: input.effect.value
-              })
-        }
-      case 'tree.move':
-        return {
-          type: 'structural.tree.move',
-          structure: input.effect.structure,
-          nodeId: input.effect.nodeId,
-          ...(input.effect.parentId === undefined
-            ? {}
-            : {
-                parentId: input.effect.parentId
-              }),
-          ...(input.effect.index === undefined
-            ? {}
-            : {
-                index: input.effect.index
-              })
-        }
-      case 'tree.delete':
-        return {
-          type: 'structural.tree.delete',
-          structure: input.effect.structure,
-          nodeId: input.effect.nodeId
-        }
-      case 'tree.restore':
-        return {
-          type: 'structural.tree.restore',
-          structure: input.effect.structure,
-          snapshot: input.effect.snapshot
-        }
-      case 'tree.node.patch':
-        return {
-          type: 'structural.tree.node.patch',
-          structure: input.effect.structure,
-          nodeId: input.effect.nodeId,
-          patch: input.effect.patch
-        }
-    }
-  })()
-  const descriptor = readStructuralOperation(operation.type)
-  if (!descriptor) {
-    throw new Error(`Unknown structural effect "${input.effect.type}".`)
-  }
-  const spec = resolveStructureSpec(input.structures, operation.structure)
-  if (!spec) {
-    throw new Error(`Unknown mutation structure "${operation.structure}".`)
-  }
+  try {
+    if (isOrderedEffect(input.effect)) {
+      const effect = input.effect
+      const spec = resolveOrderedRegistrySpec(
+        input.registry,
+        effect.target.type
+      )
+      if (!spec) {
+        throw new Error(`Unknown mutation ordered target "${effect.target.type}".`)
+      }
 
-  const applied = readStructuralOperationResult<Doc, MutationStructuralCanonicalOperation>({
-    document: input.document,
-    operation,
-    structures: input.structures,
-    descriptor
-  })
-  if (!applied.ok) {
-    throw new Error(applied.error.message)
-  }
-
-  return {
-    document: applied.data.document,
-    inverse: lowerStructuralOperationBatch(
-      applied.data.inverse as readonly MutationStructuralCanonicalOperation[]
-    ),
-    delta: input.effect.delta === undefined
-      ? buildStructureDelta(
-          'change' in spec
-            ? spec.change
-            : undefined
-        )
-      : mergeMutationDeltas(
-          buildStructureDelta(
-            'change' in spec
-              ? spec.change
-              : undefined
-          ),
-          normalizeMutationDelta(input.effect.delta)
+      const applied = applyOrderedStep({
+        document: input.document,
+        effect,
+        spec
+      })
+      return {
+        document: applied.document,
+        inverse: applied.inverse,
+        delta: buildStructureDelta(
+          readStructureChanges(
+            spec.change,
+            effect.target.key
+          )
         ),
-    structural: applied.data.structural,
-    footprint: [
-      ...applied.data.footprint,
-      ...(input.effect.footprint ?? [])
-    ],
-    issues: EMPTY_ISSUES,
-    historyMode: applied.data.historyMode === 'track'
-      ? 'track'
-      : 'neutral'
+        structural: applied.structural,
+        footprint: applied.footprint,
+        issues: EMPTY_ISSUES,
+        historyMode: applied.historyMode
+      }
+    }
+
+    const effect = input.effect
+    const spec = resolveTreeRegistrySpec(
+      input.registry,
+      effect.target.type
+    )
+    if (!spec) {
+      throw new Error(`Unknown mutation tree target "${effect.target.type}".`)
+    }
+
+    const applied = applyTreeStep({
+      document: input.document,
+      effect,
+      spec
+    })
+    return {
+      document: applied.document,
+      inverse: applied.inverse,
+        delta: buildStructureDelta(
+          readStructureChanges(
+            spec.change,
+            effect.target.key
+          )
+        ),
+      structural: applied.structural,
+      footprint: applied.footprint,
+      issues: EMPTY_ISSUES,
+      historyMode: applied.historyMode
+    }
+  } catch (error) {
+    throw error
   }
 }
 
@@ -1699,11 +1234,11 @@ export const readStructuralEffectResult = <
 >(input: {
   document: Doc
   effect: MutationOrderedProgramStep | MutationTreeProgramStep
-  structures?: MutationStructureSource<Doc>
+  registry?: MutationRegistry<Doc>
 }): {
   ok: true
   data: AppliedMutationProgram<Doc>
-} | MutationFailure<Code> => {
+} | ReturnType<typeof mutationFailure<Code>> => {
   try {
     return {
       ok: true,
@@ -1715,68 +1250,6 @@ export const readStructuralEffectResult = <
       error instanceof Error
         ? error.message
         : 'MutationEngine.apply received an invalid structural effect.'
-    )
-  }
-}
-
-export const applyStructuralOperation = <
-  Doc extends object,
-  Op extends {
-    type: string
-  },
-  Code extends string = string
->(input: {
-  document: Doc
-  operation: Op
-  structures?: MutationStructureSource<Doc>
-}): MutationApplyResult<Doc, Op, Code> => {
-  const descriptor = readStructuralOperation(input.operation.type)
-  if (!descriptor) {
-    return mutationFailure(
-      'mutation_engine.apply.invalid_operation' as Code,
-      `Unknown structural mutation operation "${input.operation.type}".`
-    )
-  }
-
-  try {
-    const program = lowerStructuralOperation(
-      input.operation as unknown as MutationStructuralCanonicalOperation
-    )
-    const [effect] = program.steps
-    if (
-      !effect
-      || effect.type === 'entity.create'
-      || effect.type === 'entity.patch'
-      || effect.type === 'entity.patchMany'
-      || effect.type === 'entity.delete'
-    ) {
-      throw new Error(`Unknown structural mutation operation "${input.operation.type}".`)
-    }
-    const applied = applyStructuralEffectResult<Doc>({
-      document: input.document,
-      effect,
-      structures: input.structures
-    })
-    return {
-      ok: true,
-      data: {
-        document: applied.document,
-        applied: program,
-        inverse: applied.inverse,
-        delta: applied.delta,
-        structural: applied.structural,
-        footprint: applied.footprint,
-        outputs: EMPTY_OUTPUTS,
-        issues: applied.issues,
-        historyMode: applied.historyMode
-      }
-    }
-  } catch (error) {
-    return mutationFailure(
-      'mutation_engine.apply.invalid_operation' as Code,
-      error instanceof Error
-        ? error.message
-        : 'MutationEngine.apply received an invalid structural operation.'
     )
   }
 }

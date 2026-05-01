@@ -7,11 +7,8 @@ import {
   compile
 } from '@dataview/core/mutation'
 import {
-  entities
-} from '@dataview/core/entities'
-import {
-  createDataviewProgramWriter,
-  type DataviewProgramWriter
+  dataviewMutationRegistry,
+  type DataviewMutationPorts
 } from '@dataview/core/mutation'
 import {
   document as documentApi
@@ -50,7 +47,7 @@ const createMutation = () => new MutationEngine<
   document: createEmptyDocument(),
   normalize: documentApi.normalize,
   createReader: createDocumentReader,
-  entities
+  registry: dataviewMutationRegistry
 })
 
 const createExecuteMutation = () => new MutationEngine<
@@ -65,16 +62,15 @@ const createExecuteMutation = () => new MutationEngine<
   DocumentReader,
   void,
   string,
-  DataviewProgramWriter
+  DataviewMutationPorts
 >({
   document: createEmptyDocument(),
   normalize: documentApi.normalize,
   createReader: createDocumentReader,
-  entities,
+  registry: dataviewMutationRegistry,
   compile: {
     'external.version.bump': compile.handlers['external.version.bump']
-  },
-  createProgram: createDataviewProgramWriter
+  }
 })
 
 test('MutationEngine applies program field.create with shared inverse', () => {
@@ -83,7 +79,8 @@ test('MutationEngine applies program field.create with shared inverse', () => {
     steps: [{
       type: 'entity.create',
       entity: {
-        table: 'field',
+        kind: 'entity',
+        type: 'field',
         id: 'field_notes'
       },
       value: {

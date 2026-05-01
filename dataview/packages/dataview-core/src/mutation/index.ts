@@ -5,27 +5,20 @@ export type {
   ValidationSeverity
 } from './compile'
 export {
-  createDataviewProgramWriter
-} from './programWriter'
-export {
   dataviewMutationRegistry,
-  dataviewStructures,
-  fieldOptionsStructure,
-  viewDisplayFieldsStructure,
-  viewFilterRulesStructure,
-  viewOrdersStructure,
-  viewSortRulesStructure
 } from './targets'
 export type {
   DataviewDocumentPatch,
   DataviewFieldOptionPatch,
   DataviewFieldPatch,
   DataviewFilterRulePatch,
-  DataviewProgramWriter,
+  DataviewMutationPorts,
   DataviewRecordPatch,
   DataviewSortRulePatch,
-  DataviewViewPatch
-} from './programWriter'
+  DataviewViewPatch,
+  DataviewProgram,
+  DataviewProgramStep,
+} from './program'
 
 export type DataviewQueryAspect =
   | 'search'

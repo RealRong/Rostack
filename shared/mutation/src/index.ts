@@ -1,5 +1,13 @@
 export type {
   MutationRegistry,
+  MutationEntityRegistrySpec,
+  MutationOrderedRegistrySpec,
+  MutationTreeRegistrySpec,
+  MutationEntityTarget,
+  MutationOrderedTarget,
+  MutationTreeTarget,
+  MutationTarget,
+  MutationPorts,
   AppliedMutationProgram,
   MutationEntityProgramStep,
   MutationEntityRef,
@@ -21,6 +29,7 @@ export type {
 } from './engine'
 export {
   defineMutationRegistry,
+  createMutationPorts,
   isMutationProgramStep,
   createMutationProgramWriter,
   normalizeMutationDelta,

@@ -9,6 +9,10 @@ import type {
   MutationProgramStep,
   MutationEntityRef,
 } from './program'
+import type {
+  MutationOrderedTarget,
+  MutationTreeTarget,
+} from '../registry'
 
 export interface MutationProgramWriter<
   Tag extends string = string
@@ -33,7 +37,7 @@ export interface MutationProgramWriter<
       }
     ): void
     patchMany(
-      table: string,
+      entityType: string,
       updates: readonly {
         id: string
         writes: Readonly<Record<string, unknown>>
@@ -55,7 +59,7 @@ export interface MutationProgramWriter<
   }
   ordered: {
     insert(
-      structure: string,
+      target: MutationOrderedTarget,
       itemId: string,
       value: unknown,
       to: MutationOrderedAnchor,
@@ -66,7 +70,7 @@ export interface MutationProgramWriter<
       }
     ): void
     move(
-      structure: string,
+      target: MutationOrderedTarget,
       itemId: string,
       to: MutationOrderedAnchor,
       tags?: readonly Tag[],
@@ -76,7 +80,7 @@ export interface MutationProgramWriter<
       }
     ): void
     splice(
-      structure: string,
+      target: MutationOrderedTarget,
       itemIds: readonly string[],
       to: MutationOrderedAnchor,
       tags?: readonly Tag[],
@@ -86,7 +90,7 @@ export interface MutationProgramWriter<
       }
     ): void
     delete(
-      structure: string,
+      target: MutationOrderedTarget,
       itemId: string,
       tags?: readonly Tag[],
       metadata?: {
@@ -95,7 +99,7 @@ export interface MutationProgramWriter<
       }
     ): void
     patch(
-      structure: string,
+      target: MutationOrderedTarget,
       itemId: string,
       patch: unknown,
       tags?: readonly Tag[],
@@ -107,7 +111,7 @@ export interface MutationProgramWriter<
   }
   tree: {
     insert(
-      structure: string,
+      target: MutationTreeTarget,
       nodeId: string,
       parentId?: string,
       index?: number,
@@ -119,7 +123,7 @@ export interface MutationProgramWriter<
       }
     ): void
     move(
-      structure: string,
+      target: MutationTreeTarget,
       nodeId: string,
       parentId?: string,
       index?: number,
@@ -130,7 +134,7 @@ export interface MutationProgramWriter<
       }
     ): void
     delete(
-      structure: string,
+      target: MutationTreeTarget,
       nodeId: string,
       tags?: readonly Tag[],
       metadata?: {
@@ -139,7 +143,7 @@ export interface MutationProgramWriter<
       }
     ): void
     restore(
-      structure: string,
+      target: MutationTreeTarget,
       snapshot: MutationTreeSubtreeSnapshot,
       tags?: readonly Tag[],
       metadata?: {
@@ -148,7 +152,7 @@ export interface MutationProgramWriter<
       }
     ): void
     patch(
-      structure: string,
+      target: MutationTreeTarget,
       nodeId: string,
       patch: unknown,
       tags?: readonly Tag[],
@@ -158,6 +162,13 @@ export interface MutationProgramWriter<
       }
     ): void
   }
+  signal(
+    delta: MutationDeltaInput,
+    tags?: readonly Tag[],
+    metadata?: {
+      footprint?: readonly MutationFootprint[]
+    }
+  ): void
   build(): MutationProgram<Tag>
 }
 
@@ -188,10 +199,10 @@ export const createMutationProgramWriter = <
           ...(metadata?.footprint === undefined ? {} : { footprint: metadata.footprint })
         })
       },
-      patchMany: (table, updates, tags, metadata) => {
+      patchMany: (entityType, updates, tags, metadata) => {
         steps.push({
           type: 'entity.patchMany',
-          table,
+          entityType,
           updates,
           ...(tags === undefined ? {} : { tags }),
           ...(metadata?.delta === undefined ? {} : { delta: metadata.delta }),
@@ -209,10 +220,10 @@ export const createMutationProgramWriter = <
       }
     },
     ordered: {
-      insert: (structure, itemId, value, to, tags, metadata) => {
+      insert: (target, itemId, value, to, tags, metadata) => {
         steps.push({
           type: 'ordered.insert',
-          structure,
+          target,
           itemId,
           value,
           to,
@@ -221,10 +232,10 @@ export const createMutationProgramWriter = <
           ...(metadata?.footprint === undefined ? {} : { footprint: metadata.footprint })
         })
       },
-      move: (structure, itemId, to, tags, metadata) => {
+      move: (target, itemId, to, tags, metadata) => {
         steps.push({
           type: 'ordered.move',
-          structure,
+          target,
           itemId,
           to,
           ...(tags === undefined ? {} : { tags }),
@@ -232,10 +243,10 @@ export const createMutationProgramWriter = <
           ...(metadata?.footprint === undefined ? {} : { footprint: metadata.footprint })
         })
       },
-      splice: (structure, itemIds, to, tags, metadata) => {
+      splice: (target, itemIds, to, tags, metadata) => {
         steps.push({
           type: 'ordered.splice',
-          structure,
+          target,
           itemIds,
           to,
           ...(tags === undefined ? {} : { tags }),
@@ -243,20 +254,20 @@ export const createMutationProgramWriter = <
           ...(metadata?.footprint === undefined ? {} : { footprint: metadata.footprint })
         })
       },
-      delete: (structure, itemId, tags, metadata) => {
+      delete: (target, itemId, tags, metadata) => {
         steps.push({
           type: 'ordered.delete',
-          structure,
+          target,
           itemId,
           ...(tags === undefined ? {} : { tags }),
           ...(metadata?.delta === undefined ? {} : { delta: metadata.delta }),
           ...(metadata?.footprint === undefined ? {} : { footprint: metadata.footprint })
         })
       },
-      patch: (structure, itemId, patch, tags, metadata) => {
+      patch: (target, itemId, patch, tags, metadata) => {
         steps.push({
           type: 'ordered.patch',
-          structure,
+          target,
           itemId,
           patch,
           ...(tags === undefined ? {} : { tags }),
@@ -266,10 +277,10 @@ export const createMutationProgramWriter = <
       }
     },
     tree: {
-      insert: (structure, nodeId, parentId, index, value, tags, metadata) => {
+      insert: (target, nodeId, parentId, index, value, tags, metadata) => {
         steps.push({
           type: 'tree.insert',
-          structure,
+          target,
           nodeId,
           ...(parentId === undefined ? {} : { parentId }),
           ...(index === undefined ? {} : { index }),
@@ -279,10 +290,10 @@ export const createMutationProgramWriter = <
           ...(metadata?.footprint === undefined ? {} : { footprint: metadata.footprint })
         })
       },
-      move: (structure, nodeId, parentId, index, tags, metadata) => {
+      move: (target, nodeId, parentId, index, tags, metadata) => {
         steps.push({
           type: 'tree.move',
-          structure,
+          target,
           nodeId,
           ...(parentId === undefined ? {} : { parentId }),
           ...(index === undefined ? {} : { index }),
@@ -291,30 +302,30 @@ export const createMutationProgramWriter = <
           ...(metadata?.footprint === undefined ? {} : { footprint: metadata.footprint })
         })
       },
-      delete: (structure, nodeId, tags, metadata) => {
+      delete: (target, nodeId, tags, metadata) => {
         steps.push({
           type: 'tree.delete',
-          structure,
+          target,
           nodeId,
           ...(tags === undefined ? {} : { tags }),
           ...(metadata?.delta === undefined ? {} : { delta: metadata.delta }),
           ...(metadata?.footprint === undefined ? {} : { footprint: metadata.footprint })
         })
       },
-      restore: (structure, snapshot, tags, metadata) => {
+      restore: (target, snapshot, tags, metadata) => {
         steps.push({
           type: 'tree.restore',
-          structure,
+          target,
           snapshot,
           ...(tags === undefined ? {} : { tags }),
           ...(metadata?.delta === undefined ? {} : { delta: metadata.delta }),
           ...(metadata?.footprint === undefined ? {} : { footprint: metadata.footprint })
         })
       },
-      patch: (structure, nodeId, patch, tags, metadata) => {
+      patch: (target, nodeId, patch, tags, metadata) => {
         steps.push({
           type: 'tree.node.patch',
-          structure,
+          target,
           nodeId,
           patch,
           ...(tags === undefined ? {} : { tags }),
@@ -322,6 +333,14 @@ export const createMutationProgramWriter = <
           ...(metadata?.footprint === undefined ? {} : { footprint: metadata.footprint })
         })
       }
+    },
+    signal: (delta, tags, metadata) => {
+      steps.push({
+        type: 'signal',
+        delta,
+        ...(tags === undefined ? {} : { tags }),
+        ...(metadata?.footprint === undefined ? {} : { footprint: metadata.footprint })
+      })
     },
     build: () => ({
       steps: [...steps]

@@ -1,6 +1,5 @@
 import type {
   MutationOrderedAnchor,
-  MutationStructureSource,
   MutationTreeSnapshot,
   MutationTreeSubtreeSnapshot
 } from '@shared/mutation/engine'
@@ -53,22 +52,6 @@ export type WhiteboardMindmapTreeValue = {
 }
 
 const CANVAS_REF_SEPARATOR = '\u0000'
-export const CANVAS_ORDER_STRUCTURE = 'canvas.order'
-export const EDGE_LABELS_STRUCTURE_PREFIX = 'edge.labels:'
-export const EDGE_ROUTE_STRUCTURE_PREFIX = 'edge.route:'
-export const MINDMAP_TREE_STRUCTURE_PREFIX = 'mindmap.tree:'
-
-export const edgeLabelsStructure = (
-  edgeId: EdgeId
-): string => `${EDGE_LABELS_STRUCTURE_PREFIX}${edgeId}`
-
-export const edgeRoutePointsStructure = (
-  edgeId: EdgeId
-): string => `${EDGE_ROUTE_STRUCTURE_PREFIX}${edgeId}`
-
-export const mindmapTreeStructure = (
-  mindmapId: MindmapId
-): string => `${MINDMAP_TREE_STRUCTURE_PREFIX}${mindmapId}`
 
 export const canvasRefKey = (
   ref: CanvasItemRef
@@ -140,7 +123,7 @@ const diffEdgeLabelPatch = (
   })
 }
 
-export const toStructuralOrderedAnchor = (
+export const toMutationOrderedAnchor = (
   anchor: EdgeLabelAnchor | EdgeRoutePointAnchor
 ): MutationOrderedAnchor => (
   anchor.kind === 'start' || anchor.kind === 'end'
@@ -160,7 +143,7 @@ export const toStructuralOrderedAnchor = (
         }
 )
 
-export const toStructuralCanvasAnchor = (
+export const toCanvasOrderAnchor = (
   order: readonly CanvasItemRef[],
   movedRefs: readonly CanvasItemRef[],
   to: CanvasOrderAnchor
@@ -377,135 +360,15 @@ export const createMindmapTreeSubtreeSnapshot = (
   )
 })
 
-export const whiteboardStructures: MutationStructureSource<Document> = (
-  structure
-) => {
-  if (structure === CANVAS_ORDER_STRUCTURE) {
-    return {
-      kind: 'ordered',
-      change: [{
-        key: 'canvas.order',
-        change: {
-          order: true
-        }
-      }],
-      read: (document: Document) => document.canvas.order,
-      identify: canvasRefKey,
-      clone: (ref: CanvasItemRef) => cloneCanvasRef(ref)!,
-      write: (document: Document, items: readonly CanvasItemRef[]) => ({
-        ...document,
-        canvas: {
-          ...document.canvas,
-          order: items.map((item) => cloneCanvasRef(item)!)
-        }
-      })
-    }
+const readRequiredKey = (
+  key: string | undefined,
+  label: string
+): string => {
+  if (typeof key !== 'string' || key.length === 0) {
+    throw new Error(`${label} requires a non-empty key.`)
   }
 
-  if (structure.startsWith(EDGE_LABELS_STRUCTURE_PREFIX)) {
-    const edgeId = structure.slice(EDGE_LABELS_STRUCTURE_PREFIX.length) as EdgeId
-    return {
-      kind: 'ordered',
-      change: [{
-        key: 'edge.labels',
-        change: [edgeId]
-      }],
-      read: (document: Document) => {
-        const edge = document.edges[edgeId]
-        if (!edge) {
-          throw new Error(`Edge ${edgeId} not found.`)
-        }
-        return getLabels(edge)
-      },
-      identify: (label: EdgeLabel) => label.id,
-      clone: (label: EdgeLabel) => clone(label)!,
-      patch: applyEdgeLabelPatch,
-      diff: diffEdgeLabelPatch,
-      write: (document: Document, items: readonly EdgeLabel[]) => {
-        const edge = document.edges[edgeId]
-        if (!edge) {
-          throw new Error(`Edge ${edgeId} not found.`)
-        }
-        return {
-          ...document,
-          edges: {
-            ...document.edges,
-            [edgeId]: {
-              ...edge,
-              labels: items.map((item) => clone(item)!)
-            }
-          }
-        }
-      }
-    }
-  }
-
-  if (structure.startsWith(EDGE_ROUTE_STRUCTURE_PREFIX)) {
-    const edgeId = structure.slice(EDGE_ROUTE_STRUCTURE_PREFIX.length) as EdgeId
-    return {
-      kind: 'ordered',
-      change: [{
-        key: 'edge.route',
-        change: [edgeId]
-      }],
-      read: (document: Document) => {
-        const edge = document.edges[edgeId]
-        if (!edge) {
-          throw new Error(`Edge ${edgeId} not found.`)
-        }
-        return getManualRoutePoints(edge)
-      },
-      identify: (point: EdgeRoutePoint) => point.id,
-      clone: (point: EdgeRoutePoint) => clone(point)!,
-      write: (document: Document, items: readonly EdgeRoutePoint[]) => {
-        const edge = document.edges[edgeId]
-        if (!edge) {
-          throw new Error(`Edge ${edgeId} not found.`)
-        }
-        return {
-          ...document,
-          edges: {
-            ...document.edges,
-            [edgeId]: {
-              ...edge,
-              route: items.length > 0
-                ? {
-                    kind: 'manual',
-                    points: items.map((item) => clone(item)!)
-                  }
-                : {
-                    kind: 'auto'
-                  }
-            }
-          }
-        }
-      }
-    }
-  }
-
-  if (structure.startsWith(MINDMAP_TREE_STRUCTURE_PREFIX)) {
-    const mindmapId = structure.slice(MINDMAP_TREE_STRUCTURE_PREFIX.length) as MindmapId
-    return {
-      kind: 'tree',
-      change: [{
-        key: 'mindmap.structure',
-        change: [mindmapId]
-      }],
-      read: (document: Document) => {
-        const record = document.mindmaps[mindmapId]
-        if (!record) {
-          throw new Error(`Mindmap ${mindmapId} not found.`)
-        }
-        return createMindmapTreeSnapshot(record)
-      },
-      clone: (value: WhiteboardMindmapTreeValue) => clone(value)!,
-      write: (document: Document, tree: MutationTreeSnapshot<WhiteboardMindmapTreeValue>) => (
-        writeMindmapTreeSnapshot(document, mindmapId, tree)
-      )
-    }
-  }
-
-  return undefined
+  return key
 }
 
 const readMindmapLayoutRects = (
@@ -591,6 +454,139 @@ export const readCanvasOrderAnchorFromSlot = (
 )
 
 export const whiteboardMutationRegistry = defineMutationRegistry<Document>()({
-  entities: whiteboardEntities,
-  structures: whiteboardStructures
+  entity: whiteboardEntities,
+  ordered: {
+    canvasOrder: {
+      type: 'canvas.order',
+      change: [{
+        key: 'canvas.order',
+        change: {
+          order: true
+        }
+      }],
+      read: (document: Document) => document.canvas.order,
+      identify: canvasRefKey,
+      clone: (ref: CanvasItemRef) => cloneCanvasRef(ref)!,
+      write: (document: Document, _key, items: readonly CanvasItemRef[]) => ({
+        ...document,
+        canvas: {
+          ...document.canvas,
+          order: items.map((item) => cloneCanvasRef(item)!)
+        }
+      })
+    },
+    edgeLabels: {
+      type: 'edge.labels',
+      change: (key) => {
+        const edgeId = readRequiredKey(key, 'edge.labels') as EdgeId
+        return [{
+          key: 'edge.labels',
+          change: [edgeId]
+        }]
+      },
+      read: (document: Document, key) => {
+        const edgeId = readRequiredKey(key, 'edge.labels') as EdgeId
+        const edge = document.edges[edgeId]
+        if (!edge) {
+          throw new Error(`Edge ${edgeId} not found.`)
+        }
+        return getLabels(edge)
+      },
+      identify: (label: EdgeLabel) => label.id,
+      clone: (label: EdgeLabel) => clone(label)!,
+      patch: applyEdgeLabelPatch,
+      diff: diffEdgeLabelPatch,
+      write: (document: Document, key, items: readonly EdgeLabel[]) => {
+        const edgeId = readRequiredKey(key, 'edge.labels') as EdgeId
+        const edge = document.edges[edgeId]
+        if (!edge) {
+          throw new Error(`Edge ${edgeId} not found.`)
+        }
+        return {
+          ...document,
+          edges: {
+            ...document.edges,
+            [edgeId]: {
+              ...edge,
+              labels: items.map((item) => clone(item)!)
+            }
+          }
+        }
+      }
+    },
+    edgeRoute: {
+      type: 'edge.route',
+      change: (key) => {
+        const edgeId = readRequiredKey(key, 'edge.route') as EdgeId
+        return [{
+          key: 'edge.route',
+          change: [edgeId]
+        }]
+      },
+      read: (document: Document, key) => {
+        const edgeId = readRequiredKey(key, 'edge.route') as EdgeId
+        const edge = document.edges[edgeId]
+        if (!edge) {
+          throw new Error(`Edge ${edgeId} not found.`)
+        }
+        return getManualRoutePoints(edge)
+      },
+      identify: (point: EdgeRoutePoint) => point.id,
+      clone: (point: EdgeRoutePoint) => clone(point)!,
+      write: (document: Document, key, items: readonly EdgeRoutePoint[]) => {
+        const edgeId = readRequiredKey(key, 'edge.route') as EdgeId
+        const edge = document.edges[edgeId]
+        if (!edge) {
+          throw new Error(`Edge ${edgeId} not found.`)
+        }
+        return {
+          ...document,
+          edges: {
+            ...document.edges,
+            [edgeId]: {
+              ...edge,
+              route: items.length > 0
+                ? {
+                    kind: 'manual',
+                    points: items.map((item) => clone(item)!)
+                  }
+                : {
+                    kind: 'auto'
+                  }
+            }
+          }
+        }
+      }
+    }
+  },
+  tree: {
+    mindmapTree: {
+      type: 'mindmap.tree',
+      change: (key) => {
+        const mindmapId = readRequiredKey(key, 'mindmap.tree') as MindmapId
+        return [{
+          key: 'mindmap.structure',
+          change: [mindmapId]
+        }]
+      },
+      read: (document: Document, key) => {
+        const mindmapId = readRequiredKey(key, 'mindmap.tree') as MindmapId
+        const record = document.mindmaps[mindmapId]
+        if (!record) {
+          throw new Error(`Mindmap ${mindmapId} not found.`)
+        }
+        return createMindmapTreeSnapshot(record)
+      },
+      clone: (value: WhiteboardMindmapTreeValue) => clone(value)!,
+      write: (document: Document, key, tree: MutationTreeSnapshot<WhiteboardMindmapTreeValue>) => (
+        writeMindmapTreeSnapshot(
+          document,
+          readRequiredKey(key, 'mindmap.tree') as MindmapId,
+          tree
+        )
+      )
+    }
+  }
 })
+
+export type WhiteboardMutationRegistry = typeof whiteboardMutationRegistry

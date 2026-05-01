@@ -52,8 +52,6 @@ import {
   type MutationOutputOf,
   type MutationResult,
   type MutationStructuralFact,
-  type MutationStructureTable,
-  type MutationStructureSource,
 } from './contracts'
 import {
   mergeMutationDeltas,
@@ -74,6 +72,9 @@ import type {
   MutationProgramWriter
 } from './program/writer'
 import {
+  createMutationPorts
+} from './ports'
+import {
   compileEntities,
 } from './entity'
 import {
@@ -83,6 +84,9 @@ import {
 import type {
   CompiledEntitySpec,
 } from './contracts'
+import type {
+  MutationRegistry,
+} from './registry'
 
 const shouldCaptureHistory = (
   history: MutationHistoryOptions | false | undefined,
@@ -129,8 +133,8 @@ const compileMutationIntents = <
   handlers: MutationCompileHandlerTable<Table, Doc, Program, Reader, Services, Code>
   createProgram?: MutationCompileProgramFactory<Program>
   services: Services | undefined
+  registry?: MutationRegistry<Doc>
   entities: ReadonlyMap<string, CompiledEntitySpec>
-  structures?: MutationStructureSource<Doc>
   createReader: MutationReaderFactory<Doc, Reader>
   normalize(doc: Doc): Doc
 }): CompiledIntentProgramResult<Doc, MutationOutputOf<Table>, Code> => {
@@ -183,9 +187,18 @@ const compileMutationIntents = <
       document: workingDocument,
       reader: input.createReader(() => workingDocument),
       services: input.services,
-      program: (input.createProgram
-        ? input.createProgram(baseProgram)
-        : baseProgram as unknown as Program),
+      program: (() => {
+        if (input.createProgram) {
+          return input.createProgram(baseProgram)
+        }
+        if (input.registry) {
+          return createMutationPorts(
+            input.registry,
+            baseProgram
+          ) as unknown as Program
+        }
+        return baseProgram as unknown as Program
+      })(),
       output: (value) => {
         pendingOutputs.push(value)
       },
@@ -245,7 +258,7 @@ const compileMutationIntents = <
       document: workingDocument,
       program: pendingProgram,
       entities: input.entities,
-      structures: input.structures,
+      registry: input.registry,
       normalize: input.normalize
     })
     if (!applied.ok) {
@@ -341,7 +354,7 @@ class MutationRuntime<
   private readonly createReader: MutationReaderFactory<Doc, Reader>
   private readonly normalize: (doc: Doc) => Doc
   private readonly entities: ReadonlyMap<string, CompiledEntitySpec>
-  private readonly structures?: MutationStructureSource<Doc>
+  private readonly registry?: MutationRegistry<Doc>
   private readonly services: Services | undefined
   private readonly compileHandlers?: MutationCompileHandlerTable<any, Doc, Program, Reader, Services, Code>
   private readonly compileProgramFactory?: MutationCompileProgramFactory<Program>
@@ -360,8 +373,7 @@ class MutationRuntime<
     document: Doc
     normalize(doc: Doc): Doc
     createReader: MutationReaderFactory<Doc, Reader>
-    entities?: Readonly<Record<string, any>>
-    structures?: MutationStructureSource<Doc>
+    registry?: MutationRegistry<Doc>
     services?: Services
     compile?: MutationCompileHandlerTable<any, Doc, Program, Reader, Services, Code>
     createProgram?: MutationCompileProgramFactory<Program>
@@ -369,8 +381,8 @@ class MutationRuntime<
   }) {
     this.createReader = input.createReader
     this.normalize = input.normalize
-    this.entities = compileEntities(input.entities)
-    this.structures = input.structures
+    this.registry = input.registry
+    this.entities = compileEntities(input.registry?.entity)
     this.services = input.services
     this.compileHandlers = input.compile
     this.compileProgramFactory = input.createProgram
@@ -504,8 +516,8 @@ class MutationRuntime<
       handlers: this.compileHandlers,
       createProgram: this.compileProgramFactory,
       services: this.services,
+      registry: this.registry,
       entities: this.entities,
-      structures: this.structures,
       createReader: this.createReader,
       normalize: this.normalize
     })
@@ -591,7 +603,7 @@ class MutationRuntime<
       document: this.documentState,
       program,
       entities: this.entities,
-      structures: this.structures,
+      registry: this.registry,
       normalize: this.normalize
     })
     if (!applied.ok) {
@@ -704,8 +716,7 @@ export class MutationEngine<
       document: input.document,
       normalize: input.normalize,
       createReader: input.createReader,
-      entities: input.entities,
-      structures: input.structures,
+      registry: input.registry,
       services: input.services,
       compile: input.compile,
       createProgram: input.createProgram,

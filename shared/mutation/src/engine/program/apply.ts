@@ -11,7 +11,6 @@ import {
   EMPTY_OUTPUTS,
   type CompiledEntitySpec,
   type MutationApplyResult,
-  type MutationStructureSource,
 } from '../contracts'
 import {
   buildEntityDelta,
@@ -39,6 +38,9 @@ import {
 import {
   applyStructuralEffectResult,
 } from '../structural'
+import type {
+  MutationRegistry,
+} from '../registry'
 import {
   draft,
 } from '@shared/draft'
@@ -150,7 +152,8 @@ const applyEntityCreateEffect = <
           inverse: createMutationProgram([{
             type: 'entity.create',
             entity: {
-              table: spec.family,
+              kind: 'entity',
+              type: spec.family,
               id: spec.family
             },
             value: input.document
@@ -176,7 +179,8 @@ const applyEntityCreateEffect = <
         inverse: createMutationProgram([{
           type: 'entity.delete',
           entity: {
-            table: spec.family,
+            kind: 'entity',
+            type: spec.family,
             id: spec.family
           }
         }]),
@@ -209,7 +213,8 @@ const applyEntityCreateEffect = <
       inverse: createMutationProgram([{
         type: 'entity.delete',
         entity: {
-          table: spec.family,
+          kind: 'entity',
+          type: spec.family,
           id
         }
       }]),
@@ -274,7 +279,8 @@ const applyEntityPatchEffect = <
       : createMutationProgram([{
           type: 'entity.patch',
           entity: {
-            table: spec.family,
+            kind: 'entity',
+            type: spec.family,
             id: entityId ?? spec.family
           },
           writes: inverseWrites
@@ -319,7 +325,8 @@ const applyEntityDeleteEffect = <
       inverse: createMutationProgram([{
         type: 'entity.create',
         entity: {
-          table: spec.family,
+          kind: 'entity',
+          type: spec.family,
           id: spec.family
         },
         value: current
@@ -353,7 +360,8 @@ const applyEntityDeleteEffect = <
     inverse: createMutationProgram([{
       type: 'entity.create',
       entity: {
-        table: spec.family,
+        kind: 'entity',
+        type: spec.family,
         id
       },
       value: current
@@ -391,7 +399,8 @@ const applyEntityEffect = <
         effect: {
           type: 'entity.patch',
           entity: {
-            table: input.effect.table,
+            kind: 'entity',
+            type: input.effect.entityType,
             id: update.id
           },
           writes: update.writes
@@ -422,10 +431,10 @@ const applyEntityEffect = <
     }
   }
 
-  const spec = input.entities.get(input.effect.entity.table)
+  const spec = input.entities.get(input.effect.entity.type)
   if (!spec) {
     throw new Error(
-      `Unknown mutation entity family "${input.effect.entity.table}".`
+      `Unknown mutation entity family "${input.effect.entity.type}".`
     )
   }
 
@@ -465,7 +474,7 @@ export const applyMutationProgram = <
   document: Doc
   program: MutationProgram<Tag>
   entities: ReadonlyMap<string, CompiledEntitySpec>
-  structures?: MutationStructureSource<Doc>
+  registry?: MutationRegistry<Doc>
   normalize(doc: Doc): Doc
 }): MutationApplyResult<Doc, Op, Code> => {
   let currentDocument = input.document
@@ -490,8 +499,18 @@ export const applyMutationProgram = <
           ? applyStructuralEffectResult<Doc>({
               document: currentDocument,
               effect,
-              structures: input.structures
+              registry: input.registry
             })
+          : effect.type === 'signal'
+            ? {
+                document: currentDocument,
+                inverse: createMutationProgram(),
+                delta: EMPTY_DELTA,
+                structural: EMPTY_OUTPUTS as readonly MutationStructuralFact[],
+                footprint: [],
+                issues: EMPTY_ISSUES,
+                historyMode: 'neutral' as const
+              }
           : undefined
 
       if (!applied) {

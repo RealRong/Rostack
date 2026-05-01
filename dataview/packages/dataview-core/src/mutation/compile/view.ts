@@ -72,6 +72,15 @@ const readErrorMessage = (
   ? error.message
   : fallback
 
+const toBeforeAnchor = (
+  before?: string
+) => before === undefined
+  ? undefined
+  : {
+      kind: 'before' as const,
+      itemId: before
+    }
+
 const reportSemanticError = (
   input: DataviewCompileInput,
   error: unknown,
@@ -1763,13 +1772,10 @@ const lowerViewDisplayMove = (
     return
   }
 
-  input.program.view.display.move(
-    intent.id,
+  input.program.viewDisplay(intent.id).move(
     intent.field,
     intent.before !== undefined && intent.before !== intent.field
-      ? {
-          before: intent.before
-        }
+      ? toBeforeAnchor(intent.before)
       : undefined
   )
 }
@@ -1794,13 +1800,10 @@ const lowerViewDisplaySplice = (
     return
   }
 
-  input.program.view.display.splice(
-    intent.id,
+  input.program.viewDisplay(intent.id).splice(
     fieldIds,
     intent.before !== undefined
-      ? {
-          before: intent.before
-        }
+      ? toBeforeAnchor(intent.before)
       : undefined
   )
 }
@@ -1861,7 +1864,7 @@ const lowerViewDisplayHide = (
     return
   }
 
-  input.program.view.display.delete(intent.id, intent.field)
+  input.program.viewDisplay(intent.id).delete(intent.field)
 }
 
 const lowerViewDisplayClear = (
@@ -1875,7 +1878,7 @@ const lowerViewDisplayClear = (
   }
 
   view.display.fields.forEach((fieldId) => {
-    input.program.view.display.delete(view.id, fieldId)
+    input.program.viewDisplay(view.id).delete(fieldId)
   })
 }
 

@@ -18,7 +18,7 @@ export const isCheckpointProgram = (
   program.steps.length > 0
   && program.steps.every((step) => (
     step.type === 'entity.create'
-    && step.entity.table === 'document'
+    && step.entity.type === 'document'
     && step.entity.id === 'document'
   ))
 )

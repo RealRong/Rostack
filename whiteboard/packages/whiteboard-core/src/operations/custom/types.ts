@@ -1,6 +1,6 @@
 import type {
-  MutationProgramWriter,
-} from '@shared/mutation/engine'
+  WhiteboardMutationPorts
+} from '@whiteboard/core/operations/compile/helpers'
 import type {
   DocumentReader
 } from '@whiteboard/core/document/reader'
@@ -44,7 +44,7 @@ export type WhiteboardCustomPlanContext<
   document: Document
   reader: DocumentReader
   services: WhiteboardCompileServices | undefined
-  program: MutationProgramWriter<string>
+  program: WhiteboardMutationPorts
   fail(issue: WhiteboardCustomFailure): never
 }
 

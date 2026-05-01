@@ -2,6 +2,7 @@ import type {
   DataDoc,
   EditTarget,
   Intent,
+  FieldId,
   RecordId
 } from '@dataview/core/types'
 import type { MutationCompileHandlerInput } from '@shared/mutation/engine'
@@ -10,8 +11,8 @@ import {
   type DocumentReader
 } from '../../document/reader'
 import {
-  type DataviewProgramWriter
-} from '../programWriter'
+  type DataviewMutationPorts
+} from '../program'
 import type {
   ValidationCode,
   ValidationIssue,
@@ -24,7 +25,7 @@ export type DataviewCompileContext<
 > = MutationCompileHandlerInput<
   DataDoc,
   TIntent,
-  DataviewProgramWriter,
+  DataviewMutationPorts,
   TOutput,
   DocumentReader,
   void,
@@ -144,4 +145,46 @@ export const resolveTarget = (
   return resolved.length === recordIds.length
     ? resolved
     : undefined
+}
+
+export const writeRecordValuesMany = (
+  program: DataviewMutationPorts,
+  input: {
+    recordIds: readonly RecordId[]
+    set?: Partial<Record<FieldId, unknown>>
+    clear?: readonly FieldId[]
+  }
+): void => {
+  const clearKeys = new Set(input.clear ?? [])
+  const setEntries = Object.entries(input.set ?? {})
+  const updates = input.recordIds.map((id) => {
+    const writes: Record<string, unknown> = {}
+
+    setEntries.forEach(([fieldId, value]) => {
+      if (fieldId === 'title') {
+        writes.title = value
+        return
+      }
+      writes[`values.${fieldId}`] = value
+    })
+
+    clearKeys.forEach((fieldId) => {
+      if (fieldId === 'title') {
+        writes.title = ''
+        return
+      }
+      writes[`values.${fieldId}`] = undefined
+    })
+
+    return {
+      id,
+      writes
+    }
+  }).filter((entry) => Object.keys(entry.writes).length > 0)
+
+  if (updates.length === 0) {
+    return
+  }
+
+  program.record.patchMany(updates)
 }

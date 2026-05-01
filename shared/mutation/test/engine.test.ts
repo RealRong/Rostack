@@ -2,6 +2,7 @@ import { describe, expect, test } from 'vitest'
 import {
   MutationEngine,
   type MutationEntitySpec,
+  type MutationRegistry,
   type MutationProgramStep,
   type MutationTreeSnapshot
 } from '@shared/mutation'
@@ -64,6 +65,10 @@ const entities = {
   }
 } as const satisfies Readonly<Record<string, MutationEntitySpec>>
 
+const registry = {
+  entity: entities
+} as const satisfies MutationRegistry<TestDoc>
+
 const createDocument = (): TestDoc => ({
   items: {
     ids: [],
@@ -81,11 +86,13 @@ const createEngine = () => new MutationEngine<
   document: createDocument(),
   normalize: (document) => document,
   createReader: (readDocument) => readDocument(),
-  entities,
+  registry,
+  createProgram: (program) => program,
   compile: {
     'item.add': ({ intent, program, output }) => {
       program.entity.create({
-        table: 'item',
+        kind: 'entity',
+        type: 'item',
         id: intent.id
       }, {
         id: intent.id,
@@ -95,7 +102,8 @@ const createEngine = () => new MutationEngine<
     },
     'item.open': ({ intent, program, output }) => {
       program.entity.patch({
-        table: 'document',
+        kind: 'entity',
+        type: 'document',
         id: 'document'
       }, {
         activeItemId: intent.id
@@ -122,7 +130,8 @@ describe('MutationEngine current API', () => {
       steps: [{
         type: 'entity.create',
         entity: {
-          table: 'item',
+          kind: 'entity',
+          type: 'item',
           id: 'item_1'
         },
         value: {
@@ -146,7 +155,8 @@ describe('MutationEngine current API', () => {
       steps: [{
         type: 'entity.create',
         entity: {
-          table: 'item',
+          kind: 'entity',
+          type: 'item',
           id: 'item_1'
         },
         value: {
@@ -159,7 +169,8 @@ describe('MutationEngine current API', () => {
       steps: [{
         type: 'entity.delete',
         entity: {
-          table: 'item',
+          kind: 'entity',
+          type: 'item',
           id: 'item_1'
         }
       }]
@@ -206,7 +217,8 @@ describe('MutationEngine current API', () => {
       steps: [{
         type: 'entity.create',
         entity: {
-          table: 'item',
+          kind: 'entity',
+          type: 'item',
           id: 'item_1'
         },
         value: {
@@ -326,44 +338,44 @@ const createStructuralEngine = (
   document,
   normalize: (document) => document,
   createReader: (readDocument) => readDocument(),
-  structures: {
-    canvas: {
-      kind: 'ordered',
-      read: (document) => document.ordered.items,
-      identify: (item) => item,
-      write: (document, items) => ({
-        ...document,
-        ordered: {
-          items: [...items]
-        }
-      })
+  registry: {
+    ordered: {
+      canvas: {
+        read: (document) => document.ordered.items,
+        identify: (item) => item,
+        write: (document, _key, items) => ({
+          ...document,
+          ordered: {
+            items: [...items]
+          }
+        })
+      },
+      cards: {
+        read: (document) => document.cards.items,
+        identify: (item) => item.id,
+        write: (document, _key, items) => ({
+          ...document,
+          cards: {
+            items: [...items]
+          }
+        })
+      }
     },
-    cards: {
-      kind: 'ordered',
-      read: (document) => document.cards.items,
-      identify: (item) => item.id,
-      write: (document, items) => ({
-        ...document,
-        cards: {
-          items: [...items]
-        }
-      })
-    },
-    outline: {
-      kind: 'tree',
-      read: (document) => document.tree,
-      write: (document, tree) => ({
-        ...document,
-        tree
-      })
-    },
-    stateTree: {
-      kind: 'tree',
-      read: (document) => document.stateTree,
-      write: (document, tree) => ({
-        ...document,
-        stateTree: tree
-      })
+    tree: {
+      outline: {
+        read: (document) => document.tree,
+        write: (document, _key, tree) => ({
+          ...document,
+          tree
+        })
+      },
+      stateTree: {
+        read: (document) => document.stateTree,
+        write: (document, _key, tree) => ({
+          ...document,
+          stateTree: tree
+        })
+      }
     }
   }
 })
@@ -374,7 +386,10 @@ describe('MutationEngine structural API', () => {
     const result = engine.apply({
       steps: [{
         type: 'ordered.move',
-        structure: 'canvas',
+        target: {
+          kind: 'ordered',
+          type: 'canvas'
+        },
         itemId: 'c',
         to: {
           kind: 'before',
@@ -393,7 +408,10 @@ describe('MutationEngine structural API', () => {
     expect(result.commit.authored).toEqual({
       steps: [{
         type: 'ordered.move',
-        structure: 'canvas',
+        target: {
+          kind: 'ordered',
+          type: 'canvas'
+        },
         itemId: 'c',
         to: {
           kind: 'before',
@@ -404,7 +422,10 @@ describe('MutationEngine structural API', () => {
     expect(result.commit.inverse).toEqual({
       steps: [{
         type: 'ordered.move',
-        structure: 'canvas',
+        target: {
+          kind: 'ordered',
+          type: 'canvas'
+        },
         itemId: 'c',
         to: {
           kind: 'after',
@@ -445,7 +466,10 @@ describe('MutationEngine structural API', () => {
     const result = engine.apply({
       steps: [{
         type: 'ordered.splice',
-        structure: 'canvas',
+        target: {
+          kind: 'ordered',
+          type: 'canvas'
+        },
         itemIds: ['b', 'd'],
         to: {
           kind: 'start'
@@ -462,14 +486,20 @@ describe('MutationEngine structural API', () => {
     expect(result.commit.inverse).toEqual({
       steps: [{
         type: 'ordered.move',
-        structure: 'canvas',
+        target: {
+          kind: 'ordered',
+          type: 'canvas'
+        },
         itemId: 'a',
         to: {
           kind: 'start'
         }
       }, {
         type: 'ordered.move',
-        structure: 'canvas',
+        target: {
+          kind: 'ordered',
+          type: 'canvas'
+        },
         itemId: 'c',
         to: {
           kind: 'after',
@@ -523,7 +553,10 @@ describe('MutationEngine structural API', () => {
     const deleted = engine.apply({
       steps: [{
         type: 'tree.delete',
-        structure: 'outline',
+        target: {
+          kind: 'tree',
+          type: 'outline'
+        },
         nodeId: 'left'
       }]
     })
@@ -567,7 +600,10 @@ describe('MutationEngine structural API', () => {
     const patched = engine.apply({
       steps: [{
         type: 'ordered.patch',
-        structure: 'cards',
+        target: {
+          kind: 'ordered',
+          type: 'cards'
+        },
         itemId: 'card_a',
         patch: {
           title: 'A2',
@@ -593,7 +629,10 @@ describe('MutationEngine structural API', () => {
     expect(patched.commit.inverse).toEqual({
       steps: [{
         type: 'ordered.patch',
-        structure: 'cards',
+        target: {
+          kind: 'ordered',
+          type: 'cards'
+        },
         itemId: 'card_a',
         patch: {
           title: 'A',
@@ -628,7 +667,10 @@ describe('MutationEngine structural API', () => {
     const patched = engine.apply({
       steps: [{
         type: 'tree.node.patch',
-        structure: 'stateTree',
+        target: {
+          kind: 'tree',
+          type: 'stateTree'
+        },
         nodeId: 'child',
         patch: {
           collapsed: true,
@@ -653,7 +695,10 @@ describe('MutationEngine structural API', () => {
     expect(patched.commit.inverse).toEqual({
       steps: [{
         type: 'tree.node.patch',
-        structure: 'stateTree',
+        target: {
+          kind: 'tree',
+          type: 'stateTree'
+        },
         nodeId: 'child',
         patch: {
           collapsed: false,

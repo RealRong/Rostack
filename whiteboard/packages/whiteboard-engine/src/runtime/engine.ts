@@ -127,8 +127,7 @@ export const createEngine = ({
     normalize: normalizeDocument,
     createReader: createDocumentReader,
     services,
-    entities: whiteboardMutationRegistry.entities,
-    structures: whiteboardMutationRegistry.structures,
+    registry: whiteboardMutationRegistry,
     compile: whiteboardCompileHandlers,
     history: {
       capacity: 100,

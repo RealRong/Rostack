@@ -13,7 +13,7 @@ import {
   writeNodePatch,
 } from './write'
 import {
-  toStructuralCanvasAnchor,
+  toCanvasOrderAnchor,
 } from '@whiteboard/core/operations/targets'
 
 type GroupIntentHandlers = Pick<
@@ -61,7 +61,7 @@ export const groupIntentHandlers: GroupIntentHandlers = {
     writeCanvasOrderSplice(
       ctx.program,
       existingRefs,
-      toStructuralCanvasAnchor(currentOrder, existingRefs, ctx.intent.to)
+      toCanvasOrderAnchor(currentOrder, existingRefs, ctx.intent.to)
     )
   },
   'group.ungroup': (ctx) => {

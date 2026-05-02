@@ -160,15 +160,15 @@ const resolveRenderEdgeCapability = (input: {
 const buildOverlayView = (
   context: RenderContext
 ): EdgeOverlayView => {
-  const previewPath = context.current.editor.snapshot.overlay.preview.edgeGuide?.path
+  const previewPath = context.current.editor.snapshot.preview.edgeGuide?.path
     ? {
-        svgPath: context.current.editor.snapshot.overlay.preview.edgeGuide.path.svgPath,
+        svgPath: context.current.editor.snapshot.preview.edgeGuide.path.svgPath,
         style: edgeApi.render.staticStyle(
-          context.current.editor.snapshot.overlay.preview.edgeGuide.path.style
+          context.current.editor.snapshot.preview.edgeGuide.path.style
         )
       }
     : undefined
-  const connect = context.current.editor.snapshot.overlay.preview.edgeGuide?.connect
+  const connect = context.current.editor.snapshot.preview.edgeGuide?.connect
   const snapPoint = connect
     && (
       connect.resolution.mode === 'outline'

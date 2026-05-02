@@ -56,8 +56,8 @@ export const createInteractionRuntime = ({
   } | null = null
   const autoPan = createAutoPan({
     getViewport: () => ({
-      screenPoint: editor.runtime.viewport.screenPoint,
-      size: editor.runtime.viewport.size,
+      screenPoint: editor.viewport.screenPoint,
+      size: editor.viewport.size,
       panScreenBy: (deltaScreen) => {
         editor.actions.viewport.panScreenBy(deltaScreen)
       }

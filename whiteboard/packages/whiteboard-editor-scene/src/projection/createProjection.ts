@@ -46,6 +46,7 @@ import { createRuntimeFacts } from './runtimeFacts'
 import { buildEditorSceneCapture } from './capture'
 import { editorSceneStores } from './stores'
 import { createWorking } from './state'
+import { toSceneHoverState } from '@whiteboard/editor/state/document'
 
 export type EditorScenePhaseName =
   | 'document'
@@ -114,13 +115,29 @@ const isEdgeInteractionMode = (
   || mode === 'edge-route'
 )
 
+const readActiveMindmapPreview = (
+  preview: Input['editor']['snapshot']['preview']['mindmap']
+) => {
+  const entries = Object.entries(preview)
+  for (let index = 0; index < entries.length; index += 1) {
+    const entry = entries[index]
+    if (entry?.[1]) {
+      return {
+        mindmapId: entry[0] as never,
+        preview: entry[1]
+      }
+    }
+  }
+  return undefined
+}
+
 const readDragState = (
   snapshot: Input['editor']['snapshot']
 ): InteractionInput['drag'] => {
   const interaction = snapshot.state.interaction
   const selection = snapshot.state.selection
   const edit = snapshot.state.edit
-  const preview = snapshot.overlay.preview
+  const preview = snapshot.preview
 
   switch (interaction.mode) {
     case 'node-drag':
@@ -168,7 +185,8 @@ const readDragState = (
         kind: 'draw'
       }
     case 'mindmap-drag': {
-      const subtreeMove = preview.mindmap?.subtreeMove
+      const activeMindmapPreview = readActiveMindmapPreview(preview.mindmap)
+      const subtreeMove = activeMindmapPreview?.preview.subtreeMove
       if (!subtreeMove) {
         return {
           kind: 'idle'
@@ -177,7 +195,7 @@ const readDragState = (
 
       return {
         kind: 'mindmap-drag',
-        mindmapId: subtreeMove.mindmapId,
+        mindmapId: activeMindmapPreview.mindmapId,
         nodeId: subtreeMove.nodeId
       }
     }
@@ -192,7 +210,7 @@ const createInteractionInput = (
   snapshot: Input['editor']['snapshot']
 ): InteractionInput => ({
   selection: snapshot.state.selection,
-  hover: snapshot.overlay.hover,
+  hover: toSceneHoverState(snapshot.hover),
   drag: readDragState(snapshot),
   chrome: snapshot.state.interaction.chrome,
   editingEdge: isEdgeInteractionMode(snapshot.state.interaction.mode)
@@ -231,6 +249,7 @@ export const createProjection = (input: {
       const dirty = readProjectionDirty(ctx)
       const previousDocumentRevision = ctx.read.capture.documentRevision()
       const previousBackground = ctx.read.document.background()
+      const previousEditorSnapshot = ctx.state.runtime.editor.snapshot
 
       dirty.previousDocument = ctx.read.document.snapshot()
       resetDocumentPhaseDelta(ctx.state)
@@ -240,7 +259,8 @@ export const createProjection = (input: {
       )
       ctx.state.runtime.editor.view = input.view()
       ctx.state.runtime.editor.facts = createRuntimeFacts({
-        snapshot: ctx.input.editor.snapshot,
+        previous: previousEditorSnapshot,
+        next: ctx.input.editor.snapshot,
         interaction: ctx.state.runtime.editor.interaction,
         delta: ctx.input.editor.delta
       })

@@ -19,12 +19,6 @@ import type { Tool } from '@whiteboard/editor/schema/tool'
 import type { InteractionSession } from '@whiteboard/editor/input/core/types'
 import { FINISH } from '@whiteboard/editor/input/internals/result'
 import type { Editor } from '@whiteboard/editor/api/editor'
-import type { EditorCommand } from '@whiteboard/editor/state/intents'
-import {
-  isPreviewEqual,
-  replacePreviewEdgeInteraction,
-  setPreviewEdgeGuide
-} from '@whiteboard/editor/state/preview'
 
 type EdgeConnectStartInput = {
   tool: Tool
@@ -515,21 +509,42 @@ export const createEdgeConnectSession = (
         }
       : result.preview
 
-    editor.dispatch((snapshot) => {
-      const current = snapshot.overlay.preview
-      const nextPreview = setPreviewEdgeGuide(
-        replacePreviewEdgeInteraction(
-          current,
-          preview.edgePatches ?? []
-        ),
-        preview.edgeGuide
+    editor.state.write(({
+      writer,
+      snapshot
+    }) => {
+      const nextEdgeById = new Map<EdgeId, EdgePatch>(
+        (preview.edgePatches ?? []).flatMap((entry) => entry.patch
+          ? [[entry.id, entry.patch] as const]
+          : [])
       )
-      return isPreviewEqual(current, nextPreview)
-        ? null
-        : {
-            type: 'overlay.preview.set',
-            preview: nextPreview
-          } satisfies EditorCommand
+
+      Object.keys(snapshot.preview.edge).forEach((edgeId) => {
+        const id = edgeId as EdgeId
+        const nextPatch = nextEdgeById.get(id)
+        nextEdgeById.delete(id)
+
+        if (!nextPatch) {
+          writer.preview.edge.delete(id)
+          return
+        }
+
+        writer.preview.edge.patch(id, {
+          patch: nextPatch,
+          activeRouteIndex: undefined
+        })
+      })
+
+      nextEdgeById.forEach((patch, id) => {
+        writer.preview.edge.create({
+          id,
+          patch
+        })
+      })
+
+      writer.preview.edgeGuide.patch({
+        current: preview.edgeGuide
+      })
     })
   }
 
@@ -546,7 +561,7 @@ export const createEdgeConnectSession = (
     autoPan: {
       frame: (pointer) => {
         project({
-          world: editor.runtime.viewport.pointer(pointer).world,
+          world: editor.viewport.pointer(pointer).world,
           modifiers: lastModifiers,
           allowLatch: true,
           pointerId: state.pointerId
@@ -580,18 +595,16 @@ export const createEdgeConnectSession = (
       return FINISH
     },
     cleanup: () => {
-      editor.dispatch((snapshot) => {
-        const current = snapshot.overlay.preview
-        const nextPreview = setPreviewEdgeGuide(
-          replacePreviewEdgeInteraction(current, []),
-          undefined
-        )
-        return isPreviewEqual(current, nextPreview)
-          ? null
-          : {
-              type: 'overlay.preview.set',
-              preview: nextPreview
-            } satisfies EditorCommand
+      editor.state.write(({
+        writer,
+        snapshot
+      }) => {
+        Object.keys(snapshot.preview.edge).forEach((edgeId) => {
+          writer.preview.edge.delete(edgeId as EdgeId)
+        })
+        writer.preview.edgeGuide.patch({
+          current: undefined
+        })
       })
     }
   }

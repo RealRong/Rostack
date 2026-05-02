@@ -217,7 +217,7 @@ export const createDataviewQuery = (
       delta.view.filter.touchedIds(),
       delta.view.sort.touchedIds(),
       delta.view.group.touchedIds(),
-      delta.view.display.touchedIds(),
+      delta.view.displayFields.touchedIds(),
       delta.view.calc.touchedIds(),
       delta.view.options.touchedIds(),
       delta.view.order.touchedIds()
@@ -299,7 +299,7 @@ export const createDataviewQuery = (
     viewLayoutChanged: (delta, viewId) => (
       delta.view.name.changed(viewId)
       || delta.view.type.changed(viewId)
-      || delta.view.display.changed(viewId)
+      || delta.view.displayFields.changed(viewId)
       || delta.view.options.changed(viewId)
     )
   }

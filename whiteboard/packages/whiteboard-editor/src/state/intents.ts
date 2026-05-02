@@ -1,4 +1,3 @@
-import type { Viewport } from '@whiteboard/core/types'
 import type { PreviewInput } from '@whiteboard/editor-scene'
 import type { Tool } from '@whiteboard/editor/schema/tool'
 import type {
@@ -11,11 +10,9 @@ import type {
   SelectionTarget
 } from '@whiteboard/core/selection'
 import type {
+  EditorHoverState,
   EditorStableInteractionState
 } from './document'
-import type {
-  HoverState
-} from '@whiteboard/editor/input/hover/store'
 
 export type EditorStateIntentTable = {
   'tool.set': {
@@ -53,34 +50,64 @@ export type EditorStateIntentTable = {
     }
     output: void
   }
-  'viewport.set': {
+  'hover.set': {
     intent: {
-      type: 'viewport.set'
-      viewport: Viewport
+      type: 'hover.set'
+      hover: EditorHoverState
     }
     output: void
   }
-  'overlay.hover.set': {
+  'preview.node.set': {
     intent: {
-      type: 'overlay.hover.set'
-      hover: HoverState
+      type: 'preview.node.set'
+      node: PreviewInput['node']
     }
     output: void
   }
-  'overlay.preview.set': {
+  'preview.edge.set': {
     intent: {
-      type: 'overlay.preview.set'
-      preview: PreviewInput
+      type: 'preview.edge.set'
+      edge: PreviewInput['edge']
     }
     output: void
   }
-  'overlay.reset': {
+  'preview.mindmap.set': {
     intent: {
-      type: 'overlay.reset'
+      type: 'preview.mindmap.set'
+      mindmap: PreviewInput['mindmap']
+    }
+    output: void
+  }
+  'preview.selection.set': {
+    intent: {
+      type: 'preview.selection.set'
+      selection: PreviewInput['selection']
+    }
+    output: void
+  }
+  'preview.draw.set': {
+    intent: {
+      type: 'preview.draw.set'
+      draw: PreviewInput['draw']
+    }
+    output: void
+  }
+  'preview.edgeGuide.set': {
+    intent: {
+      type: 'preview.edgeGuide.set'
+      edgeGuide: EdgeGuideValue
+    }
+    output: void
+  }
+  'preview.reset': {
+    intent: {
+      type: 'preview.reset'
     }
     output: void
   }
 }
+
+type EdgeGuideValue = PreviewInput['edgeGuide'] | undefined
 
 export type EditorStateIntentKind = keyof EditorStateIntentTable & string
 

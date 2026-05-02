@@ -26,7 +26,8 @@ import {
 type TargetEvent = Pick<MouseEvent | PointerEvent | WheelEvent, 'target' | 'clientX' | 'clientY'>
 type ClientPointInput = Pick<MouseEvent | PointerEvent | WheelEvent, 'clientX' | 'clientY'>
 type PointResolveEditor = {
-  scene: Pick<WhiteboardRuntime['scene'], 'viewport' | 'hit' | 'stores' | 'ui'>
+  scene: Pick<WhiteboardRuntime['scene'], 'hit' | 'stores' | 'ui'>
+  viewport: Pick<WhiteboardRuntime['viewport'], 'screenPoint' | 'get'>
 }
 
 const BackgroundPick: EditorPick = {
@@ -63,11 +64,12 @@ const readPointerSnapshot = (
   editor: PointResolveEditor,
   input: ClientPointInput
 ) => {
-  const point = editor.scene.viewport.screenPoint(readClientPoint(input))
-  const viewport = editor.scene.ui.state.viewport.get()
+  const client = readClientPoint(input)
+  const point = editor.viewport.screenPoint(client.x, client.y)
+  const viewport = editor.viewport.get()
 
   return {
-    client: readClientPoint(input),
+    client,
     screen: point,
     world: {
       x: point.x / viewport.zoom + viewport.center.x,

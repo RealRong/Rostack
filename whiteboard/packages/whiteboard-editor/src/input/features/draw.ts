@@ -25,12 +25,7 @@ import { FINISH } from '@whiteboard/editor/input/internals/result'
 import type { PointerDownInput, PointerSample } from '@whiteboard/editor/api/input'
 import type { Tool } from '@whiteboard/editor/schema/tool'
 import type { Editor } from '@whiteboard/editor/api/editor'
-import type { EditorCommand } from '@whiteboard/editor/state/intents'
-import {
-  isPreviewEqual,
-  replacePreviewNodeInteraction,
-  setPreviewDraw
-} from '@whiteboard/editor/state/preview'
+import { isDrawPreviewEqual } from '@whiteboard/editor/state/preview'
 
 const DRAW_MIN_LENGTH_SCREEN = 4
 const SAMPLE_DISTANCE_SCREEN = 1
@@ -307,21 +302,23 @@ const createDrawStrokeSession = (
       }
     )
     state = nextState
-    editor.dispatch((snapshot) => {
-      const current = snapshot.overlay.preview
-      const drawPreview = previewDrawStroke(state, {
-        zoom: editor.scene.ui.state.viewport.get().zoom
-      })
-      const nextPreview = setPreviewDraw(current, {
-        ...drawPreview,
+    editor.state.write(({
+      writer,
+      snapshot
+    }) => {
+      const nextDraw = {
+        ...previewDrawStroke(state, {
+          zoom: editor.scene.ui.state.viewport.get().zoom
+        }),
         hiddenNodeIds: []
+      }
+      if (isDrawPreviewEqual(snapshot.preview.draw, nextDraw)) {
+        return
+      }
+
+      writer.preview.draw.patch({
+        current: nextDraw
       })
-      return isPreviewEqual(current, nextPreview)
-        ? null
-        : {
-            type: 'overlay.preview.set',
-            preview: nextPreview
-          } satisfies EditorCommand
     })
   }
 
@@ -348,15 +345,17 @@ const createDrawStrokeSession = (
       return FINISH
     },
     cleanup: () => {
-      editor.dispatch((snapshot) => {
-        const current = snapshot.overlay.preview
-        const nextPreview = setPreviewDraw(current, null)
-        return isPreviewEqual(current, nextPreview)
-          ? null
-          : {
-              type: 'overlay.preview.set',
-              preview: nextPreview
-            } satisfies EditorCommand
+      editor.state.write(({
+        writer,
+        snapshot
+      }) => {
+        if (snapshot.preview.draw === null) {
+          return
+        }
+
+        writer.preview.draw.patch({
+          current: null
+        })
       })
     }
   }
@@ -368,17 +367,51 @@ const createEraseSession = (
 ): InteractionSession => {
   let state = initial
 
-  editor.dispatch((snapshot) => {
-    const current = snapshot.overlay.preview
-    const nextPreview = replacePreviewNodeInteraction(current, {
-      hiddenNodeIds: state.ids
+  editor.state.write(({
+    writer,
+    snapshot
+  }) => {
+    const hidden = new Set(state.ids)
+
+    Object.keys(snapshot.preview.node).forEach((nodeId) => {
+      const id = nodeId as NodeId
+      const current = snapshot.preview.node[id]
+      const nextHidden = hidden.has(id)
+      hidden.delete(id)
+
+      if (!current?.presentation && !nextHidden) {
+        writer.preview.node.delete(id)
+        return
+      }
+
+      if (!current) {
+        if (!nextHidden) {
+          return
+        }
+
+        writer.preview.node.create({
+          id,
+          hovered: false,
+          hidden: true
+        })
+        return
+      }
+
+      writer.preview.node.patch(id, {
+        patch: undefined,
+        presentation: current.presentation,
+        hovered: false,
+        hidden: nextHidden
+      })
     })
-    return isPreviewEqual(current, nextPreview)
-      ? null
-      : {
-          type: 'overlay.preview.set',
-          preview: nextPreview
-        } satisfies EditorCommand
+
+    hidden.forEach((id) => {
+      writer.preview.node.create({
+        id,
+        hovered: false,
+        hidden: true
+      })
+    })
   })
 
   const step = (
@@ -386,17 +419,51 @@ const createEraseSession = (
   ) => {
     const nextState = stepEraseState(editor, state, input)
     state = nextState
-    editor.dispatch((snapshot) => {
-      const current = snapshot.overlay.preview
-      const nextPreview = replacePreviewNodeInteraction(current, {
-        hiddenNodeIds: state.ids
+    editor.state.write(({
+      writer,
+      snapshot
+    }) => {
+      const hidden = new Set(state.ids)
+
+      Object.keys(snapshot.preview.node).forEach((nodeId) => {
+        const id = nodeId as NodeId
+        const current = snapshot.preview.node[id]
+        const nextHidden = hidden.has(id)
+        hidden.delete(id)
+
+        if (!current?.presentation && !nextHidden) {
+          writer.preview.node.delete(id)
+          return
+        }
+
+        if (!current) {
+          if (!nextHidden) {
+            return
+          }
+
+          writer.preview.node.create({
+            id,
+            hovered: false,
+            hidden: true
+          })
+          return
+        }
+
+        writer.preview.node.patch(id, {
+          patch: undefined,
+          presentation: current.presentation,
+          hovered: false,
+          hidden: nextHidden
+        })
       })
-      return isPreviewEqual(current, nextPreview)
-        ? null
-        : {
-            type: 'overlay.preview.set',
-            preview: nextPreview
-          } satisfies EditorCommand
+
+      hidden.forEach((id) => {
+        writer.preview.node.create({
+          id,
+          hovered: false,
+          hidden: true
+        })
+      })
     })
   }
 
@@ -413,15 +480,25 @@ const createEraseSession = (
       return FINISH
     },
     cleanup: () => {
-      editor.dispatch((snapshot) => {
-        const current = snapshot.overlay.preview
-        const nextPreview = replacePreviewNodeInteraction(current, {})
-        return isPreviewEqual(current, nextPreview)
-          ? null
-          : {
-              type: 'overlay.preview.set',
-              preview: nextPreview
-            } satisfies EditorCommand
+      editor.state.write(({
+        writer,
+        snapshot
+      }) => {
+        Object.keys(snapshot.preview.node).forEach((nodeId) => {
+          const id = nodeId as NodeId
+          const current = snapshot.preview.node[id]
+          if (!current?.presentation) {
+            writer.preview.node.delete(id)
+            return
+          }
+
+          writer.preview.node.patch(id, {
+            patch: undefined,
+            presentation: current.presentation,
+            hovered: false,
+            hidden: false
+          })
+        })
       })
     }
   }

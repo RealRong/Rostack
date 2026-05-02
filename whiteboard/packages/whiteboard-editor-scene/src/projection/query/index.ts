@@ -51,9 +51,13 @@ import { createChromeRead } from './chrome'
 import { createFrameRead } from './frame'
 import { createHitRead } from './hit'
 import { createSelectionRead } from './selection'
-import { createViewRead } from './view'
+import {
+  createViewRead,
+  type ProjectionViewRead
+} from './view'
 
 export interface ProjectionScene extends Omit<EditorScene, 'stores' | 'pick'> {
+  view: ProjectionViewRead
   capture: {
     documentRevision(): Revision
     graph(): GraphCapture
@@ -134,7 +138,7 @@ const createRuntimeRead = (input: {
     hover: () => input.state().runtime.editor.interaction.hover,
     edit: () => input.state().runtime.editor.snapshot.state.edit,
     interaction: () => input.state().runtime.editor.interaction,
-    preview: () => input.state().runtime.editor.snapshot.overlay.preview
+    preview: () => input.state().runtime.editor.snapshot.preview
   },
   facts: {
     touchedNodeIds: () => input.state().runtime.editor.facts.touchedNodeIds,
@@ -508,7 +512,7 @@ export const createProjectionRead = (runtime: {
     state: runtime.state,
     spatial
   })
-  const viewport = createViewRead({
+  const view = createViewRead({
     state: runtime.state,
     view: runtime.view,
     hit,
@@ -516,7 +520,7 @@ export const createProjectionRead = (runtime: {
   })
   const overlay = createChromeRead({
     state: runtime.state,
-    view: viewport
+    view
   })
 
   return {
@@ -571,7 +575,7 @@ export const createProjectionRead = (runtime: {
     selection,
     frame,
     hit,
-    viewport,
+    view,
     overlay,
     spatial,
     items: runtime.items,

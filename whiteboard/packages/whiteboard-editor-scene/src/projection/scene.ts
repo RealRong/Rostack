@@ -43,7 +43,7 @@ const createScenePick = (input: {
     request: ScenePickRequest
   ): ScenePickResult => {
     const startedAt = scheduler.readMonotonicNow()
-    const next = input.scene.viewport.pick({
+    const next = input.scene.view.pick({
       point: request.world,
       radius: request.radius,
       kinds: request.kinds
@@ -159,7 +159,6 @@ export const createScene = (input: {
     selection: input.read.selection,
     frame: input.read.frame,
     hit: input.read.hit,
-    viewport: input.read.viewport,
     overlay: input.read.overlay,
     spatial: input.read.spatial,
     snap: input.read.snap,

@@ -16,7 +16,7 @@ export const useWhiteboardDocumentSync = (input: {
   }
 }) => {
   useEffect(() => {
-    input.services.editor.runtime.viewport.setLimits(input.viewportLimits)
+    input.services.editor.viewport.setLimits(input.viewportLimits)
   }, [input.services.editor, input.viewportLimits])
 
   useEffect(() => {

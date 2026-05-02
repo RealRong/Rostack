@@ -706,12 +706,52 @@ type FamilyWriter<
       }
 ) & FamilyStructuresWriter<TFamily, Tag>
 
+type NestedProperty<
+  TPath extends string,
+  TValue
+> = TPath extends `${infer THead}.${infer TRest}`
+  ? {
+      [K in THead]: NestedProperty<TRest, TValue>
+    }
+  : {
+      [K in TPath]: TValue
+    }
+
+type UnionToIntersection<TUnion> = (
+  TUnion extends unknown
+    ? (value: TUnion) => void
+    : never
+) extends (value: infer TIntersection) => void
+  ? TIntersection
+  : never
+
+type ExpandRecursively<TValue> = TValue extends (...args: any[]) => any
+  ? TValue
+  : TValue extends ReadonlySet<any> | Set<any> | readonly any[] | any[]
+    ? TValue
+    : TValue extends object
+      ? {
+          [K in keyof TValue]: ExpandRecursively<TValue[K]>
+        }
+      : TValue
+
+type NestedFamilyValues<
+  TModel extends MutationModelDefinition<any>,
+  TValueMap extends {
+    [K in keyof TModel & string]: unknown
+  }
+> = ExpandRecursively<
+  UnionToIntersection<{
+    [K in keyof TModel & string]: NestedProperty<K, TValueMap[K]>
+  }[keyof TModel & string]>
+>
+
 export type MutationWriter<
   TModel extends MutationModelDefinition<any>,
   Tag extends string = string
-> = {
-  [K in keyof TModel]: FamilyWriter<TModel[K], Tag>
-} & {
+> = NestedFamilyValues<TModel, {
+  [K in keyof TModel & string]: FamilyWriter<TModel[K], Tag>
+}> & {
   signal(
     delta: MutationDeltaInput,
     tags?: readonly Tag[],
@@ -829,9 +869,9 @@ type FamilyReader<TFamily> = (
 
 export type MutationReader<
   TModel extends MutationModelDefinition<any>
-> = {
-  [K in keyof TModel]: FamilyReader<TModel[K]>
-}
+> = NestedFamilyValues<TModel, {
+  [K in keyof TModel & string]: FamilyReader<TModel[K]>
+}>
 
 type TouchedView<TId extends string> = {
   changed(id?: TId): boolean
@@ -903,11 +943,14 @@ type FamilyDelta<
   kind: 'singleton'
 }
   ? {
+      changed(): boolean
+    } & {
       [K in keyof FamilyChangesOf<TFamily>]: FamilyChangeDeltaEntry<TFamily, K>
     } & FamilyStructureDelta<TFamily>
   : {
       create: TouchedView<Extract<FamilyId<TFamily>, string>>
       delete: TouchedView<Extract<FamilyId<TFamily>, string>>
+      changed(id?: Extract<FamilyId<TFamily>, string>): boolean
       touchedIds(): ReadonlySet<Extract<FamilyId<TFamily>, string>> | 'all'
     } & {
       [K in keyof FamilyChangesOf<TFamily>]: FamilyChangeDeltaEntry<TFamily, K>
@@ -917,9 +960,9 @@ export type MutationDeltaOf<
   TModel extends MutationModelDefinition<any>
 > = MutationDelta & {
   raw: MutationDelta
-} & {
-  [K in keyof TModel]: FamilyDelta<TModel[K]>
-}
+} & NestedFamilyValues<TModel, {
+  [K in keyof TModel & string]: FamilyDelta<TModel[K]>
+}>
 
 const createSelectorApi = <
   TMembers extends Readonly<Record<string, MutationMemberSpec>>
@@ -1607,7 +1650,7 @@ export const createMutationWriter = <
           })
     })
 
-    result[familyName] = familyWriter
+    assignNested(result, familyName, familyWriter)
   })
 
   result.signal = (delta: MutationDeltaInput, tags?: readonly Tag[], metadata?: {
@@ -1733,7 +1776,7 @@ export const createMutationReader = <
           })
     })
 
-    result[familyName] = familyReader
+    assignNested(result, familyName, familyReader)
   })
 
   return result as MutationReader<TModel>
@@ -1765,6 +1808,34 @@ const readTouchedIds = <TId extends string>(
   }
 
   return result ?? new Set<TId>()
+}
+
+const assignNested = (
+  target: Record<string, unknown>,
+  path: string,
+  value: unknown
+) => {
+  const segments = path.split('.')
+  let current = target
+
+  for (let index = 0; index < segments.length - 1; index += 1) {
+    const segment = segments[index]!
+    const next = current[segment]
+    if (
+      typeof next === 'object'
+      && next !== null
+      && !Array.isArray(next)
+    ) {
+      current = next as Record<string, unknown>
+      continue
+    }
+
+    const created: Record<string, unknown> = {}
+    current[segment] = created
+    current = created
+  }
+
+  current[segments[segments.length - 1]!] = value
 }
 
 const createTouchedView = <TId extends string>(
@@ -1936,6 +2007,11 @@ export const createMutationDelta = <
 
   compiled.families.forEach((family) => {
     if (family.kind === 'singleton') {
+      const familyKeys = [
+        ...family.changeKeys.map((key) => `${family.name}.${key}`),
+        ...Object.values(family.ordered).map((emits) => `${family.name}.${emits}`),
+        ...Object.values(family.tree).map((emits) => `${family.name}.${emits}`)
+      ]
       const familyDelta = Object.fromEntries(
         family.changeKeys.map((key) => {
           const member = family.members[key]
@@ -1954,6 +2030,8 @@ export const createMutationDelta = <
         })
       ) as Record<string, unknown>
 
+      familyDelta.changed = () => normalized.reset === true || familyKeys.some((key) => normalized.has(key))
+
       Object.entries(family.ordered).forEach(([name, emits]) => {
         familyDelta[name] = {
           changed: () => normalized.reset === true || normalized.has(`${family.name}.${emits}`)
@@ -1966,7 +2044,7 @@ export const createMutationDelta = <
         }
       })
 
-      result[family.name] = familyDelta
+      assignNested(result, family.name, familyDelta)
       return
     }
 
@@ -1980,6 +2058,17 @@ export const createMutationDelta = <
     const familyDelta: Record<string, unknown> = {
       create: createTouchedView(normalized, `${family.name}.create`),
       delete: createTouchedView(normalized, `${family.name}.delete`),
+      changed: (id?: string) => {
+        if (normalized.reset === true) {
+          return true
+        }
+
+        if (id === undefined) {
+          return familyKeys.some((key) => normalized.has(key))
+        }
+
+        return familyKeys.some((key) => normalized.changed(key, id))
+      },
       touchedIds: () => readTouchedIds(normalized, familyKeys)
     }
 
@@ -2002,7 +2091,7 @@ export const createMutationDelta = <
       familyDelta[name] = createTouchedView(normalized, `${family.name}.${emits}`)
     })
 
-    result[family.name] = familyDelta
+    assignNested(result, family.name, familyDelta)
   })
 
   const typed = result as MutationDeltaOf<TModel>
@@ -2010,6 +2099,6 @@ export const createMutationDelta = <
   if (!modelCache) {
     DELTA_CACHE.set(model as object, nextModelCache)
   }
-  nextModelCache.set(normalized, typed)
+  nextModelCache.set(normalized, typed as MutationDeltaOf<any>)
   return typed
 }

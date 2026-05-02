@@ -7,7 +7,9 @@ import type {
 import type { EditorActions as EditorWrite } from '@whiteboard/editor/actions/types'
 import type { SnapRuntime } from '@whiteboard/editor/input/core/snap'
 import type { EditorStateDocument } from '@whiteboard/editor/state/document'
+import type { EditorStateRuntime } from '@whiteboard/editor/state/runtime'
 import type { EditorDispatchInput } from '@whiteboard/editor/state/intents'
+import type { EditorViewport } from '@whiteboard/editor/state/viewport'
 import type { PointerMode } from '@whiteboard/editor/input/core/types'
 import type {
   ContextMenuInput,
@@ -20,7 +22,6 @@ import type {
 } from '@whiteboard/editor/api/input'
 import type {
   EditorSceneUi,
-  EditorViewportRuntime
 } from '@whiteboard/editor/scene-ui/types'
 import type { NodeTypeSupport } from '@whiteboard/editor/node'
 import type { EditorWrite as EditorMutationWrite } from '@whiteboard/editor/write'
@@ -56,7 +57,6 @@ export type EditorSceneFacade = EditorScene & {
 }
 
 export type EditorRuntime = {
-  viewport: EditorViewportRuntime
   config: BoardConfig
   nodeType: NodeTypeSupport
   snap: SnapRuntime
@@ -68,6 +68,8 @@ export type Editor = {
   input: EditorInputHost
   actions: EditorWrite
   write: EditorMutationWrite
+  state: Pick<EditorStateRuntime, 'snapshot' | 'reader' | 'write' | 'commits'>
+  viewport: EditorViewport
   read: () => EditorStateDocument
   runtime: EditorRuntime
   dispatch: (command: EditorDispatchInput | readonly EditorDispatchInput[]) => void

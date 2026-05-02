@@ -17,7 +17,9 @@ import type {
   NodeId,
   Size
 } from '@whiteboard/core/types'
-import type { EditorDelta } from '@whiteboard/editor/state/delta'
+import type { EditorStateMutationDelta } from '@whiteboard/editor/state/runtime'
+import { createMutationDelta as createEditorStateDelta } from '@shared/mutation'
+import { editorStateMutationModel } from '@whiteboard/editor/state/model'
 import { createEmptyRuntimeInputDelta } from './input'
 
 const EMPTY_MUTATION_CHANGES = Object.freeze(
@@ -31,26 +33,13 @@ export type EditorRuntimeDeltaFlags = Partial<{
 
 export const createEditorRuntimeDelta = (
   input: EditorRuntimeDeltaFlags = {}
-): EditorDelta => {
-  const delta = createEmptyRuntimeInputDelta()
-
-  if (input.graph) {
-    delta.preview = {
-      touchedNodeIds: ['__graph__' as NodeId],
-      touchedEdgeIds: [],
-      touchedMindmapIds: [],
-      marquee: false,
-      guides: false,
-      draw: false,
-      edgeGuide: false,
-      hover: false
-    }
-  }
-  if (input.ui) {
-    delta.selection = true
-  }
-  return delta
-}
+): EditorStateMutationDelta => (
+  input.graph || input.ui
+    ? createEditorStateDelta(editorStateMutationModel, {
+        reset: true
+      })
+    : createEmptyRuntimeInputDelta()
+)
 
 export const createMutationDelta = (input: {
   reset?: boolean

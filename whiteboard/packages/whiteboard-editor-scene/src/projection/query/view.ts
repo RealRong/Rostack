@@ -9,6 +9,8 @@ import type { WorkingState } from '../../contracts/working'
 import { readBackgroundView } from './background'
 import { DEFAULT_HIT_THRESHOLD } from './hit'
 
+export type ProjectionViewRead = SceneViewport
+
 export const createViewRead = (input: {
   state: () => WorkingState
   view: () => SceneViewSnapshot

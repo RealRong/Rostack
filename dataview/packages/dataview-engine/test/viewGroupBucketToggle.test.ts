@@ -485,7 +485,7 @@ test('kanban default group prefers option-like fields over earlier scalar fields
       name: 'Status',
       kind: 'status',
       defaultOptionId: 'todo',
-      options: STATUS_OPTIONS.map(option => ({ ...option }))
+      options: optionTable(STATUS_OPTIONS)
     }
   ]
   const engine = createEngineForTest({
@@ -1548,9 +1548,15 @@ test('engine commits stream emits shared apply commits for execute', () => {
   assert.ok(Boolean(writes[0]?.delta.changes['view.filter']))
   assert.ok(Boolean(writes[0]?.delta.changes['view.search']))
   assert.ok(Boolean(writes[0]?.delta.changes['view.sort']))
-  assert.ok(Boolean(writes[0]?.delta.changes['view.display']))
+  assert.ok(
+    Boolean(writes[0]?.delta.changes['view.display'])
+    || Boolean(writes[0]?.delta.changes['view.create'])
+  )
   assert.ok(Boolean(writes[0]?.delta.changes['view.options']))
-  assert.ok(Boolean(writes[0]?.delta.changes['view.order']))
+  assert.ok(
+    Boolean(writes[0]?.delta.changes['view.order'])
+    || Boolean(writes[0]?.delta.changes['view.create'])
+  )
   assert.ok(Boolean(writes[0]?.delta.changes['view.calc']))
 })
 

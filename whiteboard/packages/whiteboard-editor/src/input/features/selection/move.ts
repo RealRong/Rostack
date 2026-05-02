@@ -1,5 +1,6 @@
 import { node as nodeApi, type Guide, type MoveStepResult } from '@whiteboard/core/node'
 import type { SelectionTarget } from '@whiteboard/core/selection'
+import type { EdgeId, NodeId } from '@whiteboard/core/types'
 import {
   FINISH
 } from '@whiteboard/editor/input/internals/result'
@@ -12,13 +13,6 @@ import type {
 } from '@whiteboard/editor/api/input'
 import type { SelectionMoveVisibility } from '@whiteboard/editor/input/features/selection/press'
 import type { Editor } from '@whiteboard/editor/api/editor'
-import type { EditorCommand } from '@whiteboard/editor/state/intents'
-import {
-  isPreviewEqual,
-  replacePreviewEdgeInteraction,
-  replacePreviewNodeInteraction,
-  setPreviewSelection
-} from '@whiteboard/editor/state/preview'
 
 const toMoveNodePatches = (
   result: MoveStepResult
@@ -143,26 +137,102 @@ export const createMoveInteraction = (
     })
 
     state = result.state
-    editor.dispatch((snapshot) => {
-      const current = snapshot.overlay.preview
-      const nextPreview = setPreviewSelection(
-        replacePreviewEdgeInteraction(
-          replacePreviewNodeInteraction(current, {
-            patches: toMoveNodePatches(result)
-          }),
-          toMoveEdgePatches(result)
-        ),
-        {
-          guides
+    editor.state.write(({
+      writer,
+      snapshot
+    }) => {
+      const nextNodeById = new Map<NodeId, {
+        position: {
+          x: number
+          y: number
         }
+      }>(
+        toMoveNodePatches(result).map((entry) => [
+          entry.id,
+          entry.patch
+        ])
+      )
+      const nextEdgeById = new Map<EdgeId, typeof result.preview.edges[number]['patch']>(
+        toMoveEdgePatches(result).map((entry) => [
+          entry.id,
+          entry.patch
+        ])
       )
 
-      return isPreviewEqual(current, nextPreview)
-        ? null
-        : {
-            type: 'overlay.preview.set',
-            preview: nextPreview
-          } satisfies EditorCommand
+      Object.keys(snapshot.preview.node).forEach((nodeId) => {
+        const id = nodeId as NodeId
+        const current = snapshot.preview.node[id]
+        const nextPatch = nextNodeById.get(id)
+        nextNodeById.delete(id)
+
+        if (!current?.presentation && !nextPatch) {
+          writer.preview.node.delete(id)
+          return
+        }
+
+        if (!current) {
+          if (!nextPatch) {
+            return
+          }
+
+          writer.preview.node.create({
+            id,
+            patch: nextPatch,
+            hovered: false,
+            hidden: false
+          })
+          return
+        }
+
+        if (!nextPatch && current.presentation === undefined) {
+          writer.preview.node.delete(id)
+          return
+        }
+
+        writer.preview.node.patch(id, {
+          patch: nextPatch,
+          presentation: current.presentation,
+          hovered: false,
+          hidden: false
+        })
+      })
+
+      nextNodeById.forEach((patch, id) => {
+        writer.preview.node.create({
+          id,
+          patch,
+          hovered: false,
+          hidden: false
+        })
+      })
+
+      Object.keys(snapshot.preview.edge).forEach((edgeId) => {
+        const id = edgeId as EdgeId
+        const nextPatch = nextEdgeById.get(id)
+        nextEdgeById.delete(id)
+
+        if (!nextPatch) {
+          writer.preview.edge.delete(id)
+          return
+        }
+
+        writer.preview.edge.patch(id, {
+          patch: nextPatch,
+          activeRouteIndex: undefined
+        })
+      })
+
+      nextEdgeById.forEach((patch, id) => {
+        writer.preview.edge.create({
+          id,
+          patch
+        })
+      })
+
+      writer.preview.selection.patch({
+        marquee: undefined,
+        guides
+      })
     })
   }
 
@@ -173,7 +243,7 @@ export const createMoveInteraction = (
     autoPan: {
       frame: (pointer) => {
         project({
-          world: editor.runtime.viewport.pointer(pointer).world,
+          world: editor.viewport.pointer(pointer).world,
           modifiers
         })
       }
@@ -204,23 +274,32 @@ export const createMoveInteraction = (
         })
       }
 
-      editor.dispatch((snapshot) => {
-        const current = snapshot.overlay.preview
-        const nextPreview = setPreviewSelection(
-          replacePreviewEdgeInteraction(
-            replacePreviewNodeInteraction(current, {}),
-            []
-          ),
-          {
-            guides: []
+      editor.state.write(({
+        writer,
+        snapshot
+      }) => {
+        Object.keys(snapshot.preview.node).forEach((nodeId) => {
+          const id = nodeId as NodeId
+          const current = snapshot.preview.node[id]
+          if (!current?.presentation) {
+            writer.preview.node.delete(id)
+            return
           }
-        )
-        return isPreviewEqual(current, nextPreview)
-          ? null
-          : {
-              type: 'overlay.preview.set',
-              preview: nextPreview
-            } satisfies EditorCommand
+
+          writer.preview.node.patch(id, {
+            patch: undefined,
+            presentation: current.presentation,
+            hovered: false,
+            hidden: false
+          })
+        })
+        Object.keys(snapshot.preview.edge).forEach((edgeId) => {
+          writer.preview.edge.delete(edgeId as EdgeId)
+        })
+        writer.preview.selection.patch({
+          marquee: undefined,
+          guides: []
+        })
       })
     }
   }

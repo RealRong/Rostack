@@ -4,19 +4,12 @@ import { node as nodeApi,
   type TransformSelectionMember,
   type TransformSpec
 } from '@whiteboard/core/node'
-import type { Node } from '@whiteboard/core/types'
+import type { EdgeId, Node, NodeId } from '@whiteboard/core/types'
 import type { InteractionBinding, InteractionSession } from '@whiteboard/editor/input/core/types'
 import { FINISH } from '@whiteboard/editor/input/internals/result'
 import type { PointerDownInput } from '@whiteboard/editor/api/input'
 import type { WhiteboardLayoutService } from '@whiteboard/core/layout'
 import type { Editor } from '@whiteboard/editor/api/editor'
-import type { EditorCommand } from '@whiteboard/editor/state/intents'
-import {
-  isPreviewEqual,
-  replacePreviewEdgeInteraction,
-  replacePreviewNodeInteraction,
-  setPreviewSelection
-} from '@whiteboard/editor/state/preview'
 
 export type TransformTarget = TransformSelectionMember<Node>
 export type RuntimeTransformSpec = TransformSpec<Node>
@@ -163,25 +156,71 @@ export const createTransformSession = (
       patches: nextPatches
     }
 
-    ctx.editor.dispatch((snapshot) => {
-      const current = snapshot.overlay.preview
-      const nextPreview = setPreviewSelection(
-        replacePreviewEdgeInteraction(
-          replacePreviewNodeInteraction(current, {
-            patches: toTransformNodePatches(nextPatches)
-          }),
-          []
-        ),
-        {
-          guides: result.draft.guides
-        }
+    ctx.editor.state.write(({
+      writer,
+      snapshot
+    }) => {
+      const nextNodeById = new Map<NodeId, ReturnType<typeof toTransformNodePatches>[number]['patch']>(
+        toTransformNodePatches(nextPatches).map((entry) => [
+          entry.id,
+          entry.patch
+        ])
       )
-      return isPreviewEqual(current, nextPreview)
-        ? null
-        : {
-            type: 'overlay.preview.set',
-            preview: nextPreview
-          } satisfies EditorCommand
+
+      Object.keys(snapshot.preview.node).forEach((nodeId) => {
+        const id = nodeId as NodeId
+        const current = snapshot.preview.node[id]
+        const nextPatch = nextNodeById.get(id)
+        nextNodeById.delete(id)
+
+        if (!current?.presentation && !nextPatch) {
+          writer.preview.node.delete(id)
+          return
+        }
+
+        if (!current) {
+          if (!nextPatch) {
+            return
+          }
+
+          writer.preview.node.create({
+            id,
+            patch: nextPatch,
+            hovered: false,
+            hidden: false
+          })
+          return
+        }
+
+        if (!nextPatch && current.presentation === undefined) {
+          writer.preview.node.delete(id)
+          return
+        }
+
+        writer.preview.node.patch(id, {
+          patch: nextPatch,
+          presentation: current.presentation,
+          hovered: false,
+          hidden: false
+        })
+      })
+
+      nextNodeById.forEach((patch, id) => {
+        writer.preview.node.create({
+          id,
+          patch,
+          hovered: false,
+          hidden: false
+        })
+      })
+
+      Object.keys(snapshot.preview.edge).forEach((edgeId) => {
+        writer.preview.edge.delete(edgeId as EdgeId)
+      })
+      writer.preview.selection.patch({
+        marquee: undefined,
+        guides: result.draft.guides
+      })
     })
   }
 
@@ -192,8 +231,8 @@ export const createTransformSession = (
     autoPan: {
       frame: (pointer) => {
         project({
-          screen: ctx.editor.runtime.viewport.screenPoint(pointer.clientX, pointer.clientY),
-          world: ctx.editor.runtime.viewport.pointer(pointer).world,
+          screen: ctx.editor.viewport.screenPoint(pointer.clientX, pointer.clientY),
+          world: ctx.editor.viewport.pointer(pointer).world,
           modifiers
         })
       }
@@ -219,23 +258,32 @@ export const createTransformSession = (
       return FINISH
     },
     cleanup: () => {
-      ctx.editor.dispatch((snapshot) => {
-        const current = snapshot.overlay.preview
-        const nextPreview = setPreviewSelection(
-          replacePreviewEdgeInteraction(
-            replacePreviewNodeInteraction(current, {}),
-            []
-          ),
-          {
-            guides: []
+      ctx.editor.state.write(({
+        writer,
+        snapshot
+      }) => {
+        Object.keys(snapshot.preview.node).forEach((nodeId) => {
+          const id = nodeId as NodeId
+          const current = snapshot.preview.node[id]
+          if (!current?.presentation) {
+            writer.preview.node.delete(id)
+            return
           }
-        )
-        return isPreviewEqual(current, nextPreview)
-          ? null
-          : {
-              type: 'overlay.preview.set',
-              preview: nextPreview
-            } satisfies EditorCommand
+
+          writer.preview.node.patch(id, {
+            patch: undefined,
+            presentation: current.presentation,
+            hovered: false,
+            hidden: false
+          })
+        })
+        Object.keys(snapshot.preview.edge).forEach((edgeId) => {
+          writer.preview.edge.delete(edgeId as EdgeId)
+        })
+        writer.preview.selection.patch({
+          marquee: undefined,
+          guides: []
+        })
       })
     }
   }

@@ -16,7 +16,7 @@ export const patchUiChrome = (
     state: {
       tool: context.current.editor.snapshot.state.tool,
       edit: context.current.editor.snapshot.state.edit,
-      preview: context.current.editor.snapshot.overlay.preview
+      preview: context.current.editor.snapshot.preview
     },
     selection: context.working.runtime.editor.interaction.selection,
     hover: context.working.runtime.editor.interaction.hover

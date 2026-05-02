@@ -14,8 +14,7 @@ import {
   toHoverStateFromPick
 } from '@whiteboard/editor/input/hover/store'
 import {
-  isPreviewEqual,
-  setPreviewEdgeGuide
+  isPreviewEqual
 } from '@whiteboard/editor/state/preview'
 
 export const createEditorInputHost = ({
@@ -48,18 +47,22 @@ export const createEditorInputHost = ({
       snap: editor.runtime.snap
     },
     {
-      read: () => editor.read().overlay.preview.edgeGuide,
+      read: () => editor.read().preview.edgeGuide,
       write: (nextEdgeGuide) => {
-        editor.dispatch((state) => {
-          const current = state.overlay.preview
-          const nextPreview = setPreviewEdgeGuide(current, nextEdgeGuide)
+        editor.state.write(({
+          writer,
+          snapshot
+        }) => {
+          if (isPreviewEqual(snapshot.preview, {
+            ...snapshot.preview,
+            edgeGuide: nextEdgeGuide
+          })) {
+            return
+          }
 
-          return isPreviewEqual(current, nextPreview)
-            ? null
-            : {
-                type: 'overlay.preview.set',
-                preview: nextPreview
-              } satisfies EditorCommand
+          writer.preview.edgeGuide.patch({
+            current: nextEdgeGuide
+          })
         })
       }
     }
@@ -82,18 +85,18 @@ export const createEditorInputHost = ({
 
   const updateInteraction = (
     update: (
-      current: ReturnType<typeof editor.read>['overlay']['hover']
-    ) => ReturnType<typeof editor.read>['overlay']['hover']
+      current: ReturnType<typeof editor.read>['hover']
+    ) => ReturnType<typeof editor.read>['hover']
   ) => {
     editor.dispatch({
-      type: 'overlay.hover.set',
-      hover: update(editor.read().overlay.hover)
+      type: 'hover.set',
+      hover: update(editor.read().hover)
     } satisfies EditorCommand)
   }
 
   const clearTransientState = () => {
     editor.dispatch({
-      type: 'overlay.hover.set',
+      type: 'hover.set',
       hover: EMPTY_HOVER_STATE
     } satisfies EditorCommand)
     edgeHover.clear()

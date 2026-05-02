@@ -106,7 +106,7 @@ const buildMindmapEntry = (
     return undefined
   }
 
-  const preview = input.editor.snapshot.overlay.preview.mindmap
+  const preview = input.editor.snapshot.preview.mindmap[mindmapId]
   const rootEntry = readNodeEntry(
     input,
     working,
@@ -166,10 +166,10 @@ const buildMindmapEntry = (
           }
     },
     preview: {
-      rootDelta: preview?.rootMove?.mindmapId === mindmapId
+      rootDelta: preview?.rootMove
         ? preview.rootMove.delta
         : undefined,
-      subtreeMove: preview?.subtreeMove?.mindmapId === mindmapId
+      subtreeMove: preview?.subtreeMove
         ? {
             nodeId: preview.subtreeMove.nodeId,
             ghost: preview.subtreeMove.ghost

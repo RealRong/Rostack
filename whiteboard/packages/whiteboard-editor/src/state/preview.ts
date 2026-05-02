@@ -7,6 +7,7 @@ import { json } from '@shared/core'
 import type {
   EdgeGuidePreview,
   EdgePreview,
+  MindmapPreviewEntry,
   MindmapPreview,
   NodePreview,
   PreviewInput
@@ -23,24 +24,33 @@ import {
   EMPTY_GUIDES
 } from '@whiteboard/editor/state/preview-selection'
 import type {
+  EditorCommand
+} from '@whiteboard/editor/state/intents'
+import type {
   EdgeFeedbackEntry,
   EdgeGuide,
   NodePreviewEntry
 } from '@whiteboard/editor/state/preview-types'
 
-type NodePreviewRecord = PreviewInput['nodes']
-type EdgePreviewRecord = PreviewInput['edges']
+type NodePreviewRecord = PreviewInput['node']
+type EdgePreviewRecord = PreviewInput['edge']
+type MindmapPreviewRecord = PreviewInput['mindmap']
 
-const EMPTY_NODE_PREVIEWS = Object.freeze({}) as NodePreviewRecord
+const EMPTY_NODE_PREVIEWS = Object.freeze({}) as PreviewInput['node']
 const EMPTY_EDGE_PREVIEWS = Object.freeze({}) as EdgePreviewRecord
+const EMPTY_MINDMAP_PREVIEWS = Object.freeze({}) as MindmapPreviewRecord
 
 const readNodePreviewIds = (
-  value: NodePreviewRecord
+  value: PreviewInput['node']
 ): readonly NodeId[] => Object.keys(value) as readonly NodeId[]
 
 const readEdgePreviewIds = (
   value: EdgePreviewRecord
 ): readonly EdgeId[] => Object.keys(value) as readonly EdgeId[]
+
+const readMindmapPreviewIds = (
+  value: MindmapPreviewRecord
+): readonly string[] => Object.keys(value)
 
 const isNodePreviewPatchEqual = (
   left: NodePreview['patch'],
@@ -99,7 +109,7 @@ const isPreviewRecordEqual = <TId extends string, TValue>(
   return true
 }
 
-const isDrawPreviewEqual = (
+export const isDrawPreviewEqual = (
   left: PreviewInput['draw'],
   right: PreviewInput['draw']
 ): boolean => left === right || (
@@ -139,7 +149,7 @@ const isRectEqual = (
   && left.height === right.height
 )
 
-const isSelectionPreviewEqual = (
+export const isSelectionPreviewEqual = (
   left: PreviewInput['selection'],
   right: PreviewInput['selection']
 ): boolean => (
@@ -155,18 +165,17 @@ const isSelectionPreviewEqual = (
   )
 )
 
-export const isMindmapPreviewEqual = (
-  left: MindmapPreview | null,
-  right: MindmapPreview | null
+export const isMindmapPreviewEntryEqual = (
+  left: MindmapPreviewEntry | undefined,
+  right: MindmapPreviewEntry | undefined
 ): boolean => left === right || (
-  left !== null
-  && right !== null
+  left !== undefined
+  && right !== undefined
   && (
     left.rootMove === right.rootMove
     || (
       left.rootMove !== undefined
       && right.rootMove !== undefined
-      && left.rootMove.mindmapId === right.rootMove.mindmapId
       && left.rootMove.delta.x === right.rootMove.delta.x
       && left.rootMove.delta.y === right.rootMove.delta.y
     )
@@ -176,13 +185,38 @@ export const isMindmapPreviewEqual = (
     || (
       left.subtreeMove !== undefined
       && right.subtreeMove !== undefined
-      && left.subtreeMove.mindmapId === right.subtreeMove.mindmapId
       && left.subtreeMove.nodeId === right.subtreeMove.nodeId
       && isRectEqual(left.subtreeMove.ghost, right.subtreeMove.ghost)
       && json.stableStringify(left.subtreeMove.drop) === json.stableStringify(right.subtreeMove.drop)
     )
   )
 )
+
+const normalizeMindmapPreviewRecord = (
+  value: MindmapPreviewRecord
+): MindmapPreviewRecord => {
+  const ids = readMindmapPreviewIds(value)
+  if (ids.length === 0) {
+    return EMPTY_MINDMAP_PREVIEWS
+  }
+
+  const next: Record<string, MindmapPreviewEntry | undefined> = {}
+  for (let index = 0; index < ids.length; index += 1) {
+    const id = ids[index]!
+    const preview = value[id]
+    if (!preview) {
+      continue
+    }
+    if (!preview.rootMove && !preview.subtreeMove) {
+      continue
+    }
+    next[id] = preview
+  }
+
+  return Object.keys(next).length === 0
+    ? EMPTY_MINDMAP_PREVIEWS
+    : next as MindmapPreviewRecord
+}
 
 const mergeNodePreviewPatch = (
   current: NodePreview | undefined,
@@ -299,43 +333,44 @@ const normalizeEdgePreviewRecord = (
 }
 
 export const EMPTY_PREVIEW_STATE: PreviewInput = {
-  nodes: EMPTY_NODE_PREVIEWS,
-  edges: EMPTY_EDGE_PREVIEWS,
+  node: EMPTY_NODE_PREVIEWS,
+  edge: EMPTY_EDGE_PREVIEWS,
+  mindmap: EMPTY_MINDMAP_PREVIEWS,
   draw: null,
   selection: {
     guides: EMPTY_GUIDES
-  },
-  mindmap: null
+  }
 }
 
 export const normalizeEditorPreviewState = (
   state: PreviewInput
 ): PreviewInput => {
-  const nodes = normalizeNodePreviewRecord(state.nodes)
-  const edges = normalizeEdgePreviewRecord(state.edges)
+  const node = normalizeNodePreviewRecord(state.node)
+  const edge = normalizeEdgePreviewRecord(state.edge)
+  const mindmap = normalizeMindmapPreviewRecord(state.mindmap)
   const draw = normalizeDrawPreview(state.draw)
   const guides = state.selection.guides.length > 0
     ? state.selection.guides
     : EMPTY_GUIDES
   const edgeGuide = normalizeEdgeGuide(state.edgeGuide)
   const marquee = state.selection.marquee
-  const mindmap = state.mindmap ?? null
 
   if (
-    nodes === EMPTY_NODE_PREVIEWS
-    && edges === EMPTY_EDGE_PREVIEWS
+    node === EMPTY_NODE_PREVIEWS
+    && edge === EMPTY_EDGE_PREVIEWS
+    && mindmap === EMPTY_MINDMAP_PREVIEWS
     && draw === null
     && guides === EMPTY_GUIDES
     && marquee === undefined
     && edgeGuide === undefined
-    && mindmap === null
   ) {
     return EMPTY_PREVIEW_STATE
   }
 
   return {
-    nodes,
-    edges,
+    node,
+    edge,
+    mindmap,
     ...(edgeGuide
       ? {
           edgeGuide
@@ -349,8 +384,7 @@ export const normalizeEditorPreviewState = (
           }
         : {}),
       guides
-    },
-    mindmap
+    }
   }
 }
 
@@ -358,15 +392,78 @@ export const isEditorPreviewStateEqual = (
   left: PreviewInput,
   right: PreviewInput
 ): boolean => (
-  isPreviewRecordEqual(left.nodes, right.nodes, isNodePreviewEqual)
-  && isPreviewRecordEqual(left.edges, right.edges, isEdgePreviewEqual)
+  isPreviewNodeRecordEqual(left.node, right.node)
+  && isPreviewEdgeRecordEqual(left.edge, right.edge)
+  && isPreviewMindmapRecordEqual(left.mindmap, right.mindmap)
   && isEdgeGuideEqual(left.edgeGuide ?? EMPTY_EDGE_GUIDE, right.edgeGuide ?? EMPTY_EDGE_GUIDE)
   && isDrawPreviewEqual(left.draw, right.draw)
   && isSelectionPreviewEqual(left.selection, right.selection)
-  && isMindmapPreviewEqual(left.mindmap, right.mindmap)
 )
 
 export const isPreviewEqual = isEditorPreviewStateEqual
+
+export const isPreviewNodeRecordEqual = (
+  left: PreviewInput['node'],
+  right: PreviewInput['node']
+): boolean => isPreviewRecordEqual(left, right, isNodePreviewEqual)
+
+export const isPreviewEdgeRecordEqual = (
+  left: PreviewInput['edge'],
+  right: PreviewInput['edge']
+): boolean => isPreviewRecordEqual(left, right, isEdgePreviewEqual)
+
+export const isPreviewMindmapRecordEqual = (
+  left: PreviewInput['mindmap'],
+  right: PreviewInput['mindmap']
+): boolean => isPreviewRecordEqual(left, right, isMindmapPreviewEntryEqual)
+
+export const diffPreviewCommands = (
+  current: PreviewInput,
+  next: PreviewInput
+): readonly EditorCommand[] | null => {
+  const commands: EditorCommand[] = []
+
+  if (!isPreviewNodeRecordEqual(current.node, next.node)) {
+    commands.push({
+      type: 'preview.node.set',
+      node: next.node
+    })
+  }
+  if (!isPreviewEdgeRecordEqual(current.edge, next.edge)) {
+    commands.push({
+      type: 'preview.edge.set',
+      edge: next.edge
+    })
+  }
+  if (!isPreviewMindmapRecordEqual(current.mindmap, next.mindmap)) {
+    commands.push({
+      type: 'preview.mindmap.set',
+      mindmap: next.mindmap
+    })
+  }
+  if (!isSelectionPreviewEqual(current.selection, next.selection)) {
+    commands.push({
+      type: 'preview.selection.set',
+      selection: next.selection
+    })
+  }
+  if (!isDrawPreviewEqual(current.draw, next.draw)) {
+    commands.push({
+      type: 'preview.draw.set',
+      draw: next.draw
+    })
+  }
+  if (!isEdgeGuideEqual(current.edgeGuide ?? EMPTY_EDGE_GUIDE, next.edgeGuide ?? EMPTY_EDGE_GUIDE)) {
+    commands.push({
+      type: 'preview.edgeGuide.set',
+      edgeGuide: next.edgeGuide
+    })
+  }
+
+  return commands.length > 0
+    ? commands
+    : null
+}
 
 export const replacePreviewNodeInteraction = (
   state: PreviewInput,
@@ -377,8 +474,8 @@ export const replacePreviewNodeInteraction = (
 ): PreviewInput => {
   const next: Record<NodeId, NodePreview | undefined> = {}
 
-  Object.keys(state.nodes).forEach((nodeId) => {
-    const current = state.nodes[nodeId as NodeId]
+  Object.keys(state.node).forEach((nodeId) => {
+    const current = state.node[nodeId as NodeId]
     if (!current?.presentation) {
       return
     }
@@ -406,7 +503,7 @@ export const replacePreviewNodeInteraction = (
 
   return normalizeEditorPreviewState({
     ...state,
-    nodes: next
+    node: next
   })
 }
 
@@ -425,7 +522,7 @@ export const replacePreviewEdgeInteraction = (
 
   return normalizeEditorPreviewState({
     ...state,
-    edges: next
+    edge: next
   })
 }
 
@@ -479,7 +576,7 @@ export const updatePreviewNodePresentation = (
     y: number
   }
 ): PreviewInput => {
-  const current = state.nodes[nodeId]
+  const current = state.node[nodeId]
   const nextPresentation = position
     ? {
         position
@@ -490,8 +587,8 @@ export const updatePreviewNodePresentation = (
     return state
   }
 
-  const nodes: Record<NodeId, NodePreview | undefined> = {
-    ...state.nodes
+  const node: Record<NodeId, NodePreview | undefined> = {
+    ...state.node
   }
   const nextNode = nextPresentation
     ? mergeNodePresentation(current, nextPresentation)
@@ -513,13 +610,13 @@ export const updatePreviewNodePresentation = (
     && nextNode.hovered === false
     && nextNode.hidden === false
   ) {
-    delete nodes[nodeId]
+    delete node[nodeId]
   } else {
-    nodes[nodeId] = nextNode
+    node[nodeId] = nextNode
   }
 
   return normalizeEditorPreviewState({
     ...state,
-    nodes
+    node
   })
 }

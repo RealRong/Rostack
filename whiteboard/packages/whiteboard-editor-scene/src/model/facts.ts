@@ -138,15 +138,11 @@ export const createInputFacts = (
   appendIds(nodeTargetIds, runtimeFacts.touchedNodeIds)
   appendIds(mindmapTargetIds, runtimeFacts.touchedMindmapIds)
 
-  appendIds(nodeTargetIds, Object.keys(current.editor.snapshot.overlay.preview.nodes))
-  appendIds(edgeTargetIds, Object.keys(current.editor.snapshot.overlay.preview.edges))
-
-  if (current.editor.snapshot.overlay.preview.mindmap?.rootMove) {
-    mindmapTargetIds.add(current.editor.snapshot.overlay.preview.mindmap.rootMove.mindmapId)
-  }
-  if (current.editor.snapshot.overlay.preview.mindmap?.subtreeMove) {
-    mindmapTargetIds.add(current.editor.snapshot.overlay.preview.mindmap.subtreeMove.mindmapId)
-  }
+  appendIds(nodeTargetIds, Object.keys(current.editor.snapshot.preview.node))
+  appendIds(edgeTargetIds, Object.keys(current.editor.snapshot.preview.edge))
+  Object.keys(current.editor.snapshot.preview.mindmap).forEach((mindmapId) => {
+    mindmapTargetIds.add(mindmapId as MindmapId)
+  })
 
   return {
     reset,

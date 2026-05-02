@@ -13,11 +13,6 @@ import {
   FINISH
 } from '@whiteboard/editor/input/internals/result'
 import type { Editor } from '@whiteboard/editor/api/editor'
-import type { EditorCommand } from '@whiteboard/editor/state/intents'
-import {
-  isPreviewEqual,
-  replacePreviewEdgeInteraction
-} from '@whiteboard/editor/state/preview'
 
 export type EdgeMoveState = {
   edgeId: EdgeId
@@ -129,23 +124,29 @@ export const createEdgeMoveSession = (
       return CANCEL
     }
 
-    editor.dispatch((snapshot) => {
-      const current = snapshot.overlay.preview
-      const nextPreview = replacePreviewEdgeInteraction(
-        current,
-        result.patch
-          ? [{
-              id: state.edgeId,
-              patch: result.patch
-            }]
-          : []
-      )
-      return isPreviewEqual(current, nextPreview)
-        ? null
-        : {
-            type: 'overlay.preview.set',
-            preview: nextPreview
-          } satisfies EditorCommand
+    editor.state.write(({
+      writer,
+      snapshot
+    }) => {
+      Object.keys(snapshot.preview.edge).forEach((edgeId) => {
+        const id = edgeId as EdgeId
+        if (!result.patch || id !== state.edgeId) {
+          writer.preview.edge.delete(id)
+          return
+        }
+
+        writer.preview.edge.patch(id, {
+          patch: result.patch,
+          activeRouteIndex: undefined
+        })
+      })
+
+      if (result.patch && !snapshot.preview.edge[state.edgeId]) {
+        writer.preview.edge.create({
+          id: state.edgeId,
+          patch: result.patch
+        })
+      }
     })
   }
 
@@ -154,7 +155,7 @@ export const createEdgeMoveSession = (
     pointerId: state.pointerId,
     chrome: false,
     autoPan: {
-      frame: (pointer) => step(editor.runtime.viewport.pointer(pointer).world)
+      frame: (pointer) => step(editor.viewport.pointer(pointer).world)
     },
     move: (input) => {
       const transition = step(input.world)
@@ -179,15 +180,13 @@ export const createEdgeMoveSession = (
       return FINISH
     },
     cleanup: () => {
-      editor.dispatch((snapshot) => {
-        const current = snapshot.overlay.preview
-        const nextPreview = replacePreviewEdgeInteraction(current, [])
-        return isPreviewEqual(current, nextPreview)
-          ? null
-          : {
-              type: 'overlay.preview.set',
-              preview: nextPreview
-            } satisfies EditorCommand
+      editor.state.write(({
+        writer,
+        snapshot
+      }) => {
+        Object.keys(snapshot.preview.edge).forEach((edgeId) => {
+          writer.preview.edge.delete(edgeId as EdgeId)
+        })
       })
     }
   }

@@ -29,7 +29,7 @@ const buildCurrentEdgeUiView = (input: {
         edge: view.base.edge,
         nodes: view.base.nodes
       },
-      preview: input.context.current.editor.snapshot.overlay.preview.edges[input.edgeId]
+      preview: input.context.current.editor.snapshot.preview.edge[input.edgeId]
     },
     view,
     edit: input.context.current.editor.snapshot.state.edit,

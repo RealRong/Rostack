@@ -1,5 +1,3 @@
-import { geometry as geometryApi, type ContainerRect, type ViewportLimits, type WheelInput } from '@whiteboard/core/geometry'
-import type { Point, Rect, Viewport } from '@whiteboard/core/types'
 import { record as draftRecord } from '@shared/draft'
 import {
   MutationEngine,
@@ -13,22 +11,24 @@ import type {
   MutationReader,
   MutationWriter
 } from '@shared/mutation'
-import { equal } from '@shared/core'
+import {
+  createMutationProgramWriter,
+  createMutationWriter
+} from '@shared/mutation'
+import {
+  EMPTY_HOVER_STATE,
+  type EditorHoverState
+} from '@whiteboard/editor/state/document'
+import {
+  EMPTY_PREVIEW_STATE
+} from '@whiteboard/editor/state/preview'
 import type {
   DrawState
 } from '@whiteboard/editor/schema/draw-state'
 import type { Tool } from '@whiteboard/editor/schema/tool'
-import type {
-  ViewportRuntime
-} from '@whiteboard/editor/state/viewport'
-import {
-  EMPTY_PREVIEW_STATE
-} from '@whiteboard/editor/state/preview'
 import {
   buildEditorStateDocument,
-  isViewportEqual,
   normalizeEditorStateDocument,
-  normalizeViewportValue,
   type EditorStateDocument
 } from './document'
 import {
@@ -40,13 +40,52 @@ import type {
   EditorDispatchUpdater,
   EditorStateMutationTable
 } from './intents'
-import { EMPTY_HOVER_STATE } from '@whiteboard/editor/input/hover/store'
 
-type EditorStateReader = MutationReader<typeof editorStateMutationModel>
-type EditorStateProgram = MutationWriter<typeof editorStateMutationModel>
-type EditorStateMutationDelta = MutationDeltaOf<typeof editorStateMutationModel>
+export type EditorStateReader = MutationReader<typeof editorStateMutationModel>
+export type EditorStateProgram = MutationWriter<typeof editorStateMutationModel>
+export type EditorStateMutationDelta = MutationDeltaOf<typeof editorStateMutationModel>
+
 type EditorStateOperation = {
   type: string
+}
+
+const applyCollectionDiff = <TId extends string, TValue>(
+  input: {
+    current: Readonly<Record<TId, TValue | undefined>>
+    next: Readonly<Record<TId, TValue | undefined>>
+    create: (id: TId, value: TValue) => void
+    patch: (id: TId, writes: Readonly<Record<string, unknown>>) => void
+    remove: (id: TId) => void
+  }
+) => {
+  const ids = new Set<TId>([
+    ...(Object.keys(input.current) as TId[]),
+    ...(Object.keys(input.next) as TId[])
+  ])
+
+  ids.forEach((id) => {
+    const currentValue = input.current[id]
+    const nextValue = input.next[id]
+
+    if (currentValue && !nextValue) {
+      input.remove(id)
+      return
+    }
+    if (!currentValue && nextValue) {
+      input.create(id, nextValue)
+      return
+    }
+    if (!currentValue || !nextValue) {
+      return
+    }
+
+    const writes = draftRecord.diff(currentValue, nextValue) as Readonly<Record<string, unknown>>
+    if (Object.keys(writes).length === 0) {
+      return
+    }
+
+    input.patch(id, writes)
+  })
 }
 
 const compileHandlers: MutationCompileHandlerTable<
@@ -105,45 +144,126 @@ const compileHandlers: MutationCompileHandlerTable<
       }
     ))
   },
-  'viewport.set': ({ document, intent, program }) => {
-    program.state.patch(draftRecord.diff(
+  'hover.set': ({ document, intent, program }) => {
+    program.hover.patch(draftRecord.diff(
+      document.hover,
+      intent.hover
+    ))
+  },
+  'preview.node.set': ({ document, intent, program }) => {
+    applyCollectionDiff({
+      current: document.preview.node,
+      next: intent.node,
+      create: (id, value) => {
+        program.preview.node.create({
+          id,
+          ...value
+        })
+      },
+      patch: (id, writes) => {
+        program.preview.node.patch(id, writes)
+      },
+      remove: (id) => {
+        program.preview.node.delete(id)
+      }
+    })
+  },
+  'preview.edge.set': ({ document, intent, program }) => {
+    applyCollectionDiff({
+      current: document.preview.edge,
+      next: intent.edge,
+      create: (id, value) => {
+        program.preview.edge.create({
+          id,
+          ...value
+        })
+      },
+      patch: (id, writes) => {
+        program.preview.edge.patch(id, writes)
+      },
+      remove: (id) => {
+        program.preview.edge.delete(id)
+      }
+    })
+  },
+  'preview.mindmap.set': ({ document, intent, program }) => {
+    applyCollectionDiff({
+      current: document.preview.mindmap,
+      next: intent.mindmap,
+      create: (id, value) => {
+        program.preview.mindmap.create({
+          id,
+          ...value
+        })
+      },
+      patch: (id, writes) => {
+        program.preview.mindmap.patch(id, writes)
+      },
+      remove: (id) => {
+        program.preview.mindmap.delete(id)
+      }
+    })
+  },
+  'preview.selection.set': ({ document, intent, program }) => {
+    program.preview.selection.patch(draftRecord.diff(
+      document.preview.selection,
+      intent.selection
+    ))
+  },
+  'preview.draw.set': ({ document, intent, program }) => {
+    program.preview.draw.patch(draftRecord.diff(
       {
-        viewport: document.state.viewport
+        current: document.preview.draw
       },
       {
-        viewport: intent.viewport
+        current: intent.draw
       }
     ))
   },
-  'overlay.hover.set': ({ document, intent, program }) => {
-    program.overlay.patch(draftRecord.diff(
+  'preview.edgeGuide.set': ({ document, intent, program }) => {
+    program.preview.edgeGuide.patch(draftRecord.diff(
       {
-        hover: document.overlay.hover
+        current: document.preview.edgeGuide
       },
       {
-        hover: intent.hover
+        current: intent.edgeGuide
       }
     ))
   },
-  'overlay.preview.set': ({ document, intent, program }) => {
-    program.overlay.patch(draftRecord.diff(
+  'preview.reset': ({ document, program }) => {
+    if (document.preview.node !== EMPTY_PREVIEW_STATE.node) {
+      Object.keys(document.preview.node).forEach((id) => {
+        program.preview.node.delete(id)
+      })
+    }
+    if (document.preview.edge !== EMPTY_PREVIEW_STATE.edge) {
+      Object.keys(document.preview.edge).forEach((id) => {
+        program.preview.edge.delete(id)
+      })
+    }
+    if (document.preview.mindmap !== EMPTY_PREVIEW_STATE.mindmap) {
+      Object.keys(document.preview.mindmap).forEach((id) => {
+        program.preview.mindmap.delete(id)
+      })
+    }
+    program.preview.selection.patch(draftRecord.diff(
+      document.preview.selection,
+      EMPTY_PREVIEW_STATE.selection
+    ))
+    program.preview.draw.patch(draftRecord.diff(
       {
-        preview: document.overlay.preview
+        current: document.preview.draw
       },
       {
-        preview: intent.preview
+        current: EMPTY_PREVIEW_STATE.draw
       }
     ))
-  },
-  'overlay.reset': ({ document, program }) => {
-    program.overlay.patch(draftRecord.diff(
+    program.preview.edgeGuide.patch(draftRecord.diff(
       {
-        hover: document.overlay.hover,
-        preview: document.overlay.preview
+        current: document.preview.edgeGuide
       },
       {
-        hover: EMPTY_HOVER_STATE,
-        preview: EMPTY_PREVIEW_STATE
+        current: EMPTY_PREVIEW_STATE.edgeGuide
       }
     ))
   }
@@ -161,169 +281,131 @@ const assertEditorStateCommit = <T,>(
 
 const toCommandList = (
   command: EditorCommand | readonly EditorCommand[]
-): readonly EditorCommand[] => {
-  if (Array.isArray(command)) {
-    return command
-  }
+): readonly EditorCommand[] => Array.isArray(command)
+  ? command as readonly EditorCommand[]
+  : [command as EditorCommand]
 
-  return [command as EditorCommand]
-}
+const applyPreviewReset = (
+  document: EditorStateDocument
+): EditorStateDocument => normalizeEditorStateDocument({
+  ...document,
+  preview: EMPTY_PREVIEW_STATE
+})
 
-const createViewportRuntime = (input: {
-  initialViewport: Viewport
-  readViewport: () => Viewport
-  subscribeViewport: (listener: () => void) => () => void
-  setViewport: (nextViewport: Viewport) => boolean
-}): ViewportRuntime => {
-  const initialLimits = geometryApi.viewport.defaultLimits
-  const initialViewport = geometryApi.viewport.normalize(
-    input.initialViewport,
-    initialLimits
-  )
-  let rect = geometryApi.viewport.emptyContainerRect
-  let limits = initialLimits
-
-  const setViewport = (
-    nextViewport: Viewport
-  ): boolean => {
-    const normalized = geometryApi.viewport.normalize(nextViewport, limits)
-    if (geometryApi.viewport.isSame(input.readViewport(), normalized)) {
-      return false
-    }
-
-    return input.setViewport(normalized)
-  }
-
-  const readScreenPoint = (
-    clientX: number,
-    clientY: number
-  ): Point => geometryApi.viewport.clientToScreenPoint(clientX, clientY, rect)
-
-  const readPointer = (
-    inputPoint: {
-      clientX: number
-      clientY: number
-    }
-  ) => {
-    const screen = readScreenPoint(inputPoint.clientX, inputPoint.clientY)
-
-    return {
-      screen,
-      world: geometryApi.viewport.screenToWorld(screen, input.readViewport(), rect)
-    }
-  }
-
-  return {
-    get: input.readViewport,
-    subscribe: input.subscribeViewport,
-    pointer: readPointer,
-    worldToScreen: (point) => geometryApi.viewport.worldToScreen(point, input.readViewport(), rect),
-    worldRect: () => geometryApi.rect.fromPoints(
-      geometryApi.viewport.screenToWorld({
-        x: 0,
-        y: 0
-      }, input.readViewport(), rect),
-      geometryApi.viewport.screenToWorld({
-        x: rect.width,
-        y: rect.height
-      }, input.readViewport(), rect)
-    ),
-    screenPoint: readScreenPoint,
-    size: () => ({
-      width: rect.width,
-      height: rect.height
-    }),
-    set: (viewport: Viewport): Viewport => geometryApi.viewport.normalize(
-      viewport,
-      limits
-    ),
-    panBy: (delta: Point): Viewport | null => {
-      if (!Number.isFinite(delta.x) || !Number.isFinite(delta.y)) {
-        return null
+const applyCommand = (
+  document: EditorStateDocument,
+  command: EditorCommand
+): EditorStateDocument => {
+  switch (command.type) {
+    case 'tool.set':
+      return normalizeEditorStateDocument({
+        ...document,
+        state: {
+          ...document.state,
+          tool: command.tool
+        }
+      })
+    case 'draw.set':
+      return normalizeEditorStateDocument({
+        ...document,
+        state: {
+          ...document.state,
+          draw: command.state
+        }
+      })
+    case 'selection.set':
+      return normalizeEditorStateDocument({
+        ...document,
+        state: {
+          ...document.state,
+          selection: command.selection
+        }
+      })
+    case 'edit.set':
+      return normalizeEditorStateDocument({
+        ...document,
+        state: {
+          ...document.state,
+          edit: command.edit
+        }
+      })
+    case 'interaction.set':
+      return normalizeEditorStateDocument({
+        ...document,
+        state: {
+          ...document.state,
+          interaction: command.interaction
+        }
+      })
+    case 'hover.set':
+      return normalizeEditorStateDocument({
+        ...document,
+        hover: command.hover
+      })
+    case 'preview.node.set':
+      return normalizeEditorStateDocument({
+        ...document,
+        preview: {
+          ...document.preview,
+          node: command.node
+        }
+      })
+    case 'preview.edge.set':
+      return normalizeEditorStateDocument({
+        ...document,
+        preview: {
+          ...document.preview,
+          edge: command.edge
+        }
+      })
+    case 'preview.mindmap.set':
+      return normalizeEditorStateDocument({
+        ...document,
+        preview: {
+          ...document.preview,
+          mindmap: command.mindmap
+        }
+      })
+    case 'preview.selection.set':
+      return normalizeEditorStateDocument({
+        ...document,
+        preview: {
+          ...document.preview,
+          selection: command.selection
+        }
+      })
+    case 'preview.draw.set':
+      return normalizeEditorStateDocument({
+        ...document,
+        preview: {
+          ...document.preview,
+          draw: command.draw
+        }
+      })
+    case 'preview.edgeGuide.set':
+      if (command.edgeGuide) {
+        return normalizeEditorStateDocument({
+          ...document,
+          preview: {
+            ...document.preview,
+            edgeGuide: command.edgeGuide
+          }
+        })
       }
-
-      return geometryApi.viewport.pan(
-        input.readViewport(),
-        delta
-      )
-    },
-    zoomTo: (
-      zoom: number,
-      anchor?: Point
-    ): Viewport | null => {
-      if (!Number.isFinite(zoom) || zoom <= 0) {
-        return null
-      }
-
-      const current = input.readViewport()
-      const factor = current.zoom === 0
-        ? zoom
-        : zoom / current.zoom
-      if (!Number.isFinite(factor) || factor <= 0) {
-        return null
-      }
-
-      return geometryApi.viewport.zoom(
-        current,
-        factor,
-        anchor
-      )
-    },
-    fit: (
-      bounds: Rect,
-      padding: number = geometryApi.viewport.fitPadding
-    ): Viewport => geometryApi.viewport.fitToRect({
-      viewport: input.readViewport(),
-      rect,
-      bounds,
-      limits,
-      padding
-    }),
-    reset: (): Viewport => initialViewport,
-    panScreenBy: (deltaScreen: Point) => {
-      if (!Number.isFinite(deltaScreen.x) || !Number.isFinite(deltaScreen.y)) {
-        return null
-      }
-
-      return geometryApi.viewport.applyScreenPan(
-        input.readViewport(),
-        deltaScreen
-      )
-    },
-    wheel: (
-      wheelInput: WheelInput,
-      wheelSensitivity: number
-    ): Viewport => geometryApi.viewport.applyWheelInput({
-      viewport: input.readViewport(),
-      input: wheelInput,
-      rect,
-      limits,
-      wheelSensitivity: Math.max(0, wheelSensitivity)
-    }),
-    setRect: (nextRect: ContainerRect) => {
-      if (equal.sameBox(rect, nextRect)) {
-        return
-      }
-
-      rect = {
-        left: nextRect.left,
-        top: nextRect.top,
-        width: nextRect.width,
-        height: nextRect.height
-      }
-    },
-    setLimits: (nextLimits: ViewportLimits) => {
-      const normalized = geometryApi.viewport.normalizeLimits(nextLimits)
-      if (
-        limits.minZoom === normalized.minZoom
-        && limits.maxZoom === normalized.maxZoom
-      ) {
-        return
-      }
-
-      limits = normalized
-      setViewport(input.readViewport())
-    }
+      return normalizeEditorStateDocument({
+        ...document,
+        preview: (() => {
+          const {
+            edgeGuide: _edgeGuide,
+            ...preview
+          } = document.preview
+          return preview
+        })()
+      })
+    case 'preview.reset':
+      return applyPreviewReset(document)
+    default:
+      return document
   }
 }
 
@@ -339,6 +421,14 @@ export interface EditorStateRuntime {
     EditorStateMutationDelta
   >
   snapshot(): EditorStateDocument
+  reader(): EditorStateReader
+  write: (
+    run: (context: {
+      writer: EditorStateProgram
+      reader: EditorStateReader
+      snapshot: EditorStateDocument
+    }) => void
+  ) => void
   dispatch: (
     command: EditorDispatchInput
   ) => void
@@ -348,14 +438,12 @@ export interface EditorStateRuntime {
     ) => () => void
   }
   flush(): void
-  viewport: ViewportRuntime
   dispose(): void
 }
 
 export const createEditorStateRuntime = (input: {
   initialTool: Tool
   initialDrawState: DrawState
-  initialViewport: Viewport
 }): EditorStateRuntime => {
   const engine = new MutationEngine<
     EditorStateDocument,
@@ -369,8 +457,7 @@ export const createEditorStateRuntime = (input: {
   >({
     document: buildEditorStateDocument({
       tool: input.initialTool,
-      draw: input.initialDrawState,
-      viewport: input.initialViewport
+      draw: input.initialDrawState
     }),
     normalize: normalizeEditorStateDocument,
     model: editorStateMutationModel,
@@ -390,88 +477,6 @@ export const createEditorStateRuntime = (input: {
       listener(commit)
     })
   })
-
-  const applyCommand = (
-    document: EditorStateDocument,
-    command: EditorCommand
-  ): EditorStateDocument => {
-    switch (command.type) {
-      case 'tool.set':
-        return normalizeEditorStateDocument({
-          ...document,
-          state: {
-            ...document.state,
-            tool: command.tool
-          }
-        })
-      case 'draw.set':
-        return normalizeEditorStateDocument({
-          ...document,
-          state: {
-            ...document.state,
-            draw: command.state
-          }
-        })
-      case 'selection.set':
-        return normalizeEditorStateDocument({
-          ...document,
-          state: {
-            ...document.state,
-            selection: command.selection
-          }
-        })
-      case 'edit.set':
-        return normalizeEditorStateDocument({
-          ...document,
-          state: {
-            ...document.state,
-            edit: command.edit
-          }
-        })
-      case 'interaction.set':
-        return normalizeEditorStateDocument({
-          ...document,
-          state: {
-            ...document.state,
-            interaction: command.interaction
-          }
-        })
-      case 'viewport.set':
-        return normalizeEditorStateDocument({
-          ...document,
-          state: {
-            ...document.state,
-            viewport: command.viewport
-          }
-        })
-      case 'overlay.hover.set':
-        return normalizeEditorStateDocument({
-          ...document,
-          overlay: {
-            ...document.overlay,
-            hover: command.hover
-          }
-        })
-      case 'overlay.preview.set':
-        return normalizeEditorStateDocument({
-          ...document,
-          overlay: {
-            ...document.overlay,
-            preview: command.preview
-          }
-        })
-      case 'overlay.reset':
-        return normalizeEditorStateDocument({
-          ...document,
-          overlay: {
-            hover: EMPTY_HOVER_STATE,
-            preview: EMPTY_PREVIEW_STATE
-          }
-        })
-      default:
-        return document
-    }
-  }
 
   const flush = () => {
     if (pendingCommands.length === 0) {
@@ -503,51 +508,30 @@ export const createEditorStateRuntime = (input: {
     flush()
   }
 
-  const dispatchNow = (
-    command: EditorCommand | readonly EditorCommand[]
-  ) => {
-    toCommandList(command).forEach((entry) => {
-      assertEditorStateCommit(engine.execute(entry))
+  const write: EditorStateRuntime['write'] = (run) => {
+    const program = createMutationProgramWriter<string>()
+    const writer = createMutationWriter(
+      editorStateMutationModel,
+      program
+    )
+    run({
+      writer,
+      reader: engine.reader(),
+      snapshot: stagedDocument
     })
+    const built = program.build()
+    if (built.steps.length === 0) {
+      return
+    }
+    assertEditorStateCommit(engine.apply(built))
     stagedDocument = engine.document()
   }
-
-  const subscribeViewport = (
-    listener: () => void
-  ) => engine.subscribe((commit) => {
-    if (
-      commit.delta.reset === true
-      || commit.delta.state.viewport.changed()
-    ) {
-      listener()
-    }
-  })
-
-  const setViewport = (
-    nextViewport: Viewport
-  ): boolean => {
-    const normalized = normalizeViewportValue(nextViewport)
-    if (isViewportEqual(stagedDocument.state.viewport, normalized)) {
-      return false
-    }
-
-    dispatchNow({
-      type: 'viewport.set',
-      viewport: normalized
-    })
-    return true
-  }
-
-  const viewport = createViewportRuntime({
-    initialViewport: input.initialViewport,
-    readViewport: () => engine.document().state.viewport,
-    subscribeViewport,
-    setViewport
-  })
 
   return {
     engine,
     snapshot: () => stagedDocument,
+    reader: () => engine.reader(),
+    write,
     dispatch,
     commits: {
       subscribe: (listener) => {
@@ -558,7 +542,37 @@ export const createEditorStateRuntime = (input: {
       }
     },
     flush,
-    viewport,
     dispose: () => {}
   }
 }
+
+export const createResetEditorCommands = (
+  hover: EditorHoverState = EMPTY_HOVER_STATE
+): readonly EditorCommand[] => ([
+  {
+    type: 'edit.set',
+    edit: null
+  },
+  {
+    type: 'selection.set',
+    selection: {
+      nodeIds: [],
+      edgeIds: []
+    }
+  },
+  {
+    type: 'interaction.set',
+    interaction: {
+      mode: 'idle',
+      chrome: false,
+      space: false
+    }
+  },
+  {
+    type: 'hover.set',
+    hover
+  },
+  {
+    type: 'preview.reset'
+  }
+])

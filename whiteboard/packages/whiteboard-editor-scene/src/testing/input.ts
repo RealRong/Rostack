@@ -5,9 +5,15 @@ import type {
 import type {
   DrawState
 } from '@whiteboard/editor/schema/draw-state'
+import {
+  buildEditorStateDocument
+} from '@whiteboard/editor/state/document'
 import type {
-  EditorDelta
-} from '@whiteboard/editor/state/delta'
+  EditorStateMutationDelta
+} from '@whiteboard/editor/state/runtime'
+import {
+  editorStateMutationModel
+} from '@whiteboard/editor/state/model'
 import { createEmptyDocumentSnapshot } from '../projection/state'
 import {
   whiteboardMutationModel
@@ -45,7 +51,10 @@ export const toSceneUpdateInput = (
   input: SceneUpdateInput
 ): SceneUpdateInput => input
 
-export const createEmptyRuntimeInputDelta = (): EditorDelta => ({})
+export const createEmptyRuntimeInputDelta = (): EditorStateMutationDelta => createMutationDelta(
+  editorStateMutationModel,
+  {}
+)
 
 export const createEmptyInput = (): SceneUpdateInput => ({
   document: {
@@ -56,46 +65,17 @@ export const createEmptyInput = (): SceneUpdateInput => ({
     })
   },
   editor: {
-    snapshot: {
-      state: {
-        tool: {
-          type: 'select'
-        },
-        draw: EMPTY_DRAW_STATE,
-        selection: {
-          nodeIds: [],
-          edgeIds: []
-        },
-        edit: null,
-        interaction: {
-          mode: 'idle',
-          chrome: false,
-          space: false
-        },
-        viewport: {
-          center: {
-            x: 0,
-            y: 0
-          },
-          zoom: 1
-        }
+    snapshot: buildEditorStateDocument({
+      tool: {
+        type: 'select'
       },
-      overlay: {
-        hover: {
-          kind: 'none'
-        },
-        preview: {
-          nodes: {},
-          edges: {},
-          edgeGuide: undefined,
-          draw: null,
-          selection: {
-            guides: []
-          },
-          mindmap: null
-        }
+      draw: EMPTY_DRAW_STATE,
+      interaction: {
+        mode: 'idle',
+        chrome: false,
+        space: false
       }
-    },
+    }),
     delta: createEmptyRuntimeInputDelta()
   }
 })

@@ -117,7 +117,7 @@ export const collectUiRuntimeTouch = (input: {
   )
   appendIds(
     node,
-    input.current.editor.snapshot.overlay.preview.draw?.hiddenNodeIds ?? []
+    input.current.editor.snapshot.preview.draw?.hiddenNodeIds ?? []
   )
 
   const previousEditingNode = readEditingNodeId(input.working.ui.chrome.edit)

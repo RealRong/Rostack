@@ -1,65 +1,66 @@
-import type {
-  HoverState
-} from '@whiteboard/editor-scene'
 import type { EditorPick } from '@whiteboard/editor/api/pick'
+import type { HoverState } from '@whiteboard/editor-scene'
+import {
+  EMPTY_HOVER_STATE,
+  isEditorHoverStateEqual,
+  normalizeEditorHoverState,
+  toSceneHoverState,
+  type EditorHoverState
+} from '@whiteboard/editor/state/document'
 
+export type { EditorHoverState }
 export type { HoverState } from '@whiteboard/editor-scene'
 
-export const EMPTY_HOVER_STATE: HoverState = {
-  kind: 'none'
+export {
+  EMPTY_HOVER_STATE,
+  isEditorHoverStateEqual as isHoverStateEqual,
+  normalizeEditorHoverState as normalizeHoverState,
+  toSceneHoverState
 }
 
-export const isHoverStateEqual = (
-  left: HoverState,
-  right: HoverState
-): boolean => {
-  if (left.kind !== right.kind) {
-    return false
-  }
-
-  switch (left.kind) {
-    case 'node':
-      return right.kind === 'node' && left.nodeId === right.nodeId
-    case 'edge':
-      return right.kind === 'edge' && left.edgeId === right.edgeId
-    case 'mindmap':
-      return right.kind === 'mindmap' && left.mindmapId === right.mindmapId
-    case 'group':
-      return right.kind === 'group' && left.groupId === right.groupId
-    case 'selection-box':
-      return right.kind === 'selection-box'
-    default:
-      return true
-  }
-}
-
-export const normalizeHoverState = (
+export const toEditorHoverState = (
   value: HoverState
-): HoverState => {
+): EditorHoverState => {
   switch (value.kind) {
     case 'node':
       return {
-        kind: 'node',
-        nodeId: value.nodeId
+        node: value.nodeId,
+        edge: null,
+        mindmap: null,
+        group: null,
+        selectionBox: false
       }
     case 'edge':
       return {
-        kind: 'edge',
-        edgeId: value.edgeId
+        node: null,
+        edge: value.edgeId,
+        mindmap: null,
+        group: null,
+        selectionBox: false
       }
     case 'mindmap':
       return {
-        kind: 'mindmap',
-        mindmapId: value.mindmapId
+        node: null,
+        edge: null,
+        mindmap: value.mindmapId,
+        group: null,
+        selectionBox: false
       }
     case 'group':
       return {
-        kind: 'group',
-        groupId: value.groupId
+        node: null,
+        edge: null,
+        mindmap: null,
+        group: value.groupId,
+        selectionBox: false
       }
     case 'selection-box':
       return {
-        kind: 'selection-box'
+        node: null,
+        edge: null,
+        mindmap: null,
+        group: null,
+        selectionBox: true
       }
     default:
       return EMPTY_HOVER_STATE
@@ -68,33 +69,56 @@ export const normalizeHoverState = (
 
 export const toHoverStateFromPick = (
   pick: EditorPick
-): HoverState => {
+): EditorHoverState => {
   switch (pick.kind) {
     case 'selection-box':
       return {
-        kind: 'selection-box'
+        node: null,
+        edge: null,
+        mindmap: null,
+        group: null,
+        selectionBox: true
       }
     case 'node':
       return {
-        kind: 'node',
-        nodeId: pick.id
+        node: pick.id,
+        edge: null,
+        mindmap: null,
+        group: null,
+        selectionBox: false
       }
     case 'edge':
       return {
-        kind: 'edge',
-        edgeId: pick.id
+        node: null,
+        edge: pick.id,
+        mindmap: null,
+        group: null,
+        selectionBox: false
       }
     case 'group':
       return {
-        kind: 'group',
-        groupId: pick.id
+        node: null,
+        edge: null,
+        mindmap: null,
+        group: pick.id,
+        selectionBox: false
       }
     case 'mindmap':
       return {
-        kind: 'mindmap',
-        mindmapId: pick.treeId
+        node: null,
+        edge: null,
+        mindmap: pick.treeId,
+        group: null,
+        selectionBox: false
       }
     default:
       return EMPTY_HOVER_STATE
   }
 }
+
+export const mergeHoverState = (
+  value: Partial<EditorHoverState>
+): EditorHoverState => normalizeEditorHoverState({
+  ...EMPTY_HOVER_STATE,
+  ...value
+})

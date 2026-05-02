@@ -13,12 +13,7 @@ import type {
 } from '@whiteboard/editor/input/core/types'
 import type { PointerDownInput } from '@whiteboard/editor/api/input'
 import { GestureTuning } from '@whiteboard/editor/input/internals/tuning'
-import {
-  isPreviewEqual,
-  setPreviewSelection
-} from '@whiteboard/editor/state/preview'
 import type { Editor } from '@whiteboard/editor/api/editor'
-import type { EditorCommand } from '@whiteboard/editor/state/intents'
 
 export type MarqueeMatch = 'touch' | 'contain'
 
@@ -192,10 +187,10 @@ const syncMarqueeInteraction = (
     })
   }
 
-  editor.dispatch((state) => {
-    const current = state.overlay.preview
-    const nextPreview = setPreviewSelection(
-      current,
+  editor.state.write(({
+    writer
+  }) => {
+    writer.preview.selection.patch(
       next.kind === 'active'
         ? {
             marquee: {
@@ -205,15 +200,10 @@ const syncMarqueeInteraction = (
             guides: []
           }
         : {
+            marquee: undefined,
             guides: []
           }
     )
-    return isPreviewEqual(current, nextPreview)
-      ? null
-      : {
-          type: 'overlay.preview.set',
-          preview: nextPreview
-        } satisfies EditorCommand
   })
 }
 
@@ -277,7 +267,7 @@ export const createMarqueeSession = (
           return
         }
 
-        const sample = editor.runtime.viewport.pointer(pointer)
+        const sample = editor.viewport.pointer(pointer)
         step({
           screen: sample.screen,
           world: sample.world

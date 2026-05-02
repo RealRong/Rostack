@@ -50,7 +50,7 @@ const buildNodeRenderView = (
   }
 
   const state = context.working.ui.nodes.get(nodeId)
-  const presentation = context.current.editor.snapshot.overlay.preview.nodes[nodeId]?.presentation
+  const presentation = context.current.editor.snapshot.preview.node[nodeId]?.presentation
 
   return {
     id: nodeId,

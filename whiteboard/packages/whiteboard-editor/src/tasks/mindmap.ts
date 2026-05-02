@@ -12,16 +12,8 @@ import type {
   MindmapInsertBehavior
 } from '@whiteboard/editor/actions/types'
 import type {
-  EditorScene,
-  PreviewInput
+  EditorScene
 } from '@whiteboard/editor-scene'
-import type {
-  EditorCommand,
-  EditorDispatchInput
-} from '@whiteboard/editor/state/intents'
-import {
-  updatePreviewNodePresentation
-} from '@whiteboard/editor/state/preview'
 import type { EditorWrite } from '@whiteboard/editor/write'
 import type { EditorTaskRuntime } from './runtime'
 import {
@@ -33,10 +25,7 @@ const DEFAULT_MINDMAP_ENTER_DURATION_MS = 220
 type MindmapActionDeps = {
   graph: EditorScene
   editor: {
-    preview: {
-      get: () => PreviewInput
-    }
-    dispatch: (command: EditorDispatchInput) => void
+    state: Pick<import('@whiteboard/editor/api/editor').Editor['state'], 'write'>
   }
   tasks: EditorTaskRuntime
   write: Pick<EditorWrite, 'mindmap'>
@@ -89,21 +78,57 @@ const withNodePresentation = (
   nodeId: MindmapNodeId,
   position?: Point
 ) => {
-  const current = editor.preview.get()
-  const nextPreview = updatePreviewNodePresentation(
-    current,
-    nodeId,
-    position
-  )
+  editor.state.write(({
+    writer,
+    snapshot
+  }) => {
+    const current = snapshot.preview.node[nodeId]
+    const currentPosition = current?.presentation?.position
+    const samePosition = position
+      ? currentPosition?.x === position.x && currentPosition.y === position.y
+      : current?.presentation === undefined
+    if (samePosition) {
+      return
+    }
 
-  if (nextPreview === current) {
-    return
-  }
+    if (!position) {
+      if (!current) {
+        return
+      }
 
-  editor.dispatch({
-    type: 'overlay.preview.set',
-    preview: nextPreview
-  } satisfies EditorCommand)
+      if (
+        current.patch === undefined
+        && current.hovered === false
+        && current.hidden === false
+      ) {
+        writer.preview.node.delete(nodeId)
+        return
+      }
+
+      writer.preview.node.patch(nodeId, {
+        presentation: undefined
+      })
+      return
+    }
+
+    if (current) {
+      writer.preview.node.patch(nodeId, {
+        presentation: {
+          position
+        }
+      })
+      return
+    }
+
+    writer.preview.node.create({
+      id: nodeId,
+      presentation: {
+        position
+      },
+      hovered: false,
+      hidden: false
+    })
+  })
 }
 
 const readInsertAnchorId = (

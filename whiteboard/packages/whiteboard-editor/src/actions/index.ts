@@ -41,7 +41,7 @@ import {
 } from '@whiteboard/editor/schema/draw-state'
 import type { DrawState } from '@whiteboard/editor/schema/draw-state'
 import type { EditSession } from '@whiteboard/editor/schema/edit'
-import type { EditorStateRuntime } from '@whiteboard/editor/state/runtime'
+import type { EditorViewport } from '@whiteboard/editor/state/viewport'
 import type { EditorTaskRuntime } from '@whiteboard/editor/tasks/runtime'
 import type { EditorDefaults } from '@whiteboard/editor/schema/defaults'
 import type { Tool } from '@whiteboard/editor/schema/tool'
@@ -68,8 +68,9 @@ export type CreateEditorActionsApiDeps = {
     preview: {
       get: () => PreviewInput
     }
+    state: Pick<import('@whiteboard/editor/api/editor').Editor['state'], 'write'>
     dispatch: (command: EditorDispatchInput) => void
-    viewport: EditorStateRuntime['viewport']
+    viewport: EditorViewport
   }
   tasks: EditorTaskRuntime
   write: EditorWrite
@@ -102,15 +103,6 @@ export const createEditorActionsApi = ({
     return tool.type === 'draw' && hasDrawBrush(tool.mode)
       ? tool.mode
       : DEFAULT_DRAW_BRUSH
-  }
-
-  const dispatchViewport = (
-    viewport: ReturnType<typeof editor.viewport.get>
-  ) => {
-    editor.dispatch({
-      type: 'viewport.set',
-      viewport
-    } satisfies EditorCommand)
   }
 
   const stringifyToolPayload = (
@@ -257,37 +249,28 @@ export const createEditorActionsApi = ({
     },
     viewport: {
       set: (viewport) => {
-        dispatchViewport(editor.viewport.set(viewport))
+        editor.viewport.set(viewport)
       },
       panBy: (delta) => {
-        const next = editor.viewport.panBy(delta)
-        if (next) {
-          dispatchViewport(next)
-        }
+        editor.viewport.panBy(delta)
       },
       panScreenBy: (deltaScreen) => {
-        const next = editor.viewport.panScreenBy(deltaScreen)
-        if (next) {
-          dispatchViewport(next)
-        }
+        editor.viewport.panScreenBy(deltaScreen)
       },
       zoomTo: (zoom, anchor) => {
-        const next = editor.viewport.zoomTo(zoom, anchor)
-        if (next) {
-          dispatchViewport(next)
-        }
+        editor.viewport.zoomTo(zoom, anchor)
       },
       fit: (rect, options) => {
-        dispatchViewport(editor.viewport.fit(rect, options))
+        editor.viewport.fit(rect, options)
       },
       reset: () => {
-        dispatchViewport(editor.viewport.reset())
+        editor.viewport.reset()
       },
       wheel: (input, wheelSensitivity = 1) => {
-        dispatchViewport(editor.viewport.wheel(
+        editor.viewport.wheel(
           input,
           wheelSensitivity
-        ))
+        )
       }
     },
     draw: {

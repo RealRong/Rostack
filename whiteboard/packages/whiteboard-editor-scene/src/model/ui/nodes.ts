@@ -24,8 +24,8 @@ const buildCurrentNodeUiView = (input: {
 
   const next = buildNodeUiView({
     nodeId: input.nodeId,
-    preview: input.context.current.editor.snapshot.overlay.preview.nodes[input.nodeId],
-    draw: input.context.current.editor.snapshot.overlay.preview.draw,
+    preview: input.context.current.editor.snapshot.preview.node[input.nodeId],
+    draw: input.context.current.editor.snapshot.preview.draw,
     edit: input.context.current.editor.snapshot.state.edit,
     selection: input.context.working.runtime.editor.interaction.selection,
     hover: input.context.working.runtime.editor.interaction.hover

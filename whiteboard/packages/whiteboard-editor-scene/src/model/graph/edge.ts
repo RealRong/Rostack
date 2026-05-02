@@ -208,7 +208,7 @@ export const readEdgeEntry = (
       edge,
       nodes: indexes.edgeNodesByEdge.get(edgeId) ?? {}
     },
-    preview: input.editor.snapshot.overlay.preview.edges[edgeId]
+    preview: input.editor.snapshot.preview.edge[edgeId]
   }
 }
 

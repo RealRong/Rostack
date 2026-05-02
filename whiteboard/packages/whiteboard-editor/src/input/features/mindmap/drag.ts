@@ -13,12 +13,7 @@ import type { Tool } from '@whiteboard/editor/schema/tool'
 import type { MindmapPreviewState } from '@whiteboard/editor/state/preview-types'
 import type { Node } from '@whiteboard/core/types'
 import type { Editor } from '@whiteboard/editor/api/editor'
-import type { EditorCommand } from '@whiteboard/editor/state/intents'
-import type { MindmapPreview } from '@whiteboard/editor-scene'
-import {
-  isPreviewEqual,
-  setPreviewMindmap
-} from '@whiteboard/editor/state/preview'
+import type { PreviewInput } from '@whiteboard/editor-scene'
 
 export type MindmapDragState = CoreMindmapDragState
 
@@ -48,33 +43,35 @@ export type MindmapDragCommit =
 const previewMindmapDrag = (
   editor: Editor,
   state: MindmapDragState
-): MindmapPreview | null => {
+): PreviewInput['mindmap'] => {
   const mindmapId = mindmapApi.tree.resolveId(
     editor.document.snapshot(),
     state.treeId
   )
   if (!mindmapId) {
-    return null
+    return {}
   }
 
   if (state.kind === 'root') {
     return {
-      rootMove: {
-        mindmapId,
-        delta: {
-          x: state.position.x - state.origin.x,
-          y: state.position.y - state.origin.y
+      [mindmapId]: {
+        rootMove: {
+          delta: {
+            x: state.position.x - state.origin.x,
+            y: state.position.y - state.origin.y
+          }
         }
       }
     }
   }
 
   return {
-    subtreeMove: {
-      mindmapId,
-      nodeId: state.nodeId,
-      ghost: state.ghost,
-      drop: state.drop
+    [mindmapId]: {
+      subtreeMove: {
+        nodeId: state.nodeId,
+        ghost: state.ghost,
+        drop: state.drop
+      }
     }
   }
 }
@@ -262,15 +259,28 @@ export const createMindmapDragSession = (
 ): InteractionSession => {
   let state = initial
 
-  editor.dispatch((snapshot) => {
-    const current = snapshot.overlay.preview
-    const nextPreview = setPreviewMindmap(current, previewMindmapDrag(editor, state))
-    return isPreviewEqual(current, nextPreview)
-      ? null
-      : {
-          type: 'overlay.preview.set',
-          preview: nextPreview
-        } satisfies EditorCommand
+  editor.state.write(({
+    writer,
+    snapshot
+  }) => {
+    if (snapshot.preview.mindmap === previewMindmapDrag(editor, state)) {
+      return
+    }
+
+    Object.keys(snapshot.preview.mindmap).forEach((id) => {
+      writer.preview.mindmap.delete(id)
+    })
+    Object.entries(previewMindmapDrag(editor, state)).forEach(([id, preview]) => {
+      if (!preview) {
+        return
+      }
+
+      writer.preview.mindmap.create({
+        id,
+        rootMove: preview.rootMove,
+        subtreeMove: preview.subtreeMove
+      })
+    })
   })
 
   const project = (
@@ -286,15 +296,26 @@ export const createMindmapDragSession = (
         tree: editor.scene.mindmaps.tree
       }
     })
-    editor.dispatch((snapshot) => {
-      const current = snapshot.overlay.preview
-      const nextPreview = setPreviewMindmap(current, previewMindmapDrag(editor, state))
-      return isPreviewEqual(current, nextPreview)
-        ? null
-        : {
-            type: 'overlay.preview.set',
-            preview: nextPreview
-          } satisfies EditorCommand
+    editor.state.write(({
+      writer,
+      snapshot
+    }) => {
+      const nextMindmap = previewMindmapDrag(editor, state)
+
+      Object.keys(snapshot.preview.mindmap).forEach((id) => {
+        writer.preview.mindmap.delete(id)
+      })
+      Object.entries(nextMindmap).forEach(([id, preview]) => {
+        if (!preview) {
+          return
+        }
+
+        writer.preview.mindmap.create({
+          id,
+          rootMove: preview.rootMove,
+          subtreeMove: preview.subtreeMove
+        })
+      })
     })
   }
 
@@ -305,7 +326,7 @@ export const createMindmapDragSession = (
     autoPan: {
       frame: (pointer) => {
         project(
-          editor.runtime.viewport.pointer(pointer).world
+          editor.viewport.pointer(pointer).world
         )
       }
     },
@@ -336,15 +357,17 @@ export const createMindmapDragSession = (
       return FINISH
     },
     cleanup: () => {
-      editor.dispatch((snapshot) => {
-        const current = snapshot.overlay.preview
-        const nextPreview = setPreviewMindmap(current, null)
-        return isPreviewEqual(current, nextPreview)
-          ? null
-          : {
-              type: 'overlay.preview.set',
-              preview: nextPreview
-            } satisfies EditorCommand
+      editor.state.write(({
+        writer,
+        snapshot
+      }) => {
+        if (Object.keys(snapshot.preview.mindmap).length === 0) {
+          return
+        }
+
+        Object.keys(snapshot.preview.mindmap).forEach((id) => {
+          writer.preview.mindmap.delete(id)
+        })
       })
     }
   }

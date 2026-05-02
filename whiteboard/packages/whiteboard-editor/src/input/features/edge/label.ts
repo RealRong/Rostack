@@ -17,10 +17,6 @@ import type {
 import { createPressDragSession } from '@whiteboard/editor/input/internals/press'
 import type { EditorCommand } from '@whiteboard/editor/state/intents'
 import type { Editor } from '@whiteboard/editor/api/editor'
-import {
-  isPreviewEqual,
-  replacePreviewEdgeInteraction
-} from '@whiteboard/editor/state/preview'
 
 const startEdgeLabelEdit = (input: {
   editor: Editor
@@ -161,23 +157,29 @@ const createEdgeLabelDragSession = (
       state.labelId,
       draft
     )
-    editor.dispatch((snapshot) => {
-      const current = snapshot.overlay.preview
-      const nextPreview = replacePreviewEdgeInteraction(
-        current,
-        patch
-          ? [{
-              id: state.edgeId,
-              patch
-            }]
-          : []
-      )
-      return isPreviewEqual(current, nextPreview)
-        ? null
-        : {
-            type: 'overlay.preview.set',
-            preview: nextPreview
-          } satisfies EditorCommand
+    editor.state.write(({
+      writer,
+      snapshot
+    }) => {
+      Object.keys(snapshot.preview.edge).forEach((edgeId) => {
+        const id = edgeId as EdgeId
+        if (!patch || id !== state.edgeId) {
+          writer.preview.edge.delete(id)
+          return
+        }
+
+        writer.preview.edge.patch(id, {
+          patch,
+          activeRouteIndex: undefined
+        })
+      })
+
+      if (patch && !snapshot.preview.edge[state.edgeId]) {
+        writer.preview.edge.create({
+          id: state.edgeId,
+          patch
+        })
+      }
     })
   }
 
@@ -187,7 +189,7 @@ const createEdgeLabelDragSession = (
     chrome: false,
     autoPan: {
       frame: (pointer) => {
-        step(editor.runtime.viewport.pointer(pointer).world)
+        step(editor.viewport.pointer(pointer).world)
       }
     },
     move: (input) => {
@@ -207,15 +209,13 @@ const createEdgeLabelDragSession = (
       return FINISH
     },
     cleanup: () => {
-      editor.dispatch((snapshot) => {
-        const current = snapshot.overlay.preview
-        const nextPreview = replacePreviewEdgeInteraction(current, [])
-        return isPreviewEqual(current, nextPreview)
-          ? null
-          : {
-              type: 'overlay.preview.set',
-              preview: nextPreview
-            } satisfies EditorCommand
+      editor.state.write(({
+        writer,
+        snapshot
+      }) => {
+        Object.keys(snapshot.preview.edge).forEach((edgeId) => {
+          writer.preview.edge.delete(edgeId as EdgeId)
+        })
       })
     }
   }

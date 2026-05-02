@@ -1,18 +1,12 @@
-import { equal } from '@shared/core'
-import {
-  createMutationDelta,
-} from '@shared/mutation'
+import { createMutationDelta } from '@shared/mutation'
 import type { HistoryPort } from '@shared/mutation'
-import {
-  isCheckpointProgram,
-  whiteboardMutationModel
-} from '@whiteboard/core/mutation'
+import { whiteboardMutationModel } from '@whiteboard/core/mutation'
 import type { Viewport } from '@whiteboard/core/types'
 import type { WhiteboardLayoutService } from '@whiteboard/core/layout'
 import { createEditorActionsApi } from '@whiteboard/editor/actions'
 import {
-  createEditorSceneUi,
-  createEditorSceneFacade
+  createEditorSceneFacade,
+  createEditorSceneUi
 } from '@whiteboard/editor/scene-ui'
 import {
   createEditorStateStores,
@@ -25,17 +19,19 @@ import {
   DEFAULT_DRAW_STATE,
   type DrawState
 } from '@whiteboard/editor/schema/draw-state'
-import { createEditorStateRuntime } from '@whiteboard/editor/state/runtime'
-import type { EditorCommand } from '@whiteboard/editor/state/intents'
-import type { EditorDispatchInput } from '@whiteboard/editor/state/intents'
 import {
-  collectEditorCommitFlags,
-  createBootstrapEditorDelta,
-  createDocumentDrivenEditorDelta,
-  createEditorDeltaFromCommitFlags,
-  mergeEditorDeltas,
-  type EditorStateMutationDelta
-} from '@whiteboard/editor/state/delta'
+  createEditorStateRuntime
+} from '@whiteboard/editor/state/runtime'
+import type {
+  EditorDispatchInput
+} from '@whiteboard/editor/state/intents'
+import {
+  createEditorViewport
+} from '@whiteboard/editor/state/viewport'
+import {
+  editorStateMutationModel
+} from '@whiteboard/editor/state/model'
+import { attachEditorSync } from '@whiteboard/editor/editor/sync'
 import { createEditorTaskRuntime } from '@whiteboard/editor/tasks/runtime'
 import type { Editor } from '@whiteboard/editor/api/editor'
 import {
@@ -49,92 +45,22 @@ import {
 import type { Tool } from '@whiteboard/editor/schema/tool'
 import { createEditorWrite } from '@whiteboard/editor/write'
 import type { IntentResult } from '@whiteboard/engine'
-import type {
-  Engine
-} from '@whiteboard/engine'
-import type {
-  WhiteboardMutationDelta
-} from '@whiteboard/engine/mutation'
+import type { Engine } from '@whiteboard/engine'
+import type { WhiteboardMutationDelta } from '@whiteboard/engine/mutation'
 
-const EMPTY_DOCUMENT_DELTA: WhiteboardMutationDelta = createMutationDelta(
-  whiteboardMutationModel,
-  {}
-)
 const BOOTSTRAP_DOCUMENT_DELTA: WhiteboardMutationDelta = createMutationDelta(
   whiteboardMutationModel,
   {
-  reset: true
+    reset: true
   }
 )
 
-const reconcileEditorAfterDocumentCommit = (input: {
-  selection: {
-    nodeIds: readonly string[]
-    edgeIds: readonly string[]
-  }
-  edit: import('@whiteboard/editor/schema/edit').EditSession
-  document: {
-    node: (id: string) => unknown
-    edge: (id: string) => unknown
-  }
-}): EditorCommand[] => {
-  const nextNodeIds = input.selection.nodeIds.filter((id) => Boolean(input.document.node(id)))
-  const nextEdgeIds = input.selection.edgeIds.filter((id) => Boolean(input.document.edge(id)))
-  const commands: EditorCommand[] = []
-
-  if (
-    !equal.sameOrder(nextNodeIds, input.selection.nodeIds)
-    || !equal.sameOrder(nextEdgeIds, input.selection.edgeIds)
-  ) {
-    commands.push({
-      type: 'selection.set',
-      selection: {
-        nodeIds: nextNodeIds,
-        edgeIds: nextEdgeIds
-      }
-    })
-  }
-
-  if (
-    input.edit
-    && (
-      (input.edit.kind === 'node' && !input.document.node(input.edit.nodeId))
-      || (input.edit.kind === 'edge-label' && !input.document.edge(input.edit.edgeId))
-    )
-  ) {
-    commands.push({
-      type: 'edit.set',
-      edit: null
-    })
-  }
-
-  return commands
-}
-
-const createResetEditorCommands = (): readonly EditorCommand[] => ([
+const BOOTSTRAP_EDITOR_DELTA = createMutationDelta(
+  editorStateMutationModel,
   {
-    type: 'edit.set',
-    edit: null
-  },
-  {
-    type: 'selection.set',
-    selection: {
-      nodeIds: [],
-      edgeIds: []
-    }
-  },
-  {
-    type: 'interaction.set',
-    interaction: {
-      mode: 'idle',
-      chrome: false,
-      space: false
-    }
-  },
-  {
-    type: 'overlay.reset'
+    reset: true
   }
-])
+)
 
 export const createEditor = (input: {
   engine: Engine
@@ -155,19 +81,24 @@ export const createEditor = (input: {
 
   const defaults = input.services?.defaults ?? DEFAULT_EDITOR_DEFAULTS
   const nodeType = createNodeTypeSupport(input.nodes)
-  const stateRuntime = createEditorStateRuntime({
+  const state = createEditorStateRuntime({
     initialTool: input.initialTool,
-    initialDrawState: input.initialDrawState ?? DEFAULT_DRAW_STATE,
-    initialViewport: input.initialViewport
+    initialDrawState: input.initialDrawState ?? DEFAULT_DRAW_STATE
+  })
+  const viewport = createEditorViewport({
+    initialViewport: input.initialViewport,
+    commit: () => {}
   })
   const tasks = createEditorTaskRuntime()
-  const stateStores = createEditorStateStores(stateRuntime)
+  const stateStores = createEditorStateStores({
+    state,
+    viewport
+  })
   const editorState = createEditorStateView({
     stores: stateStores,
-    runtime: stateRuntime
+    viewport
   })
 
-  let currentSnapshot = stateRuntime.snapshot()
   const sceneRuntime = createProjectionRuntime({
     layout,
     nodeCapability: {
@@ -176,9 +107,9 @@ export const createEditor = (input: {
       capability: nodeType.support
     },
     view: () => ({
-      zoom: stateRuntime.viewport.get().zoom,
-      center: stateRuntime.viewport.get().center,
-      worldRect: stateRuntime.viewport.worldRect()
+      zoom: viewport.get().zoom,
+      center: viewport.get().center,
+      worldRect: viewport.visibleWorldRect()
     })
   })
 
@@ -189,14 +120,15 @@ export const createEditor = (input: {
       delta: BOOTSTRAP_DOCUMENT_DELTA
     },
     editor: {
-      snapshot: currentSnapshot,
-      delta: createBootstrapEditorDelta(currentSnapshot)
+      snapshot: state.snapshot(),
+      delta: BOOTSTRAP_EDITOR_DELTA
     }
   })
 
   const projection = createEditorSceneUi({
     scene: sceneRuntime.scene,
     state: editorState,
+    viewport,
     nodeType,
     defaults: defaults.selection
   })
@@ -207,7 +139,7 @@ export const createEditor = (input: {
   })
   const document = projection.document
   const snap = createSnapRuntime({
-    readZoom: () => stateRuntime.snapshot().state.viewport.zoom,
+    readZoom: () => viewport.get().zoom,
     node: {
       config: input.engine.config.node,
       query: projection.snap.candidates
@@ -217,7 +149,7 @@ export const createEditor = (input: {
       query: projection.edges.connectCandidates
     }
   })
-  const writeRuntime = createEditorWrite({
+  const write = createEditorWrite({
     engine: input.engine,
     history: input.history,
     document,
@@ -229,116 +161,55 @@ export const createEditor = (input: {
     projection,
     editor: {
       tool: {
-        get: () => stateRuntime.snapshot().state.tool
+        get: () => state.snapshot().state.tool
       },
       draw: {
-        get: () => stateRuntime.snapshot().state.draw
+        get: () => state.snapshot().state.draw
       },
       edit: {
-        get: () => stateRuntime.snapshot().state.edit
+        get: () => state.snapshot().state.edit
       },
       selection: {
-        get: () => stateRuntime.snapshot().state.selection
+        get: () => state.snapshot().state.selection
       },
       preview: {
-        get: () => stateRuntime.snapshot().overlay.preview
+        get: () => state.snapshot().preview
       },
-      dispatch: stateRuntime.dispatch,
-      viewport: stateRuntime.viewport
+      state: {
+        write: state.write
+      },
+      dispatch: state.dispatch,
+      viewport
     },
     tasks,
-    write: writeRuntime,
+    write,
     nodeType,
     defaults: defaults.templates
   })
 
   const runtime = {
-    viewport: {
-      get: stateRuntime.viewport.get,
-      subscribe: stateRuntime.viewport.subscribe,
-      pointer: stateRuntime.viewport.pointer,
-      worldToScreen: stateRuntime.viewport.worldToScreen,
-      worldRect: stateRuntime.viewport.worldRect,
-      screenPoint: stateRuntime.viewport.screenPoint,
-      size: stateRuntime.viewport.size,
-      setRect: (rect: Parameters<typeof stateRuntime.viewport.setRect>[0]) => {
-        stateRuntime.viewport.setRect(rect)
-
-        const previous = currentSnapshot
-        const next = stateRuntime.snapshot()
-        currentSnapshot = next
-        sceneRuntime.update({
-          document: {
-            snapshot: input.engine.doc(),
-            rev: input.engine.rev(),
-            delta: EMPTY_DOCUMENT_DELTA
-          },
-          editor: {
-            snapshot: next,
-            delta: createEditorDeltaFromCommitFlags({
-              flags: {
-                tool: false,
-                draw: false,
-                selection: false,
-                edit: false,
-                interaction: false,
-                hover: false,
-                preview: false,
-                viewport: true
-              },
-              previous,
-              next
-            })
-          }
-        })
-      },
-      setLimits: (limits: Parameters<typeof stateRuntime.viewport.setLimits>[0]) => {
-        stateRuntime.viewport.setLimits(limits)
-
-        const previous = currentSnapshot
-        const next = stateRuntime.snapshot()
-        currentSnapshot = next
-        sceneRuntime.update({
-          document: {
-            snapshot: input.engine.doc(),
-            rev: input.engine.rev(),
-            delta: EMPTY_DOCUMENT_DELTA
-          },
-          editor: {
-            snapshot: next,
-            delta: createEditorDeltaFromCommitFlags({
-              flags: {
-                tool: false,
-                draw: false,
-                selection: false,
-                edit: false,
-                interaction: false,
-                hover: false,
-                preview: false,
-                viewport: true
-              },
-              previous,
-              next
-            })
-          }
-        })
-      }
-    },
     config: input.engine.config,
     nodeType,
     snap
   }
 
   const dispatch: Editor['dispatch'] = (command) => {
-    stateRuntime.dispatch(command as EditorDispatchInput)
+    state.dispatch(command as EditorDispatchInput)
   }
 
   const editorBase = {
     scene,
     document,
     actions,
-    write: writeRuntime,
-    read: stateRuntime.snapshot,
+    write,
+    state: {
+      snapshot: state.snapshot,
+      reader: state.reader,
+      write: state.write,
+      commits: state.commits
+    },
+    viewport,
+    read: state.snapshot,
     runtime,
     dispatch
   }
@@ -351,95 +222,23 @@ export const createEditor = (input: {
     layout
   })
 
-  let suppressEditorCommitProjection = false
-  let suppressedCommitDeltas: EditorStateMutationDelta[] = []
-
-  const unsubscribeEditorCommits = stateRuntime.commits.subscribe((commit) => {
-    if (suppressEditorCommitProjection) {
-      suppressedCommitDeltas.push(commit.delta)
-      return
-    }
-
-    const previous = currentSnapshot
-    const next = stateRuntime.snapshot()
-    currentSnapshot = next
-
-    sceneRuntime.update({
-      document: {
-        snapshot: input.engine.doc(),
-        rev: input.engine.rev(),
-        delta: EMPTY_DOCUMENT_DELTA
-      },
-      editor: {
-        snapshot: next,
-        delta: createEditorDeltaFromCommitFlags({
-          flags: collectEditorCommitFlags([commit.delta]),
-          previous,
-          next
-        })
-      }
-    })
-  })
-
-  const unsubscribeEngineCommits = input.engine.commits.subscribe((commit) => {
-    const previous = currentSnapshot
-    suppressEditorCommitProjection = true
-    suppressedCommitDeltas = []
-
-    if (commit.kind === 'replace' || isCheckpointProgram(commit.authored)) {
-      host.cancel()
-      stateRuntime.dispatch(createResetEditorCommands())
-    } else {
-      const editorSnapshot = stateRuntime.snapshot()
-      const commands = reconcileEditorAfterDocumentCommit({
-        selection: editorSnapshot.state.selection,
-        edit: editorSnapshot.state.edit,
-        document
-      })
-      if (commands.length > 0) {
-        stateRuntime.dispatch(commands)
-      }
-    }
-
-    suppressEditorCommitProjection = false
-
-    const next = stateRuntime.snapshot()
-    currentSnapshot = next
-    const editorDelta = mergeEditorDeltas(
-      createEditorDeltaFromCommitFlags({
-        flags: collectEditorCommitFlags(suppressedCommitDeltas),
-        previous,
-        next
-      }),
-      createDocumentDrivenEditorDelta({
-        previous,
-        next
-      })
-    )
-
-    sceneRuntime.update({
-      document: {
-        snapshot: commit.document,
-        rev: commit.rev,
-        delta: commit.delta
-      },
-      editor: {
-        snapshot: next,
-        delta: editorDelta
-      }
-    })
+  const detachSync = attachEditorSync({
+    engine: input.engine,
+    state,
+    scene: sceneRuntime,
+    document,
+    cancelInput: host.cancel
   })
 
   return {
     ...editorBase,
     input: host,
     dispose: () => {
-      unsubscribeEngineCommits()
-      unsubscribeEditorCommits()
+      detachSync()
       tasks.dispose()
       host.cancel()
       sceneRuntime.dispose()
-      stateRuntime.dispose()
+      state.dispose()
     }
   }
 }

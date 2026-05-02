@@ -1,6 +1,7 @@
 import { equal } from '@shared/core'
 import type {
   EdgeId,
+  MindmapId,
   NodeId
 } from '@whiteboard/core/types'
 import type { EditCaret } from '@whiteboard/editor/schema/edit'
@@ -190,8 +191,8 @@ const isEdgeGuidePreviewEqual = (
 }
 
 const isMindmapDropLineEqual = (
-  left: NonNullable<NonNullable<MindmapPreview['subtreeMove']>['drop']>['connectionLine'],
-  right: NonNullable<NonNullable<MindmapPreview['subtreeMove']>['drop']>['connectionLine']
+  left: NonNullable<NonNullable<NonNullable<MindmapPreview[MindmapId]>['subtreeMove']>['drop']>['connectionLine'],
+  right: NonNullable<NonNullable<NonNullable<MindmapPreview[MindmapId]>['subtreeMove']>['drop']>['connectionLine']
 ): boolean => left === right || (
   left !== undefined
   && right !== undefined
@@ -202,8 +203,8 @@ const isMindmapDropLineEqual = (
 )
 
 const isMindmapDropTargetEqual = (
-  left: NonNullable<MindmapPreview['subtreeMove']>['drop'],
-  right: NonNullable<MindmapPreview['subtreeMove']>['drop']
+  left: NonNullable<NonNullable<MindmapPreview[MindmapId]>['subtreeMove']>['drop'],
+  right: NonNullable<NonNullable<MindmapPreview[MindmapId]>['subtreeMove']>['drop']
 ): boolean => left === right || (
   left !== undefined
   && right !== undefined
@@ -216,18 +217,17 @@ const isMindmapDropTargetEqual = (
   && isMindmapDropLineEqual(left.insertLine, right.insertLine)
 )
 
-const isMindmapPreviewEqual = (
-  left: MindmapPreview | null,
-  right: MindmapPreview | null
+const isMindmapPreviewEntryEqual = (
+  left: MindmapPreview[MindmapId] | undefined,
+  right: MindmapPreview[MindmapId] | undefined
 ): boolean => left === right || (
-  left !== null
-  && right !== null
+  left !== undefined
+  && right !== undefined
   && (
     left.rootMove === right.rootMove
     || (
       left.rootMove !== undefined
       && right.rootMove !== undefined
-      && left.rootMove.mindmapId === right.rootMove.mindmapId
       && equal.sameOptionalPoint(left.rootMove.delta, right.rootMove.delta)
     )
   )
@@ -236,13 +236,32 @@ const isMindmapPreviewEqual = (
     || (
       left.subtreeMove !== undefined
       && right.subtreeMove !== undefined
-      && left.subtreeMove.mindmapId === right.subtreeMove.mindmapId
       && left.subtreeMove.nodeId === right.subtreeMove.nodeId
       && equal.sameOptionalRect(left.subtreeMove.ghost, right.subtreeMove.ghost)
       && isMindmapDropTargetEqual(left.subtreeMove.drop, right.subtreeMove.drop)
     )
   )
 )
+
+const isMindmapPreviewEqual = (
+  left: MindmapPreview,
+  right: MindmapPreview
+): boolean => {
+  if (left === right) {
+    return true
+  }
+
+  const leftIds = Object.keys(left) as MindmapId[]
+  const rightIds = Object.keys(right) as MindmapId[]
+  if (!equal.sameOrder(leftIds, rightIds)) {
+    return false
+  }
+
+  return leftIds.every((mindmapId) => isMindmapPreviewEntryEqual(
+    left[mindmapId],
+    right[mindmapId]
+  ))
+}
 
 const readNodeUiEdit = (
   nodeId: NodeId,
@@ -386,10 +405,7 @@ export const buildChromeView = (input: {
     })
   }
 
-  if (
-    input.state.preview.mindmap?.rootMove
-    || input.state.preview.mindmap?.subtreeMove
-  ) {
+  if (Object.keys(input.state.preview.mindmap).length > 0) {
     overlays.push({
       kind: 'mindmap-drop'
     })

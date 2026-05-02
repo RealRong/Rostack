@@ -66,11 +66,11 @@ import type {
   EditSession
 } from '@whiteboard/editor/schema/edit'
 import type {
-  EditorDelta
-} from '@whiteboard/editor/state/delta'
-import type {
   EditorStateDocument as EditorSnapshot
 } from '@whiteboard/editor/state/document'
+import type {
+  EditorStateMutationDelta
+} from '@whiteboard/editor/state/runtime'
 import type {
   InteractionMode
 } from '@whiteboard/editor/input/core/types'
@@ -124,7 +124,7 @@ export interface SceneUpdateInput {
   }
   editor: {
     snapshot: EditorSnapshot
-    delta: EditorDelta
+    delta: EditorStateMutationDelta
   }
 }
 
@@ -171,12 +171,12 @@ export interface EditorStateInput {
 }
 
 export interface PreviewInput {
-  nodes: Readonly<Record<NodeId, NodePreview | undefined>>
-  edges: Readonly<Record<EdgeId, EdgePreview | undefined>>
-  edgeGuide?: EdgeGuidePreview
-  draw: DrawPreview | null
+  node: Readonly<Record<NodeId, NodePreview | undefined>>
+  edge: Readonly<Record<EdgeId, EdgePreview | undefined>>
+  mindmap: Readonly<Record<MindmapId, MindmapPreviewEntry | undefined>>
   selection: SelectionPreview
-  mindmap: MindmapPreview | null
+  draw: DrawPreview | null
+  edgeGuide?: EdgeGuidePreview
 }
 
 export interface EdgeGuidePreview {
@@ -234,18 +234,18 @@ export interface SelectionPreview {
   guides: readonly Guide[]
 }
 
-export interface MindmapPreview {
+export interface MindmapPreviewEntry {
   rootMove?: {
-    mindmapId: MindmapId
     delta: Point
   }
   subtreeMove?: {
-    mindmapId: MindmapId
     nodeId: NodeId
     ghost: Rect
     drop?: MindmapDragDropTarget
   }
 }
+
+export type MindmapPreview = Readonly<Record<MindmapId, MindmapPreviewEntry | undefined>>
 
 export type EditorSceneLayout = WhiteboardLayoutService
 
@@ -539,7 +539,7 @@ export interface ChromePreviewView {
   }
   guides: readonly Guide[]
   draw: DrawPreview | null
-  mindmap: MindmapPreview | null
+  mindmap: MindmapPreview
 }
 
 export interface ChromeOverlay {
@@ -895,7 +895,6 @@ export interface EditorScene {
   selection: SceneSelection
   frame: SceneFrame
   hit: SceneHit
-  viewport: SceneViewport
   overlay: SceneOverlay
   spatial: SceneSpatial
   snap: SceneSnap

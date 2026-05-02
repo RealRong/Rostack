@@ -134,7 +134,7 @@ export const readNodeEntry = (
       node,
       owner: ownerByNode.get(nodeId)
     },
-    preview: input.editor.snapshot.overlay.preview.nodes[nodeId]
+    preview: input.editor.snapshot.preview.node[nodeId]
   }
 }
 

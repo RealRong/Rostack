@@ -7,13 +7,12 @@ import type {
   EditSession
 } from '@whiteboard/editor/schema/edit'
 import type {
-  EditorDelta
-} from '@whiteboard/editor/state/delta'
-import type {
   EditorStateDocument as EditorSnapshot
 } from '@whiteboard/editor/state/document'
 import type {
-  PreviewInput,
+  EditorStateMutationDelta
+} from '@whiteboard/editor/state/runtime'
+import type {
   SceneRuntimeFacts
 } from '../contracts/editor'
 
@@ -29,70 +28,46 @@ const readEditedNodeIds = (
   ? new Set([edit.nodeId])
   : new Set()
 
-const readPreviewMindmapIds = (
-  preview: PreviewInput['mindmap']
-): ReadonlySet<MindmapId> => {
-  const ids = new Set<MindmapId>()
+const readHoverNodeIds = (
+  previous: EditorSnapshot,
+  next: EditorSnapshot,
+  delta: EditorStateMutationDelta
+): ReadonlySet<NodeId> => delta.hover.node.changed()
+  ? new Set(
+      [previous.hover.node, next.hover.node].filter((id): id is NodeId => id !== null)
+    )
+  : new Set()
 
-  if (preview?.rootMove) {
-    ids.add(preview.rootMove.mindmapId)
-  }
-  if (preview?.subtreeMove) {
-    ids.add(preview.subtreeMove.mindmapId)
-  }
+const readHoverEdgeIds = (
+  previous: EditorSnapshot,
+  next: EditorSnapshot,
+  delta: EditorStateMutationDelta
+): ReadonlySet<EdgeId> => delta.hover.edge.changed()
+  ? new Set(
+      [previous.hover.edge, next.hover.edge].filter((id): id is EdgeId => id !== null)
+    )
+  : new Set()
 
-  return ids
-}
+const readHoverMindmapIds = (
+  previous: EditorSnapshot,
+  next: EditorSnapshot,
+  delta: EditorStateMutationDelta
+): ReadonlySet<MindmapId> => delta.hover.mindmap.changed()
+  ? new Set(
+      [previous.hover.mindmap, next.hover.mindmap].filter((id): id is MindmapId => id !== null)
+    )
+  : new Set()
 
-const readPreviewNodeIds = (
-  preview: PreviewInput
-): ReadonlySet<NodeId> => new Set(Object.keys(preview.nodes) as readonly NodeId[])
-
-const readPreviewEdgeIds = (
-  preview: PreviewInput
-): ReadonlySet<EdgeId> => new Set(Object.keys(preview.edges) as readonly EdgeId[])
-
-const readPreviewTouchedNodeIds = (
-  snapshot: EditorSnapshot,
-  delta: EditorDelta
-): ReadonlySet<NodeId> => {
-  if (delta.preview && delta.preview !== true) {
-    return new Set(delta.preview.touchedNodeIds)
-  }
-  if (delta.hover && delta.hover !== true) {
-    return new Set(delta.hover.touchedNodeIds)
-  }
-  return readPreviewNodeIds(snapshot.overlay.preview)
-}
-
-const readPreviewTouchedEdgeIds = (
-  snapshot: EditorSnapshot,
-  delta: EditorDelta
-): ReadonlySet<EdgeId> => {
-  if (delta.preview && delta.preview !== true) {
-    return new Set(delta.preview.touchedEdgeIds)
-  }
-  if (delta.hover && delta.hover !== true) {
-    return new Set(delta.hover.touchedEdgeIds)
-  }
-  return readPreviewEdgeIds(snapshot.overlay.preview)
-}
-
-const readPreviewTouchedMindmapIds = (
-  snapshot: EditorSnapshot,
-  delta: EditorDelta
-): ReadonlySet<MindmapId> => {
-  if (delta.preview && delta.preview !== true) {
-    return new Set(delta.preview.touchedMindmapIds)
-  }
-  if (delta.hover && delta.hover !== true) {
-    return new Set(delta.hover.touchedMindmapIds)
-  }
-  return readPreviewMindmapIds(snapshot.overlay.preview.mindmap)
-}
+const toTouchedSet = <TId extends string>(
+  value: ReadonlySet<TId> | 'all',
+  fallback: readonly TId[]
+): ReadonlySet<TId> => value === 'all'
+  ? new Set(fallback)
+  : new Set(value)
 
 export const createRuntimeFacts = (input: {
-  snapshot: EditorSnapshot
+  previous: EditorSnapshot
+  next: EditorSnapshot
   interaction: {
     selection: {
       edgeIds: readonly EdgeId[]
@@ -102,67 +77,60 @@ export const createRuntimeFacts = (input: {
       edgeId?: EdgeId
     }
   }
-  delta: EditorDelta
+  delta: EditorStateMutationDelta
 }): SceneRuntimeFacts => {
   const touchedNodeIds = new Set<NodeId>([
-    ...readPreviewTouchedNodeIds(input.snapshot, input.delta),
-    ...readEditedNodeIds(input.snapshot.state.edit)
+    ...toTouchedSet(
+      input.delta.preview.node.touchedIds(),
+      Object.keys(input.next.preview.node) as readonly NodeId[]
+    ),
+    ...readHoverNodeIds(input.previous, input.next, input.delta),
+    ...readEditedNodeIds(input.next.state.edit)
   ])
   const touchedEdgeIds = new Set<EdgeId>([
-    ...readPreviewTouchedEdgeIds(input.snapshot, input.delta),
-    ...readEditedEdgeIds(input.snapshot.state.edit)
+    ...toTouchedSet(
+      input.delta.preview.edge.touchedIds(),
+      Object.keys(input.next.preview.edge) as readonly EdgeId[]
+    ),
+    ...readHoverEdgeIds(input.previous, input.next, input.delta),
+    ...readEditedEdgeIds(input.next.state.edit)
   ])
   const touchedMindmapIds = new Set<MindmapId>([
-    ...readPreviewTouchedMindmapIds(input.snapshot, input.delta)
+    ...toTouchedSet(
+      input.delta.preview.mindmap.touchedIds(),
+      Object.keys(input.next.preview.mindmap) as readonly MindmapId[]
+    ),
+    ...readHoverMindmapIds(input.previous, input.next, input.delta)
   ])
 
   const activeEdgeIds = new Set<EdgeId>([
     ...input.interaction.selection.edgeIds,
-    ...readEditedEdgeIds(input.snapshot.state.edit)
+    ...readEditedEdgeIds(input.next.state.edit)
   ])
   if (input.interaction.hover.kind === 'edge' && input.interaction.hover.edgeId) {
     activeEdgeIds.add(input.interaction.hover.edgeId)
   }
 
-  const preview = input.delta.preview
-  const previewDelta = preview && preview !== true
-    ? preview
-    : undefined
-  const previewMindmapChanged = Boolean(
-    preview
-    && (
-      preview === true
-      || previewDelta?.touchedMindmapIds.length
-    )
-  )
-  const uiChanged = Boolean(
-    input.delta.tool
-    || input.delta.selection
-    || input.delta.hover
-    || input.delta.edit
-    || input.delta.interaction
-    || preview === true
-    || previewMindmapChanged
-    || (previewDelta && (
-      previewDelta.marquee
-      || previewDelta.guides
-      || previewDelta.draw
-      || previewDelta.edgeGuide
-      || previewDelta.hover
-    ))
+  const overlayChanged = (
+    input.delta.hover.node.changed()
+    || input.delta.hover.edge.changed()
+    || input.delta.hover.mindmap.changed()
+    || input.delta.hover.group.changed()
+    || input.delta.hover.selectionBox.changed()
+    || input.delta.preview.node.changed()
+    || input.delta.preview.edge.changed()
+    || input.delta.preview.mindmap.changed()
+    || input.delta.preview.selection.changed()
+    || input.delta.preview.draw.changed()
+    || input.delta.preview.edgeGuide.changed()
   )
 
-  const overlayChanged = Boolean(
-    input.delta.hover
-    || preview === true
-    || previewMindmapChanged
-    || (previewDelta && (
-      previewDelta.marquee
-      || previewDelta.guides
-      || previewDelta.draw
-      || previewDelta.edgeGuide
-      || previewDelta.hover
-    ))
+  const uiChanged = (
+    input.delta.state.tool.changed()
+    || input.delta.state.selection.changed()
+    || input.delta.state.edit.changed()
+    || input.delta.state.interaction.changed()
+    || overlayChanged
   )
 
   return {

@@ -17,12 +17,15 @@ import type {
   EditorScene,
   PreviewInput
 } from '@whiteboard/editor-scene'
+import type {
+  SceneBackgroundView
+} from '@whiteboard/editor-scene'
 import type { EdgeGuide } from '@whiteboard/editor/state/preview-types'
 import type { DrawState } from '@whiteboard/editor/schema/draw-state'
 import type { EditSession } from '@whiteboard/editor/schema/edit'
 import type { DrawMode } from '@whiteboard/editor/schema/draw-mode'
 import type { Tool } from '@whiteboard/editor/schema/tool'
-import type { ViewportPointer, ViewportRuntime } from '@whiteboard/editor/state/viewport'
+import type { EditorViewport, ViewportPointer } from '@whiteboard/editor/state/viewport'
 import type {
   EditorSelectionView,
   SelectionEdgeStats,
@@ -135,20 +138,8 @@ export type EditorSceneUiMindmap = {
 
 export type EditorSceneUi = {
   state: EditorState
+  background: store.ReadStore<SceneBackgroundView>
   selection: EditorSceneUiSelection
   chrome: EditorSceneUiChrome
   mindmap: EditorSceneUiMindmap
 }
-
-export type EditorViewportRuntime = Pick<
-  ViewportRuntime,
-  | 'get'
-  | 'subscribe'
-  | 'pointer'
-  | 'worldToScreen'
-  | 'worldRect'
-  | 'screenPoint'
-  | 'size'
-  | 'setRect'
-  | 'setLimits'
->

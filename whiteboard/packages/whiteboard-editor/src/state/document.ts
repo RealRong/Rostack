@@ -1,17 +1,17 @@
 import { geometry as geometryApi } from '@whiteboard/core/geometry'
 import { selection as selectionApi, type SelectionTarget } from '@whiteboard/core/selection'
-import type { Viewport } from '@whiteboard/core/types'
+import type {
+  EdgeId,
+  GroupId,
+  MindmapId,
+  NodeId
+} from '@whiteboard/core/types'
 import { json } from '@shared/core'
 import type {
   HoverState,
   PreviewInput
 } from '@whiteboard/editor-scene'
 import type { InteractionMode } from '@whiteboard/editor/input/core/types'
-import {
-  EMPTY_HOVER_STATE,
-  isHoverStateEqual,
-  normalizeHoverState
-} from '@whiteboard/editor/input/hover/store'
 import type { Tool } from '@whiteboard/editor/schema/tool'
 import type {
   DrawState
@@ -20,15 +20,15 @@ import {
   isDrawStateEqual,
   normalizeDrawState
 } from '@whiteboard/editor/schema/draw-state'
+import type {
+  EditCaret,
+  EditSession
+} from '@whiteboard/editor/schema/edit'
 import {
   EMPTY_PREVIEW_STATE,
   isEditorPreviewStateEqual,
   normalizeEditorPreviewState
 } from '@whiteboard/editor/state/preview'
-import type {
-  EditCaret,
-  EditSession
-} from '@whiteboard/editor/schema/edit'
 
 export interface EditorStableInteractionState {
   mode: InteractionMode
@@ -36,8 +36,16 @@ export interface EditorStableInteractionState {
   space: boolean
 }
 
+export interface EditorHoverState {
+  node: NodeId | null
+  edge: EdgeId | null
+  mindmap: MindmapId | null
+  group: GroupId | null
+  selectionBox: boolean
+}
+
 export interface EditorInteractionStateValue extends EditorStableInteractionState {
-  hover: HoverState
+  hover: EditorHoverState
 }
 
 export interface EditorStableState {
@@ -46,18 +54,21 @@ export interface EditorStableState {
   selection: SelectionTarget
   edit: EditSession
   interaction: EditorStableInteractionState
-  viewport: Viewport
-}
-
-export interface EditorOverlayState {
-  hover: HoverState
-  preview: PreviewInput
 }
 
 export interface EditorStateDocument {
   state: EditorStableState
-  overlay: EditorOverlayState
+  hover: EditorHoverState
+  preview: PreviewInput
 }
+
+const EMPTY_EDITOR_HOVER_STATE: EditorHoverState = Object.freeze({
+  node: null,
+  edge: null,
+  mindmap: null,
+  group: null,
+  selectionBox: false
+})
 
 const isObjectRecord = (
   value: unknown
@@ -220,13 +231,6 @@ export const isEditSessionEqual = (
       && left.labelId === right.labelId
 }
 
-export const normalizeViewportValue = (
-  value: Viewport
-): Viewport => geometryApi.viewport.normalize(
-  value,
-  geometryApi.viewport.defaultLimits
-)
-
 export const normalizeInteractionMode = (
   value: InteractionMode
 ): InteractionMode => {
@@ -266,6 +270,72 @@ export const isInteractionStateEqual = (
   && left.space === right.space
 )
 
+export const normalizeEditorHoverState = (
+  value: Partial<EditorHoverState> | null | undefined
+): EditorHoverState => ({
+  node: typeof value?.node === 'string' && value.node.length > 0
+    ? value.node as NodeId
+    : null,
+  edge: typeof value?.edge === 'string' && value.edge.length > 0
+    ? value.edge
+    : null,
+  mindmap: typeof value?.mindmap === 'string' && value.mindmap.length > 0
+    ? value.mindmap as MindmapId
+    : null,
+  group: typeof value?.group === 'string' && value.group.length > 0
+    ? value.group as GroupId
+    : null,
+  selectionBox: Boolean(value?.selectionBox)
+})
+
+export const isEditorHoverStateEqual = (
+  left: EditorHoverState,
+  right: EditorHoverState
+): boolean => (
+  left.node === right.node
+  && left.edge === right.edge
+  && left.mindmap === right.mindmap
+  && left.group === right.group
+  && left.selectionBox === right.selectionBox
+)
+
+export const toSceneHoverState = (
+  hover: EditorHoverState
+): HoverState => {
+  if (hover.node) {
+    return {
+      kind: 'node',
+      nodeId: hover.node
+    }
+  }
+  if (hover.edge) {
+    return {
+      kind: 'edge',
+      edgeId: hover.edge
+    }
+  }
+  if (hover.mindmap) {
+    return {
+      kind: 'mindmap',
+      mindmapId: hover.mindmap
+    }
+  }
+  if (hover.group) {
+    return {
+      kind: 'group',
+      groupId: hover.group
+    }
+  }
+  if (hover.selectionBox) {
+    return {
+      kind: 'selection-box'
+    }
+  }
+  return {
+    kind: 'none'
+  }
+}
+
 export const normalizeEditorStableState = (
   value: EditorStableState
 ): EditorStableState => ({
@@ -273,24 +343,8 @@ export const normalizeEditorStableState = (
   draw: normalizeDrawState(value.draw),
   selection: selectionApi.target.normalize(value.selection),
   edit: normalizeEditSession(value.edit),
-  interaction: normalizeInteractionStateValue(value.interaction),
-  viewport: normalizeViewportValue(value.viewport)
+  interaction: normalizeInteractionStateValue(value.interaction)
 })
-
-export const normalizeEditorOverlayState = (
-  value: EditorOverlayState
-): EditorOverlayState => ({
-  hover: normalizeHoverState(value.hover),
-  preview: normalizeEditorPreviewState(value.preview)
-})
-
-export const isEditorOverlayStateEqual = (
-  left: EditorOverlayState,
-  right: EditorOverlayState
-): boolean => (
-  isHoverStateEqual(left.hover, right.hover)
-  && isEditorPreviewStateEqual(left.preview, right.preview)
-)
 
 export const buildEditorStateDocument = (input: {
   tool: Tool
@@ -298,9 +352,8 @@ export const buildEditorStateDocument = (input: {
   selection?: SelectionTarget
   edit?: EditSession
   interaction?: EditorStableInteractionState
-  hover?: HoverState
+  hover?: Partial<EditorHoverState>
   preview?: PreviewInput
-  viewport: Viewport
 }): EditorStateDocument => normalizeEditorStateDocument({
   state: {
     tool: input.tool,
@@ -311,23 +364,22 @@ export const buildEditorStateDocument = (input: {
       mode: 'idle',
       chrome: true,
       space: false
-    },
-    viewport: input.viewport
+    }
   },
-  overlay: {
-    hover: input.hover ?? EMPTY_HOVER_STATE,
-    preview: input.preview ?? EMPTY_PREVIEW_STATE
-  }
+  hover: normalizeEditorHoverState(input.hover),
+  preview: input.preview ?? EMPTY_PREVIEW_STATE
 })
 
 export const normalizeEditorStateDocument = (
   value: EditorStateDocument
 ): EditorStateDocument => ({
   state: normalizeEditorStableState(value.state),
-  overlay: normalizeEditorOverlayState(value.overlay)
+  hover: normalizeEditorHoverState(value.hover),
+  preview: normalizeEditorPreviewState(value.preview)
 })
 
 export const isSelectionEqual = selectionApi.target.equal
 export const isDrawEqual = isDrawStateEqual
-export const isViewportEqual = geometryApi.viewport.isSame
 export const isPreviewEqual = isEditorPreviewStateEqual
+export const isViewportEqual = geometryApi.viewport.isSame
+export const EMPTY_HOVER_STATE = EMPTY_EDITOR_HOVER_STATE

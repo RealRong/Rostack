@@ -89,7 +89,7 @@ export const createWorking = (input: {
     preview: {
       guides: [],
       draw: null,
-      mindmap: null
+      mindmap: {}
     },
     edit: null
   }
@@ -112,24 +112,22 @@ export const createWorking = (input: {
         mode: 'idle',
         chrome: false,
         space: false
-      },
-      viewport: {
-        center: { x: 0, y: 0 },
-        zoom: 1
       }
     },
-    overlay: {
-      hover: {
-        kind: 'none'
-      },
-      preview: {
-        nodes: {},
-        edges: {},
-        draw: null,
-        selection: {
-          guides: []
-        },
-        mindmap: null
+    hover: {
+      node: null,
+      edge: null,
+      mindmap: null,
+      group: null,
+      selectionBox: false
+    },
+    preview: {
+      node: {},
+      edge: {},
+      mindmap: {},
+      draw: null,
+      selection: {
+        guides: []
       }
     }
   }
@@ -152,7 +150,9 @@ export const createWorking = (input: {
         snapshot: editorSnapshot,
         interaction: {
           selection: editorSnapshot.state.selection,
-          hover: editorSnapshot.overlay.hover,
+          hover: {
+            kind: 'none'
+          },
           drag: {
             kind: 'idle'
           },

@@ -18,11 +18,6 @@ import {
 import type { InteractionSession } from '@whiteboard/editor/input/core/types'
 import { createPressDragSession } from '@whiteboard/editor/input/internals/press'
 import type { Editor } from '@whiteboard/editor/api/editor'
-import type { EditorCommand } from '@whiteboard/editor/state/intents'
-import {
-  isPreviewEqual,
-  replacePreviewEdgeInteraction
-} from '@whiteboard/editor/state/preview'
 
 export type EdgeRouteHandleState =
   | {
@@ -459,7 +454,7 @@ const readViewportWorld = (
     clientX: number
     clientY: number
   }
-) => editor.runtime.viewport.pointer(pointer).world
+) => editor.viewport.pointer(pointer).world
 
 const submitEdgeRouteCommit = (
   editor: Editor,
@@ -492,18 +487,29 @@ const createEdgeRouteSession = (
   let state = initial
   const baseEdge = editor.scene.edges.get(initial.edgeId)?.base.edge
 
-  editor.dispatch((snapshot) => {
-    const current = snapshot.overlay.preview
-    const nextPreview = replacePreviewEdgeInteraction(current, [{
-      id: state.edgeId,
-      activeRouteIndex: state.index
-    }])
-    return isPreviewEqual(current, nextPreview)
-      ? null
-      : {
-          type: 'overlay.preview.set',
-          preview: nextPreview
-        } satisfies EditorCommand
+  editor.state.write(({
+    writer,
+    snapshot
+  }) => {
+    Object.keys(snapshot.preview.edge).forEach((edgeId) => {
+      const id = edgeId as EdgeId
+      if (id !== state.edgeId) {
+        writer.preview.edge.delete(id)
+        return
+      }
+
+      writer.preview.edge.patch(id, {
+        patch: undefined,
+        activeRouteIndex: state.index
+      })
+    })
+
+    if (!snapshot.preview.edge[state.edgeId]) {
+      writer.preview.edge.create({
+        id: state.edgeId,
+        activeRouteIndex: state.index
+      })
+    }
   })
 
   const step = (
@@ -523,23 +529,30 @@ const createEdgeRouteSession = (
       pointerWorld: readViewportWorld(editor, pointer)
     })
     state = result.state
-    editor.dispatch((snapshot) => {
-      const current = snapshot.overlay.preview
-      const nextPreview = replacePreviewEdgeInteraction(current, [{
-        id: state.edgeId,
-        activeRouteIndex: state.index,
-        ...(result.draft?.patch
-          ? {
-              patch: result.draft.patch
-            }
-          : {})
-      }])
-      return isPreviewEqual(current, nextPreview)
-        ? null
-        : {
-            type: 'overlay.preview.set',
-            preview: nextPreview
-          } satisfies EditorCommand
+    editor.state.write(({
+      writer,
+      snapshot
+    }) => {
+      Object.keys(snapshot.preview.edge).forEach((edgeId) => {
+        const id = edgeId as EdgeId
+        if (id !== state.edgeId) {
+          writer.preview.edge.delete(id)
+          return
+        }
+
+        writer.preview.edge.patch(id, {
+          patch: result.draft?.patch,
+          activeRouteIndex: state.index
+        })
+      })
+
+      if (!snapshot.preview.edge[state.edgeId]) {
+        writer.preview.edge.create({
+          id: state.edgeId,
+          patch: result.draft?.patch,
+          activeRouteIndex: state.index
+        })
+      }
     })
   }
 
@@ -576,15 +589,13 @@ const createEdgeRouteSession = (
       return FINISH
     },
     cleanup: () => {
-      editor.dispatch((snapshot) => {
-        const current = snapshot.overlay.preview
-        const nextPreview = replacePreviewEdgeInteraction(current, [])
-        return isPreviewEqual(current, nextPreview)
-          ? null
-          : {
-              type: 'overlay.preview.set',
-              preview: nextPreview
-            } satisfies EditorCommand
+      editor.state.write(({
+        writer,
+        snapshot
+      }) => {
+        Object.keys(snapshot.preview.edge).forEach((edgeId) => {
+          writer.preview.edge.delete(edgeId as EdgeId)
+        })
       })
     }
   }

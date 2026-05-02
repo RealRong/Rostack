@@ -6,7 +6,8 @@ import { createMindmapDragSession } from '../src/input/features/mindmap/drag'
 import { editor as editorApi } from '../src'
 import type { NodeSpec } from '../src'
 import { createEditorTestLayout } from './support'
-import { EMPTY_PREVIEW_STATE } from '../src/state/preview'
+import { DEFAULT_DRAW_STATE } from '../src/schema/draw-state'
+import { createEditorStateRuntime } from '../src/state/runtime'
 
 const nodes: NodeSpec = {
   text: {
@@ -134,9 +135,15 @@ describe('mindmap root move', () => {
   it('keeps root move preview on the interaction draft until commit', () => {
     const moveRoot = vi.fn()
     const moveByDrop = vi.fn()
-    let preview = EMPTY_PREVIEW_STATE
+    const state = createEditorStateRuntime({
+      initialTool: {
+        type: 'select'
+      },
+      initialDrawState: DEFAULT_DRAW_STATE
+    })
 
     const session = createMindmapDragSession({
+      state,
       actions: {
         mindmap: {
           moveRoot,
@@ -169,17 +176,8 @@ describe('mindmap root move', () => {
           pointer: vi.fn()
         }
       },
-      dispatch: (input: any) => {
-        const command = typeof input === 'function'
-          ? input({
-              overlay: {
-                preview
-              }
-            })
-          : input
-        if (command?.type === 'overlay.preview.set') {
-          preview = command.preview
-        }
+      viewport: {
+        pointer: vi.fn()
       }
     } as any, {
       kind: 'root',
@@ -190,10 +188,11 @@ describe('mindmap root move', () => {
       position: { x: 100, y: 0 }
     })
 
-    expect(preview.mindmap).toEqual({
-      rootMove: {
-        mindmapId: 'mindmap_1',
+    expect(state.snapshot().preview.mindmap).toEqual({
+      mindmap_1: {
+        rootMove: {
         delta: { x: 50, y: 0 }
+        }
       }
     })
 

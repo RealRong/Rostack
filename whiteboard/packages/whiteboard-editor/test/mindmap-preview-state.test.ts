@@ -1,12 +1,19 @@
 import { describe, expect, it, vi } from 'vitest'
 import { createMindmapDragSession } from '../src/input/features/mindmap/drag'
-import { EMPTY_PREVIEW_STATE } from '../src/state/preview'
+import { DEFAULT_DRAW_STATE } from '../src/schema/draw-state'
+import { createEditorStateRuntime } from '../src/state/runtime'
 
 describe('mindmap preview state', () => {
   it('projects mindmap drag into overlay preview truth', () => {
-    let preview = EMPTY_PREVIEW_STATE
+    const state = createEditorStateRuntime({
+      initialTool: {
+        type: 'select'
+      },
+      initialDrawState: DEFAULT_DRAW_STATE
+    })
 
     createMindmapDragSession({
+      state,
       document: {
         snapshot: () => ({
           nodes: {
@@ -30,22 +37,13 @@ describe('mindmap preview state', () => {
           pointer: vi.fn()
         }
       },
+      viewport: {
+        pointer: vi.fn()
+      },
       actions: {
         mindmap: {
           moveRoot: vi.fn(),
           moveByDrop: vi.fn()
-        }
-      },
-      dispatch: (input: any) => {
-        const command = typeof input === 'function'
-          ? input({
-              overlay: {
-                preview
-              }
-            })
-          : input
-        if (command?.type === 'overlay.preview.set') {
-          preview = command.preview
         }
       }
     } as any, {
@@ -57,12 +55,13 @@ describe('mindmap preview state', () => {
       position: { x: 60, y: 40 }
     })
 
-    expect(preview.mindmap).toEqual({
-      rootMove: {
-        mindmapId: 'mind-1',
-        delta: {
-          x: 60,
-          y: 40
+    expect(state.snapshot().preview.mindmap).toEqual({
+      'mind-1': {
+        rootMove: {
+          delta: {
+            x: 60,
+            y: 40
+          }
         }
       }
     })

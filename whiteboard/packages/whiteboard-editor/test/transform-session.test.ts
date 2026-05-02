@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import type { Node } from '@whiteboard/core/types'
 import { createTransformSession } from '../src/input/features/transform'
-import { EMPTY_PREVIEW_STATE } from '../src/state/preview'
+import { DEFAULT_DRAW_STATE } from '../src/schema/draw-state'
+import { createEditorStateRuntime } from '../src/state/runtime'
 import { createEditorTestLayout } from './support'
 
 const createTextNode = (
@@ -101,7 +102,12 @@ const createTransformContext = ({
     width: 100,
     height: 24
   }
-  let preview = EMPTY_PREVIEW_STATE
+  const state = createEditorStateRuntime({
+    initialTool: {
+      type: 'select'
+    },
+    initialDrawState: DEFAULT_DRAW_STATE
+  })
 
   return {
     layout: createEditorTestLayout({
@@ -114,6 +120,22 @@ const createTransformContext = ({
       })
     }),
     editor: {
+      state,
+      viewport: {
+        screenPoint: (screenX: number, screenY: number) => ({
+          x: screenX,
+          y: screenY
+        }),
+        pointer: (pointer: {
+          clientX: number
+          clientY: number
+        }) => ({
+          world: {
+            x: pointer.clientX,
+            y: pointer.clientY
+          }
+        })
+      },
       document: {
         node: () => node
       },
@@ -142,21 +164,6 @@ const createTransformContext = ({
         }
       },
       runtime: {
-        viewport: {
-          screenPoint: (screenX: number, screenY: number) => ({
-            x: screenX,
-            y: screenY
-          }),
-          pointer: (pointer: {
-            clientX: number
-            clientY: number
-          }) => ({
-            world: {
-              x: pointer.clientX,
-              y: pointer.clientY
-            }
-          })
-        },
         snap: {
           node: {
             resize: (input: {
@@ -184,18 +191,6 @@ const createTransformContext = ({
             resize: true,
             rotate: false
           })
-        }
-      },
-      dispatch: (input: any) => {
-        const command = typeof input === 'function'
-          ? input({
-              overlay: {
-                preview
-              }
-            })
-          : input
-        if (command?.type === 'overlay.preview.set') {
-          preview = command.preview
         }
       },
       write: {

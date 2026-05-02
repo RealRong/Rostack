@@ -128,17 +128,6 @@ export interface SceneUpdateInput {
   }
 }
 
-export type SceneBackgroundView =
-  | {
-      type: 'none'
-    }
-  | {
-      type: 'dot' | 'line'
-      color: string
-      step: number
-      offset: Point
-    }
-
 export type OwnerRef =
   | {
       kind: 'mindmap'
@@ -843,13 +832,12 @@ export interface SceneHit {
   }): SceneHitItem | undefined
 }
 
-export interface SceneViewport {
+export interface ProjectionViewRead {
   zoom(): number
   center(): Point
   worldRect(): Rect
   screenPoint(point: Point): Point
   screenRect(rect: Rect): Rect
-  background(): SceneBackgroundView
   visible(
     options?: Parameters<SpatialRead['rect']>[1]
   ): ReturnType<SpatialRead['rect']>

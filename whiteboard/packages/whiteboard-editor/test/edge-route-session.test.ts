@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { createEdgeRoutePressSession } from '../src/input/features/edge/route'
-import { EMPTY_PREVIEW_STATE } from '../src/state/preview'
+import { DEFAULT_DRAW_STATE } from '../src/schema/draw-state'
+import { createEditorStateRuntime } from '../src/state/runtime'
 
 const createEdge = () => ({
   id: 'edge-1',
@@ -28,7 +29,12 @@ const createDeps = () => {
   const setRoute = vi.fn(() => ({ ok: true }))
   const insertRoute = vi.fn(() => ({ ok: true, data: { pointId: 'unused' } }))
   const updateRoute = vi.fn(() => ({ ok: true }))
-  let preview = EMPTY_PREVIEW_STATE
+  const state = createEditorStateRuntime({
+    initialTool: {
+      type: 'select'
+    },
+    initialDrawState: DEFAULT_DRAW_STATE
+  })
 
   return {
     edge,
@@ -36,6 +42,21 @@ const createDeps = () => {
     insertRoute,
     updateRoute,
     ctx: {
+      state,
+      viewport: {
+        pointer: ({
+          clientX,
+          clientY
+        }: {
+          clientX: number
+          clientY: number
+        }) => ({
+          world: {
+            x: clientX,
+            y: clientY
+          }
+        })
+      },
       scene: {
         edges: {
           get: () => ({
@@ -53,34 +74,7 @@ const createDeps = () => {
           get: vi.fn(() => undefined)
         }
       },
-      runtime: {
-        viewport: {
-          pointer: ({
-            clientX,
-            clientY
-          }: {
-            clientX: number
-            clientY: number
-          }) => ({
-            world: {
-              x: clientX,
-              y: clientY
-            }
-          })
-        },
-      },
-      dispatch: (input: any) => {
-        const command = typeof input === 'function'
-          ? input({
-              overlay: {
-                preview
-              }
-            })
-          : input
-        if (command?.type === 'overlay.preview.set') {
-          preview = command.preview
-        }
-      },
+      runtime: {},
       actions: {
         edge: {
           route: {

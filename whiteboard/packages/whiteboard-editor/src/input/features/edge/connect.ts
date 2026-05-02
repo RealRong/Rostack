@@ -602,9 +602,11 @@ export const createEdgeConnectSession = (
         Object.keys(snapshot.preview.edge).forEach((edgeId) => {
           writer.preview.edge.delete(edgeId as EdgeId)
         })
-        writer.preview.edgeGuide.patch({
-          current: undefined
-        })
+        if (snapshot.preview.edgeGuide !== undefined) {
+          writer.preview.edgeGuide.patch({
+            current: undefined
+          })
+        }
       })
     }
   }

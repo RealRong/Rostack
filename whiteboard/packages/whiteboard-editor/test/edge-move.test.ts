@@ -1,7 +1,8 @@
 import { describe, expect, it, vi } from 'vitest'
 import { edge as edgeApi } from '@whiteboard/core/edge'
 import type { Edge } from '@whiteboard/core/types'
-import { EMPTY_PREVIEW_STATE } from '../src/state/preview'
+import { DEFAULT_DRAW_STATE } from '../src/schema/draw-state'
+import { createEditorStateRuntime } from '../src/state/runtime'
 import { createEdgeMoveSession, stepEdgeMove, type EdgeMoveState } from '../src/input/features/edge/move'
 import type { PointerMoveInput } from '../src/api/input'
 
@@ -59,33 +60,30 @@ describe('createEdgeMoveSession', () => {
   it('clears the preview when the edge returns to its origin', () => {
     const edge = createMovableEdge()
     const move = vi.fn()
-    let preview = EMPTY_PREVIEW_STATE
+    const state = createEditorStateRuntime({
+      initialTool: {
+        type: 'select'
+      },
+      initialDrawState: DEFAULT_DRAW_STATE
+    })
     const session = createEdgeMoveSession(
       {
         actions: {
           edge: { move }
         },
-        dispatch: (input: any) => {
-          const command = typeof input === 'function'
-            ? input({
-                overlay: {
-                  preview
-                }
-              })
-            : input
-          if (command?.type === 'overlay.preview.set') {
-            preview = command.preview
-          }
+        state,
+        viewport: {
+          pointer: vi.fn()
         }
       } as any,
       createMoveState(edge)
     )
 
     session.move?.(createMoveInput({ x: 15, y: 25 }))
-    expect(preview.edges['edge-1']?.patch).toBeDefined()
+    expect(state.snapshot().preview.edge['edge-1']?.patch).toBeDefined()
 
     session.move?.(createMoveInput({ x: 0, y: 0 }))
-    expect(preview.edges['edge-1']).toBeUndefined()
+    expect(state.snapshot().preview.edge['edge-1']).toBeUndefined()
     expect(move).not.toHaveBeenCalled()
   })
 })

@@ -33,12 +33,12 @@ type RuntimeInputOptions = {
   nodeMeasures?: ReadonlyMap<NodeId, Size>
   edgeLabelMeasures?: ReadonlyMap<EdgeId, ReadonlyMap<string, Size>>
   selection?: SceneUpdateInput['editor']['snapshot']['state']['selection']
-  hover?: SceneUpdateInput['editor']['snapshot']['overlay']['hover']
-  draw?: SceneUpdateInput['editor']['snapshot']['overlay']['preview']['draw']
-  edgeGuide?: SceneUpdateInput['editor']['snapshot']['overlay']['preview']['edgeGuide']
-  marquee?: SceneUpdateInput['editor']['snapshot']['overlay']['preview']['selection']['marquee']
+  hover?: SceneUpdateInput['editor']['snapshot']['hover']
+  draw?: SceneUpdateInput['editor']['snapshot']['preview']['draw']
+  edgeGuide?: SceneUpdateInput['editor']['snapshot']['preview']['edgeGuide']
+  marquee?: SceneUpdateInput['editor']['snapshot']['preview']['selection']['marquee']
   guides?: readonly Guide[]
-  mindmapPreview?: SceneUpdateInput['editor']['snapshot']['overlay']['preview']['mindmap']
+  mindmapPreview?: SceneUpdateInput['editor']['snapshot']['preview']['mindmap']
   delta?: SceneUpdateInput['editor']['delta']
   documentDelta?: SceneUpdateInput['document']['delta']
 }
@@ -108,17 +108,21 @@ const createInput = (
   value.document.rev = engine.rev()
   value.document.snapshot = engine.doc()
   value.editor.snapshot.state.edit = options.edit ?? null
-  value.editor.snapshot.overlay.preview.draw = options.draw ?? null
-  value.editor.snapshot.overlay.preview.edgeGuide = options.edgeGuide
-  value.editor.snapshot.overlay.preview.selection.marquee = options.marquee
-  value.editor.snapshot.overlay.preview.selection.guides = options.guides ?? []
-  value.editor.snapshot.overlay.preview.mindmap = options.mindmapPreview ?? null
+  value.editor.snapshot.preview.draw = options.draw ?? null
+  value.editor.snapshot.preview.edgeGuide = options.edgeGuide
+  value.editor.snapshot.preview.selection.marquee = options.marquee
+  value.editor.snapshot.preview.selection.guides = options.guides ?? []
+  value.editor.snapshot.preview.mindmap = options.mindmapPreview ?? {}
   value.editor.snapshot.state.selection = options.selection ?? {
     nodeIds: [],
     edgeIds: []
   }
-  value.editor.snapshot.overlay.hover = options.hover ?? {
-    kind: 'none'
+  value.editor.snapshot.hover = options.hover ?? {
+    node: null,
+    edge: null,
+    mindmap: null,
+    group: null,
+    selectionBox: false
   }
   value.editor.delta = options.delta ?? createEditorRuntimeDelta()
   value.document.delta = options.documentDelta ?? createMutationDelta()
@@ -506,8 +510,11 @@ describe('editor scene runtime', () => {
           edgeIds: []
         },
         hover: {
-          kind: 'edge',
-          edgeId
+          node: null,
+          edge: edgeId,
+          mindmap: null,
+          group: null,
+          selectionBox: false
         },
         guides: [{
           axis: 'x',
@@ -664,7 +671,7 @@ describe('editor scene runtime', () => {
     ).toBe(false)
   })
 
-  it('derives viewport-backed screen projection and background view from scene.viewport', () => {
+  it('stores the latest view snapshot on runtime editor view', () => {
     const document = documentApi.create('doc_editor_scene_runtime_viewport')
     document.background = {
       type: 'dot',
@@ -696,47 +703,15 @@ describe('editor scene runtime', () => {
       documentDelta: DOCUMENT_DELTA
     }))
 
-    expect(runtime.scene.viewport.screenPoint({
-      x: 14,
-      y: 9
-    })).toEqual({
-      x: 8,
-      y: 8
-    })
-    expect(runtime.scene.viewport.screenRect({
-      x: 14,
-      y: 9,
-      width: 6,
-      height: 4
-    })).toEqual({
-      x: 8,
-      y: 8,
-      width: 12,
-      height: 8
-    })
-    expect(runtime.scene.viewport.background()).toEqual({
-      type: 'dot',
-      color: '#123456',
-      step: 48,
-      offset: {
-        x: 60,
-        y: 40
-      }
-    })
+    expect(runtime.state().runtime.editor.view).toEqual(sceneView)
 
     sceneView = {
       ...sceneView,
       zoom: 0.25
     }
 
-    expect(runtime.scene.viewport.background()).toEqual({
-      type: 'dot',
-      color: '#123456',
-      step: 24,
-      offset: {
-        x: 7.5,
-        y: 5
-      }
-    })
+    runtime.update(createInput(engine))
+
+    expect(runtime.state().runtime.editor.view).toEqual(sceneView)
   })
 })

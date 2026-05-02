@@ -4,16 +4,23 @@ import type {
   EdgePatch
 } from '@whiteboard/core/types'
 import { createEdgeConnectSession } from '../src/input/features/edge/connect'
-import { EMPTY_PREVIEW_STATE } from '../src/state/preview'
+import { DEFAULT_DRAW_STATE } from '../src/schema/draw-state'
+import { createEditorStateRuntime } from '../src/state/runtime'
 
 const createInteractionDeps = () => {
   const reconnectCommit = vi.fn(() => ({ ok: true }))
-  let preview = EMPTY_PREVIEW_STATE
+  const state = createEditorStateRuntime({
+    initialTool: {
+      type: 'select'
+    },
+    initialDrawState: DEFAULT_DRAW_STATE
+  })
 
   return {
     reconnectCommit,
-    readPatch: (): EdgePatch | undefined => preview.edges['edge-1']?.patch,
+    readPatch: (): EdgePatch | undefined => state.snapshot().preview.edge['edge-1']?.patch,
     ctx: {
+      state,
       scene: {
         edges: {
           get: () => ({
@@ -77,18 +84,6 @@ const createInteractionDeps = () => {
               }
             })
           }
-        }
-      },
-      dispatch: (input: any) => {
-        const command = typeof input === 'function'
-          ? input({
-              overlay: {
-                preview
-              }
-            })
-          : input
-        if (command?.type === 'overlay.preview.set') {
-          preview = command.preview
         }
       },
       actions: {

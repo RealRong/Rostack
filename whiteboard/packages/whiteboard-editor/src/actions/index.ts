@@ -216,7 +216,7 @@ export const createEditorActionsApi = ({
         delete: selection.delete
       },
       selectionState: editor.selection,
-      viewportState: {
+      viewport: {
         get: editor.viewport.get
       }
     }

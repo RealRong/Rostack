@@ -17,9 +17,6 @@ import type {
   EditorScene,
   PreviewInput
 } from '@whiteboard/editor-scene'
-import type {
-  SceneBackgroundView
-} from '@whiteboard/editor-scene'
 import type { EdgeGuide } from '@whiteboard/editor/state/preview-types'
 import type { DrawState } from '@whiteboard/editor/schema/draw-state'
 import type { EditSession } from '@whiteboard/editor/schema/edit'
@@ -47,6 +44,17 @@ export type EditorInteractionState = Readonly<{
   editingEdge: boolean
   space: boolean
 }>
+
+export type EditorBackgroundView =
+  | {
+      type: 'none'
+    }
+  | {
+      type: 'dot' | 'line'
+      color: string
+      step: number
+      offset: Point
+    }
 
 export type ToolRead = {
   get: () => Tool
@@ -138,7 +146,7 @@ export type EditorSceneUiMindmap = {
 
 export type EditorSceneUi = {
   state: EditorState
-  background: store.ReadStore<SceneBackgroundView>
+  background: store.ReadStore<EditorBackgroundView>
   selection: EditorSceneUiSelection
   chrome: EditorSceneUiChrome
   mindmap: EditorSceneUiMindmap

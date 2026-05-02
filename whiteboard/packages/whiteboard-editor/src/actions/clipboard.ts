@@ -24,7 +24,7 @@ type ClipboardActionHelpersHost = {
   selectionState: {
     get: () => SelectionTarget
   }
-  viewportState: {
+  viewport: {
     get: () => Viewport
   }
 }
@@ -148,7 +148,7 @@ export const createClipboardActions = ({
     }
   ) => {
     const origin = options?.origin ?? {
-      ...editor.viewportState.get().center
+      ...editor.viewport.get().center
     }
     const inserted = editor.document.insert(packet.slice, {
       origin,

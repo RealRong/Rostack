@@ -56,16 +56,24 @@ const resetEditorState = (
     Object.keys(snapshot.preview.mindmap).forEach((id) => {
       writer.preview.mindmap.delete(id)
     })
-    writer.preview.selection.patch({
-      marquee: undefined,
-      guides: []
-    })
+    writer.preview.selection.patch(
+      snapshot.preview.selection.marquee
+        ? {
+            marquee: undefined,
+            guides: []
+          }
+        : {
+            guides: []
+          }
+    )
     writer.preview.draw.patch({
       current: null
     })
-    writer.preview.edgeGuide.patch({
-      current: undefined
-    })
+    if (snapshot.preview.edgeGuide !== undefined) {
+      writer.preview.edgeGuide.patch({
+        current: undefined
+      })
+    }
   })
 }
 
@@ -151,7 +159,7 @@ export const attachEditorSync = (input: {
 }) => {
   let buffered: BufferedSceneCommit | null = null
 
-  const bufferEditorDelta = (
+  const bufferStateDelta = (
     commit: MutationCommitRecord<unknown, unknown, MutationFootprint, EditorStateMutationDelta>
   ) => {
     if (!buffered) {
@@ -166,7 +174,7 @@ export const attachEditorSync = (input: {
   }
 
   const unsubscribeEditorCommits = input.state.commits.subscribe((commit) => {
-    if (bufferEditorDelta(commit)) {
+    if (bufferStateDelta(commit)) {
       return
     }
 

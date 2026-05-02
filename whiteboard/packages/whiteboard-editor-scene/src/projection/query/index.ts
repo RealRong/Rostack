@@ -513,7 +513,6 @@ export const createProjectionRead = (runtime: {
     spatial
   })
   const view = createViewRead({
-    state: runtime.state,
     view: runtime.view,
     hit,
     spatial

@@ -240,11 +240,11 @@ export const editorStateMutationModel = defineMutationModel<EditorStateDocument>
       }),
     },
     members: {
-      marquee: record<PreviewInput['selection']['marquee']>(),
+      marquee: value<PreviewInput['selection']['marquee']>(),
       guides: record<PreviewInput['selection']['guides']>(),
     },
-    changes: ({ record }) => ({
-      marquee: [record('marquee').deep()],
+    changes: ({ record, value }) => ({
+      marquee: [value('marquee')],
       guides: [record('guides').deep()],
     }),
   }),
@@ -262,10 +262,10 @@ export const editorStateMutationModel = defineMutationModel<EditorStateDocument>
       }),
     },
     members: {
-      current: record<PreviewInput['draw']>(),
+      current: value<PreviewInput['draw']>(),
     },
-    changes: ({ record }) => ({
-      current: [record('current').deep()],
+    changes: ({ value }) => ({
+      current: [value('current')],
     }),
   }),
   'preview.edgeGuide': singleton<EditorStateDocument, PreviewEdgeGuideValue>()({
@@ -282,10 +282,10 @@ export const editorStateMutationModel = defineMutationModel<EditorStateDocument>
       }),
     },
     members: {
-      current: record<EdgeGuidePreview | undefined>(),
+      current: value<EdgeGuidePreview | undefined>(),
     },
-    changes: ({ record }) => ({
-      current: [record('current').deep()],
+    changes: ({ value }) => ({
+      current: [value('current')],
     }),
   }),
 })

@@ -2,21 +2,18 @@ import { geometry as geometryApi } from '@whiteboard/core/geometry'
 import type {
   SceneHit,
   SceneSpatial,
-  SceneViewport,
+  ProjectionViewRead,
   SceneViewSnapshot
 } from '../../contracts/editor'
-import type { WorkingState } from '../../contracts/working'
-import { readBackgroundView } from './background'
 import { DEFAULT_HIT_THRESHOLD } from './hit'
 
-export type ProjectionViewRead = SceneViewport
+export type { ProjectionViewRead } from '../../contracts/editor'
 
 export const createViewRead = (input: {
-  state: () => WorkingState
   view: () => SceneViewSnapshot
   hit: SceneHit
   spatial: SceneSpatial
-}): SceneViewport => ({
+}): ProjectionViewRead => ({
   zoom: () => input.view().zoom,
   center: () => input.view().center,
   worldRect: () => input.view().worldRect,
@@ -36,10 +33,6 @@ export const createViewRead = (input: {
       worldRect: view.worldRect
     })
   },
-  background: () => readBackgroundView({
-    state: input.state(),
-    view: input.view()
-  }),
   visible: (options) => {
     const view = input.view()
     return input.spatial.rect(view.worldRect, options)

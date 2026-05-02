@@ -60,7 +60,6 @@ export type {
   ScenePickRuntime,
   ScenePickRuntimeResult,
   ScenePickTarget,
-  SceneBackgroundView,
   SceneEdges,
   SceneFrame,
   SceneGroups,

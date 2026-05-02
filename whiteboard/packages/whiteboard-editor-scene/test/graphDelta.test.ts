@@ -9,7 +9,11 @@ import type {
 } from '@whiteboard/core/types'
 import { createEngine } from '@whiteboard/engine'
 import type { SceneUpdateInput } from '../src/contracts/editor'
-import { createEmptyInput, createEmptyRuntimeInputDelta } from '../src/testing/input'
+import {
+  createEditorStateInputDelta,
+  createEmptyInput,
+  createEmptyRuntimeInputDelta
+} from '../src/testing/input'
 import {
   createMutationDelta,
   createEditorGraphLayout,
@@ -167,18 +171,11 @@ describe('graph delta patching', () => {
         ])
       }))
 
-    const liveDelta = createEmptyRuntimeInputDelta()
-    liveDelta.edit = true
-    liveDelta.preview = {
-      touchedNodeIds: [firstId],
-      touchedEdgeIds: [],
-      touchedMindmapIds: [],
-      marquee: false,
-      guides: false,
-      draw: false,
-      edgeGuide: false,
-      hover: false
-    }
+    const liveDelta = createEditorStateInputDelta({
+      changes: {
+        'state.edit': true
+      }
+    })
 
     const live = runtime.update(createInput({
         engine,

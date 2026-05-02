@@ -1,6 +1,5 @@
 import type {
   MutationDelta,
-  MutationDeltaInput,
   MutationFootprint,
   MutationIssue,
   MutationStructuralFact,
@@ -17,7 +16,6 @@ import {
 import {
   buildEntityDelta,
   mergeMutationDeltas,
-  normalizeMutationDelta,
 } from '../delta'
 import {
   applyRootWrites,
@@ -52,52 +50,11 @@ import type {
   MutationTreeProgramStep,
 } from './program'
 
-const createMutationProgram = <
-  Tag extends string = string
->(
-  steps: readonly MutationProgramStep<Tag>[] = EMPTY_OUTPUTS as readonly MutationProgramStep<Tag>[]
-): MutationProgram<Tag> => ({
+const createMutationProgram = (
+  steps: readonly MutationProgramStep[] = EMPTY_OUTPUTS as readonly MutationProgramStep[]
+): MutationProgram => ({
   steps
 })
-
-const mergeTagDelta = (
-  delta: MutationDelta,
-  tags: readonly string[] | undefined
-): MutationDelta => {
-  if (!tags || tags.length === 0) {
-    return delta
-  }
-
-  let next = delta
-  for (let index = 0; index < tags.length; index += 1) {
-    const tag = tags[index]
-    if (!tag) {
-      continue
-    }
-    next = mergeMutationDeltas(next, {
-      changes: {
-        [tag]: true
-      }
-    })
-  }
-  return next
-}
-
-const mergeEffectDelta = (
-  delta: MutationDelta,
-  effect: {
-    tags?: readonly string[]
-    delta?: MutationDeltaInput
-  }
-): MutationDelta => {
-  const tagged = mergeTagDelta(delta, effect.tags)
-  return effect.delta === undefined
-    ? tagged
-    : mergeMutationDeltas(
-        tagged,
-        normalizeMutationDelta(effect.delta)
-      )
-}
 
 const isEntityEffect = (
   effect: MutationProgram['steps'][number]
@@ -202,10 +159,7 @@ const applyEntityCreateEffect = <
                   },
                   value: current
                 }]),
-          delta: mergeTagDelta(
-            buildEntityDelta(spec, 'create', undefined, changedPaths),
-            effect.tags
-          ),
+          delta: buildEntityDelta(spec, 'create', undefined, changedPaths),
           structural: EMPTY_OUTPUTS as readonly MutationStructuralFact[],
           footprint: buildEntityFootprint(spec, 'create', undefined, changedPaths),
           issues: EMPTY_ISSUES,
@@ -234,10 +188,7 @@ const applyEntityCreateEffect = <
             id
           }
         }]),
-        delta: mergeTagDelta(
-          buildEntityDelta(spec, 'create', id, changedPaths),
-          effect.tags
-        ),
+        delta: buildEntityDelta(spec, 'create', id, changedPaths),
         structural: EMPTY_OUTPUTS as readonly MutationStructuralFact[],
         footprint: buildEntityFootprint(spec, 'create', id, changedPaths),
         issues: EMPTY_ISSUES,
@@ -260,10 +211,7 @@ const applyEntityCreateEffect = <
             },
             value: input.document
           }]),
-          delta: mergeTagDelta(
-            buildEntityDelta(spec, 'create', undefined, changedPaths),
-            effect.tags
-          ),
+          delta: buildEntityDelta(spec, 'create', undefined, changedPaths),
           structural: EMPTY_OUTPUTS as readonly MutationStructuralFact[],
           footprint: buildEntityFootprint(spec, 'create', undefined, changedPaths),
           issues: EMPTY_ISSUES,
@@ -286,10 +234,7 @@ const applyEntityCreateEffect = <
             id: spec.family
           }
         }]),
-        delta: mergeTagDelta(
-          buildEntityDelta(spec, 'create', undefined, changedPaths),
-          effect.tags
-        ),
+        delta: buildEntityDelta(spec, 'create', undefined, changedPaths),
         structural: EMPTY_OUTPUTS as readonly MutationStructuralFact[],
         footprint: buildEntityFootprint(spec, 'create', undefined, changedPaths),
         issues: EMPTY_ISSUES,
@@ -320,10 +265,7 @@ const applyEntityCreateEffect = <
           id
         }
       }]),
-      delta: mergeTagDelta(
-        buildEntityDelta(spec, 'create', id, changedPaths),
-        effect.tags
-      ),
+      delta: buildEntityDelta(spec, 'create', id, changedPaths),
       structural: EMPTY_OUTPUTS as readonly MutationStructuralFact[],
       footprint: buildEntityFootprint(spec, 'create', id, changedPaths),
       issues: EMPTY_ISSUES,
@@ -356,7 +298,7 @@ const applyEntityPatchEffect = <
       return {
         document: input.document,
         inverse: createMutationProgram(),
-        delta: mergeTagDelta(EMPTY_DELTA, effect.tags),
+        delta: EMPTY_DELTA,
         structural: EMPTY_OUTPUTS as readonly MutationStructuralFact[],
         footprint: [],
         issues: EMPTY_ISSUES,
@@ -389,10 +331,7 @@ const applyEntityPatchEffect = <
             },
             writes: inverseWrites
           }]),
-      delta: mergeTagDelta(
-        buildEntityDelta(spec, 'patch', entityId, changedPaths),
-        effect.tags
-      ),
+      delta: buildEntityDelta(spec, 'patch', entityId, changedPaths),
       structural: EMPTY_OUTPUTS as readonly MutationStructuralFact[],
       footprint: buildEntityFootprint(spec, 'patch', entityId, changedPaths),
       issues: EMPTY_ISSUES,
@@ -419,7 +358,7 @@ const applyEntityPatchEffect = <
     return {
       document: input.document,
       inverse: createMutationProgram(),
-      delta: mergeTagDelta(EMPTY_DELTA, effect.tags),
+      delta: EMPTY_DELTA,
       structural: EMPTY_OUTPUTS as readonly MutationStructuralFact[],
       footprint: [],
       issues: EMPTY_ISSUES,
@@ -446,10 +385,7 @@ const applyEntityPatchEffect = <
           },
           writes: inverseWrites
         }]),
-    delta: mergeTagDelta(
-      buildEntityDelta(spec, 'patch', entityId, changedPaths),
-      effect.tags
-    ),
+    delta: buildEntityDelta(spec, 'patch', entityId, changedPaths),
     structural: EMPTY_OUTPUTS as readonly MutationStructuralFact[],
     footprint: buildEntityFootprint(spec, 'patch', entityId, changedPaths),
     issues: EMPTY_ISSUES,
@@ -489,10 +425,7 @@ const applyEntityDeleteEffect = <
           },
           value: current
         }]),
-        delta: mergeTagDelta(
-          buildEntityDelta(spec, 'delete', undefined, changedPaths),
-          effect.tags
-        ),
+        delta: buildEntityDelta(spec, 'delete', undefined, changedPaths),
         structural: EMPTY_OUTPUTS as readonly MutationStructuralFact[],
         footprint: buildEntityFootprint(spec, 'delete', undefined, changedPaths),
         issues: EMPTY_ISSUES,
@@ -522,10 +455,7 @@ const applyEntityDeleteEffect = <
         },
         value: current
       }]),
-      delta: mergeTagDelta(
-        buildEntityDelta(spec, 'delete', effect.entity.id, changedPaths),
-        effect.tags
-      ),
+      delta: buildEntityDelta(spec, 'delete', effect.entity.id, changedPaths),
       structural: EMPTY_OUTPUTS as readonly MutationStructuralFact[],
       footprint: buildEntityFootprint(spec, 'delete', effect.entity.id, changedPaths),
       issues: EMPTY_ISSUES,
@@ -557,10 +487,7 @@ const applyEntityDeleteEffect = <
         },
         value: current
       }]),
-      delta: mergeTagDelta(
-        buildEntityDelta(spec, 'delete', undefined, changedPaths),
-        effect.tags
-      ),
+      delta: buildEntityDelta(spec, 'delete', undefined, changedPaths),
       structural: EMPTY_OUTPUTS as readonly MutationStructuralFact[],
       footprint: buildEntityFootprint(spec, 'delete', undefined, changedPaths),
       issues: EMPTY_ISSUES,
@@ -592,10 +519,7 @@ const applyEntityDeleteEffect = <
       },
       value: current
     }]),
-    delta: mergeTagDelta(
-      buildEntityDelta(spec, 'delete', id, changedPaths),
-      effect.tags
-    ),
+    delta: buildEntityDelta(spec, 'delete', id, changedPaths),
     structural: EMPTY_OUTPUTS as readonly MutationStructuralFact[],
     footprint: buildEntityFootprint(spec, 'delete', id, changedPaths),
     issues: EMPTY_ISSUES,
@@ -643,16 +567,14 @@ const applyEntityEffect = <
 
 export const applyMutationProgram = <
   Doc extends object,
-  Op extends { type: string },
-  Tag extends string = string,
   Code extends string = string
 >(input: {
   document: Doc
-  program: MutationProgram<Tag>
+  program: MutationProgram
   entities: ReadonlyMap<string, CompiledEntitySpec>
   ordered: ReadonlyMap<string, CompiledOrderedSpec<Doc>>
   tree: ReadonlyMap<string, CompiledTreeSpec<Doc>>
-}): MutationApplyResult<Doc, Op, Code> => {
+}): MutationApplyResult<Doc, Code> => {
   let currentDocument = input.document
   let delta = EMPTY_DELTA
   const structural: MutationStructuralFact[] = []
@@ -684,13 +606,10 @@ export const applyMutationProgram = <
       }
 
       currentDocument = applied.document
-      delta = mergeMutationDeltas(
-        delta,
-        mergeEffectDelta(applied.delta, effect)
-      )
+      delta = mergeMutationDeltas(delta, applied.delta)
       structural.push(...applied.structural)
       inverseSteps.unshift(...applied.inverse.steps)
-      footprint.push(...applied.footprint, ...(effect.footprint ?? []))
+      footprint.push(...applied.footprint)
       issues.push(...applied.issues)
       if (applied.historyMode === 'track') {
         historyMode = 'track'

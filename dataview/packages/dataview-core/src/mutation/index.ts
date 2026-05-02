@@ -1,4 +1,4 @@
-export { compile } from './compile'
+export { compile, dataviewCompileHandlers } from './compile'
 export type {
   ValidationCode,
   ValidationIssue,

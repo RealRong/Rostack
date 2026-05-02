@@ -13,7 +13,7 @@ import {
 } from '@shared/mutation'
 import type {
   MutationCurrent,
-  MutationIntentTable
+  MutationIntent
 } from '@shared/mutation/engine'
 
 type ItemId = `item_${number}`
@@ -31,23 +31,16 @@ type TestDoc = {
   activeItemId?: ItemId
 }
 
-interface TestIntentTable extends MutationIntentTable {
-  'item.add': {
-    intent: {
+type TestIntent =
+  | {
       type: 'item.add'
       id: ItemId
       title: string
     }
-    output: ItemId
-  }
-  'item.open': {
-    intent: {
+  | {
       type: 'item.open'
       id: ItemId
     }
-    output: ItemId
-  }
-}
 
 const writeItemTable = (
   document: TestDoc,
@@ -114,8 +107,7 @@ const createDocument = (): TestDoc => ({
 
 const createEngine = () => new MutationEngine<
   TestDoc,
-  TestIntentTable,
-  MutationProgramStep,
+  TestIntent,
   import('@shared/mutation').MutationReader<typeof testMutationSchema>
 >({
   schema: testMutationSchema,
@@ -123,18 +115,18 @@ const createEngine = () => new MutationEngine<
   normalize: (document) => document,
   compile: {
     handlers: {
-      'item.add': ({ intent, writer, output }) => {
+      'item.add': ({ intent, writer }) => {
         writer.item.create({
           id: intent.id,
           title: intent.title
         })
-        output(intent.id)
+        return intent.id
       },
-      'item.open': ({ intent, writer, output }) => {
+      'item.open': ({ intent, writer }) => {
         writer.document.patch({
           activeItemId: intent.id
         })
-        output(intent.id)
+        return intent.id
       }
     }
   }
@@ -440,8 +432,7 @@ const createStructuralEngine = (
   document: StructuralDoc = createStructuralDocument()
 ) => new MutationEngine<
   StructuralDoc,
-  MutationIntentTable,
-  MutationProgramStep,
+  MutationIntent,
   import('@shared/mutation').MutationReader<typeof structuralMutationSchema>
 >({
   schema: structuralMutationSchema,

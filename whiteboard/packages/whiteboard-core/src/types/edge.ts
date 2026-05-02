@@ -9,7 +9,7 @@ import type {
   NodeGeometry,
   Point
 } from '@whiteboard/core/types/model'
-import type { EdgePatch, Operation } from '@whiteboard/core/types/operations'
+import type { EdgePatch } from '@whiteboard/core/types/operations'
 import type { Result } from '@whiteboard/core/types/result'
 
 export type AnchorSnapOptions = NodeOutlineAnchorOptions

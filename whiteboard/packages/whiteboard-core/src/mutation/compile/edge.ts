@@ -400,7 +400,7 @@ const failLockedEdgeModification = (
       : 'Locked node relations cannot be modified.'
 )
 
-export const edgeIntentHandlers: EdgeIntentHandlers = {
+export const edgeIntentHandlers = {
   'edge.create': (ctx) => {
     const document = ctx.document
     const built = edgeApi.op.create({
@@ -419,9 +419,9 @@ export const edgeIntentHandlers: EdgeIntentHandlers = {
       kind: 'edge',
       id: built.data.edgeId
     })
-    ctx.output({
+    return {
       edgeId: built.data.edgeId
-    })
+    }
   },
   'edge.update': (ctx) => {
     const decision = resolveLockDecision({
@@ -551,9 +551,9 @@ export const edgeIntentHandlers: EdgeIntentHandlers = {
         ? toMutationOrderedAnchor(ctx.intent.to)
         : { kind: 'end' }
     )
-    ctx.output({
+    return {
       labelId
-    })
+    }
   },
   'edge.label.update': (ctx) => {
     const edge = ctx.expect.edge(ctx.intent.edgeId)
@@ -600,9 +600,9 @@ export const edgeIntentHandlers: EdgeIntentHandlers = {
     }, ctx.intent.to
       ? toMutationOrderedAnchor(ctx.intent.to)
       : { kind: 'end' })
-    ctx.output({
+    return {
       pointId
-    })
+    }
   },
   'edge.route.update': (ctx) => {
     const edge = ctx.expect.edge(ctx.intent.edgeId)
@@ -667,4 +667,4 @@ export const edgeIntentHandlers: EdgeIntentHandlers = {
       ctx.writer.edge.route(edge.id).delete(point.id)
     })
   }
-}
+} satisfies EdgeIntentHandlers

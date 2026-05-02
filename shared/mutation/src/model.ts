@@ -18,7 +18,6 @@ import type {
 import type {
   MutationDelta,
   MutationDeltaInput,
-  MutationFootprint,
   MutationOrderedAnchor,
   MutationTreeSnapshot,
 } from './write'
@@ -154,12 +153,23 @@ export type MutationTreeFamilySpec<
       }
 )
 
-type FamilyAccess<
+type SingletonFamilyAccess<
   Doc,
   Entity
 > = {
-  read(document: Doc): unknown
-  write(document: Doc, next: unknown): Doc
+  read(document: Doc): Entity
+  write(document: Doc, next: Entity): Doc
+  __entity?: Entity
+}
+
+type CollectionFamilyAccess<
+  Doc,
+  Id extends string,
+  Entity
+> = {
+  read(document: Doc): Readonly<Record<Id, Entity | undefined>>
+  write(document: Doc, next: Readonly<Record<Id, Entity | undefined>>): Doc
+  __id?: Id
   __entity?: Entity
 }
 
@@ -174,7 +184,9 @@ type BaseFamilySpec<
   Tree extends Readonly<Record<string, MutationTreeFamilySpec<Doc, Kind, unknown, string>>> | undefined
 > = {
   kind: Kind
-  access: FamilyAccess<Doc, Entity>
+  access: Kind extends 'singleton'
+    ? SingletonFamilyAccess<Doc, Entity>
+    : CollectionFamilyAccess<Doc, Extract<Id, string>, Entity>
   members: Members
   changes?: MutationFamilyChanges<Members>
   sequence?: Ordered
@@ -359,7 +371,7 @@ export const singleton = <Doc, Entity>() => <
   const TChanges extends Readonly<Record<string, readonly MutationChangeSelector[]>> = Readonly<Record<string, readonly MutationChangeSelector[]>>
 >(
   input: {
-    access: FamilyAccess<Doc, Entity>
+    access: SingletonFamilyAccess<Doc, Entity>
     members: TMembers
     changes?: MutationFamilyChanges<TMembers>
     sequence?: TOrdered
@@ -377,7 +389,7 @@ export const collection = <Doc, Id extends string, Entity>() => <
   const TChanges extends Readonly<Record<string, readonly MutationChangeSelector[]>> = Readonly<Record<string, readonly MutationChangeSelector[]>>
 >(
   input: {
-    access: FamilyAccess<Doc, Entity>
+    access: CollectionFamilyAccess<Doc, Id, Entity>
     members: TMembers
     changes?: MutationFamilyChanges<TMembers>
     sequence?: TOrdered
@@ -402,20 +414,6 @@ export const tree = <
 >(
   spec: Spec
 ): Spec => spec
-
-export type MutationUnset = {
-  readonly kind: 'mutation.unset'
-}
-
-const MUTATION_UNSET: MutationUnset = Object.freeze({
-  kind: 'mutation.unset'
-})
-
-export const unset = (): MutationUnset => MUTATION_UNSET
-
-const isUnset = (
-  value: unknown
-): value is MutationUnset => value === MUTATION_UNSET
 
 type FamilyEntity<
   TFamily
@@ -488,11 +486,11 @@ type FamilyTreeOf<
 type PatchValueFromMember<
   TMember
 > = TMember extends MutationValueMemberSpec<infer TValue>
-  ? TValue | MutationUnset
+  ? TValue
   : TMember extends MutationRecordMemberSpec<infer TValue>
-    ? Partial<TValue> | MutationUnset
+    ? Partial<TValue>
     : TMember extends MutationKeyedMemberSpec<infer TKey, infer TValue>
-      ? Readonly<Partial<Record<TKey, TValue | MutationUnset>>> | MutationUnset
+      ? Readonly<Partial<Record<TKey, TValue | undefined>>>
     : never
 
 type MutationPatchOfMembers<
@@ -503,125 +501,66 @@ type MutationPatchOfMembers<
 
 type KeyedWriterApi<
   TKey extends string,
-  TValue,
-  Tag extends string
+  TValue
 > = {
   set(
     key: TKey,
-    value: TValue,
-    tags?: readonly Tag[],
-    metadata?: {
-      delta?: MutationDeltaInput
-      footprint?: readonly MutationFootprint[]
-    }
+    value: TValue
   ): void
   remove(
-    key: TKey,
-    tags?: readonly Tag[],
-    metadata?: {
-      delta?: MutationDeltaInput
-      footprint?: readonly MutationFootprint[]
-    }
+    key: TKey
   ): void
 }
 
 type OrderedWriterApi<
-  Item,
-  Tag extends string
+  Item
 > = {
   insert(
     value: Item,
-    to?: MutationOrderedAnchor,
-    tags?: readonly Tag[],
-    metadata?: {
-      delta?: MutationDeltaInput
-      footprint?: readonly MutationFootprint[]
-    }
+    to?: MutationOrderedAnchor
   ): void
   move(
     itemId: string,
-    to?: MutationOrderedAnchor,
-    tags?: readonly Tag[],
-    metadata?: {
-      delta?: MutationDeltaInput
-      footprint?: readonly MutationFootprint[]
-    }
+    to?: MutationOrderedAnchor
   ): void
   splice(
     itemIds: readonly string[],
-    to?: MutationOrderedAnchor,
-    tags?: readonly Tag[],
-    metadata?: {
-      delta?: MutationDeltaInput
-      footprint?: readonly MutationFootprint[]
-    }
+    to?: MutationOrderedAnchor
   ): void
   patch(
     itemId: string,
-    patch: unknown,
-    tags?: readonly Tag[],
-    metadata?: {
-      delta?: MutationDeltaInput
-      footprint?: readonly MutationFootprint[]
-    }
+    patch: unknown
   ): void
   delete(
-    itemId: string,
-    tags?: readonly Tag[],
-    metadata?: {
-      delta?: MutationDeltaInput
-      footprint?: readonly MutationFootprint[]
-    }
+    itemId: string
   ): void
 }
 
 type TreeWriterApi<
-  Value,
-  Tag extends string
+  Value
 > = {
   insert(
     nodeId: string,
     parentId?: string,
     index?: number,
-    value?: Value,
-    tags?: readonly Tag[],
-    metadata?: {
-      delta?: MutationDeltaInput
-      footprint?: readonly MutationFootprint[]
-    }
+    value?: Value
   ): void
   move(
     nodeId: string,
     parentId?: string,
-    index?: number,
-    tags?: readonly Tag[],
-    metadata?: {
-      delta?: MutationDeltaInput
-      footprint?: readonly MutationFootprint[]
-    }
+    index?: number
   ): void
   delete(
-    nodeId: string,
-    tags?: readonly Tag[],
-    metadata?: {
-      delta?: MutationDeltaInput
-      footprint?: readonly MutationFootprint[]
-    }
+    nodeId: string
   ): void
   patch(
     nodeId: string,
-    patch: unknown,
-    tags?: readonly Tag[],
-    metadata?: {
-      delta?: MutationDeltaInput
-      footprint?: readonly MutationFootprint[]
-    }
+    patch: unknown
   ): void
 }
 
 type FamilyStructuresWriter<
-  TFamily,
-  Tag extends string
+  TFamily
 > = (
   TFamily extends {
     kind: 'singleton'
@@ -632,7 +571,7 @@ type FamilyStructuresWriter<
           [K in keyof TMembers as TMembers[K] extends MutationKeyedMemberSpec
             ? K
             : never]: TMembers[K] extends MutationKeyedMemberSpec<infer TKey, infer TValue>
-              ? () => KeyedWriterApi<TKey, TValue, Tag>
+              ? () => KeyedWriterApi<TKey, TValue>
               : never
         }
       : {}
@@ -644,7 +583,7 @@ type FamilyStructuresWriter<
             [K in keyof TMembers as TMembers[K] extends MutationKeyedMemberSpec
               ? K
               : never]: TMembers[K] extends MutationKeyedMemberSpec<infer TKey, infer TValue>
-                ? (id: Extract<FamilyId<TFamily>, string>) => KeyedWriterApi<TKey, TValue, Tag>
+                ? (id: Extract<FamilyId<TFamily>, string>) => KeyedWriterApi<TKey, TValue>
                 : never
           }
         : {}
@@ -657,7 +596,7 @@ type FamilyStructuresWriter<
     ? TOrdered extends Readonly<Record<string, MutationOrderedFamilySpec<any, any, unknown, string>>>
       ? {
           [K in keyof TOrdered]: TOrdered[K] extends MutationOrderedFamilySpec<any, any, infer TItem, string>
-            ? () => OrderedWriterApi<TItem, Tag>
+            ? () => OrderedWriterApi<TItem>
             : never
         }
       : {}
@@ -667,7 +606,7 @@ type FamilyStructuresWriter<
       ? TOrdered extends Readonly<Record<string, MutationOrderedFamilySpec<any, any, unknown, string>>>
         ? {
             [K in keyof TOrdered]: TOrdered[K] extends MutationOrderedFamilySpec<any, any, infer TItem, string>
-              ? (key: string) => OrderedWriterApi<TItem, Tag>
+              ? (key: string) => OrderedWriterApi<TItem>
               : never
           }
         : {}
@@ -680,7 +619,7 @@ type FamilyStructuresWriter<
     ? TTree extends Readonly<Record<string, MutationTreeFamilySpec<any, any, unknown, string>>>
       ? {
           [K in keyof TTree]: TTree[K] extends MutationTreeFamilySpec<any, any, infer TValue, string>
-            ? () => TreeWriterApi<TValue, Tag>
+            ? () => TreeWriterApi<TValue>
             : never
         }
       : {}
@@ -690,7 +629,7 @@ type FamilyStructuresWriter<
       ? TTree extends Readonly<Record<string, MutationTreeFamilySpec<any, any, unknown, string>>>
         ? {
             [K in keyof TTree]: TTree[K] extends MutationTreeFamilySpec<any, any, infer TValue, string>
-              ? (key: string) => TreeWriterApi<TValue, Tag>
+              ? (key: string) => TreeWriterApi<TValue>
               : never
           }
         : {}
@@ -698,65 +637,33 @@ type FamilyStructuresWriter<
 )
 
 type FamilyWriter<
-  TFamily,
-  Tag extends string
+  TFamily
 > = (
   TFamily extends {
     kind: 'singleton'
   }
     ? {
         create(
-          value: FamilyEntity<TFamily>,
-          tags?: readonly Tag[],
-          metadata?: {
-            delta?: MutationDeltaInput
-            footprint?: readonly MutationFootprint[]
-          }
+          value: FamilyEntity<TFamily>
         ): void
         patch(
-          writes: MutationPatchOfMembers<FamilyMembersOf<TFamily>> | Readonly<Record<string, unknown>>,
-          tags?: readonly Tag[],
-          metadata?: {
-            delta?: MutationDeltaInput
-            footprint?: readonly MutationFootprint[]
-          }
+          writes: MutationPatchOfMembers<FamilyMembersOf<TFamily>> | Readonly<Record<string, unknown>>
         ): void
-        delete(
-          tags?: readonly Tag[],
-          metadata?: {
-            delta?: MutationDeltaInput
-            footprint?: readonly MutationFootprint[]
-          }
-        ): void
+        delete(): void
       }
     : {
         create(
-          value: FamilyEntity<TFamily>,
-          tags?: readonly Tag[],
-          metadata?: {
-            delta?: MutationDeltaInput
-            footprint?: readonly MutationFootprint[]
-          }
+          value: FamilyEntity<TFamily>
         ): void
         patch(
           id: Extract<FamilyId<TFamily>, string>,
-          writes: MutationPatchOfMembers<FamilyMembersOf<TFamily>> | Readonly<Record<string, unknown>>,
-          tags?: readonly Tag[],
-          metadata?: {
-            delta?: MutationDeltaInput
-            footprint?: readonly MutationFootprint[]
-          }
+          writes: MutationPatchOfMembers<FamilyMembersOf<TFamily>> | Readonly<Record<string, unknown>>
         ): void
         delete(
-          id: Extract<FamilyId<TFamily>, string>,
-          tags?: readonly Tag[],
-          metadata?: {
-            delta?: MutationDeltaInput
-            footprint?: readonly MutationFootprint[]
-          }
+          id: Extract<FamilyId<TFamily>, string>
         ): void
       }
-) & FamilyStructuresWriter<TFamily, Tag>
+) & FamilyStructuresWriter<TFamily>
 
 type ExpandRecursively<TValue> = TValue extends (...args: any[]) => any
   ? TValue
@@ -769,18 +676,16 @@ type ExpandRecursively<TValue> = TValue extends (...args: any[]) => any
       : TValue
 
 type MutationWriterShape<
-  TModel extends MutationModelDefinition<any>,
-  Tag extends string
+  TModel extends MutationModelDefinition<any>
 > = ExpandRecursively<{
   [K in keyof TModel]: TModel[K] extends MutationGroupSpec<infer TChildren extends MutationModelDefinition<any>>
-    ? MutationWriterShape<TChildren, Tag>
-    : FamilyWriter<TModel[K], Tag>
+    ? MutationWriterShape<TChildren>
+    : FamilyWriter<TModel[K]>
 }>
 
 export type MutationWriter<
-  TModel extends MutationModelDefinition<any>,
-  Tag extends string = string
-> = MutationWriterShape<TModel, Tag>
+  TModel extends MutationModelDefinition<any>
+> = MutationWriterShape<TModel>
 
 type OrderedReaderApi<Item> = {
   items(): readonly Item[]
@@ -1287,10 +1192,6 @@ const lowerPatchWrites = (
     base: string,
     value: unknown
   ) => {
-    if (isUnset(value)) {
-      writes[base] = unsetRecordWrite()
-      return
-    }
     if (
       typeof value !== 'object'
       || value === null
@@ -1317,10 +1218,6 @@ const lowerPatchWrites = (
     base: string,
     value: unknown
   ) => {
-    if (isUnset(value)) {
-      writes[base] = unsetRecordWrite()
-      return
-    }
     if (
       typeof value !== 'object'
       || value === null
@@ -1331,7 +1228,7 @@ const lowerPatchWrites = (
     }
 
     Object.entries(value).forEach(([key, nested]) => {
-      writes[`${base}.${key}`] = isUnset(nested)
+      writes[`${base}.${key}`] = nested === undefined
         ? unsetRecordWrite()
         : nested
     })
@@ -1345,7 +1242,7 @@ const lowerPatchWrites = (
     }
     const path = member.at ?? memberName
     if (member.kind === 'field') {
-      writes[path] = isUnset(value)
+      writes[path] = value === undefined
         ? unsetRecordWrite()
         : value
       return
@@ -1362,24 +1259,18 @@ const lowerPatchWrites = (
 
 export const createMutationWriter = <
   Doc,
-  const TModel extends MutationModelDefinition<Doc>,
-  Tag extends string = string
+  const TModel extends MutationModelDefinition<Doc>
 >(
   model: TModel,
-  base: MutationProgramWriter<Tag>
-): MutationWriter<TModel, Tag> => {
+  base: MutationProgramWriter
+): MutationWriter<TModel> => {
   const result: Record<string, unknown> = {}
 
   forEachMutationFamily(model, (familyName, family) => {
     const familyWriter: Record<string, unknown> = {}
 
     familyWriter.create = (
-      value: unknown,
-      tags?: readonly Tag[],
-      metadata?: {
-        delta?: MutationDeltaInput
-        footprint?: readonly MutationFootprint[]
-      }
+      value: unknown
     ) => {
       base.entity.create({
         kind: 'entity',
@@ -1389,17 +1280,12 @@ export const createMutationWriter = <
           : String((value as {
               id?: unknown
             }).id)
-      }, value, tags, metadata)
+      }, value)
     }
 
     if (family.kind === 'singleton') {
       familyWriter.patch = (
-        writes: Readonly<Record<string, unknown>>,
-        tags?: readonly Tag[],
-        metadata?: {
-          delta?: MutationDeltaInput
-          footprint?: readonly MutationFootprint[]
-        }
+        writes: Readonly<Record<string, unknown>>
       ) => {
         base.entity.patch(
           {
@@ -1407,33 +1293,20 @@ export const createMutationWriter = <
             type: familyName,
             id: familyName
           },
-          lowerPatchWrites(family.members, writes),
-          tags,
-          metadata
+          lowerPatchWrites(family.members, writes)
         )
       }
-      familyWriter.delete = (
-        tags?: readonly Tag[],
-        metadata?: {
-          delta?: MutationDeltaInput
-          footprint?: readonly MutationFootprint[]
-        }
-      ) => {
+      familyWriter.delete = () => {
         base.entity.delete({
           kind: 'entity',
           type: familyName,
           id: familyName
-        }, tags, metadata)
+        })
       }
     } else {
       familyWriter.patch = (
         id: string,
-        writes: Readonly<Record<string, unknown>>,
-        tags?: readonly Tag[],
-        metadata?: {
-          delta?: MutationDeltaInput
-          footprint?: readonly MutationFootprint[]
-        }
+        writes: Readonly<Record<string, unknown>>
       ) => {
         base.entity.patch(
           {
@@ -1441,24 +1314,15 @@ export const createMutationWriter = <
             type: familyName,
             id
           },
-          lowerPatchWrites(family.members, writes),
-          tags,
-          metadata
+          lowerPatchWrites(family.members, writes)
         )
       }
-      familyWriter.delete = (
-        id: string,
-        tags?: readonly Tag[],
-        metadata?: {
-          delta?: MutationDeltaInput
-          footprint?: readonly MutationFootprint[]
-        }
-      ) => {
+      familyWriter.delete = (id: string) => {
         base.entity.delete({
           kind: 'entity',
           type: familyName,
           id
-        }, tags, metadata)
+        })
       }
     }
 
@@ -1470,48 +1334,36 @@ export const createMutationWriter = <
       const path = member.at ?? name
       familyWriter[name] = family.kind === 'singleton'
         ? () => ({
-            set: (key: string, value: unknown, tags?: readonly Tag[], metadata?: {
-              delta?: MutationDeltaInput
-              footprint?: readonly MutationFootprint[]
-            }) => base.entity.patch({
+            set: (key: string, value: unknown) => base.entity.patch({
               kind: 'entity',
               type: familyName,
               id: familyName
             }, {
               [`${path}.${key}`]: value
-            }, tags, metadata),
-            remove: (key: string, tags?: readonly Tag[], metadata?: {
-              delta?: MutationDeltaInput
-              footprint?: readonly MutationFootprint[]
-            }) => base.entity.patch({
+            }),
+            remove: (key: string) => base.entity.patch({
               kind: 'entity',
               type: familyName,
               id: familyName
             }, {
               [`${path}.${key}`]: undefined
-            }, tags, metadata)
+            })
           })
         : (id: string) => ({
-            set: (key: string, value: unknown, tags?: readonly Tag[], metadata?: {
-              delta?: MutationDeltaInput
-              footprint?: readonly MutationFootprint[]
-            }) => base.entity.patch({
+            set: (key: string, value: unknown) => base.entity.patch({
               kind: 'entity',
               type: familyName,
               id
             }, {
               [`${path}.${key}`]: value
-            }, tags, metadata),
-            remove: (key: string, tags?: readonly Tag[], metadata?: {
-              delta?: MutationDeltaInput
-              footprint?: readonly MutationFootprint[]
-            }) => base.entity.patch({
+            }),
+            remove: (key: string) => base.entity.patch({
               kind: 'entity',
               type: familyName,
               id
             }, {
               [`${path}.${key}`]: undefined
-            }, tags, metadata)
+            })
           })
     })
 
@@ -1519,95 +1371,65 @@ export const createMutationWriter = <
       const type = `${familyName}.${name}`
       familyWriter[name] = family.kind === 'singleton'
         ? () => ({
-            insert: (value: unknown, to?: MutationOrderedAnchor, tags?: readonly Tag[], metadata?: {
-              delta?: MutationDeltaInput
-              footprint?: readonly MutationFootprint[]
-            }) => base.ordered.insert({
+            insert: (value: unknown, to?: MutationOrderedAnchor) => base.ordered.insert({
               kind: 'ordered',
               type
             }, (family.sequence?.[name] as MutationOrderedFamilySpec<Doc, 'singleton', unknown, string>).identify(value), value, to ?? {
               kind: 'end'
-            }, tags, metadata),
-            move: (itemId: string, to?: MutationOrderedAnchor, tags?: readonly Tag[], metadata?: {
-              delta?: MutationDeltaInput
-              footprint?: readonly MutationFootprint[]
-            }) => base.ordered.move({
+            }),
+            move: (itemId: string, to?: MutationOrderedAnchor) => base.ordered.move({
               kind: 'ordered',
               type
             }, itemId, to ?? {
               kind: 'end'
-            }, tags, metadata),
-            splice: (itemIds: readonly string[], to?: MutationOrderedAnchor, tags?: readonly Tag[], metadata?: {
-              delta?: MutationDeltaInput
-              footprint?: readonly MutationFootprint[]
-            }) => base.ordered.splice({
+            }),
+            splice: (itemIds: readonly string[], to?: MutationOrderedAnchor) => base.ordered.splice({
               kind: 'ordered',
               type
             }, itemIds, to ?? {
               kind: 'end'
-            }, tags, metadata),
-            patch: (itemId: string, patch: unknown, tags?: readonly Tag[], metadata?: {
-              delta?: MutationDeltaInput
-              footprint?: readonly MutationFootprint[]
-            }) => base.ordered.patch({
+            }),
+            patch: (itemId: string, patch: unknown) => base.ordered.patch({
               kind: 'ordered',
               type
-            }, itemId, patch, tags, metadata),
-            delete: (itemId: string, tags?: readonly Tag[], metadata?: {
-              delta?: MutationDeltaInput
-              footprint?: readonly MutationFootprint[]
-            }) => base.ordered.delete({
+            }, itemId, patch),
+            delete: (itemId: string) => base.ordered.delete({
               kind: 'ordered',
               type
-            }, itemId, tags, metadata)
+            }, itemId)
           })
         : (key: string) => ({
-            insert: (value: unknown, to?: MutationOrderedAnchor, tags?: readonly Tag[], metadata?: {
-              delta?: MutationDeltaInput
-              footprint?: readonly MutationFootprint[]
-            }) => base.ordered.insert({
+            insert: (value: unknown, to?: MutationOrderedAnchor) => base.ordered.insert({
               kind: 'ordered',
               type,
               key
             }, (family.sequence?.[name] as MutationOrderedFamilySpec<Doc, 'map' | 'table', unknown, string>).identify(value), value, to ?? {
               kind: 'end'
-            }, tags, metadata),
-            move: (itemId: string, to?: MutationOrderedAnchor, tags?: readonly Tag[], metadata?: {
-              delta?: MutationDeltaInput
-              footprint?: readonly MutationFootprint[]
-            }) => base.ordered.move({
+            }),
+            move: (itemId: string, to?: MutationOrderedAnchor) => base.ordered.move({
               kind: 'ordered',
               type,
               key
             }, itemId, to ?? {
               kind: 'end'
-            }, tags, metadata),
-            splice: (itemIds: readonly string[], to?: MutationOrderedAnchor, tags?: readonly Tag[], metadata?: {
-              delta?: MutationDeltaInput
-              footprint?: readonly MutationFootprint[]
-            }) => base.ordered.splice({
+            }),
+            splice: (itemIds: readonly string[], to?: MutationOrderedAnchor) => base.ordered.splice({
               kind: 'ordered',
               type,
               key
             }, itemIds, to ?? {
               kind: 'end'
-            }, tags, metadata),
-            patch: (itemId: string, patch: unknown, tags?: readonly Tag[], metadata?: {
-              delta?: MutationDeltaInput
-              footprint?: readonly MutationFootprint[]
-            }) => base.ordered.patch({
+            }),
+            patch: (itemId: string, patch: unknown) => base.ordered.patch({
               kind: 'ordered',
               type,
               key
-            }, itemId, patch, tags, metadata),
-            delete: (itemId: string, tags?: readonly Tag[], metadata?: {
-              delta?: MutationDeltaInput
-              footprint?: readonly MutationFootprint[]
-            }) => base.ordered.delete({
+            }, itemId, patch),
+            delete: (itemId: string) => base.ordered.delete({
               kind: 'ordered',
               type,
               key
-            }, itemId, tags, metadata)
+            }, itemId)
           })
     })
 
@@ -1615,75 +1437,51 @@ export const createMutationWriter = <
       const type = `${familyName}.${name}`
       familyWriter[name] = family.kind === 'singleton'
         ? () => ({
-            insert: (nodeId: string, parentId?: string, index?: number, value?: unknown, tags?: readonly Tag[], metadata?: {
-              delta?: MutationDeltaInput
-              footprint?: readonly MutationFootprint[]
-            }) => base.tree.insert({
+            insert: (nodeId: string, parentId?: string, index?: number, value?: unknown) => base.tree.insert({
               kind: 'tree',
               type
-            }, nodeId, parentId, index, value, tags, metadata),
-            move: (nodeId: string, parentId?: string, index?: number, tags?: readonly Tag[], metadata?: {
-              delta?: MutationDeltaInput
-              footprint?: readonly MutationFootprint[]
-            }) => base.tree.move({
+            }, nodeId, parentId, index, value),
+            move: (nodeId: string, parentId?: string, index?: number) => base.tree.move({
               kind: 'tree',
               type
-            }, nodeId, parentId, index, tags, metadata),
-            delete: (nodeId: string, tags?: readonly Tag[], metadata?: {
-              delta?: MutationDeltaInput
-              footprint?: readonly MutationFootprint[]
-            }) => base.tree.delete({
+            }, nodeId, parentId, index),
+            delete: (nodeId: string) => base.tree.delete({
               kind: 'tree',
               type
-            }, nodeId, tags, metadata),
-            patch: (nodeId: string, patch: unknown, tags?: readonly Tag[], metadata?: {
-              delta?: MutationDeltaInput
-              footprint?: readonly MutationFootprint[]
-            }) => base.tree.patch({
+            }, nodeId),
+            patch: (nodeId: string, patch: unknown) => base.tree.patch({
               kind: 'tree',
               type
-            }, nodeId, patch, tags, metadata)
+            }, nodeId, patch)
           })
         : (key: string) => ({
-            insert: (nodeId: string, parentId?: string, index?: number, value?: unknown, tags?: readonly Tag[], metadata?: {
-              delta?: MutationDeltaInput
-              footprint?: readonly MutationFootprint[]
-            }) => base.tree.insert({
+            insert: (nodeId: string, parentId?: string, index?: number, value?: unknown) => base.tree.insert({
               kind: 'tree',
               type,
               key
-            }, nodeId, parentId, index, value, tags, metadata),
-            move: (nodeId: string, parentId?: string, index?: number, tags?: readonly Tag[], metadata?: {
-              delta?: MutationDeltaInput
-              footprint?: readonly MutationFootprint[]
-            }) => base.tree.move({
+            }, nodeId, parentId, index, value),
+            move: (nodeId: string, parentId?: string, index?: number) => base.tree.move({
               kind: 'tree',
               type,
               key
-            }, nodeId, parentId, index, tags, metadata),
-            delete: (nodeId: string, tags?: readonly Tag[], metadata?: {
-              delta?: MutationDeltaInput
-              footprint?: readonly MutationFootprint[]
-            }) => base.tree.delete({
+            }, nodeId, parentId, index),
+            delete: (nodeId: string) => base.tree.delete({
               kind: 'tree',
               type,
               key
-            }, nodeId, tags, metadata),
-            patch: (nodeId: string, patch: unknown, tags?: readonly Tag[], metadata?: {
-              delta?: MutationDeltaInput
-              footprint?: readonly MutationFootprint[]
-            }) => base.tree.patch({
+            }, nodeId),
+            patch: (nodeId: string, patch: unknown) => base.tree.patch({
               kind: 'tree',
               type,
               key
-            }, nodeId, patch, tags, metadata)
+            }, nodeId, patch)
           })
     })
 
     assignNested(result, familyName, familyWriter)
   })
 
-  return result as MutationWriter<TModel, Tag>
+  return result as MutationWriter<TModel>
 }
 
 const readCollection = (
@@ -2011,6 +1809,25 @@ const createSingletonKeyedTouchedView = <
 
 const DELTA_CACHE = new WeakMap<object, WeakMap<MutationDelta, MutationDeltaOf<any>>>()
 
+const freezeDeep = <T>(value: T, seen = new WeakSet<object>()): T => {
+  if (
+    typeof value !== 'object'
+    || value === null
+    || seen.has(value)
+  ) {
+    return value
+  }
+
+  seen.add(value)
+
+  const target = value as Record<string, unknown>
+  Object.getOwnPropertyNames(target).forEach((key) => {
+    freezeDeep(target[key], seen)
+  })
+
+  return Object.freeze(value)
+}
+
 export const createMutationDelta = <
   Doc,
   const TModel extends MutationModelDefinition<Doc>
@@ -2120,7 +1937,7 @@ export const createMutationDelta = <
     assignNested(result, family.name, familyDelta)
   })
 
-  const typed = result as MutationDeltaOf<TModel>
+  const typed = freezeDeep(result) as MutationDeltaOf<TModel>
   const nextModelCache = modelCache ?? new WeakMap<MutationDelta, MutationDeltaOf<any>>()
   if (!modelCache) {
     DELTA_CACHE.set(model as object, nextModelCache)

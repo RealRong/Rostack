@@ -1,6 +1,5 @@
 import type {
   MutationDelta,
-  MutationDeltaInput,
   MutationFootprint,
   MutationIssue,
   MutationOrderedAnchor,
@@ -33,69 +32,57 @@ export type MutationTarget =
 
 export type MutationEntityRef = MutationEntityTarget
 
-type MutationProgramStepMetadata<
-  Tag extends string = string
-> = {
-  tags?: readonly Tag[]
-  delta?: MutationDeltaInput
-  footprint?: readonly MutationFootprint[]
-}
+type MutationProgramStepMetadata = {}
 
-export type MutationEntityProgramStep<
-  Tag extends string = string
-> =
+export type MutationEntityProgramStep =
   | {
       type: 'entity.create'
       entity: MutationEntityRef
       value: unknown
-    } & MutationProgramStepMetadata<Tag>
+    } & MutationProgramStepMetadata
   | {
       type: 'entity.patch'
       entity: MutationEntityRef
       writes: Readonly<Record<string, unknown>>
-    } & MutationProgramStepMetadata<Tag>
+    } & MutationProgramStepMetadata
   | {
       type: 'entity.delete'
       entity: MutationEntityRef
-    } & MutationProgramStepMetadata<Tag>
+    } & MutationProgramStepMetadata
 
-export type MutationOrderedProgramStep<
-  Tag extends string = string
-> =
+export type MutationOrderedProgramStep =
   | {
       type: 'ordered.insert'
       target: MutationOrderedTarget
       itemId: string
       value: unknown
       to: MutationOrderedAnchor
-    } & MutationProgramStepMetadata<Tag>
+    } & MutationProgramStepMetadata
   | {
       type: 'ordered.move'
       target: MutationOrderedTarget
       itemId: string
       to: MutationOrderedAnchor
-    } & MutationProgramStepMetadata<Tag>
+    } & MutationProgramStepMetadata
   | {
       type: 'ordered.splice'
       target: MutationOrderedTarget
       itemIds: readonly string[]
       to: MutationOrderedAnchor
-    } & MutationProgramStepMetadata<Tag>
+    } & MutationProgramStepMetadata
   | {
       type: 'ordered.delete'
       target: MutationOrderedTarget
       itemId: string
-    } & MutationProgramStepMetadata<Tag>
+    } & MutationProgramStepMetadata
   | {
       type: 'ordered.patch'
       target: MutationOrderedTarget
       itemId: string
       patch: unknown
-    } & MutationProgramStepMetadata<Tag>
+    } & MutationProgramStepMetadata
 
-export type MutationTreeProgramStep<
-  Tag extends string = string
-> =
+export type MutationTreeProgramStep =
   | {
       type: 'tree.insert'
       target: MutationTreeTarget
@@ -103,37 +90,35 @@ export type MutationTreeProgramStep<
       parentId?: string
       index?: number
       value?: unknown
-    } & MutationProgramStepMetadata<Tag>
+    } & MutationProgramStepMetadata
   | {
       type: 'tree.move'
       target: MutationTreeTarget
       nodeId: string
       parentId?: string
       index?: number
-    } & MutationProgramStepMetadata<Tag>
+    } & MutationProgramStepMetadata
   | {
       type: 'tree.delete'
       target: MutationTreeTarget
       nodeId: string
-    } & MutationProgramStepMetadata<Tag>
+    } & MutationProgramStepMetadata
   | {
       type: 'tree.restore'
       target: MutationTreeTarget
       snapshot: MutationTreeSubtreeSnapshot
-    } & MutationProgramStepMetadata<Tag>
+    } & MutationProgramStepMetadata
   | {
       type: 'tree.node.patch'
       target: MutationTreeTarget
       nodeId: string
       patch: unknown
-    } & MutationProgramStepMetadata<Tag>
+    } & MutationProgramStepMetadata
 
-export type MutationProgramStep<
-  Tag extends string = string
-> =
-  | MutationEntityProgramStep<Tag>
-  | MutationOrderedProgramStep<Tag>
-  | MutationTreeProgramStep<Tag>
+export type MutationProgramStep =
+  | MutationEntityProgramStep
+  | MutationOrderedProgramStep
+  | MutationTreeProgramStep
 
 export const isMutationProgramStep = (
   value: {
@@ -160,18 +145,15 @@ export const isMutationProgramStep = (
   }
 }
 
-export interface MutationProgram<
-  Tag extends string = string
-> {
-  readonly steps: readonly MutationProgramStep<Tag>[]
+export interface MutationProgram {
+  readonly steps: readonly MutationProgramStep[]
 }
 
 export interface AppliedMutationProgram<
-  Doc,
-  Tag extends string = string
+  Doc
 > {
   document: Doc
-  inverse: MutationProgram<Tag>
+  inverse: MutationProgram
   delta: MutationDelta
   structural: readonly MutationStructuralFact[]
   footprint: readonly MutationFootprint[]

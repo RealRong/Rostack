@@ -35,11 +35,6 @@ const readOwn = (
   key: string | number
 ): unknown => value[key]
 
-const hasOwn = (
-  value: Record<string | number, unknown>,
-  key: string | number
-): boolean => Object.prototype.hasOwnProperty.call(value, key)
-
 const displayPath = (
   value: Path
 ): string => path.toString(value)
@@ -74,38 +69,6 @@ const validateSetPath = (
     }
 
     cursor = next
-  }
-
-  return {
-    ok: true
-  }
-}
-
-const validateUnsetPath = (
-  current: Record<string | number, unknown>,
-  targetPath: Path
-): { ok: true } | { ok: false; message: string } => {
-  const parts = path.parts(targetPath)
-  let cursor: Record<string | number, unknown> = current
-
-  for (let index = 0; index < parts.length - 1; index += 1) {
-    const next = readOwn(cursor, parts[index]!)
-    if (!isRecordLike(next)) {
-      return {
-        ok: false,
-        message: `Path ${displayPath(targetPath)} does not exist.`
-      }
-    }
-
-    cursor = next
-  }
-
-  const key = parts[parts.length - 1]!
-  if (!hasOwn(cursor, key)) {
-    return {
-      ok: false,
-      message: `Path ${displayPath(targetPath)} does not exist.`
-    }
   }
 
   return {
@@ -173,14 +136,16 @@ const apply = (
 
   if (!isRecordLike(current)) {
     return {
-      ok: false,
-      message: `Cannot unset path ${displayPath(targetPath)} from a non-object root.`
+      ok: true,
+      value: current
     }
   }
 
-  const validation = validateUnsetPath(current, targetPath)
-  if (!validation.ok) {
-    return validation
+  if (!has(current, targetPath)) {
+    return {
+      ok: true,
+      value: current
+    }
   }
 
   const rootDraft = createRoot<Record<string | number, unknown>>(current)

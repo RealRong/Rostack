@@ -23,9 +23,9 @@ import { createYjsSyncCodec } from '@whiteboard/collab/yjs/codec'
 const DEFAULT_CHECKPOINT_THRESHOLD = 100
 
 const readLiveProgram = (
-  program: import('@shared/mutation').MutationProgram<string>
+  program: import('@shared/mutation').MutationProgram
 ): {
-  live: import('@shared/mutation').MutationProgram<string>
+  live: import('@shared/mutation').MutationProgram
   checkpointOnly: boolean
 } => {
   const live = program.steps.filter((step) => (

@@ -51,9 +51,9 @@ export interface HistorySyncPort<Footprint> {
 
 export interface HistoryPort<
   Result,
-  Program = MutationProgram<string>,
+  Program = MutationProgram,
   Footprint = any,
-  Commit extends ApplyCommit<any, any, Footprint, any> = ApplyCommit<any, any, Footprint, any>
+  Commit extends ApplyCommit<any, Footprint, any> = ApplyCommit<any, Footprint, any>
 > extends store.ReadStore<HistoryPortState> {
   readonly sync: HistorySyncPort<Footprint>
   undo(): Result
@@ -71,7 +71,7 @@ export interface HistoryPortEngine<
   Result extends {
     ok: boolean
   },
-  Commit extends ApplyCommit<Doc, any, Footprint, any> = ApplyCommit<Doc, any, Footprint, any>
+  Commit extends ApplyCommit<Doc, Footprint, any> = ApplyCommit<Doc, Footprint, any>
 > {
   apply(
     program: Program,
@@ -79,7 +79,7 @@ export interface HistoryPortEngine<
       origin?: Origin
     }
   ): Result
-  commits: CommitStream<CommitRecord<Doc, any, Footprint, any>>
+  commits: CommitStream<CommitRecord<Doc, Footprint, any, any>>
   historyController(): HistoryController<Program, Footprint, Commit> | undefined
 }
 
@@ -124,7 +124,7 @@ export const createHistoryPort = <
   Result extends {
     ok: boolean
   },
-  Commit extends ApplyCommit<Doc, any, Footprint, any> = ApplyCommit<Doc, any, Footprint, any>
+  Commit extends ApplyCommit<Doc, Footprint, any, any> = ApplyCommit<Doc, Footprint, any, any>
 >(
   engine: HistoryPortEngine<Doc, Program, Footprint, Result, Commit>
 ): HistoryPort<Result, Program, Footprint, Commit> => {

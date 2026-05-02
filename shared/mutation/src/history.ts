@@ -40,7 +40,7 @@ export interface CaptureOptions<Footprint> {
 export interface HistoryController<
   Program,
   Footprint,
-  Commit extends ApplyCommit<any, any, Footprint, any>
+  Commit extends ApplyCommit<any, Footprint, any>
 > {
   state(): HistoryState
   capture(commit: Commit, options?: CaptureOptions<Footprint>): boolean
@@ -127,7 +127,7 @@ export const history = {
   create<
     Program,
     Footprint,
-    Commit extends ApplyCommit<any, any, Footprint, any>
+    Commit extends ApplyCommit<any, Footprint, any>
   >(input: {
     conflicts(
       left: readonly Footprint[],

@@ -24,30 +24,26 @@ import type {
   ValidationSeverity
 } from './contracts'
 
-type DataviewCompileTable = {
-  [K in Intent['type']]: {
-    intent: Extract<Intent, { type: K }>
-    output: unknown
-  }
-}
-
 type DataviewCompileExtras = Pick<DataviewCompileContext, 'query' | 'expect'>
 
+export const dataviewCompileHandlers = {
+  ...dataviewRecordIntentHandlers,
+  ...dataviewFieldIntentHandlers,
+  ...dataviewViewIntentHandlers
+} as const
+
 export const compile: MutationCompileDefinition<
-  DataviewCompileTable,
+  Intent,
   DataDoc,
   DataviewMutationWriter,
   DataviewMutationReader,
   void,
   string,
-  DataviewCompileExtras
+  DataviewCompileExtras,
+  typeof dataviewCompileHandlers
 > = {
   createContext: (input) => createCompileContext(input.reader, input),
-  handlers: {
-    ...dataviewRecordIntentHandlers,
-    ...dataviewFieldIntentHandlers,
-    ...dataviewViewIntentHandlers
-  }
+  handlers: dataviewCompileHandlers
 } as const
 
 export type {

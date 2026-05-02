@@ -38,16 +38,12 @@ import type {
   EditorCommand,
   EditorDispatchInput,
   EditorDispatchUpdater,
-  EditorStateMutationTable
+  EditorStateIntent
 } from './intents'
 
 export type EditorStateReader = MutationReader<typeof editorStateMutationSchema>
 export type EditorStateProgram = MutationWriter<typeof editorStateMutationSchema>
 export type EditorStateMutationDelta = MutationDeltaOf<typeof editorStateMutationSchema>
-
-type EditorStateOperation = {
-  type: string
-}
 
 const applyCollectionDiff = <TId extends string, TValue>(
   input: {
@@ -88,12 +84,7 @@ const applyCollectionDiff = <TId extends string, TValue>(
   })
 }
 
-const compileHandlers: MutationCompileHandlerTable<
-  EditorStateMutationTable,
-  EditorStateDocument,
-  EditorStateProgram,
-  EditorStateReader
-> = {
+const compileHandlers = {
   'tool.set': ({ document, intent, writer }) => {
     writer.state.patch(draftRecord.diff(
       {
@@ -267,7 +258,12 @@ const compileHandlers: MutationCompileHandlerTable<
       }
     ))
   }
-}
+} satisfies MutationCompileHandlerTable<
+  EditorStateDocument,
+  EditorStateIntent,
+  EditorStateProgram,
+  EditorStateReader
+>
 
 const assertEditorStateCommit = <T,>(
   result: MutationResult<T, unknown>
@@ -412,8 +408,7 @@ const applyCommand = (
 export interface EditorStateRuntime {
   engine: MutationEngine<
     EditorStateDocument,
-    EditorStateMutationTable,
-    EditorStateOperation,
+    EditorStateIntent,
     EditorStateReader,
     void,
     string,
@@ -434,7 +429,7 @@ export interface EditorStateRuntime {
   ) => void
   commits: {
     subscribe: (
-      listener: (commit: MutationCommitRecord<EditorStateDocument, EditorStateOperation, MutationFootprint, EditorStateMutationDelta>) => void
+      listener: (commit: MutationCommitRecord<EditorStateDocument, MutationFootprint, EditorStateMutationDelta>) => void
     ) => () => void
   }
   flush(): void
@@ -447,8 +442,7 @@ export const createEditorStateRuntime = (input: {
 }): EditorStateRuntime => {
   const engine = new MutationEngine<
     EditorStateDocument,
-    EditorStateMutationTable,
-    EditorStateOperation,
+    EditorStateIntent,
     EditorStateReader,
     void,
     string,
@@ -470,7 +464,7 @@ export const createEditorStateRuntime = (input: {
   let stagedDocument = engine.document()
   let pendingCommands: EditorCommand[] = []
   const commitListeners = new Set<(
-    commit: MutationCommitRecord<EditorStateDocument, EditorStateOperation, MutationFootprint, EditorStateMutationDelta>
+    commit: MutationCommitRecord<EditorStateDocument, MutationFootprint, EditorStateMutationDelta>
   ) => void>()
 
   engine.subscribe((commit) => {
@@ -511,7 +505,7 @@ export const createEditorStateRuntime = (input: {
   }
 
   const write: EditorStateRuntime['write'] = (run) => {
-    const program = createMutationProgramWriter<string>()
+    const program = createMutationProgramWriter()
     const writer = createMutationWriter(
       editorStateMutationSchema,
       program

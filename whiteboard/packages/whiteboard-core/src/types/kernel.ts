@@ -5,9 +5,9 @@ import type {
 } from '@whiteboard/core/types/model'
 import type {
   ChangeSet,
-  Invalidation,
-  Operation
+  Invalidation
 } from '@whiteboard/core/types/operations'
+import type { MutationProgram } from '@shared/mutation'
 import type { MutationFootprint } from '@shared/mutation'
 import type { Result, ResultCode } from '@whiteboard/core/types/result'
 
@@ -38,7 +38,7 @@ export type KernelReduceData = {
   doc: Document
   changes: ChangeSet
   invalidation: Invalidation
-  inverse: readonly Operation[]
+  inverse: MutationProgram
   history: {
     footprint: readonly MutationFootprint[]
   }

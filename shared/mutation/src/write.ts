@@ -255,9 +255,7 @@ export interface MutationIssue {
 
 export interface MutationCommit<
   Doc,
-  Op,
   Footprint = MutationFootprint,
-  Tag extends string = string,
   Delta extends MutationDelta = MutationDelta
 > {
   kind: 'apply'
@@ -265,9 +263,9 @@ export interface MutationCommit<
   at: number
   origin: MutationOrigin
   document: Doc
-  authored: MutationProgram<Tag>
-  applied: MutationProgram<Tag>
-  inverse: MutationProgram<Tag>
+  authored: MutationProgram
+  applied: MutationProgram
+  inverse: MutationProgram
   delta: Delta
   structural: readonly MutationStructuralFact[]
   footprint: readonly Footprint[]
@@ -297,21 +295,18 @@ export type MutationReplaceResult<
 
 export type MutationCommitRecord<
   Doc,
-  Op,
   Footprint = MutationFootprint,
   Delta extends MutationDelta = MutationDelta
 > =
-  | MutationCommit<Doc, Op, Footprint, string, Delta>
+  | MutationCommit<Doc, Footprint, Delta>
   | MutationReplaceCommit<Doc, Delta>
 
 export interface ApplyCommit<
   Doc,
-  Op,
   Footprint = MutationFootprint,
   Extra = void,
-  Tag extends string = string,
   Delta extends MutationDelta = MutationDelta
-> extends MutationCommit<Doc, Op, Footprint, Tag, Delta> {
+> extends MutationCommit<Doc, Footprint, Delta> {
   extra: Extra
 }
 
@@ -322,12 +317,11 @@ export type ReplaceCommit<
 
 export type CommitRecord<
   Doc,
-  Op,
   Footprint = MutationFootprint,
   Extra = void,
   Delta extends MutationDelta = MutationDelta
 > =
-  | ApplyCommit<Doc, Op, Footprint, Extra, string, Delta>
+  | ApplyCommit<Doc, Footprint, Extra, Delta>
   | ReplaceCommit<Doc, Delta>
 
 export interface CommitStream<C> {

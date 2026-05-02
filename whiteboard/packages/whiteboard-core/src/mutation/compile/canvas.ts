@@ -2,6 +2,7 @@ import { document as documentApi } from '@whiteboard/core/document'
 import { getNodeMindmapId } from '@whiteboard/core/mindmap/ops'
 import { node as nodeApi } from '@whiteboard/core/node'
 import type {
+  WhiteboardCompileIntent,
   WhiteboardCompileContext,
   WhiteboardCompileHandlerTable
 } from '@whiteboard/core/mutation/compile/helpers'
@@ -153,7 +154,7 @@ export const compileCanvasDuplicate = (
 }
 
 const compileCanvasSelectionMove = (
-  ctx: WhiteboardCompileContext<'canvas.selection.move'>
+  ctx: WhiteboardCompileContext<WhiteboardCompileIntent<'canvas.selection.move'>>
 ) => {
   const {
     intent,
@@ -291,7 +292,7 @@ type CanvasIntentHandlers = Pick<
   | 'document.order.move'
 >
 
-export const canvasIntentHandlers: CanvasIntentHandlers = {
+export const canvasIntentHandlers = {
   'canvas.delete': (ctx) => compileCanvasDelete(ctx.intent.refs, ctx),
   'canvas.duplicate': (ctx) => {
     const output = compileCanvasDuplicate(ctx.intent.refs, ctx)
@@ -299,7 +300,7 @@ export const canvasIntentHandlers: CanvasIntentHandlers = {
       if ('kind' in output) {
         return output
       }
-      ctx.output(output)
+      return output
     }
   },
   'canvas.selection.move': (ctx) => compileCanvasSelectionMove(ctx),
@@ -326,4 +327,4 @@ export const canvasIntentHandlers: CanvasIntentHandlers = {
       anchor
     )
   }
-}
+} satisfies CanvasIntentHandlers

@@ -1,7 +1,6 @@
 import {
   type MutationDeltaOf,
   type MutationOrigin,
-  type MutationCompileDefinition
 } from '@shared/mutation'
 import {
   MutationEngine,
@@ -12,7 +11,8 @@ import type {
   WhiteboardCompileIds,
   WhiteboardCompileContext,
   WhiteboardCompileServices,
-  WhiteboardMutationTable
+  WhiteboardIntent,
+  whiteboardCompileHandlers
 } from '@whiteboard/core/mutation'
 import type {
   WhiteboardReader,
@@ -38,7 +38,7 @@ import type {
   IntentKind
 } from '../contracts/intent'
 import { failure } from '../result'
-import type { Document, Operation, ResultCode } from '@whiteboard/core/types'
+import type { Document, ResultCode } from '@whiteboard/core/types'
 import type { WhiteboardMutationDelta } from '../mutation'
 
 const resolveIntentOrigin = (
@@ -61,9 +61,11 @@ const resolveIntentOrigin = (
     ?? 'user'
 }
 
-const mapExecuteFailure = <T>(
-  result: MutationResult<T, import('../types/engineWrite').EngineApplyCommit, string>
-): MutationResult<T, import('../types/engineWrite').EngineApplyCommit, string> => {
+const mapExecuteFailure = <
+  TResult extends MutationResult<unknown, import('../types/engineWrite').EngineApplyCommit, string>
+>(
+  result: TResult
+): TResult => {
   if (result.ok) {
     return result
   }
@@ -92,7 +94,7 @@ const mapExecuteFailure = <T>(
     issue.code,
     issue.message,
     issue.details
-  )
+  ) as TResult
 }
 
 export const createEngine = ({
@@ -120,14 +122,14 @@ export const createEngine = ({
 
   const core = new MutationEngine<
     Document,
-    WhiteboardMutationTable,
-    Operation,
+    WhiteboardIntent,
     WhiteboardReader,
     WhiteboardCompileServices,
     string,
     import('@shared/mutation').MutationWriter<typeof whiteboardMutationSchema>,
     WhiteboardMutationDelta,
-    Pick<WhiteboardCompileContext, 'query' | 'expect'>
+    Pick<WhiteboardCompileContext, 'query' | 'expect'>,
+    typeof whiteboardCompileHandlers
   >({
     schema: whiteboardMutationSchema,
     document,
@@ -176,7 +178,7 @@ export const createEngine = ({
       core.execute(intent, {
         origin: resolveIntentOrigin(intent, options?.origin)
       })
-    ),
+    ) as ExecuteResult<TIntent['type'] & IntentKind>,
     replace: (document, options) => core.replace(document, {
       origin: options?.origin ?? 'system'
     }),

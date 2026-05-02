@@ -152,10 +152,8 @@ import {
   createNodeDataRecordUpdate,
   createNodeDataRecordWrite,
   createNodePatch,
-  createNodeFieldsUpdateOperation,
   createNodeStyleRecordUpdate,
   createNodeStyleRecordWrite,
-  createNodeUpdateOperation,
   isNodeUpdateEmpty,
   mergeNodeUpdates,
   readNodeUpdateFromPatch
@@ -181,8 +179,6 @@ export const node = {
       style: createNodeStyleRecordWrite,
       data: createNodeDataRecordWrite
     },
-    createFieldsOperation: createNodeFieldsUpdateOperation,
-    createOperation: createNodeUpdateOperation,
     isEmpty: isNodeUpdateEmpty,
     merge: mergeNodeUpdates
   },

@@ -10,7 +10,7 @@ import {
 } from './model'
 
 export const createDataviewMutationWriter = (
-  writer: MutationProgramWriter<string>
+  writer: MutationProgramWriter
 ): DataviewMutationWriter => createMutationWriter(
   dataviewMutationSchema,
   writer

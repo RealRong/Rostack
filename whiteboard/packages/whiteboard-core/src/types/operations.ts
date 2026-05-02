@@ -229,39 +229,6 @@ export type MindmapBranchUpdateInput = {
   fields?: MindmapBranchFieldPatch
 }
 
-export type Op =
-  | { readonly type: 'document.create'; readonly value: Document }
-  | { readonly type: 'document.patch'; readonly patch: DocumentPatch }
-  | { readonly type: 'document.order.move'; readonly refs: readonly CanvasItemRef[]; readonly to: CanvasOrderAnchor }
-  | { readonly type: 'node.create'; readonly value: Node }
-  | { readonly type: 'node.patch'; readonly id: NodeId; readonly patch: NodePatch }
-  | { readonly type: 'node.delete'; readonly id: NodeId }
-  | { readonly type: 'edge.create'; readonly value: Edge }
-  | { readonly type: 'edge.patch'; readonly id: EdgeId; readonly patch: EdgePatch }
-  | { readonly type: 'edge.delete'; readonly id: EdgeId }
-  | { readonly type: 'group.create'; readonly value: Group }
-  | { readonly type: 'group.patch'; readonly id: GroupId; readonly patch: GroupPatch }
-  | { readonly type: 'group.delete'; readonly id: GroupId }
-  | { readonly type: 'mindmap.create'; readonly mindmap: MindmapRecord; readonly nodes: Node[] }
-  | { readonly type: 'mindmap.restore'; readonly snapshot: MindmapSnapshot }
-  | { readonly type: 'mindmap.delete'; readonly id: string }
-  | { readonly type: 'mindmap.move'; readonly id: string; readonly position: Point }
-  | { readonly type: 'mindmap.layout'; readonly id: string; readonly patch: Partial<MindmapLayoutSpec> }
-  | { readonly type: 'mindmap.topic.insert'; readonly id: string; readonly input: MindmapTopicInsertInput; readonly node: Node }
-  | { readonly type: 'mindmap.topic.restore'; readonly id: string; readonly snapshot: MindmapTopicSnapshot }
-  | { readonly type: 'mindmap.topic.move'; readonly id: string; readonly input: MindmapTopicMoveInput }
-  | { readonly type: 'mindmap.topic.delete'; readonly id: string; readonly input: MindmapTopicDeleteInput }
-  | { readonly type: 'mindmap.topic.patch'; readonly id: string; readonly topicId: NodeId; readonly patch: MindmapTopicPatch }
-  | { readonly type: 'mindmap.branch.patch'; readonly id: string; readonly topicId: NodeId; readonly patch: MindmapBranchFieldPatch }
-  | { readonly type: 'mindmap.topic.collapse'; readonly id: string; readonly topicId: NodeId; readonly collapsed?: boolean }
-
-export type Operation = Op
-
-export type Batch = {
-  ops: readonly Op[]
-  output?: unknown
-}
-
 export type ChangeSet = {
   document: boolean
   background: boolean

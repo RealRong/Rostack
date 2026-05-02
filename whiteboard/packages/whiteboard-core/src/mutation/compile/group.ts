@@ -17,7 +17,7 @@ type GroupIntentHandlers = Pick<
   | 'group.ungroup'
 >
 
-export const groupIntentHandlers: GroupIntentHandlers = {
+export const groupIntentHandlers = {
   'group.merge': (ctx) => {
     const groupId = readCompileServices(ctx).ids.group()
     ctx.writer.group.create({
@@ -37,9 +37,9 @@ export const groupIntentHandlers: GroupIntentHandlers = {
       })
     })
 
-    ctx.output({
+    return {
       groupId
-    })
+    }
   },
   'group.order.move': (ctx) => {
     const refs = ctx.intent.ids.flatMap((groupId) => ctx.query.group.refsInOrder(groupId))
@@ -82,9 +82,9 @@ export const groupIntentHandlers: GroupIntentHandlers = {
       })
     })
 
-    ctx.output({
+    return {
       nodeIds,
       edgeIds
-    })
+    }
   }
-}
+} satisfies GroupIntentHandlers

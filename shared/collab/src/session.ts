@@ -3,6 +3,7 @@ import {
   type ApplyCommit,
   type HistoryPort,
   type MutationCommitRecord,
+  type MutationDelta,
   type MutationReplaceResult,
   type MutationProgram,
   type Origin
@@ -53,9 +54,9 @@ export type CollabStore<
 
 export type MutationCollabSessionOptions<
   Doc,
-  Op,
-  Key,
-  Commit extends ApplyCommit<Doc, Op, Key, any>,
+  Footprint,
+  Delta extends MutationDelta,
+  Commit extends ApplyCommit<Doc, Footprint, any, Delta>,
   Change extends {
     id: string
   },
@@ -92,13 +93,13 @@ export type MutationCollabSessionOptions<
     ):
       | {
           kind: 'apply'
-          program: MutationProgram<string>
+          program: MutationProgram
         }
       | {
           kind: 'replace'
           document: Doc
         }
-    footprint(change: Change): readonly Key[]
+    footprint(change: Change): readonly Footprint[]
   }
   policy?: {
     canPublish?(commit: Commit): boolean
@@ -108,19 +109,19 @@ export type MutationCollabSessionOptions<
 
 export type MutationCollabEngine<
   Doc,
-  Op,
-  Key,
+  Footprint,
+  Delta extends MutationDelta,
   Result extends {
     ok: boolean
   },
-  Commit extends ApplyCommit<Doc, Op, Key, any>
+  Commit extends ApplyCommit<Doc, Footprint, any, Delta>
 > = {
   commits: {
     subscribe(
-      listener: (commit: MutationCommitRecord<Doc, Op, Key>) => void
+      listener: (commit: MutationCommitRecord<Doc, Footprint, Delta>) => void
     ): () => void
   }
-  history: HistoryPort<Result, Op, Key, Commit>
+  history: HistoryPort<Result, MutationProgram, Footprint, Commit>
   doc(): Doc
   replace(
     document: Doc,
@@ -129,7 +130,7 @@ export type MutationCollabEngine<
     }
   ): MutationReplaceResult<Doc>
   apply(
-    program: MutationProgram<string>,
+    program: MutationProgram,
     options?: {
       origin?: Origin
     }
@@ -140,14 +141,13 @@ export type MutationCollabSession<
   Result extends {
     ok: boolean
   },
-  Op = never,
-  Key = never,
-  Commit extends ApplyCommit<any, Op, Key, any> = ApplyCommit<any, Op, Key, any>
+  Footprint = never,
+  Commit extends ApplyCommit<any, Footprint, any, any> = ApplyCommit<any, Footprint, any, any>
 > = {
   awareness?: unknown
   status: store.ReadStore<CollabStatus>
   diagnostics: store.ReadStore<CollabDiagnostics>
-  history: HistoryPort<Result, Op, Key, Commit>
+  history: HistoryPort<Result, MutationProgram, Footprint, Commit>
   connect(): void
   disconnect(): void
   resync(): void
@@ -156,12 +156,12 @@ export type MutationCollabSession<
 
 export const createMutationCollabSession = <
   Doc,
-  Op,
-  Key,
+  Footprint,
+  Delta extends MutationDelta,
   Result extends {
     ok: boolean
   },
-  Commit extends ApplyCommit<Doc, Op, Key, any>,
+  Commit extends ApplyCommit<Doc, Footprint, any, Delta>,
   Change extends {
     id: string
   },
@@ -169,16 +169,16 @@ export const createMutationCollabSession = <
     id: string
   }
 >(
-  engine: MutationCollabEngine<Doc, Op, Key, Result, Commit>,
+  engine: MutationCollabEngine<Doc, Footprint, Delta, Result, Commit>,
   options: MutationCollabSessionOptions<
     Doc,
-    Op,
-    Key,
+    Footprint,
+    Delta,
     Commit,
     Change,
     Checkpoint
   >
-): MutationCollabSession<Result, Op, Key, Commit> => {
+): MutationCollabSession<Result, Footprint, Commit> => {
   if (options.actor.id.length === 0) {
     throw new Error('createMutationCollabSession requires a non-empty actor.id.')
   }
@@ -346,7 +346,7 @@ export const createMutationCollabSession = <
   }
 
   const publishCommit = (
-    commit: MutationCommitRecord<Doc, Op, Key>
+    commit: MutationCommitRecord<Doc, Footprint, Delta>
   ) => {
     if (commit.origin === 'remote' || suppressLocalPublish) {
       return

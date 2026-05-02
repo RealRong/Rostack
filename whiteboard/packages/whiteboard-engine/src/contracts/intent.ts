@@ -1,4 +1,4 @@
-import type { MutationResult } from '@shared/mutation/engine'
+import type { MutationCompileControl, MutationResult } from '@shared/mutation/engine'
 import type {
   CanvasIntent,
   DocumentIntent,
@@ -8,12 +8,23 @@ import type {
   NodeIntent,
   ReplaceDocumentIntent,
   WhiteboardIntent,
-  WhiteboardIntentKind,
-  WhiteboardIntentOutput,
-  WhiteboardIntentTable
+  whiteboardCompile,
 } from '@whiteboard/core/mutation'
 import type { EngineApplyCommit } from '../types/engineWrite'
 import type { WhiteboardErrorCode } from '../types/result'
+
+type WhiteboardCompileHandlers = typeof whiteboardCompile.handlers
+
+type HandlerOutput<THandler> = Exclude<
+  THandler extends (...args: any[]) => infer TResult
+    ? TResult
+    : never,
+  void | MutationCompileControl<any>
+>
+
+type HandlerOfIntent<K extends WhiteboardIntent['type']> = K extends keyof WhiteboardCompileHandlers
+  ? WhiteboardCompileHandlers[K]
+  : never
 
 export type {
   CanvasIntent,
@@ -23,12 +34,11 @@ export type {
   MindmapIntent,
   NodeIntent,
   ReplaceDocumentIntent,
-  WhiteboardIntentTable
 }
 
-export type IntentKind = WhiteboardIntentKind
-export type Intent<K extends IntentKind = IntentKind> = WhiteboardIntent<K>
-export type IntentData<K extends IntentKind = IntentKind> = WhiteboardIntentOutput<K>
+export type IntentKind = WhiteboardIntent['type']
+export type Intent<K extends IntentKind = IntentKind> = Extract<WhiteboardIntent, { type: K }>
+export type IntentData<K extends IntentKind = IntentKind> = HandlerOutput<HandlerOfIntent<K>>
 export type EngineIntent = Intent
 
 export type ExecuteResult<K extends IntentKind = IntentKind> =

@@ -27,7 +27,7 @@ const isRecord = (
 
 const assertSharedProgram = (
   value: unknown
-): MutationProgram<string> => {
+): MutationProgram => {
   if (
     !isRecord(value)
     || !Array.isArray(value.steps)
@@ -42,7 +42,7 @@ const assertSharedProgram = (
   })
 
   return {
-    steps: value.steps as MutationProgram<string>['steps']
+    steps: value.steps as MutationProgram['steps']
   }
 }
 

@@ -33,11 +33,9 @@ import type {
 
 const ROOT_PARENT_ID = '$root'
 
-const createMutationProgram = <
-  Tag extends string = string
->(
-  steps: readonly MutationProgramStep<Tag>[] = EMPTY_OUTPUTS as readonly MutationProgramStep<Tag>[]
-): MutationProgram<Tag> => ({
+const createMutationProgram = (
+  steps: readonly MutationProgramStep[] = EMPTY_OUTPUTS as readonly MutationProgramStep[]
+): MutationProgram => ({
   steps
 })
 

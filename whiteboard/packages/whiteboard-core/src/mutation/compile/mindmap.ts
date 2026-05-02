@@ -1,6 +1,5 @@
 import type {
   MutationDeltaInput,
-  MutationFootprint,
 } from '@shared/mutation'
 import { mindmap as mindmapApi } from '@whiteboard/core/mindmap'
 import {
@@ -45,11 +44,6 @@ const createIdDelta = (
     }
   }
 })
-
-const createMetadata = (input: {
-  delta?: MutationDeltaInput
-  footprint?: readonly MutationFootprint[]
-}) => input
 
 const compileMindmapCreate = (
   input: MindmapCreateInput,
@@ -125,10 +119,10 @@ const compileMindmapCreate = (
     layout: instantiated.tree.layout
   })
 
-  ctx.output({
+  return {
     mindmapId,
     rootId
-  })
+  }
 }
 
 export const emitMindmapDelete = (
@@ -177,11 +171,10 @@ export const emitMindmapMove = (
     return
   }
 
+  ctx.delta(createIdDelta('mindmap.layout', id))
   ctx.writer.node.patch(root.id, {
     position: clone(position)!
-  }, undefined, createMetadata({
-    delta: createIdDelta('mindmap.layout', id)
-  }))
+  })
 }
 
 const emitMindmapLayout = (
@@ -210,7 +203,7 @@ const emitMindmapLayout = (
 export const emitMindmapTopicInsert = (
   ctx: WhiteboardCompileContext,
   id: string,
-  input: Extract<import('@whiteboard/core/types').Operation, { type: 'mindmap.topic.insert' }>['input'],
+  input: Extract<import('@whiteboard/core/mutation').WhiteboardIntent, { type: 'mindmap.topic.insert' }>['input'],
   node: import('@whiteboard/core/types').Node
 ) => {
   const current = ctx.reader.mindmap.get(id)
@@ -309,7 +302,7 @@ export const emitMindmapTopicInsert = (
 export const emitMindmapTopicMove = (
   ctx: WhiteboardCompileContext,
   id: string,
-  input: Extract<import('@whiteboard/core/types').Operation, { type: 'mindmap.topic.move' }>['input']
+  input: Extract<import('@whiteboard/core/mutation').WhiteboardIntent, { type: 'mindmap.topic.move' }>['input']
 ) => {
   const current = ctx.reader.mindmap.get(id)
   if (!current) {
@@ -410,16 +403,11 @@ export const emitMindmapTopicPatch = (
     id
   })
 
-  ctx.writer.node.patch(topicId, writes, undefined, createMetadata({
-    footprint: [
-      entityKey('mindmap', id)
-    ],
-    ...(relayoutNodeIds.length > 0
-      ? {
-          delta: createIdDelta('mindmap.layout', id)
-        }
-      : {})
-  }))
+  ctx.footprint(entityKey('mindmap', id))
+  if (relayoutNodeIds.length > 0) {
+    ctx.delta(createIdDelta('mindmap.layout', id))
+  }
+  ctx.writer.node.patch(topicId, writes)
 }
 
 export const emitMindmapBranchPatch = (
@@ -503,7 +491,7 @@ type MindmapIntentHandlers = Pick<
   | 'mindmap.branch.update'
 >
 
-export const mindmapIntentHandlers: MindmapIntentHandlers = {
+export const mindmapIntentHandlers = {
   'mindmap.create': (ctx) => compileMindmapCreate(
     readCompileServices(ctx).layout.commit({
       kind: 'mindmap.create',
@@ -538,9 +526,9 @@ export const mindmapIntentHandlers: MindmapIntentHandlers = {
       return ctx.invalid('Mindmap topic node could not be materialized.')
     }
     emitMindmapTopicInsert(ctx, ctx.intent.id, input, materialized.data)
-    ctx.output({
+    return {
       nodeId
-    })
+    }
   },
   'mindmap.topic.move': (ctx) => {
     emitMindmapTopicMove(ctx, ctx.intent.id, ctx.intent.input)
@@ -613,10 +601,10 @@ export const mindmapIntentHandlers: MindmapIntentHandlers = {
     }
 
     walk(intent.input.nodeId)
-    ctx.output({
+    return {
       nodeId: map[intent.input.nodeId]!,
       map
-    })
+    }
   },
   'mindmap.topic.update': (ctx) => {
     ctx.intent.updates.forEach((entry) => {
@@ -646,4 +634,4 @@ export const mindmapIntentHandlers: MindmapIntentHandlers = {
       )
     })
   }
-}
+} satisfies MindmapIntentHandlers

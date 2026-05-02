@@ -45,7 +45,7 @@ const createTextNode = (overrides = {}) => ({
 
 const applyOperations = (
   doc: Document,
-  program: MutationProgram<string>
+  program: MutationProgram
 ) => {
   const engine = new MutationEngine({
     schema: whiteboardMutationSchema,
@@ -60,7 +60,7 @@ const applyOperations = (
 
 const replayInverse = (
   doc: Document,
-  program: MutationProgram<string>
+  program: MutationProgram
 ) => {
   const engine = new MutationEngine({
     schema: whiteboardMutationSchema,
@@ -263,25 +263,20 @@ test('applyNodeUpdate 允许 frame 几何写入，并拒绝穿透 primitive 容�
   assert.match(primitivePathResult.message, /non-object container/)
 })
 
-test('node.update operation builder 会 compact update 载荷', () => {
-  assert.deepEqual(
-    nodeApi.update.createOperation('node_1', {
-      fields: undefined,
-      record: undefined
-    }),
-    []
-  )
+test('node.update patch builder 会 compact update 载荷', () => {
+  assert.equal(nodeApi.update.isEmpty({
+    fields: undefined,
+    record: undefined
+  }), true)
 
   assert.deepEqual(
-    nodeApi.update.createFieldsOperation('node_1', {
-      position: { x: 10, y: 20 }
-    }),
-    [{
-      type: 'node.patch',
-      id: 'node_1',
-      patch: {
+    nodeApi.update.toPatch({
+      fields: {
         position: { x: 10, y: 20 }
       }
-    }]
+    }),
+    {
+      position: { x: 10, y: 20 }
+    }
   )
 })

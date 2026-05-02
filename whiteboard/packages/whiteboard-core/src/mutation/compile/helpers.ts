@@ -26,8 +26,6 @@ import type {
 import type {
   WhiteboardIntent,
   WhiteboardIntentKind,
-  WhiteboardIntentOutput,
-  WhiteboardMutationTable
 } from '@whiteboard/core/mutation/intents'
 
 export type WhiteboardCompileCode = string
@@ -55,12 +53,11 @@ export type WhiteboardCompileExpect = {
 }
 
 export type WhiteboardCompileContext<
-  K extends WhiteboardIntentKind = WhiteboardIntentKind
+  TIntent extends WhiteboardIntent = WhiteboardIntent
 > = MutationCompileHandlerInput<
   Document,
-  WhiteboardIntent<K>,
+  TIntent,
   MutationWriter<typeof whiteboardMutationSchema>,
-  WhiteboardIntentOutput<K>,
   WhiteboardReader,
   WhiteboardCompileServices,
   WhiteboardCompileCode
@@ -69,11 +66,15 @@ export type WhiteboardCompileContext<
   expect: WhiteboardCompileExpect
 }
 
+export type WhiteboardCompileIntent<
+  K extends WhiteboardIntentKind
+> = Extract<WhiteboardIntent, { type: K }>
+
 export type WhiteboardCompileHandler<
   K extends WhiteboardIntentKind = WhiteboardIntentKind
 > = (
-  input: WhiteboardCompileContext<K>
-) => void | MutationCompileControl<WhiteboardCompileCode>
+  input: WhiteboardCompileContext<WhiteboardCompileIntent<K>>
+) => unknown | void | MutationCompileControl<WhiteboardCompileCode>
 
 export type WhiteboardCompileHandlerTable = {
   [K in WhiteboardIntentKind]: WhiteboardCompileHandler<K>
@@ -98,7 +99,6 @@ const createCompileExpect = (
     Document,
     WhiteboardIntent,
     MutationWriter<typeof whiteboardMutationSchema>,
-    WhiteboardIntentOutput,
     WhiteboardReader,
     WhiteboardCompileServices,
     WhiteboardCompileCode
@@ -149,7 +149,6 @@ export const createCompileContext = (
       type: string
     },
     MutationWriter<typeof whiteboardMutationSchema>,
-    unknown,
     WhiteboardReader,
     WhiteboardCompileServices,
     WhiteboardCompileCode
@@ -161,7 +160,6 @@ export const createCompileContext = (
       Document,
       WhiteboardIntent,
       MutationWriter<typeof whiteboardMutationSchema>,
-      WhiteboardIntentOutput,
       WhiteboardReader,
       WhiteboardCompileServices,
       WhiteboardCompileCode

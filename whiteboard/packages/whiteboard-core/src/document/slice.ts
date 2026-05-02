@@ -19,7 +19,6 @@ import type {
   Node,
   NodeInput,
   NodeId,
-  Operation,
   Point,
   Rect,
   Result

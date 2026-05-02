@@ -51,13 +51,11 @@ export interface DataviewCompileExpect {
 }
 
 export type DataviewCompileContext<
-  TIntent extends Intent = Intent,
-  TOutput = unknown
+  TIntent extends Intent = Intent
 > = MutationCompileHandlerInput<
   DataDoc,
   TIntent,
   DataviewMutationWriter,
-  TOutput,
   DataviewMutationReader,
   void,
   string

@@ -10,8 +10,7 @@ import type {
   NodeFieldPatch,
   NodeId,
   NodePatch,
-  NodeUpdateInput,
-  Operation
+  NodeUpdateInput
 } from '@whiteboard/core/types'
 import {
   applyScopedRecordWriteToPatch,
@@ -343,26 +342,6 @@ const compactNodeUpdateInput = (
       }
     : {})
 })
-
-export const createNodeUpdateOperation = (
-  id: NodeId,
-  update: NodeUpdateInput
-): Operation[] => {
-  const compact = compactNodeUpdateInput(update)
-  return isNodeUpdateEmpty(compact)
-    ? []
-    : [{
-        type: 'node.patch',
-        id,
-        patch: createNodePatch(compact)
-      }]
-}
-
-export const createNodeFieldsUpdateOperation = (
-  id: NodeId,
-  fields: NodeFieldPatch
-): Operation[] =>
-  createNodeUpdateOperation(id, { fields })
 
 export const classifyNodeUpdate = (
   update: NodeUpdateInput

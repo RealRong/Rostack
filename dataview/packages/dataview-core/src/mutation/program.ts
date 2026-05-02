@@ -3,5 +3,5 @@ import type {
   MutationProgramStep,
 } from '@shared/mutation'
 
-export type DataviewMutationProgramStep = MutationProgramStep<string>
-export type DataviewMutationProgram = MutationProgram<string>
+export type DataviewMutationProgramStep = MutationProgramStep
+export type DataviewMutationProgram = MutationProgram

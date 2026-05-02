@@ -148,7 +148,9 @@ describe('namespace mutation schema', () => {
         id: 'preview.selection'
       },
       writes: {
-        marquee: undefined,
+        marquee: {
+          kind: 'draft.record.unset'
+        },
         guides: []
       }
     }])

@@ -8,7 +8,7 @@ import {
 } from '@dataview/core/mutation'
 
 test('dataview mutation writer lowers entity and ordered writes to shared program steps', () => {
-  const base = createMutationProgramWriter<string>()
+  const base = createMutationProgramWriter()
   const writer = createDataviewMutationWriter(base)
 
   writer.document.patch({

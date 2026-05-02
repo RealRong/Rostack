@@ -4,6 +4,9 @@ import type {
   View,
 } from '@dataview/core/types'
 import {
+  TITLE_FIELD_ID
+} from '@dataview/core/types'
+import {
   equal,
 } from '@shared/core'
 import type {
@@ -70,9 +73,23 @@ export const writeRecordValues = (
 ) => {
   recordIds.forEach((recordId) => {
     Object.entries(input.set ?? {}).forEach(([fieldId, value]) => {
+      if (fieldId === TITLE_FIELD_ID) {
+        writer.record.patch(recordId, {
+          title: structuredClone(value) as string
+        })
+        return
+      }
+
       writer.record.values(recordId).set(fieldId as FieldId, structuredClone(value))
     })
     ;(input.clear ?? []).forEach((fieldId) => {
+      if (fieldId === TITLE_FIELD_ID) {
+        writer.record.patch(recordId, {
+          title: ''
+        })
+        return
+      }
+
       writer.record.values(recordId).remove(fieldId)
     })
   })

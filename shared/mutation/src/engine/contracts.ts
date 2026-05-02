@@ -106,7 +106,6 @@ export interface MutationCompileHandlerInput<
   Doc,
   Intent,
   Writer,
-  Output,
   Reader,
   Services = void,
   Code extends string = string
@@ -117,7 +116,8 @@ export interface MutationCompileHandlerInput<
   reader: Reader
   services: Services | undefined
   writer: Writer
-  output(value: Output): void
+  delta(delta: MutationDeltaInput): void
+  footprint(...entries: MutationFootprint[]): void
   issue(...issues: readonly MutationCompileIssue<Code>[]): void
   stop(): {
     kind: 'stop'
@@ -148,19 +148,18 @@ export type MutationCompileHandler<
   Doc,
   Intent,
   Writer,
-  Output,
   Reader,
   Services = void,
-  Code extends string = string
+  Code extends string = string,
+  Output = unknown
 > = (
-  input: MutationCompileHandlerInput<Doc, Intent, Writer, Output, Reader, Services, Code>
-) => void | MutationCompileControl<Code>
+  input: MutationCompileHandlerInput<Doc, Intent, Writer, Reader, Services, Code>
+) => Output | void | MutationCompileControl<Code>
 
 export type MutationCompileHandlerContext<
   Doc,
   Intent,
   Writer,
-  Output,
   Reader,
   Services = void,
   Code extends string = string
@@ -168,7 +167,6 @@ export type MutationCompileHandlerContext<
   Doc,
   Intent,
   Writer,
-  Output,
   Reader,
   Services,
   Code
@@ -203,15 +201,14 @@ export type MutationResult<T, Commit, Code extends string = string> =
 
 export type MutationApplyResult<
   Doc,
-  Op,
   Code extends string = string
 > =
   | {
       ok: true
       data: {
         document: Doc
-        applied: MutationProgram<string>
-        inverse: MutationProgram<string>
+        applied: MutationProgram
+        inverse: MutationProgram
         delta: MutationDelta
         structural: readonly MutationStructuralFact[]
         footprint: readonly MutationFootprint[]
@@ -222,70 +219,69 @@ export type MutationApplyResult<
     }
   | MutationFailure<Code>
 
-export interface MutationIntentTable {
-  [kind: string]: {
-    intent: {
-      type: string
-    }
-    output: unknown
-  }
+export type MutationIntent = {
+  type: string
 }
 
-type MutationIntentTableKey<T extends MutationIntentTable> = ({
-  [K in keyof T]: string extends K
-    ? never
-    : number extends K
-      ? never
-      : symbol extends K
-        ? never
-        : K
-})[keyof T] & string
+type MutationIntentType<
+  TIntent extends MutationIntent
+> = TIntent['type'] & string
 
-export type MutationIntentKind<T extends MutationIntentTable> =
-  MutationIntentTableKey<T>
-
-export type MutationIntentOf<
-  T extends MutationIntentTable,
-  K extends MutationIntentKind<T> = MutationIntentKind<T>
-> = T[K]['intent']
-
-export type MutationOutputOf<
-  T extends MutationIntentTable,
-  K extends MutationIntentKind<T> = MutationIntentKind<T>
-> = T[K]['output']
+type MutationIntentByType<
+  TIntent extends MutationIntent,
+  K extends MutationIntentType<TIntent>
+> = Extract<TIntent, {
+  type: K
+}>
 
 export type MutationCompileHandlerTable<
-  Table extends MutationIntentTable,
   Doc,
+  TIntent extends MutationIntent,
   Writer,
   Reader,
   Services = void,
   Code extends string = string,
   Context extends MutationCompileHandlerContext<
     Doc,
-    MutationIntentOf<Table>,
+    TIntent,
     Writer,
-    MutationOutputOf<Table>,
     Reader,
     Services,
     Code
   > = {}
 > = {
-  [K in MutationIntentKind<Table>]: (
+  [K in MutationIntentType<TIntent>]: ((
     input: MutationCompileHandlerInput<
       Doc,
-      MutationIntentOf<Table, K>,
+      MutationIntentByType<TIntent, K>,
       Writer,
-      MutationOutputOf<Table, K>,
       Reader,
       Services,
       Code
     > & Context
-  ) => void | MutationCompileControl<Code>
+  ) => unknown | void | MutationCompileControl<Code>)
 }
 
+export type MutationCompileHandlerOutput<
+  THandler
+> = Exclude<
+  THandler extends (...args: any[]) => infer TResult
+    ? TResult
+    : never,
+  void | MutationCompileControl<any>
+>
+
+type MutationOutputByIntent<
+  THandlers,
+  TIntent extends MutationIntent
+> = TIntent extends {
+  type: infer K extends keyof THandlers & string
+}
+  ? MutationCompileHandlerOutput<THandlers[K]>
+  : never
+
 export interface MutationCompileDefinition<
-  Table extends MutationIntentTable,
+  TIntent extends MutationIntent,
   Doc,
   Writer,
   Reader,
@@ -293,58 +289,71 @@ export interface MutationCompileDefinition<
   Code extends string = string,
   Context extends MutationCompileHandlerContext<
     Doc,
-    MutationIntentOf<Table>,
+    TIntent,
     Writer,
-    MutationOutputOf<Table>,
     Reader,
     Services,
     Code
-  > = {}
-> {
-  createContext?: (
-    input: MutationCompileHandlerInput<
-      Doc,
-      {
-        type: string
-      },
-      Writer,
-      unknown,
-      Reader,
-      Services,
-      Code
-    >
-  ) => Context
-  handlers: MutationCompileHandlerTable<
-    Table,
+  > = {},
+  THandlers extends MutationCompileHandlerTable<
     Doc,
+    TIntent,
+    Writer,
+    Reader,
+    Services,
+    Code,
+    Context
+  > = MutationCompileHandlerTable<
+    Doc,
+    TIntent,
     Writer,
     Reader,
     Services,
     Code,
     Context
   >
+> {
+  createContext?: (
+    input: MutationCompileHandlerInput<
+      Doc,
+      TIntent,
+      Writer,
+      Reader,
+      Services,
+      Code
+    >
+  ) => Context
+  handlers: THandlers
 }
 
 export type MutationExecuteResult<
-  T extends MutationIntentTable,
+  TOutput,
   W,
-  K extends MutationIntentKind<T>,
   Code extends string = string
-> = MutationResult<MutationOutputOf<T, K>, W, Code>
+> = MutationResult<TOutput, W, Code>
 
-export type MutationExecuteInput<T extends MutationIntentTable> =
-  | MutationIntentOf<T>
-  | readonly MutationIntentOf<T>[]
+export type MutationExecuteInput<TIntent extends MutationIntent> =
+  | TIntent
+  | readonly TIntent[]
 
 export type MutationExecuteResultOfInput<
-  T extends MutationIntentTable,
+  THandlers,
+  TIntent extends MutationIntent,
   W,
-  Input extends MutationExecuteInput<T>,
+  Input,
   Code extends string = string
-> = Input extends readonly MutationIntentOf<T>[]
-  ? MutationResult<readonly MutationOutputOf<T>[], W, Code>
-  : Input extends MutationIntentOf<T, infer K>
-    ? MutationExecuteResult<T, W, K, Code>
+> = Input extends readonly TIntent[]
+  ? MutationResult<{
+      [K in keyof Input]: Input[K] extends {
+        type: string
+      }
+        ? MutationOutputByIntent<THandlers, Input[K]>
+        : never
+    }, W, Code>
+  : Input extends {
+      type: string
+    }
+    ? MutationExecuteResult<MutationOutputByIntent<THandlers, Input>, W, Code>
     : never
 
 export interface MutationOptions {
@@ -404,30 +413,43 @@ export interface MutationHistoryOptions {
 
 export interface MutationEngineOptions<
   Doc extends object,
-  Table extends MutationIntentTable,
-  Op extends {
-    type: string
-  },
+  TIntent extends MutationIntent,
   Reader,
   Services = void,
   Code extends string = string,
-  Writer = MutationProgramWriter<string>,
+  Writer = MutationProgramWriter,
   Delta extends MutationDelta = MutationDelta,
   Context extends MutationCompileHandlerContext<
     Doc,
-    MutationIntentOf<Table>,
+    TIntent,
     Writer,
-    MutationOutputOf<Table>,
     Reader,
     Services,
     Code
-  > = {}
+  > = {},
+  THandlers extends MutationCompileHandlerTable<
+    Doc,
+    TIntent,
+    Writer,
+    Reader,
+    Services,
+    Code,
+    Context
+  > = MutationCompileHandlerTable<
+    Doc,
+    TIntent,
+    Writer,
+    Reader,
+    Services,
+    Code,
+    Context
+  >
 > {
   schema: MutationSchemaDefinition<Doc>
   document: Doc
   normalize(doc: Doc): Doc
   services?: Services
-  compile?: MutationCompileDefinition<Table, Doc, Writer, Reader, Services, Code, Context>
+  compile?: MutationCompileDefinition<TIntent, Doc, Writer, Reader, Services, Code, Context, THandlers>
   history?: MutationHistoryOptions | false
 }
 
@@ -651,13 +673,12 @@ export const readChangeEntries = (
 
 export type MutationCommitTypes<
   Doc,
-  Op,
   Extra = void,
   Delta extends MutationDelta = MutationDelta
 > = {
-  apply: ApplyCommit<Doc, Op, MutationFootprint, Extra, string, Delta>
-  record: CommitRecord<Doc, Op, MutationFootprint, Extra, Delta>
-  stream: CommitStream<CommitRecord<Doc, Op, MutationFootprint, Extra, Delta>>
-  published: MutationCommitRecord<Doc, Op, MutationFootprint, Delta>
+  apply: ApplyCommit<Doc, MutationFootprint, Extra, Delta>
+  record: CommitRecord<Doc, MutationFootprint, Extra, Delta>
+  stream: CommitStream<CommitRecord<Doc, MutationFootprint, Extra, Delta>>
+  published: MutationCommitRecord<Doc, MutationFootprint, Delta>
   replace: MutationReplaceCommit<Doc, Delta>
 }

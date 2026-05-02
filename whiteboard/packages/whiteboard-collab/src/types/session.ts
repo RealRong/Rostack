@@ -30,7 +30,7 @@ export type CollabDiagnostics = {
 
 export type CollabLocalHistory = HistoryPort<
   IntentResult,
-  MutationProgram<string>,
+  MutationProgram,
   MutationFootprint,
   EngineApplyCommit
 >

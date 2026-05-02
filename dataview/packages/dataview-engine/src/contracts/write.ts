@@ -1,5 +1,4 @@
 import type { DataDoc } from '@dataview/core/types'
-import type { DocumentOperation } from '@dataview/core/types'
 import type {
   MutationFootprint
 } from '@shared/mutation'
@@ -11,14 +10,11 @@ import type {
 
 export type EngineApplyCommit = ApplyCommit<
   DataDoc,
-  DocumentOperation,
-  MutationFootprint,
-  void
+  MutationFootprint
 >
 
 export type EngineCommit = MutationCommitRecord<
   DataDoc,
-  DocumentOperation,
   MutationFootprint
 >
 

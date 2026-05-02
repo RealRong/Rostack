@@ -70,12 +70,6 @@ describe('resolvePoint', () => {
       scene: {
         ui: {
           state: {
-            viewport: {
-              get: () => ({
-                center: { x: 0, y: 0 },
-                zoom: 1
-              })
-            },
             selection: {
               get: () => ({
                 nodeIds: [],
@@ -84,12 +78,19 @@ describe('resolvePoint', () => {
             }
           }
         },
-        viewport: {
-          screenPoint: vi.fn((point: { x: number, y: number }) => point)
-        },
         hit: {
           edge: vi.fn(() => undefined)
         }
+      },
+      viewport: {
+        get: () => ({
+          center: { x: 0, y: 0 },
+          zoom: 1
+        }),
+        screenPoint: vi.fn((x: number, y: number) => ({
+          x,
+          y
+        }))
       }
     }
 
@@ -143,12 +144,6 @@ describe('resolvePoint', () => {
       scene: {
         ui: {
           state: {
-            viewport: {
-              get: () => ({
-                center: { x: 0, y: 0 },
-                zoom: 1
-              })
-            },
             selection: {
               get: () => ({
                 nodeIds: ['node-1'],
@@ -157,12 +152,19 @@ describe('resolvePoint', () => {
             }
           }
         },
-        viewport: {
-          screenPoint: vi.fn((point: { x: number, y: number }) => point)
-        },
         hit: {
           edge: vi.fn(() => undefined)
         }
+      },
+      viewport: {
+        get: () => ({
+          center: { x: 0, y: 0 },
+          zoom: 1
+        }),
+        screenPoint: vi.fn((x: number, y: number) => ({
+          x,
+          y
+        }))
       }
     }
 

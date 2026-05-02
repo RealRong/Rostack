@@ -1,9 +1,9 @@
 import {
-  emitMindmapTopicUpdateOps,
   getNodeMindmapId
 } from '@whiteboard/core/mindmap/ops'
 import { node as nodeApi } from '@whiteboard/core/node'
 import type {
+  WhiteboardCompileIntent,
   WhiteboardCompileContext,
   WhiteboardCompileHandlerTable
 } from '@whiteboard/core/mutation/compile/helpers'
@@ -100,7 +100,7 @@ const writeMindmapTopicUpdate = (
 }
 
 const compileNodeTextCommit = (
-  ctx: WhiteboardCompileContext<'node.text.commit'>
+  ctx: WhiteboardCompileContext<WhiteboardCompileIntent<'node.text.commit'>>
 ) => {
   const {
     intent
@@ -177,7 +177,7 @@ type NodeIntentHandlers = Pick<
   | 'node.duplicate'
 >
 
-export const nodeIntentHandlers: NodeIntentHandlers = {
+export const nodeIntentHandlers = {
   'node.create': (ctx) => {
     const document = ctx.document
     const input = readCompileServices(ctx).layout.commit({
@@ -200,9 +200,9 @@ export const nodeIntentHandlers: NodeIntentHandlers = {
       kind: 'node',
       id: built.data.nodeId
     })
-    ctx.output({
+    return {
       nodeId: built.data.nodeId
-    })
+    }
   },
   'node.update': (ctx) => {
     const reader = ctx.reader
@@ -352,9 +352,9 @@ export const nodeIntentHandlers: NodeIntentHandlers = {
       return result
     }
 
-    ctx.output({
+    return {
       nodeIds: result.allNodeIds,
       edgeIds: result.allEdgeIds
-    })
+    }
   }
-}
+} satisfies NodeIntentHandlers

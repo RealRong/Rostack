@@ -1,4 +1,7 @@
-import { createMutationDelta } from '@shared/mutation'
+import {
+  createMutationDelta,
+  type MutationDeltaInput
+} from '@shared/mutation'
 import type {
   SceneUpdateInput
 } from '../contracts/editor'
@@ -54,6 +57,13 @@ export const toSceneUpdateInput = (
 export const createEmptyRuntimeInputDelta = (): EditorStateMutationDelta => createMutationDelta(
   editorStateMutationSchema,
   {}
+)
+
+export const createEditorStateInputDelta = (
+  input: MutationDeltaInput
+): EditorStateMutationDelta => createMutationDelta(
+  editorStateMutationSchema,
+  input
 )
 
 export const createEmptyInput = (): SceneUpdateInput => ({

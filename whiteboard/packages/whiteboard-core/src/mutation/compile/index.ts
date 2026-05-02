@@ -18,8 +18,8 @@ import { whiteboardMutationSchema } from '@whiteboard/core/mutation/model'
 import type { WhiteboardReader } from '@whiteboard/core/query'
 import type { Document } from '@whiteboard/core/types'
 import type { WhiteboardCompileServices } from './helpers'
-import type { WhiteboardMutationTable } from '@whiteboard/core/mutation/intents'
-const authoredWhiteboardCompileHandlers: WhiteboardCompileHandlerTable = {
+import type { WhiteboardIntent } from '@whiteboard/core/mutation/intents'
+const authoredWhiteboardCompileHandlers = {
   'document.replace': documentIntentHandlers['document.replace'],
   'document.insert': documentIntentHandlers['document.insert'],
   'document.background.set': documentIntentHandlers['document.background.set'],
@@ -65,18 +65,19 @@ const authoredWhiteboardCompileHandlers: WhiteboardCompileHandlerTable = {
   'mindmap.topic.update': mindmapIntentHandlers['mindmap.topic.update'],
   'mindmap.topic.collapse.set': mindmapIntentHandlers['mindmap.topic.collapse.set'],
   'mindmap.branch.update': mindmapIntentHandlers['mindmap.branch.update'],
-}
+} satisfies WhiteboardCompileHandlerTable
 
 type WhiteboardCompileExtras = Pick<WhiteboardCompileContext, 'query' | 'expect'>
 
 export const whiteboardCompile: MutationCompileDefinition<
-  WhiteboardMutationTable,
+  WhiteboardIntent,
   Document,
   MutationWriter<typeof whiteboardMutationSchema>,
   WhiteboardReader,
   WhiteboardCompileServices,
   WhiteboardCompileCode,
-  WhiteboardCompileExtras
+  WhiteboardCompileExtras,
+  typeof authoredWhiteboardCompileHandlers
 > = {
   createContext: (input) => createCompileContext(input),
   handlers: authoredWhiteboardCompileHandlers
@@ -106,7 +107,4 @@ export type {
   ReplaceDocumentIntent,
   WhiteboardIntent,
   WhiteboardIntentKind,
-  WhiteboardIntentOutput,
-  WhiteboardIntentTable,
-  WhiteboardMutationTable
 } from '@whiteboard/core/mutation/intents'

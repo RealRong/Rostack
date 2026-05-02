@@ -152,7 +152,7 @@ export const attachEditorSync = (input: {
   let buffered: BufferedSceneCommit | null = null
 
   const bufferStateDelta = (
-    commit: MutationCommitRecord<unknown, unknown, MutationFootprint, EditorStateMutationDelta>
+    commit: MutationCommitRecord<unknown, MutationFootprint, EditorStateMutationDelta>
   ) => {
     if (!buffered) {
       return false

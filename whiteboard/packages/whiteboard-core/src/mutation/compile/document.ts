@@ -15,7 +15,7 @@ type DocumentIntentHandlers = Pick<
   | 'document.background.set'
 >
 
-export const documentIntentHandlers: DocumentIntentHandlers = {
+export const documentIntentHandlers = {
   'document.replace': (ctx) => {
     const intent = ctx.intent
     ctx.writer.document.create(
@@ -46,15 +46,15 @@ export const documentIntentHandlers: DocumentIntentHandlers = {
     built.data.edges.forEach((edge) => {
       ctx.writer.edge.create(edge)
     })
-    ctx.output({
+    return {
       allNodeIds: built.data.allNodeIds,
       allEdgeIds: built.data.allEdgeIds,
       roots: built.data.roots
-    })
+    }
   },
   'document.background.set': (ctx) => {
     ctx.writer.document.patch({
       background: ctx.intent.background
     })
   }
-}
+} satisfies DocumentIntentHandlers

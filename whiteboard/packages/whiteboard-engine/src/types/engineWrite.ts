@@ -1,6 +1,6 @@
 import type {
+  ApplyCommit,
   MutationFootprint,
-  MutationCommit,
   MutationCommitRecord,
   MutationReplaceCommit
 } from '@shared/mutation'
@@ -9,22 +9,17 @@ import type {
 } from '../mutation'
 import type {
   Document,
-  Operation,
 } from '@whiteboard/core/types'
 
-export type EngineApplyCommit = MutationCommit<
+export type EngineApplyCommit = ApplyCommit<
   Document,
-  Operation,
   MutationFootprint,
-  string,
+  void,
   WhiteboardMutationDelta
-> & {
-  extra: void
-}
+>
 
 export type EngineCommit = MutationCommitRecord<
   Document,
-  Operation,
   MutationFootprint,
   WhiteboardMutationDelta
 >

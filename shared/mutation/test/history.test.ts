@@ -11,8 +11,8 @@ type TestWrite = {
   origin: 'user' | 'remote' | 'system' | 'history'
   doc: {}
   authored: readonly string[]
-  applied: MutationProgram<string>
-  inverse: MutationProgram<string>
+  applied: MutationProgram
+  inverse: MutationProgram
   footprint: readonly string[]
   extra: {}
 }

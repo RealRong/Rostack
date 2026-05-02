@@ -39,7 +39,7 @@ export interface Engine {
   readonly commits: EngineCommits
   readonly history: HistoryPort<
     IntentResult,
-    MutationProgram<string>,
+    MutationProgram,
     MutationFootprint,
     EngineApplyCommit
   >
@@ -55,7 +55,7 @@ export interface Engine {
     options?: MutationOptions
   ): MutationReplaceResult<Document>
   apply(
-    program: MutationProgram<string>,
+    program: MutationProgram,
     options?: MutationOptions
   ): IntentResult
 }

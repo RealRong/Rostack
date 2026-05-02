@@ -11,6 +11,7 @@ import type {
   CommitRecord,
   MutationCommitRecord,
   MutationDelta,
+  MutationFootprint,
   MutationIssue,
   MutationReplaceCommit,
   Origin,
@@ -37,54 +38,45 @@ import {
   mutationFailure,
   mutationSuccess,
   normalizeCompileIssue,
-  readFirstOutput,
   type MutationApplyResult,
   type MutationCompileDefinition,
-  type MutationCompileIssue,
   type MutationCompileHandlerInput,
+  type MutationCompileControl,
+  type MutationCompileIssue,
   type MutationCurrent,
   type MutationEngineOptions,
   type MutationExecuteInput,
   type MutationExecuteResult,
   type MutationExecuteResultOfInput,
-  type MutationFailure,
-  type MutationFootprint,
   type MutationHistoryOptions,
-  type MutationIntentKind,
-  type MutationIntentOf,
-  type MutationIntentTable,
+  type MutationIntent,
   type MutationOptions,
-  type MutationOutputOf,
   type MutationResult,
   type MutationStructuralFact,
+  type CompiledEntitySpec,
+  type CompiledOrderedSpec,
+  type CompiledTreeSpec,
 } from './contracts'
 import {
   mergeMutationDeltas,
   normalizeMutationDelta,
 } from './delta'
 import {
+  dedupeFootprints,
+  mutationFootprintBatchConflicts,
+} from './footprint'
+import {
   applyMutationProgram
 } from './program/apply'
-import {
-  isMutationProgramStep,
-  type MutationProgram,
-  type MutationProgramStep,
+import type {
+  MutationProgram,
+  MutationProgramStep,
 } from './program/program'
 import {
-  createMutationProgramWriter
+  createMutationProgramWriter,
+  type MutationProgramWriter,
 } from './program/writer'
-import type {
-  MutationProgramWriter
-} from './program/writer'
-import {
-  dedupeFootprints,
-  mutationFootprintBatchConflicts
-} from './footprint'
-import type {
-  CompiledEntitySpec,
-  CompiledOrderedSpec,
-  CompiledTreeSpec,
-} from './contracts'
+
 const shouldCaptureHistory = (
   history: MutationHistoryOptions | false | undefined,
   origin: Origin
@@ -107,8 +99,8 @@ type CompiledIntentProgramResult<
   Code extends string = string
 > = {
   document: Doc
-  applied: MutationProgram<string>
-  inverse: MutationProgram<string>
+  applied: MutationProgram
+  inverse: MutationProgram
   delta: MutationDelta
   structural: readonly MutationStructuralFact[]
   footprint: readonly MutationFootprint[]
@@ -119,43 +111,48 @@ type CompiledIntentProgramResult<
 
 const compileMutationIntents = <
   Doc extends object,
-  Table extends MutationIntentTable,
+  TIntent extends MutationIntent,
   Writer,
   Reader,
   Services,
-  Context extends Record<string, unknown> = {},
-  Code extends string = string
+  Code extends string,
+  Context extends Record<string, unknown>,
+  Output = unknown
 >(input: {
   document: Doc
-  intents: readonly MutationIntentOf<Table>[]
-  compile: MutationCompileDefinition<Table, Doc, Writer, Reader, Services, Code, Context>
+  intents: readonly TIntent[]
+  compile: MutationCompileDefinition<TIntent, Doc, Writer, Reader, Services, Code, Context, any>
   services: Services | undefined
   entities: ReadonlyMap<string, CompiledEntitySpec>
   ordered: ReadonlyMap<string, CompiledOrderedSpec<Doc>>
   tree: ReadonlyMap<string, CompiledTreeSpec<Doc>>
   createReader: (readDocument: () => Doc) => Reader
-  createWriter: (program: MutationProgramWriter<string>) => Writer
-}): CompiledIntentProgramResult<Doc, MutationOutputOf<Table>, Code> => {
+  createWriter: (program: MutationProgramWriter) => Writer
+}): CompiledIntentProgramResult<Doc, Output, Code> => {
   const appliedSteps: MutationProgramStep[] = []
   const inverseSteps: MutationProgramStep[] = []
-  const outputs: MutationOutputOf<Table>[] = []
+  const outputs: Output[] = []
   const issues: MutationCompileIssue<Code>[] = []
-  let delta = EMPTY_DELTA
   const structural: MutationStructuralFact[] = []
   const footprint: MutationFootprint[] = []
+  let delta = EMPTY_DELTA
+  let workingDocument = input.document
   let hasTrackedHistory = false
   let skipHistory = false
-  let workingDocument = input.document
 
   for (let index = 0; index < input.intents.length; index += 1) {
     const intent = input.intents[index]!
-    const pendingOutputs: MutationOutputOf<Table>[] = []
+    const baseProgram = createMutationProgramWriter()
     const pendingIssues: MutationCompileIssue<Code>[] = []
+    const pendingFootprint: MutationFootprint[] = []
+    let pendingDelta = EMPTY_DELTA
     let shouldStop = false
     let blocked = false
-    const baseProgram = createMutationProgramWriter<string>()
 
-    const handler = input.compile.handlers[intent.type as MutationIntentKind<Table>]
+    const handler = input.compile.handlers[intent.type as keyof typeof input.compile.handlers] as ((
+      value: MutationCompileHandlerInput<Doc, TIntent, Writer, Reader, Services, Code> & Context
+    ) => Output | void | MutationCompileControl<Code>)
+      | undefined
     if (!handler) {
       issues.push(normalizeCompileIssue({
         code: COMPILE_EMPTY_CODE as Code,
@@ -182,9 +179,8 @@ const compileMutationIntents = <
 
     const controls: MutationCompileHandlerInput<
       Doc,
-      MutationIntentOf<Table>,
+      TIntent,
       Writer,
-      MutationOutputOf<Table>,
       Reader,
       Services,
       Code
@@ -195,13 +191,17 @@ const compileMutationIntents = <
         type: intent.type
       },
       document: workingDocument,
-      reader: input.createReader(
-        () => workingDocument
-      ),
+      reader: input.createReader(() => workingDocument),
       services: input.services,
       writer: input.createWriter(baseProgram),
-      output: (value) => {
-        pendingOutputs.push(value)
+      delta: (nextDelta) => {
+        pendingDelta = mergeMutationDeltas(
+          pendingDelta,
+          normalizeMutationDelta(nextDelta)
+        )
+      },
+      footprint: (...entries) => {
+        pendingFootprint.push(...entries)
       },
       issue: (...compileIssues) => {
         compileIssues.forEach((issue) => {
@@ -232,6 +232,7 @@ const compileMutationIntents = <
       }),
       fail: createBlockedControl
     }
+
     const compileInput = input.compile.createContext
       ? {
           ...controls,
@@ -241,9 +242,8 @@ const compileMutationIntents = <
 
     const result = handler(compileInput as MutationCompileHandlerInput<
       Doc,
-      MutationIntentOf<Table>,
+      TIntent,
       Writer,
-      MutationOutputOf<Table>,
       Reader,
       Services,
       Code
@@ -254,20 +254,27 @@ const compileMutationIntents = <
       } else {
         blocked = true
       }
+    } else if (result !== undefined) {
+      outputs.push(result)
     }
 
     issues.push(...pendingIssues)
-    outputs.push(...pendingOutputs)
     if (shouldStop || blocked) {
       break
     }
 
     const pendingProgram = baseProgram.build()
     if (pendingProgram.steps.length === 0) {
+      if (pendingDelta !== EMPTY_DELTA) {
+        delta = mergeMutationDeltas(delta, pendingDelta)
+      }
+      if (pendingFootprint.length > 0) {
+        footprint.push(...pendingFootprint)
+      }
       continue
     }
 
-    const applied = applyMutationProgram<Doc, never, string, Code>({
+    const applied = applyMutationProgram<Doc, Code>({
       document: workingDocument,
       program: pendingProgram,
       entities: input.entities,
@@ -293,22 +300,17 @@ const compileMutationIntents = <
       inverseSteps.unshift(...applied.data.inverse.steps)
     }
     delta = mergeMutationDeltas(delta, applied.data.delta)
+    if (pendingDelta !== EMPTY_DELTA) {
+      delta = mergeMutationDeltas(delta, pendingDelta)
+    }
     structural.push(...applied.data.structural)
-    footprint.push(...applied.data.footprint)
+    footprint.push(...applied.data.footprint, ...pendingFootprint)
     issues.push(...applied.data.issues.map((issue) => ({
       code: issue.code as Code,
       message: issue.message,
       severity: issue.severity,
-      ...(issue.path === undefined
-        ? {}
-        : {
-            path: issue.path
-          }),
-      ...(issue.details === undefined
-        ? {}
-        : {
-            details: issue.details
-          }),
+      ...(issue.path === undefined ? {} : { path: issue.path }),
+      ...(issue.details === undefined ? {} : { details: issue.details }),
       source: {
         index,
         type: intent.type
@@ -339,31 +341,26 @@ const compileMutationIntents = <
       : hasTrackedHistory
         ? 'track'
         : 'neutral',
-    ...(issues.length > 0
-      ? {
-        issues
-        }
-      : {})
+    ...(issues.length > 0 ? { issues } : {})
   }
 }
 
 class MutationRuntime<
   Doc extends object,
-  Op extends {
-    type: string
-  },
+  TIntent extends MutationIntent,
   Reader,
   Services,
   Code extends string = string,
-  Writer = MutationProgramWriter<string>,
+  Writer = MutationProgramWriter,
   Delta extends MutationDelta = MutationDelta,
-  Context extends Record<string, unknown> = {}
+  Context extends Record<string, unknown> = {},
+  THandlers extends Record<string, (...args: any[]) => any> = Record<string, (...args: any[]) => any>
 > {
   readonly history: HistoryPort<
-    MutationResult<void, ApplyCommit<Doc, Op, MutationFootprint, void, string, Delta>, Code>,
-    MutationProgram<string>,
+    MutationResult<void, ApplyCommit<Doc, MutationFootprint, void, Delta>, Code>,
+    MutationProgram,
     MutationFootprint,
-    ApplyCommit<Doc, Op, MutationFootprint, void, string, Delta>
+    ApplyCommit<Doc, MutationFootprint, void, Delta>
   >
 
   private readonly createReader: (readDocument: () => Doc) => Reader
@@ -372,17 +369,17 @@ class MutationRuntime<
   private readonly entities: ReadonlyMap<string, CompiledEntitySpec>
   private readonly ordered: ReadonlyMap<string, CompiledOrderedSpec<Doc>>
   private readonly tree: ReadonlyMap<string, CompiledTreeSpec<Doc>>
-  private readonly createWriter: (program: MutationProgramWriter<string>) => Writer
+  private readonly createWriter: (program: MutationProgramWriter) => Writer
   private readonly services: Services | undefined
-  private readonly compileDefinition?: MutationCompileDefinition<any, Doc, Writer, Reader, Services, Code, Context>
+  private readonly compileDefinition?: MutationCompileDefinition<TIntent, Doc, Writer, Reader, Services, Code, Context, any>
   private readonly historyOptions?: MutationHistoryOptions | false
   private readonly historyControllerRef?: HistoryController<
-    MutationProgram<string>,
+    MutationProgram,
     MutationFootprint,
-    ApplyCommit<Doc, Op, MutationFootprint, void, string, Delta>
+    ApplyCommit<Doc, MutationFootprint, void, Delta>
   >
   private readonly watchListeners = new Set<(current: MutationCurrent<Doc>) => void>()
-  private readonly commitListeners = new Set<(commit: CommitRecord<Doc, Op, MutationFootprint, void, Delta>) => void>()
+  private readonly commitListeners = new Set<(commit: CommitRecord<Doc, MutationFootprint, void, Delta>) => void>()
   private rev = 0
   private documentState: Doc
 
@@ -391,7 +388,7 @@ class MutationRuntime<
     document: Doc
     normalize(doc: Doc): Doc
     services?: Services
-    compile?: MutationCompileDefinition<any, Doc, Writer, Reader, Services, Code, Context>
+    compile?: MutationCompileDefinition<TIntent, Doc, Writer, Reader, Services, Code, Context, any>
     history?: MutationHistoryOptions | false
   }) {
     const compiledModel = compileMutationModel(input.schema) as {
@@ -411,8 +408,8 @@ class MutationRuntime<
     this.createDelta = (delta) => createMutationDelta(input.schema, delta) as unknown as Delta
     this.normalize = input.normalize
     this.entities = compiledModel.entities
-    this.ordered = compiledModel.ordered as ReadonlyMap<string, CompiledOrderedSpec<Doc>>
-    this.tree = compiledModel.tree as ReadonlyMap<string, CompiledTreeSpec<Doc>>
+    this.ordered = compiledModel.ordered
+    this.tree = compiledModel.tree
     this.services = input.services
     this.compileDefinition = input.compile
     this.historyOptions = input.history
@@ -420,16 +417,22 @@ class MutationRuntime<
 
     if (input.history !== false) {
       this.historyControllerRef = historyRuntime.create<
-        MutationProgram<string>,
+        MutationProgram,
         MutationFootprint,
-        ApplyCommit<Doc, Op, MutationFootprint, void, string, Delta>
+        ApplyCommit<Doc, MutationFootprint, void, Delta>
       >({
         capacity: input.history?.capacity,
         conflicts: mutationFootprintBatchConflicts
       })
     }
 
-    this.history = createHistoryPort({
+    this.history = createHistoryPort<
+      Doc,
+      MutationProgram,
+      MutationFootprint,
+      MutationResult<void, ApplyCommit<Doc, MutationFootprint, void, Delta>, Code>,
+      ApplyCommit<Doc, MutationFootprint, void, Delta>
+    >({
       apply: (program, options) => this.apply(program, options),
       commits: {
         subscribe: (listener) => {
@@ -459,7 +462,7 @@ class MutationRuntime<
   }
 
   subscribe(
-    listener: (commit: MutationCommitRecord<Doc, Op, MutationFootprint, Delta>) => void
+    listener: (commit: MutationCommitRecord<Doc, MutationFootprint, Delta>) => void
   ): () => void {
     this.commitListeners.add(listener)
     return () => {
@@ -503,16 +506,17 @@ class MutationRuntime<
     return commit
   }
 
-  execute<Table extends MutationIntentTable, Input extends MutationExecuteInput<Table>>(
+  execute<Input extends MutationExecuteInput<TIntent>>(
     input: Input,
     options?: MutationOptions
   ): MutationExecuteResultOfInput<
-    Table,
-    ApplyCommit<Doc, Op, MutationFootprint, void, string, Delta>,
+    THandlers,
+    TIntent,
+    ApplyCommit<Doc, MutationFootprint, void, Delta>,
     Input,
     Code
   > {
-    const intents: readonly MutationIntentOf<Table>[] = Array.isArray(input)
+    const intents: readonly TIntent[] = Array.isArray(input)
       ? input
       : [input]
     if (intents.length === 0) {
@@ -520,8 +524,9 @@ class MutationRuntime<
         EXECUTE_EMPTY_CODE as Code,
         'MutationEngine.execute requires at least one intent.'
       ) as MutationExecuteResultOfInput<
-        Table,
-        ApplyCommit<Doc, Op, MutationFootprint, void, string, Delta>,
+        THandlers,
+        TIntent,
+        ApplyCommit<Doc, MutationFootprint, void, Delta>,
         Input,
         Code
       >
@@ -532,17 +537,26 @@ class MutationRuntime<
         COMPILE_EMPTY_CODE as Code,
         'MutationEngine.execute requires compile handlers.'
       ) as MutationExecuteResultOfInput<
-        Table,
-        ApplyCommit<Doc, Op, MutationFootprint, void, string, Delta>,
+        THandlers,
+        TIntent,
+        ApplyCommit<Doc, MutationFootprint, void, Delta>,
         Input,
         Code
       >
     }
 
-    const planned = compileMutationIntents<Doc, Table, Writer, Reader, Services, Context, Code>({
+    const planned = compileMutationIntents<
+      Doc,
+      TIntent,
+      Writer,
+      Reader,
+      Services,
+      Code,
+      Context
+    >({
       document: this.documentState,
       intents,
-      compile: this.compileDefinition as MutationCompileDefinition<Table, Doc, Writer, Reader, Services, Code, Context>,
+      compile: this.compileDefinition,
       services: this.services,
       entities: this.entities,
       ordered: this.ordered,
@@ -564,8 +578,9 @@ class MutationRuntime<
           issues
         }
       ) as MutationExecuteResultOfInput<
-        Table,
-        ApplyCommit<Doc, Op, MutationFootprint, void, string, Delta>,
+        THandlers,
+        TIntent,
+        ApplyCommit<Doc, MutationFootprint, void, Delta>,
         Input,
         Code
       >
@@ -579,8 +594,9 @@ class MutationRuntime<
           issues
         }
       ) as MutationExecuteResultOfInput<
-        Table,
-        ApplyCommit<Doc, Op, MutationFootprint, void, string, Delta>,
+        THandlers,
+        TIntent,
+        ApplyCommit<Doc, MutationFootprint, void, Delta>,
         Input,
         Code
       >
@@ -601,34 +617,36 @@ class MutationRuntime<
       data: (
         Array.isArray(input)
           ? planned.outputs
-          : readFirstOutput(planned.outputs)
+          : planned.outputs[0]
       ) as MutationExecuteResultOfInput<
-        Table,
-        ApplyCommit<Doc, Op, MutationFootprint, void, string, Delta>,
+        THandlers,
+        TIntent,
+        ApplyCommit<Doc, MutationFootprint, void, Delta>,
         Input,
         Code
-      > extends MutationResult<infer Data, ApplyCommit<Doc, Op, MutationFootprint, void, string, Delta>, Code>
+      > extends MutationResult<infer Data, ApplyCommit<Doc, MutationFootprint, void, Delta>, Code>
         ? Data
         : never
     })
 
     return committed as MutationExecuteResultOfInput<
-      Table,
-      ApplyCommit<Doc, Op, MutationFootprint, void, string, Delta>,
+      THandlers,
+      TIntent,
+      ApplyCommit<Doc, MutationFootprint, void, Delta>,
       Input,
       Code
     >
   }
 
   apply(
-    program: MutationProgram<string>,
+    program: MutationProgram,
     options?: MutationOptions
   ): MutationResult<
     void,
-    ApplyCommit<Doc, Op, MutationFootprint, void, string, Delta>,
+    ApplyCommit<Doc, MutationFootprint, void, Delta>,
     Code
   > {
-    const applied = applyMutationProgram<Doc, Op, string, Code>({
+    const applied = applyMutationProgram<Doc, Code>({
       document: this.documentState,
       program,
       entities: this.entities,
@@ -637,6 +655,13 @@ class MutationRuntime<
     })
     if (!applied.ok) {
       return applied
+    }
+
+    if (applied.data.applied.steps.length === 0) {
+      return mutationFailure(
+        APPLY_EMPTY_CODE as Code,
+        'MutationEngine.apply produced no applied steps.'
+      )
     }
 
     return this.commit({
@@ -657,9 +682,9 @@ class MutationRuntime<
 
   private commit<TData>(input: {
     document: Doc
-    authored: MutationProgram<string>
-    applied: MutationProgram<string>
-    inverse: MutationProgram<string>
+    authored: MutationProgram
+    applied: MutationProgram
+    inverse: MutationProgram
     delta: MutationDelta
     structural: readonly MutationStructuralFact[]
     footprint: readonly MutationFootprint[]
@@ -670,10 +695,10 @@ class MutationRuntime<
     data: TData
   }): MutationResult<
     TData,
-    ApplyCommit<Doc, Op, MutationFootprint, void, string, Delta>,
+    ApplyCommit<Doc, MutationFootprint, void, Delta>,
     Code
   > {
-    const commit: ApplyCommit<Doc, Op, MutationFootprint, void, string, Delta> = {
+    const commit: ApplyCommit<Doc, MutationFootprint, void, Delta> = {
       kind: 'apply',
       rev: this.rev + 1,
       at: Date.now(),
@@ -705,7 +730,7 @@ class MutationRuntime<
 
     this.emitCurrent()
     this.emitCommit(commit)
-    return mutationSuccess<TData, ApplyCommit<Doc, Op, MutationFootprint, void, string, Delta>, Code>(
+    return mutationSuccess<TData, ApplyCommit<Doc, MutationFootprint, void, Delta>, Code>(
       input.data,
       commit
     )
@@ -719,7 +744,7 @@ class MutationRuntime<
   }
 
   private emitCommit(
-    commit: CommitRecord<Doc, Op, MutationFootprint, void, Delta>
+    commit: CommitRecord<Doc, MutationFootprint, void, Delta>
   ): void {
     this.commitListeners.forEach((listener) => {
       listener(commit)
@@ -729,20 +754,18 @@ class MutationRuntime<
 
 export class MutationEngine<
   Doc extends object,
-  Table extends MutationIntentTable,
-  Op extends {
-    type: string
-  },
+  TIntent extends MutationIntent,
   Reader,
   Services = void,
   Code extends string = string,
-  Writer = MutationProgramWriter<string>,
+  Writer = MutationProgramWriter,
   Delta extends MutationDelta = MutationDelta,
-  Context extends Record<string, unknown> = {}
+  Context extends Record<string, unknown> = {},
+  THandlers extends Record<string, (...args: any[]) => any> = Record<string, (...args: any[]) => any>
 > {
-  private readonly runtime: MutationRuntime<Doc, Op, Reader, Services, Code, Writer, Delta, Context>
+  private readonly runtime: MutationRuntime<Doc, TIntent, Reader, Services, Code, Writer, Delta, Context, THandlers>
 
-  constructor(input: MutationEngineOptions<Doc, Table, Op, Reader, Services, Code, Writer, Delta, Context>) {
+  constructor(input: MutationEngineOptions<Doc, TIntent, Reader, Services, Code, Writer, Delta, Context, any>) {
     this.runtime = new MutationRuntime({
       schema: input.schema,
       document: input.document,
@@ -754,10 +777,10 @@ export class MutationEngine<
   }
 
   get history(): HistoryPort<
-    MutationResult<void, ApplyCommit<Doc, Op, MutationFootprint, void, string, Delta>, Code>,
-    MutationProgram<string>,
+    MutationResult<void, ApplyCommit<Doc, MutationFootprint, void, Delta>, Code>,
+    MutationProgram,
     MutationFootprint,
-    ApplyCommit<Doc, Op, MutationFootprint, void, string, Delta>
+    ApplyCommit<Doc, MutationFootprint, void, Delta>
   > {
     return this.runtime.history
   }
@@ -774,41 +797,25 @@ export class MutationEngine<
     return this.runtime.reader()
   }
 
-  execute<K extends MutationIntentKind<Table>>(
-    intent: MutationIntentOf<Table, K>,
-    options?: MutationOptions
-  ): MutationExecuteResult<
-    Table,
-    ApplyCommit<Doc, Op, MutationFootprint, void, string, Delta>,
-    K,
-    Code
-  >
-  execute(
-    intents: readonly MutationIntentOf<Table>[],
-    options?: MutationOptions
-  ): MutationResult<
-    readonly MutationOutputOf<Table>[],
-    ApplyCommit<Doc, Op, MutationFootprint, void, string, Delta>,
-    Code
-  >
-  execute<Input extends MutationExecuteInput<Table>>(
+  execute<Input extends MutationExecuteInput<TIntent>>(
     input: Input,
     options?: MutationOptions
   ): MutationExecuteResultOfInput<
-    Table,
-    ApplyCommit<Doc, Op, MutationFootprint, void, string, Delta>,
+    THandlers,
+    TIntent,
+    ApplyCommit<Doc, MutationFootprint, void, Delta>,
     Input,
     Code
   > {
-    return this.runtime.execute<Table, Input>(input, options)
+    return this.runtime.execute(input, options)
   }
 
   apply(
-    program: MutationProgram<string>,
+    program: MutationProgram,
     options?: MutationOptions
   ): MutationResult<
     void,
-    ApplyCommit<Doc, Op, MutationFootprint, void, string, Delta>,
+    ApplyCommit<Doc, MutationFootprint, void, Delta>,
     Code
   > {
     return this.runtime.apply(program, options)
@@ -822,7 +829,7 @@ export class MutationEngine<
   }
 
   subscribe(
-    listener: (commit: MutationCommitRecord<Doc, Op, MutationFootprint, Delta>) => void
+    listener: (commit: MutationCommitRecord<Doc, MutationFootprint, Delta>) => void
   ): () => void {
     return this.runtime.subscribe(listener)
   }

@@ -19,7 +19,6 @@ import {
   layoutMindmapTidy
 } from '@whiteboard/core/mindmap/layout'
 import {
-  createMindmapOp,
   createMindmapTopicPatch,
   readMindmapTopicUpdateFromPatch
 } from '@whiteboard/core/mindmap/ops'
@@ -104,9 +103,6 @@ export const mindmap = {
     layout: resolveProjectedMindmapLayout,
     previewSubtree: applySubtreeMovePreview,
     equalLayout: equalMindmapLayout
-  },
-  op: {
-    create: createMindmapOp
   },
   template: {
     defaultBranchStyle: DEFAULT_MINDMAP_BRANCH_STYLE,

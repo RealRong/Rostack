@@ -9,18 +9,15 @@ import {
 } from '@dataview/core/mutation'
 import {
   createDataviewQueryContext,
+  dataviewCompileHandlers,
   dataviewMutationSchema,
   type DataviewMutationDelta,
   type DataviewMutationReader,
   type DataviewMutationWriter
 } from '@dataview/core/mutation'
-import type {
-  DocumentOperation
-} from '@dataview/core/types'
 import {
   createMutationDelta,
   MutationEngine,
-  type MutationCompileDefinition
 } from '@shared/mutation'
 import type {
   MutationOptions
@@ -53,7 +50,7 @@ import type {
   MutationProgram
 } from '@shared/mutation'
 import type {
-  DataviewIntentTable,
+  Intent,
   DataviewErrorCode
 } from '@dataview/engine/types/intent'
 
@@ -77,27 +74,19 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
   const projection = createDataviewProjection()
   const mutationEngine = new MutationEngine<
     DataDoc,
-    DataviewIntentTable,
-    DocumentOperation,
+    Intent,
     DataviewMutationReader,
     void,
     DataviewErrorCode,
     DataviewMutationWriter,
     DataviewMutationDelta,
-    Pick<import('@dataview/core/mutation/compile/contracts').DataviewCompileContext, 'query' | 'expect'>
+    Pick<import('@dataview/core/mutation/compile/contracts').DataviewCompileContext, 'query' | 'expect'>,
+    typeof dataviewCompileHandlers
   >({
     schema: dataviewMutationSchema,
     document: options.document,
     normalize: documentApi.normalize,
-    compile: compile as MutationCompileDefinition<
-      DataviewIntentTable,
-      DataDoc,
-      DataviewMutationWriter,
-      DataviewMutationReader,
-      void,
-      DataviewErrorCode,
-      Pick<import('@dataview/core/mutation/compile/contracts').DataviewCompileContext, 'query' | 'expect'>
-    >,
+    compile,
     history: historyConfig.enabled
       ? {
           capacity: historyConfig.capacity,
@@ -187,7 +176,7 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
       mutationEngine.replace(nextDocument, replaceOptions)
     ),
     execute: mutationEngine.execute.bind(mutationEngine),
-    apply: (program: MutationProgram<string>, applyOptions?: MutationOptions) => (
+    apply: (program: MutationProgram, applyOptions?: MutationOptions) => (
       mutationEngine.apply(program, applyOptions)
     )
   }

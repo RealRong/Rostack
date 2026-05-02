@@ -202,9 +202,9 @@ const lowerViewCreate = (
       activeViewId: created.id
     })
   }
-  input.output({
+  return {
     id: created.id
-  })
+  }
 }
 
 const handleViewRename: DataviewViewIntentHandlers['view.rename'] = (
@@ -959,9 +959,9 @@ const lowerViewFilterCreate = (
     input.writer.view.patch(view.id, {
       filter: structuredClone(created.filter)
     })
-    input.output({
+    return {
       id: created.id
-    })
+    }
   } catch (error) {
     reportSemanticError(input, error, 'input')
   }
@@ -1091,9 +1091,9 @@ const lowerViewSortCreate = (
     input.writer.view.patch(view.id, {
       sort: structuredClone(created.sort)
     })
-    input.output({
+    return {
       id: created.id
-    })
+    }
   } catch (error) {
     reportSemanticError(input, error, 'input')
   }
@@ -1392,7 +1392,7 @@ const lowerViewRemove = (
   }
 }
 
-export const dataviewViewIntentHandlers: DataviewViewIntentHandlers = {
+export const dataviewViewIntentHandlers = {
   'view.create': lowerViewCreate,
   'view.rename': handleViewRename,
   'view.type.set': handleViewTypeSet,
@@ -1440,4 +1440,4 @@ export const dataviewViewIntentHandlers: DataviewViewIntentHandlers = {
   'view.fields.clear': lowerViewFieldsClear,
   'view.open': lowerViewOpen,
   'view.remove': lowerViewRemove
-}
+} satisfies DataviewViewIntentHandlers

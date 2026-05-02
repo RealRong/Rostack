@@ -29,7 +29,7 @@ const isRecord = (
 
 const assertSharedProgram = (
   value: unknown
-): MutationProgram<string> => {
+): MutationProgram => {
   if (
     !isRecord(value)
     || !Array.isArray(value.steps)
@@ -44,7 +44,7 @@ const assertSharedProgram = (
   })
 
   const program = {
-    steps: value.steps as MutationProgram<string>['steps']
+    steps: value.steps as MutationProgram['steps']
   }
   if (isCheckpointProgram(program)) {
     throw new Error('document.create cannot appear in shared change log.')

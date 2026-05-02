@@ -136,7 +136,7 @@ const lowerFieldCreate = (
   })
 
   input.writer.field.create(field)
-  input.output({ id: field.id })
+  return { id: field.id }
 }
 
 const lowerFieldPatch = (
@@ -266,9 +266,9 @@ const lowerFieldDuplicate = (
     )
   })
 
-  input.output({
+  return {
     id: nextField.id
-  })
+  }
 }
 
 const lowerFieldOptionCreate = (
@@ -301,7 +301,7 @@ const lowerFieldOptionCreate = (
     name: explicitName ?? createOptionName(context.options)
   })
   input.writer.field.options(intent.field).insert(nextOption)
-  input.output({ id: nextOption.id })
+  return { id: nextOption.id }
 }
 
 const lowerFieldOptionMove = (
@@ -498,7 +498,7 @@ const lowerFieldRemove = (
   input.writer.field.delete(intent.id)
 }
 
-export const dataviewFieldIntentHandlers: DataviewFieldIntentHandlers = {
+export const dataviewFieldIntentHandlers = {
   'field.create': lowerFieldCreate,
   'field.patch': lowerFieldPatch,
   'field.replace': lowerFieldReplace,
@@ -509,4 +509,4 @@ export const dataviewFieldIntentHandlers: DataviewFieldIntentHandlers = {
   'field.option.patch': lowerFieldOptionPatch,
   'field.option.remove': lowerFieldOptionRemove,
   'field.remove': lowerFieldRemove
-}
+} satisfies DataviewFieldIntentHandlers

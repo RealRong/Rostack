@@ -6,14 +6,9 @@ export {
   whiteboardMutationSchema
 } from './model'
 export {
-  validateWhiteboardOperationBatch
-} from './validate'
-export {
   resolveLockDecision,
-  validateLockOperations
 } from './lock'
 export {
-  isCheckpointOperation,
   isCheckpointProgram
 } from './checkpoint'
 
@@ -37,9 +32,6 @@ export type {
   WhiteboardCompileServices,
   WhiteboardIntent,
   WhiteboardIntentKind,
-  WhiteboardIntentOutput,
-  WhiteboardIntentTable,
-  WhiteboardMutationTable
 } from './compile'
 export type {
   WhiteboardQuery,
@@ -48,6 +40,5 @@ export type {
 export type {
   LockDecision,
   LockDecisionReason,
-  LockOperationViolation,
   LockTarget,
 } from './lock'

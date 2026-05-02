@@ -627,47 +627,12 @@ export const appendTableDeleteWrites = (
   writes[idsPath] = currentIds.filter((currentId) => currentId !== id)
 }
 
-export const createCanonicalCreateOperation = <Op extends { type: string }>(
-  type: string,
-  value: unknown
-): Op => ({
-  type,
-  value
-}) as unknown as Op
-
-export const createCanonicalPatchOperation = <Op extends { type: string }>(
-  type: string,
-  id: string | undefined,
-  patch: MutationEntityPatch
-): Op => ({
-  type,
-  ...(id
-    ? {
-        id
-      }
-    : {}),
-  patch
-}) as unknown as Op
-
-export const createCanonicalDeleteOperation = <Op extends { type: string }>(
-  type: string,
-  id: string | undefined
-): Op => ({
-  type,
-  ...(id
-    ? {
-        id
-      }
-    : {})
-}) as unknown as Op
-
 export const invalidCanonicalOperation = <
   Doc,
-  Op,
   Code extends string = string
 >(
   error: unknown
-): MutationApplyResult<Doc, Op, Code> => mutationFailure(
+): MutationApplyResult<Doc, Code> => mutationFailure(
   COMPILE_APPLY_FAILED_CODE as Code,
   error instanceof Error
     ? error.message

@@ -4,7 +4,6 @@ import type {
   CustomFieldKind,
   DataDoc,
   DataRecord,
-  DocumentOperation,
   FieldId,
   FieldOption,
   RecordFieldWriteManyInput,
@@ -202,7 +201,7 @@ export interface Engine {
   ): ExecuteResultOf<I>
 
   apply(
-    program: MutationProgram<string>,
+    program: MutationProgram,
     options?: MutationOptions
   ): MutationResult<void, EngineApplyCommit>
 }

@@ -169,9 +169,9 @@ const lowerRecordCreate = (
   } satisfies DataRecord
 
   input.writer.record.create(record)
-  input.output({
+  return {
     id: record.id
-  })
+  }
 }
 
 const lowerRecordRemove = (
@@ -259,8 +259,8 @@ const lowerRecordFieldsWriteMany = (
   })
 }
 
-export const dataviewRecordIntentHandlers: DataviewRecordIntentHandlers = {
+export const dataviewRecordIntentHandlers = {
   'record.create': lowerRecordCreate,
   'record.remove': lowerRecordRemove,
   'record.fields.writeMany': lowerRecordFieldsWriteMany
-}
+} satisfies DataviewRecordIntentHandlers

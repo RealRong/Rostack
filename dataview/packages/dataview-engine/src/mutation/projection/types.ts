@@ -15,13 +15,11 @@ import type {
 import type {
   DataDoc
 } from '@dataview/core/types'
-import type { DocumentOperation } from '@dataview/core/types'
 export interface DataviewCommitTraceInput {
   performance?: PerformanceRuntime
   startedAt: number
   commit: MutationCommitRecord<
     DataDoc,
-    DocumentOperation,
     MutationFootprint
   >
   index: {

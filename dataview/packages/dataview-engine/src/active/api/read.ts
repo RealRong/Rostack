@@ -10,10 +10,10 @@ import type {
   ViewCell,
   ViewState
 } from '@dataview/engine/contracts/view'
-import type { DocumentReader } from '@dataview/core/document/reader'
+import type { DataviewQuery } from '@dataview/core/mutation'
 
 export const createActiveViewReadApi = (input: {
-  reader: DocumentReader
+  reader: DataviewQuery
   state: () => ViewState | undefined
 }): ActiveViewReadApi => {
   const readState = () => input.state()

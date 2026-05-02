@@ -1,23 +1,22 @@
 import assert from 'node:assert/strict'
 import { test } from 'vitest'
 import {
-  createMutationPorts,
   createMutationProgramWriter
 } from '@shared/mutation'
 import {
-  dataviewMutationRegistry
-} from '@dataview/core'
+  createDataviewMutationPorts
+} from '@dataview/core/mutation'
 
 test('dataview mutation ports lower entity and ordered writes to shared program steps', () => {
   const base = createMutationProgramWriter<string>()
-  const program = createMutationPorts(dataviewMutationRegistry, base)
+  const program = createDataviewMutationPorts(base)
 
   program.document.patch({
     activeViewId: 'view_1'
   })
   program.record.patch('record_1', {
     title: 'Next'
-  }, ['record.title'])
+  })
   program.viewDisplay('view_1').insert('field_1', {
     kind: 'before',
     itemId: 'field_2'
@@ -46,14 +45,13 @@ test('dataview mutation ports lower entity and ordered writes to shared program 
         },
         writes: {
           title: 'Next'
-        },
-        tags: ['record.title']
+        }
       },
       {
         type: 'ordered.insert',
         target: {
           kind: 'ordered',
-          type: 'view.display.fields',
+          type: 'view.displayFields',
           key: 'view_1'
         },
         itemId: 'field_1',

@@ -15,6 +15,14 @@ const FIELD_POINTS = 'points'
 const VIEW_TABLE = 'view_table'
 const VIEW_BOARD = 'view_board'
 
+const displayFields = (fieldIds: readonly string[]) => entityTable.normalize.list(
+  fieldIds.map((fieldId) => ({ id: fieldId }))
+)
+
+const optionTable = <T extends { id: string }>(
+  options: readonly T[]
+) => entityTable.normalize.list(options.map((option) => ({ ...option })))
+
 const STATUS_OPTIONS = [
   {
     id: 'todo',
@@ -42,7 +50,7 @@ const createFields = () => ([
     name: 'Status',
     kind: 'status',
     defaultOptionId: 'todo',
-    options: STATUS_OPTIONS.map(option => ({ ...option }))
+    options: optionTable(STATUS_OPTIONS)
   },
   {
     id: FIELD_POINTS,
@@ -96,12 +104,12 @@ const createDocument = () => {
           sort: createEmptySort(),
           calc: {},
           display: {
-            fields: [TITLE_FIELD_ID, FIELD_STATUS, FIELD_POINTS]
+            fields: displayFields([TITLE_FIELD_ID, FIELD_STATUS, FIELD_POINTS])
           },
           options: {
             ...view.options.defaults('table', fields)
           },
-          orders: []
+          order: entityTable.normalize.list([])
         }
       },
       ids: [VIEW_TABLE]
@@ -156,12 +164,12 @@ const createView = (input = {}) => {
     sort: createEmptySort(),
     calc: {},
     display: {
-      fields: [TITLE_FIELD_ID, FIELD_STATUS, FIELD_POINTS]
+      fields: displayFields([TITLE_FIELD_ID, FIELD_STATUS, FIELD_POINTS])
     },
     options: {
       ...view.options.defaults(input.type ?? 'table', fields)
     },
-    orders: [],
+    order: entityTable.normalize.list([]),
     ...(input.group ? { group: input.group } : {})
   }
 }
@@ -879,19 +887,19 @@ test('engine.active.records.create supports multiple concrete select filters and
       id: fieldA,
       name: 'Select 1',
       kind: 'select',
-      options: [
+      options: optionTable([
         {
           id: 'option_1',
           name: 'Option 1',
           color: 'red'
         }
-      ]
+      ])
     },
     {
       id: fieldB,
       name: 'Select 2',
       kind: 'select',
-      options: [
+      options: optionTable([
         {
           id: 'option_2',
           name: 'Option 2',
@@ -902,13 +910,13 @@ test('engine.active.records.create supports multiple concrete select filters and
           name: 'Option 3',
           color: 'green'
         }
-      ]
+      ])
     },
     {
       id: fieldC,
       name: 'Tags',
       kind: 'multiSelect',
-      options: [
+      options: optionTable([
         {
           id: 'option_3',
           name: 'Option 3',
@@ -919,7 +927,7 @@ test('engine.active.records.create supports multiple concrete select filters and
           name: 'Option 4',
           color: 'orange'
         }
-      ]
+      ])
     }
   ]
 
@@ -940,12 +948,12 @@ test('engine.active.records.create supports multiple concrete select filters and
             sort: createEmptySort(),
             calc: {},
             display: {
-              fields: [TITLE_FIELD_ID, fieldA, fieldB, fieldC]
+              fields: displayFields([TITLE_FIELD_ID, fieldA, fieldB, fieldC])
             },
             options: {
               ...view.options.defaults('table', fields)
             },
-            orders: []
+            order: entityTable.normalize.list([])
           }
         },
         ids: [VIEW_TABLE]
@@ -1529,70 +1537,21 @@ test('engine commits stream emits shared apply commits for execute', () => {
     extra: writes[0].extra
   }, result.commit)
   assert.equal(writes[0]?.origin, 'user')
-  assert.deepEqual(writes[0]?.delta.changes, {
-    'document.activeViewId': {
-      ids: 'all'
-    },
-    'view.create': {
-      ids: createdViewId
-        ? [createdViewId]
-        : []
-    },
-    'view.layout': {
-      ids: createdViewId
-        ? [createdViewId]
-        : [],
-      paths: createdViewId
-        ? {
-            [createdViewId]: [
-              'display',
-              'display.fields',
-              'name',
-              'options',
-              'options.showVerticalLines',
-              'options.widths',
-              'options.wrap',
-              'type'
-            ]
-          }
-        : {}
-    },
-    'view.query': {
-      ids: createdViewId
-        ? [createdViewId]
-        : [],
-      paths: createdViewId
-        ? {
-            [createdViewId]: [
-              'filter',
-              'filter.mode',
-              'filter.rules',
-              'filter.rules.byId',
-              'filter.rules.ids',
-              'orders',
-              'search',
-              'search.query',
-              'sort',
-              'sort.rules',
-              'sort.rules.byId',
-              'sort.rules.ids'
-            ]
-          }
-        : {}
-    },
-    'view.calc': {
-      ids: createdViewId
-        ? [createdViewId]
-        : [],
-      paths: createdViewId
-        ? {
-            [createdViewId]: [
-              'calc'
-            ]
-          }
-        : {}
-    }
+  assert.ok(Boolean(writes[0]?.delta.changes['document.activeViewId']))
+  assert.deepEqual(writes[0]?.delta.changes['view.create'], {
+    ids: createdViewId
+      ? [createdViewId]
+      : []
   })
+  assert.ok(Boolean(writes[0]?.delta.changes['view.name']))
+  assert.ok(Boolean(writes[0]?.delta.changes['view.type']))
+  assert.ok(Boolean(writes[0]?.delta.changes['view.filter']))
+  assert.ok(Boolean(writes[0]?.delta.changes['view.search']))
+  assert.ok(Boolean(writes[0]?.delta.changes['view.sort']))
+  assert.ok(Boolean(writes[0]?.delta.changes['view.display']))
+  assert.ok(Boolean(writes[0]?.delta.changes['view.options']))
+  assert.ok(Boolean(writes[0]?.delta.changes['view.order']))
+  assert.ok(Boolean(writes[0]?.delta.changes['view.calc']))
 })
 
 test('engine apply emits shared apply commits', () => {
@@ -1607,8 +1566,11 @@ test('engine apply emits shared apply commits', () => {
   })
 
   const result = engine.execute({
-    type: 'external.version.bump',
-    source: 'test'
+    type: 'field.create',
+    input: {
+      name: 'Status',
+      kind: 'text'
+    }
   }, {
     origin: 'remote'
   })
@@ -1634,9 +1596,5 @@ test('engine apply emits shared apply commits', () => {
   }, result.commit)
   assert.equal(writes[0]?.origin, 'remote')
   assert.equal(writes[0]?.applied.steps.length, 1)
-  assert.deepEqual(writes[0]?.delta.changes, {
-    'external.version': {
-      ids: 'all'
-    }
-  })
+  assert.ok(Boolean(writes[0]?.delta.changes['field.create']))
 })

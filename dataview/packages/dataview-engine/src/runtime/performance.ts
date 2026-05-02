@@ -2,9 +2,16 @@ import { metrics } from '@shared/core'
 import type {
   MutationDelta
 } from '@shared/mutation'
+import {
+  createMutationDelta
+} from '@shared/mutation'
 import type {
   CommitRecord
 } from '@shared/mutation/write'
+import {
+  dataviewMutationModel,
+  type DataviewMutationDelta
+} from '@dataview/core/mutation'
 import type {
   CommitTrace,
   PerformanceApi,
@@ -15,15 +22,136 @@ import type {
   TraceDeltaSummary,
   ViewStageName
 } from '@dataview/engine/contracts/performance'
-import {
-  createDataviewMutationDelta
-} from '@dataview/engine/mutation/delta'
 
 type PendingCommitTrace = Omit<CommitTrace, 'id'>
 
+const countTouched = <T,>(
+  value: ReadonlySet<T> | 'all'
+): number | 'all' => value === 'all'
+  ? 'all'
+  : value.size
+
+const countPaths = (
+  delta: MutationDelta,
+  key: string
+): number | 'all' | undefined => {
+  if (delta.reset === true) {
+    return 'all'
+  }
+
+  const paths = delta.changes[key]?.paths
+  if (paths === 'all') {
+    return 'all'
+  }
+
+  return paths
+    ? Object.keys(paths).length
+    : undefined
+}
+
+const countIds = (
+  ids: ReadonlySet<string> | 'all'
+): number | 'all' => ids === 'all'
+  ? 'all'
+  : ids.size
+
+const summarizeTypedDelta = (
+  delta: DataviewMutationDelta
+): TraceDeltaSummary => {
+  const facts: Array<{
+    kind: string
+    count?: number
+  }> = []
+  const pushFact = (
+    kind: string,
+    count: number | 'all' | undefined
+  ) => {
+    if (count === undefined) {
+      return
+    }
+
+    facts.push({
+      kind,
+      ...(typeof count === 'number'
+        ? { count }
+        : {})
+    })
+  }
+
+  const viewQueryChanged = delta.view.search.changed()
+    || delta.view.filter.changed()
+    || delta.view.sort.changed()
+    || delta.view.group.changed()
+    || delta.view.order.changed()
+  const viewLayoutChanged = delta.view.name.changed()
+    || delta.view.type.changed()
+    || delta.view.display.changed()
+    || delta.view.options.changed()
+  const fieldSchemaChanged = delta.field.name.changed()
+    || delta.field.kind.changed()
+    || delta.field.system.changed()
+    || delta.field.displayFullUrl.changed()
+    || delta.field.format.changed()
+    || delta.field.precision.changed()
+    || delta.field.currency.changed()
+    || delta.field.useThousandsSeparator.changed()
+    || delta.field.defaultOptionId.changed()
+    || delta.field.displayDateFormat.changed()
+    || delta.field.displayTimeFormat.changed()
+    || delta.field.defaultValueKind.changed()
+    || delta.field.defaultTimezone.changed()
+    || delta.field.multiple.changed()
+    || delta.field.accept.changed()
+    || delta.field.options.changed()
+  const touchedRecords = delta.record.touchedIds()
+  const touchedFields = delta.field.touchedIds()
+  const touchedViews = delta.view.touchedIds()
+
+  pushFact('record.insert', countIds(delta.record.create.touchedIds()))
+  pushFact('record.title', countIds(delta.record.title.touchedIds()))
+  pushFact('record.type', countIds(delta.record.type.touchedIds()))
+  pushFact('record.meta', countIds(delta.record.meta.touchedIds()))
+  pushFact('record.remove', countIds(delta.record.delete.touchedIds()))
+  pushFact('record.value', countPaths(delta.raw, 'record.values'))
+  pushFact('field.insert', countIds(delta.field.create.touchedIds()))
+  pushFact('field.remove', countIds(delta.field.delete.touchedIds()))
+  pushFact('field.schema', countIds(delta.field.touchedIds()))
+  pushFact('view.insert', countIds(delta.view.create.touchedIds()))
+  pushFact('view.change', countIds(delta.view.touchedIds()))
+  pushFact('view.layout', countIds(delta.view.display.touchedIds()))
+  pushFact('view.calc', countIds(delta.view.calc.touchedIds()))
+  pushFact('view.remove', countIds(delta.view.delete.touchedIds()))
+  pushFact('activeView.set', delta.document.activeViewId.changed() ? 1 : undefined)
+  pushFact('reset', delta.reset === true ? 1 : undefined)
+
+  return {
+    summary: {
+      records: touchedRecords === 'all' || touchedRecords.size > 0,
+      fields: touchedFields === 'all' || touchedFields.size > 0,
+      views: touchedViews === 'all' || touchedViews.size > 0,
+      activeView: delta.document.activeViewId.changed(),
+      external: false,
+      indexes: touchedRecords === 'all'
+        || touchedRecords.size > 0
+        || fieldSchemaChanged
+        || delta.field.meta.changed()
+        || viewQueryChanged
+        || delta.view.calc.changed()
+    },
+    facts,
+    entities: {
+      touchedRecordCount: countTouched(touchedRecords),
+      touchedFieldCount: countTouched(touchedFields),
+      touchedViewCount: countTouched(touchedViews)
+    }
+  }
+}
+
 export const summarizeDelta = (
   delta: MutationDelta
-): TraceDeltaSummary => createDataviewMutationDelta(delta).summary()
+): TraceDeltaSummary => summarizeTypedDelta(
+  createMutationDelta(dataviewMutationModel, delta)
+)
 
 export const toPerformanceKind = (
   commit: Pick<CommitRecord<any, any, any, any>, 'kind' | 'origin'>

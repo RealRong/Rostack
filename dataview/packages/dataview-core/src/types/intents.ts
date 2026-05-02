@@ -31,16 +31,6 @@ import type {
   TableOptions
 } from './state'
 
-export type EditTarget =
-  | {
-      type: 'record'
-      recordId: RecordId
-    }
-  | {
-      type: 'records'
-      recordIds: RecordId[]
-    }
-
 export interface RecordCreateInput {
   id?: RecordId
   title?: string
@@ -118,11 +108,6 @@ export type Intent =
   | {
       type: 'record.create'
       input: RecordCreateInput
-    }
-  | {
-      type: 'record.patch'
-      target: EditTarget
-      patch: Partial<Omit<DataRecord, 'id' | 'values'>>
     }
   | {
       type: 'record.remove'
@@ -423,10 +408,6 @@ export type Intent =
   | {
       type: 'view.remove'
       id: ViewId
-    }
-  | {
-      type: 'external.version.bump'
-      source: string
     }
 
 export type IntentType = Intent['type']

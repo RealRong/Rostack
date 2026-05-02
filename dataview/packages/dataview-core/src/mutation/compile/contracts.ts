@@ -11,8 +11,8 @@ import type {
   DataviewMutationPorts
 } from '../program'
 import type {
-  DataviewCompileReader
-} from './reader'
+  DataviewQuery
+} from '../query'
 export type ValidationSeverity =
   | 'error'
   | 'warning'
@@ -43,6 +43,12 @@ export type IssueSource = MutationCompileSource<string>
 export type ValidationIssue =
   MutationCompileIssue<ValidationCode, string>
 
+export interface DataviewCompileExpect {
+  record(id: string, path?: string): import('@dataview/core/types').DataRecord | undefined
+  field(id: string, path?: string): import('@dataview/core/types').Field | undefined
+  view(id: string, path?: string): import('@dataview/core/types').View | undefined
+}
+
 export type DataviewCompileContext<
   TIntent extends Intent = Intent,
   TOutput = unknown
@@ -51,7 +57,9 @@ export type DataviewCompileContext<
   TIntent,
   DataviewMutationPorts,
   TOutput,
-  DataviewCompileReader,
+  DataviewQuery,
   void,
   ValidationCode
->
+> & {
+  expect?: DataviewCompileExpect
+}

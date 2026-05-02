@@ -3,9 +3,12 @@ import type {
   View
 } from '@dataview/core/types'
 import { field as fieldApi } from '@dataview/core/field'
-import { applyRecordOrder } from '@dataview/core/view/order'
+import {
+  applyRecordOrder,
+  readViewOrderIds
+} from '@dataview/core/view/order'
 import type { IndexState } from '@dataview/engine/active/index/contracts'
-import type { DocumentReader } from '@dataview/core/document/reader'
+import type { DataviewQuery } from '@dataview/core/mutation'
 
 export interface QueryReuseState {
   matched?: readonly RecordId[]
@@ -318,7 +321,7 @@ const projectIdsToCurrentOrderKeepingEmptyLast = (input: {
 
 const sortRecordIds = (input: {
   ids: readonly RecordId[]
-  reader: DocumentReader
+  reader: DataviewQuery
   index: IndexState
   view: View
 }): readonly RecordId[] => {
@@ -390,13 +393,14 @@ const sortRecordIds = (input: {
 const applyViewOrders = (
   ids: readonly RecordId[],
   view: View,
-  reader: DocumentReader
+  reader: DataviewQuery
 ): readonly RecordId[] => {
-  if (view.sort.rules.ids.length > 0 || !view.orders.length) {
+  const viewOrderIds = readViewOrderIds(view)
+  if (view.sort.rules.ids.length > 0 || !viewOrderIds.length) {
     return ids
   }
 
-  const normalizedOrders = reader.records.normalize(view.orders, ids)
+  const normalizedOrders = reader.records.normalize(viewOrderIds, ids)
   return normalizedOrders.length
     ? applyRecordOrder(ids, normalizedOrders)
     : ids
@@ -450,7 +454,7 @@ export const projectCandidatesToOrderedIds = (
 })
 
 export const resolveQueryOrderState = (input: {
-  reader: DocumentReader
+  reader: DataviewQuery
   view: View
   index: IndexState
   reuse?: QueryReuseState

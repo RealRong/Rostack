@@ -31,7 +31,7 @@ const insertField = (
 
   const fieldId = createId('field') as CustomFieldId
   const beforeFieldId = viewApi.display.insertBefore(
-    view.display.fields,
+    viewApi.display.read.ids(view.display),
     input.anchor,
     input.side
   )

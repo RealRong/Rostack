@@ -23,6 +23,10 @@ import {
   entityTable,
   equal
 } from '@shared/core'
+import {
+  readViewDisplayFieldIds,
+  replaceViewDisplayFields
+} from '@dataview/core/view/display'
 
 const cleanupSearchFields = (
   fieldIds: readonly string[] | undefined,
@@ -84,7 +88,8 @@ const buildRemovedFieldView = (
     ...view.calc
   }
   delete nextCalc[fieldId]
-  const nextDisplayFields = view.display.fields.filter(currentFieldId => currentFieldId !== fieldId)
+  const nextDisplayFields = readViewDisplayFieldIds(view.display)
+    .filter(currentFieldId => currentFieldId !== fieldId)
   const currentGroup = 'group' in view
     ? view.group
     : undefined
@@ -110,9 +115,7 @@ const buildRemovedFieldView = (
           query: view.search.query
         },
     calc: nextCalc,
-    display: {
-      fields: nextDisplayFields
-    }
+    display: replaceViewDisplayFields(nextDisplayFields)
   }
 
   if (view.type === 'table') {

@@ -37,11 +37,11 @@ const toBeforeAnchor = (
     }
 
 const createOptionName = (
-  options: Extract<CustomField, { kind: 'select' | 'multiSelect' | 'status' }>['options']
+  options: readonly FieldOption[]
 ) => {
   let nextName = DEFAULT_OPTION_NAME
   let index = 1
-  while (fieldApi.option.read.findByName(options, nextName)) {
+  while (options.some((option) => option.name === nextName)) {
     index += 1
     nextName = `${DEFAULT_OPTION_NAME} ${index}`
   }
@@ -53,7 +53,7 @@ const requireCustomField = (
   fieldId: string,
   path = 'fieldId'
 ): CustomField | undefined => {
-  const field = input.reader.fields.require(fieldId, path)
+  const field = input.expect!.field(fieldId, path)
   if (!fieldApi.kind.isCustom(field)) {
     input.issue({
       source: input.source,
@@ -260,22 +260,23 @@ const lowerFieldDuplicate = (
   })
 
   views.forEach((view) => {
-    if (view.type !== 'table' || view.display.fields.includes(nextFieldId)) {
+    const displayFieldIds = viewApi.display.read.ids(view.display)
+    if (view.type !== 'table' || displayFieldIds.includes(nextFieldId)) {
       return
     }
 
-    const sourceIndex = view.display.fields.indexOf(sourceField.id)
+    const sourceIndex = displayFieldIds.indexOf(sourceField.id)
     if (sourceIndex === -1) {
       return
     }
 
     input.program.viewDisplay(view.id).insert(
       nextFieldId,
-      view.display.fields[sourceIndex + 1] === undefined
+      displayFieldIds[sourceIndex + 1] === undefined
         ? undefined
         : {
             kind: 'before',
-            itemId: view.display.fields[sourceIndex + 1]
+            itemId: displayFieldIds[sourceIndex + 1]
           }
     )
   })

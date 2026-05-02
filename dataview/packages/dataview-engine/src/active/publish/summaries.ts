@@ -12,7 +12,7 @@ import type {
 import type {
   SummaryPhaseState as SummaryState
 } from '@dataview/engine/active/state'
-import type { DocumentReader } from '@dataview/core/document/reader'
+import type { DataviewQuery } from '@dataview/core/mutation'
 import { equal } from '@shared/core'
 import {
   buildEmptyPublishedSummaries,
@@ -28,7 +28,7 @@ export const publishSummaries = (input: {
   summary: SummaryState
   previousSummary?: SummaryState
   previous?: ReadonlyMap<SectionId, CalculationCollection>
-  reader: DocumentReader
+  reader: DataviewQuery
   view: View
 }): ReadonlyMap<SectionId, CalculationCollection> => {
   if (input.previous && input.previousSummary === input.summary) {

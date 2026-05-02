@@ -1,12 +1,15 @@
 import type {
   CustomField,
+  FieldOptionId,
   FieldOption,
+  FieldOptionTable,
   MultiSelectField,
   SelectField,
   StatusField,
   StatusOption
 } from '@dataview/core/types'
 import { string } from '@shared/core'
+import { entityTable } from '@shared/core'
 
 const EMPTY_OPTION_IDS: string[] = []
 const EMPTY_OPTIONS: FieldOption[] = []
@@ -26,8 +29,14 @@ export const isOptionField = (
 export const readFieldOptions = (
   field?: CustomField
 ): FieldOption[] => isOptionField(field)
-  ? field.options
+  ? entityTable.read.list(field.options as FieldOptionTable)
   : EMPTY_OPTIONS
+
+export const readFieldOptionIds = (
+  field?: CustomField
+): readonly FieldOptionId[] => isOptionField(field)
+  ? entityTable.read.ids(field.options as FieldOptionTable)
+  : EMPTY_OPTION_IDS
 
 export const normalizeOptionToken = (
   value: unknown
@@ -167,23 +176,23 @@ export const replaceFieldOptions = (
   switch (field.kind) {
     case 'select':
       return {
-        options: options.map(option => ({
+        options: entityTable.normalize.list(options.map(option => ({
           id: option.id,
           name: option.name,
           color: option.color ?? null
-        }))
+        })))
       }
     case 'multiSelect':
       return {
-        options: options.map(option => ({
+        options: entityTable.normalize.list(options.map(option => ({
           id: option.id,
           name: option.name,
           color: option.color ?? null
-        }))
+        })))
       }
     case 'status':
       return {
-        options: options.flatMap(option => (
+        options: entityTable.normalize.list(options.flatMap(option => (
           'category' in option
             ? [{
                 id: option.id,
@@ -192,7 +201,7 @@ export const replaceFieldOptions = (
                 category: option.category
               } satisfies StatusOption]
             : []
-        ))
+        )))
       }
   }
 }

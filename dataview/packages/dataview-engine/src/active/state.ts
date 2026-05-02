@@ -8,7 +8,7 @@ import type {
   FieldId,
   RecordId
 } from '@dataview/core/types'
-import type { DocumentReader } from '@dataview/core/document/reader'
+import type { DataviewQueryContext } from '@dataview/core/mutation'
 import type {
   DataviewActiveSpec
 } from '@dataview/engine/active/frame'
@@ -159,7 +159,7 @@ export interface DataviewState {
   revision: Revision
   document?: {
     current: DataDoc
-    reader: DocumentReader
+    query: DataviewQueryContext
   }
   active: DataviewActiveState
 }

@@ -56,7 +56,7 @@ import {
   expandSearchableValue,
   isEmptyValue
 } from '@dataview/core/field/value'
-import { compare, json, parse, string } from '@shared/core'
+import { compare, entityTable, json, parse, string } from '@shared/core'
 import {
   spec
 } from '@shared/spec'
@@ -534,6 +534,23 @@ const cloneFlatOptions = (
   name: option.name,
   color: option.color ?? null
 }))
+
+const toFlatOptionTable = (
+  options: readonly FlatOption[]
+) => entityTable.normalize.list(options.map(option => ({
+  id: option.id,
+  name: option.name,
+  color: option.color ?? null
+})))
+
+const toStatusOptionTable = (
+  options: readonly StatusOption[]
+) => entityTable.normalize.list(options.map(option => ({
+  id: option.id,
+  name: option.name,
+  color: option.color ?? null,
+  category: option.category
+})))
 
 const cloneStatusOptions = (
   field: CustomField
@@ -1498,26 +1515,27 @@ export const fieldKindSpec = {
       default: input => ({
         ...input,
         kind: 'select',
-        options: []
+        options: toFlatOptionTable([])
       }),
       convert: field => ({
         ...cloneBase(field),
         kind: 'select',
-        options: cloneFlatOptions(field)
+        options: toFlatOptionTable(cloneFlatOptions(field))
       })
     },
     schema: {
       normalize: field => {
         const current = field as SelectField
-        return {
-        ...cloneBase(current),
-        kind: 'select',
-        options: current.options
+        const options = readFieldOptions(current)
           .map(normalizeFlatOption)
           .filter((option): option is FlatOption => Boolean(option))
-      }
+        return {
+          ...cloneBase(current),
+          kind: 'select',
+          options: toFlatOptionTable(options)
+        }
       },
-      validate: (field, path) => validateBaseOptions((field as SelectField).options, `${path}.options`)
+      validate: (field, path) => validateBaseOptions(readFieldOptions(field as SelectField), `${path}.options`)
     },
     value: {
       display: displayOptionValue,
@@ -1551,26 +1569,27 @@ export const fieldKindSpec = {
       default: input => ({
         ...input,
         kind: 'multiSelect',
-        options: []
+        options: toFlatOptionTable([])
       }),
       convert: field => ({
         ...cloneBase(field),
         kind: 'multiSelect',
-        options: cloneFlatOptions(field)
+        options: toFlatOptionTable(cloneFlatOptions(field))
       })
     },
     schema: {
       normalize: field => {
         const current = field as MultiSelectField
-        return {
-        ...cloneBase(current),
-        kind: 'multiSelect',
-        options: current.options
+        const options = readFieldOptions(current)
           .map(normalizeFlatOption)
           .filter((option): option is FlatOption => Boolean(option))
-      }
+        return {
+          ...cloneBase(current),
+          kind: 'multiSelect',
+          options: toFlatOptionTable(options)
+        }
       },
-      validate: (field, path) => validateBaseOptions((field as MultiSelectField).options, `${path}.options`)
+      validate: (field, path) => validateBaseOptions(readFieldOptions(field as MultiSelectField), `${path}.options`)
     },
     value: {
       display: displayMultiOptionValue,
@@ -1614,7 +1633,7 @@ export const fieldKindSpec = {
         return {
           ...input,
           kind: 'status',
-          options,
+          options: toStatusOptionTable(options),
           defaultOptionId: options[0]?.id ?? null
         }
       },
@@ -1623,19 +1642,20 @@ export const fieldKindSpec = {
         return {
           ...cloneBase(field),
           kind: 'status',
-          options,
+          options: toStatusOptionTable(options),
           defaultOptionId: options[0]?.id ?? null
         }
       },
       defaultValue: field => {
         const current = field as StatusField
-        return current.defaultOptionId ?? current.options[0]?.id ?? null
+        return current.defaultOptionId ?? readFieldOptions(current)[0]?.id ?? null
       }
     },
     schema: {
       normalize: field => {
         const current = field as StatusField
-        const options = current.options
+        const options = readFieldOptions(current)
+          .flatMap((option) => ('category' in option ? [option] : []))
           .map(normalizeStatusOption)
           .filter((option): option is StatusOption => Boolean(option))
         const nextOptions = options.length
@@ -1645,14 +1665,19 @@ export const fieldKindSpec = {
         return {
           ...cloneBase(current),
           kind: 'status',
-          options: nextOptions,
+          options: toStatusOptionTable(nextOptions),
           defaultOptionId: normalizeStatusDefaultOptionId(nextOptions, current.defaultOptionId)
         }
       },
       validate: (field, path) => {
         const current = field as StatusField
-        const issues = validateBaseOptions(current.options, `${path}.options`)
-        current.options.forEach((option, index) => {
+        const options = readFieldOptions(current).flatMap((option) => (
+          'category' in option
+            ? [option]
+            : []
+        ))
+        const issues = validateBaseOptions(options, `${path}.options`)
+        options.forEach((option, index) => {
           if (!STATUS_CATEGORIES.includes(option.category)) {
             issues.push(createFieldSchemaIssue(
               `${path}.options.${index}.category`,
@@ -1669,7 +1694,7 @@ export const fieldKindSpec = {
           typeof current.defaultOptionId === 'string'
           && (
             !string.isNonEmptyString(current.defaultOptionId)
-            || !current.options.some(option => option.id === current.defaultOptionId)
+            || !options.some(option => option.id === current.defaultOptionId)
           )
         ) {
           issues.push(createFieldSchemaIssue(

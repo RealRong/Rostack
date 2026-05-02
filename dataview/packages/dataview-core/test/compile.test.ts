@@ -7,10 +7,8 @@ import type {
   Intent
 } from '@dataview/core/types'
 import {
-  compile
-} from '@dataview/core/mutation'
-import {
-  dataviewMutationRegistry
+  compile,
+  dataviewMutationModel
 } from '@dataview/core/mutation'
 
 const createEmptyDocument = (): DataDoc => ({
@@ -26,9 +24,9 @@ test('MutationEngine.compile lowers field.create into executable operations', ()
   const mutation = new MutationEngine({
     document: createEmptyDocument(),
     normalize: document => document,
+    model: dataviewMutationModel,
     createReader: compile.createReader,
     createProgram: compile.createProgram,
-    registry: dataviewMutationRegistry,
     compile: compile.handlers,
   })
   const result = mutation.execute([{

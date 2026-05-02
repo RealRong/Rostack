@@ -36,9 +36,17 @@ export type MutationRecordMemberSpec<TValue = unknown> = {
   __value?: TValue
 }
 
+export type MutationKeyedMemberSpec<TKey extends string = string, TValue = unknown> = {
+  kind: 'keyed'
+  at?: MemberPath
+  __key?: TKey
+  __value?: TValue
+}
+
 export type MutationMemberSpec =
   | MutationValueMemberSpec
   | MutationRecordMemberSpec
+  | MutationKeyedMemberSpec
 
 type FieldSelector = {
   kind: 'field'
@@ -51,9 +59,16 @@ type RecordSelector = {
   mode: 'self' | 'deep'
 }
 
+type KeyedSelector = {
+  kind: 'keyed'
+  member: string
+  mode: 'self' | 'deep'
+}
+
 export type MutationChangeSelector =
   | FieldSelector
   | RecordSelector
+  | KeyedSelector
 
 type SelectorApi<TMembers extends Readonly<Record<string, MutationMemberSpec>>> = {
   value<TKey extends keyof TMembers & string>(
@@ -68,6 +83,14 @@ type SelectorApi<TMembers extends Readonly<Record<string, MutationMemberSpec>>> 
   ): {
     self(): RecordSelector
     deep(): RecordSelector
+  }
+  keyed<TKey extends keyof TMembers & string>(
+    key: TMembers[TKey] extends MutationKeyedMemberSpec
+      ? TKey
+      : never
+  ): {
+    self(): KeyedSelector
+    deep(): KeyedSelector
   }
 }
 
@@ -230,6 +253,15 @@ export const record = <TValue,>(
   ...(input.at === undefined ? {} : { at: input.at })
 })
 
+export const keyed = <TKey extends string, TValue>(
+  input: {
+    at?: string
+  } = {}
+): MutationKeyedMemberSpec<TKey, TValue> => ({
+  kind: 'keyed',
+  ...(input.at === undefined ? {} : { at: input.at })
+})
+
 export const singleton = <Doc, Entity>() => <
   const TMembers extends Readonly<Record<string, MutationMemberSpec>>,
   const TOrdered extends Readonly<Record<string, MutationOrderedFamilySpec<Doc, 'singleton', unknown, string>>> | undefined = undefined,
@@ -350,12 +382,46 @@ type FamilyMembersOf<
     : never
   : never
 
+type KeyedMemberKey<
+  TMember
+> = TMember extends MutationKeyedMemberSpec<infer TKey, unknown>
+  ? TKey
+  : never
+
+type KeyedMemberValue<
+  TMember
+> = TMember extends MutationKeyedMemberSpec<string, infer TValue>
+  ? TValue
+  : never
+
+type FamilyOrderedOf<
+  TFamily
+> = TFamily extends {
+  ordered?: infer TOrdered
+}
+  ? TOrdered extends Readonly<Record<string, MutationOrderedFamilySpec<any, any, unknown, string>>>
+    ? TOrdered
+    : never
+  : never
+
+type FamilyTreeOf<
+  TFamily
+> = TFamily extends {
+  tree?: infer TTree
+}
+  ? TTree extends Readonly<Record<string, MutationTreeFamilySpec<any, any, unknown, string>>>
+    ? TTree
+    : never
+  : never
+
 type PatchValueFromMember<
   TMember
 > = TMember extends MutationValueMemberSpec<infer TValue>
   ? TValue | MutationUnset
   : TMember extends MutationRecordMemberSpec<infer TValue>
     ? Partial<TValue> | MutationUnset
+    : TMember extends MutationKeyedMemberSpec<infer TKey, infer TValue>
+      ? Readonly<Partial<Record<TKey, TValue | MutationUnset>>> | MutationUnset
     : never
 
 type MutationPatchOfMembers<
@@ -363,6 +429,30 @@ type MutationPatchOfMembers<
 > = Partial<{
   [K in keyof TMembers]: PatchValueFromMember<TMembers[K]>
 }>
+
+type KeyedWriterApi<
+  TKey extends string,
+  TValue,
+  Tag extends string
+> = {
+  set(
+    key: TKey,
+    value: TValue,
+    tags?: readonly Tag[],
+    metadata?: {
+      delta?: MutationDeltaInput
+      footprint?: readonly MutationFootprint[]
+    }
+  ): void
+  remove(
+    key: TKey,
+    tags?: readonly Tag[],
+    metadata?: {
+      delta?: MutationDeltaInput
+      footprint?: readonly MutationFootprint[]
+    }
+  ): void
+}
 
 type OrderedWriterApi<
   Item,
@@ -470,6 +560,33 @@ type FamilyStructuresWriter<
   TFamily,
   Tag extends string
 > = (
+  TFamily extends {
+    kind: 'singleton'
+    members: infer TMembers
+  }
+    ? TMembers extends Readonly<Record<string, MutationMemberSpec>>
+      ? {
+          [K in keyof TMembers as TMembers[K] extends MutationKeyedMemberSpec
+            ? K
+            : never]: TMembers[K] extends MutationKeyedMemberSpec<infer TKey, infer TValue>
+              ? () => KeyedWriterApi<TKey, TValue, Tag>
+              : never
+        }
+      : {}
+    : TFamily extends {
+        members: infer TMembers
+      }
+      ? TMembers extends Readonly<Record<string, MutationMemberSpec>>
+        ? {
+            [K in keyof TMembers as TMembers[K] extends MutationKeyedMemberSpec
+              ? K
+              : never]: TMembers[K] extends MutationKeyedMemberSpec<infer TKey, infer TValue>
+                ? (id: Extract<FamilyId<TFamily>, string>) => KeyedWriterApi<TKey, TValue, Tag>
+                : never
+          }
+        : {}
+      : {}
+) & (
   TFamily extends {
     kind: 'singleton'
     ordered?: infer TOrdered
@@ -608,11 +725,45 @@ type OrderedReaderApi<Item> = {
   items(): readonly Item[]
 }
 
+type KeyedReaderApi<TKey extends string, TValue> = {
+  get(key: TKey): TValue | undefined
+  has(key: TKey): boolean
+  keys(): readonly TKey[]
+  entries(): readonly (readonly [TKey, TValue])[]
+}
+
 type TreeReaderApi<Value> = {
   snapshot(): MutationTreeSnapshot<Value>
 }
 
 type FamilyStructuresReader<TFamily> = (
+  TFamily extends {
+    kind: 'singleton'
+    members: infer TMembers
+  }
+    ? TMembers extends Readonly<Record<string, MutationMemberSpec>>
+      ? {
+          [K in keyof TMembers as TMembers[K] extends MutationKeyedMemberSpec
+            ? K
+            : never]: TMembers[K] extends MutationKeyedMemberSpec<infer TKey, infer TValue>
+              ? () => KeyedReaderApi<TKey, TValue>
+              : never
+        }
+      : {}
+    : TFamily extends {
+        members: infer TMembers
+      }
+      ? TMembers extends Readonly<Record<string, MutationMemberSpec>>
+        ? {
+            [K in keyof TMembers as TMembers[K] extends MutationKeyedMemberSpec
+              ? K
+              : never]: TMembers[K] extends MutationKeyedMemberSpec<infer TKey, infer TValue>
+                ? (id: Extract<FamilyId<TFamily>, string>) => KeyedReaderApi<TKey, TValue>
+                : never
+          }
+        : {}
+      : {}
+) & (
   TFamily extends {
     kind: 'singleton'
     ordered?: infer TOrdered
@@ -687,23 +838,80 @@ type TouchedView<TId extends string> = {
   touchedIds(): ReadonlySet<TId> | 'all'
 }
 
+type KeyedTouchedView<
+  TId extends string,
+  TKey extends string
+> = {
+  changed(id?: TId, key?: TKey): boolean
+  touchedIds(): ReadonlySet<TId> | 'all'
+  touchedKeys(id?: TId): ReadonlySet<TKey> | 'all'
+}
+
+type SingletonKeyedTouchedView<TKey extends string> = {
+  changed(key?: TKey): boolean
+  touchedKeys(): ReadonlySet<TKey> | 'all'
+}
+
+type FamilyChangeDeltaEntry<
+  TFamily,
+  TKey extends keyof FamilyChangesOf<TFamily>
+> = TKey extends keyof FamilyMembersOf<TFamily>
+  ? FamilyMembersOf<TFamily>[TKey] extends MutationKeyedMemberSpec<infer TMemberKey, unknown>
+    ? TFamily extends {
+        kind: 'singleton'
+      }
+      ? SingletonKeyedTouchedView<TMemberKey>
+      : KeyedTouchedView<Extract<FamilyId<TFamily>, string>, TMemberKey>
+    : TFamily extends {
+        kind: 'singleton'
+      }
+      ? {
+          changed(): boolean
+        }
+      : TouchedView<Extract<FamilyId<TFamily>, string>>
+  : TFamily extends {
+      kind: 'singleton'
+    }
+    ? {
+        changed(): boolean
+      }
+    : TouchedView<Extract<FamilyId<TFamily>, string>>
+
+type FamilyStructureDelta<
+  TFamily
+> = TFamily extends {
+  kind: 'singleton'
+}
+  ? {
+      [K in keyof FamilyOrderedOf<TFamily>]: {
+        changed(): boolean
+      }
+    } & {
+      [K in keyof FamilyTreeOf<TFamily>]: {
+        changed(): boolean
+      }
+    }
+  : {
+      [K in keyof FamilyOrderedOf<TFamily>]: TouchedView<Extract<FamilyId<TFamily>, string>>
+    } & {
+      [K in keyof FamilyTreeOf<TFamily>]: TouchedView<Extract<FamilyId<TFamily>, string>>
+    }
+
 type FamilyDelta<
   TFamily
 > = TFamily extends {
   kind: 'singleton'
 }
   ? {
-      [K in keyof FamilyChangesOf<TFamily>]: {
-        changed(): boolean
-      }
-    }
+      [K in keyof FamilyChangesOf<TFamily>]: FamilyChangeDeltaEntry<TFamily, K>
+    } & FamilyStructureDelta<TFamily>
   : {
       create: TouchedView<Extract<FamilyId<TFamily>, string>>
       delete: TouchedView<Extract<FamilyId<TFamily>, string>>
       touchedIds(): ReadonlySet<Extract<FamilyId<TFamily>, string>> | 'all'
     } & {
-      [K in keyof FamilyChangesOf<TFamily>]: TouchedView<Extract<FamilyId<TFamily>, string>>
-    }
+      [K in keyof FamilyChangesOf<TFamily>]: FamilyChangeDeltaEntry<TFamily, K>
+    } & FamilyStructureDelta<TFamily>
 
 export type MutationDeltaOf<
   TModel extends MutationModelDefinition<any>
@@ -731,6 +939,18 @@ const createSelectorApi = <
       member: key,
       mode: 'deep'
     })
+  }),
+  keyed: (key) => ({
+    self: () => ({
+      kind: 'keyed',
+      member: key,
+      mode: 'self'
+    }),
+    deep: () => ({
+      kind: 'keyed',
+      member: key,
+      mode: 'deep'
+    })
   })
 })
 
@@ -739,6 +959,8 @@ type CompiledFamily = {
   kind: 'singleton' | 'map' | 'table'
   members: Readonly<Record<string, MutationMemberSpec>>
   changeKeys: readonly string[]
+  ordered: Readonly<Record<string, string>>
+  tree: Readonly<Record<string, string>>
 }
 
 type CompiledModel<
@@ -800,7 +1022,9 @@ export const compileMutationModel = <
       members: Object.fromEntries(
         Object.entries(members).map(([name, spec]) => [
           name,
-          spec.kind
+          spec.kind === 'keyed'
+            ? 'record'
+            : spec.kind
         ])
       ),
       change: Object.fromEntries(
@@ -815,7 +1039,23 @@ export const compileMutationModel = <
       name: familyName,
       kind: family.kind,
       members,
-      changeKeys: Object.keys(changes)
+      changeKeys: Object.keys(changes),
+      ordered: Object.fromEntries(
+        Object.entries(family.ordered ?? {}).map(([name, spec]) => [
+          name,
+          (spec as {
+            emits: string
+          }).emits
+        ])
+      ),
+      tree: Object.fromEntries(
+        Object.entries(family.tree ?? {}).map(([name, spec]) => [
+          name,
+          (spec as {
+            emits: string
+          }).emits
+        ])
+      )
     })
 
     Object.entries(family.ordered ?? {}).forEach(([name, spec]) => {
@@ -964,6 +1204,30 @@ const lowerPatchWrites = (
     })
   }
 
+  const visitKeyed = (
+    base: string,
+    value: unknown
+  ) => {
+    if (isUnset(value)) {
+      writes[base] = undefined
+      return
+    }
+    if (
+      typeof value !== 'object'
+      || value === null
+      || Array.isArray(value)
+    ) {
+      writes[base] = value
+      return
+    }
+
+    Object.entries(value).forEach(([key, nested]) => {
+      writes[`${base}.${key}`] = isUnset(nested)
+        ? undefined
+        : nested
+    })
+  }
+
   Object.entries(input).forEach(([memberName, value]) => {
     const member = members[memberName]
     if (!member) {
@@ -975,6 +1239,10 @@ const lowerPatchWrites = (
       writes[path] = isUnset(value)
         ? undefined
         : value
+      return
+    }
+    if (member.kind === 'keyed') {
+      visitKeyed(path, value)
       return
     }
     visitRecord(path, value)
@@ -1105,6 +1373,59 @@ export const createMutationWriter = <
         }, tags, metadata)
       }
     }
+
+    Object.entries(family.members).forEach(([name, member]) => {
+      if (member.kind !== 'keyed') {
+        return
+      }
+
+      const path = member.at ?? name
+      familyWriter[name] = family.kind === 'singleton'
+        ? () => ({
+            set: (key: string, value: unknown, tags?: readonly Tag[], metadata?: {
+              delta?: MutationDeltaInput
+              footprint?: readonly MutationFootprint[]
+            }) => base.entity.patch({
+              kind: 'entity',
+              type: familyName,
+              id: familyName
+            }, {
+              [`${path}.${key}`]: value
+            }, tags, metadata),
+            remove: (key: string, tags?: readonly Tag[], metadata?: {
+              delta?: MutationDeltaInput
+              footprint?: readonly MutationFootprint[]
+            }) => base.entity.patch({
+              kind: 'entity',
+              type: familyName,
+              id: familyName
+            }, {
+              [`${path}.${key}`]: undefined
+            }, tags, metadata)
+          })
+        : (id: string) => ({
+            set: (key: string, value: unknown, tags?: readonly Tag[], metadata?: {
+              delta?: MutationDeltaInput
+              footprint?: readonly MutationFootprint[]
+            }) => base.entity.patch({
+              kind: 'entity',
+              type: familyName,
+              id
+            }, {
+              [`${path}.${key}`]: value
+            }, tags, metadata),
+            remove: (key: string, tags?: readonly Tag[], metadata?: {
+              delta?: MutationDeltaInput
+              footprint?: readonly MutationFootprint[]
+            }) => base.entity.patch({
+              kind: 'entity',
+              type: familyName,
+              id
+            }, {
+              [`${path}.${key}`]: undefined
+            }, tags, metadata)
+          })
+    })
 
     Object.keys(family.ordered ?? {}).forEach((name) => {
       const type = `${familyName}.${name}`
@@ -1311,6 +1632,22 @@ const readCollection = (
   return value as Record<string, unknown>
 }
 
+const readKeyedCollection = (
+  value: unknown,
+  _familyName: string,
+  _memberName: string
+): Record<string, unknown> => {
+  if (
+    typeof value !== 'object'
+    || value === null
+    || Array.isArray(value)
+  ) {
+    return {}
+  }
+
+  return value as Record<string, unknown>
+}
+
 export const createMutationReader = <
   Doc,
   const TModel extends MutationModelDefinition<Doc>
@@ -1322,15 +1659,14 @@ export const createMutationReader = <
 
   Object.entries(model).forEach(([familyName, family]) => {
     const familyReader: Record<string, unknown> = {}
+    const readFamily = () => readCollection(
+      family.access.read(readDocument()),
+      familyName
+    )
 
     if (family.kind === 'singleton') {
       familyReader.get = () => family.access.read(readDocument()) as unknown
     } else {
-      const readFamily = () => readCollection(
-        family.access.read(readDocument()),
-        familyName
-      )
-
       familyReader.ids = () => Object.keys(readFamily())
       familyReader.list = () => Object.values(readFamily())
       familyReader.get = (id: string) => readFamily()[id]
@@ -1343,6 +1679,31 @@ export const createMutationReader = <
       }
       familyReader.has = (id: string) => readFamily()[id] !== undefined
     }
+
+    Object.entries(family.members).forEach(([name, member]) => {
+      if (member.kind !== 'keyed') {
+        return
+      }
+
+      const path = member.at ?? name
+      const createKeyedReader = (value: unknown) => {
+        const collection = readKeyedCollection(value, familyName, name)
+        return {
+          get: (key: string) => collection[key],
+          has: (key: string) => Object.prototype.hasOwnProperty.call(collection, key),
+          keys: () => Object.keys(collection),
+          entries: () => Object.entries(collection) as readonly (readonly [string, unknown])[]
+        }
+      }
+
+      familyReader[name] = family.kind === 'singleton'
+        ? () => createKeyedReader(
+            (family.access.read(readDocument()) as Record<string, unknown> | undefined)?.[path]
+          )
+        : (id: string) => createKeyedReader(
+            (readFamily()[id] as Record<string, unknown> | undefined)?.[path]
+          )
+    })
 
     Object.entries(family.ordered ?? {}).forEach(([name, spec]) => {
       familyReader[name] = family.kind === 'singleton'
@@ -1414,6 +1775,143 @@ const createTouchedView = <TId extends string>(
   touchedIds: () => readTouchedIds<TId>(delta, [key])
 })
 
+const readChangedPaths = (
+  delta: MutationDelta,
+  key: string,
+  id: string
+): readonly string[] | 'all' | undefined => delta.reset === true
+  ? 'all'
+  : delta.paths(key, id)
+
+const normalizeKeyedPathKey = (
+  base: string,
+  path: string
+): string | undefined => {
+  if (!path) {
+    return undefined
+  }
+
+  if (path === base) {
+    return undefined
+  }
+
+  if (!path.startsWith(`${base}.`)) {
+    return undefined
+  }
+
+  const suffix = path.slice(base.length + 1)
+  const dot = suffix.indexOf('.')
+  return dot === -1
+    ? suffix
+    : suffix.slice(0, dot)
+}
+
+const readTouchedKeyedKeys = <TKey extends string>(
+  delta: MutationDelta,
+  key: string,
+  base: string,
+  id?: string
+): ReadonlySet<TKey> | 'all' => {
+  if (delta.reset === true) {
+    return 'all'
+  }
+
+  const changes = delta.changes[key]?.paths
+  if (changes === 'all') {
+    return 'all'
+  }
+
+  const keys = new Set<TKey>()
+  const collect = (value: readonly string[] | 'all' | undefined) => {
+    if (value === 'all') {
+      return 'all' as const
+    }
+    value?.forEach((path) => {
+      const touchedKey = normalizeKeyedPathKey(base, path)
+      if (touchedKey) {
+        keys.add(touchedKey as TKey)
+      }
+    })
+    return undefined
+  }
+
+  if (id !== undefined) {
+    const result = collect(changes?.[id])
+    return result ?? keys
+  }
+
+  const entries = Object.values(changes ?? {})
+  for (let index = 0; index < entries.length; index += 1) {
+    const result = collect(entries[index])
+    if (result === 'all') {
+      return 'all'
+    }
+  }
+
+  return keys
+}
+
+const createCollectionKeyedTouchedView = <
+  TId extends string,
+  TKey extends string
+>(
+  delta: MutationDelta,
+  changeKey: string,
+  base: string
+): KeyedTouchedView<TId, TKey> => ({
+  changed: (id?: TId, key?: TKey) => {
+    if (delta.reset === true) {
+      return true
+    }
+    if (id === undefined) {
+      return delta.has(changeKey)
+    }
+    if (key === undefined) {
+      return delta.changed(changeKey, id)
+    }
+    const paths = readChangedPaths(delta, changeKey, id)
+    if (paths === 'all') {
+      return true
+    }
+    return (paths ?? []).some((path) => normalizeKeyedPathKey(base, path) === key)
+  },
+  touchedIds: () => readTouchedIds<TId>(delta, [changeKey]),
+  touchedKeys: (id?: TId) => readTouchedKeyedKeys<TKey>(delta, changeKey, base, id)
+})
+
+const createSingletonKeyedTouchedView = <
+  TKey extends string
+>(
+  delta: MutationDelta,
+  changeKey: string,
+  base: string
+): SingletonKeyedTouchedView<TKey> => ({
+  changed: (key?: TKey) => {
+    if (delta.reset === true || key === undefined) {
+      return delta.reset === true || delta.has(changeKey)
+    }
+
+    const change = delta.changes[changeKey]
+    if (change?.paths === 'all') {
+      return true
+    }
+
+    const entries = Object.values(change?.paths ?? {})
+    for (let index = 0; index < entries.length; index += 1) {
+      const value = entries[index]
+      if (value === 'all') {
+        return true
+      }
+      if (value?.some((path) => normalizeKeyedPathKey(base, path) === key)) {
+        return true
+      }
+    }
+
+    return false
+  },
+  touchedKeys: () => readTouchedKeyedKeys<TKey>(delta, changeKey, base)
+})
+
 const DELTA_CACHE = new WeakMap<object, WeakMap<MutationDelta, MutationDeltaOf<any>>>()
 
 export const createMutationDelta = <
@@ -1438,21 +1936,46 @@ export const createMutationDelta = <
 
   compiled.families.forEach((family) => {
     if (family.kind === 'singleton') {
-      result[family.name] = Object.fromEntries(
-        family.changeKeys.map((key) => [
-          key,
-          {
-            changed: () => normalized.reset === true || normalized.changed(`${family.name}.${key}`)
-          }
-        ])
-      )
+      const familyDelta = Object.fromEntries(
+        family.changeKeys.map((key) => {
+          const member = family.members[key]
+          return [
+            key,
+            member?.kind === 'keyed'
+              ? createSingletonKeyedTouchedView(
+                  normalized,
+                  `${family.name}.${key}`,
+                  member.at ?? key
+                )
+              : {
+                  changed: () => normalized.reset === true || normalized.changed(`${family.name}.${key}`)
+                }
+          ]
+        })
+      ) as Record<string, unknown>
+
+      Object.entries(family.ordered).forEach(([name, emits]) => {
+        familyDelta[name] = {
+          changed: () => normalized.reset === true || normalized.has(`${family.name}.${emits}`)
+        }
+      })
+
+      Object.entries(family.tree).forEach(([name, emits]) => {
+        familyDelta[name] = {
+          changed: () => normalized.reset === true || normalized.has(`${family.name}.${emits}`)
+        }
+      })
+
+      result[family.name] = familyDelta
       return
     }
 
     const familyKeys = [
       `${family.name}.create`,
       `${family.name}.delete`,
-      ...family.changeKeys.map((key) => `${family.name}.${key}`)
+      ...family.changeKeys.map((key) => `${family.name}.${key}`),
+      ...Object.values(family.ordered).map((emits) => `${family.name}.${emits}`),
+      ...Object.values(family.tree).map((emits) => `${family.name}.${emits}`)
     ]
     const familyDelta: Record<string, unknown> = {
       create: createTouchedView(normalized, `${family.name}.create`),
@@ -1461,7 +1984,22 @@ export const createMutationDelta = <
     }
 
     family.changeKeys.forEach((key) => {
-      familyDelta[key] = createTouchedView(normalized, `${family.name}.${key}`)
+      const member = family.members[key]
+      familyDelta[key] = member?.kind === 'keyed'
+        ? createCollectionKeyedTouchedView(
+            normalized,
+            `${family.name}.${key}`,
+            member.at ?? key
+          )
+        : createTouchedView(normalized, `${family.name}.${key}`)
+    })
+
+    Object.entries(family.ordered).forEach(([name, emits]) => {
+      familyDelta[name] = createTouchedView(normalized, `${family.name}.${emits}`)
+    })
+
+    Object.entries(family.tree).forEach(([name, emits]) => {
+      familyDelta[name] = createTouchedView(normalized, `${family.name}.${emits}`)
     })
 
     result[family.name] = familyDelta

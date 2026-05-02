@@ -39,10 +39,6 @@ export interface DataviewIntentTable extends MutationIntentTable {
       id: RecordId
     }
   }
-  'record.patch': {
-    intent: IntentOfType<'record.patch'>
-    output: void
-  }
   'record.remove': {
     intent: IntentOfType<'record.remove'>
     output: void
@@ -289,10 +285,6 @@ export interface DataviewIntentTable extends MutationIntentTable {
   }
   'view.remove': {
     intent: IntentOfType<'view.remove'>
-    output: void
-  }
-  'external.version.bump': {
-    intent: IntentOfType<'external.version.bump'>
     output: void
   }
 }

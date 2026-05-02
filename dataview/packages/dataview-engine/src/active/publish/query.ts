@@ -20,7 +20,7 @@ import type {
   ViewSearchProjection,
   ViewSortProjection
 } from '@dataview/engine/contracts/view'
-import type { DocumentReader } from '@dataview/core/document/reader'
+import type { DataviewQuery } from '@dataview/core/mutation'
 import {
   sameList,
   sameOptionalList,
@@ -65,7 +65,7 @@ const createFilterRuleProjection = (
 
 const createFilterProjection = (input: {
   view: View
-  reader: DocumentReader
+  reader: DataviewQuery
 }): ViewFilterProjection => ({
   rules: filterApi.rules.read.list(input.view.filter.rules).map(rule => createFilterRuleProjection(
     input.reader.fields.get(rule.fieldId),
@@ -75,7 +75,7 @@ const createFilterProjection = (input: {
 
 const createSortRuleProjection = (input: {
   rule: SortRuleProjection['rule']
-  reader: DocumentReader
+  reader: DataviewQuery
 }): SortRuleProjection => {
   const field = input.reader.fields.get(input.rule.fieldId)
 
@@ -87,7 +87,7 @@ const createSortRuleProjection = (input: {
 
 const createSortProjection = (input: {
   view: View
-  reader: DocumentReader
+  reader: DataviewQuery
 }): ViewSortProjection => ({
   rules: input.view.sort.rules.ids.flatMap(ruleId => {
     const rule = input.view.sort.rules.byId[ruleId]
@@ -102,7 +102,7 @@ const createSortProjection = (input: {
 
 const createGroupProjection = (input: {
   view: View
-  reader: DocumentReader
+  reader: DataviewQuery
 }): ViewGroupProjection | undefined => {
   const group = input.view.group
   if (!group) {
@@ -213,7 +213,7 @@ const equalGroupProjection = (
 
 export const createQueryProjection = (input: {
   view: View
-  reader: DocumentReader
+  reader: DataviewQuery
 }): ActiveViewQuery => ({
   search: createSearchProjection(input.view.search),
   filters: createFilterProjection(input),

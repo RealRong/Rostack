@@ -6,6 +6,7 @@ import type {
 } from '@dataview/core/types'
 import {
   normalizeOptionToken,
+  readFieldOptions,
   readFieldOptionOrder
 } from '@dataview/core/field/option'
 
@@ -63,10 +64,12 @@ const CATEGORY_ALIASES: Record<StatusCategory, readonly string[]> = {
 
 const getStatusOptions = (
   field?: StatusFieldInput
-) => (
-  field?.kind === 'status' && Array.isArray(field.options)
-)
-  ? field.options
+) => field?.kind === 'status'
+  ? readFieldOptions(field).flatMap((option) => (
+      'category' in option
+        ? [option]
+        : []
+    ))
   : []
 
 const getStatusExplicitDefaultOptionId = (

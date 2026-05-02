@@ -5,6 +5,7 @@ export type { EntityTable } from '@shared/core'
 export type RecordId = string
 export type ViewId = string
 export type CustomFieldId = string
+export type FieldOptionId = string
 export type ViewFilterRuleId = string
 export type ViewSortRuleId = string
 export type ViewGroupBucketId = string
@@ -87,6 +88,8 @@ export interface StatusOption extends FlatOption {
 export type FieldOption =
   | FlatOption
   | StatusOption
+
+export type FieldOptionTable = EntityTable<FieldOptionId, FieldOption>
 
 export type DateValue =
   | {
@@ -172,7 +175,7 @@ export interface SelectField {
   id: CustomFieldId
   name: string
   kind: 'select'
-  options: FlatOption[]
+  options: EntityTable<FieldOptionId, FlatOption>
   meta?: Record<string, unknown>
 }
 
@@ -180,7 +183,7 @@ export interface MultiSelectField {
   id: CustomFieldId
   name: string
   kind: 'multiSelect'
-  options: FlatOption[]
+  options: EntityTable<FieldOptionId, FlatOption>
   meta?: Record<string, unknown>
 }
 
@@ -188,7 +191,7 @@ export interface StatusField {
   id: CustomFieldId
   name: string
   kind: 'status'
-  options: StatusOption[]
+  options: EntityTable<FieldOptionId, StatusOption>
   defaultOptionId: string | null
   meta?: Record<string, unknown>
 }
@@ -291,7 +294,9 @@ export interface ViewGroup {
 }
 
 export interface ViewDisplay {
-  fields: readonly FieldId[]
+  fields: EntityTable<FieldId, {
+    id: FieldId
+  }>
 }
 
 export interface TableOptions {
@@ -326,7 +331,9 @@ export interface ViewBase {
   sort: Sort
   calc: ViewCalc
   display: ViewDisplay
-  orders: RecordId[]
+  order: EntityTable<RecordId, {
+    id: RecordId
+  }>
 }
 
 export interface TableView extends ViewBase {

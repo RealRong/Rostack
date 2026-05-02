@@ -3,6 +3,13 @@ import type {
   RecordId
 } from '@dataview/core/types'
 import type {
+  DataviewMutationDelta,
+  DataviewQuery
+} from '@dataview/core/mutation'
+import {
+  createDataviewQueryContext
+} from '@dataview/core/mutation'
+import type {
   DataviewFrame
 } from '@dataview/engine/active/frame'
 import type {
@@ -43,9 +50,7 @@ import {
 import {
   createIndexStageTrace,
   fullRebuildFrom,
-  searchEntryCountOf,
-  touchedFieldCountOfDelta,
-  touchedRecordCountOfDelta
+  searchEntryCountOf
 } from '@dataview/engine/active/index/trace'
 import type {
   BucketKey,
@@ -56,13 +61,7 @@ import type {
   IndexState,
   NormalizedIndexDemand
 } from '@dataview/engine/active/index/contracts'
-import type {
-  DataviewMutationDelta
-} from '@dataview/engine/mutation/delta'
 import { now } from '@dataview/engine/runtime/clock'
-import {
-  createDocumentReadContext
-} from '@dataview/core/document/reader'
 import {
   createCalculationTransition,
   createMembershipTransition
@@ -70,6 +69,9 @@ import {
 import {
   createRows
 } from '@dataview/engine/active/shared/rows'
+import {
+  trace
+} from '@shared/trace'
 
 export interface DataviewActiveIndex {
   demand: NormalizedIndexDemand
@@ -87,11 +89,11 @@ export interface DataviewIndexResult {
 const createIndexReadContext = (
   document: DataDoc
 ): IndexReadContext => {
-  const context = createDocumentReadContext(document)
+  const context = createDataviewQueryContext(document)
 
   return {
     document: context.document,
-    reader: context.reader,
+    reader: context.query,
     fieldIds: context.fieldIds,
     fieldIdSet: context.fieldIdSet
   }
@@ -122,29 +124,30 @@ const createIndexDeriveContext = (
 
 const createContentDelta = (
   document: DataDoc,
+  query: DataviewQuery,
   delta: DataviewMutationDelta
 ): ContentDelta => {
   if (delta.reset === true) {
     return {
       records: 'all',
       values: 'all',
-      schema: new Set(document.fields.ids),
+      schema: new Set(query.fields.ids()),
       touchedFields: 'all',
       recordSetChanged: true,
       reset: true
     }
   }
 
-  const schemaTouched = delta.field.schema.touchedIds()
+  const schemaTouched = query.delta.fieldSchemaTouchedIds(delta)
 
   return {
-    records: delta.touched.records(),
-    values: delta.record.values.touchedFieldIds(),
+    records: query.delta.touchedRecords(delta),
+    values: query.delta.touchedValueFields(delta),
     schema: schemaTouched === 'all'
-      ? new Set(document.fields.ids)
+      ? new Set(query.fields.ids())
       : schemaTouched,
-    touchedFields: delta.touched.fields(),
-    recordSetChanged: delta.recordSetChanged(),
+    touchedFields: query.delta.touchedFields(delta),
+    recordSetChanged: query.delta.recordSetChanged(delta),
     reset: false
   }
 }
@@ -204,11 +207,15 @@ export const deriveIndex = (input: {
   const previous = input.previous
   const nextDemand = input.demand ?? input.previousDemand
   const demandDelta = diffNormalizedIndexDemand(input.previousDemand, nextDemand)
-  const contentDelta = createContentDelta(input.document, input.delta)
+  const contentDelta = createContentDelta(
+    input.document,
+    createDataviewQueryContext(input.document).query,
+    input.delta
+  )
   const context = createIndexDeriveContext(input.document, contentDelta)
   const totalStart = now()
-  const touchedRecordCount = touchedRecordCountOfDelta(input.delta)
-  const touchedFieldCount = touchedFieldCountOfDelta(input.delta)
+  const touchedRecordCount = trace.count(contentDelta.records as ReadonlySet<RecordId> | 'all')
+  const touchedFieldCount = trace.count(contentDelta.touchedFields as ReadonlySet<string> | 'all')
   const rebuild = fullRebuildFrom(input.delta)
   const bucketDelta = createMembershipTransition<BucketKey, RecordId>()
   const calculationDelta = createCalculationTransition()
@@ -437,8 +444,8 @@ export const ensureDataviewIndex = (input: {
     return undefined
   }
 
-  const document = input.frame.reader.document()
-  const contentDelta = createContentDelta(document, input.frame.delta)
+  const document = input.frame.context.document
+  const contentDelta = createContentDelta(document, input.frame.query, input.frame.delta)
   const previous = input.previous
 
   if (

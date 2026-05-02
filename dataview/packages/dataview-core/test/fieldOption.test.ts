@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'vitest'
+import { entityTable } from '@shared/core'
 import type {
   SelectField,
   StatusField
@@ -12,7 +13,7 @@ const selectField: SelectField = {
   id: 'priority',
   name: 'Priority',
   kind: 'select',
-  options: [
+  options: entityTable.normalize.list([
     {
       id: 'high',
       name: 'High',
@@ -23,7 +24,7 @@ const selectField: SelectField = {
       name: 'In Progress',
       color: 'blue'
     }
-  ]
+  ])
 }
 
 const statusField: StatusField = {
@@ -31,7 +32,7 @@ const statusField: StatusField = {
   name: 'Status',
   kind: 'status',
   defaultOptionId: null,
-  options: [
+  options: entityTable.normalize.list([
     {
       id: 'todo',
       name: 'To do',
@@ -44,7 +45,7 @@ const statusField: StatusField = {
       color: 'blue',
       category: 'in_progress'
     }
-  ]
+  ])
 }
 
 test('field option read helpers share lookup semantics', () => {
@@ -83,7 +84,7 @@ test('field option write.replace preserves status option shape', () => {
       }
     ]),
     {
-      options: [
+      options: entityTable.normalize.list([
         {
           id: 'todo',
           name: 'To do',
@@ -102,7 +103,7 @@ test('field option write.replace preserves status option shape', () => {
           color: null,
           category: 'complete'
         }
-      ]
+      ])
     }
   )
 })

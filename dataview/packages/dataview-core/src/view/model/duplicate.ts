@@ -12,6 +12,12 @@ import {
 import {
   cloneViewOptions
 } from '@dataview/core/view/options'
+import {
+  cloneViewDisplay
+} from '@dataview/core/view/display'
+import {
+  readViewOrderIds
+} from '@dataview/core/view/order'
 
 const createFilterRuleId = (): string => createId('filter')
 const createSortRuleId = (): string => createId('sort')
@@ -45,10 +51,10 @@ const cloneViewInput = (
     calc: {
       ...view.calc
     },
-    display: {
-      fields: [...view.display.fields]
-    },
-    orders: [...view.orders]
+    display: cloneViewDisplay(view.display),
+    order: entityTable.normalize.list(
+      readViewOrderIds(view).map((recordId) => ({ id: recordId }))
+    )
   }
 
   switch (view.type) {

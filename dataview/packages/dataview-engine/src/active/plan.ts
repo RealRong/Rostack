@@ -7,6 +7,11 @@ import type {
   ViewId
 } from '@dataview/core/types'
 import type {
+  DataviewMutationDelta,
+  DataviewQuery,
+  DataviewQueryContext
+} from '@dataview/core/mutation'
+import type {
   CalculationDemand
 } from '@dataview/core/view'
 import {
@@ -18,6 +23,9 @@ import {
 import {
   view as viewApi
 } from '@dataview/core/view'
+import {
+  readViewOrderIds
+} from '@dataview/core/view/order'
 import type {
   DataviewActiveSpec,
   DataviewFrame
@@ -42,13 +50,6 @@ import type {
   DataviewActiveState,
   PhaseAction
 } from '@dataview/engine/active/state'
-import type {
-  DocumentReadContext,
-  DocumentReader
-} from '@dataview/core/document/reader'
-import type {
-  DataviewMutationDelta
-} from '@dataview/engine/mutation/delta'
 import { collection, set as setCore, string } from '@shared/core'
 
 export interface EffectiveFilterRule {
@@ -94,12 +95,12 @@ export interface DataviewActivePlan {
 const EMPTY_FIELDS = [] as const
 
 const isKnownFieldId = (
-  reader: DocumentReader,
+  reader: DataviewQuery,
   fieldId: FieldId
 ): boolean => fieldId === 'title' || reader.fields.has(fieldId)
 
 const resolveSearchFieldIds = (
-  reader: DocumentReader,
+  reader: DataviewQuery,
   view: View
 ): readonly FieldId[] => (
   view.search.fields?.length
@@ -111,7 +112,7 @@ const resolveSearchFieldIds = (
 )
 
 const resolveEffectiveFilterRules = (
-  reader: DocumentReader,
+  reader: DataviewQuery,
   view: View
 ): readonly EffectiveFilterRule[] => {
   const rules: EffectiveFilterRule[] = []
@@ -135,7 +136,7 @@ const resolveEffectiveFilterRules = (
 }
 
 const resolveIndexedFilterRules = (
-  reader: DocumentReader,
+  reader: DataviewQuery,
   view: View
 ): readonly EffectiveFilterRule[] => {
   const rules: EffectiveFilterRule[] = []
@@ -163,7 +164,7 @@ const resolveIndexedFilterRules = (
 }
 
 const createQueryPlan = (
-  reader: DocumentReader,
+  reader: DataviewQuery,
   view: View
 ): QueryPlan => {
   const searchFieldIds = resolveSearchFieldIds(reader, view)
@@ -204,7 +205,7 @@ const createQueryPlan = (
       })),
       filterMode: view.filter.mode,
       sort: view.sort,
-      orders: view.orders
+      order: readViewOrderIds(view)
     })
   }
 }
@@ -227,12 +228,12 @@ const readCalculationDemands = (
 }
 
 export const compileDataviewResolvedActive = (
-  reader: DocumentReader,
+  reader: DataviewQuery,
   view: View
 ): DataviewActiveSpec => {
   const query = createQueryPlan(reader, view)
   const indexedFilters = resolveIndexedFilterRules(reader, view)
-  const displayFields = view.display.fields?.length
+  const displayFields = viewApi.display.read.ids(view.display).length
     ? [...viewApi.demand.display(view)]
     : []
   const filterBucketSpecs = collection.uniqueSorted(
@@ -296,17 +297,17 @@ export const compileDataviewResolvedActive = (
 }
 
 export const resolveDataviewActive = (
-  context: DocumentReadContext,
+  context: DataviewQueryContext,
   activeViewId?: ViewId
 ): DataviewActiveSpec | undefined => {
   const view = activeViewId === context.activeViewId
     ? context.activeView
     : activeViewId
-      ? context.reader.views.get(activeViewId)
+      ? context.query.views.get(activeViewId)
       : undefined
 
   return view
-    ? compileDataviewResolvedActive(context.reader, view)
+    ? compileDataviewResolvedActive(context.query, view)
     : undefined
 }
 
@@ -339,10 +340,11 @@ const hasAnyTouchedField = (
   : setCore.intersectsValues(candidates, fields)
 
 const hasQuerySchemaChanges = (input: {
+  query: DataviewQuery
   delta: DataviewMutationDelta
   plan: QueryPlan
 }): boolean => {
-  const schemaFields = input.delta.field.schema.touchedIds()
+  const schemaFields = input.query.delta.fieldSchemaTouchedIds(input.delta)
   if (schemaFields === 'all') {
     return true
   }
@@ -365,11 +367,12 @@ const hasQuerySchemaChanges = (input: {
 }
 
 const hasQueryFieldChanges = (input: {
+  query: DataviewQuery
   delta: DataviewMutationDelta
   plan: QueryPlan
 }): boolean => {
-  const touchedFields = input.delta.field.touchedIds()
-  const schemaFields = input.delta.field.schema.touchedIds()
+  const touchedFields = input.query.delta.touchedFields(input.delta)
+  const schemaFields = input.query.delta.fieldSchemaTouchedIds(input.delta)
 
   if (touchedFields === 'all') {
     return true
@@ -392,20 +395,22 @@ const hasQueryFieldChanges = (input: {
 }
 
 const hasQueryInputChanges = (input: {
+  query: DataviewQuery
   delta: DataviewMutationDelta
   plan: QueryPlan
-}): boolean => input.delta.recordSetChanged()
+}): boolean => input.query.delta.recordSetChanged(input.delta)
   || hasQuerySchemaChanges(input)
   || hasQueryFieldChanges(input)
 
 const hasVisibleInputChanges = (input: {
+  query: DataviewQuery
   delta: DataviewMutationDelta
   plan: QueryPlan
 }): boolean => {
-  const touchedFields = input.delta.field.touchedIds()
-  const schemaFields = input.delta.field.schema.touchedIds()
+  const touchedFields = input.query.delta.touchedFields(input.delta)
+  const schemaFields = input.query.delta.fieldSchemaTouchedIds(input.delta)
 
-  if (input.delta.recordSetChanged()) {
+  if (input.query.delta.recordSetChanged(input.delta)) {
     return true
   }
 
@@ -440,24 +445,25 @@ const hasVisibleInputChanges = (input: {
 }
 
 const hasSortInputChanges = (input: {
+  query: DataviewQuery
   active: DataviewActiveSpec
   delta: DataviewMutationDelta
 }): boolean => {
   if (
-    input.delta.recordSetChanged()
-    || input.delta.view.query(input.active.id).changed('sort')
+    input.query.delta.recordSetChanged(input.delta)
+    || input.query.delta.viewQueryChanged(input.delta, input.active.id, 'sort')
   ) {
     return true
   }
 
   for (const fieldId of input.active.query.watch.sort) {
-    if (input.delta.field.schema.changed(fieldId)) {
+    if (input.query.delta.fieldSchemaChanged(input.delta, fieldId)) {
       return true
     }
   }
 
   return hasAnyTouchedField(
-    input.delta.field.touchedIds(),
+    input.query.delta.touchedFields(input.delta),
     input.active.query.watch.sort
   )
 }
@@ -606,7 +612,7 @@ export const createDataviewActivePlan = (input: {
 
   const previousSpec = input.previous.spec
   const previousSnapshot = input.previous.snapshot
-  const activeViewChanged = input.frame.delta.document.activeViewChanged()
+  const activeViewChanged = input.frame.delta.document.activeViewId.changed()
   const sectionChanged = !sameSection(previousSpec?.section, active.section)
   const calcFieldsChanged = !sameCalcFields(previousSpec?.calcFields, active.calcFields)
   const phaseRebuild = (
@@ -617,22 +623,25 @@ export const createDataviewActivePlan = (input: {
   )
   const queryDefinitionChanged = previousSpec?.query.executionKey !== active.query.executionKey
   const queryInputChanged = hasQueryInputChanges({
+    query: input.frame.query,
     delta: input.frame.delta,
     plan: active.query
   })
   const visibleInputChanged = hasVisibleInputChanges({
+    query: input.frame.query,
     delta: input.frame.delta,
     plan: active.query
   })
   const sortInputChanged = hasSortInputChanges({
+    query: input.frame.query,
     active,
     delta: input.frame.delta
   })
   const groupField = active.view.group?.fieldId
-  const touchedFields = input.frame.delta.field.touchedIds()
+  const touchedFields = input.frame.query.delta.touchedFields(input.frame.delta)
   const indexDelta = input.index?.index.delta
   const groupSchemaChanged = groupField
-    ? input.frame.delta.field.schema.changed(groupField)
+    ? input.frame.query.delta.fieldSchemaChanged(input.frame.delta, groupField)
     : false
   const groupValueChanged = groupField
     ? touchedFields === 'all' || touchedFields.has(groupField)
@@ -640,7 +649,7 @@ export const createDataviewActivePlan = (input: {
 
   let calcSchemaChanged = false
   for (const fieldId of active.calcFields) {
-    if (input.frame.delta.field.schema.changed(fieldId)) {
+    if (input.frame.query.delta.fieldSchemaChanged(input.frame.delta, fieldId)) {
       calcSchemaChanged = true
       break
     }
@@ -648,22 +657,22 @@ export const createDataviewActivePlan = (input: {
 
   const query = resolveQueryAction({
     phaseRebuild,
-    querySync: input.frame.delta.view.query(active.id).changed()
+    querySync: input.frame.query.delta.viewQueryChanged(input.frame.delta, active.id)
       || queryDefinitionChanged
       || queryInputChanged,
     reuseMatched: !sortInputChanged,
     reuseOrdered: !sortInputChanged
       && (
         active.view.sort.rules.ids.length > 0
-        || !input.frame.delta.view.query(active.id).changed('order')
+        || !input.frame.query.delta.viewQueryChanged(input.frame.delta, active.id, 'order')
       )
   })
   const membershipAction = resolveMembershipAction({
     phaseRebuild,
     grouped: Boolean(groupField),
-    rebuild: input.frame.delta.view.query(active.id).changed('group')
+    rebuild: input.frame.query.delta.viewQueryChanged(input.frame.delta, active.id, 'group')
       || groupSchemaChanged
-      || input.frame.delta.recordSetChanged(),
+      || input.frame.query.delta.recordSetChanged(input.frame.delta),
     sync: groupValueChanged,
     bucketRebuild: Boolean(indexDelta?.bucket?.rebuild),
     bucketChanged: Boolean(indexDelta?.bucket),
@@ -672,15 +681,15 @@ export const createDataviewActivePlan = (input: {
   const summaryAction = resolveSummaryAction({
     phaseRebuild,
     enabled: active.calcFields.length > 0,
-    rebuild: input.frame.delta.view.calc(active.id).changed()
+    rebuild: input.frame.delta.view.calc.changed(active.id)
       || calcSchemaChanged
       || groupSchemaChanged,
-    sync: input.frame.delta.view.query(active.id).changed('search')
-      || input.frame.delta.view.query(active.id).changed('filter')
+    sync: input.frame.query.delta.viewQueryChanged(input.frame.delta, active.id, 'search')
+      || input.frame.query.delta.viewQueryChanged(input.frame.delta, active.id, 'filter')
       || visibleInputChanged
       || Boolean(indexDelta?.calculation)
       || (groupField !== undefined && (
-        input.frame.delta.view.query(active.id).changed('group')
+        input.frame.query.delta.viewQueryChanged(input.frame.delta, active.id, 'group')
         || groupValueChanged
         || Boolean(indexDelta?.bucket)
       )),
@@ -706,7 +715,7 @@ export const createDataviewActivePlan = (input: {
           || previousSnapshot.view.id !== active.id
           || previousSnapshot.view.type !== active.view.type
         ),
-        layoutChanged: input.frame.delta.view.layout(active.id).changed(),
+        layoutChanged: input.frame.query.delta.viewLayoutChanged(input.frame.delta, active.id),
         queryAction: query.action,
         membershipAction,
         summaryAction

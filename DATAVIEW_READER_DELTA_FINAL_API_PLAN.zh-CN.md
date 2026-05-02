@@ -5,6 +5,7 @@
 - dataview 只保留一套 authored mutation 协议。
 - reader、writer、delta 都从同一份 model 自动生成。
 - 不再手写 path 字符串表达 change 协议。
+- 所有子集合协议统一为 `ids/byId`，不再混用裸数组与 `EntityTable`。
 - 不再并存 `DocumentReader`、`CompileReader`、`DocumentReadContext`、手写 delta facade。
 - 不保留兼容层、过渡层、双轨实现，只落长期最优形态。
 
@@ -28,11 +29,15 @@ dataview 的长期最优形态不是继续维护：
 3. 一份自动生成的 `MutationReader<typeof dataviewMutationModel>`
 4. 一份自动生成的 `MutationDeltaOf<typeof dataviewMutationModel>`
 5. 一份 dataview 自己的 `createDataviewQuery(reader)`，只承载派生读逻辑
-6. compile 侧只保留 `ctx.expect.*` / `ctx.resolve.*`，不再自定义 reader 协议
+6. compile 侧只保留 `ctx.expect.*`，不再自定义 reader 协议
 
 核心原则只有一句话：
 
 **base mutation 协议由 model 定义，base delta 由 writer / engine 自动产出；任何 dataview 语义聚合都放在 query 或 projection，不再放在 mutation delta facade。**
+
+补充约束：
+
+**凡是需要增删改排、需要 move/splice/insert/delete 的子集合，一律统一成 `ids/byId`；只有纯值载荷数组才保留数组。**
 
 ## 最终 API
 
@@ -80,7 +85,7 @@ export const dataviewMutationModel = defineMutationModel<DataDoc>()({
       meta: record<FieldMeta>(),
     },
     ordered: {
-      options: ordered<FieldOption>()({
+      options: ordered<FieldOptionRef>()({
         read: (document, fieldId) => readFieldOptions(document, fieldId),
         write: (document, fieldId, options) => writeFieldOptions(document, fieldId, options),
         identify: (option) => option.id,
@@ -103,10 +108,16 @@ export const dataviewMutationModel = defineMutationModel<DataDoc>()({
       options: record<ViewOptions>(),
     },
     ordered: {
-      order: ordered<RecordId>()({
+      order: ordered<ViewOrderEntry>()({
         read: (document, viewId) => readViewOrder(document, viewId),
         write: (document, viewId, order) => writeViewOrder(document, viewId, order),
-        identify: (recordId) => recordId,
+        identify: (entry) => entry.id,
+        emits: 'order',
+      }),
+      displayFields: ordered<ViewDisplayFieldEntry>()({
+        read: (document, viewId) => readViewDisplayFields(document, viewId),
+        write: (document, viewId, fields) => writeViewDisplayFields(document, viewId, fields),
+        identify: (entry) => entry.id,
         emits: 'order',
       }),
     },
@@ -120,7 +131,8 @@ export const dataviewMutationModel = defineMutationModel<DataDoc>()({
 - `dataviewEntities` 和 `dataviewMutationRegistry` 不再保留为 authored 协议。
 - registry、reader、writer、delta 都从 model 编译生成。
 - `record.values` 不能再靠 `values.<fieldId>` 这种 path 字符串表达，必须升级为 typed `keyed<FieldId, unknown>` member。
-- `view.order`、`field.options` 这种有顺序语义的结构必须直接建模成 ordered structure，不再在外层写 prefix / path 约定。
+- `field.options`、`view.order`、`view.display.fields` 这种子集合必须统一成 `ids/byId`，不再保留裸数组。
+- `view.order`、`field.options`、`view.display.fields` 的 mutation 必须直接建模成 structure，不再在外层写 prefix / path 约定。
 
 ### 2. Typed writer
 
@@ -185,7 +197,6 @@ const query = createDataviewQuery(reader)
 query.view.activeId()
 query.view.active()
 query.record.normalizeIds(recordIds, validIds?)
-query.record.resolveTarget(target)
 query.field.known(fieldId)
 ```
 
@@ -195,7 +206,51 @@ query.field.known(fieldId)
 - 不再保留“通用大 context 对象”。
 - 像 `fieldIds`、`fieldIdSet`、`fieldsById`、`activeView` 这种派生结果，如果需要，放到 `query` 的显式 API 或具体 subsystem 的局部缓存中，不再做第二套 reader 协议。
 
-### 5. Compile context
+### 5. Public intent 边界
+
+长期最优设计必须明确区分两层：
+
+1. `MutationWriter<typeof dataviewMutationModel>` 是内部 typed 写接口
+2. `engine.execute(intent)` 是外部 public intent 协议
+
+这两层不应该长成同一套 API。
+
+最终要求：
+
+- typed writer 可以保留 `patch()`，因为它是内部强类型 API
+- public intent 不保留 generic `patch`
+- public intent 不保留 `EditTarget`
+- public intent 不保留“单条 / 批量共用一个 target union”的设计
+
+也就是说，内部可以这样写：
+
+```ts
+writer.record.patch(recordId, { title, type, meta })
+writer.view.patch(viewId, { search, filter, sort, group, display, calc })
+writer.field.patch(fieldId, { name, kind })
+```
+
+但外部 intent 最终应该是显式语义命令，例如：
+
+```ts
+{ type: 'record.title.set', recordId, title }
+{ type: 'record.type.set', recordId, recordType }
+{ type: 'record.meta.patch', recordId, patch }
+{ type: 'record.remove', recordIds }
+{ type: 'record.values.writeMany', recordIds, set, clear }
+
+{ type: 'view.search.set', id, search }
+{ type: 'view.filter.patch', id, rule, patch }
+{ type: 'view.order.splice', id, records, before }
+```
+
+结论：
+
+- generic patch 是 writer 级能力，不是 public intent 级能力
+- batch 是具体 intent 的领域语义，不是一个公共 `target` 抽象
+- compile 只负责把显式 intent lower 到 typed writer，不负责解释一层“通用 target 语言”
+
+### 6. Compile context
 
 compile 不再依赖 compile reader，而是依赖：
 
@@ -218,9 +273,6 @@ export interface DataviewCompileContext<
     field(id: FieldId, at?: string): Field
     view(id: ViewId, at?: string): View
   }
-  resolve: {
-    recordTarget(target: EditTarget, at?: string): readonly RecordId[]
-  }
 }
 ```
 
@@ -230,16 +282,18 @@ export interface DataviewCompileContext<
 const record = ctx.expect.record(recordId, 'recordId')
 const field = ctx.expect.field(fieldId, 'fieldId')
 const view = ctx.expect.view(viewId, 'id')
-const recordIds = ctx.resolve.recordTarget(target, 'target')
 ```
 
 约束：
 
 - compile diagnostics 仍然可以带 `at`，但这是 compile helper 的职责，不是 reader 的职责。
 - `require(id, path?)` 这种 API 从 reader 中删除。
-- `EditTarget` 解析不是 reader 协议，而是 compile / query 的显式 helper。
+- `EditTarget` 不保留。
+- `record.patch` 这种同时支持单条 / 批量 target 的泛化 intent 不保留。
+- batch intent 直接使用领域自带输入结构，例如 `record.remove(recordIds)`、`record.values.writeMany(recordIds, set, clear)`。
+- recordId 集合的去重、空集拦截、存在性校验属于具体 intent 自己的语义处理，不进入 compile context 公共 API。
 
-### 6. Typed delta
+### 7. Typed delta
 
 ```ts
 type DataviewDelta = MutationDeltaOf<typeof dataviewMutationModel>
@@ -309,6 +363,9 @@ query.delta.fieldSchemaChanged(delta, fieldId)
 - `DataviewCompileReader`
 - `createDataviewMutationDelta()`
 - `DataviewMutationDelta` 手写 facade
+- `EditTarget`
+- `record.patch` 这种 target union intent
+- 所有 aggregate 级 public generic patch intent，例如 `record.patch`、`field.patch`、`view.patch`
 - 所有 `delta.has('...')`
 - 所有 `delta.changed('...', id)`
 - 所有 `delta.paths(...)`
@@ -354,15 +411,21 @@ shared 层必须补齐 dataview 需要的两类能力：
 
 ### 阶段 4：compile 全量切换
 
-- compile context 改为 `reader + query + expect + resolve`
+- compile context 改为 `reader + query + expect`
 - 删除 `DataviewCompileReader`
 - 删除 `createCompileReader()`
-- 所有 compile handler 改为通过 `ctx.expect.*` / `ctx.resolve.*` 做诊断和 target 解析
+- 删除 `EditTarget`
+- 删除 `record.patch`
+- 删除所有 aggregate 级 public generic patch intent，改成显式语义 intent
+- 所有 compile handler 改为通过 `ctx.expect.*` 做单实体校验；批量 intent 在各自 handler 内按自身语义校验输入
 
 完成标志：
 
 - repo 内不再引用 `DataviewCompileReader`
 - reader 中不再存在 `require(..., path?)`
+- repo 内不再存在 `EditTarget`
+- repo 内不再存在 `record.patch`
+- repo 内不再存在 aggregate 级 public generic patch intent
 
 ### 阶段 5：engine / projection / active 全量切换到 typed base delta
 
@@ -393,6 +456,8 @@ shared 层必须补齐 dataview 需要的两类能力：
 - dataview 只有一套 base reader：`MutationReader<typeof dataviewMutationModel>`
 - dataview 只有一套 base delta：`MutationDeltaOf<typeof dataviewMutationModel>`
 - compile 不再维护专用 reader 类型
+- compile context 不再暴露 `resolveTarget` / `recordIds` 这类批量通用 helper
+- public intent 不再暴露 aggregate 级 generic patch / target union
 - engine 不再维护手写 delta facade
 - `record.values` 的 field 粒度变更不再依赖 path 字符串解析
 - `view.query` / `field.schema` 不再是 mutation 层手写 facade，而是 query / projection 层显式组合

@@ -13,6 +13,10 @@ import { entityTable } from '@shared/core'
 const VIEW_ID = 'view_table'
 const FIELD_STATUS = 'status'
 
+const displayFields = (fieldIds) => entityTable.normalize.list(
+  fieldIds.map((fieldId) => ({ id: fieldId }))
+)
+
 const createFields = () => ([
   {
     id: FIELD_STATUS,
@@ -44,12 +48,12 @@ const createTableView = () => {
     },
     calc: {},
     display: {
-      fields: [TITLE_FIELD_ID, FIELD_STATUS]
+      fields: displayFields([TITLE_FIELD_ID, FIELD_STATUS])
     },
     options: {
       ...view.options.defaults('table', fields)
     },
-    orders: []
+    order: entityTable.normalize.list([])
   }
 }
 

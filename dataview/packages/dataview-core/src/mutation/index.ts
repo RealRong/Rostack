@@ -5,8 +5,23 @@ export type {
   ValidationSeverity
 } from './compile'
 export {
-  dataviewMutationRegistry,
-} from './targets'
+  createDataviewQuery,
+  createDataviewQueryContext
+} from './query'
+export type {
+  DataviewQuery,
+  DataviewQueryContext
+} from './query'
+export {
+  dataviewMutationModel,
+  dataviewTitleField,
+} from './model'
+export type {
+  DataviewMutationDelta,
+  DataviewMutationModel,
+  DataviewMutationReader,
+  DataviewMutationWriter,
+} from './model'
 export type {
   DataviewDocumentPatch,
   DataviewFieldOptionPatch,
@@ -18,6 +33,9 @@ export type {
   DataviewViewPatch,
   DataviewProgram,
   DataviewProgramStep,
+} from './program'
+export {
+  createDataviewMutationPorts
 } from './program'
 
 export type DataviewQueryAspect =

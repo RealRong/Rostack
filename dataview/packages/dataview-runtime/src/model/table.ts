@@ -1,6 +1,7 @@
 import { equal, store } from '@shared/core';
 import type { CalculationCollection } from '@dataview/core/view';
 import type { CalculationMetric, Field, FieldId, RecordId, SortDirection, TableView, ViewId } from '@dataview/core/types';
+import { readViewDisplayFieldIds } from '@dataview/core/view/display';
 import type { ActiveViewQuery, CellRef, ItemId, Section, SectionId } from '@dataview/engine';
 import type { EngineSource } from '@dataview/engine';
 const EMPTY_SECTION_IDS = [] as readonly SectionId[];
@@ -140,7 +141,7 @@ export const createTableModel = (source: EngineSource): TableModel => {
         const table = store.read(source.active.table);
         const columns = resolveColumns({
             previous: previousColumns,
-            fieldIds: tableView.display.fields,
+            fieldIds: readViewDisplayFieldIds(tableView.display),
             readField: fieldId => store.read(source.active.fields, fieldId),
             widths: tableView.options.widths,
             query,

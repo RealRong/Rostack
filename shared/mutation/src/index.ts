@@ -42,6 +42,7 @@ export type {
 export type {
   MutationCollectionFamilySpec,
   MutationDeltaOf,
+  MutationKeyedMemberSpec,
   MutationModel,
   MutationModelDefinition,
   MutationOrderedFamilySpec,
@@ -59,6 +60,7 @@ export {
   createMutationReader,
   createMutationWriter,
   defineMutationModel,
+  keyed,
   mapFamily,
   ordered,
   record,

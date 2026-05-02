@@ -74,16 +74,13 @@ const getOptionGroups = (
     }]
   }
 
-  return (['todo', 'in_progress', 'complete'] as const)
-    .map(category => {
-      const options = field.options.filter(option => option.category === category)
-      return {
-        key: category,
-        label: fieldApi.status.category.label(category),
-        optionIds: options.map(option => option.id),
-        options
-      }
-    })
+  return fieldApi.status.sections(field)
+    .map(section => ({
+      key: section.category,
+      label: fieldApi.status.category.label(section.category),
+      optionIds: section.options.map(option => option.id),
+      options: section.options
+    }))
     .filter(group => group.options.length > 0)
 }
 

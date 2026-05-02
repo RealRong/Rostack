@@ -12,10 +12,14 @@ import {
 } from '@shared/core'
 import type {
   DataviewMutationPorts,
-  DataviewFilterRulePatch,
-  DataviewSortRulePatch,
   DataviewViewPatch
 } from '../program'
+import {
+  readViewDisplayFieldIds
+} from '../../view/display'
+import {
+  readViewOrderIds
+} from '../../view/order'
 
 const insertBefore = <T,>(
   items: readonly T[],
@@ -79,38 +83,6 @@ const cloneFilterRule = (
     : {})
 })
 
-const createFilterRulePatch = (
-  current: FilterRule | undefined,
-  next: FilterRule
-): DataviewFilterRulePatch | undefined => {
-  if (!current) {
-    return undefined
-  }
-
-  const patch: DataviewFilterRulePatch = {}
-  if (current.fieldId !== next.fieldId) {
-    patch.fieldId = next.fieldId
-  }
-  if (current.presetId !== next.presetId) {
-    patch.presetId = next.presetId
-  }
-
-  const hasCurrentValue = Object.prototype.hasOwnProperty.call(current, 'value')
-  const hasNextValue = Object.prototype.hasOwnProperty.call(next, 'value')
-  if (
-    hasCurrentValue !== hasNextValue
-    || (hasCurrentValue && hasNextValue && !equal.sameJsonValue(current.value, next.value))
-  ) {
-    patch.value = hasNextValue
-      ? cloneFilterValue(next.value)
-      : undefined
-  }
-
-  return Object.keys(patch).length
-    ? patch
-    : undefined
-}
-
 const cloneSortRule = (
   rule: SortRule
 ): SortRule => ({
@@ -118,27 +90,6 @@ const cloneSortRule = (
   fieldId: rule.fieldId,
   direction: rule.direction
 })
-
-const createSortRulePatch = (
-  current: SortRule | undefined,
-  next: SortRule
-): DataviewSortRulePatch | undefined => {
-  if (!current) {
-    return undefined
-  }
-
-  const patch: DataviewSortRulePatch = {}
-  if (current.fieldId !== next.fieldId) {
-    patch.fieldId = next.fieldId
-  }
-  if (current.direction !== next.direction) {
-    patch.direction = next.direction
-  }
-
-  return Object.keys(patch).length
-    ? patch
-    : undefined
-}
 
 const sameViewOptions = (
   current: View,
@@ -169,55 +120,21 @@ const writeViewFilter = (
   current: View,
   next: View
 ) => {
-  if (current.filter.mode !== next.filter.mode) {
+  if (!equal.sameJsonValue(current.filter, next.filter)) {
     writer.view.patch(current.id, {
       filter: {
-        ...structuredClone(current.filter),
-        mode: next.filter.mode
+        mode: next.filter.mode,
+        rules: {
+          ids: [...next.filter.rules.ids],
+          byId: Object.fromEntries(next.filter.rules.ids.flatMap((ruleId) => {
+            const rule = next.filter.rules.byId[ruleId]
+            return rule
+              ? [[ruleId, cloneFilterRule(rule)]]
+              : []
+          }))
+        }
       }
     })
-  }
-
-  let workingIds = [...current.filter.rules.ids]
-  const nextSet = new Set(next.filter.rules.ids)
-
-  current.filter.rules.ids.forEach((ruleId) => {
-    if (nextSet.has(ruleId)) {
-      return
-    }
-
-    writer.viewFilter(current.id).delete(ruleId)
-    workingIds = workingIds.filter((entry) => entry !== ruleId)
-  })
-
-  for (let index = next.filter.rules.ids.length - 1; index >= 0; index -= 1) {
-    const ruleId = next.filter.rules.ids[index]!
-    const before = next.filter.rules.ids[index + 1]
-    const nextRule = next.filter.rules.byId[ruleId] as FilterRule
-    const currentRule = current.filter.rules.byId[ruleId]
-
-    if (!workingIds.includes(ruleId)) {
-      writer.viewFilter(current.id).insert(
-        cloneFilterRule(nextRule),
-        toBeforeAnchor(before)
-      )
-      workingIds = [...insertBefore(workingIds, ruleId, before)]
-      continue
-    }
-
-    const patch = createFilterRulePatch(currentRule, nextRule)
-    if (patch) {
-      writer.viewFilter(current.id).patch(ruleId, patch)
-    }
-
-    const reordered = insertBefore(workingIds, ruleId, before)
-    if (!equal.sameOrder(workingIds, reordered)) {
-      writer.viewFilter(current.id).move(
-        ruleId,
-        toBeforeAnchor(before)
-      )
-      workingIds = [...reordered]
-    }
   }
 }
 
@@ -226,46 +143,20 @@ const writeViewSort = (
   current: View,
   next: View
 ) => {
-  let workingIds = [...current.sort.rules.ids]
-  const nextSet = new Set(next.sort.rules.ids)
-
-  current.sort.rules.ids.forEach((ruleId) => {
-    if (nextSet.has(ruleId)) {
-      return
-    }
-
-    writer.viewSort(current.id).delete(ruleId)
-    workingIds = workingIds.filter((entry) => entry !== ruleId)
-  })
-
-  for (let index = next.sort.rules.ids.length - 1; index >= 0; index -= 1) {
-    const ruleId = next.sort.rules.ids[index]!
-    const before = next.sort.rules.ids[index + 1]
-    const nextRule = next.sort.rules.byId[ruleId] as SortRule
-    const currentRule = current.sort.rules.byId[ruleId]
-
-    if (!workingIds.includes(ruleId)) {
-      writer.viewSort(current.id).insert(
-        cloneSortRule(nextRule),
-        toBeforeAnchor(before)
-      )
-      workingIds = [...insertBefore(workingIds, ruleId, before)]
-      continue
-    }
-
-    const patch = createSortRulePatch(currentRule, nextRule)
-    if (patch) {
-      writer.viewSort(current.id).patch(ruleId, patch)
-    }
-
-    const reordered = insertBefore(workingIds, ruleId, before)
-    if (!equal.sameOrder(workingIds, reordered)) {
-      writer.viewSort(current.id).move(
-        ruleId,
-        toBeforeAnchor(before)
-      )
-      workingIds = [...reordered]
-    }
+  if (!equal.sameJsonValue(current.sort, next.sort)) {
+    writer.view.patch(current.id, {
+      sort: {
+        rules: {
+          ids: [...next.sort.rules.ids],
+          byId: Object.fromEntries(next.sort.rules.ids.flatMap((ruleId) => {
+            const rule = next.sort.rules.byId[ruleId]
+            return rule
+              ? [[ruleId, cloneSortRule(rule)]]
+              : []
+          }))
+        }
+      }
+    })
   }
 }
 
@@ -274,10 +165,11 @@ const writeViewDisplay = (
   current: View,
   next: View
 ) => {
-  let working = [...current.display.fields]
-  const nextFieldSet = new Set(next.display.fields)
+  let working = [...readViewDisplayFieldIds(current.display)]
+  const nextFields = readViewDisplayFieldIds(next.display)
+  const nextFieldSet = new Set(nextFields)
 
-  current.display.fields.forEach((fieldId) => {
+  readViewDisplayFieldIds(current.display).forEach((fieldId) => {
     if (nextFieldSet.has(fieldId)) {
       return
     }
@@ -286,9 +178,9 @@ const writeViewDisplay = (
     working = working.filter((entry) => entry !== fieldId)
   })
 
-  for (let index = next.display.fields.length - 1; index >= 0; index -= 1) {
-    const fieldId = next.display.fields[index]!
-    const before = next.display.fields[index + 1]
+  for (let index = nextFields.length - 1; index >= 0; index -= 1) {
+    const fieldId = nextFields[index]!
+    const before = nextFields[index + 1]
     if (!working.includes(fieldId)) {
       writer.viewDisplay(current.id).insert(
         fieldId,
@@ -316,10 +208,11 @@ const writeViewOrder = (
   current: View,
   next: View
 ) => {
-  let working = [...current.orders]
-  const nextRecordSet = new Set(next.orders)
+  let working = [...readViewOrderIds(current)]
+  const nextOrder = readViewOrderIds(next)
+  const nextRecordSet = new Set(nextOrder)
 
-  current.orders.forEach((recordId) => {
+  readViewOrderIds(current).forEach((recordId) => {
     if (nextRecordSet.has(recordId)) {
       return
     }
@@ -328,9 +221,9 @@ const writeViewOrder = (
     working = working.filter((entry) => entry !== recordId)
   })
 
-  for (let index = next.orders.length - 1; index >= 0; index -= 1) {
-    const recordId = next.orders[index]!
-    const before = next.orders[index + 1]
+  for (let index = nextOrder.length - 1; index >= 0; index -= 1) {
+    const recordId = nextOrder[index]!
+    const before = nextOrder[index + 1]
     if (!working.includes(recordId)) {
       writer.viewOrder(current.id).insert(
         recordId,

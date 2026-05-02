@@ -29,6 +29,12 @@ import {
 import {
   view
 } from '@dataview/core/view'
+import {
+  replaceViewDisplayFields
+} from '@dataview/core/view/display'
+import {
+  replaceViewOrder
+} from '@dataview/core/view/order'
 import type {
   MenuItem
 } from '@shared/ui/menu'
@@ -209,7 +215,7 @@ const createSelectField = (
   id,
   name,
   kind: 'select',
-  options: options.map(option => ({ ...option }))
+  options: entityTable.normalize.list(options.map(option => ({ ...option })))
 })
 
 const createMultiSelectField = (
@@ -220,7 +226,7 @@ const createMultiSelectField = (
   id,
   name,
   kind: 'multiSelect',
-  options: options.map(option => ({ ...option }))
+  options: entityTable.normalize.list(options.map(option => ({ ...option })))
 })
 
 const createStatusField = (
@@ -232,7 +238,7 @@ const createStatusField = (
   name,
   kind: 'status',
   defaultOptionId: options[0]?.id ?? null,
-  options: options.map(option => ({ ...option }))
+  options: entityTable.normalize.list(options.map(option => ({ ...option })))
 })
 
 const createDateField = (
@@ -344,10 +350,8 @@ const createView = (input: {
     calc: {
       ...(input.calc ?? {})
     },
-    display: {
-      fields: [...input.displayFields]
-    },
-    orders: []
+    display: replaceViewDisplayFields(input.displayFields),
+    order: replaceViewOrder([])
   }
 
   switch (input.type) {

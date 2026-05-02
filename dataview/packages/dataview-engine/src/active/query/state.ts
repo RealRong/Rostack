@@ -29,9 +29,7 @@ import type {
 import {
   createSelectionFromIds
 } from '@dataview/engine/active/shared/selection'
-import {
-  type DocumentReader
-} from '@dataview/core/document/reader'
+import type { DataviewQuery } from '@dataview/core/mutation'
 
 const createPublishedSelection = (input: {
   previous?: QueryState['matched']
@@ -111,7 +109,7 @@ const publishQueryState = (input: {
 }
 
 export const buildQueryState = (input: {
-  reader: DocumentReader
+  reader: DataviewQuery
   view: View
   index: IndexState
   plan: QueryPlan

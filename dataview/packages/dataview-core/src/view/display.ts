@@ -3,26 +3,41 @@ import type {
   ViewDisplay
 } from '@dataview/core/types'
 import {
-  collection,
+  entityTable,
   equal,
   order
 } from '@shared/core'
 
+const toDisplayEntries = (
+  fieldIds: readonly FieldId[]
+) => entityTable.normalize.list(
+  Array.from(new Set(fieldIds)).map((fieldId) => ({
+    id: fieldId
+  }))
+)
+
+export const readViewDisplayFieldIds = (
+  display: ViewDisplay
+): readonly FieldId[] => entityTable.read.ids(display.fields)
+
 export const cloneViewDisplay = (
   display: ViewDisplay
 ): ViewDisplay => ({
-  fields: [...display.fields]
+  fields: entityTable.clone.table(display.fields)
 })
 
 export const sameViewDisplay = (
   left: ViewDisplay,
   right: ViewDisplay
-): boolean => equal.sameOrder(left.fields, right.fields)
+): boolean => equal.sameOrder(
+  readViewDisplayFieldIds(left),
+  readViewDisplayFieldIds(right)
+)
 
 export const replaceViewDisplayFields = (
   fieldIds: readonly FieldId[]
 ): ViewDisplay => ({
-  fields: collection.unique(fieldIds)
+  fields: toDisplayEntries(fieldIds)
 })
 
 export const normalizeViewDisplay = (
@@ -33,6 +48,19 @@ export const normalizeViewDisplay = (
         fields?: unknown
       }
     : undefined
+
+  if (source?.fields && typeof source.fields === 'object' && !Array.isArray(source.fields)) {
+    const table = source.fields as {
+      ids?: unknown
+      byId?: unknown
+    }
+
+    if (Array.isArray(table.ids) && typeof table.byId === 'object' && table.byId !== null) {
+      return {
+        fields: entityTable.normalize.table(table as ViewDisplay['fields'])
+      }
+    }
+  }
 
   return replaceViewDisplayFields(
     Array.isArray(source?.fields)
@@ -46,37 +74,37 @@ export const moveViewDisplayFields = (
   fieldIds: readonly FieldId[],
   beforeFieldId?: FieldId | null
 ): ViewDisplay => {
-  const nextFieldIds = collection.unique(fieldIds)
+  const nextFieldIds = Array.from(new Set(fieldIds))
   if (!nextFieldIds.length) {
     return cloneViewDisplay(display)
   }
 
-  return {
-    fields: order.splice(display.fields, nextFieldIds, {
+  return replaceViewDisplayFields(
+    order.splice(readViewDisplayFieldIds(display), nextFieldIds, {
       before: beforeFieldId ?? undefined
     })
-  }
+  )
 }
 
 export const showViewDisplayField = (
   display: ViewDisplay,
   fieldId: FieldId,
   beforeFieldId?: FieldId | null
-): ViewDisplay => ({
-  fields: order.moveItem(display.fields, fieldId, {
+): ViewDisplay => replaceViewDisplayFields(
+  order.moveItem(readViewDisplayFieldIds(display), fieldId, {
     before: beforeFieldId ?? undefined
   })
-})
+)
 
 export const hideViewDisplayField = (
   display: ViewDisplay,
   fieldId: FieldId
-): ViewDisplay => ({
-  fields: display.fields.filter(currentFieldId => currentFieldId !== fieldId)
-})
+): ViewDisplay => replaceViewDisplayFields(
+  readViewDisplayFieldIds(display).filter(currentFieldId => currentFieldId !== fieldId)
+)
 
 export const clearViewDisplayFields = (): ViewDisplay => ({
-  fields: []
+  fields: toDisplayEntries([])
 })
 
 export const resolveDisplayInsertBeforeFieldId = (

@@ -14,7 +14,7 @@ const queryExecutionKey = key.tuple([
   'filters',
   'filterMode',
   'sort',
-  'orders'
+  'order'
 ] as const)
 
 const pathKey = key.path()
@@ -108,10 +108,10 @@ const encodeSort = (
     : undefined
 }
 
-const encodeOrders = (
-  orders: readonly RecordId[]
-): string | undefined => orders.length
-  ? pathKey.write(orders)
+const encodeOrder = (
+  order: readonly RecordId[]
+): string | undefined => order.length
+  ? pathKey.write(order)
   : undefined
 
 export const writeQueryExecutionKey = (input: {
@@ -126,7 +126,7 @@ export const writeQueryExecutionKey = (input: {
   }[]
   filterMode: View['filter']['mode']
   sort: Sort
-  orders: readonly RecordId[]
+  order: readonly RecordId[]
 }): string => queryExecutionKey.write({
   search: encodeSearch(input.search),
   filters: encodeFilters(input.filters),
@@ -134,5 +134,5 @@ export const writeQueryExecutionKey = (input: {
     ? input.filterMode
     : undefined,
   sort: encodeSort(input.sort),
-  orders: encodeOrders(input.orders)
+  order: encodeOrder(input.order)
 })

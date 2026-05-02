@@ -5,6 +5,7 @@ import type {
 import { collection } from '@shared/core'
 import { filter } from '@dataview/core/view'
 import { sort } from '@dataview/core/view'
+import { readViewDisplayFieldIds } from '@dataview/core/view/display'
 
 export const viewSearchFields = (
   view: View
@@ -34,4 +35,4 @@ export const viewCalcFields = (
 
 export const viewDisplayFields = (
   view: View
-): ReadonlySet<FieldId> => new Set(view.display.fields)
+): ReadonlySet<FieldId> => new Set(readViewDisplayFieldIds(view.display))

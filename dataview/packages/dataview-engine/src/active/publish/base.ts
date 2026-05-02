@@ -17,9 +17,7 @@ import {
 import {
   reuseIfEqual
 } from '@dataview/engine/active/publish/reuse'
-import type {
-  DocumentReader
-} from '@dataview/core/document/reader'
+import type { DataviewQuery } from '@dataview/core/mutation'
 import {
   createFieldsProjection
 } from '@dataview/engine/active/publish/fields'
@@ -35,9 +33,12 @@ import {
   sameKanbanProjection,
   sameTableProjection
 } from '@dataview/engine/active/publish/viewModes'
+import {
+  readViewDisplayFieldIds
+} from '@dataview/core/view/display'
 
 export const publishViewBase = (input: {
-  reader: DocumentReader
+  reader: DataviewQuery
   viewId?: ViewId
   previous?: {
     view?: View
@@ -70,7 +71,7 @@ export const publishViewBase = (input: {
   }
 
   const nextFields = createFieldsProjection({
-    fieldIds: view.display.fields,
+    fieldIds: readViewDisplayFieldIds(view.display),
     getField: input.reader.fields.get
   })
   const nextQuery = createQueryProjection({

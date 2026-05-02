@@ -1,35 +1,16 @@
 import type {
   IndexStageTrace
 } from '@dataview/engine/contracts/performance'
-import {
-  trace
-} from '@shared/trace'
 import type {
   SearchIndex
 } from '@dataview/engine/active/index/contracts'
 import type {
-  FieldId,
-  RecordId
-} from '@dataview/core/types'
-import type {
   DataviewMutationDelta
-} from '@dataview/engine/mutation/delta'
+} from '@dataview/core/mutation'
 
 export const fullRebuildFrom = (
   delta: DataviewMutationDelta
 ) => delta.reset === true
-
-export const touchedRecordCountOfDelta = (
-  delta: DataviewMutationDelta
-): number | 'all' | undefined => trace.count(
-  delta.touched.records() as ReadonlySet<RecordId> | 'all'
-)
-
-export const touchedFieldCountOfDelta = (
-  delta: DataviewMutationDelta
-): number | 'all' | undefined => trace.count(
-  delta.touched.fields() as ReadonlySet<FieldId> | 'all'
-)
 
 export const searchEntryCountOf = (
   search: SearchIndex

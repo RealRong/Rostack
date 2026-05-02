@@ -9,6 +9,14 @@ const FIELD_POINTS = 'points'
 const FIELD_ESTIMATE = 'estimate'
 const VIEW_TABLE = 'view_table'
 
+const displayFields = (fieldIds: readonly string[]) => entityTable.normalize.list(
+  fieldIds.map((fieldId) => ({ id: fieldId }))
+)
+
+const optionTable = <T extends { id: string }>(
+  options: readonly T[]
+) => entityTable.normalize.list(options.map((option) => ({ ...option })))
+
 const SIZE_TO_COUNT = {
   small: 1000,
   medium: 10000,
@@ -43,7 +51,7 @@ const createFields = () => ([
     name: 'Status',
     kind: 'status',
     defaultOptionId: 'todo',
-    options: STATUS_OPTIONS.map(option => ({ ...option }))
+    options: optionTable(STATUS_OPTIONS)
   },
   {
     id: FIELD_POINTS,
@@ -115,12 +123,12 @@ const createDocument = (recordCount: number) => {
           },
           calc: {},
           display: {
-            fields: [TITLE_FIELD_ID, FIELD_STATUS, FIELD_POINTS, FIELD_ESTIMATE]
+            fields: displayFields([TITLE_FIELD_ID, FIELD_STATUS, FIELD_POINTS, FIELD_ESTIMATE])
           },
           options: {
             ...view.options.defaults('table', fields)
           },
-          orders: []
+          order: entityTable.normalize.list([])
         }
       },
       ids: [VIEW_TABLE]

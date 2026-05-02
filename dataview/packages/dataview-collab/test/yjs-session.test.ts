@@ -7,6 +7,12 @@ import {
   type CustomField
 } from '@dataview/core/types'
 import { view } from '@dataview/core/view'
+import {
+  replaceViewDisplayFields
+} from '@dataview/core/view/display'
+import {
+  replaceViewOrder
+} from '@dataview/core/view/order'
 import { createEngine } from '@dataview/engine'
 import { dataviewSpec } from '@dataview/react'
 import { collab as collabApi } from '@dataview/collab'
@@ -47,13 +53,11 @@ const createDocument = (): DataDoc => {
             rules: entityTable.normalize.list([])
           },
           calc: {},
-          display: {
-            fields: [TITLE_FIELD_ID, FIELD_STATUS]
-          },
+          display: replaceViewDisplayFields([TITLE_FIELD_ID, FIELD_STATUS]),
           options: {
             ...view.options.defaults('table', fields)
           },
-          orders: []
+          order: replaceViewOrder([])
         }
       },
       ids: [VIEW_ID]
@@ -206,7 +210,8 @@ test('session records duplicate shared changes deterministically', () => {
       steps: [{
         type: 'entity.patch' as const,
         entity: {
-          table: 'record',
+          kind: 'entity' as const,
+          type: 'record',
           id: 'rec_1'
         },
         writes: {

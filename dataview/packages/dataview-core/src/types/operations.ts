@@ -52,11 +52,6 @@ export type DocumentOperation =
       value: DataRecord
     }
   | {
-      type: 'record.patch'
-      id: RecordId
-      patch: Partial<Omit<DataRecord, 'id' | 'values'>>
-    }
-  | {
       type: 'record.delete'
       id: RecordId
     }
@@ -352,10 +347,6 @@ export type DocumentOperation =
   | {
       type: 'field.remove'
       id: CustomFieldId
-    }
-  | {
-      type: 'external.version.bump'
-      source: string
     }
 
 export type OperationType = DocumentOperation['type']

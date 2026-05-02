@@ -12,7 +12,9 @@ import { filter } from '@dataview/core/view'
 import { group } from '@dataview/core/view'
 import { search } from '@dataview/core/view'
 import { sort } from '@dataview/core/view'
-import { normalizeRecordOrderIds } from '@dataview/core/view/order'
+import {
+  normalizeViewOrder
+} from '@dataview/core/view/order'
 import {
   normalizeViewOptions
 } from '@dataview/core/view/options'
@@ -35,8 +37,8 @@ const createValidRecordIdSet = (document: DataDoc) => new Set<RecordId>(document
 
 const normalizeOrders = (
   document: DataDoc,
-  orders: readonly RecordId[] | undefined
-) => normalizeRecordOrderIds(orders, createValidRecordIdSet(document))
+  order: View['order']
+) => normalizeViewOrder({ order }, createValidRecordIdSet(document))
 
 const resolveDefaultKanbanGroup = (
   document: DataDoc
@@ -73,7 +75,7 @@ const normalizeView = (
       fields: new Map(fields.map(fieldEntry => [fieldEntry.id, fieldEntry] as const))
     }),
     display: normalizeViewDisplay(view.display),
-    orders: normalizeOrders(document, view.orders)
+    order: normalizeOrders(document, view.order)
   } as const
 
   switch (view.type) {

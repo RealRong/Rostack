@@ -10,14 +10,14 @@ import type {
   Engine
 } from '@dataview/engine/contracts/api'
 import {
-  createDocumentReader,
-  type DocumentReader
-} from '@dataview/core/document/reader'
+  createDataviewQueryContext,
+  type DataviewQuery
+} from '@dataview/core/mutation'
 
 export interface ActiveViewContext {
   id: ActiveViewApi['id']
   state: ActiveViewApi['state']
-  reader: DocumentReader
+  reader: DataviewQuery
   execute: Engine['execute']
   view: () => View | undefined
   resolveGroupField: (view?: View) => Field | undefined
@@ -27,7 +27,7 @@ export const createActiveContext = (
   engine: Pick<Engine, 'current' | 'doc' | 'execute'>
 ): ActiveViewContext => {
   const state = (): ViewState | undefined => engine.current().active
-  const reader = createDocumentReader(() => engine.doc())
+  const reader = createDataviewQueryContext(engine.doc()).query
   const view = () => engine.current().docActiveView
   const resolveGroupField = (
     currentView = view()

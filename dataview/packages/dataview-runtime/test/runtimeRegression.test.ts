@@ -39,13 +39,21 @@ const STATUS_OPTIONS = [
   }
 ] as const
 
+const displayFields = (fieldIds: readonly string[]) => entityTable.normalize.list(
+  fieldIds.map((fieldId) => ({ id: fieldId }))
+)
+
+const optionTable = <T extends { id: string }>(
+  options: readonly T[]
+) => entityTable.normalize.list(options.map((option) => ({ ...option })))
+
 const createFields = (): readonly Field[] => ([
   {
     id: FIELD_STATUS,
     name: 'Status',
     kind: 'status',
     defaultOptionId: 'todo',
-    options: STATUS_OPTIONS.map(option => ({ ...option }))
+    options: optionTable(STATUS_OPTIONS)
   }
 ])
 
@@ -94,12 +102,12 @@ const createView = (input: {
     sort: createEmptySort(),
     calc: {},
     display: {
-      fields: [TITLE_FIELD_ID, FIELD_STATUS]
+      fields: displayFields([TITLE_FIELD_ID, FIELD_STATUS])
     },
     options: {
       ...view.options.defaults(input.type, fields)
     },
-    orders: [],
+    order: entityTable.normalize.list([]),
     ...(input.type === 'kanban'
       ? {
           group: {

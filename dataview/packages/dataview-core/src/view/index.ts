@@ -26,8 +26,10 @@ import {
 } from '@dataview/core/view/model/naming'
 import {
   applyRecordOrder,
-  clearViewOrders,
+  clearViewOrder,
   normalizeRecordOrderIds,
+  readViewOrderIds,
+  replaceViewOrder,
   spliceRecordIds,
   reorderRecordIds
 } from '@dataview/core/view/order'
@@ -58,6 +60,7 @@ import {
   hideViewDisplayField,
   moveViewDisplayFields,
   normalizeViewDisplay,
+  readViewDisplayFieldIds,
   replaceViewDisplayFields,
   resolveDisplayInsertBeforeFieldId,
   sameViewDisplay,
@@ -94,6 +97,9 @@ export const view = {
     input: createDuplicateViewInput
   },
   display: {
+    read: {
+      ids: readViewDisplayFieldIds
+    },
     clone: cloneViewDisplay,
     same: sameViewDisplay,
     normalize: normalizeViewDisplay,
@@ -111,11 +117,15 @@ export const view = {
     set: calc.view.set
   },
   order: {
+    read: {
+      ids: readViewOrderIds
+    },
     normalize: normalizeRecordOrderIds,
     apply: applyRecordOrder,
+    replace: replaceViewOrder,
     move: reorderRecordIds,
     splice: spliceRecordIds,
-    clear: clearViewOrders
+    clear: clearViewOrder
   },
   options: {
     clone: cloneViewOptions,

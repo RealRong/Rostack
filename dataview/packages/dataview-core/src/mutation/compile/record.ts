@@ -18,6 +18,10 @@ import type {
 import {
   writeViewUpdate
 } from './viewDiff'
+import {
+  readViewOrderIds,
+  replaceViewOrder
+} from '../../view/order'
 
 type RecordIntentType = Extract<Intent['type'], `record.${string}`>
 type DataviewRecordIntentHandlers = {
@@ -169,39 +173,6 @@ const lowerRecordCreate = (
   })
 }
 
-const lowerRecordPatch = (
-  input: DataviewCompileContext<Extract<Intent, { type: 'record.patch' }>>
-) => {
-  const { intent } = input
-  const recordIds = input.reader.records.require(intent.target)
-  if (!recordIds) {
-    return
-  }
-
-  if (!Object.keys(intent.patch).length) {
-    input.issue({
-      source: input.source,
-      code: 'record.emptyPatch',
-      message: 'record.patch patch cannot be empty',
-      path: 'patch',
-      severity: 'error'
-    })
-  }
-  if (Object.prototype.hasOwnProperty.call(intent.patch, 'values')) {
-    input.issue({
-      source: input.source,
-      code: 'record.invalidPatch',
-      message: 'record.patch does not support values; use record.fields.writeMany',
-      path: 'patch.values',
-      severity: 'error'
-    })
-  }
-
-  recordIds.forEach((recordId) => {
-    input.program.record.patch(recordId, intent.patch)
-  })
-}
-
 const lowerRecordRemove = (
   input: DataviewCompileContext<Extract<Intent, { type: 'record.remove' }>>
 ) => {
@@ -213,14 +184,15 @@ const lowerRecordRemove = (
 
   const removedRecordIds = new Set(recordIds)
   input.reader.views.list().forEach((view) => {
-    const nextOrders = view.orders.filter((recordId) => !removedRecordIds.has(recordId))
-    if (nextOrders.length === view.orders.length) {
+    const currentOrder = readViewOrderIds(view)
+    const nextOrders = currentOrder.filter((recordId) => !removedRecordIds.has(recordId))
+    if (nextOrders.length === currentOrder.length) {
       return
     }
 
     writeViewUpdate(input.program, view, {
       ...view,
-      orders: nextOrders
+      order: replaceViewOrder(nextOrders)
     })
   })
 
@@ -289,7 +261,6 @@ const lowerRecordFieldsWriteMany = (
 
 export const dataviewRecordIntentHandlers: DataviewRecordIntentHandlers = {
   'record.create': lowerRecordCreate,
-  'record.patch': lowerRecordPatch,
   'record.remove': lowerRecordRemove,
   'record.fields.writeMany': lowerRecordFieldsWriteMany
 }

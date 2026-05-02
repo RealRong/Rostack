@@ -10,6 +10,9 @@ import type {
 import {
   spec
 } from '@shared/spec'
+import {
+  replaceViewDisplayFields
+} from '@dataview/core/view/display'
 
 export interface ViewTypeSpecEntry<
   TType extends ViewType = ViewType
@@ -31,9 +34,9 @@ export const viewTypeSpec = {
       group: true
     },
     defaults: {
-      display: (fields: readonly Field[]): ViewDisplay => ({
-        fields: fields.map(field => field.id)
-      }),
+      display: (fields: readonly Field[]): ViewDisplay => replaceViewDisplayFields(
+        fields.map(field => field.id)
+      ),
       options: (_fields: readonly Field[]): TableOptions => ({
         widths: {},
         showVerticalLines: true,
@@ -47,9 +50,7 @@ export const viewTypeSpec = {
       group: false
     },
     defaults: {
-      display: (): ViewDisplay => ({
-        fields: []
-      }),
+      display: (): ViewDisplay => replaceViewDisplayFields([]),
       options: (_fields: readonly Field[]): GalleryView['options'] => ({
         card: {
           wrap: false,
@@ -65,9 +66,7 @@ export const viewTypeSpec = {
       group: true
     },
     defaults: {
-      display: (): ViewDisplay => ({
-        fields: []
-      }),
+      display: (): ViewDisplay => replaceViewDisplayFields([]),
       options: (_fields: readonly Field[]): KanbanView['options'] => ({
         card: {
           wrap: false,

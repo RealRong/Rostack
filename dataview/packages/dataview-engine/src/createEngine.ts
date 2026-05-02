@@ -8,12 +8,16 @@ import {
   compile
 } from '@dataview/core/mutation'
 import {
-  dataviewMutationRegistry
+  createDataviewQueryContext,
+  dataviewMutationModel,
+  type DataviewMutationDelta,
+  type DataviewMutationPorts
 } from '@dataview/core/mutation'
 import type {
   DocumentOperation
 } from '@dataview/core/types'
 import {
+  createMutationDelta,
   MutationEngine
 } from '@shared/mutation'
 import type {
@@ -40,22 +44,9 @@ import {
   createDataviewProjection
 } from '@dataview/engine/projection'
 import {
-  createDataviewMutationDelta
-} from '@dataview/engine/mutation/delta'
-import {
   createEngineSource
 } from '@dataview/engine/source/createEngineSource'
 import { createPerformanceRuntime } from '@dataview/engine/runtime/performance'
-import {
-  createDocumentReadContext,
-  type DocumentReader
-} from '@dataview/core/document/reader'
-import type {
-  DataviewMutationPorts
-} from '@dataview/core/mutation'
-import type {
-  DataviewCompileReader
-} from '@dataview/core/mutation/compile/reader'
 import type {
   MutationProgram
 } from '@shared/mutation'
@@ -86,16 +77,16 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
     DataDoc,
     DataviewIntentTable,
     DocumentOperation,
-    DataviewCompileReader,
+    ReturnType<typeof compile.createReader>,
     void,
     DataviewErrorCode,
     DataviewMutationPorts
   >({
     document: options.document,
     normalize: documentApi.normalize,
+    model: dataviewMutationModel,
     createReader: compile.createReader,
     createProgram: compile.createProgram,
-    registry: dataviewMutationRegistry,
     compile: compile.handlers,
     history: historyConfig.enabled
       ? {
@@ -113,7 +104,7 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
 
   projection.update({
     document: mutationEngine.current().document,
-    delta: createDataviewMutationDelta({
+    delta: createMutationDelta(dataviewMutationModel, {
       reset: true,
       changes: EMPTY_MUTATION_CHANGES
     })
@@ -128,7 +119,7 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
 
   const readCurrent = (): DataviewCurrent => {
     const current = mutationEngine.current()
-    const context = createDocumentReadContext(current.document)
+    const context = createDataviewQueryContext(current.document)
     return {
       rev: current.rev,
       doc: current.document,
@@ -142,7 +133,10 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
     const nextCommit = commit as EngineCommit
     const projectionResult = projection.update({
       document: nextCommit.document,
-      delta: createDataviewMutationDelta(nextCommit.delta)
+      delta: createMutationDelta(
+        dataviewMutationModel,
+        nextCommit.delta
+      ) as DataviewMutationDelta
     })
     const commitTrace = createDataviewCommitTrace({
       performance,

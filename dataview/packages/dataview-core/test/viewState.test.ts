@@ -1,30 +1,37 @@
 import assert from 'node:assert/strict'
 import { test } from 'vitest'
+import { entityTable } from '@shared/core'
 import {
   view
 } from '@dataview/core/view'
+
+const displayFields = (
+  fieldIds: readonly string[]
+) => entityTable.normalize.list(
+  fieldIds.map((fieldId) => ({ id: fieldId }))
+)
 
 test('view display state reuses shared collection and order semantics', () => {
   assert.deepEqual(
     view.display.replace(['a', 'b', 'a', 'c', 'b']),
     {
-      fields: ['a', 'b', 'c']
+      fields: displayFields(['a', 'b', 'c'])
     }
   )
   assert.deepEqual(
     view.display.move({
-      fields: ['a', 'b', 'c', 'd']
+      fields: displayFields(['a', 'b', 'c', 'd'])
     }, ['c', 'b', 'b'], 'a'),
     {
-      fields: ['b', 'c', 'a', 'd']
+      fields: displayFields(['b', 'c', 'a', 'd'])
     }
   )
   assert.deepEqual(
     view.display.show({
-      fields: ['a', 'b', 'c']
+      fields: displayFields(['a', 'b', 'c'])
     }, 'd', 'b'),
     {
-      fields: ['a', 'd', 'b', 'c']
+      fields: displayFields(['a', 'd', 'b', 'c'])
     }
   )
 })

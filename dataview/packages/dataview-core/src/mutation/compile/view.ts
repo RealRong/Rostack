@@ -30,9 +30,15 @@ import {
 } from './viewDiff'
 import {
   applyRecordOrder,
+  readViewOrderIds,
   reorderRecordIds,
+  replaceViewOrder,
   spliceRecordIds
 } from '../../view/order'
+import {
+  readViewDisplayFieldIds,
+  replaceViewDisplayFields
+} from '../../view/display'
 import {
   resolveDefaultKanbanGroup,
   setViewType
@@ -274,13 +280,13 @@ const createTypedViewOptionsHandler = <
 const requireView = (
   input: DataviewCompileInput,
   viewId: ViewId
-) => input.reader.views.require(viewId, 'id')
+) => input.expect!.view(viewId, 'id')
 
 const requireField = (
   input: DataviewCompileInput,
   fieldId: FieldId,
   path = 'fieldId'
-): Field | undefined => input.reader.fields.require(fieldId, path)
+): Field | undefined => input.expect!.field(fieldId, path)
 
 const requireGroupedField = (
   input: DataviewCompileInput,
@@ -339,7 +345,7 @@ const lowerViewCreate = (
     display: intent.input.display
       ? viewApi.display.clone(intent.input.display)
       : viewApi.options.defaultDisplay(intent.input.type, fields),
-    orders: []
+    order: replaceViewOrder([])
   }
 
   let created: View
@@ -995,17 +1001,17 @@ const lowerViewOrderMove = (
 
   const currentOrder = applyRecordOrder(
     reader.records.list().map((record) => record.id),
-    view.orders
+    readViewOrderIds(view)
   )
   const nextView = {
     ...view,
-    orders: reorderRecordIds(currentOrder, recordId, {
+    order: replaceViewOrder(reorderRecordIds(currentOrder, recordId, {
       ...(beforeRecordId !== undefined && beforeRecordId !== recordId
         ? {
             beforeRecordId
           }
         : {})
-    })
+    }))
   }
   return emitViewUpdate(input, view, nextView)
 }
@@ -1043,17 +1049,17 @@ const lowerViewOrderSplice = (
 
   const currentOrder = applyRecordOrder(
     reader.records.list().map((record) => record.id),
-    view.orders
+    readViewOrderIds(view)
   )
   const nextView = {
     ...view,
-    orders: spliceRecordIds(currentOrder, recordIds, {
+    order: replaceViewOrder(spliceRecordIds(currentOrder, recordIds, {
       ...(beforeRecordId !== undefined
         ? {
             beforeRecordId
           }
         : {})
-    })
+    }))
   }
   return emitViewUpdate(input, view, nextView)
 }
@@ -1118,27 +1124,26 @@ const lowerViewDisplayShow = (
     return
   }
 
-  const nextFields = view.display.fields.includes(intent.field)
+  const currentFields = readViewDisplayFieldIds(view.display)
+  const nextDisplay = currentFields.includes(intent.field)
     ? viewApi.display.move(
         view.display,
         [intent.field],
         intent.before !== undefined && intent.before !== intent.field
           ? intent.before
           : undefined
-      ).fields
+      )
     : viewApi.display.show(
         view.display,
         intent.field,
         intent.before !== undefined && intent.before !== intent.field
           ? intent.before
           : undefined
-      ).fields
+      )
 
   const nextView = {
     ...view,
-    display: {
-      fields: nextFields
-    }
+    display: nextDisplay
   }
   return emitViewUpdate(input, view, nextView)
 }
@@ -1166,7 +1171,7 @@ const lowerViewDisplayClear = (
     return
   }
 
-  view.display.fields.forEach((fieldId) => {
+  readViewDisplayFieldIds(view.display).forEach((fieldId) => {
     input.program.viewDisplay(view.id).delete(fieldId)
   })
 }

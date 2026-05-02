@@ -3,9 +3,10 @@ import type {
   ViewId
 } from '@dataview/core/types'
 import {
-  createDocumentReader,
-  type DocumentReader
-} from '@dataview/core/document/reader'
+  createDataviewQueryContext,
+  type DataviewMutationDelta,
+  type DataviewQueryContext
+} from '@dataview/core/mutation'
 import {
   createProjection,
   type ProjectionStoreTree
@@ -30,9 +31,6 @@ import {
   ensureDataviewIndex
 } from '@dataview/engine/active/index/runtime'
 import type {
-  DataviewMutationDelta
-} from '@dataview/engine/mutation/delta'
-import type {
   IndexTrace,
   SnapshotTrace,
   ViewTrace
@@ -56,7 +54,7 @@ export interface DataviewProjectionOutput {
 export interface DataviewProjectionRead {
   document: {
     current(): DataDoc | undefined
-    reader(): DocumentReader | undefined
+    query(): DataviewQueryContext | undefined
   }
   active: {
     id(): ViewId | undefined
@@ -164,7 +162,7 @@ export const createDataviewProjectionRead = (runtime: {
 }): DataviewProjectionRead => ({
   document: {
     current: () => runtime.state().document?.current,
-    reader: () => runtime.state().document?.reader
+    query: () => runtime.state().document?.query
   },
   active: {
     id: () => runtime.state().active.spec?.id,
@@ -231,10 +229,10 @@ export const createDataviewProjection = () => createProjection({
   }),
   phases: ({
     active: (ctx) => {
-      const reader = createDocumentReader(() => ctx.input.document)
+      const query = createDataviewQueryContext(ctx.input.document)
       ctx.state.document = {
         current: ctx.input.document,
-        reader
+        query
       }
       const frame = createDataviewFrame({
         revision: ctx.revision,

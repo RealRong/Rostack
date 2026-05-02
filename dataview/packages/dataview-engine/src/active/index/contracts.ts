@@ -11,7 +11,7 @@ import type {
   RecordId,
   ViewGroup
 } from '@dataview/core/types'
-import type { DocumentReader } from '@dataview/core/document/reader'
+import type { DataviewQuery } from '@dataview/core/mutation'
 import type {
   IndexTrace
 } from '@dataview/engine/contracts/performance'
@@ -163,7 +163,7 @@ export interface FieldSyncContext {
 
 export interface IndexReadContext {
   document: DataDoc
-  reader: DocumentReader
+  reader: DataviewQuery
   fieldIds: readonly FieldId[]
   fieldIdSet: ReadonlySet<FieldId>
 }

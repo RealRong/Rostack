@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict'
 import { test } from 'vitest'
 import { entityTable } from '@shared/core'
-import { createDataviewMutationDelta } from '@dataview/engine/mutation/delta'
+import { createMutationDelta } from '@shared/mutation'
+import { dataviewMutationModel } from '@dataview/core/mutation'
 import { createDataviewFrame } from '@dataview/engine/active/frame'
 import { ensureDataviewIndex } from '@dataview/engine/active/index/runtime'
 import { createDataviewActivePlan } from '@dataview/engine/active/plan'
@@ -13,6 +14,14 @@ import { writeNormalizedIndexDemandKey } from '@dataview/engine/active/index/dem
 const VIEW_ID = 'view_table'
 const FIELD_STATUS = 'status'
 const FIELD_POINTS = 'points'
+
+const displayFields = (fieldIds: readonly string[]) => entityTable.normalize.list(
+  fieldIds.map((fieldId) => ({ id: fieldId }))
+)
+
+const optionTable = <T extends { id: string }>(
+  options: readonly T[]
+) => entityTable.normalize.list(options.map((option) => ({ ...option })))
 
 const createView = (input?: {
   wrap?: boolean
@@ -40,14 +49,14 @@ const createView = (input?: {
     [FIELD_POINTS]: 'sum' as const
   },
   display: {
-    fields: ['title', FIELD_STATUS, FIELD_POINTS]
+    fields: displayFields(['title', FIELD_STATUS, FIELD_POINTS])
   },
   options: {
     widths: {},
     showVerticalLines: true,
     wrap: input?.wrap ?? false
   },
-  orders: []
+  order: entityTable.normalize.list([])
 })
 
 const createDocument = (view = createView()) => ({
@@ -60,7 +69,7 @@ const createDocument = (view = createView()) => ({
         name: 'Status',
         kind: 'status',
         defaultOptionId: 'todo',
-        options: [
+        options: optionTable([
           {
             id: 'todo',
             name: 'Todo',
@@ -73,7 +82,7 @@ const createDocument = (view = createView()) => ({
             color: 'blue',
             category: 'in_progress'
           }
-        ]
+        ])
       },
       [FIELD_POINTS]: {
         id: FIELD_POINTS,
@@ -129,12 +138,12 @@ const createEmptyDocument = () => ({
         name: 'Status',
         kind: 'status',
         defaultOptionId: 'todo',
-        options: [{
+        options: optionTable([{
           id: 'todo',
           name: 'Todo',
           color: 'gray',
           category: 'todo'
-        }]
+        }])
       },
       [FIELD_POINTS]: {
         id: FIELD_POINTS,
@@ -162,7 +171,7 @@ const createEmptyDocument = () => ({
 const toDelta = (input: {
   reset?: true
   changes?: Record<string, unknown>
-} = {}) => createDataviewMutationDelta({
+} = {}) => createMutationDelta(dataviewMutationModel, {
   ...(input.reset ? { reset: true } : {}),
   changes: input.changes ?? {}
 })
@@ -178,14 +187,11 @@ test('createDataviewFrame resolves plain active spec from document', () => {
     document: createDocument(),
     delta: toDelta({
       changes: {
-        'view.query': {
+        'view.sort': {
           ids: [VIEW_ID],
           paths: {
-            [VIEW_ID]: ['sort']
+            [VIEW_ID]: ['sort.rules']
           }
-        },
-        'view.calc': {
-          ids: [VIEW_ID]
         }
       }
     })
@@ -269,7 +275,12 @@ test('createDataviewActivePlan keeps layout-only change inside publish', () => {
     })),
     delta: toDelta({
       changes: {
-        'view.layout': [VIEW_ID]
+        'view.options': {
+          ids: [VIEW_ID],
+          paths: {
+            [VIEW_ID]: ['options.wrap']
+          }
+        }
       }
     })
   })

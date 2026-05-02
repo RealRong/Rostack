@@ -2,26 +2,19 @@ import assert from 'node:assert/strict'
 import { test } from 'vitest'
 import { entityTable } from '@shared/core'
 import { MutationEngine } from '@shared/mutation'
-import type { DataDoc } from '@dataview/core/types'
+import type {
+  DataDoc,
+  DocumentOperation,
+  Intent
+} from '@dataview/core/types'
 import {
-  compile
-} from '@dataview/core/mutation'
-import {
-  dataviewMutationRegistry,
-  type DataviewCompileReader,
+  compile,
+  dataviewMutationModel,
   type DataviewMutationPorts
 } from '@dataview/core/mutation'
 import {
   document as documentApi
 } from '@dataview/core/document'
-import {
-  createDocumentReader,
-  type DocumentReader
-} from '@dataview/core/document/reader'
-import type {
-  DocumentOperation,
-  Intent
-} from '@dataview/core/types'
 
 const createEmptyDocument = (): DataDoc => ({
   schemaVersion: 1,
@@ -43,39 +36,40 @@ const createMutation = () => new MutationEngine<
     }
   },
   DocumentOperation,
-  DocumentReader
+  ReturnType<typeof compile.createReader>
 >({
   document: createEmptyDocument(),
   normalize: documentApi.normalize,
-  createReader: createDocumentReader,
-  registry: dataviewMutationRegistry
+  model: dataviewMutationModel
 })
 
 const createExecuteMutation = () => new MutationEngine<
   DataDoc,
   {
-    'external.version.bump': {
-      intent: Extract<Intent, { type: 'external.version.bump' }>
-      output: void
+    'field.create': {
+      intent: Extract<Intent, { type: 'field.create' }>
+      output: {
+        id: string
+      }
     }
   },
   DocumentOperation,
-  DataviewCompileReader,
+  ReturnType<typeof compile.createReader>,
   void,
   string,
   DataviewMutationPorts
 >({
   document: createEmptyDocument(),
   normalize: documentApi.normalize,
+  model: dataviewMutationModel,
   createReader: compile.createReader,
   createProgram: compile.createProgram,
-  registry: dataviewMutationRegistry,
   compile: {
-    'external.version.bump': compile.handlers['external.version.bump']
+    'field.create': compile.handlers['field.create']
   }
 })
 
-test('MutationEngine applies program field.create with shared inverse', () => {
+test('MutationEngine applies program field.create with typed model inverse', () => {
   const mutation = createMutation()
   const result = mutation.apply({
     steps: [{
@@ -103,11 +97,14 @@ test('MutationEngine applies program field.create with shared inverse', () => {
   assert.ok(Boolean(result.commit.delta.changes['field.create']))
 })
 
-test('external.version.bump compiles to semantic delta without history', () => {
+test('field.create compiles through typed query reader and emits create delta', () => {
   const mutation = createExecuteMutation()
   const result = mutation.execute({
-    type: 'external.version.bump',
-    source: 'remote'
+    type: 'field.create',
+    input: {
+      name: 'Status',
+      kind: 'text'
+    }
   })
 
   assert.equal(result.ok, true)
@@ -115,6 +112,6 @@ test('external.version.bump compiles to semantic delta without history', () => {
     return
   }
 
-  assert.equal(result.commit.inverse.steps.length, 0)
-  assert.ok(Boolean(result.commit.delta.changes['external.version']))
+  assert.equal(result.commit.outputs.length, 1)
+  assert.ok(Boolean(result.commit.delta.changes['field.create']))
 })

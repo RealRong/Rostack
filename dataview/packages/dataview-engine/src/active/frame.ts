@@ -6,6 +6,14 @@ import type {
   ViewId
 } from '@dataview/core/types'
 import type {
+  DataviewMutationDelta,
+  DataviewQuery,
+  DataviewQueryContext
+} from '@dataview/core/mutation'
+import {
+  createDataviewQueryContext
+} from '@dataview/core/mutation'
+import type {
   QueryPlan
 } from '@dataview/engine/active/plan'
 import {
@@ -14,13 +22,6 @@ import {
 import type {
   NormalizedIndexDemand
 } from '@dataview/engine/active/index/contracts'
-import type {
-  DataviewMutationDelta
-} from '@dataview/engine/mutation/delta'
-import {
-  createDocumentReadContext,
-  type DocumentReader
-} from '@dataview/core/document/reader'
 import type {
   Revision
 } from '@shared/projection'
@@ -42,7 +43,9 @@ export interface DataviewActiveSpec {
 
 export interface DataviewFrame {
   revision: Revision
-  reader: DocumentReader
+  context: DataviewQueryContext
+  reader: DataviewQuery
+  query: DataviewQuery
   delta: DataviewMutationDelta
   active?: DataviewActiveSpec
 }
@@ -52,11 +55,13 @@ export const createDataviewFrame = (input: {
   document: DataDoc
   delta: DataviewMutationDelta
 }): DataviewFrame => {
-  const context = createDocumentReadContext(input.document)
+  const context = createDataviewQueryContext(input.document)
 
   return {
     revision: input.revision,
-    reader: context.reader,
+    context,
+    reader: context.query,
+    query: context.query,
     delta: input.delta,
     active: resolveDataviewActive(context, context.activeViewId)
   }

@@ -17,6 +17,9 @@ import {
   getKindSpec,
   type KindSpec
 } from '@dataview/core/field/kind/spec'
+import {
+  readFieldOptions
+} from '@dataview/core/field/option'
 
 export interface FieldValueBehavior {
   canEdit: boolean
@@ -208,10 +211,12 @@ const createBucketKeyResolver = (
 
   if (field.kind === 'status' && meta.mode === 'category') {
     const keysByOptionId = new Map(
-      field.options.map(option => [
+      readFieldOptions(field).flatMap(option => ('category' in option
+        ? [[
         option.id,
         option.category
-      ] as const)
+      ] as const]
+        : []))
     )
 
     return value => {

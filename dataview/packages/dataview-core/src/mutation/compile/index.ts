@@ -1,6 +1,3 @@
-import {
-  string
-} from '@shared/core'
 import type {
   MutationCompileHandlerTable
 } from '@shared/mutation'
@@ -16,11 +13,11 @@ import {
   type DataviewCompileContext
 } from './contracts'
 import type {
-  DataviewCompileReader
-} from './reader'
+  DataviewQuery
+} from '../query'
 import {
   createCompileReader
-} from './reader'
+} from './context'
 import { dataviewFieldIntentHandlers } from './field'
 import { dataviewRecordIntentHandlers } from './record'
 import { dataviewViewIntentHandlers } from './view'
@@ -37,41 +34,17 @@ type DataviewCompileTable = {
   }
 }
 
-const compileExternalBump = (
-  input: DataviewCompileContext<
-    Extract<Intent, { type: 'external.version.bump' }>,
-    void
-  >
-) => {
-  if (!string.isNonEmptyString(input.intent.source)) {
-    input.issue({
-      source: input.source,
-      code: 'external.invalidSource',
-      message: 'external.version.bump requires a non-empty source',
-      path: 'source',
-      severity: 'error'
-    })
-  }
-
-  input.program.signal({
-    changes: {
-      'external.version': true
-    }
-  })
-}
-
 export const dataviewIntentHandlers: MutationCompileHandlerTable<
   DataviewCompileTable,
   DataDoc,
   DataviewMutationPorts,
-  DataviewCompileReader,
+  DataviewQuery,
   void,
   ValidationCode
 > = {
   ...dataviewRecordIntentHandlers,
   ...dataviewFieldIntentHandlers,
-  ...dataviewViewIntentHandlers,
-  'external.version.bump': compileExternalBump
+  ...dataviewViewIntentHandlers
 }
 
 export const compile = {

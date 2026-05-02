@@ -8,7 +8,7 @@ import type {
 } from '@dataview/core/types'
 import {
   compile,
-  dataviewMutationModel
+  dataviewMutationSchema
 } from '@dataview/core/mutation'
 
 const createEmptyDocument = (): DataDoc => ({
@@ -22,12 +22,10 @@ const createEmptyDocument = (): DataDoc => ({
 
 test('MutationEngine.compile lowers field.create into executable operations', () => {
   const mutation = new MutationEngine({
+    schema: dataviewMutationSchema,
     document: createEmptyDocument(),
     normalize: document => document,
-    model: dataviewMutationModel,
-    createReader: compile.createReader,
-    createWriter: compile.createWriter,
-    compile: compile.handlers,
+    compile,
   })
   const result = mutation.execute([{
     type: 'field.create',

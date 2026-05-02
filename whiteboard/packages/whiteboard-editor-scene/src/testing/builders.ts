@@ -10,7 +10,7 @@ import {
   type WhiteboardMutationDelta
 } from '@whiteboard/engine/mutation'
 import {
-  whiteboardMutationModel
+  whiteboardMutationSchema
 } from '@whiteboard/core/mutation'
 import type {
   EdgeId,
@@ -19,7 +19,7 @@ import type {
 } from '@whiteboard/core/types'
 import type { EditorStateMutationDelta } from '@whiteboard/editor/state/runtime'
 import { createMutationDelta as createEditorStateDelta } from '@shared/mutation'
-import { editorStateMutationModel } from '@whiteboard/editor/state/model'
+import { editorStateMutationSchema } from '@whiteboard/editor/state/model'
 import { createEmptyRuntimeInputDelta } from './input'
 
 const EMPTY_MUTATION_CHANGES = Object.freeze(
@@ -35,7 +35,7 @@ export const createEditorRuntimeDelta = (
   input: EditorRuntimeDeltaFlags = {}
 ): EditorStateMutationDelta => (
   input.graph || input.ui
-    ? createEditorStateDelta(editorStateMutationModel, {
+    ? createEditorStateDelta(editorStateMutationSchema, {
         reset: true
       })
     : createEmptyRuntimeInputDelta()
@@ -43,7 +43,7 @@ export const createEditorRuntimeDelta = (
 
 export const createMutationDelta = (input: {
   reset?: boolean
-} = {}): WhiteboardMutationDelta => createTypedMutationDelta(whiteboardMutationModel, {
+} = {}): WhiteboardMutationDelta => createTypedMutationDelta(whiteboardMutationSchema, {
   ...(input.reset
     ? {
         reset: true

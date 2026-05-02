@@ -9,8 +9,9 @@ import {
 } from '@dataview/core/mutation'
 import {
   createDataviewQueryContext,
-  dataviewMutationModel,
+  dataviewMutationSchema,
   type DataviewMutationDelta,
+  type DataviewMutationReader,
   type DataviewMutationWriter
 } from '@dataview/core/mutation'
 import type {
@@ -18,7 +19,8 @@ import type {
 } from '@dataview/core/types'
 import {
   createMutationDelta,
-  MutationEngine
+  MutationEngine,
+  type MutationCompileDefinition
 } from '@shared/mutation'
 import type {
   MutationOptions
@@ -77,17 +79,25 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
     DataDoc,
     DataviewIntentTable,
     DocumentOperation,
-    ReturnType<typeof compile.createReader>,
+    DataviewMutationReader,
     void,
     DataviewErrorCode,
-    DataviewMutationWriter
+    DataviewMutationWriter,
+    DataviewMutationDelta,
+    Pick<import('@dataview/core/mutation/compile/contracts').DataviewCompileContext, 'query' | 'expect'>
   >({
+    schema: dataviewMutationSchema,
     document: options.document,
     normalize: documentApi.normalize,
-    model: dataviewMutationModel,
-    createReader: compile.createReader,
-    createWriter: compile.createWriter,
-    compile: compile.handlers,
+    compile: compile as MutationCompileDefinition<
+      DataviewIntentTable,
+      DataDoc,
+      DataviewMutationWriter,
+      DataviewMutationReader,
+      void,
+      DataviewErrorCode,
+      Pick<import('@dataview/core/mutation/compile/contracts').DataviewCompileContext, 'query' | 'expect'>
+    >,
     history: historyConfig.enabled
       ? {
           capacity: historyConfig.capacity,
@@ -104,7 +114,7 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
 
   projection.update({
     document: mutationEngine.current().document,
-    delta: createMutationDelta(dataviewMutationModel, {
+    delta: createMutationDelta(dataviewMutationSchema, {
       reset: true,
       changes: EMPTY_MUTATION_CHANGES
     })
@@ -134,7 +144,7 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
     const projectionResult = projection.update({
       document: nextCommit.document,
       delta: createMutationDelta(
-        dataviewMutationModel,
+        dataviewMutationSchema,
         nextCommit.delta
       ) as DataviewMutationDelta
     })

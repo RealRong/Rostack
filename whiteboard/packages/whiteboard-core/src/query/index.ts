@@ -8,7 +8,7 @@ import {
   toMindmapTree,
 } from '@whiteboard/core/mindmap/tree'
 import {
-  whiteboardMutationModel,
+  whiteboardMutationSchema,
 } from '@whiteboard/core/mutation/model'
 import type {
   CanvasItemRef,
@@ -20,7 +20,7 @@ import type {
   NodeId,
 } from '@whiteboard/core/types'
 
-export type WhiteboardReader = MutationReader<typeof whiteboardMutationModel>
+export type WhiteboardReader = MutationReader<typeof whiteboardMutationSchema>
 
 export interface WhiteboardQuery {
   edge: {

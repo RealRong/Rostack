@@ -33,12 +33,12 @@ import {
   entityTable
 } from '@shared/core'
 import {
-  defineMutationModel,
-  keyed,
-  ordered,
-  record,
+  defineMutationSchema,
+  dictionary,
+  sequence,
+  object,
   singleton,
-  tableFamily,
+  collection,
   value,
   type MutationDeltaOf,
   type MutationReader,
@@ -196,7 +196,7 @@ const writeViewFields = (
   }
 }
 
-export const dataviewMutationModel = defineMutationModel<DataDoc>()({
+export const dataviewMutationSchema = defineMutationSchema<DataDoc>()({
   document: singleton<DataDoc, DataDoc>()({
     access: {
       read: (document) => document,
@@ -205,15 +205,15 @@ export const dataviewMutationModel = defineMutationModel<DataDoc>()({
     members: {
       schemaVersion: value<DataDoc['schemaVersion']>(),
       activeViewId: value<DataDoc['activeViewId']>(),
-      meta: record<NonNullable<DataDoc['meta']>>()
+      meta: object<NonNullable<DataDoc['meta']>>()
     },
-    changes: ({ value, record }) => ({
+    changes: ({ value, object }) => ({
       schemaVersion: [value('schemaVersion')],
       activeViewId: [value('activeViewId')],
-      meta: [record('meta').deep()]
+      meta: [object('meta').deep()]
     })
   }),
-  record: tableFamily<DataDoc, RecordId, DataRecord>()({
+  record: collection<DataDoc, RecordId, DataRecord>()({
     access: {
       read: (document) => document.records.byId,
       write: (document, next) => writeTableById<'records', RecordId>(
@@ -225,17 +225,17 @@ export const dataviewMutationModel = defineMutationModel<DataDoc>()({
     members: {
       title: value<DataRecord['title']>(),
       type: value<DataRecord['type']>(),
-      values: keyed<CustomFieldId, unknown>({ at: 'values' }),
-      meta: record<NonNullable<DataRecord['meta']>>()
+      values: dictionary<CustomFieldId, unknown>({ at: 'values' }),
+      meta: object<NonNullable<DataRecord['meta']>>()
     },
-    changes: ({ value, keyed, record }) => ({
+    changes: ({ value, dictionary, object }) => ({
       title: [value('title')],
       type: [value('type')],
-      values: [keyed('values').deep()],
-      meta: [record('meta').deep()]
+      values: [dictionary('values').deep()],
+      meta: [object('meta').deep()]
     })
   }),
-  field: tableFamily<DataDoc, CustomFieldId, CustomField>()({
+  field: collection<DataDoc, CustomFieldId, CustomField>()({
     access: {
       read: (document) => document.fields.byId,
       write: (document, next) => writeTableById<'fields', CustomFieldId>(
@@ -260,9 +260,9 @@ export const dataviewMutationModel = defineMutationModel<DataDoc>()({
       defaultTimezone: value<Extract<CustomField, { kind: 'date' }>['defaultTimezone']>(),
       multiple: value<Extract<CustomField, { kind: 'asset' }>['multiple']>(),
       accept: value<Extract<CustomField, { kind: 'asset' }>['accept']>(),
-      meta: record<NonNullable<CustomField['meta']>>()
+      meta: object<NonNullable<CustomField['meta']>>()
     },
-    changes: ({ value, record }) => ({
+    changes: ({ value, object }) => ({
       name: [value('name')],
       kind: [value('kind')],
       system: [value('system')],
@@ -278,10 +278,10 @@ export const dataviewMutationModel = defineMutationModel<DataDoc>()({
       defaultTimezone: [value('defaultTimezone')],
       multiple: [value('multiple')],
       accept: [value('accept')],
-      meta: [record('meta').deep()]
+      meta: [object('meta').deep()]
     }),
-    ordered: {
-      options: ordered<FieldOption>()({
+    sequence: {
+      options: sequence<FieldOption>()({
         read: readFieldOptions,
         write: writeFieldOptions,
         identify: (option) => option.id,
@@ -289,7 +289,7 @@ export const dataviewMutationModel = defineMutationModel<DataDoc>()({
       })
     }
   }),
-  view: tableFamily<DataDoc, ViewId, View>()({
+  view: collection<DataDoc, ViewId, View>()({
     access: {
       read: (document) => document.views.byId,
       write: (document, next) => writeTableById<'views', ViewId>(
@@ -308,7 +308,7 @@ export const dataviewMutationModel = defineMutationModel<DataDoc>()({
       calc: value<View['calc']>(),
       options: value<View['options']>()
     },
-    changes: ({ value, record }) => ({
+    changes: ({ value, object }) => ({
       name: [value('name')],
       type: [value('type')],
       search: [value('search')],
@@ -318,14 +318,14 @@ export const dataviewMutationModel = defineMutationModel<DataDoc>()({
       calc: [value('calc')],
       options: [value('options')]
     }),
-    ordered: {
-      fields: ordered<FieldId>()({
+    sequence: {
+      fields: sequence<FieldId>()({
         read: readViewFields,
         write: writeViewFields,
         identify: (fieldId) => fieldId,
         emits: 'fields'
       }),
-      order: ordered<RecordId>()({
+      order: sequence<RecordId>()({
         read: readViewOrder,
         write: writeViewOrder,
         identify: (recordId) => recordId,
@@ -335,10 +335,10 @@ export const dataviewMutationModel = defineMutationModel<DataDoc>()({
   })
 })
 
-export type DataviewMutationModel = typeof dataviewMutationModel
-export type DataviewMutationWriter<Tag extends string = string> = MutationWriter<DataviewMutationModel, Tag>
-export type DataviewMutationReader = MutationReader<DataviewMutationModel>
-export type DataviewMutationDelta = MutationDeltaOf<DataviewMutationModel>
+export type DataviewMutationSchema = typeof dataviewMutationSchema
+export type DataviewMutationWriter = MutationWriter<DataviewMutationSchema>
+export type DataviewMutationReader = MutationReader<DataviewMutationSchema>
+export type DataviewMutationDelta = MutationDeltaOf<DataviewMutationSchema>
 
 const TITLE_FIELD: Extract<Field, { kind: 'title' }> = {
   id: TITLE_FIELD_ID,

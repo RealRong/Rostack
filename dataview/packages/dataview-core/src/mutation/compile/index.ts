@@ -1,24 +1,19 @@
 import type {
-  MutationCompileHandlerTable
+  MutationCompileDefinition
 } from '@shared/mutation'
 import type {
   DataDoc,
   Intent
 } from '../../types'
 import {
-  createDataviewMutationWriter
-} from '../writer'
-import {
   type DataviewCompileContext
 } from './contracts'
 import type {
-  DataviewQuery
-} from '../query'
-import type {
+  DataviewMutationReader,
   DataviewMutationWriter
 } from '../model'
 import {
-  createCompileReader
+  createCompileContext
 } from './context'
 import { dataviewFieldIntentHandlers } from './field'
 import { dataviewRecordIntentHandlers } from './record'
@@ -36,23 +31,23 @@ type DataviewCompileTable = {
   }
 }
 
-export const dataviewIntentHandlers: MutationCompileHandlerTable<
+type DataviewCompileExtras = Pick<DataviewCompileContext, 'query' | 'expect'>
+
+export const compile: MutationCompileDefinition<
   DataviewCompileTable,
   DataDoc,
   DataviewMutationWriter,
-  DataviewQuery,
+  DataviewMutationReader,
   void,
-  ValidationCode
+  string,
+  DataviewCompileExtras
 > = {
-  ...dataviewRecordIntentHandlers,
-  ...dataviewFieldIntentHandlers,
-  ...dataviewViewIntentHandlers
-}
-
-export const compile = {
-  createReader: createCompileReader,
-  createWriter: createDataviewMutationWriter,
-  handlers: dataviewIntentHandlers
+  createContext: (input) => createCompileContext(input.reader, input),
+  handlers: {
+    ...dataviewRecordIntentHandlers,
+    ...dataviewFieldIntentHandlers,
+    ...dataviewViewIntentHandlers
+  }
 } as const
 
 export type {

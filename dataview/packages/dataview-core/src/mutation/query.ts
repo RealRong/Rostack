@@ -23,7 +23,7 @@ import {
   normalizeRecordOrderIds
 } from '@dataview/core/view/order'
 import {
-  dataviewMutationModel,
+  dataviewMutationSchema,
   dataviewTitleField,
   type DataviewMutationDelta,
   type DataviewMutationReader,
@@ -137,7 +137,7 @@ export interface DataviewDeltaQuery {
 }
 
 export interface DataviewQuery {
-  model: typeof dataviewMutationModel
+  model: typeof dataviewMutationSchema
   reader: DataviewMutationReader
   document(): DataDoc
   records: {
@@ -314,7 +314,7 @@ export const createDataviewQuery = (
   }
 
   return {
-    model: dataviewMutationModel,
+    model: dataviewMutationSchema,
     reader,
     document: readDocument,
     records: {
@@ -367,7 +367,7 @@ export const createDataviewQueryContext = (
   document: DataDoc
 ): DataviewQueryContext => {
   const reader = createMutationReader(
-    dataviewMutationModel,
+    dataviewMutationSchema,
     () => document
   )
   const query = createDataviewQuery(reader)

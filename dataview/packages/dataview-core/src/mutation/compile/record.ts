@@ -33,7 +33,7 @@ type DataviewRecordIntentHandlers = {
 
 const resolveDefaultRecordType = (
   input: DataviewCompileContext
-) => input.reader.records.list().find(
+) => input.query.records.list().find(
   (record) => typeof record.type === 'string' && record.type.length
 )?.type
 
@@ -45,7 +45,7 @@ const resolveRecordCreateValues = (
     ...(explicitValues ?? {})
   }
 
-  input.reader.fields.list().forEach((field) => {
+  input.query.fields.list().forEach((field) => {
     if (!fieldApi.kind.isCustom(field)) {
       return
     }
@@ -83,7 +83,7 @@ const requireRecordIds = (
 
   const resolved: RecordId[] = []
   nextRecordIds.forEach((recordId, index) => {
-    if (!input.reader.records.has(recordId)) {
+    if (!input.query.records.has(recordId)) {
       input.issue({
         source: input.source,
         code: 'record.notFound',
@@ -118,7 +118,7 @@ const validateWritableField = (
     return false
   }
 
-  if (fieldId !== TITLE_FIELD_ID && !input.reader.fields.has(fieldId)) {
+  if (fieldId !== TITLE_FIELD_ID && !input.query.fields.has(fieldId)) {
     input.issue({
       source: input.source,
       code: 'field.notFound',
@@ -147,7 +147,7 @@ const lowerRecordCreate = (
       severity: 'error'
     })
   }
-  if (explicitRecordId && input.reader.records.has(explicitRecordId)) {
+  if (explicitRecordId && input.query.records.has(explicitRecordId)) {
     input.issue({
       source: input.source,
       code: 'record.duplicateId',
@@ -156,7 +156,7 @@ const lowerRecordCreate = (
       severity: 'error'
     })
   }
-  if ((intent.input.id !== undefined && !explicitRecordId) || (explicitRecordId && input.reader.records.has(explicitRecordId))) {
+  if ((intent.input.id !== undefined && !explicitRecordId) || (explicitRecordId && input.query.records.has(explicitRecordId))) {
     return
   }
 
@@ -184,7 +184,7 @@ const lowerRecordRemove = (
   }
 
   const removedRecordIds = new Set(recordIds)
-  input.reader.views.list().forEach((view) => {
+  input.query.views.list().forEach((view) => {
     const currentOrder = readViewOrderIds(view)
     const nextOrders = currentOrder.filter((recordId) => !removedRecordIds.has(recordId))
     if (nextOrders.length === currentOrder.length) {

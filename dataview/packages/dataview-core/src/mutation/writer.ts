@@ -5,13 +5,13 @@ import {
   createMutationWriter,
 } from '@shared/mutation'
 import {
-  dataviewMutationModel,
+  dataviewMutationSchema,
   type DataviewMutationWriter,
 } from './model'
 
 export const createDataviewMutationWriter = (
   writer: MutationProgramWriter<string>
 ): DataviewMutationWriter => createMutationWriter(
-  dataviewMutationModel,
+  dataviewMutationSchema,
   writer
 )

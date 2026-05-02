@@ -1,6 +1,6 @@
 import { createMutationDelta } from '@shared/mutation'
 import type { HistoryPort } from '@shared/mutation'
-import { whiteboardMutationModel } from '@whiteboard/core/mutation'
+import { whiteboardMutationSchema } from '@whiteboard/core/mutation'
 import type { Viewport } from '@whiteboard/core/types'
 import type { WhiteboardLayoutService } from '@whiteboard/core/layout'
 import { createEditorActionsApi } from '@whiteboard/editor/actions'
@@ -29,7 +29,7 @@ import {
   createEditorViewport
 } from '@whiteboard/editor/state/viewport'
 import {
-  editorStateMutationModel
+  editorStateMutationSchema
 } from '@whiteboard/editor/state/model'
 import { attachEditorSync } from '@whiteboard/editor/editor/sync'
 import { createEditorTaskRuntime } from '@whiteboard/editor/tasks/runtime'
@@ -49,14 +49,14 @@ import type { Engine } from '@whiteboard/engine'
 import type { WhiteboardMutationDelta } from '@whiteboard/engine/mutation'
 
 const BOOTSTRAP_DOCUMENT_DELTA: WhiteboardMutationDelta = createMutationDelta(
-  whiteboardMutationModel,
+  whiteboardMutationSchema,
   {
     reset: true
   }
 )
 
 const BOOTSTRAP_EDITOR_DELTA = createMutationDelta(
-  editorStateMutationModel,
+  editorStateMutationSchema,
   {
     reset: true
   }

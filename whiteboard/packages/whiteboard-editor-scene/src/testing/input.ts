@@ -12,11 +12,11 @@ import type {
   EditorStateMutationDelta
 } from '@whiteboard/editor/state/runtime'
 import {
-  editorStateMutationModel
+  editorStateMutationSchema
 } from '@whiteboard/editor/state/model'
 import { createEmptyDocumentSnapshot } from '../projection/state'
 import {
-  whiteboardMutationModel
+  whiteboardMutationSchema
 } from '@whiteboard/core/mutation'
 
 const EMPTY_MUTATION_CHANGES = Object.freeze(
@@ -52,7 +52,7 @@ export const toSceneUpdateInput = (
 ): SceneUpdateInput => input
 
 export const createEmptyRuntimeInputDelta = (): EditorStateMutationDelta => createMutationDelta(
-  editorStateMutationModel,
+  editorStateMutationSchema,
   {}
 )
 
@@ -60,7 +60,7 @@ export const createEmptyInput = (): SceneUpdateInput => ({
   document: {
     rev: 0,
     snapshot: createEmptyDocumentSnapshot().document,
-    delta: createMutationDelta(whiteboardMutationModel, {
+    delta: createMutationDelta(whiteboardMutationSchema, {
       changes: EMPTY_MUTATION_CHANGES
     })
   },

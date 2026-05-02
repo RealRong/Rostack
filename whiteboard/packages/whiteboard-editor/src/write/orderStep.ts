@@ -1,5 +1,5 @@
 import { createMutationReader } from '@shared/mutation'
-import { whiteboardMutationModel } from '@whiteboard/core/mutation'
+import { whiteboardMutationSchema } from '@whiteboard/core/mutation'
 import { createWhiteboardQuery } from '@whiteboard/core/query'
 import type {
   CanvasItemRef,
@@ -89,7 +89,7 @@ export const planCanvasOrderStep = (input: {
   refs: readonly CanvasItemRef[]
   direction: 'forward' | 'backward'
 }): readonly Extract<Intent, { type: 'document.order.move' }>[] => {
-  const reader = createMutationReader(whiteboardMutationModel, () => input.document)
+  const reader = createMutationReader(whiteboardMutationSchema, () => input.document)
   const current = reader.document.order().items()
   const target = reorderCanvasRefs(current, input.refs, input.direction)
   return createCanvasOrderMoveIntents(current, target)
@@ -100,7 +100,7 @@ export const planGroupOrderStep = (input: {
   ids: readonly GroupId[]
   direction: 'forward' | 'backward'
 }): readonly Extract<Intent, { type: 'document.order.move' }>[] => {
-  const reader = createMutationReader(whiteboardMutationModel, () => input.document)
+  const reader = createMutationReader(whiteboardMutationSchema, () => input.document)
   const query = createWhiteboardQuery(reader)
   const refs = input.ids.flatMap((groupId) => query.group.refsInOrder(groupId))
   return planCanvasOrderStep({

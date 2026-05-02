@@ -9,7 +9,7 @@ import type {
 } from '@dataview/core/types'
 import {
   compile,
-  dataviewMutationModel,
+  dataviewMutationSchema,
   type DataviewMutationWriter
 } from '@dataview/core/mutation'
 import {
@@ -36,11 +36,14 @@ const createMutation = () => new MutationEngine<
     }
   },
   DocumentOperation,
-  ReturnType<typeof compile.createReader>
+  import('@dataview/core/mutation').DataviewMutationReader
 >({
+  schema: dataviewMutationSchema,
   document: createEmptyDocument(),
   normalize: documentApi.normalize,
-  model: dataviewMutationModel
+  compile: {
+    handlers: {}
+  }
 })
 
 const createExecuteMutation = () => new MutationEngine<
@@ -54,18 +57,19 @@ const createExecuteMutation = () => new MutationEngine<
     }
   },
   DocumentOperation,
-  ReturnType<typeof compile.createReader>,
+  import('@dataview/core/mutation').DataviewMutationReader,
   void,
   string,
   DataviewMutationWriter
 >({
+  schema: dataviewMutationSchema,
   document: createEmptyDocument(),
   normalize: documentApi.normalize,
-  model: dataviewMutationModel,
-  createReader: compile.createReader,
-  createWriter: compile.createWriter,
   compile: {
-    'field.create': compile.handlers['field.create']
+    createContext: compile.createContext,
+    handlers: {
+      'field.create': compile.handlers['field.create']
+    }
   }
 })
 

@@ -8,11 +8,9 @@ import type {
   MutationProgram,
   MutationProgramStep,
   MutationEntityRef,
-} from './program'
-import type {
   MutationOrderedTarget,
   MutationTreeTarget,
-} from '../registry'
+} from './program'
 
 export interface MutationProgramWriter<
   Tag extends string = string
@@ -30,18 +28,6 @@ export interface MutationProgramWriter<
     patch(
       entity: MutationEntityRef,
       writes: Readonly<Record<string, unknown>>,
-      tags?: readonly Tag[],
-      metadata?: {
-        delta?: MutationDeltaInput
-        footprint?: readonly MutationFootprint[]
-      }
-    ): void
-    patchMany(
-      entityType: string,
-      updates: readonly {
-        id: string
-        writes: Readonly<Record<string, unknown>>
-      }[],
       tags?: readonly Tag[],
       metadata?: {
         delta?: MutationDeltaInput
@@ -162,13 +148,6 @@ export interface MutationProgramWriter<
       }
     ): void
   }
-  signal(
-    delta: MutationDeltaInput,
-    tags?: readonly Tag[],
-    metadata?: {
-      footprint?: readonly MutationFootprint[]
-    }
-  ): void
   build(): MutationProgram<Tag>
 }
 
@@ -194,16 +173,6 @@ export const createMutationProgramWriter = <
           type: 'entity.patch',
           entity,
           writes,
-          ...(tags === undefined ? {} : { tags }),
-          ...(metadata?.delta === undefined ? {} : { delta: metadata.delta }),
-          ...(metadata?.footprint === undefined ? {} : { footprint: metadata.footprint })
-        })
-      },
-      patchMany: (entityType, updates, tags, metadata) => {
-        steps.push({
-          type: 'entity.patchMany',
-          entityType,
-          updates,
           ...(tags === undefined ? {} : { tags }),
           ...(metadata?.delta === undefined ? {} : { delta: metadata.delta }),
           ...(metadata?.footprint === undefined ? {} : { footprint: metadata.footprint })
@@ -333,14 +302,6 @@ export const createMutationProgramWriter = <
           ...(metadata?.footprint === undefined ? {} : { footprint: metadata.footprint })
         })
       }
-    },
-    signal: (delta, tags, metadata) => {
-      steps.push({
-        type: 'signal',
-        delta,
-        ...(tags === undefined ? {} : { tags }),
-        ...(metadata?.footprint === undefined ? {} : { footprint: metadata.footprint })
-      })
     },
     build: () => ({
       steps: [...steps]

@@ -1,13 +1,12 @@
 import { describe, expect, test } from 'vitest'
 import {
-  compileMutationModel,
   createMutationDelta,
   createMutationProgramWriter,
   createMutationReader,
   createMutationWriter,
-  defineMutationModel,
-  group,
-  mapFamily,
+  defineMutationSchema,
+  namespace,
+  collection,
   singleton,
   value
 } from '@shared/mutation'
@@ -26,9 +25,9 @@ type GroupedDoc = {
   }
 }
 
-const groupedMutationModel = defineMutationModel<GroupedDoc>()({
-  preview: group({
-    node: mapFamily<GroupedDoc, NodeId, {
+const groupedMutationSchema = defineMutationSchema<GroupedDoc>()({
+  preview: namespace({
+    node: collection<GroupedDoc, NodeId, {
       id: NodeId
       value: number
     }>()({
@@ -94,20 +93,11 @@ const groupedMutationModel = defineMutationModel<GroupedDoc>()({
   })
 })
 
-describe('group mutation model', () => {
-  test('compiles grouped families to flat registry keys', () => {
-    const compiled = compileMutationModel(groupedMutationModel)
-
-    expect(Object.keys(compiled.registry.entity ?? {})).toEqual([
-      'preview.node',
-      'preview.selection'
-    ])
-  })
-
+describe('namespace mutation schema', () => {
   test('creates nested writer and reader APIs from groups', () => {
     const program = createMutationProgramWriter()
-    const writer = createMutationWriter(groupedMutationModel, program)
-    const reader = createMutationReader(groupedMutationModel, () => ({
+    const writer = createMutationWriter(groupedMutationSchema, program)
+    const reader = createMutationReader(groupedMutationSchema, () => ({
       preview: {
         node: {
           node_1: {
@@ -165,7 +155,7 @@ describe('group mutation model', () => {
   })
 
   test('creates nested delta APIs from groups', () => {
-    const delta = createMutationDelta(groupedMutationModel, {
+    const delta = createMutationDelta(groupedMutationSchema, {
       reset: true
     })
 

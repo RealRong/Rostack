@@ -9,6 +9,8 @@ import {
   EMPTY_DELTA,
   EMPTY_ISSUES,
   EMPTY_OUTPUTS,
+  type CompiledOrderedSpec,
+  type CompiledTreeSpec,
   type CompiledEntitySpec,
   type MutationApplyResult,
 } from '../contracts'
@@ -38,9 +40,6 @@ import {
 import {
   applyStructuralEffectResult,
 } from '../structural'
-import type {
-  MutationRegistry,
-} from '../registry'
 import {
   draft,
 } from '@shared/draft'
@@ -105,7 +104,6 @@ const isEntityEffect = (
 ): effect is MutationEntityProgramStep => (
   effect.type === 'entity.create'
   || effect.type === 'entity.patch'
-  || effect.type === 'entity.patchMany'
   || effect.type === 'entity.delete'
 )
 
@@ -612,51 +610,6 @@ const applyEntityEffect = <
   effect: MutationEntityProgramStep
   entities: ReadonlyMap<string, CompiledEntitySpec>
 }): AppliedMutationProgram<Doc> => {
-  if (input.effect.type === 'entity.patchMany') {
-    let current = input.document
-    let delta = mergeEffectDelta(EMPTY_DELTA, input.effect)
-    const inverseSteps: MutationProgramStep[] = []
-    const footprint: MutationFootprint[] = []
-    let historyMode: 'track' | 'neutral' = 'neutral'
-
-    for (let index = 0; index < input.effect.updates.length; index += 1) {
-      const update = input.effect.updates[index]!
-      const applied = applyEntityEffect<Doc>({
-        document: current,
-        effect: {
-          type: 'entity.patch',
-          entity: {
-            kind: 'entity',
-            type: input.effect.entityType,
-            id: update.id
-          },
-          writes: update.writes
-        },
-        entities: input.entities
-      })
-      current = applied.document
-      delta = mergeMutationDeltas(delta, applied.delta)
-      inverseSteps.unshift(...applied.inverse.steps)
-      footprint.push(...applied.footprint)
-      if (applied.historyMode === 'track') {
-        historyMode = 'track'
-      }
-    }
-
-    return {
-      document: current,
-      inverse: createMutationProgram(inverseSteps),
-      delta,
-      structural: EMPTY_OUTPUTS as readonly MutationStructuralFact[],
-      footprint: dedupeFootprints([
-        ...footprint,
-        ...(input.effect.footprint ?? [])
-      ]),
-      issues: EMPTY_ISSUES,
-      historyMode
-    }
-  }
-
   const spec = input.entities.get(input.effect.entity.type)
   if (!spec) {
     throw new Error(
@@ -697,7 +650,8 @@ export const applyMutationProgram = <
   document: Doc
   program: MutationProgram<Tag>
   entities: ReadonlyMap<string, CompiledEntitySpec>
-  registry?: MutationRegistry<Doc>
+  ordered: ReadonlyMap<string, CompiledOrderedSpec<Doc>>
+  tree: ReadonlyMap<string, CompiledTreeSpec<Doc>>
 }): MutationApplyResult<Doc, Op, Code> => {
   let currentDocument = input.document
   let delta = EMPTY_DELTA
@@ -720,18 +674,9 @@ export const applyMutationProgram = <
           ? applyStructuralEffectResult<Doc>({
               document: currentDocument,
               effect,
-              registry: input.registry
+              ordered: input.ordered,
+              tree: input.tree
             })
-          : effect.type === 'signal'
-            ? {
-                document: currentDocument,
-                inverse: createMutationProgram(),
-                delta: EMPTY_DELTA,
-                structural: EMPTY_OUTPUTS as readonly MutationStructuralFact[],
-                footprint: [],
-                issues: EMPTY_ISSUES,
-                historyMode: 'neutral' as const
-              }
           : undefined
 
       if (!applied) {

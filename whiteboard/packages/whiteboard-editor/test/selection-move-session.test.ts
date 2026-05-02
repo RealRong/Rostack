@@ -4,6 +4,21 @@ import { createMoveInteraction } from '../src/input/features/selection/move'
 describe('createMoveInteraction', () => {
   it('commits selection move through a single canvas write', () => {
     const moveSelection = vi.fn(() => ({ ok: true }))
+    const previewWriter = {
+      node: {
+        create: vi.fn(),
+        patch: vi.fn(),
+        delete: vi.fn()
+      },
+      edge: {
+        create: vi.fn(),
+        patch: vi.fn(),
+        delete: vi.fn()
+      },
+      selection: {
+        patch: vi.fn()
+      }
+    }
 
     const editor = {
       document: {
@@ -74,6 +89,41 @@ describe('createMoveInteraction', () => {
               is: () => false
             }
           }
+        }
+      },
+      state: {
+        write: (
+          apply: (input: {
+            writer: {
+              preview: typeof previewWriter
+            }
+            snapshot: {
+              preview: {
+                node: Record<string, never>
+                edge: Record<string, never>
+                selection: {
+                  marquee: undefined
+                  guides: readonly []
+                }
+              }
+            }
+          }) => void
+        ) => {
+          apply({
+            writer: {
+              preview: previewWriter
+            },
+            snapshot: {
+              preview: {
+                node: {},
+                edge: {},
+                selection: {
+                  marquee: undefined,
+                  guides: []
+                }
+              }
+            }
+          })
         }
       },
       runtime: {

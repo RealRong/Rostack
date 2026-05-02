@@ -6,7 +6,7 @@ import {
   type WhiteboardReader,
 } from '@whiteboard/core/query'
 import {
-  whiteboardMutationModel,
+  whiteboardMutationSchema,
 } from '@whiteboard/core/mutation/model'
 import type {
   CanvasItemRef,
@@ -563,7 +563,7 @@ export const validateLockOperations = ({
     return undefined
   }
 
-  const reader = createMutationReader(whiteboardMutationModel, () => document)
+  const reader = createMutationReader(whiteboardMutationSchema, () => document)
   const query = createWhiteboardQuery(reader)
   const nodeLocked = new Map<NodeId, boolean>(
     Object.values(document.nodes).map((node) => [node.id, Boolean(node.locked)] as const)

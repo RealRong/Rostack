@@ -2,7 +2,7 @@ import { createMutationReader } from '@shared/mutation'
 import { document as documentApi } from '@whiteboard/core/document'
 import { edge as edgeApi } from '@whiteboard/core/edge'
 import { mindmap as mindmapApi } from '@whiteboard/core/mindmap'
-import { whiteboardMutationModel } from '@whiteboard/core/mutation'
+import { whiteboardMutationSchema } from '@whiteboard/core/mutation'
 import { node as nodeApi } from '@whiteboard/core/node'
 import {
   createWhiteboardQuery,
@@ -163,7 +163,7 @@ export const createProjectionRead = (runtime: {
     state: runtime.spatial
   })
   const reader = createMutationReader(
-    whiteboardMutationModel,
+    whiteboardMutationSchema,
     () => runtime.state().document.snapshot
   )
   const query = createWhiteboardQuery(reader)

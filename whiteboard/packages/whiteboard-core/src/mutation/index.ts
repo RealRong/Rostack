@@ -3,7 +3,7 @@ export {
   whiteboardCompileHandlers
 } from './compile'
 export {
-  whiteboardMutationModel
+  whiteboardMutationSchema
 } from './model'
 export {
   validateWhiteboardOperationBatch

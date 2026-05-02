@@ -3,13 +3,13 @@ import { createMutationDelta } from '@shared/mutation'
 import { mergeMutationDeltas } from '@shared/mutation/engine'
 import {
   isCheckpointProgram,
-  whiteboardMutationModel
+  whiteboardMutationSchema
 } from '@whiteboard/core/mutation'
 import type { MutationCommitRecord, MutationFootprint } from '@shared/mutation'
 import type { WhiteboardMutationDelta } from '@whiteboard/engine/mutation'
 import type { Engine } from '@whiteboard/engine'
 import type { EditorSceneRuntime } from '@whiteboard/editor-scene'
-import { editorStateMutationModel } from '@whiteboard/editor/state/model'
+import { editorStateMutationSchema } from '@whiteboard/editor/state/model'
 import {
   EMPTY_HOVER_STATE,
   isEditorHoverStateEqual
@@ -18,10 +18,10 @@ import type { EditorStateRuntime, EditorStateMutationDelta } from '@whiteboard/e
 import type { DocumentFrame } from '@whiteboard/editor-scene'
 
 const EMPTY_DOCUMENT_DELTA = createMutationDelta(
-  whiteboardMutationModel,
+  whiteboardMutationSchema,
   {}
 )
-const EMPTY_EDITOR_DELTA = createMutationDelta(editorStateMutationModel, {})
+const EMPTY_EDITOR_DELTA = createMutationDelta(editorStateMutationSchema, {})
 
 const resetEditorState = (
   state: EditorStateRuntime

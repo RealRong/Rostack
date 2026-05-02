@@ -9,9 +9,6 @@ import type {
   MutationProgram
 } from './program/program'
 import type {
-  MutationRegistry
-} from './registry'
-import type {
   ApplyCommit,
   CommitRecord,
   CommitStream,
@@ -30,7 +27,7 @@ import type {
   Origin,
 } from '../write'
 import type {
-  MutationModelDefinition,
+  MutationSchemaDefinition,
 } from '../model'
 export type {
   MutationChange,
@@ -76,11 +73,6 @@ export interface MutationCompileReaderTools<
     issue: MutationCompileIssue<Code>
   }
 }
-
-export type MutationReaderFactory<Doc, Reader> = (
-  readDocument: () => Doc,
-  tools?: MutationCompileReaderTools
-) => Reader
 
 export interface MutationCompileIssue<
   Code extends string = string,
@@ -163,6 +155,24 @@ export type MutationCompileHandler<
 > = (
   input: MutationCompileHandlerInput<Doc, Intent, Writer, Output, Reader, Services, Code>
 ) => void | MutationCompileControl<Code>
+
+export type MutationCompileHandlerContext<
+  Doc,
+  Intent,
+  Writer,
+  Output,
+  Reader,
+  Services = void,
+  Code extends string = string
+> = Record<string, unknown> & Partial<MutationCompileHandlerInput<
+  Doc,
+  Intent,
+  Writer,
+  Output,
+  Reader,
+  Services,
+  Code
+>>
 
 export interface MutationCompileInput<
   Doc,
@@ -250,24 +260,70 @@ export type MutationCompileHandlerTable<
   Writer,
   Reader,
   Services = void,
-  Code extends string = string
-> = {
-  [K in MutationIntentKind<Table>]: MutationCompileHandler<
+  Code extends string = string,
+  Context extends MutationCompileHandlerContext<
     Doc,
-    MutationIntentOf<Table, K>,
+    MutationIntentOf<Table>,
     Writer,
-    MutationOutputOf<Table, K>,
+    MutationOutputOf<Table>,
     Reader,
     Services,
     Code
-  >
+  > = {}
+> = {
+  [K in MutationIntentKind<Table>]: (
+    input: MutationCompileHandlerInput<
+      Doc,
+      MutationIntentOf<Table, K>,
+      Writer,
+      MutationOutputOf<Table, K>,
+      Reader,
+      Services,
+      Code
+    > & Context
+  ) => void | MutationCompileControl<Code>
 }
 
-export type MutationCompileWriterFactory<
-  Writer
-> = (
-  writer: MutationProgramWriter<string>
-) => Writer
+export interface MutationCompileDefinition<
+  Table extends MutationIntentTable,
+  Doc,
+  Writer,
+  Reader,
+  Services = void,
+  Code extends string = string,
+  Context extends MutationCompileHandlerContext<
+    Doc,
+    MutationIntentOf<Table>,
+    Writer,
+    MutationOutputOf<Table>,
+    Reader,
+    Services,
+    Code
+  > = {}
+> {
+  createContext?: (
+    input: MutationCompileHandlerInput<
+      Doc,
+      {
+        type: string
+      },
+      Writer,
+      unknown,
+      Reader,
+      Services,
+      Code
+    >
+  ) => Context
+  handlers: MutationCompileHandlerTable<
+    Table,
+    Doc,
+    Writer,
+    Reader,
+    Services,
+    Code,
+    Context
+  >
+}
 
 export type MutationExecuteResult<
   T extends MutationIntentTable,
@@ -308,6 +364,39 @@ export interface MutationStructureChangeSpec {
   change?: MutationChangeInput
 }
 
+export interface CompiledOrderedSpec<
+  Doc,
+  Item = unknown,
+  Patch = unknown
+> {
+  type: string
+  read(document: Doc, key: string | undefined): readonly Item[]
+  write(document: Doc, key: string | undefined, items: readonly Item[]): Doc
+  identify(item: Item): string
+  clone?(item: Item): Item
+  patch?(item: Item, patch: Patch): Item
+  diff?(before: Item, after: Item): Patch
+  change?: readonly MutationStructureChangeSpec[] | ((
+    key: string | undefined
+  ) => readonly MutationStructureChangeSpec[] | undefined)
+}
+
+export interface CompiledTreeSpec<
+  Doc,
+  Value = unknown,
+  Patch = unknown
+> {
+  type: string
+  read(document: Doc, key: string | undefined): MutationTreeSnapshot<Value>
+  write(document: Doc, key: string | undefined, tree: MutationTreeSnapshot<Value>): Doc
+  clone?(value: Value): Value
+  patch?(value: Value, patch: Patch): Value
+  diff?(before: Value, after: Value): Patch
+  change?: readonly MutationStructureChangeSpec[] | ((
+    key: string | undefined
+  ) => readonly MutationStructureChangeSpec[] | undefined)
+}
+
 export interface MutationHistoryOptions {
   capacity?: number
   capture?: Partial<Record<Exclude<Origin, 'history'>, boolean>>
@@ -323,17 +412,22 @@ export interface MutationEngineOptions<
   Services = void,
   Code extends string = string,
   Writer = MutationProgramWriter<string>,
-  Delta extends MutationDelta = MutationDelta
+  Delta extends MutationDelta = MutationDelta,
+  Context extends MutationCompileHandlerContext<
+    Doc,
+    MutationIntentOf<Table>,
+    Writer,
+    MutationOutputOf<Table>,
+    Reader,
+    Services,
+    Code
+  > = {}
 > {
+  schema: MutationSchemaDefinition<Doc>
   document: Doc
   normalize(doc: Doc): Doc
-  createReader?: MutationReaderFactory<Doc, Reader>
   services?: Services
-  registry?: MutationRegistry<Doc>
-  model?: MutationModelDefinition<Doc>
-  compile?: MutationCompileHandlerTable<Table, Doc, Writer, Reader, Services, Code>
-  createWriter?: MutationCompileWriterFactory<Writer>
-  createDelta?: (delta: MutationDelta) => Delta
+  compile?: MutationCompileDefinition<Table, Doc, Writer, Reader, Services, Code, Context>
   history?: MutationHistoryOptions | false
 }
 

@@ -1,7 +1,7 @@
 import { createMutationReader } from '@shared/mutation'
 import type { SelectionTarget } from '@whiteboard/core/selection'
 import {
-  whiteboardMutationModel,
+  whiteboardMutationSchema,
   resolveLockDecision
 } from '@whiteboard/core/mutation'
 import type { WhiteboardRuntime } from '@whiteboard/react/types/runtime'
@@ -26,7 +26,7 @@ export const readSelectionCan = ({
   target: SelectionTarget
 }): SelectionCan => {
   const reader = createMutationReader(
-    whiteboardMutationModel,
+    whiteboardMutationSchema,
     () => editor.scene.document.snapshot()
   )
   const pureNodeSelection =

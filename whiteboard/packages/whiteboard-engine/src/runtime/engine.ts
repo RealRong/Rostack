@@ -1,6 +1,7 @@
 import {
   type MutationDeltaOf,
-  type MutationOrigin
+  type MutationOrigin,
+  type MutationCompileDefinition
 } from '@shared/mutation'
 import {
   MutationEngine,
@@ -9,6 +10,7 @@ import {
 } from '@shared/mutation/engine'
 import type {
   WhiteboardCompileIds,
+  WhiteboardCompileContext,
   WhiteboardCompileServices,
   WhiteboardMutationTable
 } from '@whiteboard/core/mutation'
@@ -18,7 +20,7 @@ import type {
 import {
   isCheckpointProgram,
   whiteboardCompile,
-  whiteboardMutationModel
+  whiteboardMutationSchema
 } from '@whiteboard/core/mutation'
 import {
   normalizeDocument
@@ -37,6 +39,7 @@ import type {
 } from '../contracts/intent'
 import { failure } from '../result'
 import type { Document, Operation, ResultCode } from '@whiteboard/core/types'
+import type { WhiteboardMutationDelta } from '../mutation'
 
 const resolveIntentOrigin = (
   intent: Intent,
@@ -121,15 +124,16 @@ export const createEngine = ({
     Operation,
     WhiteboardReader,
     WhiteboardCompileServices,
-    ResultCode,
-    import('@shared/mutation').MutationWriter<typeof whiteboardMutationModel>,
-    MutationDeltaOf<typeof whiteboardMutationModel>
+    string,
+    import('@shared/mutation').MutationWriter<typeof whiteboardMutationSchema>,
+    WhiteboardMutationDelta,
+    Pick<WhiteboardCompileContext, 'query' | 'expect'>
   >({
+    schema: whiteboardMutationSchema,
     document,
     normalize: normalizeDocument,
-    model: whiteboardMutationModel,
     services,
-    compile: whiteboardCompile.handlers,
+    compile: whiteboardCompile,
     history: {
       capacity: 100,
       capture: {

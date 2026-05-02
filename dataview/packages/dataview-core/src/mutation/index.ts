@@ -14,12 +14,12 @@ export type {
   DataviewQueryContext
 } from './query'
 export {
-  dataviewMutationModel,
+  dataviewMutationSchema,
   dataviewTitleField,
 } from './model'
 export type {
   DataviewMutationDelta,
-  DataviewMutationModel,
+  DataviewMutationSchema,
   DataviewMutationReader,
   DataviewMutationWriter,
 } from './model'

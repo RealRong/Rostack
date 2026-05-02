@@ -3,12 +3,11 @@ import type {
 } from '@shared/mutation'
 import type {
   MutationCompileControl,
-  MutationCompileHandler,
   MutationCompileHandlerInput,
 } from '@shared/mutation/engine'
 import type { WhiteboardLayoutService } from '@whiteboard/core/layout'
 import {
-  whiteboardMutationModel
+  whiteboardMutationSchema
 } from '@whiteboard/core/mutation/model'
 import {
   createWhiteboardQuery,
@@ -31,7 +30,7 @@ import type {
   WhiteboardMutationTable
 } from '@whiteboard/core/mutation/intents'
 
-export type WhiteboardCompileCode = ResultCode
+export type WhiteboardCompileCode = string
 
 export type WhiteboardCompileIds = {
   node: () => NodeId
@@ -60,7 +59,7 @@ export type WhiteboardCompileContext<
 > = MutationCompileHandlerInput<
   Document,
   WhiteboardIntent<K>,
-  MutationWriter<typeof whiteboardMutationModel>,
+  MutationWriter<typeof whiteboardMutationSchema>,
   WhiteboardIntentOutput<K>,
   WhiteboardReader,
   WhiteboardCompileServices,
@@ -98,7 +97,7 @@ const createCompileExpect = (
   input: MutationCompileHandlerInput<
     Document,
     WhiteboardIntent,
-    MutationWriter<typeof whiteboardMutationModel>,
+    MutationWriter<typeof whiteboardMutationSchema>,
     WhiteboardIntentOutput,
     WhiteboardReader,
     WhiteboardCompileServices,
@@ -143,26 +142,25 @@ const createCompileExpect = (
   },
 })
 
-export const withCompileContext = <
-  K extends WhiteboardIntentKind
->(
-  handler: WhiteboardCompileHandler<K>
-): MutationCompileHandler<
-  Document,
-  WhiteboardIntent<K>,
-  MutationWriter<typeof whiteboardMutationModel>,
-  WhiteboardIntentOutput<K>,
-  WhiteboardReader,
-  WhiteboardCompileServices,
-  WhiteboardCompileCode
-> => (input) => handler({
-  ...input,
+export const createCompileContext = (
+  input: MutationCompileHandlerInput<
+    Document,
+    {
+      type: string
+    },
+    MutationWriter<typeof whiteboardMutationSchema>,
+    unknown,
+    WhiteboardReader,
+    WhiteboardCompileServices,
+    WhiteboardCompileCode
+  >
+) => ({
   query: createWhiteboardQuery(input.reader),
   expect: createCompileExpect(
     input as MutationCompileHandlerInput<
       Document,
       WhiteboardIntent,
-      MutationWriter<typeof whiteboardMutationModel>,
+      MutationWriter<typeof whiteboardMutationSchema>,
       WhiteboardIntentOutput,
       WhiteboardReader,
       WhiteboardCompileServices,

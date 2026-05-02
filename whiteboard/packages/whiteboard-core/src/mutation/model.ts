@@ -18,10 +18,10 @@ import type {
   MindmapRecord
 } from '@whiteboard/core/mindmap/types'
 import {
-  defineMutationModel,
-  mapFamily,
-  ordered,
-  record,
+  defineMutationSchema,
+  collection,
+  sequence,
+  object,
   singleton,
   tree,
   value,
@@ -39,7 +39,7 @@ import {
   writeMindmapTreeSnapshot,
 } from './support'
 
-export const whiteboardMutationModel = defineMutationModel<Document>()({
+export const whiteboardMutationSchema = defineMutationSchema<Document>()({
   document: singleton<Document, Document>()({
     access: {
       read: (document) => document,
@@ -49,18 +49,18 @@ export const whiteboardMutationModel = defineMutationModel<Document>()({
       id: value<Document['id']>(),
       name: value<Document['name']>(),
       background: value<Document['background']>(),
-      order: record<readonly CanvasItemRef[]>(),
+      order: object<readonly CanvasItemRef[]>(),
     },
-    changes: ({ value, record }) => ({
+    changes: ({ value, object }) => ({
       value: [
         value('id'),
         value('name'),
       ],
       background: [value('background')],
-      order: [record('order').self()],
+      order: [object('order').self()],
     }),
-    ordered: {
-      order: ordered<CanvasItemRef>()({
+    sequence: {
+      order: sequence<CanvasItemRef>()({
         read: (document: Document) => document.order,
         write: (document: Document, items: readonly CanvasItemRef[]) => ({
           ...document,
@@ -73,7 +73,7 @@ export const whiteboardMutationModel = defineMutationModel<Document>()({
     },
   }),
 
-  node: mapFamily<Document, NodeId, Node>()({
+  node: collection<Document, NodeId, Node>()({
     access: {
       read: (document) => document.nodes,
       write: (document, next) => ({
@@ -89,10 +89,10 @@ export const whiteboardMutationModel = defineMutationModel<Document>()({
       groupId: value<Node['groupId']>(),
       owner: value<Node['owner']>(),
       locked: value<Node['locked']>(),
-      data: record<Node['data']>(),
-      style: record<Node['style']>(),
+      data: object<Node['data']>(),
+      style: object<Node['style']>(),
     },
-    changes: ({ value, record }) => ({
+    changes: ({ value, object }) => ({
       geometry: [
         value('position'),
         value('size'),
@@ -105,13 +105,13 @@ export const whiteboardMutationModel = defineMutationModel<Document>()({
       content: [
         value('type'),
         value('locked'),
-        record('data').deep(),
-        record('style').deep(),
+        object('data').deep(),
+        object('style').deep(),
       ],
     }),
   }),
 
-  edge: mapFamily<Document, EdgeId, Edge>()({
+  edge: collection<Document, EdgeId, Edge>()({
     access: {
       read: (document) => document.edges,
       write: (document, next) => ({
@@ -126,12 +126,12 @@ export const whiteboardMutationModel = defineMutationModel<Document>()({
       locked: value<Edge['locked']>(),
       groupId: value<Edge['groupId']>(),
       textMode: value<Edge['textMode']>(),
-      route: record<Edge['route']>(),
-      style: record<Edge['style']>(),
-      labels: record<Edge['labels']>(),
-      data: record<Edge['data']>(),
+      route: object<Edge['route']>(),
+      style: object<Edge['style']>(),
+      labels: object<Edge['labels']>(),
+      data: object<Edge['data']>(),
     },
-    changes: ({ value, record }) => ({
+    changes: ({ value, object }) => ({
       endpoints: [
         value('source'),
         value('target'),
@@ -140,13 +140,13 @@ export const whiteboardMutationModel = defineMutationModel<Document>()({
         value('groupId'),
         value('textMode'),
       ],
-      route: [record('route').deep()],
-      style: [record('style').deep()],
-      labels: [record('labels').deep()],
-      data: [record('data').deep()],
+      route: [object('route').deep()],
+      style: [object('style').deep()],
+      labels: [object('labels').deep()],
+      data: [object('data').deep()],
     }),
-    ordered: {
-      labels: ordered<EdgeLabel>()({
+    sequence: {
+      labels: sequence<EdgeLabel>()({
         read: (document, edgeId) => getLabels(document.edges[edgeId]!),
         write: (document, edgeId, items) => writeEdgeLabels(document, edgeId as EdgeId, items),
         identify: (label) => label.id,
@@ -155,7 +155,7 @@ export const whiteboardMutationModel = defineMutationModel<Document>()({
         diff: diffEdgeLabelPatch,
         emits: 'labels',
       }),
-      route: ordered<EdgeRoutePoint>()({
+      route: sequence<EdgeRoutePoint>()({
         read: (document, edgeId) => getManualRoutePoints(document.edges[edgeId]!),
         write: (document, edgeId, items) => writeEdgeRoute(document, edgeId as EdgeId, items),
         identify: (point) => point.id,
@@ -165,7 +165,7 @@ export const whiteboardMutationModel = defineMutationModel<Document>()({
     },
   }),
 
-  mindmap: mapFamily<Document, MindmapId, MindmapRecord>()({
+  mindmap: collection<Document, MindmapId, MindmapRecord>()({
     access: {
       read: (document) => document.mindmaps,
       write: (document, next) => ({
@@ -175,17 +175,17 @@ export const whiteboardMutationModel = defineMutationModel<Document>()({
     },
     members: {
       root: value<MindmapRecord['root']>(),
-      members: record<MindmapRecord['members']>(),
-      children: record<MindmapRecord['children']>(),
-      layout: record<MindmapRecord['layout']>(),
+      members: object<MindmapRecord['members']>(),
+      children: object<MindmapRecord['children']>(),
+      layout: object<MindmapRecord['layout']>(),
     },
-    changes: ({ value, record }) => ({
+    changes: ({ value, object }) => ({
       structure: [
         value('root'),
-        record('members').deep(),
-        record('children').deep(),
+        object('members').deep(),
+        object('children').deep(),
       ],
-      layout: [record('layout').deep()],
+      layout: [object('layout').deep()],
     }),
     tree: {
       structure: tree<WhiteboardMindmapTreeValue>()({
@@ -201,7 +201,7 @@ export const whiteboardMutationModel = defineMutationModel<Document>()({
     },
   }),
 
-  group: mapFamily<Document, GroupId, Group>()({
+  group: collection<Document, GroupId, Group>()({
     access: {
       read: (document) => document.groups,
       write: (document, next) => ({

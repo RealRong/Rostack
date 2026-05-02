@@ -8,6 +8,7 @@ import type {
   Intent
 } from '@dataview/core/types'
 import type {
+  DataviewMutationReader,
   DataviewMutationWriter
 } from '../model'
 import type {
@@ -57,9 +58,10 @@ export type DataviewCompileContext<
   TIntent,
   DataviewMutationWriter,
   TOutput,
-  DataviewQuery,
+  DataviewMutationReader,
   void,
-  ValidationCode
+  string
 > & {
+  query: DataviewQuery
   expect?: DataviewCompileExpect
 }

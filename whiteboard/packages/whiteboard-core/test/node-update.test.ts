@@ -8,7 +8,7 @@ import { node as nodeApi } from '@whiteboard/core/node'
 import { document as documentApi } from '@whiteboard/core/document'
 import { mindmap as mindmapApi } from '@whiteboard/core/mindmap'
 import {
-  whiteboardMutationModel
+  whiteboardMutationSchema
 } from '@whiteboard/core/mutation'
 import type { Document } from '@whiteboard/core/types'
 
@@ -48,9 +48,9 @@ const applyOperations = (
   program: MutationProgram<string>
 ) => {
   const engine = new MutationEngine({
+    schema: whiteboardMutationSchema,
     document: doc,
     normalize: documentApi.normalize,
-    model: whiteboardMutationModel,
     history: false
   })
   return engine.apply(program, {
@@ -63,9 +63,9 @@ const replayInverse = (
   program: MutationProgram<string>
 ) => {
   const engine = new MutationEngine({
+    schema: whiteboardMutationSchema,
     document: doc,
     normalize: documentApi.normalize,
-    model: whiteboardMutationModel,
     history: false
   })
 

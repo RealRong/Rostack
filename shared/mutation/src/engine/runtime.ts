@@ -20,7 +20,7 @@ import {
   createMutationDelta,
   createMutationReader,
   createMutationWriter,
-  type MutationModelDefinition,
+  type MutationSchemaDefinition,
 } from '../model'
 import {
   APPLY_EMPTY_CODE,
@@ -39,12 +39,10 @@ import {
   normalizeCompileIssue,
   readFirstOutput,
   type MutationApplyResult,
+  type MutationCompileDefinition,
   type MutationCompileIssue,
-  type MutationCompileWriterFactory,
   type MutationCompileHandlerInput,
-  type MutationCompileHandlerTable,
   type MutationCurrent,
-  type MutationReaderFactory,
   type MutationEngineOptions,
   type MutationExecuteInput,
   type MutationExecuteResult,
@@ -79,22 +77,14 @@ import type {
   MutationProgramWriter
 } from './program/writer'
 import {
-  createMutationPorts
-} from './ports'
-import {
-  compileEntities,
-} from './entity'
-import {
   dedupeFootprints,
   mutationFootprintBatchConflicts
 } from './footprint'
 import type {
   CompiledEntitySpec,
+  CompiledOrderedSpec,
+  CompiledTreeSpec,
 } from './contracts'
-import type {
-  MutationRegistry,
-} from './registry'
-
 const shouldCaptureHistory = (
   history: MutationHistoryOptions | false | undefined,
   origin: Origin
@@ -133,16 +123,18 @@ const compileMutationIntents = <
   Writer,
   Reader,
   Services,
+  Context extends Record<string, unknown> = {},
   Code extends string = string
 >(input: {
   document: Doc
   intents: readonly MutationIntentOf<Table>[]
-  handlers: MutationCompileHandlerTable<Table, Doc, Writer, Reader, Services, Code>
-  createWriter?: MutationCompileWriterFactory<Writer>
+  compile: MutationCompileDefinition<Table, Doc, Writer, Reader, Services, Code, Context>
   services: Services | undefined
-  registry?: MutationRegistry<Doc>
   entities: ReadonlyMap<string, CompiledEntitySpec>
-  createReader: MutationReaderFactory<Doc, Reader>
+  ordered: ReadonlyMap<string, CompiledOrderedSpec<Doc>>
+  tree: ReadonlyMap<string, CompiledTreeSpec<Doc>>
+  createReader: (readDocument: () => Doc) => Reader
+  createWriter: (program: MutationProgramWriter<string>) => Writer
 }): CompiledIntentProgramResult<Doc, MutationOutputOf<Table>, Code> => {
   const appliedSteps: MutationProgramStep[] = []
   const inverseSteps: MutationProgramStep[] = []
@@ -163,7 +155,7 @@ const compileMutationIntents = <
     let blocked = false
     const baseProgram = createMutationProgramWriter<string>()
 
-    const handler = input.handlers[intent.type as MutationIntentKind<Table>]
+    const handler = input.compile.handlers[intent.type as MutationIntentKind<Table>]
     if (!handler) {
       issues.push(normalizeCompileIssue({
         code: COMPILE_EMPTY_CODE as Code,
@@ -203,20 +195,11 @@ const compileMutationIntents = <
         type: intent.type
       },
       document: workingDocument,
-      reader: undefined as never,
+      reader: input.createReader(
+        () => workingDocument
+      ),
       services: input.services,
-      writer: (() => {
-        if (input.createWriter) {
-          return input.createWriter(baseProgram)
-        }
-        if (input.registry) {
-          return createMutationPorts(
-            input.registry,
-            baseProgram
-          ) as unknown as Writer
-        }
-        return baseProgram as unknown as Writer
-      })(),
+      writer: input.createWriter(baseProgram),
       output: (value) => {
         pendingOutputs.push(value)
       },
@@ -249,12 +232,22 @@ const compileMutationIntents = <
       }),
       fail: createBlockedControl
     }
-    controls.reader = input.createReader(
-      () => workingDocument,
-      controls
-    )
+    const compileInput = input.compile.createContext
+      ? {
+          ...controls,
+          ...input.compile.createContext(controls)
+        }
+      : controls
 
-    const result = handler(controls)
+    const result = handler(compileInput as MutationCompileHandlerInput<
+      Doc,
+      MutationIntentOf<Table>,
+      Writer,
+      MutationOutputOf<Table>,
+      Reader,
+      Services,
+      Code
+    > & Context)
     if (isCompileControl(result)) {
       if (result.kind === 'stop') {
         shouldStop = true
@@ -278,7 +271,8 @@ const compileMutationIntents = <
       document: workingDocument,
       program: pendingProgram,
       entities: input.entities,
-      registry: input.registry
+      ordered: input.ordered,
+      tree: input.tree
     })
     if (!applied.ok) {
       issues.push(normalizeCompileIssue({
@@ -362,7 +356,8 @@ class MutationRuntime<
   Services,
   Code extends string = string,
   Writer = MutationProgramWriter<string>,
-  Delta extends MutationDelta = MutationDelta
+  Delta extends MutationDelta = MutationDelta,
+  Context extends Record<string, unknown> = {}
 > {
   readonly history: HistoryPort<
     MutationResult<void, ApplyCommit<Doc, Op, MutationFootprint, void, string, Delta>, Code>,
@@ -371,14 +366,15 @@ class MutationRuntime<
     ApplyCommit<Doc, Op, MutationFootprint, void, string, Delta>
   >
 
-  private readonly createReader: MutationReaderFactory<Doc, Reader>
+  private readonly createReader: (readDocument: () => Doc) => Reader
   private readonly createDelta: (delta: MutationDelta) => Delta
   private readonly normalize: (doc: Doc) => Doc
   private readonly entities: ReadonlyMap<string, CompiledEntitySpec>
-  private readonly registry?: MutationRegistry<Doc>
+  private readonly ordered: ReadonlyMap<string, CompiledOrderedSpec<Doc>>
+  private readonly tree: ReadonlyMap<string, CompiledTreeSpec<Doc>>
+  private readonly createWriter: (program: MutationProgramWriter<string>) => Writer
   private readonly services: Services | undefined
-  private readonly compileHandlers?: MutationCompileHandlerTable<any, Doc, Writer, Reader, Services, Code>
-  private readonly compileWriterFactory?: MutationCompileWriterFactory<Writer>
+  private readonly compileDefinition?: MutationCompileDefinition<any, Doc, Writer, Reader, Services, Code, Context>
   private readonly historyOptions?: MutationHistoryOptions | false
   private readonly historyControllerRef?: HistoryController<
     MutationProgram<string>,
@@ -391,53 +387,34 @@ class MutationRuntime<
   private documentState: Doc
 
   constructor(input: {
+    schema: MutationSchemaDefinition<Doc>
     document: Doc
     normalize(doc: Doc): Doc
-    createReader?: MutationReaderFactory<Doc, Reader>
-    registry?: MutationRegistry<Doc>
-    model?: MutationModelDefinition<Doc>
     services?: Services
-    compile?: MutationCompileHandlerTable<any, Doc, Writer, Reader, Services, Code>
-    createWriter?: MutationCompileWriterFactory<Writer>
-    createDelta?: (delta: MutationDelta) => Delta
+    compile?: MutationCompileDefinition<any, Doc, Writer, Reader, Services, Code, Context>
     history?: MutationHistoryOptions | false
   }) {
-    const compiledModel = input.model
-      ? compileMutationModel(input.model)
-      : undefined
-    const registry = input.registry ?? compiledModel?.registry
-    const createReader = input.createReader ?? (
-      input.model
-        ? ((readDocument: () => Doc) => createMutationReader(
-            input.model!,
-            readDocument
-          ) as Reader)
-        : undefined
-    )
-
-    if (!createReader) {
-      throw new Error('MutationEngine requires createReader or model.')
+    const compiledModel = compileMutationModel(input.schema) as {
+      entities: ReadonlyMap<string, CompiledEntitySpec>
+      ordered: ReadonlyMap<string, CompiledOrderedSpec<Doc>>
+      tree: ReadonlyMap<string, CompiledTreeSpec<Doc>>
     }
 
-    this.createReader = createReader
-    this.createDelta = input.createDelta ?? (
-      input.model
-        ? ((delta) => createMutationDelta(input.model!, delta) as unknown as Delta)
-        : ((delta) => delta as Delta)
-    )
+    this.createReader = ((readDocument: () => Doc) => createMutationReader(
+      input.schema,
+      readDocument
+    ) as Reader)
+    this.createWriter = ((program) => createMutationWriter(
+      input.schema,
+      program
+    ) as Writer)
+    this.createDelta = (delta) => createMutationDelta(input.schema, delta) as unknown as Delta
     this.normalize = input.normalize
-    this.registry = registry as MutationRegistry<Doc> | undefined
-    this.entities = compiledModel?.entities ?? compileEntities(registry?.entity)
+    this.entities = compiledModel.entities
+    this.ordered = compiledModel.ordered as ReadonlyMap<string, CompiledOrderedSpec<Doc>>
+    this.tree = compiledModel.tree as ReadonlyMap<string, CompiledTreeSpec<Doc>>
     this.services = input.services
-    this.compileHandlers = input.compile
-    this.compileWriterFactory = input.createWriter ?? (
-      input.model
-        ? ((program) => createMutationWriter(
-            input.model!,
-            program
-          ) as Writer)
-        : undefined
-    )
+    this.compileDefinition = input.compile
     this.historyOptions = input.history
     this.documentState = this.normalize(input.document)
 
@@ -550,7 +527,7 @@ class MutationRuntime<
       >
     }
 
-    if (!this.compileHandlers) {
+    if (!this.compileDefinition) {
       return mutationFailure(
         COMPILE_EMPTY_CODE as Code,
         'MutationEngine.execute requires compile handlers.'
@@ -562,15 +539,16 @@ class MutationRuntime<
       >
     }
 
-    const planned = compileMutationIntents<Doc, Table, Writer, Reader, Services, Code>({
+    const planned = compileMutationIntents<Doc, Table, Writer, Reader, Services, Context, Code>({
       document: this.documentState,
       intents,
-      handlers: this.compileHandlers,
-      createWriter: this.compileWriterFactory,
+      compile: this.compileDefinition as MutationCompileDefinition<Table, Doc, Writer, Reader, Services, Code, Context>,
       services: this.services,
-      registry: this.registry,
       entities: this.entities,
-      createReader: this.createReader
+      ordered: this.ordered,
+      tree: this.tree,
+      createReader: this.createReader,
+      createWriter: this.createWriter
     })
     const issues = (planned.issues ?? EMPTY_COMPILE_ISSUES).map(normalizeCompileIssue)
     const canApply = (
@@ -654,7 +632,8 @@ class MutationRuntime<
       document: this.documentState,
       program,
       entities: this.entities,
-      registry: this.registry
+      ordered: this.ordered,
+      tree: this.tree
     })
     if (!applied.ok) {
       return applied
@@ -758,21 +737,18 @@ export class MutationEngine<
   Services = void,
   Code extends string = string,
   Writer = MutationProgramWriter<string>,
-  Delta extends MutationDelta = MutationDelta
+  Delta extends MutationDelta = MutationDelta,
+  Context extends Record<string, unknown> = {}
 > {
-  private readonly runtime: MutationRuntime<Doc, Op, Reader, Services, Code, Writer, Delta>
+  private readonly runtime: MutationRuntime<Doc, Op, Reader, Services, Code, Writer, Delta, Context>
 
-  constructor(input: MutationEngineOptions<Doc, Table, Op, Reader, Services, Code, Writer, Delta>) {
+  constructor(input: MutationEngineOptions<Doc, Table, Op, Reader, Services, Code, Writer, Delta, Context>) {
     this.runtime = new MutationRuntime({
+      schema: input.schema,
       document: input.document,
       normalize: input.normalize,
-      createReader: input.createReader,
-      registry: input.registry,
-      model: input.model,
       services: input.services,
       compile: input.compile,
-      createWriter: input.createWriter,
-      createDelta: input.createDelta,
       history: input.history
     })
   }

@@ -3,6 +3,12 @@ import { createMoveInteraction } from '../src/input/features/selection/move'
 
 describe('mindmap field drag', () => {
   it('routes selected mindmap root field drags into mindmap drag instead of generic node drag', () => {
+    const previewWriter = {
+      mindmap: {
+        create: vi.fn(),
+        delete: vi.fn()
+      }
+    }
     const structure = {
       id: 'mind-1',
       rootId: 'root-1',
@@ -39,6 +45,21 @@ describe('mindmap field drag', () => {
 
     const editor = {
       document: {
+        snapshot: () => ({
+          nodes: {
+            'root-1': {
+              id: 'root-1',
+              type: 'text',
+              owner: {
+                kind: 'mindmap',
+                id: 'mind-1'
+              }
+            }
+          },
+          mindmaps: {
+            'mind-1': structure
+          }
+        }),
         node: (id: string) => {
           if (id === 'root-1') {
             return {
@@ -111,6 +132,31 @@ describe('mindmap field drag', () => {
               is: () => true
             }
           }
+        }
+      },
+      state: {
+        write: (
+          apply: (input: {
+            writer: {
+              preview: typeof previewWriter
+            }
+            snapshot: {
+              preview: {
+                mindmap: Record<string, never>
+              }
+            }
+          }) => void
+        ) => {
+          apply({
+            writer: {
+              preview: previewWriter
+            },
+            snapshot: {
+              preview: {
+                mindmap: {}
+              }
+            }
+          })
         }
       },
       dispatch: vi.fn(),

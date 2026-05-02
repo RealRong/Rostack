@@ -3,10 +3,6 @@ import {
   type RecordWrite
 } from '@shared/draft'
 import {
-  readEntityTargetType,
-  type MutationEntityRegistrySpec
-} from './registry'
-import {
   createMutationProgramWriter
 } from './program/writer'
 import {
@@ -238,20 +234,16 @@ const compileEntitySpec = (
 }
 
 export const compileEntities = (
-  entities: Readonly<Record<string, MutationEntitySpec | MutationEntityRegistrySpec>> | undefined
+  entities: Readonly<Record<string, MutationEntitySpec>> | undefined
 ): ReadonlyMap<string, CompiledEntitySpec> => {
   const compiled = new Map<string, CompiledEntitySpec>()
   const entries = Object.entries(entities ?? {})
 
   for (let index = 0; index < entries.length; index += 1) {
-    const [key, spec] = entries[index]!
-    const family = readEntityTargetType(
-      key,
-      spec as MutationEntityRegistrySpec
-    )
+    const [family, spec] = entries[index]!
     compiled.set(
       family,
-      compileEntitySpec(family, spec as MutationEntitySpec)
+      compileEntitySpec(family, spec)
     )
   }
 

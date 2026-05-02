@@ -12,6 +12,8 @@ import type {
   MutationTreeSubtreeSnapshot,
 } from '../write'
 import {
+  type CompiledOrderedSpec,
+  type CompiledTreeSpec,
   EMPTY_DELTA,
   EMPTY_ISSUES,
   EMPTY_OUTPUTS,
@@ -28,14 +30,6 @@ import type {
   MutationProgramStep,
   MutationTreeProgramStep,
 } from './program/program'
-import {
-  readOrderedTargetType,
-  readTreeTargetType,
-  serializeMutationTarget,
-  type MutationOrderedRegistrySpec,
-  type MutationRegistry,
-  type MutationTreeRegistrySpec,
-} from './registry'
 
 const ROOT_PARENT_ID = '$root'
 
@@ -607,37 +601,15 @@ const isOrderedEffect = (
   effect: MutationOrderedProgramStep | MutationTreeProgramStep
 ): effect is MutationOrderedProgramStep => effect.target.kind === 'ordered'
 
-const resolveOrderedRegistrySpec = <Doc extends object>(
-  registry: MutationRegistry<Doc> | undefined,
-  type: string
-): MutationOrderedRegistrySpec<Doc, unknown, unknown> | undefined => {
-  const entries = Object.entries(registry?.ordered ?? {})
-  for (let index = 0; index < entries.length; index += 1) {
-    const [name, spec] = entries[index]!
-    if (readOrderedTargetType(name, spec) === type) {
-      return spec
-    }
-  }
-  return undefined
-}
-
-const resolveTreeRegistrySpec = <Doc extends object>(
-  registry: MutationRegistry<Doc> | undefined,
-  type: string
-): MutationTreeRegistrySpec<Doc, unknown, unknown> | undefined => {
-  const entries = Object.entries(registry?.tree ?? {})
-  for (let index = 0; index < entries.length; index += 1) {
-    const [name, spec] = entries[index]!
-    if (readTreeTargetType(name, spec) === type) {
-      return spec
-    }
-  }
-  return undefined
-}
+const serializeMutationTarget = (
+  target: MutationOrderedProgramStep['target'] | MutationTreeProgramStep['target']
+): string => target.key === undefined
+  ? target.type
+  : `${target.type}:${target.key}`
 
 const readStructureChanges = (
-  change: MutationOrderedRegistrySpec<unknown, unknown, unknown>['change']
-    | MutationTreeRegistrySpec<unknown, unknown, unknown>['change'],
+  change: CompiledOrderedSpec<unknown, unknown, unknown>['change']
+    | CompiledTreeSpec<unknown, unknown, unknown>['change'],
   key: string | undefined
 ) => typeof change === 'function'
   ? change(key)
@@ -646,7 +618,7 @@ const readStructureChanges = (
 const applyOrderedStep = <Doc extends object>(input: {
   document: Doc
   effect: MutationOrderedProgramStep
-  spec: MutationOrderedRegistrySpec<Doc, unknown, unknown>
+  spec: CompiledOrderedSpec<Doc, unknown, unknown>
 }): StructuralApplyData<Doc> => {
   const structure = serializeMutationTarget(input.effect.target)
   const items = input.spec.read(input.document, input.effect.target.key)
@@ -854,7 +826,7 @@ const applyOrderedStep = <Doc extends object>(input: {
 const applyTreeStep = <Doc extends object>(input: {
   document: Doc
   effect: MutationTreeProgramStep
-  spec: MutationTreeRegistrySpec<Doc, unknown, unknown>
+  spec: CompiledTreeSpec<Doc, unknown, unknown>
 }): StructuralApplyData<Doc> => {
   const structure = serializeMutationTarget(input.effect.target)
   const currentTree = cloneTreeSnapshot(
@@ -1161,15 +1133,13 @@ export const applyStructuralEffectResult = <
 >(input: {
   document: Doc
   effect: MutationOrderedProgramStep | MutationTreeProgramStep
-  registry?: MutationRegistry<Doc>
+  ordered: ReadonlyMap<string, CompiledOrderedSpec<Doc>>
+  tree: ReadonlyMap<string, CompiledTreeSpec<Doc>>
 }): AppliedMutationProgram<Doc> => {
   try {
     if (isOrderedEffect(input.effect)) {
       const effect = input.effect
-      const spec = resolveOrderedRegistrySpec(
-        input.registry,
-        effect.target.type
-      )
+      const spec = input.ordered.get(effect.target.type)
       if (!spec) {
         throw new Error(`Unknown mutation ordered target "${effect.target.type}".`)
       }
@@ -1196,10 +1166,7 @@ export const applyStructuralEffectResult = <
     }
 
     const effect = input.effect
-    const spec = resolveTreeRegistrySpec(
-      input.registry,
-      effect.target.type
-    )
+    const spec = input.tree.get(effect.target.type)
     if (!spec) {
       throw new Error(`Unknown mutation tree target "${effect.target.type}".`)
     }
@@ -1234,7 +1201,8 @@ export const readStructuralEffectResult = <
 >(input: {
   document: Doc
   effect: MutationOrderedProgramStep | MutationTreeProgramStep
-  registry?: MutationRegistry<Doc>
+  ordered: ReadonlyMap<string, CompiledOrderedSpec<Doc>>
+  tree: ReadonlyMap<string, CompiledTreeSpec<Doc>>
 }): {
   ok: true
   data: AppliedMutationProgram<Doc>

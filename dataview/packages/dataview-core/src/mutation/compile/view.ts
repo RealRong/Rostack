@@ -114,7 +114,7 @@ const lowerViewCreate = (
   input: DataviewCompileContext<Extract<Intent, { type: 'view.create' }>>
 ) => {
   const { intent } = input
-  const { reader } = input
+  const { query: reader } = input
   const explicitViewId = string.trimToUndefined(intent.input.id)
   const preferredName = string.trimToUndefined(intent.input.name) ?? ''
 
@@ -237,7 +237,7 @@ const handleViewTypeSet: DataviewViewIntentHandlers['view.type.set'] = (
   const nextView = setViewType({
     view,
     type: input.intent.viewType,
-    fields: input.reader.fields.list()
+    fields: input.query.fields.list()
   })
   if (!nextView) {
     emitProblem(input, 'view.invalidProjection', 'Kanban view requires a groupable field', 'viewType')
@@ -1196,7 +1196,7 @@ const lowerViewOrderMove = (
   input: DataviewCompileContext<Extract<Intent, { type: 'view.order.move' }>>
 ) => {
   const { intent } = input
-  const { reader } = input
+  const { query: reader } = input
   const view = requireView(input, intent.id)
   if (!view) {
     return
@@ -1243,7 +1243,7 @@ const lowerViewOrderSplice = (
   input: DataviewCompileContext<Extract<Intent, { type: 'view.order.splice' }>>
 ) => {
   const { intent } = input
-  const { reader } = input
+  const { query: reader } = input
   const view = requireView(input, intent.id)
   if (!view) {
     return
@@ -1309,7 +1309,7 @@ const lowerViewFieldsSplice = (
   input: DataviewCompileContext<Extract<Intent, { type: 'view.fields.splice' }>>
 ) => {
   const { intent } = input
-  const { reader } = input
+  const { query: reader } = input
   if (!requireView(input, intent.id)) {
     return
   }

@@ -7,11 +7,29 @@ import type {
   MutationStructuralFact,
   MutationTreeSubtreeSnapshot,
 } from '../../write'
-import type {
-  MutationEntityTarget,
-  MutationOrderedTarget,
-  MutationTreeTarget,
-} from '../registry'
+
+export interface MutationEntityTarget {
+  kind: 'entity'
+  type: string
+  id: string
+}
+
+export interface MutationOrderedTarget {
+  kind: 'ordered'
+  type: string
+  key?: string
+}
+
+export interface MutationTreeTarget {
+  kind: 'tree'
+  type: string
+  key?: string
+}
+
+export type MutationTarget =
+  | MutationEntityTarget
+  | MutationOrderedTarget
+  | MutationTreeTarget
 
 export type MutationEntityRef = MutationEntityTarget
 
@@ -35,14 +53,6 @@ export type MutationEntityProgramStep<
       type: 'entity.patch'
       entity: MutationEntityRef
       writes: Readonly<Record<string, unknown>>
-    } & MutationProgramStepMetadata<Tag>
-  | {
-      type: 'entity.patchMany'
-      entityType: string
-      updates: readonly {
-        id: string
-        writes: Readonly<Record<string, unknown>>
-      }[]
     } & MutationProgramStepMetadata<Tag>
   | {
       type: 'entity.delete'
@@ -118,19 +128,12 @@ export type MutationTreeProgramStep<
       patch: unknown
     } & MutationProgramStepMetadata<Tag>
 
-export type MutationSignalProgramStep<
-  Tag extends string = string
-> = {
-  type: 'signal'
-} & MutationProgramStepMetadata<Tag>
-
 export type MutationProgramStep<
   Tag extends string = string
 > =
   | MutationEntityProgramStep<Tag>
   | MutationOrderedProgramStep<Tag>
   | MutationTreeProgramStep<Tag>
-  | MutationSignalProgramStep<Tag>
 
 export const isMutationProgramStep = (
   value: {
@@ -140,7 +143,6 @@ export const isMutationProgramStep = (
   switch (value.type) {
     case 'entity.create':
     case 'entity.patch':
-    case 'entity.patchMany':
     case 'entity.delete':
     case 'ordered.insert':
     case 'ordered.move':
@@ -152,7 +154,6 @@ export const isMutationProgramStep = (
     case 'tree.delete':
     case 'tree.restore':
     case 'tree.node.patch':
-    case 'signal':
       return true
     default:
       return false

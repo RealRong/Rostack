@@ -103,7 +103,7 @@ const lowerFieldCreate = (
   input: DataviewCompileContext<Extract<Intent, { type: 'field.create' }>>
 ) => {
   const { intent } = input
-  const { reader } = input
+  const { query: reader } = input
   const explicitFieldId = string.trimToUndefined(intent.input.id)
 
   if (intent.input.id !== undefined && !explicitFieldId) {
@@ -179,7 +179,7 @@ const lowerFieldReplace = (
     id: intent.id
   } satisfies CustomField
 
-  const current = input.reader.fields.get(intent.id)
+  const current = input.query.fields.get(intent.id)
   if (!current || !fieldApi.kind.isCustom(current)) {
     return
   }
@@ -191,7 +191,7 @@ const lowerFieldSetKind = (
   input: DataviewCompileContext<Extract<Intent, { type: 'field.setKind' }>>
 ) => {
   const { intent } = input
-  const { reader } = input
+  const { query: reader } = input
   const views = reader.views.list()
   const field = requireCustomField(input, intent.id, 'id')
   if (!field) {
@@ -217,7 +217,7 @@ const lowerFieldDuplicate = (
   input: DataviewCompileContext<Extract<Intent, { type: 'field.duplicate' }>>
 ) => {
   const { intent } = input
-  const { reader } = input
+  const { query: reader } = input
   const views = reader.views.list()
   const records = reader.records.list()
   const sourceField = requireCustomField(input, intent.id, 'id')
@@ -406,7 +406,7 @@ const lowerFieldOptionRemove = (
   input: DataviewCompileContext<Extract<Intent, { type: 'field.option.remove' }>>
 ) => {
   const { intent } = input
-  const { reader } = input
+  const { query: reader } = input
   const context = requireOptionField(input, intent.field)
   if (!context) {
     return
@@ -471,7 +471,7 @@ const lowerFieldRemove = (
   input: DataviewCompileContext<Extract<Intent, { type: 'field.remove' }>>
 ) => {
   const { intent } = input
-  const { reader } = input
+  const { query: reader } = input
   const views = reader.views.list()
   const field = requireCustomField(input, intent.id, 'id')
   if (!field) {

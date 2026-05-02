@@ -32,7 +32,7 @@ import {
   type EditorStateDocument
 } from './document'
 import {
-  editorStateMutationModel
+  editorStateMutationSchema
 } from './model'
 import type {
   EditorCommand,
@@ -41,9 +41,9 @@ import type {
   EditorStateMutationTable
 } from './intents'
 
-export type EditorStateReader = MutationReader<typeof editorStateMutationModel>
-export type EditorStateProgram = MutationWriter<typeof editorStateMutationModel>
-export type EditorStateMutationDelta = MutationDeltaOf<typeof editorStateMutationModel>
+export type EditorStateReader = MutationReader<typeof editorStateMutationSchema>
+export type EditorStateProgram = MutationWriter<typeof editorStateMutationSchema>
+export type EditorStateMutationDelta = MutationDeltaOf<typeof editorStateMutationSchema>
 
 type EditorStateOperation = {
   type: string
@@ -94,8 +94,8 @@ const compileHandlers: MutationCompileHandlerTable<
   EditorStateProgram,
   EditorStateReader
 > = {
-  'tool.set': ({ document, intent, program }) => {
-    program.state.patch(draftRecord.diff(
+  'tool.set': ({ document, intent, writer }) => {
+    writer.state.patch(draftRecord.diff(
       {
         tool: document.state.tool
       },
@@ -104,8 +104,8 @@ const compileHandlers: MutationCompileHandlerTable<
       }
     ))
   },
-  'draw.set': ({ document, intent, program }) => {
-    program.state.patch(draftRecord.diff(
+  'draw.set': ({ document, intent, writer }) => {
+    writer.state.patch(draftRecord.diff(
       {
         draw: document.state.draw
       },
@@ -114,8 +114,8 @@ const compileHandlers: MutationCompileHandlerTable<
       }
     ))
   },
-  'selection.set': ({ document, intent, program }) => {
-    program.state.patch(draftRecord.diff(
+  'selection.set': ({ document, intent, writer }) => {
+    writer.state.patch(draftRecord.diff(
       {
         selection: document.state.selection
       },
@@ -124,8 +124,8 @@ const compileHandlers: MutationCompileHandlerTable<
       }
     ))
   },
-  'edit.set': ({ document, intent, program }) => {
-    program.state.patch(draftRecord.diff(
+  'edit.set': ({ document, intent, writer }) => {
+    writer.state.patch(draftRecord.diff(
       {
         edit: document.state.edit
       },
@@ -134,8 +134,8 @@ const compileHandlers: MutationCompileHandlerTable<
       }
     ))
   },
-  'interaction.set': ({ document, intent, program }) => {
-    program.state.patch(draftRecord.diff(
+  'interaction.set': ({ document, intent, writer }) => {
+    writer.state.patch(draftRecord.diff(
       {
         interaction: document.state.interaction
       },
@@ -144,74 +144,74 @@ const compileHandlers: MutationCompileHandlerTable<
       }
     ))
   },
-  'hover.set': ({ document, intent, program }) => {
-    program.hover.patch(draftRecord.diff(
+  'hover.set': ({ document, intent, writer }) => {
+    writer.hover.patch(draftRecord.diff(
       document.hover,
       intent.hover
     ))
   },
-  'preview.node.set': ({ document, intent, program }) => {
+  'preview.node.set': ({ document, intent, writer }) => {
     applyCollectionDiff({
       current: document.preview.node,
       next: intent.node,
       create: (id, value) => {
-        program.preview.node.create({
+        writer.preview.node.create({
           id,
           ...value
         })
       },
       patch: (id, writes) => {
-        program.preview.node.patch(id, writes)
+        writer.preview.node.patch(id, writes)
       },
       remove: (id) => {
-        program.preview.node.delete(id)
+        writer.preview.node.delete(id)
       }
     })
   },
-  'preview.edge.set': ({ document, intent, program }) => {
+  'preview.edge.set': ({ document, intent, writer }) => {
     applyCollectionDiff({
       current: document.preview.edge,
       next: intent.edge,
       create: (id, value) => {
-        program.preview.edge.create({
+        writer.preview.edge.create({
           id,
           ...value
         })
       },
       patch: (id, writes) => {
-        program.preview.edge.patch(id, writes)
+        writer.preview.edge.patch(id, writes)
       },
       remove: (id) => {
-        program.preview.edge.delete(id)
+        writer.preview.edge.delete(id)
       }
     })
   },
-  'preview.mindmap.set': ({ document, intent, program }) => {
+  'preview.mindmap.set': ({ document, intent, writer }) => {
     applyCollectionDiff({
       current: document.preview.mindmap,
       next: intent.mindmap,
       create: (id, value) => {
-        program.preview.mindmap.create({
+        writer.preview.mindmap.create({
           id,
           ...value
         })
       },
       patch: (id, writes) => {
-        program.preview.mindmap.patch(id, writes)
+        writer.preview.mindmap.patch(id, writes)
       },
       remove: (id) => {
-        program.preview.mindmap.delete(id)
+        writer.preview.mindmap.delete(id)
       }
     })
   },
-  'preview.selection.set': ({ document, intent, program }) => {
-    program.preview.selection.patch(draftRecord.diff(
+  'preview.selection.set': ({ document, intent, writer }) => {
+    writer.preview.selection.patch(draftRecord.diff(
       document.preview.selection,
       intent.selection
     ))
   },
-  'preview.draw.set': ({ document, intent, program }) => {
-    program.preview.draw.patch(draftRecord.diff(
+  'preview.draw.set': ({ document, intent, writer }) => {
+    writer.preview.draw.patch(draftRecord.diff(
       {
         current: document.preview.draw
       },
@@ -220,8 +220,8 @@ const compileHandlers: MutationCompileHandlerTable<
       }
     ))
   },
-  'preview.edgeGuide.set': ({ document, intent, program }) => {
-    program.preview.edgeGuide.patch(draftRecord.diff(
+  'preview.edgeGuide.set': ({ document, intent, writer }) => {
+    writer.preview.edgeGuide.patch(draftRecord.diff(
       {
         current: document.preview.edgeGuide
       },
@@ -230,27 +230,27 @@ const compileHandlers: MutationCompileHandlerTable<
       }
     ))
   },
-  'preview.reset': ({ document, program }) => {
+  'preview.reset': ({ document, writer }) => {
     if (document.preview.node !== EMPTY_PREVIEW_STATE.node) {
       Object.keys(document.preview.node).forEach((id) => {
-        program.preview.node.delete(id)
+        writer.preview.node.delete(id)
       })
     }
     if (document.preview.edge !== EMPTY_PREVIEW_STATE.edge) {
       Object.keys(document.preview.edge).forEach((id) => {
-        program.preview.edge.delete(id)
+        writer.preview.edge.delete(id)
       })
     }
     if (document.preview.mindmap !== EMPTY_PREVIEW_STATE.mindmap) {
       Object.keys(document.preview.mindmap).forEach((id) => {
-        program.preview.mindmap.delete(id)
+        writer.preview.mindmap.delete(id)
       })
     }
-    program.preview.selection.patch(draftRecord.diff(
+    writer.preview.selection.patch(draftRecord.diff(
       document.preview.selection,
       EMPTY_PREVIEW_STATE.selection
     ))
-    program.preview.draw.patch(draftRecord.diff(
+    writer.preview.draw.patch(draftRecord.diff(
       {
         current: document.preview.draw
       },
@@ -258,7 +258,7 @@ const compileHandlers: MutationCompileHandlerTable<
         current: EMPTY_PREVIEW_STATE.draw
       }
     ))
-    program.preview.edgeGuide.patch(draftRecord.diff(
+    writer.preview.edgeGuide.patch(draftRecord.diff(
       {
         current: document.preview.edgeGuide
       },
@@ -455,13 +455,15 @@ export const createEditorStateRuntime = (input: {
     EditorStateProgram,
     EditorStateMutationDelta
   >({
+    schema: editorStateMutationSchema,
     document: buildEditorStateDocument({
       tool: input.initialTool,
       draw: input.initialDrawState
     }),
     normalize: normalizeEditorStateDocument,
-    model: editorStateMutationModel,
-    compile: compileHandlers,
+    compile: {
+      handlers: compileHandlers
+    },
     history: false
   })
 
@@ -511,7 +513,7 @@ export const createEditorStateRuntime = (input: {
   const write: EditorStateRuntime['write'] = (run) => {
     const program = createMutationProgramWriter<string>()
     const writer = createMutationWriter(
-      editorStateMutationModel,
+      editorStateMutationSchema,
       program
     )
     run({

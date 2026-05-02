@@ -9,7 +9,7 @@ import type {
   CommitRecord
 } from '@shared/mutation/write'
 import {
-  dataviewMutationModel,
+  dataviewMutationSchema,
   type DataviewMutationDelta
 } from '@dataview/core/mutation'
 import type {
@@ -150,7 +150,7 @@ const summarizeTypedDelta = (
 export const summarizeDelta = (
   delta: MutationDelta
 ): TraceDeltaSummary => summarizeTypedDelta(
-  createMutationDelta(dataviewMutationModel, delta)
+  createMutationDelta(dataviewMutationSchema, delta)
 )
 
 export const toPerformanceKind = (

@@ -11,20 +11,13 @@ import type {
   MutationCompileReaderTools
 } from '@shared/mutation'
 import {
-  createMutationReader
-} from '@shared/mutation'
-import {
   createDataviewQuery,
   type DataviewQuery
 } from '../query'
 import {
-  dataviewMutationModel
+  type DataviewMutationReader
 } from '../model'
 import type { ValidationCode } from './contracts'
-
-type DataviewCompileTools = MutationCompileReaderTools & {
-  expect?: DataviewCompileExpect
-}
 
 export interface DataviewCompileExpect {
   record(id: RecordId, path?: string): DataRecord | undefined
@@ -71,7 +64,7 @@ const expectEntity = <T,>(
 
 const createCompileExpect = (
   reader: DataviewQuery,
-  tools?: MutationCompileReaderTools
+  tools?: MutationCompileReaderTools<string>
 ): DataviewCompileExpect => ({
   record: (id, path = 'recordId') => expectEntity(
     tools,
@@ -102,20 +95,16 @@ const createCompileExpect = (
   )
 })
 
-export const createCompileReader = (
-  readDocument: () => DataDoc,
-  tools?: MutationCompileReaderTools
-): DataviewQuery => {
-  const reader = createDataviewQuery(
-    createMutationReader(
-      dataviewMutationModel,
-      readDocument
-    )
-  )
-
-  if (tools) {
-    ;(tools as DataviewCompileTools).expect = createCompileExpect(reader, tools)
+export const createCompileContext = (
+  reader: DataviewMutationReader,
+  tools?: MutationCompileReaderTools<string>
+): {
+  query: DataviewQuery
+  expect: DataviewCompileExpect
+} => {
+  const query = createDataviewQuery(reader)
+  return {
+    query,
+    expect: createCompileExpect(query, tools)
   }
-
-  return reader
 }

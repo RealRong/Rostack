@@ -1,8 +1,8 @@
 import {
-  defineMutationModel,
-  group,
-  mapFamily,
-  record,
+  defineMutationSchema,
+  namespace,
+  collection,
+  object,
   singleton,
   value,
 } from '@shared/mutation'
@@ -11,6 +11,7 @@ import type {
 } from '@whiteboard/core/selection'
 import type {
   EdgeId,
+  GroupId,
   MindmapId,
   NodeId
 } from '@whiteboard/core/types'
@@ -56,7 +57,7 @@ type PreviewMindmapRecordEntry = MindmapPreviewEntry & {
   id: MindmapId
 }
 
-export const editorStateMutationModel = defineMutationModel<EditorStateDocument>()({
+export const editorStateMutationSchema = defineMutationSchema<EditorStateDocument>()({
   state: singleton<EditorStateDocument, EditorStateDocument['state']>()({
     access: {
       read: (document) => document.state,
@@ -66,18 +67,18 @@ export const editorStateMutationModel = defineMutationModel<EditorStateDocument>
       }),
     },
     members: {
-      tool: record<Tool>(),
-      draw: record<DrawState>(),
-      selection: record<SelectionTarget>(),
-      edit: record<EditSession>(),
-      interaction: record<EditorStableInteractionState>(),
+      tool: object<Tool>(),
+      draw: object<DrawState>(),
+      selection: object<SelectionTarget>(),
+      edit: object<EditSession>(),
+      interaction: object<EditorStableInteractionState>(),
     },
-    changes: ({ record }) => ({
-      tool: [record('tool').deep()],
-      draw: [record('draw').deep()],
-      selection: [record('selection').deep()],
-      edit: [record('edit').deep()],
-      interaction: [record('interaction').deep()],
+    changes: ({ object }) => ({
+      tool: [object('tool').deep()],
+      draw: [object('draw').deep()],
+      selection: [object('selection').deep()],
+      edit: [object('edit').deep()],
+      interaction: [object('interaction').deep()],
     }),
   }),
   hover: singleton<EditorStateDocument, EditorHoverState>()({
@@ -92,7 +93,7 @@ export const editorStateMutationModel = defineMutationModel<EditorStateDocument>
       node: value<NodeId | null>(),
       edge: value<EdgeId | null>(),
       mindmap: value<MindmapId | null>(),
-      group: value<string | null>(),
+      group: value<GroupId | null>(),
       selectionBox: value<boolean>(),
     },
     changes: ({ value }) => ({
@@ -103,8 +104,8 @@ export const editorStateMutationModel = defineMutationModel<EditorStateDocument>
       selectionBox: [value('selectionBox')],
     }),
   }),
-  preview: group({
-    node: mapFamily<EditorStateDocument, NodeId, PreviewNodeEntry>()({
+  preview: namespace({
+    node: collection<EditorStateDocument, NodeId, PreviewNodeEntry>()({
       access: {
         read: (document) => Object.fromEntries(
           Object.entries(document.preview.node).map(([id, preview]) => [
@@ -138,19 +139,19 @@ export const editorStateMutationModel = defineMutationModel<EditorStateDocument>
         }),
       },
       members: {
-        patch: record<NodePreview['patch']>(),
-        presentation: record<NodePreview['presentation']>(),
+        patch: object<NodePreview['patch']>(),
+        presentation: object<NodePreview['presentation']>(),
         hovered: value<boolean>(),
         hidden: value<boolean>(),
       },
-      changes: ({ record, value }) => ({
-        patch: [record('patch').deep()],
-        presentation: [record('presentation').deep()],
+      changes: ({ object, value }) => ({
+        patch: [object('patch').deep()],
+        presentation: [object('presentation').deep()],
         hovered: [value('hovered')],
         hidden: [value('hidden')],
       }),
     }),
-    edge: mapFamily<EditorStateDocument, EdgeId, PreviewEdgeEntry>()({
+    edge: collection<EditorStateDocument, EdgeId, PreviewEdgeEntry>()({
       access: {
         read: (document) => Object.fromEntries(
           Object.entries(document.preview.edge).map(([id, preview]) => [
@@ -182,15 +183,15 @@ export const editorStateMutationModel = defineMutationModel<EditorStateDocument>
         }),
       },
       members: {
-        patch: record<EdgePreview['patch']>(),
+        patch: object<EdgePreview['patch']>(),
         activeRouteIndex: value<number | undefined>(),
       },
-      changes: ({ record, value }) => ({
-        patch: [record('patch').deep()],
+      changes: ({ object, value }) => ({
+        patch: [object('patch').deep()],
         activeRouteIndex: [value('activeRouteIndex')],
       }),
     }),
-    mindmap: mapFamily<EditorStateDocument, MindmapId, PreviewMindmapRecordEntry>()({
+    mindmap: collection<EditorStateDocument, MindmapId, PreviewMindmapRecordEntry>()({
       access: {
         read: (document) => Object.fromEntries(
           Object.entries(document.preview.mindmap).map(([id, preview]) => [
@@ -222,12 +223,12 @@ export const editorStateMutationModel = defineMutationModel<EditorStateDocument>
         }),
       },
       members: {
-        rootMove: record<MindmapPreviewEntry['rootMove']>(),
-        subtreeMove: record<MindmapPreviewEntry['subtreeMove']>(),
+        rootMove: object<MindmapPreviewEntry['rootMove']>(),
+        subtreeMove: object<MindmapPreviewEntry['subtreeMove']>(),
       },
-      changes: ({ record }) => ({
-        rootMove: [record('rootMove').deep()],
-        subtreeMove: [record('subtreeMove').deep()],
+      changes: ({ object }) => ({
+        rootMove: [object('rootMove').deep()],
+        subtreeMove: [object('subtreeMove').deep()],
       }),
     }),
     selection: singleton<EditorStateDocument, PreviewInput['selection']>()({
@@ -243,11 +244,11 @@ export const editorStateMutationModel = defineMutationModel<EditorStateDocument>
       },
       members: {
         marquee: value<PreviewInput['selection']['marquee']>(),
-        guides: record<PreviewInput['selection']['guides']>(),
+        guides: object<PreviewInput['selection']['guides']>(),
       },
-      changes: ({ record, value }) => ({
+      changes: ({ object, value }) => ({
         marquee: [value('marquee')],
-        guides: [record('guides').deep()],
+        guides: [object('guides').deep()],
       }),
     }),
     draw: singleton<EditorStateDocument, PreviewDrawValue>()({

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { test } from 'vitest'
 import { entityTable } from '@shared/core'
 import { createMutationDelta } from '@shared/mutation'
-import { dataviewMutationModel } from '@dataview/core/mutation'
+import { dataviewMutationSchema } from '@dataview/core/mutation'
 import { createDataviewFrame } from '@dataview/engine/active/frame'
 import { ensureDataviewIndex } from '@dataview/engine/active/index/runtime'
 import { createDataviewActivePlan } from '@dataview/engine/active/plan'
@@ -165,7 +165,7 @@ const createEmptyDocument = () => ({
 const toDelta = (input: {
   reset?: true
   changes?: Record<string, unknown>
-} = {}) => createMutationDelta(dataviewMutationModel, {
+} = {}) => createMutationDelta(dataviewMutationSchema, {
   ...(input.reset ? { reset: true } : {}),
   changes: input.changes ?? {}
 })

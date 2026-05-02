@@ -22,10 +22,15 @@ import {
 } from '@whiteboard/editor/session/draw/model'
 import type { InteractionBinding, InteractionSession } from '@whiteboard/editor/input/core/types'
 import { FINISH } from '@whiteboard/editor/input/session/result'
-import { createGesture } from '@whiteboard/editor/input/core/gesture'
-import type { EditorInputContext } from '@whiteboard/editor/input/runtime'
 import type { PointerDownInput, PointerSample } from '@whiteboard/editor/types/input'
 import type { Tool } from '@whiteboard/editor/types/tool'
+import type { Editor } from '@whiteboard/editor/types/editor'
+import type { EditorCommand } from '@whiteboard/editor/state-engine/intents'
+import {
+  isPreviewEqual,
+  replacePreviewNodeInteraction,
+  setPreviewDraw
+} from '@whiteboard/editor/preview/state'
 
 const DRAW_MIN_LENGTH_SCREEN = 4
 const SAMPLE_DISTANCE_SCREEN = 1
@@ -198,24 +203,24 @@ const commitDrawStroke = (
 }
 
 const queryDrawNodeIdsInRect = (
-  ctx: Pick<EditorInputContext, 'editor'>,
+  editor: Editor,
   rect: Rect
-): readonly NodeId[] => ctx.editor.scene.nodes.idsInRect(rect, {
+): readonly NodeId[] => editor.scene.nodes.idsInRect(rect, {
   match: 'touch'
 }).filter((nodeId) => (
-  ctx.editor.document.node(nodeId)?.type === 'draw'
+  editor.document.node(nodeId)?.type === 'draw'
 ))
 
 const collectErasePoint = (
-  ctx: Pick<EditorInputContext, 'editor'>,
+  editor: Editor,
   state: EraseState,
   world: Point
 ): EraseState => {
   const halfWorld =
     ERASER_HIT_EPSILON_SCREEN
-    / Math.max(ctx.editor.scene.ui.state.viewport.get().zoom, ZOOM_EPSILON)
+    / Math.max(editor.scene.ui.state.viewport.get().zoom, ZOOM_EPSILON)
   const nodeIds = queryDrawNodeIdsInRect(
-    ctx,
+    editor,
     geometryApi.segment.bounds(state.lastWorld, world, halfWorld)
   )
   const knownIds = new Set(state.ids)
@@ -249,10 +254,10 @@ const collectErasePoint = (
 }
 
 const tryStartErase = (
-  ctx: Pick<EditorInputContext, 'editor'>,
+  editor: Editor,
   input: PointerDownInput
 ): EraseState | null => {
-  const tool = ctx.editor.scene.ui.state.tool.get()
+  const tool = editor.scene.ui.state.tool.get()
 
   if (
     tool.type !== 'draw'
@@ -264,32 +269,31 @@ const tryStartErase = (
     return null
   }
 
-  return collectErasePoint(ctx, {
+  return collectErasePoint(editor, {
     ids: [],
     lastWorld: input.world
   }, input.world)
 }
 
 const stepEraseState = (
-  ctx: Pick<EditorInputContext, 'editor'>,
+  editor: Editor,
   state: EraseState,
   input: DrawPointer
 ) => {
   let nextState = state
 
   for (let index = 0; index < input.samples.length; index += 1) {
-    nextState = collectErasePoint(ctx, nextState, input.samples[index]!.world)
+    nextState = collectErasePoint(editor, nextState, input.samples[index]!.world)
   }
 
   return nextState
 }
 
 const createDrawStrokeSession = (
-  ctx: Pick<EditorInputContext, 'editor'>,
+  editor: Editor,
   initial: DrawStrokeState
 ): InteractionSession => {
   let state = initial
-  let interaction = null as InteractionSession | null
 
   const step = (
     input: DrawPointer,
@@ -303,105 +307,151 @@ const createDrawStrokeSession = (
       }
     )
     state = nextState
-    interaction!.gesture = createGesture('draw', {
-      drawPreview: previewDrawStroke(state, {
-        zoom: ctx.editor.scene.ui.state.viewport.get().zoom
+    editor.dispatch((snapshot) => {
+      const current = snapshot.overlay.preview
+      const drawPreview = previewDrawStroke(state, {
+        zoom: editor.scene.ui.state.viewport.get().zoom
       })
+      const nextPreview = setPreviewDraw(current, {
+        ...drawPreview,
+        hiddenNodeIds: []
+      })
+      return isPreviewEqual(current, nextPreview)
+        ? null
+        : {
+            type: 'overlay.preview.set',
+            preview: nextPreview
+          } satisfies EditorCommand
     })
   }
 
-  interaction = {
+  return {
     mode: 'draw',
-    gesture: createGesture('draw'),
     move: (input) => {
       step(input)
     },
     up: (input) => {
       step(input, true)
       const commit = commitDrawStroke(state, {
-        zoom: ctx.editor.scene.ui.state.viewport.get().zoom
+        zoom: editor.scene.ui.state.viewport.get().zoom
       })
       if (commit) {
         const {
           position,
           ...template
         } = commit
-        ctx.editor.actions.node.create({
+        editor.actions.node.create({
           position,
           template
         })
       }
       return FINISH
     },
-    cleanup: () => {}
+    cleanup: () => {
+      editor.dispatch((snapshot) => {
+        const current = snapshot.overlay.preview
+        const nextPreview = setPreviewDraw(current, null)
+        return isPreviewEqual(current, nextPreview)
+          ? null
+          : {
+              type: 'overlay.preview.set',
+              preview: nextPreview
+            } satisfies EditorCommand
+      })
+    }
   }
-
-  return interaction
 }
 
 const createEraseSession = (
-  ctx: Pick<EditorInputContext, 'editor'>,
+  editor: Editor,
   initial: EraseState
 ): InteractionSession => {
   let state = initial
-  let interaction = null as InteractionSession | null
+
+  editor.dispatch((snapshot) => {
+    const current = snapshot.overlay.preview
+    const nextPreview = replacePreviewNodeInteraction(current, {
+      hiddenNodeIds: state.ids
+    })
+    return isPreviewEqual(current, nextPreview)
+      ? null
+      : {
+          type: 'overlay.preview.set',
+          preview: nextPreview
+        } satisfies EditorCommand
+  })
 
   const step = (
     input: DrawPointer
   ) => {
-    const nextState = stepEraseState(ctx, state, input)
+    const nextState = stepEraseState(editor, state, input)
     state = nextState
-    interaction!.gesture = createGesture('draw', {
-      hiddenNodeIds: state.ids
+    editor.dispatch((snapshot) => {
+      const current = snapshot.overlay.preview
+      const nextPreview = replacePreviewNodeInteraction(current, {
+        hiddenNodeIds: state.ids
+      })
+      return isPreviewEqual(current, nextPreview)
+        ? null
+        : {
+            type: 'overlay.preview.set',
+            preview: nextPreview
+          } satisfies EditorCommand
     })
   }
 
-  interaction = {
+  return {
     mode: 'draw',
-    gesture: createGesture('draw', {
-      hiddenNodeIds: state.ids
-    }),
     move: (input) => {
       step(input)
     },
     up: (input) => {
       step(input)
       if (state.ids.length > 0) {
-        ctx.editor.actions.node.delete([...state.ids])
+        editor.actions.node.delete([...state.ids])
       }
       return FINISH
     },
-    cleanup: () => {}
+    cleanup: () => {
+      editor.dispatch((snapshot) => {
+        const current = snapshot.overlay.preview
+        const nextPreview = replacePreviewNodeInteraction(current, {})
+        return isPreviewEqual(current, nextPreview)
+          ? null
+          : {
+              type: 'overlay.preview.set',
+              preview: nextPreview
+            } satisfies EditorCommand
+      })
+    }
   }
-
-  return interaction
 }
 
 export const createDrawBinding = (
-  ctx: Pick<EditorInputContext, 'editor'>
+  editor: Editor
 ): InteractionBinding => ({
   key: 'draw',
   start: (input) => {
-    const tool = ctx.editor.scene.ui.state.tool.get()
+    const tool = editor.scene.ui.state.tool.get()
 
     if (tool.type !== 'draw') {
       return null
     }
 
     if (tool.mode === 'eraser') {
-      const state = tryStartErase(ctx, input)
+      const state = tryStartErase(editor, input)
       return state
-        ? createEraseSession(ctx, state)
+        ? createEraseSession(editor, state)
         : null
     }
 
     const state = tryStartDrawStroke({
       tool,
       pointer: input,
-      state: ctx.editor.scene.ui.state.draw.get()
+      state: editor.scene.ui.state.draw.get()
     })
     return state
-      ? createDrawStrokeSession(ctx, state)
+      ? createDrawStrokeSession(editor, state)
       : null
   }
 })

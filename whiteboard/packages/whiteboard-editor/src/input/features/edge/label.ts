@@ -7,7 +7,6 @@ import type {
   Size
 } from '@whiteboard/core/types'
 import type { EdgePathResult } from '@whiteboard/core/types/edge'
-import { createGesture } from '@whiteboard/editor/input/core/gesture'
 import {
   FINISH
 } from '@whiteboard/editor/input/session/result'
@@ -16,11 +15,15 @@ import type {
   PointerDownInput
 } from '@whiteboard/editor/types/input'
 import { createPressDragSession } from '@whiteboard/editor/input/session/press'
-import type { EditorInputContext } from '@whiteboard/editor/input/runtime'
 import type { EditorCommand } from '@whiteboard/editor/state-engine/intents'
+import type { Editor } from '@whiteboard/editor/types/editor'
+import {
+  isPreviewEqual,
+  replacePreviewEdgeInteraction
+} from '@whiteboard/editor/preview/state'
 
 const startEdgeLabelEdit = (input: {
-  ctx: Pick<EditorInputContext, 'editor'>
+  editor: Editor
   edgeId: EdgeId
   labelId: string
   caret: {
@@ -31,7 +34,7 @@ const startEdgeLabelEdit = (input: {
     }
   }
 }) => {
-  const edge = input.ctx.editor.document.edge(input.edgeId)
+  const edge = input.editor.document.edge(input.edgeId)
   const label = edge?.labels?.find((entry) => entry.id === input.labelId)
   if (!edge || !label) {
     return null
@@ -67,19 +70,19 @@ type EdgeLabelDragState = {
 }
 
 const isSingleSelectedEdge = (
-  ctx: Pick<EditorInputContext, 'editor'>,
+  editor: Editor,
   edgeId: EdgeId
 ) => selectionApi.members.singleEdge(
-  ctx.editor.scene.ui.selection.summary.get().target
+  editor.scene.ui.selection.summary.get().target
 ) === edgeId
 
 const canEditEdgeLabel = (
-  projection: EditorInputContext['editor']['scene'],
+  projection: Editor['scene'],
   edgeId: EdgeId
 ) => projection.edges.capability(edgeId)?.editLabel ?? false
 
 const readEdgeLabelMetrics = (
-  projection: EditorInputContext['editor']['scene'],
+  projection: Editor['scene'],
   ref: {
     edgeId: EdgeId
     labelId: string
@@ -122,11 +125,10 @@ const readEdgeLabelPatch = (
 }
 
 const createEdgeLabelDragSession = (
-  ctx: Pick<EditorInputContext, 'editor'>,
+  editor: Editor,
   initial: EdgeLabelDragState
 ): InteractionSession => {
   let state = initial
-  let interaction: InteractionSession | undefined
 
   const step = (
     pointerWorld: Point
@@ -159,29 +161,33 @@ const createEdgeLabelDragSession = (
       state.labelId,
       draft
     )
-    if (interaction) {
-      interaction.gesture = patch
-        ? createGesture(
-            'edge-label',
-            {
-              edgePatches: [{
-                id: state.edgeId,
-                patch
-              }]
-            }
-          )
-        : null
-    }
+    editor.dispatch((snapshot) => {
+      const current = snapshot.overlay.preview
+      const nextPreview = replacePreviewEdgeInteraction(
+        current,
+        patch
+          ? [{
+              id: state.edgeId,
+              patch
+            }]
+          : []
+      )
+      return isPreviewEqual(current, nextPreview)
+        ? null
+        : {
+            type: 'overlay.preview.set',
+            preview: nextPreview
+          } satisfies EditorCommand
+    })
   }
 
-  interaction = {
+  return {
     mode: 'edge-label',
     pointerId: state.pointerId,
     chrome: false,
-    gesture: null,
     autoPan: {
       frame: (pointer) => {
-        step(ctx.editor.runtime.viewport.pointer(pointer).world)
+        step(editor.runtime.viewport.pointer(pointer).world)
       }
     },
     move: (input) => {
@@ -191,7 +197,7 @@ const createEdgeLabelDragSession = (
       step(input.world)
 
       if (state.draft) {
-        ctx.editor.actions.edge.label.patch(
+        editor.actions.edge.label.patch(
           state.edgeId,
           state.labelId,
           state.draft
@@ -200,32 +206,41 @@ const createEdgeLabelDragSession = (
 
       return FINISH
     },
-    cleanup: () => {}
+    cleanup: () => {
+      editor.dispatch((snapshot) => {
+        const current = snapshot.overlay.preview
+        const nextPreview = replacePreviewEdgeInteraction(current, [])
+        return isPreviewEqual(current, nextPreview)
+          ? null
+          : {
+              type: 'overlay.preview.set',
+              preview: nextPreview
+            } satisfies EditorCommand
+      })
+    }
   }
-
-  return interaction
 }
 
 const createEdgeLabelDragState = (
-  ctx: Pick<EditorInputContext, 'editor'>,
+  editor: Editor,
   input: {
     edgeId: EdgeId
     labelId: string
     pointerId: number
   }
 ): EdgeLabelDragState | null => {
-  const edge = ctx.editor.scene.edges.get(input.edgeId)?.base.edge
-  const view = ctx.editor.scene.edges.get(input.edgeId)
+  const edge = editor.scene.edges.get(input.edgeId)?.base.edge
+  const view = editor.scene.edges.get(input.edgeId)
   if (
     !edge
     || !view
     || !view.route.svgPath
-    || !canEditEdgeLabel(ctx.editor.scene, input.edgeId)
+    || !canEditEdgeLabel(editor.scene, input.edgeId)
   ) {
     return null
   }
 
-  const labelSize = readEdgeLabelMetrics(ctx.editor.scene, {
+  const labelSize = readEdgeLabelMetrics(editor.scene, {
     edgeId: input.edgeId,
     labelId: input.labelId
   })
@@ -249,7 +264,7 @@ const createEdgeLabelDragState = (
 }
 
 export const createEdgeLabelPressSession = (
-  ctx: Pick<EditorInputContext, 'editor'>,
+  editor: Editor,
   start: PointerDownInput,
   input: {
     edgeId: EdgeId
@@ -259,7 +274,7 @@ export const createEdgeLabelPressSession = (
   start,
   chrome: true,
   createDragSession: () => {
-    const nextState = createEdgeLabelDragState(ctx, {
+    const nextState = createEdgeLabelDragState(editor, {
       edgeId: input.edgeId,
       labelId: input.labelId,
       pointerId: start.pointerId
@@ -269,13 +284,13 @@ export const createEdgeLabelPressSession = (
     }
 
     return createEdgeLabelDragSession(
-      ctx,
+      editor,
       nextState
     )
   },
   onTap: (nextInput) => {
     const editCommand = startEdgeLabelEdit({
-      ctx,
+      editor,
       edgeId: input.edgeId,
       labelId: input.labelId,
       caret: {
@@ -284,7 +299,7 @@ export const createEdgeLabelPressSession = (
       }
     })
     if (!editCommand) {
-      ctx.editor.dispatch({
+      editor.dispatch({
         type: 'selection.set',
         selection: {
           nodeIds: [],
@@ -294,7 +309,7 @@ export const createEdgeLabelPressSession = (
       return
     }
 
-    ctx.editor.dispatch([
+    editor.dispatch([
       {
         type: 'selection.set',
         selection: {
@@ -308,7 +323,7 @@ export const createEdgeLabelPressSession = (
 })
 
 export const startEdgeLabelPress = (
-  ctx: Pick<EditorInputContext, 'editor'>,
+  editor: Editor,
   pointer: PointerDownInput
 ): {
   edgeId: EdgeId
@@ -324,8 +339,8 @@ export const startEdgeLabelPress = (
     return undefined
   }
 
-  if (!isSingleSelectedEdge(ctx, pointer.pick.id)) {
-    ctx.editor.dispatch({
+  if (!isSingleSelectedEdge(editor, pointer.pick.id)) {
+    editor.dispatch({
       type: 'selection.set',
       selection: {
         nodeIds: [],
@@ -335,8 +350,8 @@ export const startEdgeLabelPress = (
     return 'handled'
   }
 
-  const edge = ctx.editor.scene.edges.get(pointer.pick.id)?.base.edge
-  if (!edge || !canEditEdgeLabel(ctx.editor.scene, pointer.pick.id)) {
+  const edge = editor.scene.edges.get(pointer.pick.id)?.base.edge
+  if (!edge || !canEditEdgeLabel(editor.scene, pointer.pick.id)) {
     return 'handled'
   }
 

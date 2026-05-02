@@ -1,10 +1,7 @@
-import type { ActiveGesture } from '@whiteboard/editor/input/core/gesture'
 import { createAutoPan } from '@whiteboard/editor/input/session/autoPan'
-import type { HoverState } from '@whiteboard/editor/input/hover/store'
-import type { EditorDispatchInput } from '@whiteboard/editor/state-engine/intents'
+import type { Editor } from '@whiteboard/editor/types/editor'
 import type {
   InteractionBinding,
-  InteractionMode,
   InteractionRuntime,
   InteractionSession,
   InteractionSessionTransition
@@ -45,36 +42,11 @@ const readDefaultPointerId = (
 }
 
 export const createInteractionRuntime = ({
-  getViewport,
-  getBindings,
-  state
+  editor,
+  bindings
 }: {
-  getViewport: () => {
-    screenPoint: (clientX: number, clientY: number) => {
-      x: number
-      y: number
-    }
-    size: () => {
-      width: number
-      height: number
-    }
-    panScreenBy: (deltaScreen: {
-      x: number
-      y: number
-    }) => void
-  } | null
-  getBindings: () => readonly InteractionBinding[]
-  state: {
-    readInteraction: () => {
-      mode: InteractionMode
-      chrome: boolean
-      space: boolean
-      hover: HoverState
-    }
-    dispatch: (command: EditorDispatchInput) => void
-    setGesture: (gesture: ActiveGesture | null) => void
-    getSpace: () => boolean
-  }
+  editor: Editor
+  bindings: readonly InteractionBinding[]
 }): InteractionRuntime => {
   let nextId = 1
   let current: RunningSession | null = null
@@ -83,7 +55,13 @@ export const createInteractionRuntime = ({
     clientY: number
   } | null = null
   const autoPan = createAutoPan({
-    getViewport
+    getViewport: () => ({
+      screenPoint: editor.runtime.viewport.screenPoint,
+      size: editor.runtime.viewport.size,
+      panScreenBy: (deltaScreen) => {
+        editor.actions.viewport.panScreenBy(deltaScreen)
+      }
+    })
   })
 
   const matchesPointer = (
@@ -94,9 +72,9 @@ export const createInteractionRuntime = ({
   ) => pointerId === undefined || input.pointerId === pointerId
 
   const syncActive = (running: RunningSession | null) => {
-    const current = state.readInteraction()
+    const current = editor.read().state.interaction
     if (!running) {
-      state.dispatch({
+      editor.dispatch({
         type: 'interaction.set',
         interaction: {
           mode: 'idle',
@@ -104,11 +82,10 @@ export const createInteractionRuntime = ({
           space: current.space
         }
       })
-      syncGesture(null)
       return
     }
 
-    state.dispatch({
+    editor.dispatch({
       type: 'interaction.set',
       interaction: {
         mode: running.session.mode,
@@ -116,13 +93,6 @@ export const createInteractionRuntime = ({
         space: current.space
       }
     })
-    syncGesture(running)
-  }
-
-  const syncGesture = (
-    running: RunningSession | null
-  ) => {
-    state.setGesture(running?.session.gesture ?? null)
   }
 
   const refreshAutoPan = () => {
@@ -155,7 +125,6 @@ export const createInteractionRuntime = ({
 
           applyTransition(running, options.frame?.(pointer))
           if (current?.id === running.id) {
-            syncGesture(running)
             refreshAutoPan()
           }
         }
@@ -174,7 +143,6 @@ export const createInteractionRuntime = ({
 
       applyTransition(running, transition)
       if (current?.id === running.id) {
-        syncGesture(running)
         refreshAutoPan()
       }
     })
@@ -250,7 +218,6 @@ export const createInteractionRuntime = ({
         clientY: input.client.y
       }
 
-      const bindings = getBindings()
       for (let index = 0; index < bindings.length; index += 1) {
         const binding = bindings[index]
         if (!binding?.start) {
@@ -290,7 +257,6 @@ export const createInteractionRuntime = ({
 
         applyTransition(running, running.session.move?.(input))
         if (current?.id === running.id) {
-          syncGesture(running)
           refreshAutoPan()
         }
         return true
@@ -310,8 +276,7 @@ export const createInteractionRuntime = ({
 
       applyTransition(running, running.session.up?.(input))
       if (current?.id === running.id) {
-        syncGesture(running)
-        refreshAutoPan()
+          refreshAutoPan()
       }
       return true
     },
@@ -332,9 +297,9 @@ export const createInteractionRuntime = ({
       let handled = false
 
       if (input.code === 'Space') {
-        if (!state.getSpace()) {
-          const current = state.readInteraction()
-          state.dispatch({
+        if (!editor.read().state.interaction.space) {
+          const current = editor.read().state.interaction
+          editor.dispatch({
             type: 'interaction.set',
             interaction: {
               mode: current.mode,
@@ -352,9 +317,6 @@ export const createInteractionRuntime = ({
       }
 
       applyTransition(running, running.session.keydown?.(input))
-      if (current?.id === running.id) {
-        syncGesture(running)
-      }
 
       if (current && input.key === 'Escape') {
         cancel()
@@ -366,9 +328,9 @@ export const createInteractionRuntime = ({
       let handled = false
 
       if (input.code === 'Space') {
-        if (state.getSpace()) {
-          const current = state.readInteraction()
-          state.dispatch({
+        if (editor.read().state.interaction.space) {
+          const current = editor.read().state.interaction
+          editor.dispatch({
             type: 'interaction.set',
             interaction: {
               mode: current.mode,
@@ -386,15 +348,12 @@ export const createInteractionRuntime = ({
       }
 
       applyTransition(running, running.session.keyup?.(input))
-      if (current?.id === running.id) {
-        syncGesture(running)
-      }
       return true
     },
     handleBlur: () => {
-      if (state.getSpace()) {
-        const currentInteraction = state.readInteraction()
-        state.dispatch({
+      if (editor.read().state.interaction.space) {
+        const currentInteraction = editor.read().state.interaction
+        editor.dispatch({
           type: 'interaction.set',
           interaction: {
             mode: currentInteraction.mode,
@@ -411,9 +370,6 @@ export const createInteractionRuntime = ({
 
       if (running.session.blur) {
         applyTransition(running, running.session.blur())
-        if (current?.id === running.id) {
-          syncGesture(running)
-        }
         return
       }
 

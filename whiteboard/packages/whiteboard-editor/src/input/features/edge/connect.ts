@@ -18,13 +18,18 @@ import type { PointerDownInput, KeyboardInput, ModifierKeys } from '@whiteboard/
 import type { Tool } from '@whiteboard/editor/types/tool'
 import type { InteractionSession } from '@whiteboard/editor/input/core/types'
 import { FINISH } from '@whiteboard/editor/input/session/result'
-import { createGesture } from '@whiteboard/editor/input/core/gesture'
-import type { EditorInputContext } from '@whiteboard/editor/input/runtime'
+import type { Editor } from '@whiteboard/editor/types/editor'
+import type { EditorCommand } from '@whiteboard/editor/state-engine/intents'
+import {
+  isPreviewEqual,
+  replacePreviewEdgeInteraction,
+  setPreviewEdgeGuide
+} from '@whiteboard/editor/preview/state'
 
 type EdgeConnectStartInput = {
   tool: Tool
   pointer: PointerDownInput
-  editor: EditorInputContext['editor']
+  editor: Editor
   zoom: number
   config: BoardConfig['edge']
 }
@@ -100,7 +105,7 @@ const startNodeEdgeCreate = (input: {
 })
 
 const resolveNodeHandleStart = (input: {
-  editor: EditorInputContext['editor']
+  editor: Editor
   pointer: PointerDownInput
   template: EdgeTemplate
 }): EdgeConnectState | undefined => {
@@ -148,7 +153,7 @@ const resolveNodeHandleStart = (input: {
 }
 
 const resolveNodeBodyStart = (input: {
-  editor: EditorInputContext['editor']
+  editor: Editor
   pointer: PointerDownInput
   template: EdgeTemplate
   zoom: number
@@ -196,7 +201,7 @@ const resolveNodeBodyStart = (input: {
 }
 
 const resolveCreateStart = (input: {
-  editor: EditorInputContext['editor']
+  editor: Editor
   pointer: PointerDownInput
   template: EdgeTemplate
   zoom: number
@@ -207,7 +212,7 @@ const resolveCreateStart = (input: {
 )
 
 const resolveReconnectStart = (input: {
-  editor: EditorInputContext['editor']
+  editor: Editor
   edgeId: EdgeId
   end: 'source' | 'target'
   pointerId: number
@@ -304,9 +309,9 @@ const readReconnectPreviewPatches = (
     : []
 )
 
-const readEdgeConnectGesture = (
+const readEdgeConnectPreview = (
   input: EdgeConnectGestureInput
-): Parameters<typeof createGesture>[1] => {
+)=> {
   const preview = edgeApi.connect.preview(
     input.state,
     input.showPreviewPath
@@ -346,7 +351,7 @@ const stepEdgeConnect = (
   input: EdgeConnectStepInput
 ): {
   state: EdgeConnectState
-  gesture: Parameters<typeof createGesture>[1]
+  preview: ReturnType<typeof readEdgeConnectPreview>
 } => {
   const evaluation = input.snap({
     pointerWorld: input.world
@@ -358,7 +363,7 @@ const stepEdgeConnect = (
 
   return {
     state,
-    gesture: readEdgeConnectGesture({
+    preview: readEdgeConnectPreview({
       scene: input.scene,
       state,
       evaluation,
@@ -372,7 +377,7 @@ const commitEdgeConnect = (
 ) => edgeApi.connect.toCommit(state)
 
 const commitConnectState = (
-  ctx: Pick<EditorInputContext, 'editor'>,
+  editor: Editor,
   state: EdgeConnectState,
   reconnectDraftPatch?: EdgePatch
 ) => {
@@ -386,7 +391,7 @@ const commitConnectState = (
       state,
       draftPatch: reconnectDraftPatch
     })
-    ctx.editor.actions.edge.reconnectCommit({
+    editor.actions.edge.reconnectCommit({
       edgeId: commit.edgeId,
       end: commit.end,
       target: commit.target,
@@ -408,7 +413,7 @@ const commitConnectState = (
     return
   }
 
-  const result = ctx.editor.actions.edge.create({
+  const result = editor.actions.edge.create({
     from: commit.input.source,
     to: commit.input.target,
     template: {
@@ -421,8 +426,8 @@ const commitConnectState = (
     return
   }
 
-  ctx.editor.actions.tool.select()
-  ctx.editor.dispatch({
+  editor.actions.tool.select()
+  editor.dispatch({
     type: 'selection.set',
     selection: {
       nodeIds: [],
@@ -432,7 +437,7 @@ const commitConnectState = (
 }
 
 export const createEdgeConnectSession = (
-  ctx: Pick<EditorInputContext, 'editor'>,
+  editor: Editor,
   initial: EdgeConnectState
 ): InteractionSession => {
   let state = initial
@@ -442,7 +447,7 @@ export const createEdgeConnectSession = (
   const reconnectFixedPoint = edgeApi.connect.reconnectFixedPoint({
     state: initial,
     ends: initial.kind === 'reconnect'
-      ? ctx.editor.scene.edges.get(initial.edgeId)?.route.ends
+      ? editor.scene.edges.get(initial.edgeId)?.route.ends
       : undefined
   })
   const originWorld = lastWorld
@@ -452,7 +457,7 @@ export const createEdgeConnectSession = (
   ) => Math.hypot(
     world.x - originWorld.x,
     world.y - originWorld.y
-  ) > 3 / Math.max(ctx.editor.scene.ui.state.viewport.get().zoom, 0.0001)
+  ) > 3 / Math.max(editor.scene.ui.state.viewport.get().zoom, 0.0001)
 
   const project = ({
     world,
@@ -478,7 +483,7 @@ export const createEdgeConnectSession = (
       allowLatch
     })
     const result = stepEdgeConnect({
-      scene: ctx.editor.scene,
+      scene: editor.scene,
       state,
       world: edgeApi.connect.reconnectWorld({
         state,
@@ -487,81 +492,108 @@ export const createEdgeConnectSession = (
         shift: modifiers.shift,
         draftPatch: reconnectDraftPatch
       }),
-      snap: ctx.editor.runtime.snap.edge.connect,
+      snap: editor.runtime.snap.edge.connect,
       showPreviewPath: shouldShowPreviewPath(world)
     })
     state = result.state
 
-    return createGesture(
-      'edge-connect',
-      state.kind === 'reconnect'
-        ? {
-            ...result.gesture,
-            edgePatches: (() => {
-              const patch = edgeApi.connect.reconnectPatch({
-                state,
-                draftPatch: reconnectDraftPatch
-              })
-              return patch
-                ? [{
-                    id: state.edgeId,
-                    patch
-                  }]
-                : []
-            })()
-          }
-        : result.gesture
-    )
+    const preview = state.kind === 'reconnect'
+      ? {
+          ...result.preview,
+          edgePatches: (() => {
+            const patch = edgeApi.connect.reconnectPatch({
+              state,
+              draftPatch: reconnectDraftPatch
+            })
+            return patch
+              ? [{
+                  id: state.edgeId,
+                  patch
+                }]
+              : []
+          })()
+        }
+      : result.preview
+
+    editor.dispatch((snapshot) => {
+      const current = snapshot.overlay.preview
+      const nextPreview = setPreviewEdgeGuide(
+        replacePreviewEdgeInteraction(
+          current,
+          preview.edgePatches ?? []
+        ),
+        preview.edgeGuide
+      )
+      return isPreviewEqual(current, nextPreview)
+        ? null
+        : {
+            type: 'overlay.preview.set',
+            preview: nextPreview
+          } satisfies EditorCommand
+    })
   }
 
-  const initialGesture = project({
+  project({
     world: lastWorld,
     modifiers: lastModifiers,
     allowLatch: false
-  }) ?? null
+  })
 
   const interaction: InteractionSession = {
     mode: 'edge-connect',
     pointerId: state.pointerId,
     chrome: false,
-    gesture: initialGesture,
     autoPan: {
       frame: (pointer) => {
-        interaction.gesture = project({
-          world: ctx.editor.runtime.viewport.pointer(pointer).world,
+        project({
+          world: editor.runtime.viewport.pointer(pointer).world,
           modifiers: lastModifiers,
           allowLatch: true,
           pointerId: state.pointerId
-        }) ?? interaction.gesture
+        })
       }
     },
     move: (input) => {
-      interaction.gesture = project({
+      project({
         world: input.world,
         modifiers: input.modifiers,
         allowLatch: true,
         pointerId: input.pointerId
-      }) ?? interaction.gesture
+      })
     },
     keydown: (input: KeyboardInput) => {
-      interaction.gesture = project({
+      project({
         world: lastWorld,
         modifiers: input.modifiers,
         allowLatch: false
-      }) ?? interaction.gesture
+      })
     },
     keyup: (input: KeyboardInput) => {
-      interaction.gesture = project({
+      project({
         world: lastWorld,
         modifiers: input.modifiers,
         allowLatch: false
-      }) ?? interaction.gesture
+      })
     },
     up: () => {
-      commitConnectState(ctx, state, reconnectDraftPatch)
+      commitConnectState(editor, state, reconnectDraftPatch)
       return FINISH
     },
-    cleanup: () => {}
+    cleanup: () => {
+      editor.dispatch((snapshot) => {
+        const current = snapshot.overlay.preview
+        const nextPreview = setPreviewEdgeGuide(
+          replacePreviewEdgeInteraction(current, []),
+          undefined
+        )
+        return isPreviewEqual(current, nextPreview)
+          ? null
+          : {
+              type: 'overlay.preview.set',
+              preview: nextPreview
+            } satisfies EditorCommand
+      })
+    }
   }
 
   return interaction

@@ -6,9 +6,6 @@ import type {
 import { selection as selectionApi, type SelectionTarget } from '@whiteboard/core/selection'
 import type { SelectionMode } from '@whiteboard/core/node'
 import {
-  createGesture
-} from '@whiteboard/editor/input/core/gesture'
-import {
   FINISH
 } from '@whiteboard/editor/input/session/result'
 import type {
@@ -16,7 +13,12 @@ import type {
 } from '@whiteboard/editor/input/core/types'
 import type { PointerDownInput } from '@whiteboard/editor/types/input'
 import { GestureTuning } from '@whiteboard/editor/input/session/tuning'
-import type { EditorInputContext } from '@whiteboard/editor/input/runtime'
+import {
+  isPreviewEqual,
+  setPreviewSelection
+} from '@whiteboard/editor/preview/state'
+import type { Editor } from '@whiteboard/editor/types/editor'
+import type { EditorCommand } from '@whiteboard/editor/state-engine/intents'
 
 export type MarqueeMatch = 'touch' | 'contain'
 
@@ -65,16 +67,16 @@ type MarqueeSelectionEvent =
 
 const readMatchedSelection = (
   input: {
-    ctx: Pick<EditorInputContext, 'editor'>
+    editor: Editor
     rect: Rect
     match: SelectionMarqueeAction['match']
   }
 ): SelectionTarget => ({
-  nodeIds: input.ctx.editor.scene.nodes.idsInRect(input.rect, {
+  nodeIds: input.editor.scene.nodes.idsInRect(input.rect, {
     match: input.match,
     policy: 'selection-marquee'
   }),
-  edgeIds: input.ctx.editor.scene.edges.idsInRect(input.rect, {
+  edgeIds: input.editor.scene.edges.idsInRect(input.rect, {
     match: input.match
   })
 })
@@ -179,31 +181,44 @@ const reduceMarqueeSelection = (
 }
 
 const syncMarqueeInteraction = (
-  ctx: Pick<EditorInputContext, 'editor'>,
-  interaction: InteractionSession,
+  editor: Editor,
   previous: MarqueeSelectionState,
   next: MarqueeSelectionState
 ) => {
   if (!selectionApi.target.equal(previous.selection, next.selection)) {
-    ctx.editor.dispatch({
+    editor.dispatch({
       type: 'selection.set',
       selection: next.selection
     })
   }
 
-  interaction.gesture = next.kind === 'active'
-    ? createGesture('selection-marquee', {
-        marquee: {
-          worldRect: next.worldRect,
-          match: next.match
-        },
-        guides: []
-      })
-    : null
+  editor.dispatch((state) => {
+    const current = state.overlay.preview
+    const nextPreview = setPreviewSelection(
+      current,
+      next.kind === 'active'
+        ? {
+            marquee: {
+              worldRect: next.worldRect,
+              match: next.match
+            },
+            guides: []
+          }
+        : {
+            guides: []
+          }
+    )
+    return isPreviewEqual(current, nextPreview)
+      ? null
+      : {
+          type: 'overlay.preview.set',
+          preview: nextPreview
+        } satisfies EditorCommand
+  })
 }
 
 export const createMarqueeSession = (
-  ctx: Pick<EditorInputContext, 'editor'>,
+  editor: Editor,
   input: {
     start: PointerDownInput
     action: SelectionMarqueeAction
@@ -217,10 +232,9 @@ export const createMarqueeSession = (
     mode: input.action.mode,
     base: input.action.base
   })
-  let interaction = null as InteractionSession | null
 
   if (input.action.clearOnStart) {
-    ctx.editor.dispatch({
+    editor.dispatch({
       type: 'selection.set',
       selection: {
         nodeIds: [],
@@ -234,7 +248,7 @@ export const createMarqueeSession = (
   ) => {
     const previous = state
     state = reduceMarqueeSelection(state, event)
-    syncMarqueeInteraction(ctx, interaction!, previous, state)
+    syncMarqueeInteraction(editor, previous, state)
   }
 
   const step = (
@@ -246,25 +260,24 @@ export const createMarqueeSession = (
       currentWorld: pointer.world,
       minDistance: GestureTuning.dragMinDistance,
       matched: readMatchedSelection({
-        ctx,
+        editor,
         rect: geometryApi.rect.fromPoints(state.startWorld, pointer.world),
         match: input.action.match
       })
     })
   }
 
-  interaction = {
+  return {
     mode: 'marquee',
     pointerId: input.start.pointerId,
     chrome: false,
-    gesture: null,
     autoPan: {
       frame: (pointer) => {
         if (state.kind !== 'active') {
           return
         }
 
-        const sample = ctx.editor.runtime.viewport.pointer(pointer)
+        const sample = editor.runtime.viewport.pointer(pointer)
         step({
           screen: sample.screen,
           world: sample.world
@@ -281,7 +294,7 @@ export const createMarqueeSession = (
         currentWorld: next.world,
         minDistance: GestureTuning.dragMinDistance,
         matched: readMatchedSelection({
-          ctx,
+          editor,
           rect: geometryApi.rect.fromPoints(state.startWorld, next.world),
           match: input.action.match
         })
@@ -294,6 +307,4 @@ export const createMarqueeSession = (
       })
     }
   }
-
-  return interaction
 }

@@ -7,9 +7,16 @@ import { node as nodeApi,
 import type { Node } from '@whiteboard/core/types'
 import type { InteractionBinding, InteractionSession } from '@whiteboard/editor/input/core/types'
 import { FINISH } from '@whiteboard/editor/input/session/result'
-import { createGesture } from '@whiteboard/editor/input/core/gesture'
 import type { PointerDownInput } from '@whiteboard/editor/types/input'
-import type { EditorInputContext } from '@whiteboard/editor/input/runtime'
+import type { WhiteboardLayoutService } from '@whiteboard/core/layout'
+import type { Editor } from '@whiteboard/editor/types/editor'
+import type { EditorCommand } from '@whiteboard/editor/state-engine/intents'
+import {
+  isPreviewEqual,
+  replacePreviewEdgeInteraction,
+  replacePreviewNodeInteraction,
+  setPreviewSelection
+} from '@whiteboard/editor/preview/state'
 
 export type TransformTarget = TransformSelectionMember<Node>
 export type RuntimeTransformSpec = TransformSpec<Node>
@@ -30,12 +37,12 @@ const toTransformNodePatches = (
 }))
 
 const toSpatialSelectionPlan = (
-  ctx: Pick<EditorInputContext, 'editor'>,
-  plan: NonNullable<ReturnType<EditorInputContext['editor']['scene']['ui']['selection']['summary']['get']>['transformPlan']>
+  editor: Editor,
+  plan: NonNullable<ReturnType<Editor['scene']['ui']['selection']['summary']['get']>['transformPlan']>
 ) => ({
   ...plan,
   members: plan.members.flatMap((member) => {
-    const geometry = ctx.editor.scene.nodes.get(member.id)
+    const geometry = editor.scene.nodes.get(member.id)
     return geometry
       ? [{
           ...member,
@@ -50,10 +57,10 @@ const toSpatialSelectionPlan = (
 })
 
 const resolveTransformSpec = (
-  ctx: Pick<EditorInputContext, 'editor'>,
+  editor: Editor,
   input: PointerDownInput
 ): RuntimeTransformSpec | null => {
-  const tool = ctx.editor.scene.ui.state.tool.get()
+  const tool = editor.scene.ui.state.tool.get()
   if (
     tool.type !== 'select'
     || (input.pick.kind !== 'node' && input.pick.kind !== 'selection-box')
@@ -64,12 +71,12 @@ const resolveTransformSpec = (
   }
 
   if (input.pick.kind === 'node') {
-    const geometry = ctx.editor.scene.nodes.get(input.pick.id)
+    const geometry = editor.scene.nodes.get(input.pick.id)
     if (!geometry) {
       return null
     }
 
-    const capability = ctx.editor.runtime.nodeType.support(geometry.base.node)
+    const capability = editor.runtime.nodeType.support(geometry.base.node)
     return nodeApi.transform.resolveSpec({
       target: {
         id: geometry.base.node.id,
@@ -93,7 +100,7 @@ const resolveTransformSpec = (
     }) ?? null
   }
 
-  const selection = ctx.editor.scene.ui.selection.summary.get()
+  const selection = editor.scene.ui.selection.summary.get()
   if (
     !selection.transformPlan
     || input.pick.handle.kind !== 'resize'
@@ -105,7 +112,7 @@ const resolveTransformSpec = (
   return {
     kind: 'selection-resize',
     pointerId: input.pointerId,
-    plan: toSpatialSelectionPlan(ctx, selection.transformPlan),
+    plan: toSpatialSelectionPlan(editor, selection.transformPlan),
     rotation: 0,
     handle: input.pick.handle.direction,
     startScreen: input.client
@@ -113,13 +120,15 @@ const resolveTransformSpec = (
 }
 
 export const createTransformSession = (
-  ctx: EditorInputContext,
+  ctx: {
+    editor: Editor
+    layout: WhiteboardLayoutService
+  },
   spec: TransformSpec<Node>,
   start: Pick<PointerDownInput, 'modifiers'>
 ): InteractionSession => {
   let state = nodeApi.transform.start(spec)
   let modifiers = start.modifiers
-  let interaction: InteractionSession | undefined
 
   const project = (
     input: Pick<PointerDownInput, 'screen' | 'world' | 'modifiers'>
@@ -154,25 +163,32 @@ export const createTransformSession = (
       patches: nextPatches
     }
 
-    if (interaction) {
-      interaction.gesture = createGesture(
-        'selection-transform',
+    ctx.editor.dispatch((snapshot) => {
+      const current = snapshot.overlay.preview
+      const nextPreview = setPreviewSelection(
+        replacePreviewEdgeInteraction(
+          replacePreviewNodeInteraction(current, {
+            patches: toTransformNodePatches(nextPatches)
+          }),
+          []
+        ),
         {
-          nodePatches: toTransformNodePatches(nextPatches),
-          edgePatches: [],
-          frameHoverId: undefined,
-          marquee: undefined,
           guides: result.draft.guides
         }
       )
-    }
+      return isPreviewEqual(current, nextPreview)
+        ? null
+        : {
+            type: 'overlay.preview.set',
+            preview: nextPreview
+          } satisfies EditorCommand
+    })
   }
 
-  interaction = {
+  return {
     mode: 'node-transform',
     pointerId: spec.pointerId,
     chrome: false,
-    gesture: null,
     autoPan: {
       frame: (pointer) => {
         project({
@@ -202,18 +218,38 @@ export const createTransformSession = (
 
       return FINISH
     },
-    cleanup: () => {}
+    cleanup: () => {
+      ctx.editor.dispatch((snapshot) => {
+        const current = snapshot.overlay.preview
+        const nextPreview = setPreviewSelection(
+          replacePreviewEdgeInteraction(
+            replacePreviewNodeInteraction(current, {}),
+            []
+          ),
+          {
+            guides: []
+          }
+        )
+        return isPreviewEqual(current, nextPreview)
+          ? null
+          : {
+              type: 'overlay.preview.set',
+              preview: nextPreview
+            } satisfies EditorCommand
+      })
+    }
   }
-
-  return interaction
 }
 
 export const createTransformBinding = (
-  ctx: EditorInputContext
+  ctx: {
+    editor: Editor
+    layout: WhiteboardLayoutService
+  }
 ): InteractionBinding => ({
   key: 'transform',
   start: (input) => {
-    const spec = resolveTransformSpec(ctx, input)
+    const spec = resolveTransformSpec(ctx.editor, input)
 
     return spec
       ? createTransformSession(ctx, spec, {

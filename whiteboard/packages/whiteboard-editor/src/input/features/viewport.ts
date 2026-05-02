@@ -3,7 +3,7 @@ import type {
   InteractionSession
 } from '@whiteboard/editor/input/core/types'
 import { FINISH } from '@whiteboard/editor/input/session/result'
-import type { EditorInputContext } from '@whiteboard/editor/input/runtime'
+import type { Editor } from '@whiteboard/editor/types/editor'
 type PanState = {
   lastClient: {
     x: number
@@ -18,20 +18,15 @@ type PanPointer = {
   }
 }
 
-type ViewportServices = Pick<
-  EditorInputContext,
-  'editor'
->
-
 const allowsLeftDrag = (
-  ctx: ViewportServices
+  editor: Editor
 ) => (
-  ctx.editor.scene.ui.state.interaction.get().space
-  || ctx.editor.scene.ui.state.tool.is('hand')
+  editor.scene.ui.state.interaction.get().space
+  || editor.scene.ui.state.tool.is('hand')
 )
 
 const updatePan = (
-  ctx: ViewportServices,
+  editor: Editor,
   state: PanState,
   input: PanPointer
 ) => {
@@ -45,14 +40,14 @@ const updatePan = (
     x: input.client.x,
     y: input.client.y
   }
-  ctx.editor.actions.viewport.panScreenBy({
+  editor.actions.viewport.panScreenBy({
     x: -deltaX,
     y: -deltaY
   })
 }
 
 export const createViewportBinding = (
-  ctx: ViewportServices
+  editor: Editor
 ): InteractionBinding => ({
   key: 'viewport.pan',
   start: (input) => {
@@ -63,7 +58,7 @@ export const createViewportBinding = (
     const middleDrag = input.button === 1 || (input.buttons & 4) === 4
     const leftDrag =
       (input.button === 0 || (input.buttons & 1) === 1)
-      && allowsLeftDrag(ctx)
+      && allowsLeftDrag(editor)
 
     if (!middleDrag && !leftDrag) {
       return null
@@ -79,7 +74,7 @@ export const createViewportBinding = (
     const session: InteractionSession = {
       mode: 'viewport-pan',
       move: (event) => {
-        updatePan(ctx, state, event)
+        updatePan(editor, state, event)
       },
       up: () => FINISH
     }

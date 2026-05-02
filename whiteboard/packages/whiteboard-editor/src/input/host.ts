@@ -1,24 +1,70 @@
-import type { SelectionTarget } from '@whiteboard/core/selection'
+import type { WhiteboardLayoutService } from '@whiteboard/core/layout'
 import type { EditorCommand } from '@whiteboard/editor/state-engine/intents'
-import type { ContextMenuIntent } from '@whiteboard/editor/types/input'
 import type { Editor, EditorInputHost } from '@whiteboard/editor/types/editor'
-import type { InteractionRuntime } from '@whiteboard/editor/input/core/types'
-import type { EdgeHoverService } from '@whiteboard/editor/input/hover/edge'
+import { createInteractionRuntime } from '@whiteboard/editor/input/core/runtime'
+import { createDrawBinding } from '@whiteboard/editor/input/features/draw'
+import { createEdgeBinding } from '@whiteboard/editor/input/features/edge'
+import { createSelectionBinding } from '@whiteboard/editor/input/features/selection/press'
+import { createTransformBinding } from '@whiteboard/editor/input/features/transform'
+import { createViewportBinding } from '@whiteboard/editor/input/features/viewport'
+import { createEdgeHoverService } from '@whiteboard/editor/input/hover/edge'
 import {
   EMPTY_HOVER_STATE,
   isHoverStateEqual,
   toHoverStateFromPick
 } from '@whiteboard/editor/input/hover/store'
+import {
+  isPreviewEqual,
+  setPreviewEdgeGuide
+} from '@whiteboard/editor/preview/state'
 
 export const createEditorInputHost = ({
   editor,
-  interaction,
-  edgeHover
+  layout
 }: {
   editor: Editor
-  interaction: InteractionRuntime
-  edgeHover: EdgeHoverService
+  layout: WhiteboardLayoutService
 }): EditorInputHost => {
+  const interaction = createInteractionRuntime({
+    editor,
+    bindings: [
+      createViewportBinding(editor),
+      createDrawBinding(editor),
+      createEdgeBinding({
+        editor,
+        layout
+      }),
+      createTransformBinding({
+        editor,
+        layout
+      }),
+      createSelectionBinding(editor)
+    ]
+  })
+
+  const edgeHover = createEdgeHoverService(
+    {
+      readTool: () => editor.read().state.tool,
+      snap: editor.runtime.snap
+    },
+    {
+      read: () => editor.read().overlay.preview.edgeGuide,
+      write: (nextEdgeGuide) => {
+        editor.dispatch((state) => {
+          const current = state.overlay.preview
+          const nextPreview = setPreviewEdgeGuide(current, nextEdgeGuide)
+
+          return isPreviewEqual(current, nextPreview)
+            ? null
+            : {
+                type: 'overlay.preview.set',
+                preview: nextPreview
+              } satisfies EditorCommand
+        })
+      }
+    }
+  )
+
   const dispatchSelection = (
     selection: {
       nodeIds?: readonly string[]

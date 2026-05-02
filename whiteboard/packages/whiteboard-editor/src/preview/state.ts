@@ -1,7 +1,5 @@
 import { geometry as geometryApi } from '@whiteboard/core/geometry'
-import { mindmap as mindmapApi } from '@whiteboard/core/mindmap'
 import type {
-  Document,
   EdgeId,
   NodeId
 } from '@whiteboard/core/types'
@@ -13,9 +11,6 @@ import type {
   NodePreview,
   PreviewInput
 } from '@whiteboard/editor-scene'
-import type {
-  ActiveGesture
-} from '@whiteboard/editor/input/core/gesture'
 import {
   EMPTY_EDGE_GUIDE,
   isEdgeGuideEqual
@@ -28,7 +23,9 @@ import {
   EMPTY_GUIDES
 } from '@whiteboard/editor/preview/selection'
 import type {
-  MindmapPreviewState
+  EdgeFeedbackEntry,
+  EdgeGuide,
+  NodePreviewEntry
 } from '@whiteboard/editor/preview/types'
 
 type NodePreviewRecord = PreviewInput['nodes']
@@ -226,57 +223,6 @@ const normalizeEdgeGuide = (
     : undefined
 )
 
-const toMindmapPreview = (
-  document: Document,
-  preview: MindmapPreviewState | undefined
-): MindmapPreview | null => {
-  if (!preview) {
-    return null
-  }
-
-  const rootMoveMindmapId = preview.rootMove
-    ? mindmapApi.tree.resolveId(document, preview.rootMove.treeId)
-    : undefined
-  const subtreeMoveMindmapId = preview.subtreeMove
-    ? mindmapApi.tree.resolveId(document, preview.subtreeMove.treeId)
-    : undefined
-
-  return {
-    rootMove: rootMoveMindmapId && preview.rootMove
-      ? {
-          mindmapId: rootMoveMindmapId,
-          delta: preview.rootMove.delta
-        }
-      : undefined,
-    subtreeMove: subtreeMoveMindmapId && preview.subtreeMove
-      ? {
-          mindmapId: subtreeMoveMindmapId,
-          nodeId: preview.subtreeMove.nodeId,
-          ghost: preview.subtreeMove.ghost,
-          drop: preview.subtreeMove.drop
-        }
-      : undefined
-  }
-}
-
-const mergeMindmapPreview = (
-  base: MindmapPreview | null,
-  draft: MindmapPreview | null
-): MindmapPreview | null => {
-  if (!base) {
-    return draft
-  }
-
-  if (!draft) {
-    return base
-  }
-
-  return {
-    ...base,
-    ...draft
-  }
-}
-
 const normalizeDrawPreview = (
   draw: PreviewInput['draw']
 ): PreviewInput['draw'] => draw
@@ -422,20 +368,33 @@ export const isEditorPreviewStateEqual = (
 
 export const isPreviewEqual = isEditorPreviewStateEqual
 
-const readNodePreviews = (input: {
-  base: NodePreviewRecord
-  gesture: ActiveGesture | null
-}): NodePreviewRecord => {
-  const next: Record<NodeId, NodePreview | undefined> = {
-    ...input.base
+export const replacePreviewNodeInteraction = (
+  state: PreviewInput,
+  input: {
+    patches?: readonly NodePreviewEntry[]
+    hiddenNodeIds?: readonly NodeId[]
   }
-  const draft = input.gesture?.draft
+): PreviewInput => {
+  const next: Record<NodeId, NodePreview | undefined> = {}
 
-  ;(draft?.nodePatches ?? EMPTY_NODE_PATCHES).forEach((entry) => {
+  Object.keys(state.nodes).forEach((nodeId) => {
+    const current = state.nodes[nodeId as NodeId]
+    if (!current?.presentation) {
+      return
+    }
+
+    next[nodeId as NodeId] = {
+      presentation: current.presentation,
+      hovered: false,
+      hidden: false
+    }
+  })
+
+  ;(input.patches ?? EMPTY_NODE_PATCHES).forEach((entry) => {
     next[entry.id] = mergeNodePreviewPatch(next[entry.id], entry.patch)
   })
 
-  ;(draft?.hiddenNodeIds ?? EMPTY_NODE_HIDDEN).forEach((nodeId) => {
+  ;(input.hiddenNodeIds ?? EMPTY_NODE_HIDDEN).forEach((nodeId) => {
     const current = next[nodeId]
     next[nodeId] = {
       patch: current?.patch,
@@ -445,114 +404,72 @@ const readNodePreviews = (input: {
     }
   })
 
-  return normalizeNodePreviewRecord(next)
+  return normalizeEditorPreviewState({
+    ...state,
+    nodes: next
+  })
 }
 
-const readEdgePreviews = (input: {
-  base: EdgePreviewRecord
-  gesture: ActiveGesture | null
-}): EdgePreviewRecord => {
-  const draft = input.gesture?.draft
-  if (!draft?.edgePatches?.length) {
-    return normalizeEdgePreviewRecord(input.base)
-  }
+export const replacePreviewEdgeInteraction = (
+  state: PreviewInput,
+  entries: readonly EdgeFeedbackEntry[]
+): PreviewInput => {
+  const next: Record<EdgeId, EdgePreview | undefined> = {}
 
-  const next: Record<EdgeId, EdgePreview | undefined> = {
-    ...input.base
-  }
-  draft.edgePatches.forEach((entry) => {
+  entries.forEach((entry) => {
     next[entry.id] = mergeEdgePreview(next[entry.id], {
       patch: entry.patch,
       activeRouteIndex: entry.activeRouteIndex
     })
   })
 
-  return normalizeEdgePreviewRecord(next)
-}
-
-const readDrawPreview = (
-  gesture: ActiveGesture | null
-): PreviewInput['draw'] => {
-  const draft = gesture?.draft
-  if (!draft?.drawPreview) {
-    return null
-  }
-
-  return {
-    ...draft.drawPreview,
-    hiddenNodeIds: draft.hiddenNodeIds ?? EMPTY_NODE_HIDDEN
-  }
-}
-
-export const composeEditorPreviewState = (input: {
-  base: PreviewInput
-  gesture: ActiveGesture | null
-  edgeGuide?: EdgeGuidePreview
-  readDocument: () => Document
-}): PreviewInput => {
-  const draft = input.gesture?.draft
-  const base = normalizeEditorPreviewState(input.base)
-  const draftMindmap = toMindmapPreview(
-    input.readDocument(),
-    draft?.mindmap
-  )
-
   return normalizeEditorPreviewState({
-    nodes: readNodePreviews({
-      base: base.nodes,
-      gesture: input.gesture
-    }),
-    edges: readEdgePreviews({
-      base: base.edges,
-      gesture: input.gesture
-    }),
-    edgeGuide: draft?.edgeGuide ?? input.edgeGuide ?? base.edgeGuide,
-    draw: draft
-      ? readDrawPreview(input.gesture)
-      : base.draw,
-    selection: draft
-      ? {
-          ...(draft.marquee
-            ? {
-                marquee: draft.marquee
-              }
-            : {}),
-          guides: draft.guides ?? EMPTY_GUIDES
-        }
-      : base.selection,
-    mindmap: mergeMindmapPreview(base.mindmap, draftMindmap)
+    ...state,
+    edges: next
   })
 }
 
-export const readPersistentPreviewState = (
-  input: PreviewInput
+export const setPreviewEdgeGuide = (
+  state: PreviewInput,
+  edgeGuide: EdgeGuidePreview | EdgeGuide | undefined
 ): PreviewInput => {
-  const state = normalizeEditorPreviewState(input)
-  const nodes: Record<NodeId, NodePreview | undefined> = {}
-
-  Object.keys(state.nodes).forEach((nodeId) => {
-    const preview = state.nodes[nodeId as NodeId]
-    if (!preview?.presentation) {
-      return
-    }
-
-    nodes[nodeId as NodeId] = {
-      presentation: preview.presentation,
-      hovered: false,
-      hidden: false
-    }
-  })
+  if (!edgeGuide) {
+    const {
+      edgeGuide: _edgeGuide,
+      ...rest
+    } = state
+    return normalizeEditorPreviewState(rest)
+  }
 
   return normalizeEditorPreviewState({
-    nodes,
-    edges: EMPTY_EDGE_PREVIEWS,
-    draw: null,
-    selection: {
-      guides: EMPTY_GUIDES
-    },
-    mindmap: null
+    ...state,
+    edgeGuide
   })
 }
+
+export const setPreviewDraw = (
+  state: PreviewInput,
+  draw: PreviewInput['draw']
+): PreviewInput => normalizeEditorPreviewState({
+  ...state,
+  draw
+})
+
+export const setPreviewSelection = (
+  state: PreviewInput,
+  selection: PreviewInput['selection']
+): PreviewInput => normalizeEditorPreviewState({
+  ...state,
+  selection
+})
+
+export const setPreviewMindmap = (
+  state: PreviewInput,
+  mindmap: PreviewInput['mindmap']
+): PreviewInput => normalizeEditorPreviewState({
+  ...state,
+  mindmap
+})
 
 export const updatePreviewNodePresentation = (
   state: PreviewInput,

@@ -6,13 +6,19 @@ import {
 import type {
   InteractionSession
 } from '@whiteboard/editor/input/core/types'
-import { createGesture } from '@whiteboard/editor/input/core/gesture'
 import { createMindmapDragSession, tryStartMindmapDragForNode } from '@whiteboard/editor/input/features/mindmap/drag'
 import type {
   PointerDownInput
 } from '@whiteboard/editor/types/input'
 import type { SelectionMoveVisibility } from '@whiteboard/editor/input/features/selection/press'
-import type { EditorInputContext } from '@whiteboard/editor/input/runtime'
+import type { Editor } from '@whiteboard/editor/types/editor'
+import type { EditorCommand } from '@whiteboard/editor/state-engine/intents'
+import {
+  isPreviewEqual,
+  replacePreviewEdgeInteraction,
+  replacePreviewNodeInteraction,
+  setPreviewSelection
+} from '@whiteboard/editor/preview/state'
 
 const toMoveNodePatches = (
   result: MoveStepResult
@@ -34,29 +40,6 @@ const toMoveEdgePatches = (
   }
 }))
 
-const findParentFrameId = (
-  ctx: Pick<EditorInputContext, 'editor'>,
-  nodeId: string
-) => ctx.editor.scene.frame.parent(nodeId)
-
-const resolveFrameHoverId = (
-  ctx: Pick<EditorInputContext, 'editor'>,
-  state: Parameters<typeof nodeApi.move.state.finish>[0],
-  pointerWorld: {
-    x: number
-    y: number
-  }
-) => {
-  const movingIds = new Set(state.move.members.map((member) => member.id))
-  let frameId = ctx.editor.scene.frame.pick(pointerWorld)
-
-  while (frameId && movingIds.has(frameId)) {
-    frameId = findParentFrameId(ctx, frameId)
-  }
-
-  return frameId
-}
-
 type MoveInteractionInput = {
   start: PointerDownInput
   target: SelectionTarget
@@ -64,7 +47,7 @@ type MoveInteractionInput = {
 }
 
 export const createMoveInteraction = (
-  ctx: Pick<EditorInputContext, 'editor'>,
+  editor: Editor,
   input: MoveInteractionInput
 ): InteractionSession | null => {
   const pickedNodeId = (
@@ -87,7 +70,7 @@ export const createMoveInteraction = (
     input.visibility.kind === 'show'
     || input.visibility.kind === 'temporary'
   ) {
-    ctx.editor.dispatch({
+    editor.dispatch({
       type: 'selection.set',
       selection: input.visibility.selection
     })
@@ -96,21 +79,21 @@ export const createMoveInteraction = (
   if (pickedNodeId) {
     const mindmapState = tryStartMindmapDragForNode({
       nodeId: pickedNodeId,
-      pointerId: input.start.pointerId,
-      world: input.start.world,
+        pointerId: input.start.pointerId,
+        world: input.start.world,
       mindmap: {
-        tree: ctx.editor.scene.mindmaps.tree
+        tree: editor.scene.mindmaps.tree
       },
-      node: ctx.editor.document.node
+      node: editor.document.node
     })
 
     if (mindmapState) {
-      const session = createMindmapDragSession(ctx, mindmapState)
+      const session = createMindmapDragSession(editor, mindmapState)
       const cleanup = session.cleanup
       session.cleanup = () => {
         cleanup?.()
         if (restoreSelection) {
-          ctx.editor.dispatch({
+          editor.dispatch({
             type: 'selection.set',
             selection: restoreSelection
           })
@@ -121,7 +104,7 @@ export const createMoveInteraction = (
     }
   }
 
-  const moveScope = ctx.editor.scene.selection.move(input.target)
+  const moveScope = editor.scene.selection.move(input.target)
   const initialState = nodeApi.move.state.start({
     nodes: moveScope.nodes,
     edges: moveScope.edges,
@@ -133,7 +116,6 @@ export const createMoveInteraction = (
   }
   let state = initialState
   let modifiers = input.start.modifiers
-  let interaction = null as InteractionSession | null
 
   const project = (nextInput: {
     world: {
@@ -147,9 +129,9 @@ export const createMoveInteraction = (
     const result = nodeApi.move.state.step({
       state,
       pointerWorld: nextInput.world,
-      snap: ctx.editor.scene.ui.state.tool.is('select')
+      snap: editor.scene.ui.state.tool.is('select')
         ? ({ rect, excludeIds }) => {
-            const snapped = ctx.editor.runtime.snap.node.move({
+            const snapped = editor.runtime.snap.node.move({
               rect,
               excludeIds,
               modifiers: nextInput.modifiers
@@ -161,26 +143,37 @@ export const createMoveInteraction = (
     })
 
     state = result.state
-    interaction!.gesture = createGesture(
-      'selection-move',
-      {
-        nodePatches: toMoveNodePatches(result),
-        edgePatches: toMoveEdgePatches(result),
-        frameHoverId: resolveFrameHoverId(ctx, state, nextInput.world),
-        guides
-      }
-    )
+    editor.dispatch((snapshot) => {
+      const current = snapshot.overlay.preview
+      const nextPreview = setPreviewSelection(
+        replacePreviewEdgeInteraction(
+          replacePreviewNodeInteraction(current, {
+            patches: toMoveNodePatches(result)
+          }),
+          toMoveEdgePatches(result)
+        ),
+        {
+          guides
+        }
+      )
+
+      return isPreviewEqual(current, nextPreview)
+        ? null
+        : {
+            type: 'overlay.preview.set',
+            preview: nextPreview
+          } satisfies EditorCommand
+    })
   }
 
-  interaction = {
+  return {
     mode: 'node-drag',
     pointerId: input.start.pointerId,
     chrome: false,
-    gesture: null,
     autoPan: {
       frame: (pointer) => {
         project({
-          world: ctx.editor.runtime.viewport.pointer(pointer).world,
+          world: editor.runtime.viewport.pointer(pointer).world,
           modifiers
         })
       }
@@ -194,7 +187,7 @@ export const createMoveInteraction = (
     up: () => {
       const commit = nodeApi.move.state.finish(state)
       if (commit.delta) {
-        ctx.editor.write.canvas.selection.move({
+        editor.write.canvas.selection.move({
           nodeIds: input.target.nodeIds,
           edgeIds: input.target.edgeIds,
           delta: commit.delta
@@ -205,13 +198,30 @@ export const createMoveInteraction = (
     },
     cleanup: () => {
       if (restoreSelection) {
-        ctx.editor.dispatch({
+        editor.dispatch({
           type: 'selection.set',
           selection: restoreSelection
         })
       }
+
+      editor.dispatch((snapshot) => {
+        const current = snapshot.overlay.preview
+        const nextPreview = setPreviewSelection(
+          replacePreviewEdgeInteraction(
+            replacePreviewNodeInteraction(current, {}),
+            []
+          ),
+          {
+            guides: []
+          }
+        )
+        return isPreviewEqual(current, nextPreview)
+          ? null
+          : {
+              type: 'overlay.preview.set',
+              preview: nextPreview
+            } satisfies EditorCommand
+      })
     }
   }
-
-  return interaction
 }

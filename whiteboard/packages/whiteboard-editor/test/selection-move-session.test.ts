@@ -5,98 +5,98 @@ describe('createMoveInteraction', () => {
   it('commits selection move through a single canvas write', () => {
     const moveSelection = vi.fn(() => ({ ok: true }))
 
-    const session = createMoveInteraction({
-      editor: {
-        document: {
-          node: (id: string) => id === 'node-1'
-            ? {
-                id: 'node-1',
-                type: 'text',
-                position: {
-                  x: 100,
-                  y: 120
-                },
-                size: {
-                  width: 120,
-                  height: 40
-                },
-                data: {
-                  text: 'node-1'
-                }
-              }
-            : undefined
-        },
-        scene: {
-          selection: {
-            move: () => ({
-              nodes: [{
-                id: 'node-1',
-                type: 'text',
-                position: {
-                  x: 100,
-                  y: 120
-                },
-                size: {
-                  width: 120,
-                  height: 40
-                },
-                rotation: 0,
-                data: {
-                  text: 'node-1'
-                }
-              }],
-              edges: [{
-                id: 'edge-1',
-                type: 'straight',
-                source: {
-                  kind: 'point',
-                  point: { x: 80, y: 140 }
-                },
-                target: {
-                  kind: 'point',
-                  point: { x: 200, y: 140 }
-                },
-                route: {
-                  kind: 'auto'
-                }
-              }]
-            })
-          },
-          frame: {
-            pick: vi.fn(() => undefined),
-            parent: vi.fn()
-          },
-          mindmaps: {
-            tree: vi.fn(() => undefined)
-          },
-          ui: {
-            state: {
-              tool: {
-                is: () => false
+    const editor = {
+      document: {
+        node: (id: string) => id === 'node-1'
+          ? {
+              id: 'node-1',
+              type: 'text',
+              position: {
+                x: 100,
+                y: 120
+              },
+              size: {
+                width: 120,
+                height: 40
+              },
+              data: {
+                text: 'node-1'
               }
             }
-          }
+          : undefined
+      },
+      scene: {
+        selection: {
+          move: () => ({
+            nodes: [{
+              id: 'node-1',
+              type: 'text',
+              position: {
+                x: 100,
+                y: 120
+              },
+              size: {
+                width: 120,
+                height: 40
+              },
+              rotation: 0,
+              data: {
+                text: 'node-1'
+              }
+            }],
+            edges: [{
+              id: 'edge-1',
+              type: 'straight',
+              source: {
+                kind: 'point',
+                point: { x: 80, y: 140 }
+              },
+              target: {
+                kind: 'point',
+                point: { x: 200, y: 140 }
+              },
+              route: {
+                kind: 'auto'
+              }
+            }]
+          })
         },
-        runtime: {
-          viewport: {
-            pointer: vi.fn()
-          },
-          snap: {
-            node: {
-              move: vi.fn()
-            }
-          }
+        frame: {
+          pick: vi.fn(() => undefined),
+          parent: vi.fn()
         },
-        dispatch: vi.fn(),
-        write: {
-          canvas: {
-            selection: {
-              move: moveSelection
+        mindmaps: {
+          tree: vi.fn(() => undefined)
+        },
+        ui: {
+          state: {
+            tool: {
+              is: () => false
             }
           }
         }
+      },
+      runtime: {
+        viewport: {
+          pointer: vi.fn()
+        },
+        snap: {
+          node: {
+            move: vi.fn()
+          }
+        }
+      },
+      dispatch: vi.fn(),
+      write: {
+        canvas: {
+          selection: {
+            move: moveSelection
+          }
+        }
       }
-    } as never, {
+    }
+
+    const session = createMoveInteraction(editor as never, {
       start: {
         phase: 'down',
         pointerId: 1,

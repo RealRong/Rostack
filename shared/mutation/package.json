@@ -7,7 +7,6 @@
     ".": "./src/index.ts",
     "./engine": "./src/engine/index.ts",
     "./write": "./src/write.ts",
-    "./typed": "./src/typed.ts",
     "./localHistory": "./src/localHistory.ts",
     "./history": "./src/history.ts"
   },

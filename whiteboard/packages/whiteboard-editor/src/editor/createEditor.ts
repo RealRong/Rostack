@@ -17,7 +17,7 @@ import {
   createEditorStateView
 } from '@whiteboard/editor/editor/ui/state'
 import { createSnapRuntime } from '@whiteboard/editor/input/core/snap'
-import { createEditorHost } from '@whiteboard/editor/input/runtime'
+import { createEditorInputHost } from '@whiteboard/editor/input/host'
 import { createProjectionRuntime } from '@whiteboard/editor-scene'
 import {
   DEFAULT_DRAW_STATE,
@@ -328,7 +328,7 @@ export const createEditor = (input: {
     runtime,
     dispatch
   }
-  const host = createEditorHost({
+  const host = createEditorInputHost({
     editor: {
       ...editorBase,
       input: null as never,

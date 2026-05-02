@@ -12,8 +12,12 @@ import {
   CANCEL,
   FINISH
 } from '@whiteboard/editor/input/session/result'
-import { createGesture } from '@whiteboard/editor/input/core/gesture'
-import type { EditorInputContext } from '@whiteboard/editor/input/runtime'
+import type { Editor } from '@whiteboard/editor/types/editor'
+import type { EditorCommand } from '@whiteboard/editor/state-engine/intents'
+import {
+  isPreviewEqual,
+  replacePreviewEdgeInteraction
+} from '@whiteboard/editor/preview/state'
 
 export type EdgeMoveState = {
   edgeId: EdgeId
@@ -35,7 +39,7 @@ const readEdgeMovePatch = (
   : undefined
 
 const readMovableEdge = (
-  projection: EditorInputContext['editor']['scene'],
+  projection: Editor['scene'],
   edgeId: EdgeId
 ) => {
   const current = projection.edges.get(edgeId)?.base.edge
@@ -46,7 +50,7 @@ const readMovableEdge = (
 }
 
 export const startEdgeMove = (input: {
-  edge: EditorInputContext['editor']['scene']
+  edge: Editor['scene']
   edgeId: EdgeId
   pointerId: number
   start: Point
@@ -109,27 +113,11 @@ const commitEdgeMove = (
     : undefined
 )
 
-const readMoveGesture = (
-  state: EdgeMoveState,
-  patch?: ReturnType<typeof stepEdgeMove>['patch']
-) => patch
-  ? createGesture(
-      'edge-move',
-      {
-        edgePatches: [{
-          id: state.edgeId,
-          patch
-        }]
-      }
-    )
-  : null
-
 export const createEdgeMoveSession = (
-  ctx: Pick<EditorInputContext, 'editor'>,
+  editor: Editor,
   initial: EdgeMoveState
 ): InteractionSession => {
   let state = initial
-  let interaction = null as InteractionSession | null
 
   const step = (
     world: Point
@@ -141,16 +129,32 @@ export const createEdgeMoveSession = (
       return CANCEL
     }
 
-    interaction!.gesture = readMoveGesture(state, result.patch)
+    editor.dispatch((snapshot) => {
+      const current = snapshot.overlay.preview
+      const nextPreview = replacePreviewEdgeInteraction(
+        current,
+        result.patch
+          ? [{
+              id: state.edgeId,
+              patch: result.patch
+            }]
+          : []
+      )
+      return isPreviewEqual(current, nextPreview)
+        ? null
+        : {
+            type: 'overlay.preview.set',
+            preview: nextPreview
+          } satisfies EditorCommand
+    })
   }
 
-  interaction = {
+  return {
     mode: 'edge-drag',
     pointerId: state.pointerId,
     chrome: false,
-    gesture: null,
     autoPan: {
-      frame: (pointer) => step(ctx.editor.runtime.viewport.pointer(pointer).world)
+      frame: (pointer) => step(editor.runtime.viewport.pointer(pointer).world)
     },
     move: (input) => {
       const transition = step(input.world)
@@ -166,7 +170,7 @@ export const createEdgeMoveSession = (
 
       const commit = commitEdgeMove(state)
       if (commit) {
-        ctx.editor.actions.edge.move({
+        editor.actions.edge.move({
           ids: [commit.edgeId],
           delta: commit.delta
         })
@@ -174,8 +178,17 @@ export const createEdgeMoveSession = (
 
       return FINISH
     },
-    cleanup: () => {}
+    cleanup: () => {
+      editor.dispatch((snapshot) => {
+        const current = snapshot.overlay.preview
+        const nextPreview = replacePreviewEdgeInteraction(current, [])
+        return isPreviewEqual(current, nextPreview)
+          ? null
+          : {
+              type: 'overlay.preview.set',
+              preview: nextPreview
+            } satisfies EditorCommand
+      })
+    }
   }
-
-  return interaction
 }

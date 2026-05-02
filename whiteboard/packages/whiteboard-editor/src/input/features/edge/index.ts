@@ -11,13 +11,14 @@ import {
   createEdgeRoutePressSession,
   tryStartEdgeRoute
 } from '@whiteboard/editor/input/features/edge/route'
-import type { EditorInputContext } from '@whiteboard/editor/input/runtime'
+import type { WhiteboardLayoutService } from '@whiteboard/core/layout'
+import type { Editor } from '@whiteboard/editor/types/editor'
 
 const selectEdge = (
-  ctx: Pick<EditorInputContext, 'editor'>,
+  editor: Editor,
   edgeId: string
 ) => {
-  ctx.editor.dispatch({
+  editor.dispatch({
     type: 'selection.set',
     selection: {
       nodeIds: [],
@@ -27,7 +28,10 @@ const selectEdge = (
 }
 
 export const createEdgeBinding = (
-  ctx: EditorInputContext
+  ctx: {
+    editor: Editor
+    layout: WhiteboardLayoutService
+  }
 ): InteractionBinding => ({
   key: 'edge',
   start: (input) => {
@@ -41,10 +45,10 @@ export const createEdgeBinding = (
     })
     if (connect) {
       if (connect.kind === 'reconnect') {
-        selectEdge(ctx, connect.edgeId)
+        selectEdge(ctx.editor, connect.edgeId)
       }
 
-      return createEdgeConnectSession(ctx, connect)
+      return createEdgeConnectSession(ctx.editor, connect)
     }
 
     if (
@@ -55,14 +59,14 @@ export const createEdgeBinding = (
     }
 
     if (input.pick.part === 'label') {
-      const label = startEdgeLabelPress(ctx, input)
+      const label = startEdgeLabelPress(ctx.editor, input)
       if (!label) {
         return null
       }
 
       return label === 'handled'
         ? HANDLED
-        : createEdgeLabelPressSession(ctx, input, label)
+        : createEdgeLabelPressSession(ctx.editor, input, label)
     }
 
     if (input.pick.part === 'path') {
@@ -75,19 +79,19 @@ export const createEdgeBinding = (
       }
 
       selectEdge(
-        ctx,
+        ctx.editor,
         route.kind === 'session'
           ? route.state.edgeId
           : route.edgeId
       )
 
       if (route.kind === 'remove') {
-        removeEdgeRoutePoint(ctx, route.edgeId, route.index)
+        removeEdgeRoutePoint(ctx.editor, route.edgeId, route.index)
         return HANDLED
       }
 
       return createEdgeRoutePressSession(
-        ctx,
+        ctx.editor,
         input,
         route.kind === 'session'
           ? {
@@ -102,7 +106,7 @@ export const createEdgeBinding = (
       return null
     }
 
-    selectEdge(ctx, input.pick.id)
+    selectEdge(ctx.editor, input.pick.id)
     const move = startEdgeMove({
       edge: ctx.editor.scene,
       edgeId: input.pick.id,
@@ -111,7 +115,7 @@ export const createEdgeBinding = (
     })
 
     return move.edge
-      ? createEdgeMoveSession(ctx, move)
+      ? createEdgeMoveSession(ctx.editor, move)
       : HANDLED
   }
 })

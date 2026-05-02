@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { edge as edgeApi } from '@whiteboard/core/edge'
 import type { Edge } from '@whiteboard/core/types'
-import type { InteractionDeps } from '../src/input/core/context'
+import { EMPTY_PREVIEW_STATE } from '../src/preview/state'
 import { createEdgeMoveSession, stepEdgeMove, type EdgeMoveState } from '../src/input/features/edge/move'
 import type { PointerMoveInput } from '../src/types/input'
 
@@ -59,20 +59,33 @@ describe('createEdgeMoveSession', () => {
   it('clears the preview when the edge returns to its origin', () => {
     const edge = createMovableEdge()
     const move = vi.fn()
+    let preview = EMPTY_PREVIEW_STATE
     const session = createEdgeMoveSession(
       {
-        command: {
+        actions: {
           edge: { move }
+        },
+        dispatch: (input: any) => {
+          const command = typeof input === 'function'
+            ? input({
+                overlay: {
+                  preview
+                }
+              })
+            : input
+          if (command?.type === 'overlay.preview.set') {
+            preview = command.preview
+          }
         }
-      } as unknown as InteractionDeps,
+      } as any,
       createMoveState(edge)
     )
 
     session.move?.(createMoveInput({ x: 15, y: 25 }))
-    expect(session.gesture?.kind).toBe('edge-move')
+    expect(preview.edges['edge-1']?.patch).toBeDefined()
 
     session.move?.(createMoveInput({ x: 0, y: 0 }))
-    expect(session.gesture).toBeNull()
+    expect(preview.edges['edge-1']).toBeUndefined()
     expect(move).not.toHaveBeenCalled()
   })
 })

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { Node } from '@whiteboard/core/types'
 import { createTransformSession } from '../src/input/features/transform'
+import { EMPTY_PREVIEW_STATE } from '../src/preview/state'
 import { createEditorTestLayout } from './support'
 
 const createTextNode = (
@@ -100,6 +101,7 @@ const createTransformContext = ({
     width: 100,
     height: 24
   }
+  let preview = EMPTY_PREVIEW_STATE
 
   return {
     layout: createEditorTestLayout({
@@ -182,6 +184,18 @@ const createTransformContext = ({
             resize: true,
             rotate: false
           })
+        }
+      },
+      dispatch: (input: any) => {
+        const command = typeof input === 'function'
+          ? input({
+              overlay: {
+                preview
+              }
+            })
+          : input
+        if (command?.type === 'overlay.preview.set') {
+          preview = command.preview
         }
       },
       write: {

@@ -1,5 +1,3 @@
-import { store } from '@shared/core'
-import type { ActiveGesture } from '@whiteboard/editor/input/core/gesture'
 import type {
   KeyboardInput,
   PointerDownInput,
@@ -53,7 +51,6 @@ export type InteractionSession = {
   mode: Exclude<InteractionMode, 'idle'>
   pointerId?: number
   chrome?: boolean
-  gesture?: ActiveGesture | null
   pointer?: {
     move?: PointerMode
     up?: PointerMode

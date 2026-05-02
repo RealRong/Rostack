@@ -8,12 +8,17 @@ import type { NodeId, Point } from '@whiteboard/core/types'
 import { store } from '@shared/core'
 import type { InteractionSession } from '@whiteboard/editor/input/core/types'
 import { FINISH } from '@whiteboard/editor/input/session/result'
-import { createGesture } from '@whiteboard/editor/input/core/gesture'
 import type { PointerDownInput } from '@whiteboard/editor/types/input'
 import type { Tool } from '@whiteboard/editor/types/tool'
 import type { MindmapPreviewState } from '@whiteboard/editor/preview/types'
-import type { EditorInputContext } from '@whiteboard/editor/input/runtime'
 import type { Node } from '@whiteboard/core/types'
+import type { Editor } from '@whiteboard/editor/types/editor'
+import type { EditorCommand } from '@whiteboard/editor/state-engine/intents'
+import type { MindmapPreview } from '@whiteboard/editor-scene'
+import {
+  isPreviewEqual,
+  setPreviewMindmap
+} from '@whiteboard/editor/preview/state'
 
 export type MindmapDragState = CoreMindmapDragState
 
@@ -41,12 +46,21 @@ export type MindmapDragCommit =
     }
 
 const previewMindmapDrag = (
+  editor: Editor,
   state: MindmapDragState
-): MindmapPreviewState => {
+): MindmapPreview | null => {
+  const mindmapId = mindmapApi.tree.resolveId(
+    editor.document.snapshot(),
+    state.treeId
+  )
+  if (!mindmapId) {
+    return null
+  }
+
   if (state.kind === 'root') {
     return {
       rootMove: {
-        treeId: state.treeId,
+        mindmapId,
         delta: {
           x: state.position.x - state.origin.x,
           y: state.position.y - state.origin.y
@@ -57,7 +71,7 @@ const previewMindmapDrag = (
 
   return {
     subtreeMove: {
-      treeId: state.treeId,
+      mindmapId,
       nodeId: state.nodeId,
       ghost: state.ghost,
       drop: state.drop
@@ -69,7 +83,7 @@ export const tryStartMindmapDrag = (input: {
   tool: Tool
   pointer: PointerDownInput
   mindmap: {
-    tree: EditorInputContext['editor']['scene']['mindmaps']['tree']
+    tree: Editor['scene']['mindmaps']['tree']
   }
   node: (nodeId: NodeId) => Node | undefined
   selection: Pick<store.ReadStore<SelectionSummary>, 'get'>
@@ -145,7 +159,7 @@ export const tryStartMindmapDragForNode = (input: {
   pointerId: number
   world: Point
   mindmap: {
-    tree: EditorInputContext['editor']['scene']['mindmaps']['tree']
+    tree: Editor['scene']['mindmaps']['tree']
   }
   node: (nodeId: NodeId) => Node | undefined
 }): MindmapDragState | undefined => {
@@ -198,7 +212,7 @@ const stepMindmapDrag = (input: {
   state: MindmapDragState
   world: Point
   mindmap: {
-    tree: EditorInputContext['editor']['scene']['mindmaps']['tree']
+    tree: Editor['scene']['mindmaps']['tree']
   }
 }): MindmapDragState => mindmapApi.drop.projectDrag({
   active: input.state,
@@ -243,11 +257,21 @@ const commitMindmapDrag = (
 }
 
 export const createMindmapDragSession = (
-  ctx: Pick<EditorInputContext, 'editor'>,
+  editor: Editor,
   initial: MindmapDragState
 ): InteractionSession => {
   let state = initial
-  let interaction = null as InteractionSession | null
+
+  editor.dispatch((snapshot) => {
+    const current = snapshot.overlay.preview
+    const nextPreview = setPreviewMindmap(current, previewMindmapDrag(editor, state))
+    return isPreviewEqual(current, nextPreview)
+      ? null
+      : {
+          type: 'overlay.preview.set',
+          preview: nextPreview
+        } satisfies EditorCommand
+  })
 
   const project = (
     world: {
@@ -259,25 +283,29 @@ export const createMindmapDragSession = (
       state,
       world,
       mindmap: {
-        tree: ctx.editor.scene.mindmaps.tree
+        tree: editor.scene.mindmaps.tree
       }
     })
-    interaction!.gesture = createGesture('mindmap-drag', {
-      mindmap: previewMindmapDrag(state)
+    editor.dispatch((snapshot) => {
+      const current = snapshot.overlay.preview
+      const nextPreview = setPreviewMindmap(current, previewMindmapDrag(editor, state))
+      return isPreviewEqual(current, nextPreview)
+        ? null
+        : {
+            type: 'overlay.preview.set',
+            preview: nextPreview
+          } satisfies EditorCommand
     })
   }
 
-  interaction = {
+  return {
     mode: 'mindmap-drag',
     pointerId: state.pointerId,
     chrome: false,
-    gesture: createGesture('mindmap-drag', {
-      mindmap: previewMindmapDrag(state)
-    }),
     autoPan: {
       frame: (pointer) => {
         project(
-          ctx.editor.runtime.viewport.pointer(pointer).world
+          editor.runtime.viewport.pointer(pointer).world
         )
       }
     },
@@ -288,7 +316,7 @@ export const createMindmapDragSession = (
       const commit = commitMindmapDrag(state)
 
       if (commit?.kind === 'root') {
-        ctx.editor.actions.mindmap.moveRoot({
+        editor.actions.mindmap.moveRoot({
           nodeId: commit.nodeId,
           position: commit.position,
           origin: commit.origin
@@ -296,7 +324,7 @@ export const createMindmapDragSession = (
       }
 
       if (commit?.kind === 'subtree') {
-        ctx.editor.actions.mindmap.moveByDrop({
+        editor.actions.mindmap.moveByDrop({
           id: commit.id,
           nodeId: commit.nodeId,
           drop: commit.drop,
@@ -307,8 +335,17 @@ export const createMindmapDragSession = (
 
       return FINISH
     },
-    cleanup: () => {}
+    cleanup: () => {
+      editor.dispatch((snapshot) => {
+        const current = snapshot.overlay.preview
+        const nextPreview = setPreviewMindmap(current, null)
+        return isPreviewEqual(current, nextPreview)
+          ? null
+          : {
+              type: 'overlay.preview.set',
+              preview: nextPreview
+            } satisfies EditorCommand
+      })
+    }
   }
-
-  return interaction
 }

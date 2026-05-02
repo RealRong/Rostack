@@ -6,6 +6,7 @@ import { createMindmapDragSession } from '../src/input/features/mindmap/drag'
 import { editor as editorApi } from '../src'
 import type { NodeSpec } from '../src'
 import { createEditorTestLayout } from './support'
+import { EMPTY_PREVIEW_STATE } from '../src/preview/state'
 
 const nodes: NodeSpec = {
   text: {
@@ -133,21 +134,51 @@ describe('mindmap root move', () => {
   it('keeps root move preview on the interaction draft until commit', () => {
     const moveRoot = vi.fn()
     const moveByDrop = vi.fn()
+    let preview = EMPTY_PREVIEW_STATE
 
     const session = createMindmapDragSession({
-      editor: {
-        actions: {
-          mindmap: {
-            moveRoot,
-            moveByDrop
-          }
+      actions: {
+        mindmap: {
+          moveRoot,
+          moveByDrop
         },
-        scene: {
-          mindmaps: {
-            id: vi.fn(),
-            structure: vi.fn(),
-            get: vi.fn()
-          }
+      },
+      scene: {
+        mindmaps: {
+          id: vi.fn(),
+          structure: vi.fn(),
+          get: vi.fn(),
+          tree: vi.fn(() => undefined)
+        }
+      },
+      document: {
+        snapshot: () => ({
+          nodes: {
+            'mindmap_1': {
+              owner: {
+                kind: 'mindmap',
+                id: 'mindmap_1'
+              }
+            }
+          },
+          mindmaps: {}
+        })
+      },
+      runtime: {
+        viewport: {
+          pointer: vi.fn()
+        }
+      },
+      dispatch: (input: any) => {
+        const command = typeof input === 'function'
+          ? input({
+              overlay: {
+                preview
+              }
+            })
+          : input
+        if (command?.type === 'overlay.preview.set') {
+          preview = command.preview
         }
       }
     } as any, {
@@ -159,10 +190,9 @@ describe('mindmap root move', () => {
       position: { x: 100, y: 0 }
     })
 
-    expect(session.gesture?.kind).toBe('mindmap-drag')
-    expect(session.gesture?.draft.mindmap).toEqual({
+    expect(preview.mindmap).toEqual({
       rootMove: {
-        treeId: 'mindmap_1',
+        mindmapId: 'mindmap_1',
         delta: { x: 50, y: 0 }
       }
     })

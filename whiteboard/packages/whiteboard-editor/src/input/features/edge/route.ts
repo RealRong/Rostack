@@ -11,14 +11,18 @@ import type {
   Point
 } from '@whiteboard/core/types'
 import type { PointerDownInput } from '@whiteboard/editor/types/input'
-import { createGesture } from '@whiteboard/editor/input/core/gesture'
 import {
   CANCEL,
   FINISH
 } from '@whiteboard/editor/input/session/result'
 import type { InteractionSession } from '@whiteboard/editor/input/core/types'
 import { createPressDragSession } from '@whiteboard/editor/input/session/press'
-import type { EditorInputContext } from '@whiteboard/editor/input/runtime'
+import type { Editor } from '@whiteboard/editor/types/editor'
+import type { EditorCommand } from '@whiteboard/editor/state-engine/intents'
+import {
+  isPreviewEqual,
+  replacePreviewEdgeInteraction
+} from '@whiteboard/editor/preview/state'
 
 export type EdgeRouteHandleState =
   | {
@@ -105,7 +109,7 @@ const isEdgeRoutePick = (
 )
 
 const resolveEdgeRoutePickTarget = (
-  projection: EditorInputContext['editor']['scene'],
+  projection: Editor['scene'],
   pick: PointerDownInput['pick']
 ): EdgeRouteHandleTarget | undefined => {
   if (!isEdgeRoutePick(pick)) {
@@ -194,7 +198,7 @@ const startEdgeRouteSegment = (input: {
 })
 
 export const tryStartEdgeRoute = (input: {
-  edge: EditorInputContext['editor']['scene']
+  edge: Editor['scene']
   pointer: PointerDownInput
 }): EdgeRouteStart | undefined => {
   const target = resolveEdgeRoutePickTarget(
@@ -261,11 +265,11 @@ export const tryStartEdgeRoute = (input: {
 }
 
 export const removeEdgeRoutePoint = (
-  ctx: Pick<EditorInputContext, 'editor'>,
+  editor: Editor,
   edgeId: EdgeId,
   index: number
 ) => {
-  const edge = ctx.editor.scene.edges.get(edgeId)?.base.edge
+  const edge = editor.scene.edges.get(edgeId)?.base.edge
   if (!edge) {
     throw new Error(`Edge ${edgeId} not found.`)
   }
@@ -275,7 +279,7 @@ export const removeEdgeRoutePoint = (
     throw new Error(`Edge route point ${edgeId}:${index} not found.`)
   }
 
-  ctx.editor.actions.edge.route.set(edgeId, patch.route ?? {
+  editor.actions.edge.route.set(edgeId, patch.route ?? {
     kind: 'auto'
   })
 }
@@ -450,33 +454,15 @@ const commitEdgeRoute = (
 }
 
 const readViewportWorld = (
-  ctx: Pick<EditorInputContext, 'editor'>,
+  editor: Editor,
   pointer: {
     clientX: number
     clientY: number
   }
-) => ctx.editor.runtime.viewport.pointer(pointer).world
-
-const readRouteGesture = (
-  state: EdgeRouteHandleState,
-  patch?: ReturnType<typeof stepEdgeRoute>['draft']
-) => createGesture(
-  'edge-route',
-  {
-    edgePatches: [{
-      id: state.edgeId,
-      activeRouteIndex: state.index,
-      ...(patch?.patch
-        ? {
-            patch: patch.patch
-          }
-        : {})
-    }]
-  }
-)
+) => editor.runtime.viewport.pointer(pointer).world
 
 const submitEdgeRouteCommit = (
-  ctx: Pick<EditorInputContext, 'editor'>,
+  editor: Editor,
   commit: EdgeRouteCommit | undefined
 ) => {
   if (!commit) {
@@ -484,28 +470,41 @@ const submitEdgeRouteCommit = (
   }
 
   if (commit.kind === 'update-route') {
-    ctx.editor.actions.edge.route.set(commit.edgeId, commit.route ?? {
+    editor.actions.edge.route.set(commit.edgeId, commit.route ?? {
       kind: 'auto'
     })
     return
   }
 
-  const edge = ctx.editor.scene.edges.get(commit.edgeId)?.base.edge
+  const edge = editor.scene.edges.get(commit.edgeId)?.base.edge
   const pointId = edge
     ? readRoutePointIdAtIndex(edge, commit.index)
     : undefined
   if (pointId) {
-    ctx.editor.actions.edge.route.movePoint(commit.edgeId, commit.index, commit.point)
+    editor.actions.edge.route.movePoint(commit.edgeId, commit.index, commit.point)
   }
 }
 
 const createEdgeRouteSession = (
-  ctx: Pick<EditorInputContext, 'editor'>,
+  editor: Editor,
   initial: EdgeRouteHandleState
 ): InteractionSession => {
   let state = initial
-  let interaction = null as InteractionSession | null
-  const baseEdge = ctx.editor.scene.edges.get(initial.edgeId)?.base.edge
+  const baseEdge = editor.scene.edges.get(initial.edgeId)?.base.edge
+
+  editor.dispatch((snapshot) => {
+    const current = snapshot.overlay.preview
+    const nextPreview = replacePreviewEdgeInteraction(current, [{
+      id: state.edgeId,
+      activeRouteIndex: state.index
+    }])
+    return isPreviewEqual(current, nextPreview)
+      ? null
+      : {
+          type: 'overlay.preview.set',
+          preview: nextPreview
+        } satisfies EditorCommand
+  })
 
   const step = (
     pointer: {
@@ -513,28 +512,41 @@ const createEdgeRouteSession = (
       clientY: number
     }
   ) => {
-    const edge = ctx.editor.scene.edges.get(state.edgeId)?.base.edge
-    if (!edge || !baseEdge || !ctx.editor.scene.edges.edit(state.edgeId)) {
+    const edge = editor.scene.edges.get(state.edgeId)?.base.edge
+    if (!edge || !baseEdge || !editor.scene.edges.edit(state.edgeId)) {
       return CANCEL
     }
 
     const result = stepEdgeRoute({
       state,
       edge: baseEdge,
-      pointerWorld: readViewportWorld(ctx, pointer)
+      pointerWorld: readViewportWorld(editor, pointer)
     })
     state = result.state
-    interaction!.gesture = readRouteGesture(
-      state,
-      result.draft
-    )
+    editor.dispatch((snapshot) => {
+      const current = snapshot.overlay.preview
+      const nextPreview = replacePreviewEdgeInteraction(current, [{
+        id: state.edgeId,
+        activeRouteIndex: state.index,
+        ...(result.draft?.patch
+          ? {
+              patch: result.draft.patch
+            }
+          : {})
+      }])
+      return isPreviewEqual(current, nextPreview)
+        ? null
+        : {
+            type: 'overlay.preview.set',
+            preview: nextPreview
+          } satisfies EditorCommand
+    })
   }
 
-  interaction = {
+  return {
     mode: 'edge-route',
     pointerId: state.pointerId,
     chrome: false,
-    gesture: readRouteGesture(state),
     autoPan: {
       frame: (pointer) => step(pointer)
     },
@@ -559,21 +571,30 @@ const createEdgeRouteSession = (
         return FINISH
       }
 
-      submitEdgeRouteCommit(ctx, commitEdgeRoute(state, baseEdge))
+      submitEdgeRouteCommit(editor, commitEdgeRoute(state, baseEdge))
 
       return FINISH
     },
-    cleanup: () => {}
+    cleanup: () => {
+      editor.dispatch((snapshot) => {
+        const current = snapshot.overlay.preview
+        const nextPreview = replacePreviewEdgeInteraction(current, [])
+        return isPreviewEqual(current, nextPreview)
+          ? null
+          : {
+              type: 'overlay.preview.set',
+              preview: nextPreview
+            } satisfies EditorCommand
+      })
+    }
   }
-
-  return interaction
 }
 
 const createInsertedRouteSession = (
-  ctx: Pick<EditorInputContext, 'editor'>,
+  editor: Editor,
   input: Extract<EdgeRouteStart, { kind: 'insert' }>
 ) => createEdgeRouteSession(
-  ctx,
+  editor,
   startEdgeRouteInsert({
     edgeId: input.edgeId,
     index: input.index,
@@ -585,16 +606,16 @@ const createInsertedRouteSession = (
 )
 
 const commitInsertedRoute = (
-  ctx: Pick<EditorInputContext, 'editor'>,
+  editor: Editor,
   input: Extract<EdgeRouteStart, { kind: 'insert' }>
 ) => {
-  const edge = ctx.editor.scene.edges.get(input.edgeId)?.base.edge
+  const edge = editor.scene.edges.get(input.edgeId)?.base.edge
   if (!edge) {
     return null
   }
 
   submitEdgeRouteCommit(
-    ctx,
+    editor,
     commitEdgeRoute(
       startEdgeRouteInsert({
         edgeId: input.edgeId,
@@ -610,7 +631,7 @@ const commitInsertedRoute = (
 }
 
 export const createEdgeRoutePressSession = (
-  ctx: Pick<EditorInputContext, 'editor'>,
+  editor: Editor,
   start: PointerDownInput,
   plan: Extract<EdgeRouteStart, { kind: 'session' | 'insert' }>
 ): InteractionSession => createPressDragSession({
@@ -618,12 +639,12 @@ export const createEdgeRoutePressSession = (
   chrome: true,
   createDragSession: () => (
     plan.kind === 'session'
-      ? createEdgeRouteSession(ctx, plan.state)
-      : createInsertedRouteSession(ctx, plan)
+      ? createEdgeRouteSession(editor, plan.state)
+      : createInsertedRouteSession(editor, plan)
   ),
   onTap: () => {
     if (plan.kind === 'insert') {
-      commitInsertedRoute(ctx, plan)
+      commitInsertedRoute(editor, plan)
     }
   }
 })

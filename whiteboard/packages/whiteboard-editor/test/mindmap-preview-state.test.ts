@@ -1,54 +1,60 @@
-import { describe, expect, it } from 'vitest'
-import { createGesture } from '../src/input/core/gesture'
-import { DEFAULT_DRAW_STATE } from '../src/session/draw/state'
-import { composeEditorPreviewState } from '../src/preview/state'
-import { createEditorStateRuntime } from '../src/state-engine/runtime'
+import { describe, expect, it, vi } from 'vitest'
+import { createMindmapDragSession } from '../src/input/features/mindmap/drag'
+import { EMPTY_PREVIEW_STATE } from '../src/preview/state'
 
 describe('mindmap preview state', () => {
-  it('projects interaction mindmap drag gesture into preview state', () => {
-    const runtime = createEditorStateRuntime({
-      initialTool: {
-        type: 'select'
-      },
-      initialDrawState: DEFAULT_DRAW_STATE,
-      initialViewport: {
-        center: { x: 0, y: 0 },
-        zoom: 1
-      }
-    })
+  it('projects mindmap drag into overlay preview truth', () => {
+    let preview = EMPTY_PREVIEW_STATE
 
-    runtime.dispatch({
-      type: 'interaction.set',
-      interaction: {
-        mode: 'mindmap-drag',
-        chrome: false,
-        space: false
-      }
-    })
-    const preview = composeEditorPreviewState({
-      base: runtime.snapshot().overlay.preview,
-      gesture: createGesture('mindmap-drag', {
-        mindmap: {
-          rootMove: {
-            treeId: 'mind-1',
-            delta: {
-              x: 60,
-              y: 40
+    createMindmapDragSession({
+      document: {
+        snapshot: () => ({
+          nodes: {
+            'mind-1': {
+              owner: {
+                kind: 'mindmap',
+                id: 'mind-1'
+              }
             }
-          }
+          },
+          mindmaps: {}
+        })
+      },
+      scene: {
+        mindmaps: {
+          tree: vi.fn(() => undefined)
         }
-      }),
-      readDocument: () => ({
-        nodes: {
-          'mind-1': {
-            owner: {
-              kind: 'mindmap',
-              id: 'mind-1'
-            }
-          }
-        },
-        mindmaps: {}
-      }) as never
+      },
+      runtime: {
+        viewport: {
+          pointer: vi.fn()
+        }
+      },
+      actions: {
+        mindmap: {
+          moveRoot: vi.fn(),
+          moveByDrop: vi.fn()
+        }
+      },
+      dispatch: (input: any) => {
+        const command = typeof input === 'function'
+          ? input({
+              overlay: {
+                preview
+              }
+            })
+          : input
+        if (command?.type === 'overlay.preview.set') {
+          preview = command.preview
+        }
+      }
+    } as any, {
+      kind: 'root',
+      treeId: 'mind-1',
+      pointerId: 1,
+      start: { x: 0, y: 0 },
+      origin: { x: 0, y: 0 },
+      position: { x: 60, y: 40 }
     })
 
     expect(preview.mindmap).toEqual({

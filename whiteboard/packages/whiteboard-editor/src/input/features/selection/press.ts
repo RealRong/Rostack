@@ -10,11 +10,15 @@ import type {
 } from '@whiteboard/core/selection'
 import type { SelectionMode } from '@whiteboard/core/node'
 import type { GroupId, Node, NodeId } from '@whiteboard/core/types'
-import type { EditorInputContext } from '@whiteboard/editor/input/runtime'
 import type { EditorCommand } from '@whiteboard/editor/state-engine/intents'
+import type { Editor } from '@whiteboard/editor/types/editor'
+
+type EditorDeps = {
+  editor: Editor
+}
 
 const startNodeEdit = (input: {
-  ctx: Pick<EditorInputContext, 'editor'>
+  ctx: EditorDeps
   nodeId: NodeId
   field: 'text' | 'title'
   caret: {
@@ -665,7 +669,7 @@ const matchSelectionTap = <TField extends string>(
 }
 
 const applySelectionTap = (
-  ctx: Pick<EditorInputContext, 'editor'>,
+  ctx: EditorDeps,
   tap: SelectionTapAction<SelectionPressField>,
   input: Pick<PointerDownInput, 'client'>
 ) => {
@@ -739,7 +743,7 @@ const applySelectionTap = (
 }
 
 const createSelectionPressSession = (
-  ctx: Pick<EditorInputContext, 'editor'>,
+  ctx: EditorDeps,
   start: PointerDownInput,
   resolved: {
     target: SelectionPressTarget<SelectionPressField>
@@ -755,12 +759,12 @@ const createSelectionPressSession = (
     }
 
     return decision.kind === 'move'
-      ? createMoveInteraction(ctx, {
+      ? createMoveInteraction(ctx.editor, {
           start,
           target: decision.target,
           visibility: decision.visibility
         })
-      : createMarqueeSession(ctx, {
+      : createMarqueeSession(ctx.editor, {
           start,
           action: decision
         })
@@ -781,7 +785,7 @@ const createSelectionPressSession = (
   onHold: () => {
     const decision = resolved.behavior.hold
     return decision
-      ? createMarqueeSession(ctx, {
+      ? createMarqueeSession(ctx.editor, {
           start,
           action: decision
         })
@@ -790,7 +794,7 @@ const createSelectionPressSession = (
 })
 
 const tryStartSelectionPress = (
-  ctx: Pick<EditorInputContext, 'editor'>,
+  ctx: EditorDeps,
   input: PointerDownInput
 ): InteractionSession | null => {
   const tool = ctx.editor.scene.ui.state.tool.get()
@@ -850,8 +854,10 @@ const tryStartSelectionPress = (
 }
 
 export const createSelectionBinding = (
-  ctx: Pick<EditorInputContext, 'editor'>
+  editor: Editor
 ): InteractionBinding => ({
   key: 'selection',
-  start: (input) => tryStartSelectionPress(ctx, input)
+  start: (input) => tryStartSelectionPress({
+    editor
+  }, input)
 })

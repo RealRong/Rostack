@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { createEdgeRoutePressSession } from '../src/input/features/edge/route'
+import { EMPTY_PREVIEW_STATE } from '../src/preview/state'
 
 const createEdge = () => ({
   id: 'edge-1',
@@ -27,6 +28,7 @@ const createDeps = () => {
   const setRoute = vi.fn(() => ({ ok: true }))
   const insertRoute = vi.fn(() => ({ ok: true, data: { pointId: 'unused' } }))
   const updateRoute = vi.fn(() => ({ ok: true }))
+  let preview = EMPTY_PREVIEW_STATE
 
   return {
     edge,
@@ -34,47 +36,57 @@ const createDeps = () => {
     insertRoute,
     updateRoute,
     ctx: {
-      editor: {
-        scene: {
-          edges: {
-            get: () => ({
-              base: {
-                edge
-              }
-            }),
-            edit: vi.fn(() => ({
-              route: {
-                handles: []
-              }
-            }))
-          },
-          nodes: {
-            get: vi.fn(() => undefined)
-          }
+      scene: {
+        edges: {
+          get: () => ({
+            base: {
+              edge
+            }
+          }),
+          edit: vi.fn(() => ({
+            route: {
+              handles: []
+            }
+          }))
         },
-        runtime: {
-          viewport: {
-            pointer: ({
-              clientX,
-              clientY
-            }: {
-              clientX: number
-              clientY: number
-            }) => ({
-              world: {
-                x: clientX,
-                y: clientY
+        nodes: {
+          get: vi.fn(() => undefined)
+        }
+      },
+      runtime: {
+        viewport: {
+          pointer: ({
+            clientX,
+            clientY
+          }: {
+            clientX: number
+            clientY: number
+          }) => ({
+            world: {
+              x: clientX,
+              y: clientY
+            }
+          })
+        },
+      },
+      dispatch: (input: any) => {
+        const command = typeof input === 'function'
+          ? input({
+              overlay: {
+                preview
               }
             })
-          }
-        },
-        actions: {
-          edge: {
-            route: {
-              set: setRoute,
-              insertPoint: insertRoute,
-              movePoint: updateRoute
-            }
+          : input
+        if (command?.type === 'overlay.preview.set') {
+          preview = command.preview
+        }
+      },
+      actions: {
+        edge: {
+          route: {
+            set: setRoute,
+            insertPoint: insertRoute,
+            movePoint: updateRoute
           }
         }
       }

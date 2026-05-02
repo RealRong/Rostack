@@ -4,90 +4,102 @@ import type {
   EdgePatch
 } from '@whiteboard/core/types'
 import { createEdgeConnectSession } from '../src/input/features/edge/connect'
+import { EMPTY_PREVIEW_STATE } from '../src/preview/state'
 
 const createInteractionDeps = () => {
   const reconnectCommit = vi.fn(() => ({ ok: true }))
+  let preview = EMPTY_PREVIEW_STATE
 
   return {
     reconnectCommit,
+    readPatch: (): EdgePatch | undefined => preview.edges['edge-1']?.patch,
     ctx: {
-      editor: {
-        scene: {
-          edges: {
-            get: () => ({
-              route: {
-                ends: {
-                  source: {
-                    end: {
-                      kind: 'point',
-                      point: { x: 0, y: 0 }
-                    },
+      scene: {
+        edges: {
+          get: () => ({
+            route: {
+              ends: {
+                source: {
+                  end: {
+                    kind: 'point',
                     point: { x: 0, y: 0 }
                   },
-                  target: {
-                    end: {
-                      kind: 'point',
-                      point: { x: 10, y: 0 }
-                    },
+                  point: { x: 0, y: 0 }
+                },
+                target: {
+                  end: {
+                    kind: 'point',
                     point: { x: 10, y: 0 }
-                  }
+                  },
+                  point: { x: 10, y: 0 }
                 }
-              }
-            }),
-            capability: vi.fn(() => ({
-              reconnectSource: true,
-              reconnectTarget: true
-            }))
-          },
-          nodes: {
-            get: vi.fn(() => undefined)
-          },
-          ui: {
-            state: {
-              viewport: {
-                get: () => ({
-                  zoom: 1
-                })
               }
             }
-          }
+          }),
+          capability: vi.fn(() => ({
+            reconnectSource: true,
+            reconnectTarget: true
+          }))
         },
-        runtime: {
-          viewport: {
-            pointer: () => ({
-              world: { x: 0, y: 0 }
-            })
-          },
-          snap: {
-            edge: {
-              connect: ({
-                pointerWorld
-              }: {
-                pointerWorld: {
-                  x: number
-                  y: number
-                }
-              }) => ({
-                focusedNodeId: undefined,
-                resolution: {
-                  mode: 'free' as const,
-                  pointWorld: pointerWorld
-                }
+        nodes: {
+          get: vi.fn(() => undefined)
+        },
+        ui: {
+          state: {
+            viewport: {
+              get: () => ({
+                zoom: 1
               })
             }
           }
         },
-        dispatch: vi.fn(),
-        actions: {
+      },
+      runtime: {
+        viewport: {
+          pointer: () => ({
+            world: { x: 0, y: 0 }
+          })
+        },
+        snap: {
           edge: {
-            reconnectCommit,
-            create: vi.fn(),
-            type: {},
-            route: {}
-          },
-          tool: {
-            select: vi.fn()
+            connect: ({
+              pointerWorld
+            }: {
+              pointerWorld: {
+                x: number
+                y: number
+              }
+            }) => ({
+              focusedNodeId: undefined,
+              resolution: {
+                mode: 'free' as const,
+                pointWorld: pointerWorld
+              }
+            })
           }
+        }
+      },
+      dispatch: (input: any) => {
+        const command = typeof input === 'function'
+          ? input({
+              overlay: {
+                preview
+              }
+            })
+          : input
+        if (command?.type === 'overlay.preview.set') {
+          preview = command.preview
+        }
+      },
+      actions: {
+        edge: {
+          reconnectCommit,
+          create: vi.fn(),
+          type: {},
+          route: {}
+        },
+        tool: {
+          select: vi.fn()
         }
       }
     } as any
@@ -115,15 +127,9 @@ const createReconnectSession = () => {
   }
 }
 
-const readSessionPatch = (
-  session: ReturnType<typeof createReconnectSession>['session']
-): EdgePatch | undefined => session.gesture?.kind === 'edge-connect'
-  ? session.gesture.draft.edgePatches?.[0]?.patch
-  : undefined
-
 describe('createEdgeConnectSession', () => {
   it('does not latch straight mode on shift keydown without dragging', () => {
-    const { session } = createReconnectSession()
+    const { session, readPatch } = createReconnectSession()
 
     session.keydown?.({
       key: 'Shift',
@@ -137,7 +143,7 @@ describe('createEdgeConnectSession', () => {
       }
     })
 
-    const patch = readSessionPatch(session)
+    const patch = readPatch()
 
     expect(patch?.type).toBeUndefined()
     expect(patch?.route).toBeUndefined()
@@ -146,7 +152,8 @@ describe('createEdgeConnectSession', () => {
   it('keeps straight auto-route latched after shift is released', () => {
     const {
       session,
-      reconnectCommit
+      reconnectCommit,
+      readPatch
     } = createReconnectSession()
 
     session.move?.({
@@ -160,7 +167,7 @@ describe('createEdgeConnectSession', () => {
       }
     } as never)
 
-    const constrainedPatch = readSessionPatch(session)
+    const constrainedPatch = readPatch()
     const constrainedTarget = constrainedPatch?.target
 
     expect(constrainedPatch?.type).toBe('straight')
@@ -185,7 +192,7 @@ describe('createEdgeConnectSession', () => {
       }
     })
 
-    const releasedPatch = readSessionPatch(session)
+    const releasedPatch = readPatch()
 
     expect(releasedPatch?.type).toBe('straight')
     expect(releasedPatch?.route).toEqual({

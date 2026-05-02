@@ -3,7 +3,7 @@ import type {
   GalleryView,
   KanbanView,
   TableOptions,
-  ViewDisplay,
+  FieldId,
   ViewOptionsByType,
   ViewType
 } from '@dataview/core/types'
@@ -11,8 +11,8 @@ import {
   spec
 } from '@shared/spec'
 import {
-  replaceViewDisplayFields
-} from '@dataview/core/view/display'
+  replaceViewFields
+} from '@dataview/core/view/fields'
 
 export interface ViewTypeSpecEntry<
   TType extends ViewType = ViewType
@@ -22,7 +22,7 @@ export interface ViewTypeSpecEntry<
     group: boolean
   }
   defaults: {
-    display(fields: readonly Field[]): ViewDisplay
+    fields(fields: readonly Field[]): FieldId[]
     options(fields: readonly Field[]): ViewOptionsByType[TType]
   }
 }
@@ -34,7 +34,7 @@ export const viewTypeSpec = {
       group: true
     },
     defaults: {
-      display: (fields: readonly Field[]): ViewDisplay => replaceViewDisplayFields(
+      fields: (fields: readonly Field[]): FieldId[] => replaceViewFields(
         fields.map(field => field.id)
       ),
       options: (_fields: readonly Field[]): TableOptions => ({
@@ -50,7 +50,7 @@ export const viewTypeSpec = {
       group: false
     },
     defaults: {
-      display: (): ViewDisplay => replaceViewDisplayFields([]),
+      fields: (): FieldId[] => replaceViewFields([]),
       options: (_fields: readonly Field[]): GalleryView['options'] => ({
         card: {
           wrap: false,
@@ -66,7 +66,7 @@ export const viewTypeSpec = {
       group: true
     },
     defaults: {
-      display: (): ViewDisplay => replaceViewDisplayFields([]),
+      fields: (): FieldId[] => replaceViewFields([]),
       options: (_fields: readonly Field[]): KanbanView['options'] => ({
         card: {
           wrap: false,

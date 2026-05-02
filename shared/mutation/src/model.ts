@@ -1,4 +1,7 @@
 import {
+  unsetRecordWrite
+} from '@shared/draft'
+import {
   normalizeMutationDelta
 } from './engine/delta'
 import {
@@ -221,9 +224,45 @@ export type MutationCollectionFamilySpec<
   Tree
 >
 
-export type MutationModelDefinition<
+export type MutationFamilySpec<
   Doc
-> = Readonly<Record<string, MutationSingletonFamilySpec<Doc, unknown, Readonly<Record<string, MutationMemberSpec>>, Readonly<Record<string, readonly MutationChangeSelector[]>>, any, any> | MutationCollectionFamilySpec<Doc, 'map' | 'table', string, unknown, Readonly<Record<string, MutationMemberSpec>>, Readonly<Record<string, readonly MutationChangeSelector[]>>, any, any>>>
+> =
+  | MutationSingletonFamilySpec<
+      Doc,
+      unknown,
+      Readonly<Record<string, MutationMemberSpec>>,
+      Readonly<Record<string, readonly MutationChangeSelector[]>>,
+      any,
+      any
+    >
+  | MutationCollectionFamilySpec<
+      Doc,
+      'map' | 'table',
+      string,
+      unknown,
+      Readonly<Record<string, MutationMemberSpec>>,
+      Readonly<Record<string, readonly MutationChangeSelector[]>>,
+      any,
+      any
+    >
+
+export type MutationGroupSpec<
+  TChildren extends Readonly<Record<string, unknown>>
+> = {
+  kind: 'group'
+  children: TChildren
+  __children?: TChildren
+}
+
+type MutationModelEntry<
+  Doc
+> =
+  | MutationFamilySpec<Doc>
+  | MutationGroupSpec<MutationModelDefinition<Doc>>
+
+export interface MutationModelDefinition<
+  Doc
+> extends Readonly<Record<string, MutationModelEntry<Doc>>> {}
 
 export type MutationModel<Doc, TDefinition extends MutationModelDefinition<Doc> = MutationModelDefinition<Doc>> = TDefinition
 
@@ -234,6 +273,15 @@ export const defineMutationModel = <
 >(
   definition: TDefinition
 ): TDefinition => definition
+
+export const group = <
+  const TChildren extends MutationModelDefinition<any>
+>(
+  children: TChildren
+): MutationGroupSpec<TChildren> => ({
+  kind: 'group',
+  children
+})
 
 export const value = <TValue,>(
   input: {
@@ -706,25 +754,6 @@ type FamilyWriter<
       }
 ) & FamilyStructuresWriter<TFamily, Tag>
 
-type NestedProperty<
-  TPath extends string,
-  TValue
-> = TPath extends `${infer THead}.${infer TRest}`
-  ? {
-      [K in THead]: NestedProperty<TRest, TValue>
-    }
-  : {
-      [K in TPath]: TValue
-    }
-
-type UnionToIntersection<TUnion> = (
-  TUnion extends unknown
-    ? (value: TUnion) => void
-    : never
-) extends (value: infer TIntersection) => void
-  ? TIntersection
-  : never
-
 type ExpandRecursively<TValue> = TValue extends (...args: any[]) => any
   ? TValue
   : TValue extends ReadonlySet<any> | Set<any> | readonly any[] | any[]
@@ -735,23 +764,19 @@ type ExpandRecursively<TValue> = TValue extends (...args: any[]) => any
         }
       : TValue
 
-type NestedFamilyValues<
+type MutationWriterShape<
   TModel extends MutationModelDefinition<any>,
-  TValueMap extends {
-    [K in keyof TModel & string]: unknown
-  }
-> = ExpandRecursively<
-  UnionToIntersection<{
-    [K in keyof TModel & string]: NestedProperty<K, TValueMap[K]>
-  }[keyof TModel & string]>
->
+  Tag extends string
+> = ExpandRecursively<{
+  [K in keyof TModel]: TModel[K] extends MutationGroupSpec<infer TChildren extends MutationModelDefinition<any>>
+    ? MutationWriterShape<TChildren, Tag>
+    : FamilyWriter<TModel[K], Tag>
+}>
 
 export type MutationWriter<
   TModel extends MutationModelDefinition<any>,
   Tag extends string = string
-> = NestedFamilyValues<TModel, {
-  [K in keyof TModel & string]: FamilyWriter<TModel[K], Tag>
-}> & {
+> = MutationWriterShape<TModel, Tag> & {
   signal(
     delta: MutationDeltaInput,
     tags?: readonly Tag[],
@@ -867,11 +892,17 @@ type FamilyReader<TFamily> = (
       }
 ) & FamilyStructuresReader<TFamily>
 
+type MutationReaderShape<
+  TModel extends MutationModelDefinition<any>
+> = ExpandRecursively<{
+  [K in keyof TModel]: TModel[K] extends MutationGroupSpec<infer TChildren extends MutationModelDefinition<any>>
+    ? MutationReaderShape<TChildren>
+    : FamilyReader<TModel[K]>
+}>
+
 export type MutationReader<
   TModel extends MutationModelDefinition<any>
-> = NestedFamilyValues<TModel, {
-  [K in keyof TModel & string]: FamilyReader<TModel[K]>
-}>
+> = MutationReaderShape<TModel>
 
 type TouchedView<TId extends string> = {
   changed(id?: TId): boolean
@@ -956,13 +987,19 @@ type FamilyDelta<
       [K in keyof FamilyChangesOf<TFamily>]: FamilyChangeDeltaEntry<TFamily, K>
     } & FamilyStructureDelta<TFamily>
 
+type MutationDeltaShape<
+  TModel extends MutationModelDefinition<any>
+> = ExpandRecursively<{
+  [K in keyof TModel]: TModel[K] extends MutationGroupSpec<infer TChildren extends MutationModelDefinition<any>>
+    ? MutationDeltaShape<TChildren>
+    : FamilyDelta<TModel[K]>
+}>
+
 export type MutationDeltaOf<
   TModel extends MutationModelDefinition<any>
 > = MutationDelta & {
   raw: MutationDelta
-} & NestedFamilyValues<TModel, {
-  [K in keyof TModel & string]: FamilyDelta<TModel[K]>
-}>
+} & MutationDeltaShape<TModel>
 
 const createSelectorApi = <
   TMembers extends Readonly<Record<string, MutationMemberSpec>>
@@ -1014,6 +1051,40 @@ type CompiledModel<
   families: readonly CompiledFamily[]
 }
 
+const isMutationGroupSpec = (
+  value: unknown
+): value is MutationGroupSpec<MutationModelDefinition<any>> => Boolean(
+  value
+  && typeof value === 'object'
+  && !Array.isArray(value)
+  && (value as {
+    kind?: unknown
+  }).kind === 'group'
+)
+
+const forEachMutationFamily = <Doc>(
+  model: MutationModelDefinition<Doc>,
+  visit: (familyName: string, family: MutationFamilySpec<Doc>) => void,
+  prefix = ''
+) => {
+  Object.entries(model).forEach(([name, entry]) => {
+    const familyName = prefix
+      ? `${prefix}.${name}`
+      : name
+
+    if (isMutationGroupSpec(entry)) {
+      forEachMutationFamily(
+        entry.children as MutationModelDefinition<Doc>,
+        visit,
+        familyName
+      )
+      return
+    }
+
+    visit(familyName, entry as MutationFamilySpec<Doc>)
+  })
+}
+
 const normalizeFamilyChanges = (
   family: {
     members: Readonly<Record<string, MutationMemberSpec>>
@@ -1056,8 +1127,10 @@ export const compileMutationModel = <
   const orderedRegistry: Record<string, NonNullable<MutationRegistry<Doc>['ordered']>[string]> = {}
   const treeRegistry: Record<string, NonNullable<MutationRegistry<Doc>['tree']>[string]> = {}
   const families: CompiledFamily[] = []
+  const familySpecs = new Map<string, MutationFamilySpec<Doc>>()
 
-  Object.entries(model).forEach(([familyName, family]) => {
+  forEachMutationFamily(model, (familyName, family) => {
+    familySpecs.set(familyName, family)
     const changes = normalizeFamilyChanges(family)
     const members = family.members
     entity[familyName] = {
@@ -1186,7 +1259,10 @@ export const compileMutationModel = <
 
   const compiledEntities = new Map<string, CompiledEntitySpec>()
   compileEntities(entity).forEach((spec, family) => {
-    const familySpec = model[family as keyof TModel]
+    const familySpec = familySpecs.get(family)
+    if (!familySpec) {
+      throw new Error(`Unknown compiled mutation family "${family}".`)
+    }
     compiledEntities.set(family, {
       ...spec,
       access: {
@@ -1222,7 +1298,7 @@ const lowerPatchWrites = (
     value: unknown
   ) => {
     if (isUnset(value)) {
-      writes[base] = undefined
+      writes[base] = unsetRecordWrite()
       return
     }
     if (
@@ -1252,7 +1328,7 @@ const lowerPatchWrites = (
     value: unknown
   ) => {
     if (isUnset(value)) {
-      writes[base] = undefined
+      writes[base] = unsetRecordWrite()
       return
     }
     if (
@@ -1266,7 +1342,7 @@ const lowerPatchWrites = (
 
     Object.entries(value).forEach(([key, nested]) => {
       writes[`${base}.${key}`] = isUnset(nested)
-        ? undefined
+        ? unsetRecordWrite()
         : nested
     })
   }
@@ -1280,7 +1356,7 @@ const lowerPatchWrites = (
     const path = member.at ?? memberName
     if (member.kind === 'field') {
       writes[path] = isUnset(value)
-        ? undefined
+        ? unsetRecordWrite()
         : value
       return
     }
@@ -1304,7 +1380,7 @@ export const createMutationWriter = <
 ): MutationWriter<TModel, Tag> => {
   const result: Record<string, unknown> = {}
 
-  Object.entries(model).forEach(([familyName, family]) => {
+  forEachMutationFamily(model, (familyName, family) => {
     const familyWriter: Record<string, unknown> = {}
 
     familyWriter.create = (
@@ -1700,7 +1776,7 @@ export const createMutationReader = <
 ): MutationReader<TModel> => {
   const result: Record<string, unknown> = {}
 
-  Object.entries(model).forEach(([familyName, family]) => {
+  forEachMutationFamily(model, (familyName, family) => {
     const familyReader: Record<string, unknown> = {}
     const readFamily = () => readCollection(
       family.access.read(readDocument()),

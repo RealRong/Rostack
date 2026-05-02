@@ -4,7 +4,7 @@ import {
 } from '@dataview/core/view/layout'
 import {
   viewCalcFields,
-  viewDisplayFields,
+  viewVisibleFields,
   viewFilterFields,
   viewSearchFields,
   viewSortFields
@@ -35,7 +35,7 @@ import {
 } from '@dataview/core/view/order'
 import {
   cloneTableOptions,
-  createDefaultViewDisplay,
+  createDefaultViewFields,
   createDefaultViewOptions,
   cloneViewOptions,
   normalizeViewOptions,
@@ -55,17 +55,17 @@ import {
   repairViewForRemovedField
 } from '@dataview/core/view/model/repair'
 import {
-  clearViewDisplayFields,
-  cloneViewDisplay,
-  hideViewDisplayField,
-  moveViewDisplayFields,
-  normalizeViewDisplay,
-  readViewDisplayFieldIds,
-  replaceViewDisplayFields,
-  resolveDisplayInsertBeforeFieldId,
-  sameViewDisplay,
-  showViewDisplayField
-} from '@dataview/core/view/display'
+  clearViewFields,
+  cloneViewFields,
+  hideViewField,
+  moveViewFields,
+  normalizeViewFields,
+  readViewFieldIds,
+  replaceViewFields,
+  resolveFieldInsertBeforeFieldId,
+  sameViewFields,
+  showViewField
+} from '@dataview/core/view/fields'
 import { active } from '@dataview/core/view/model/active'
 import { filter } from '@dataview/core/view/filter'
 import { sort } from '@dataview/core/view/sort'
@@ -91,24 +91,24 @@ export const view = {
     filter: viewFilterFields,
     sort: viewSortFields,
     calc: viewCalcFields,
-    display: viewDisplayFields
+    fields: viewVisibleFields
   },
   duplicate: {
     input: createDuplicateViewInput
   },
-  display: {
+  fields: {
     read: {
-      ids: readViewDisplayFieldIds
+      ids: readViewFieldIds
     },
-    clone: cloneViewDisplay,
-    same: sameViewDisplay,
-    normalize: normalizeViewDisplay,
-    replace: replaceViewDisplayFields,
-    move: moveViewDisplayFields,
-    show: showViewDisplayField,
-    hide: hideViewDisplayField,
-    clear: clearViewDisplayFields,
-    insertBefore: resolveDisplayInsertBeforeFieldId
+    clone: cloneViewFields,
+    same: sameViewFields,
+    normalize: normalizeViewFields,
+    replace: replaceViewFields,
+    move: moveViewFields,
+    show: showViewField,
+    hide: hideViewField,
+    clear: clearViewFields,
+    insertBefore: resolveFieldInsertBeforeFieldId
   },
   calc: {
     ...calc,
@@ -132,7 +132,7 @@ export const view = {
     same: sameViewOptions,
     normalize: normalizeViewOptions,
     defaults: createDefaultViewOptions,
-    defaultDisplay: createDefaultViewDisplay,
+    defaultFields: createDefaultViewFields,
     cloneTable: cloneTableOptions,
     pruneField: pruneFieldFromViewOptions
   },

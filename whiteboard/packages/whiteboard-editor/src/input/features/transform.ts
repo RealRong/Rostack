@@ -218,14 +218,10 @@ export const createTransformSession = (
         writer.preview.edge.delete(edgeId as EdgeId)
       })
       writer.preview.selection.patch(
-        snapshot.preview.selection.marquee
-          ? {
-              marquee: undefined,
-              guides: result.draft.guides
-            }
-          : {
-              guides: result.draft.guides
-            }
+        {
+          marquee: undefined,
+          guides: result.draft.guides
+        }
       )
     })
   }
@@ -287,14 +283,10 @@ export const createTransformSession = (
           writer.preview.edge.delete(edgeId as EdgeId)
         })
         writer.preview.selection.patch(
-          snapshot.preview.selection.marquee
-            ? {
-                marquee: undefined,
-                guides: []
-              }
-            : {
-                guides: []
-              }
+          {
+            marquee: undefined,
+            guides: []
+          }
         )
       })
     }

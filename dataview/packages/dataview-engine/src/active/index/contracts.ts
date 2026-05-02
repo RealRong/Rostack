@@ -53,7 +53,7 @@ export interface BucketSpec {
 export interface IndexDemand {
   search?: SearchDemand
   buckets?: readonly BucketSpec[]
-  displayFields?: readonly FieldId[]
+  fields?: readonly FieldId[]
   sortFields?: readonly FieldId[]
   calculations?: readonly CalculationDemand[]
 }

@@ -15,10 +15,6 @@ import { dataviewSpec } from '@dataview/react'
 const FIELD_STATUS = 'status'
 const VIEW_ID = 'view_table'
 
-const displayFields = (fieldIds: readonly string[]) => entityTable.normalize.list(
-  fieldIds.map((fieldId) => ({ id: fieldId }))
-)
-
 const createFields = (): readonly CustomField[] => ([
   {
     id: FIELD_STATUS,
@@ -36,22 +32,20 @@ const createView = (): View => {
     name: 'Tasks',
     filter: {
       mode: 'and',
-      rules: entityTable.normalize.list([])
+      rules: []
     },
     search: {
       query: ''
     },
     sort: {
-      rules: entityTable.normalize.list([])
+      rules: []
     },
     calc: {},
-    display: {
-      fields: displayFields([TITLE_FIELD_ID, FIELD_STATUS])
-    },
+    fields: [TITLE_FIELD_ID, FIELD_STATUS],
     options: {
       ...view.options.defaults('table', fields)
     },
-    order: entityTable.normalize.list([])
+    order: []
   }
 }
 

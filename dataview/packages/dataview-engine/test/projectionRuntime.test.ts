@@ -15,13 +15,9 @@ const VIEW_ID = 'view_table'
 const FIELD_STATUS = 'status'
 const FIELD_POINTS = 'points'
 
-const displayFields = (fieldIds: readonly string[]) => entityTable.normalize.list(
-  fieldIds.map((fieldId) => ({ id: fieldId }))
-)
-
 const optionTable = <T extends { id: string }>(
   options: readonly T[]
-) => entityTable.normalize.list(options.map((option) => ({ ...option })))
+) => options.map((option) => ({ ...option }))
 
 const createView = (input?: {
   wrap?: boolean
@@ -33,13 +29,13 @@ const createView = (input?: {
   name: 'Tasks',
   filter: {
     mode: 'and' as const,
-    rules: entityTable.normalize.list([])
+    rules: []
   },
   search: {
     query: input?.search ?? ''
   },
   sort: {
-    rules: entityTable.normalize.list([])
+    rules: []
   },
   group: {
     fieldId: FIELD_STATUS,
@@ -48,15 +44,13 @@ const createView = (input?: {
   calc: input?.calc ?? {
     [FIELD_POINTS]: 'sum' as const
   },
-  display: {
-    fields: displayFields(['title', FIELD_STATUS, FIELD_POINTS])
-  },
+  fields: ['title', FIELD_STATUS, FIELD_POINTS],
   options: {
     widths: {},
     showVerticalLines: true,
     wrap: input?.wrap ?? false
   },
-  order: entityTable.normalize.list([])
+  order: []
 })
 
 const createDocument = (view = createView()) => ({

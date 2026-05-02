@@ -9,9 +9,6 @@ import type {
 import {
   view as viewApi
 } from '@dataview/core/view'
-import {
-  entityTable
-} from '@shared/core'
 
 export const resolveDefaultKanbanGroup = (
   fields: readonly Field[]
@@ -56,10 +53,8 @@ export const setViewType = (input: {
       rules: viewApi.sort.rules.read.clone(current.sort.rules)
     },
     calc: viewApi.calc.clone(current.calc),
-    display: viewApi.display.clone(current.display),
-    order: entityTable.normalize.list(
-      viewApi.order.read.ids(current).map((recordId) => ({ id: recordId }))
-    )
+    fields: viewApi.fields.clone(current.fields),
+    order: [...viewApi.order.read.ids(current)]
   }
 
   switch (input.type) {

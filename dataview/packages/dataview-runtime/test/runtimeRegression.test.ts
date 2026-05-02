@@ -39,13 +39,9 @@ const STATUS_OPTIONS = [
   }
 ] as const
 
-const displayFields = (fieldIds: readonly string[]) => entityTable.normalize.list(
-  fieldIds.map((fieldId) => ({ id: fieldId }))
-)
-
 const optionTable = <T extends { id: string }>(
   options: readonly T[]
-) => entityTable.normalize.list(options.map((option) => ({ ...option })))
+) => options.map((option) => ({ ...option }))
 
 const createFields = (): readonly Field[] => ([
   {
@@ -61,11 +57,11 @@ const createFieldTable = (fields: readonly Field[]) => entityTable.normalize.lis
 
 const createEmptyFilter = () => ({
   mode: 'and' as const,
-  rules: entityTable.normalize.list([])
+  rules: []
 })
 
 const createEmptySort = () => ({
-  rules: entityTable.normalize.list([])
+  rules: []
 })
 
 const addOptionFilter = (
@@ -101,13 +97,11 @@ const createView = (input: {
     },
     sort: createEmptySort(),
     calc: {},
-    display: {
-      fields: displayFields([TITLE_FIELD_ID, FIELD_STATUS])
-    },
+    fields: [TITLE_FIELD_ID, FIELD_STATUS],
     options: {
       ...view.options.defaults(input.type, fields)
     },
-    order: entityTable.normalize.list([]),
+    order: [],
     ...(input.type === 'kanban'
       ? {
           group: {

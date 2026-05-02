@@ -3,6 +3,7 @@ import type {
   RecordId
 } from '@dataview/core/types'
 import type {
+  DataviewDeltaQuery,
   DataviewMutationDelta,
   DataviewQuery
 } from '@dataview/core/mutation'
@@ -127,6 +128,7 @@ const createContentDelta = (
   query: DataviewQuery,
   delta: DataviewMutationDelta
 ): ContentDelta => {
+  const changes = query.changes(delta)
   if (delta.reset === true) {
     return {
       records: 'all',
@@ -138,16 +140,16 @@ const createContentDelta = (
     }
   }
 
-  const schemaTouched = query.delta.fieldSchemaTouchedIds(delta)
+  const schemaTouched = changes.fieldSchemaTouchedIds()
 
   return {
-    records: query.delta.touchedRecords(delta),
-    values: query.delta.touchedValueFields(delta),
+    records: changes.touchedRecords(),
+    values: changes.touchedValueFields(),
     schema: schemaTouched === 'all'
       ? new Set(query.fields.ids())
       : schemaTouched,
-    touchedFields: query.delta.touchedFields(delta),
-    recordSetChanged: query.delta.recordSetChanged(delta),
+    touchedFields: changes.touchedFields(),
+    recordSetChanged: changes.recordSetChanged(),
     reset: false
   }
 }

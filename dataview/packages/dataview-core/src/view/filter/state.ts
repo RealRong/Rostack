@@ -1,24 +1,20 @@
 import type {
-  EntityTable,
   Field,
   FieldId,
   Filter,
   FilterRule,
-  ViewFilterRuleId
+  ViewFilterRuleId,
 } from '@dataview/core/types'
-import { createId, entityTable } from '@shared/core'
+import { createId } from '@shared/core'
 import {
   createFilterRule,
   patchFilterRule,
-  sameFilterRule
+  sameFilterRule,
 } from './rule'
 
 const createFilterRuleId = (): ViewFilterRuleId => createId('filter') as ViewFilterRuleId
 
-const EMPTY_FILTER_RULES: EntityTable<ViewFilterRuleId, FilterRule> = {
-  byId: {} as Record<ViewFilterRuleId, FilterRule>,
-  ids: []
-}
+const EMPTY_FILTER_RULES: FilterRule[] = []
 
 const normalizeFilterRuleShape = (
   value: unknown
@@ -45,37 +41,34 @@ const normalizeFilterRuleShape = (
       : '',
     ...(Object.prototype.hasOwnProperty.call(source, 'value')
       ? { value: structuredClone(source.value) as FilterRule['value'] }
-      : {})
+      : {}),
   }
 }
 
 export const cloneFilterRules = (
-  rules: EntityTable<ViewFilterRuleId, FilterRule>
-): EntityTable<ViewFilterRuleId, FilterRule> => entityTable.clone.table(rules)
+  rules: readonly FilterRule[]
+): FilterRule[] => rules.map((rule) => structuredClone(rule))
 
 const listFilterRules = (
-  rules: EntityTable<ViewFilterRuleId, FilterRule>
-): FilterRule[] => entityTable.read.list(rules)
+  rules: readonly FilterRule[]
+): FilterRule[] => cloneFilterRules(rules)
 
 const getFilterRule = (
-  rules: EntityTable<ViewFilterRuleId, FilterRule>,
+  rules: readonly FilterRule[],
   id: ViewFilterRuleId
-): FilterRule | undefined => entityTable.read.get(rules, id)
+): FilterRule | undefined => rules.find((rule) => rule.id === id)
 
 const findFilterRuleIdByFieldId = (
-  rules: EntityTable<ViewFilterRuleId, FilterRule>,
+  rules: readonly FilterRule[],
   fieldId: FieldId,
   exceptId?: ViewFilterRuleId
-): ViewFilterRuleId | undefined => rules.ids.find(ruleId => {
-  if (ruleId === exceptId) {
-    return false
-  }
-
-  return rules.byId[ruleId]?.fieldId === fieldId
-})
+): ViewFilterRuleId | undefined => rules.find((rule) => (
+  rule.id !== exceptId
+  && rule.fieldId === fieldId
+))?.id
 
 const assertFilterFieldAvailable = (
-  rules: EntityTable<ViewFilterRuleId, FilterRule>,
+  rules: readonly FilterRule[],
   fieldId: FieldId,
   exceptId?: ViewFilterRuleId
 ) => {
@@ -85,58 +78,32 @@ const assertFilterFieldAvailable = (
 }
 
 export const sameFilterRules = (
-  left: EntityTable<ViewFilterRuleId, FilterRule>,
-  right: EntityTable<ViewFilterRuleId, FilterRule>
+  left: readonly FilterRule[],
+  right: readonly FilterRule[]
 ) => (
-  left.ids.length === right.ids.length
-  && left.ids.every((ruleId, index) => {
-    const rightId = right.ids[index]
-    const leftRule = left.byId[ruleId]
-    const rightRule = rightId
-      ? right.byId[rightId]
-      : undefined
-    return Boolean(
-      rightId
-      && leftRule
-      && rightRule
-      && sameFilterRule(leftRule, rightRule)
-    )
+  left.length === right.length
+  && left.every((rule, index) => {
+    const nextRule = right[index]
+    return Boolean(nextRule && sameFilterRule(rule, nextRule))
   })
 )
 
 export const normalizeFilterRules = (
   rules: unknown
-): EntityTable<ViewFilterRuleId, FilterRule> => {
-  if (typeof rules !== 'object' || rules === null) {
-    return EMPTY_FILTER_RULES
-  }
-
-  const source = rules as {
-    byId?: unknown
-    ids?: unknown
-  }
-  if (!source.byId || typeof source.byId !== 'object' || !Array.isArray(source.ids)) {
-    return EMPTY_FILTER_RULES
-  }
-
-  const byId = source.byId as Record<string, unknown>
-  return entityTable.normalize.list(source.ids.flatMap(ruleId => {
-    if (typeof ruleId !== 'string') {
-      return []
-    }
-
-    const rule = normalizeFilterRuleShape(byId[ruleId])
-    return rule
-      ? [rule]
-      : []
-  }))
-}
+): FilterRule[] => (
+  Array.isArray(rules)
+    ? rules.flatMap((rule) => {
+        const normalized = normalizeFilterRuleShape(rule)
+        return normalized ? [normalized] : []
+      })
+    : EMPTY_FILTER_RULES
+)
 
 export const cloneFilterState = (
   left: Filter
 ): Filter => ({
   mode: left.mode,
-  rules: cloneFilterRules(left.rules)
+  rules: cloneFilterRules(left.rules),
 })
 
 export const sameFilterState = (
@@ -159,7 +126,7 @@ export const normalizeFilterState = (
 
   return {
     mode: source?.mode === 'or' ? 'or' : 'and',
-    rules: normalizeFilterRules(source?.rules)
+    rules: normalizeFilterRules(source?.rules),
   }
 }
 
@@ -169,9 +136,7 @@ export const writeFilterCreate = (
 ): {
   filter: Filter
   id: ViewFilterRuleId
-} => {
-  return writeFilterInsert(filter, field, {})
-}
+} => writeFilterInsert(filter, field, {})
 
 export const writeFilterInsert = (
   filter: Filter,
@@ -189,48 +154,35 @@ export const writeFilterInsert = (
   assertFilterFieldAvailable(filter.rules, field.id)
 
   const id = input.id ?? createFilterRuleId()
-  if (filter.rules.byId[id]) {
+  if (filter.rules.some((rule) => rule.id === id)) {
     throw new Error(`Filter rule already exists: ${id}`)
   }
 
   const rule = createFilterRule(field, {
     id,
-    ...(input.presetId !== undefined
-      ? { presetId: input.presetId }
-      : {}),
-    ...(Object.prototype.hasOwnProperty.call(input, 'value')
-      ? { value: input.value }
-      : {})
+    ...(input.presetId !== undefined ? { presetId: input.presetId } : {}),
+    ...(Object.prototype.hasOwnProperty.call(input, 'value') ? { value: input.value } : {}),
   })
 
-  const inserted = entityTable.write.put(filter.rules, rule)
-  const nextIds = inserted.ids.filter((ruleId) => ruleId !== id)
+  const nextRules = filter.rules.filter((entry) => entry.id !== id)
   const beforeId = input.before ?? undefined
 
   if (beforeId !== undefined) {
-    if (!inserted.byId[beforeId]) {
-      throw new Error(`Unknown filter rule ${beforeId}`)
-    }
-
-    const beforeIndex = nextIds.indexOf(beforeId)
+    const beforeIndex = nextRules.findIndex((entry) => entry.id === beforeId)
     if (beforeIndex < 0) {
       throw new Error(`Unknown filter rule ${beforeId}`)
     }
-
-    nextIds.splice(beforeIndex, 0, id)
+    nextRules.splice(beforeIndex, 0, rule)
   } else {
-    nextIds.push(id)
+    nextRules.push(rule)
   }
 
   return {
     id,
     filter: {
       mode: filter.mode,
-      rules: {
-        byId: inserted.byId,
-        ids: nextIds
-      }
-    }
+      rules: nextRules,
+    },
   }
 }
 
@@ -250,14 +202,13 @@ export const writeFilterPatch = (
   }
 
   const nextRule = patchFilterRule(field, currentRule, patch)
-
   if (sameFilterRule(currentRule, nextRule)) {
     return filter
   }
 
   return {
     mode: filter.mode,
-    rules: entityTable.write.patch(filter.rules, id, nextRule)
+    rules: filter.rules.map((rule) => rule.id === id ? nextRule : structuredClone(rule)),
   }
 }
 
@@ -271,7 +222,7 @@ export const writeFilterMode = (
 
   return {
     mode,
-    rules: cloneFilterRules(filter.rules)
+    rules: cloneFilterRules(filter.rules),
   }
 }
 
@@ -279,14 +230,14 @@ export const writeFilterRemove = (
   filter: Filter,
   id: ViewFilterRuleId
 ): Filter => {
-  const nextRules = entityTable.write.remove(filter.rules, id)
-  if (nextRules === filter.rules) {
+  const nextRules = filter.rules.filter((rule) => rule.id !== id)
+  if (nextRules.length === filter.rules.length) {
     throw new Error(`Unknown filter rule ${id}`)
   }
 
   return {
     mode: filter.mode,
-    rules: nextRules
+    rules: nextRules,
   }
 }
 
@@ -295,44 +246,37 @@ export const writeFilterMove = (
   id: ViewFilterRuleId,
   beforeId?: ViewFilterRuleId | null
 ): Filter => {
-  if (!filter.rules.byId[id]) {
+  const currentRule = getFilterRule(filter.rules, id)
+  if (!currentRule) {
     throw new Error(`Unknown filter rule ${id}`)
   }
-  if (beforeId && !filter.rules.byId[beforeId]) {
-    throw new Error(`Unknown filter rule ${beforeId}`)
-  }
 
-  const nextIds = filter.rules.ids.filter((ruleId) => ruleId !== id)
+  const nextRules = filter.rules.filter((rule) => rule.id !== id)
   if (beforeId) {
-    const beforeIndex = nextIds.indexOf(beforeId)
+    const beforeIndex = nextRules.findIndex((rule) => rule.id === beforeId)
     if (beforeIndex < 0) {
       throw new Error(`Unknown filter rule ${beforeId}`)
     }
-    nextIds.splice(beforeIndex, 0, id)
+    nextRules.splice(beforeIndex, 0, currentRule)
   } else {
-    nextIds.push(id)
+    nextRules.push(currentRule)
   }
 
-  return nextIds.every((ruleId, index) => ruleId === filter.rules.ids[index])
+  return sameFilterRules(filter.rules, nextRules)
     ? filter
     : {
         mode: filter.mode,
-        rules: {
-          byId: {
-            ...filter.rules.byId
-          },
-          ids: nextIds
-        }
+        rules: nextRules,
       }
 }
 
 export const writeFilterClear = (
   filter: Filter
 ): Filter => (
-  filter.rules.ids.length
+  filter.rules.length
     ? {
         mode: filter.mode,
-        rules: EMPTY_FILTER_RULES
+        rules: EMPTY_FILTER_RULES,
       }
     : filter
 )
@@ -341,9 +285,9 @@ export const filterRuleAccess = {
   list: listFilterRules,
   get: getFilterRule,
   hasField: (
-    rules: EntityTable<ViewFilterRuleId, FilterRule>,
+    rules: readonly FilterRule[],
     fieldId: FieldId,
     exceptId?: ViewFilterRuleId
   ) => Boolean(findFilterRuleIdByFieldId(rules, fieldId, exceptId)),
-  assertFieldAvailable: assertFilterFieldAvailable
+  assertFieldAvailable: assertFilterFieldAvailable,
 } as const

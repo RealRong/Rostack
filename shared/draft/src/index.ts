@@ -28,7 +28,11 @@ import {
 } from './record'
 import {
   record,
-  type RecordWrite
+  isUnsetRecordWrite,
+  type RecordUnsetValue,
+  type RecordWrite,
+  type RecordWriteValue,
+  unsetRecordWrite
 } from './recordValue'
 import {
   root,
@@ -54,7 +58,9 @@ export {
   patch,
   path,
   record,
-  root
+  isUnsetRecordWrite,
+  root,
+  unsetRecordWrite
 }
 
 export type {
@@ -68,5 +74,7 @@ export type {
   Path,
   PathKey,
   RecordPatch,
-  RecordWrite
+  RecordUnsetValue,
+  RecordWrite,
+  RecordWriteValue
 }

@@ -34,8 +34,8 @@ import {
   sameTableProjection
 } from '@dataview/engine/active/publish/viewModes'
 import {
-  readViewDisplayFieldIds
-} from '@dataview/core/view/display'
+  readViewFieldIds
+} from '@dataview/core/view/fields'
 
 export const publishViewBase = (input: {
   reader: DataviewQuery
@@ -71,7 +71,7 @@ export const publishViewBase = (input: {
   }
 
   const nextFields = createFieldsProjection({
-    fieldIds: readViewDisplayFieldIds(view.display),
+    fieldIds: readViewFieldIds(view),
     getField: input.reader.fields.get
   })
   const nextQuery = createQueryProjection({

@@ -9,13 +9,9 @@ const FIELD_POINTS = 'points'
 const FIELD_ESTIMATE = 'estimate'
 const VIEW_TABLE = 'view_table'
 
-const displayFields = (fieldIds: readonly string[]) => entityTable.normalize.list(
-  fieldIds.map((fieldId) => ({ id: fieldId }))
-)
-
 const optionTable = <T extends { id: string }>(
   options: readonly T[]
-) => entityTable.normalize.list(options.map((option) => ({ ...option })))
+) => options.map((option) => ({ ...option }))
 
 const SIZE_TO_COUNT = {
   small: 1000,
@@ -113,22 +109,20 @@ const createDocument = (recordCount: number) => {
           name: 'Tasks',
           filter: {
             mode: 'and',
-            rules: entityTable.normalize.list([])
+            rules: []
           },
           search: {
             query: ''
           },
           sort: {
-            rules: entityTable.normalize.list([])
+            rules: []
           },
           calc: {},
-          display: {
-            fields: displayFields([TITLE_FIELD_ID, FIELD_STATUS, FIELD_POINTS, FIELD_ESTIMATE])
-          },
+          fields: [TITLE_FIELD_ID, FIELD_STATUS, FIELD_POINTS, FIELD_ESTIMATE],
           options: {
             ...view.options.defaults('table', fields)
           },
-          order: entityTable.normalize.list([])
+          order: []
         }
       },
       ids: [VIEW_TABLE]

@@ -89,15 +89,10 @@ const createSortProjection = (input: {
   view: View
   reader: DataviewQuery
 }): ViewSortProjection => ({
-  rules: input.view.sort.rules.ids.flatMap(ruleId => {
-    const rule = input.view.sort.rules.byId[ruleId]
-    return rule
-      ? [createSortRuleProjection({
-          rule,
-          reader: input.reader
-        })]
-      : []
-  })
+  rules: input.view.sort.rules.map((rule) => createSortRuleProjection({
+    rule,
+    reader: input.reader
+  }))
 })
 
 const createGroupProjection = (input: {

@@ -430,7 +430,7 @@ const View = (props: ColumnHeaderProps) => {
         leading: <EyeOff className="size-4" size={16} strokeWidth={1.8} />,
         disabled: false,
         onSelect: () => {
-          viewApi.display.hide(field.id)
+          viewApi.fields.hide(field.id)
         }
       },
       {

@@ -230,14 +230,10 @@ export const createMoveInteraction = (
       })
 
       writer.preview.selection.patch(
-        snapshot.preview.selection.marquee
-          ? {
-              marquee: undefined,
-              guides
-            }
-          : {
-              guides
-            }
+        {
+          marquee: undefined,
+          guides
+        }
       )
     })
   }
@@ -303,14 +299,10 @@ export const createMoveInteraction = (
           writer.preview.edge.delete(edgeId as EdgeId)
         })
         writer.preview.selection.patch(
-          snapshot.preview.selection.marquee
-            ? {
-                marquee: undefined,
-                guides: []
-              }
-            : {
-                guides: []
-              }
+          {
+            marquee: undefined,
+            guides: []
+          }
         )
       })
     }

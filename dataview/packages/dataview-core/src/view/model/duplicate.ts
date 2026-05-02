@@ -1,11 +1,13 @@
 import type {
+  FilterRule,
   GalleryViewCreateInput,
   KanbanViewCreateInput,
+  SortRule,
   TableViewCreateInput,
   View,
   ViewCreateInput
 } from '@dataview/core/types'
-import { createId, entityTable } from '@shared/core'
+import { createId } from '@shared/core'
 import {
   createDuplicateViewPreferredName
 } from '@dataview/core/view/model/naming'
@@ -13,8 +15,8 @@ import {
   cloneViewOptions
 } from '@dataview/core/view/options'
 import {
-  cloneViewDisplay
-} from '@dataview/core/view/display'
+  cloneViewFields
+} from '@dataview/core/view/fields'
 import {
   readViewOrderIds
 } from '@dataview/core/view/order'
@@ -33,28 +35,22 @@ const cloneViewInput = (
     },
     filter: {
       mode: view.filter.mode,
-      rules: entityTable.normalize.list(
-        entityTable.read.list(view.filter.rules).map(rule => ({
-          ...structuredClone(rule),
-          id: createFilterRuleId()
-        }))
-      )
+      rules: view.filter.rules.map((rule): FilterRule => ({
+        ...structuredClone(rule),
+        id: createFilterRuleId()
+      }))
     },
     sort: {
-      rules: entityTable.normalize.list(
-        entityTable.read.list(view.sort.rules).map(rule => ({
-          ...structuredClone(rule),
-          id: createSortRuleId()
-        }))
-      )
+      rules: view.sort.rules.map((rule): SortRule => ({
+        ...structuredClone(rule),
+        id: createSortRuleId()
+      }))
     },
     calc: {
       ...view.calc
     },
-    display: cloneViewDisplay(view.display),
-    order: entityTable.normalize.list(
-      readViewOrderIds(view).map((recordId) => ({ id: recordId }))
-    )
+    fields: cloneViewFields(view.fields),
+    order: [...readViewOrderIds(view)]
   }
 
   switch (view.type) {

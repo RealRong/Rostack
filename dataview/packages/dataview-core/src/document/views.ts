@@ -19,8 +19,8 @@ import {
   normalizeViewOptions
 } from '@dataview/core/view/options'
 import {
-  normalizeViewDisplay
-} from '@dataview/core/view/display'
+  normalizeViewFields
+} from '@dataview/core/view/fields'
 
 const replaceTable = <TKey extends 'fields' | 'records' | 'views'>(
   document: DataDoc,
@@ -74,7 +74,7 @@ const normalizeView = (
     calc: calculation.view.normalize(view.calc, {
       fields: new Map(fields.map(fieldEntry => [fieldEntry.id, fieldEntry] as const))
     }),
-    display: normalizeViewDisplay(view.display),
+    fields: normalizeViewFields(view.fields),
     order: normalizeOrders(document, view.order)
   } as const
 

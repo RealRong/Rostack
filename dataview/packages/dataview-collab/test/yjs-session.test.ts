@@ -8,9 +8,6 @@ import {
 } from '@dataview/core/types'
 import { view } from '@dataview/core/view'
 import {
-  replaceViewDisplayFields
-} from '@dataview/core/view/display'
-import {
   replaceViewOrder
 } from '@dataview/core/view/order'
 import { createEngine } from '@dataview/engine'
@@ -44,16 +41,16 @@ const createDocument = (): DataDoc => {
           name: 'Table',
           filter: {
             mode: 'and',
-            rules: entityTable.normalize.list([])
+            rules: []
           },
           search: {
             query: ''
           },
           sort: {
-            rules: entityTable.normalize.list([])
+            rules: []
           },
           calc: {},
-          display: replaceViewDisplayFields([TITLE_FIELD_ID, FIELD_STATUS]),
+          fields: [TITLE_FIELD_ID, FIELD_STATUS],
           options: {
             ...view.options.defaults('table', fields)
           },

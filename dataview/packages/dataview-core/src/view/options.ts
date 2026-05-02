@@ -5,7 +5,6 @@ import type {
   KanbanView,
   TableOptions,
   TableView,
-  ViewDisplay,
   ViewType
 } from '@dataview/core/types'
 import type {
@@ -213,10 +212,10 @@ export function sameViewOptions (
   }
 }
 
-export const createDefaultViewDisplay = (
+export const createDefaultViewFields = (
   type: ViewType,
   fields: readonly Field[]
-): ViewDisplay => getViewTypeSpec(type).defaults.display(fields)
+): FieldId[] => getViewTypeSpec(type).defaults.fields(fields)
 
 export function createDefaultViewOptions (
   type: 'table',

@@ -56,24 +56,16 @@ const resetEditorState = (
     Object.keys(snapshot.preview.mindmap).forEach((id) => {
       writer.preview.mindmap.delete(id)
     })
-    writer.preview.selection.patch(
-      snapshot.preview.selection.marquee
-        ? {
-            marquee: undefined,
-            guides: []
-          }
-        : {
-            guides: []
-          }
-    )
+    writer.preview.selection.patch({
+      marquee: undefined,
+      guides: []
+    })
     writer.preview.draw.patch({
       current: null
     })
-    if (snapshot.preview.edgeGuide !== undefined) {
-      writer.preview.edgeGuide.patch({
-        current: undefined
-      })
-    }
+    writer.preview.edgeGuide.patch({
+      current: undefined
+    })
   })
 }
 

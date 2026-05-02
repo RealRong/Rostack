@@ -20,13 +20,12 @@ import {
   sort as sortApi
 } from '@dataview/core/view'
 import {
-  entityTable,
   equal
 } from '@shared/core'
 import {
-  readViewDisplayFieldIds,
-  replaceViewDisplayFields
-} from '@dataview/core/view/display'
+  readViewFieldIds,
+  replaceViewFields
+} from '@dataview/core/view/fields'
 
 const cleanupSearchFields = (
   fieldIds: readonly string[] | undefined,
@@ -73,22 +72,18 @@ const buildRemovedFieldView = (
   view: View,
   fieldId: CustomFieldId
 ): View => {
-  const nextFilterRules = entityTable.normalize.list(
-    filterApi.rules.read
-      .list(view.filter.rules)
-      .filter(rule => rule.fieldId !== fieldId)
-  )
-  const nextSortRules = entityTable.normalize.list(
-    sortApi.rules.read
-      .list(view.sort.rules)
-      .filter(rule => rule.fieldId !== fieldId)
-  )
+  const nextFilterRules = filterApi.rules.read
+    .list(view.filter.rules)
+    .filter(rule => rule.fieldId !== fieldId)
+  const nextSortRules = sortApi.rules.read
+    .list(view.sort.rules)
+    .filter(rule => rule.fieldId !== fieldId)
   const nextSearchFields = cleanupSearchFields(view.search.fields, fieldId)
   const nextCalc = {
     ...view.calc
   }
   delete nextCalc[fieldId]
-  const nextDisplayFields = readViewDisplayFieldIds(view.display)
+  const nextFields = readViewFieldIds(view)
     .filter(currentFieldId => currentFieldId !== fieldId)
   const currentGroup = 'group' in view
     ? view.group
@@ -115,7 +110,7 @@ const buildRemovedFieldView = (
           query: view.search.query
         },
     calc: nextCalc,
-    display: replaceViewDisplayFields(nextDisplayFields)
+    fields: replaceViewFields(nextFields)
   }
 
   if (view.type === 'table') {
@@ -158,13 +153,11 @@ const buildConvertedFieldView = (
   field: CustomField
 ): View => {
   const validPresetIds = new Set(filterApi.rule.presetIds(field))
-  const nextFilterRules = entityTable.normalize.list(
-    filterApi.rules.read
-      .list(view.filter.rules)
-      .filter(rule => (
-        rule.fieldId !== field.id || validPresetIds.has(rule.presetId)
-      ))
-  )
+  const nextFilterRules = filterApi.rules.read
+    .list(view.filter.rules)
+    .filter(rule => (
+      rule.fieldId !== field.id || validPresetIds.has(rule.presetId)
+    ))
   const nextCalc = {
     ...view.calc
   }

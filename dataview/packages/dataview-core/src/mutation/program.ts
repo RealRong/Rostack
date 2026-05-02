@@ -59,7 +59,7 @@ export type DataviewMutationPorts = DataviewMutationWriter & {
     patch(optionId: string, patch: DataviewFieldOptionPatch): void
     delete(optionId: string): void
   }
-  viewDisplay(viewId: string): {
+  viewFields(viewId: string): {
     insert(fieldId: FieldId, to?: MutationOrderedAnchor): void
     move(fieldId: FieldId, to?: MutationOrderedAnchor): void
     splice(fieldIds: readonly FieldId[], to?: MutationOrderedAnchor): void
@@ -132,20 +132,20 @@ export const createDataviewMutationPorts = (
       patch: (optionId, patch) => modelWriter.field.options(fieldId).patch(optionId, patch),
       delete: (optionId) => modelWriter.field.options(fieldId).delete(optionId)
     }),
-    viewDisplay: (viewId) => ({
-      insert: (fieldId, to) => modelWriter.view.displayFields(viewId).insert(
+    viewFields: (viewId) => ({
+      insert: (fieldId, to) => modelWriter.view.fields(viewId).insert(
         fieldId,
         to ?? END_ANCHOR
       ),
-      move: (fieldId, to) => modelWriter.view.displayFields(viewId).move(
+      move: (fieldId, to) => modelWriter.view.fields(viewId).move(
         fieldId,
         to ?? END_ANCHOR
       ),
-      splice: (fieldIds, to) => modelWriter.view.displayFields(viewId).splice(
+      splice: (fieldIds, to) => modelWriter.view.fields(viewId).splice(
         fieldIds,
         to ?? END_ANCHOR
       ),
-      delete: (fieldId) => modelWriter.view.displayFields(viewId).delete(fieldId)
+      delete: (fieldId) => modelWriter.view.fields(viewId).delete(fieldId)
     }),
     viewOrder: (viewId) => ({
       insert: (recordId, to) => modelWriter.view.order(viewId).insert(

@@ -14,7 +14,7 @@ import {
   createSortApi
 } from '@dataview/engine/active/api/query'
 import {
-  createDisplayApi,
+  createFieldsApi,
   createGalleryApi,
   createKanbanApi,
   createSummaryApi,
@@ -34,7 +34,7 @@ export const createActiveViewApi = (
     reader: base.reader,
     state: base.state
   })
-  const display = createDisplayApi(base)
+  const fields = createFieldsApi(base)
 
   return {
     id: base.id,
@@ -59,7 +59,7 @@ export const createActiveViewApi = (
     group: createGroupApi(base),
     sections: createSectionsApi(base),
     summary: createSummaryApi(base),
-    display,
+    fields,
     table: createTableApi({
       base
     }),

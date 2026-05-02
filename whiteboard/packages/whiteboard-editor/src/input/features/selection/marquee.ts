@@ -199,14 +199,10 @@ const syncMarqueeInteraction = (
             },
             guides: []
           }
-        : previous.kind === 'active'
-          ? {
-              marquee: undefined,
-              guides: []
-            }
-          : {
-              guides: []
-            }
+        : {
+            marquee: undefined,
+            guides: []
+          }
     )
   })
 }

@@ -109,22 +109,20 @@ const createDefaultDocument = (): DataDoc => {
           name: 'Tasks',
           filter: {
             mode: 'and',
-            rules: entityTable.normalize.list([])
+            rules: []
           },
           search: {
             query: ''
           },
           sort: {
-            rules: entityTable.normalize.list([])
+            rules: []
           },
           calc: {},
-          display: {
-            fields: tableFieldIds
-          },
+          fields: tableFieldIds,
           options: {
             ...view.options.defaults('table', fields)
           },
-          orders: []
+          order: []
         },
         [VIEW_KANBAN]: {
           id: VIEW_KANBAN,
@@ -132,13 +130,13 @@ const createDefaultDocument = (): DataDoc => {
           name: 'Board',
           filter: {
             mode: 'and',
-            rules: entityTable.normalize.list([])
+            rules: []
           },
           search: {
             query: ''
           },
           sort: {
-            rules: entityTable.normalize.list([])
+            rules: []
           },
           group: {
             fieldId: FIELD_STATUS,
@@ -146,13 +144,11 @@ const createDefaultDocument = (): DataDoc => {
             bucketSort: 'manual'
           },
           calc: {},
-          display: {
-            fields: [FIELD_POINTS]
-          },
+          fields: [FIELD_POINTS],
           options: {
             ...view.options.defaults('kanban', fields)
           },
-          orders: []
+          order: []
         }
       },
       ids: [VIEW_TABLE, VIEW_KANBAN]

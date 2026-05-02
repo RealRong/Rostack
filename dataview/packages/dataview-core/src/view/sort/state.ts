@@ -1,19 +1,15 @@
 import type {
-  EntityTable,
   FieldId,
   Sort,
   SortDirection,
   SortRule,
-  ViewSortRuleId
+  ViewSortRuleId,
 } from '@dataview/core/types'
-import { createId, entityTable } from '@shared/core'
+import { createId } from '@shared/core'
 
 const createSortRuleId = (): ViewSortRuleId => createId('sort') as ViewSortRuleId
 
-const EMPTY_SORT_RULES: EntityTable<ViewSortRuleId, SortRule> = {
-  byId: {} as Record<ViewSortRuleId, SortRule>,
-  ids: []
-}
+const EMPTY_SORT_RULES: SortRule[] = []
 
 const normalizeSortRuleShape = (
   value: unknown
@@ -34,9 +30,7 @@ const normalizeSortRuleShape = (
   return {
     id: source.id,
     fieldId: source.fieldId,
-    direction: source.direction === 'desc'
-      ? 'desc'
-      : 'asc'
+    direction: source.direction === 'desc' ? 'desc' : 'asc',
   }
 }
 
@@ -45,7 +39,7 @@ export const cloneSortRule = (
 ): SortRule => ({
   id: rule.id,
   fieldId: rule.fieldId,
-  direction: rule.direction
+  direction: rule.direction,
 })
 
 export const sameSortRule = (
@@ -58,8 +52,8 @@ export const sameSortRule = (
 )
 
 export const cloneSortRules = (
-  rules: EntityTable<ViewSortRuleId, SortRule>
-): EntityTable<ViewSortRuleId, SortRule> => entityTable.clone.table(rules)
+  rules: readonly SortRule[]
+): SortRule[] => rules.map(cloneSortRule)
 
 export const normalizeSortRule = (
   rule: unknown
@@ -67,81 +61,52 @@ export const normalizeSortRule = (
 
 export const normalizeSortRules = (
   rules: unknown
-): EntityTable<ViewSortRuleId, SortRule> => {
-  if (typeof rules !== 'object' || rules === null) {
-    return EMPTY_SORT_RULES
-  }
-
-  const source = rules as {
-    byId?: unknown
-    ids?: unknown
-  }
-  if (!source.byId || typeof source.byId !== 'object' || !Array.isArray(source.ids)) {
-    return EMPTY_SORT_RULES
-  }
-
-  const byId = source.byId as Record<string, unknown>
-  return entityTable.normalize.list(source.ids.flatMap(ruleId => {
-    if (typeof ruleId !== 'string') {
-      return []
-    }
-
-    const rule = normalizeSortRuleShape(byId[ruleId])
-    return rule
-      ? [rule]
-      : []
-  }))
-}
+): SortRule[] => (
+  Array.isArray(rules)
+    ? rules.flatMap((rule) => {
+        const normalized = normalizeSortRuleShape(rule)
+        return normalized ? [normalized] : []
+      })
+    : EMPTY_SORT_RULES
+)
 
 export const sameSortRules = (
-  left: EntityTable<ViewSortRuleId, SortRule>,
-  right: EntityTable<ViewSortRuleId, SortRule>
+  left: readonly SortRule[],
+  right: readonly SortRule[]
 ) => (
-  left.ids.length === right.ids.length
-  && left.ids.every((ruleId, index) => {
-    const rightId = right.ids[index]
-    const leftRule = left.byId[ruleId]
-    const rightRule = rightId
-      ? right.byId[rightId]
-      : undefined
-    return Boolean(
-      rightId
-      && leftRule
-      && rightRule
-      && sameSortRule(leftRule, rightRule)
-    )
+  left.length === right.length
+  && left.every((rule, index) => {
+    const nextRule = right[index]
+    return Boolean(nextRule && sameSortRule(rule, nextRule))
   })
 )
 
 export const getSortRule = (
-  rules: EntityTable<ViewSortRuleId, SortRule>,
+  rules: readonly SortRule[],
   id: ViewSortRuleId
-): SortRule | undefined => entityTable.read.get(rules, id)
+): SortRule | undefined => rules.find((rule) => rule.id === id)
 
 export const listSortRules = (
-  rules: EntityTable<ViewSortRuleId, SortRule>
-): SortRule[] => entityTable.read.list(rules)
+  rules: readonly SortRule[]
+): SortRule[] => cloneSortRules(rules)
 
 const findSortRuleIdByFieldId = (
-  rules: EntityTable<ViewSortRuleId, SortRule>,
+  rules: readonly SortRule[],
   fieldId: FieldId,
   exceptId?: ViewSortRuleId
-): ViewSortRuleId | undefined => rules.ids.find(ruleId => {
-  if (ruleId === exceptId) {
-    return false
-  }
-
-  return rules.byId[ruleId]?.fieldId === fieldId
-})
+): ViewSortRuleId | undefined => rules.find((rule) => (
+  rule.id !== exceptId
+  && rule.fieldId === fieldId
+))?.id
 
 export const hasSortField = (
-  rules: EntityTable<ViewSortRuleId, SortRule>,
+  rules: readonly SortRule[],
   fieldId: FieldId,
   exceptId?: ViewSortRuleId
 ): boolean => Boolean(findSortRuleIdByFieldId(rules, fieldId, exceptId))
 
 export const assertSortFieldAvailable = (
-  rules: EntityTable<ViewSortRuleId, SortRule>,
+  rules: readonly SortRule[],
   fieldId: FieldId,
   exceptId?: ViewSortRuleId
 ) => {
@@ -153,7 +118,7 @@ export const assertSortFieldAvailable = (
 export const cloneSortState = (
   sort: Sort
 ): Sort => ({
-  rules: cloneSortRules(sort.rules)
+  rules: cloneSortRules(sort.rules),
 })
 
 export const sameSortState = (
@@ -171,7 +136,7 @@ export const normalizeSortState = (
     : undefined
 
   return {
-    rules: normalizeSortRules(source?.rules)
+    rules: normalizeSortRules(source?.rules),
   }
 }
 
@@ -182,12 +147,10 @@ export const writeSortCreate = (
 ): {
   sort: Sort
   id: ViewSortRuleId
-} => {
-  return writeSortInsert(sort, {
-    fieldId,
-    direction
-  })
-}
+} => writeSortInsert(sort, {
+  fieldId,
+  direction,
+})
 
 export const writeSortInsert = (
   sort: Sort,
@@ -204,43 +167,34 @@ export const writeSortInsert = (
   assertSortFieldAvailable(sort.rules, input.fieldId)
 
   const id = input.id ?? createSortRuleId()
-  if (sort.rules.byId[id]) {
+  if (sort.rules.some((rule) => rule.id === id)) {
     throw new Error(`Sort rule already exists: ${id}`)
   }
 
   const rule: SortRule = {
     id,
     fieldId: input.fieldId,
-    direction: input.direction ?? 'asc'
+    direction: input.direction ?? 'asc',
   }
 
-  const inserted = entityTable.write.put(sort.rules, rule)
-  const nextIds = inserted.ids.filter((ruleId) => ruleId !== id)
+  const nextRules = sort.rules.filter((entry) => entry.id !== id)
   const beforeId = input.before ?? undefined
 
   if (beforeId) {
-    if (!inserted.byId[beforeId]) {
-      throw new Error(`Unknown sort rule ${beforeId}`)
-    }
-
-    const beforeIndex = nextIds.indexOf(beforeId)
+    const beforeIndex = nextRules.findIndex((entry) => entry.id === beforeId)
     if (beforeIndex < 0) {
       throw new Error(`Unknown sort rule ${beforeId}`)
     }
-
-    nextIds.splice(beforeIndex, 0, id)
+    nextRules.splice(beforeIndex, 0, rule)
   } else {
-    nextIds.push(id)
+    nextRules.push(rule)
   }
 
   return {
     id,
     sort: {
-      rules: {
-        byId: inserted.byId,
-        ids: nextIds
-      }
-    }
+      rules: nextRules,
+    },
   }
 }
 
@@ -262,7 +216,7 @@ export const writeSortPatch = (
   const nextRule = cloneSortRule({
     ...currentRule,
     ...patch,
-    fieldId: nextFieldId
+    fieldId: nextFieldId,
   })
   if (
     currentRule.fieldId === nextRule.fieldId
@@ -272,7 +226,7 @@ export const writeSortPatch = (
   }
 
   return {
-    rules: entityTable.write.patch(sort.rules, id, nextRule)
+    rules: sort.rules.map((rule) => rule.id === id ? nextRule : cloneSortRule(rule)),
   }
 }
 
@@ -281,33 +235,26 @@ export const writeSortMove = (
   id: ViewSortRuleId,
   beforeId?: ViewSortRuleId | null
 ): Sort => {
-  if (!sort.rules.byId[id]) {
+  const currentRule = getSortRule(sort.rules, id)
+  if (!currentRule) {
     throw new Error(`Unknown sort rule ${id}`)
   }
-  if (beforeId && !sort.rules.byId[beforeId]) {
-    throw new Error(`Unknown sort rule ${beforeId}`)
-  }
 
-  const nextIds = sort.rules.ids.filter(ruleId => ruleId !== id)
+  const nextRules = sort.rules.filter((rule) => rule.id !== id)
   if (beforeId) {
-    const beforeIndex = nextIds.indexOf(beforeId)
+    const beforeIndex = nextRules.findIndex((rule) => rule.id === beforeId)
     if (beforeIndex === -1) {
       throw new Error(`Unknown sort rule ${beforeId}`)
     }
-    nextIds.splice(beforeIndex, 0, id)
+    nextRules.splice(beforeIndex, 0, currentRule)
   } else {
-    nextIds.push(id)
+    nextRules.push(currentRule)
   }
 
-  return nextIds.every((ruleId, index) => ruleId === sort.rules.ids[index])
+  return sameSortRules(sort.rules, nextRules)
     ? sort
     : {
-        rules: {
-          byId: {
-            ...sort.rules.byId
-          },
-          ids: nextIds
-        }
+        rules: nextRules,
       }
 }
 
@@ -315,22 +262,22 @@ export const writeSortRemove = (
   sort: Sort,
   id: ViewSortRuleId
 ): Sort => {
-  const nextRules = entityTable.write.remove(sort.rules, id)
-  if (nextRules === sort.rules) {
+  const nextRules = sort.rules.filter((rule) => rule.id !== id)
+  if (nextRules.length === sort.rules.length) {
     throw new Error(`Unknown sort rule ${id}`)
   }
 
   return {
-    rules: nextRules
+    rules: nextRules,
   }
 }
 
 export const writeSortClear = (
   sort: Sort
 ): Sort => (
-  sort.rules.ids.length
+  sort.rules.length
     ? {
-        rules: EMPTY_SORT_RULES
+        rules: EMPTY_SORT_RULES,
       }
     : sort
 )

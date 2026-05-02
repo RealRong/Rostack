@@ -259,24 +259,24 @@ export interface DataviewIntentTable extends MutationIntentTable {
     intent: IntentOfType<'view.order.splice'>
     output: void
   }
-  'view.display.move': {
-    intent: IntentOfType<'view.display.move'>
+  'view.fields.move': {
+    intent: IntentOfType<'view.fields.move'>
     output: void
   }
-  'view.display.splice': {
-    intent: IntentOfType<'view.display.splice'>
+  'view.fields.splice': {
+    intent: IntentOfType<'view.fields.splice'>
     output: void
   }
-  'view.display.show': {
-    intent: IntentOfType<'view.display.show'>
+  'view.fields.show': {
+    intent: IntentOfType<'view.fields.show'>
     output: void
   }
-  'view.display.hide': {
-    intent: IntentOfType<'view.display.hide'>
+  'view.fields.hide': {
+    intent: IntentOfType<'view.fields.hide'>
     output: void
   }
-  'view.display.clear': {
-    intent: IntentOfType<'view.display.clear'>
+  'view.fields.clear': {
+    intent: IntentOfType<'view.fields.clear'>
     output: void
   }
   'view.open': {

@@ -9,6 +9,7 @@ export {
   createDataviewQueryContext
 } from './query'
 export type {
+  DataviewDeltaQuery,
   DataviewQuery,
   DataviewQueryContext
 } from './query'

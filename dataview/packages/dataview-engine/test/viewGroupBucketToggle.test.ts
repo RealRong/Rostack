@@ -15,13 +15,9 @@ const FIELD_POINTS = 'points'
 const VIEW_TABLE = 'view_table'
 const VIEW_BOARD = 'view_board'
 
-const displayFields = (fieldIds: readonly string[]) => entityTable.normalize.list(
-  fieldIds.map((fieldId) => ({ id: fieldId }))
-)
-
 const optionTable = <T extends { id: string }>(
   options: readonly T[]
-) => entityTable.normalize.list(options.map((option) => ({ ...option })))
+) => options.map((option) => ({ ...option }))
 
 const STATUS_OPTIONS = [
   {
@@ -67,11 +63,11 @@ const createFieldTable = fields => entityTable.normalize.list(fields)
 
 const createEmptyFilter = () => ({
   mode: 'and' as const,
-  rules: entityTable.normalize.list([])
+  rules: []
 })
 
 const createEmptySort = () => ({
-  rules: entityTable.normalize.list([])
+  rules: []
 })
 
 const addFilterRule = (active, fieldId, patch) => {
@@ -103,13 +99,11 @@ const createDocument = () => {
           },
           sort: createEmptySort(),
           calc: {},
-          display: {
-            fields: displayFields([TITLE_FIELD_ID, FIELD_STATUS, FIELD_POINTS])
-          },
+          fields: [TITLE_FIELD_ID, FIELD_STATUS, FIELD_POINTS],
           options: {
             ...view.options.defaults('table', fields)
           },
-          order: entityTable.normalize.list([])
+          order: []
         }
       },
       ids: [VIEW_TABLE]
@@ -163,13 +157,11 @@ const createView = (input = {}) => {
     },
     sort: createEmptySort(),
     calc: {},
-    display: {
-      fields: displayFields([TITLE_FIELD_ID, FIELD_STATUS, FIELD_POINTS])
-    },
+    fields: [TITLE_FIELD_ID, FIELD_STATUS, FIELD_POINTS],
     options: {
       ...view.options.defaults(input.type ?? 'table', fields)
     },
-    order: entityTable.normalize.list([]),
+    order: [],
     ...(input.group ? { group: input.group } : {})
   }
 }
@@ -947,13 +939,11 @@ test('engine.active.records.create supports multiple concrete select filters and
             },
             sort: createEmptySort(),
             calc: {},
-            display: {
-              fields: displayFields([TITLE_FIELD_ID, fieldA, fieldB, fieldC])
-            },
+            fields: [TITLE_FIELD_ID, fieldA, fieldB, fieldC],
             options: {
               ...view.options.defaults('table', fields)
             },
-            order: entityTable.normalize.list([])
+            order: []
           }
         },
         ids: [VIEW_TABLE]
@@ -1549,7 +1539,7 @@ test('engine commits stream emits shared apply commits for execute', () => {
   assert.ok(Boolean(writes[0]?.delta.changes['view.search']))
   assert.ok(Boolean(writes[0]?.delta.changes['view.sort']))
   assert.ok(
-    Boolean(writes[0]?.delta.changes['view.display'])
+    Boolean(writes[0]?.delta.changes['view.fields'])
     || Boolean(writes[0]?.delta.changes['view.create'])
   )
   assert.ok(Boolean(writes[0]?.delta.changes['view.options']))

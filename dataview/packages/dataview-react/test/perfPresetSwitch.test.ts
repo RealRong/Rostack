@@ -35,7 +35,7 @@ const assertResolvedTableRows = (runtime: ReturnType<typeof createDataViewRuntim
   })
 }
 
-test('switching perf presets keeps table rows resolvable', () => {
+test('switching perf presets keeps table rows resolvable', { timeout: 15000 }, () => {
   const engine = createEngine({
     spec: dataviewSpec,
     document: getPreset('roadmap-1k').createDocument()

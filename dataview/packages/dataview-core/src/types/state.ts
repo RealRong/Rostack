@@ -89,8 +89,6 @@ export type FieldOption =
   | FlatOption
   | StatusOption
 
-export type FieldOptionTable = EntityTable<FieldOptionId, FieldOption>
-
 export type DateValue =
   | {
       kind: 'date'
@@ -175,7 +173,7 @@ export interface SelectField {
   id: CustomFieldId
   name: string
   kind: 'select'
-  options: EntityTable<FieldOptionId, FlatOption>
+  options: FlatOption[]
   meta?: Record<string, unknown>
 }
 
@@ -183,7 +181,7 @@ export interface MultiSelectField {
   id: CustomFieldId
   name: string
   kind: 'multiSelect'
-  options: EntityTable<FieldOptionId, FlatOption>
+  options: FlatOption[]
   meta?: Record<string, unknown>
 }
 
@@ -191,7 +189,7 @@ export interface StatusField {
   id: CustomFieldId
   name: string
   kind: 'status'
-  options: EntityTable<FieldOptionId, StatusOption>
+  options: StatusOption[]
   defaultOptionId: string | null
   meta?: Record<string, unknown>
 }
@@ -249,7 +247,7 @@ export interface FilterRule {
 
 export interface Filter {
   mode: 'and' | 'or'
-  rules: EntityTable<ViewFilterRuleId, FilterRule>
+  rules: FilterRule[]
 }
 
 export interface FilterOptionSetValue {
@@ -276,7 +274,7 @@ export interface SortRule {
 }
 
 export interface Sort {
-  rules: EntityTable<ViewSortRuleId, SortRule>
+  rules: SortRule[]
 }
 
 export interface BucketState {
@@ -291,12 +289,6 @@ export interface ViewGroup {
   bucketInterval?: number
   showEmpty?: boolean
   buckets?: Readonly<Record<ViewGroupBucketId, BucketState>>
-}
-
-export interface ViewDisplay {
-  fields: EntityTable<FieldId, {
-    id: FieldId
-  }>
 }
 
 export interface TableOptions {
@@ -330,10 +322,8 @@ export interface ViewBase {
   filter: Filter
   sort: Sort
   calc: ViewCalc
-  display: ViewDisplay
-  order: EntityTable<RecordId, {
-    id: RecordId
-  }>
+  fields: FieldId[]
+  order: RecordId[]
 }
 
 export interface TableView extends ViewBase {

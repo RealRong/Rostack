@@ -260,23 +260,23 @@ const lowerFieldDuplicate = (
   })
 
   views.forEach((view) => {
-    const displayFieldIds = viewApi.display.read.ids(view.display)
-    if (view.type !== 'table' || displayFieldIds.includes(nextFieldId)) {
+    const viewFieldIds = viewApi.fields.read.ids(view)
+    if (view.type !== 'table' || viewFieldIds.includes(nextFieldId)) {
       return
     }
 
-    const sourceIndex = displayFieldIds.indexOf(sourceField.id)
+    const sourceIndex = viewFieldIds.indexOf(sourceField.id)
     if (sourceIndex === -1) {
       return
     }
 
-    input.program.viewDisplay(view.id).insert(
+    input.program.viewFields(view.id).insert(
       nextFieldId,
-      displayFieldIds[sourceIndex + 1] === undefined
+      viewFieldIds[sourceIndex + 1] === undefined
         ? undefined
         : {
             kind: 'before',
-            itemId: displayFieldIds[sourceIndex + 1]
+            itemId: viewFieldIds[sourceIndex + 1]
           }
     )
   })

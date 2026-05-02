@@ -15,8 +15,8 @@ import type {
   DataviewViewPatch
 } from '../program'
 import {
-  readViewDisplayFieldIds
-} from '../../view/display'
+  readViewFieldIds
+} from '../../view/fields'
 import {
   readViewOrderIds
 } from '../../view/order'
@@ -124,15 +124,7 @@ const writeViewFilter = (
     writer.view.patch(current.id, {
       filter: {
         mode: next.filter.mode,
-        rules: {
-          ids: [...next.filter.rules.ids],
-          byId: Object.fromEntries(next.filter.rules.ids.flatMap((ruleId) => {
-            const rule = next.filter.rules.byId[ruleId]
-            return rule
-              ? [[ruleId, cloneFilterRule(rule)]]
-              : []
-          }))
-        }
+        rules: next.filter.rules.map(cloneFilterRule)
       }
     })
   }
@@ -146,35 +138,27 @@ const writeViewSort = (
   if (!equal.sameJsonValue(current.sort, next.sort)) {
     writer.view.patch(current.id, {
       sort: {
-        rules: {
-          ids: [...next.sort.rules.ids],
-          byId: Object.fromEntries(next.sort.rules.ids.flatMap((ruleId) => {
-            const rule = next.sort.rules.byId[ruleId]
-            return rule
-              ? [[ruleId, cloneSortRule(rule)]]
-              : []
-          }))
-        }
+        rules: next.sort.rules.map(cloneSortRule)
       }
     })
   }
 }
 
-const writeViewDisplay = (
+const writeViewFields = (
   writer: DataviewMutationPorts,
   current: View,
   next: View
 ) => {
-  let working = [...readViewDisplayFieldIds(current.display)]
-  const nextFields = readViewDisplayFieldIds(next.display)
+  let working = [...readViewFieldIds(current)]
+  const nextFields = readViewFieldIds(next)
   const nextFieldSet = new Set(nextFields)
 
-  readViewDisplayFieldIds(current.display).forEach((fieldId) => {
+  readViewFieldIds(current).forEach((fieldId) => {
     if (nextFieldSet.has(fieldId)) {
       return
     }
 
-    writer.viewDisplay(current.id).delete(fieldId)
+    writer.viewFields(current.id).delete(fieldId)
     working = working.filter((entry) => entry !== fieldId)
   })
 
@@ -182,7 +166,7 @@ const writeViewDisplay = (
     const fieldId = nextFields[index]!
     const before = nextFields[index + 1]
     if (!working.includes(fieldId)) {
-      writer.viewDisplay(current.id).insert(
+      writer.viewFields(current.id).insert(
         fieldId,
         toBeforeAnchor(before)
       )
@@ -195,7 +179,7 @@ const writeViewDisplay = (
       continue
     }
 
-    writer.viewDisplay(current.id).move(
+    writer.viewFields(current.id).move(
       fieldId,
       toBeforeAnchor(before)
     )
@@ -288,6 +272,6 @@ export const writeViewUpdate = (
 
   writeViewFilter(writer, current, next)
   writeViewSort(writer, current, next)
-  writeViewDisplay(writer, current, next)
+  writeViewFields(writer, current, next)
   writeViewOrder(writer, current, next)
 }

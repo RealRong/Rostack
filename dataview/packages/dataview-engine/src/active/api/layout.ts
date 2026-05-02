@@ -30,8 +30,8 @@ const insertField = (
   }
 
   const fieldId = createId('field') as CustomFieldId
-  const beforeFieldId = viewApi.display.insertBefore(
-    viewApi.display.read.ids(view.display),
+  const beforeFieldId = viewApi.fields.insertBefore(
+    viewApi.fields.read.ids(view),
     input.anchor,
     input.side
   )
@@ -45,7 +45,7 @@ const insertField = (
       }
     },
     {
-      type: 'view.display.show',
+      type: 'view.fields.show',
       id: view.id,
       field: fieldId,
       ...(beforeFieldId !== undefined && beforeFieldId !== null
@@ -59,9 +59,9 @@ const insertField = (
     : undefined
 }
 
-export const createDisplayApi = (
+export const createFieldsApi = (
   base: ActiveViewContext
-): ActiveViewApi['display'] => ({
+): ActiveViewApi['fields'] => ({
   move: (ids, target) => {
     const viewId = base.id()
     if (!viewId || !ids.length) {
@@ -70,7 +70,7 @@ export const createDisplayApi = (
 
     base.execute(ids.length === 1
       ? {
-          type: 'view.display.move',
+          type: 'view.fields.move',
           id: viewId,
           field: ids[0]!,
           ...(target.before !== undefined && target.before !== null
@@ -78,7 +78,7 @@ export const createDisplayApi = (
             : {})
         }
       : {
-          type: 'view.display.splice',
+          type: 'view.fields.splice',
           id: viewId,
           fields: [...ids],
           ...(target.before !== undefined && target.before !== null
@@ -93,7 +93,7 @@ export const createDisplayApi = (
     }
 
     base.execute({
-      type: 'view.display.show',
+      type: 'view.fields.show',
       id: viewId,
       field: fieldId,
       ...(beforeFieldId !== undefined && beforeFieldId !== null
@@ -108,7 +108,7 @@ export const createDisplayApi = (
     }
 
     base.execute({
-      type: 'view.display.hide',
+      type: 'view.fields.hide',
       id: viewId,
       field: fieldId
     })
@@ -120,7 +120,7 @@ export const createDisplayApi = (
     }
 
     base.execute({
-      type: 'view.display.clear',
+      type: 'view.fields.clear',
       id: viewId
     })
   }

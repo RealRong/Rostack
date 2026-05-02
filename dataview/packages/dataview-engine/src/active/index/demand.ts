@@ -188,13 +188,13 @@ export const normalizeIndexDemand = (
   const buckets = uniqueBucketSpecs(demand?.buckets)
   const sortFields = collection.uniqueSorted(demand?.sortFields ?? [])
   const searchFields = collection.uniqueSorted(demand?.search?.fieldIds ?? [])
-  const displayFields = collection.uniqueSorted(demand?.displayFields ?? [])
+  const fields = collection.uniqueSorted(demand?.fields ?? [])
   const calculationFields = collection.uniqueSorted(
     (demand?.calculations ?? []).map(item => item.fieldId)
   )
   const bucketFields = collection.uniqueSorted(buckets.map(item => item.fieldId))
   const recordFields = collection.uniqueSorted([
-    ...displayFields,
+    ...fields,
     ...sortFields,
     ...searchFields,
     ...bucketFields,

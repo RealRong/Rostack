@@ -10,7 +10,30 @@ import {
   type Path
 } from './path'
 
-export type RecordWrite = Readonly<Record<Path, unknown>>
+export type RecordUnsetValue = {
+  readonly kind: 'draft.record.unset'
+}
+
+export type RecordWriteValue = unknown | RecordUnsetValue
+
+export type RecordWrite = Readonly<Record<Path, RecordWriteValue>>
+
+const RECORD_UNSET_VALUE: RecordUnsetValue = Object.freeze({
+  kind: 'draft.record.unset'
+})
+
+export const unsetRecordWrite = (): RecordUnsetValue => RECORD_UNSET_VALUE
+
+export const isUnsetRecordWrite = (
+  value: unknown
+): value is RecordUnsetValue => Boolean(
+  value
+  && typeof value === 'object'
+  && !Array.isArray(value)
+  && (value as {
+    kind?: unknown
+  }).kind === 'draft.record.unset'
+)
 
 const isObjectRecord = (
   value: unknown
@@ -19,6 +42,11 @@ const isObjectRecord = (
   && value !== null
   && !Array.isArray(value)
 )
+
+const hasOwn = (
+  value: Record<string, unknown>,
+  key: string
+): boolean => Object.prototype.hasOwnProperty.call(value, key)
 
 const appendPath = (
   base: Path,
@@ -31,24 +59,34 @@ const collectChangedWrites = (
   current: unknown,
   next: unknown,
   target: Record<string, unknown>,
-  base: Path = path.root()
+  base: Path = path.root(),
+  currentExists = true,
+  nextExists = true
 ): void => {
-  if (equal.sameJsonValue(current, next)) {
+  if (currentExists === nextExists && equal.sameJsonValue(current, next)) {
     return
   }
 
-  if (isObjectRecord(current) && isObjectRecord(next)) {
+  if (currentExists && nextExists && isObjectRecord(current) && isObjectRecord(next)) {
     const keys = new Set([
       ...Object.keys(current),
       ...Object.keys(next)
     ])
 
     keys.forEach((key) => {
+      const leftExists = hasOwn(current, key)
+      const rightExists = hasOwn(next, key)
       collectChangedWrites(
-        current[key],
-        next[key],
+        leftExists
+          ? current[key]
+          : undefined,
+        rightExists
+          ? next[key]
+          : undefined,
         target,
-        appendPath(base, key)
+        appendPath(base, key),
+        leftExists,
+        rightExists
       )
     })
     return
@@ -58,9 +96,12 @@ const collectChangedWrites = (
     throw new Error('draft.record.diff requires an object root.')
   }
 
-  target[base] = next === undefined
-    ? undefined
-    : json.clone(next)
+  if (!nextExists) {
+    target[base] = unsetRecordWrite()
+    return
+  }
+
+  target[base] = json.clone(next)
 }
 
 export const record = {
@@ -81,7 +122,7 @@ export const record = {
       .sort(([left], [right]) => path.parts(left).length - path.parts(right).length)
 
     entries.forEach(([targetPath, value]) => {
-      const result = patch.apply(current, value === undefined
+      const result = patch.apply(current, isUnsetRecordWrite(value)
         ? {
             op: 'unset',
             path: targetPath
@@ -124,7 +165,7 @@ export const record = {
 
         inverse[targetPath] = path.has(current, targetPath)
           ? json.clone(path.get(current, targetPath))
-          : undefined
+          : unsetRecordWrite()
       })
 
     return Object.freeze(inverse)

@@ -1,0 +1,178 @@
+import { describe, expect, test } from 'vitest'
+import {
+  compileMutationModel,
+  createMutationDelta,
+  createMutationProgramWriter,
+  createMutationReader,
+  createMutationWriter,
+  defineMutationModel,
+  group,
+  mapFamily,
+  singleton,
+  value
+} from '@shared/mutation'
+
+type NodeId = `node_${number}`
+
+type GroupedDoc = {
+  preview: {
+    node: Record<NodeId, {
+      value: number
+    } | undefined>
+    selection: {
+      marquee?: string
+      guides: string[]
+    }
+  }
+}
+
+const groupedMutationModel = defineMutationModel<GroupedDoc>()({
+  preview: group({
+    node: mapFamily<GroupedDoc, NodeId, {
+      id: NodeId
+      value: number
+    }>()({
+      access: {
+        read: (document) => Object.fromEntries(
+          Object.entries(document.preview.node).map(([id, node]) => [
+            id,
+            node
+              ? {
+                  id: id as NodeId,
+                  value: node.value
+                }
+              : undefined
+          ])
+        ),
+        write: (document, next) => ({
+          ...document,
+          preview: {
+            ...document.preview,
+            node: Object.fromEntries(
+              Object.entries(next as Readonly<Record<NodeId, {
+                id: NodeId
+                value: number
+              } | undefined>>).map(([id, node]) => [
+                id,
+                node
+                  ? {
+                      value: node.value
+                    }
+                  : undefined
+              ])
+            ) as GroupedDoc['preview']['node']
+          }
+        })
+      },
+      members: {
+        value: value<number>()
+      },
+      changes: ({ value }) => ({
+        value: [value('value')]
+      })
+    }),
+    selection: singleton<GroupedDoc, GroupedDoc['preview']['selection']>()({
+      access: {
+        read: (document) => document.preview.selection,
+        write: (document, next) => ({
+          ...document,
+          preview: {
+            ...document.preview,
+            selection: next as GroupedDoc['preview']['selection']
+          }
+        })
+      },
+      members: {
+        marquee: value<string | undefined>(),
+        guides: value<string[]>()
+      },
+      changes: ({ value }) => ({
+        marquee: [value('marquee')],
+        guides: [value('guides')]
+      })
+    })
+  })
+})
+
+describe('group mutation model', () => {
+  test('compiles grouped families to flat registry keys', () => {
+    const compiled = compileMutationModel(groupedMutationModel)
+
+    expect(Object.keys(compiled.registry.entity ?? {})).toEqual([
+      'preview.node',
+      'preview.selection'
+    ])
+  })
+
+  test('creates nested writer and reader APIs from groups', () => {
+    const program = createMutationProgramWriter()
+    const writer = createMutationWriter(groupedMutationModel, program)
+    const reader = createMutationReader(groupedMutationModel, () => ({
+      preview: {
+        node: {
+          node_1: {
+            value: 2
+          }
+        },
+        selection: {
+          marquee: 'active',
+          guides: ['g1']
+        }
+      }
+    }))
+
+    writer.preview.node.create({
+      id: 'node_1',
+      value: 1
+    })
+    writer.preview.selection.patch({
+      marquee: undefined,
+      guides: []
+    })
+
+    expect(reader.preview.node.get('node_1')).toEqual({
+      id: 'node_1',
+      value: 2
+    })
+    expect(reader.preview.selection.get()).toEqual({
+      marquee: 'active',
+      guides: ['g1']
+    })
+
+    expect(program.build().steps).toEqual([{
+      type: 'entity.create',
+      entity: {
+        kind: 'entity',
+        type: 'preview.node',
+        id: 'node_1'
+      },
+      value: {
+        id: 'node_1',
+        value: 1
+      }
+    }, {
+      type: 'entity.patch',
+      entity: {
+        kind: 'entity',
+        type: 'preview.selection',
+        id: 'preview.selection'
+      },
+      writes: {
+        marquee: undefined,
+        guides: []
+      }
+    }])
+  })
+
+  test('creates nested delta APIs from groups', () => {
+    const delta = createMutationDelta(groupedMutationModel, {
+      reset: true
+    })
+
+    expect(delta.preview.node.changed()).toBe(true)
+    expect(delta.preview.node.changed('node_1')).toBe(true)
+    expect(delta.preview.selection.changed()).toBe(true)
+    expect(delta.preview.selection.marquee.changed()).toBe(true)
+    expect(delta.preview.selection.guides.changed()).toBe(true)
+  })
+})

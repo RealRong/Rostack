@@ -68,11 +68,11 @@ export const ViewFieldsPanel = () => {
       )}
       onClick={() => {
         if (visible) {
-          currentViewDomain?.display.hide(field.id)
+          currentViewDomain?.fields.hide(field.id)
           return
         }
 
-        currentViewDomain?.display.show(field.id)
+        currentViewDomain?.fields.show(field.id)
       }}
       size="icon"
       variant="ghost"
@@ -88,26 +88,26 @@ export const ViewFieldsPanel = () => {
     buildFieldActionItem(field, {
       accessory: buildVisibilityAccessory(field, true),
       onSelect: () => {
-        currentViewDomain?.display.hide(field.id)
+        currentViewDomain?.fields.hide(field.id)
       }
     })
-  )), [currentViewDomain?.display, filteredVisibleFields])
+  )), [currentViewDomain?.fields, filteredVisibleFields])
   const reorderVisibleItems = useMemo<readonly MenuItem[]>(() => visibleFields.map(field => (
     buildFieldActionItem(field, {
       accessory: buildVisibilityAccessory(field, true),
       onSelect: () => {
-        currentViewDomain?.display.hide(field.id)
+        currentViewDomain?.fields.hide(field.id)
       }
     })
-  )), [currentViewDomain?.display, t, visibleFields])
+  )), [currentViewDomain?.fields, t, visibleFields])
   const hiddenItems = useMemo<readonly MenuItem[]>(() => filteredHiddenFields.map(field => (
     buildFieldActionItem(field, {
       accessory: buildVisibilityAccessory(field, false),
       onSelect: () => {
-        currentViewDomain?.display.show(field.id)
+        currentViewDomain?.fields.show(field.id)
       }
     })
-  )), [currentViewDomain?.display, filteredHiddenFields])
+  )), [currentViewDomain?.fields, filteredHiddenFields])
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -129,7 +129,7 @@ export const ViewFieldsPanel = () => {
               type="button"
               className="text-primary transition-colors hover:text-primary/80"
               onClick={() => {
-                currentViewDomain?.display.clear()
+                currentViewDomain?.fields.clear()
               }}
             >
               {t(meta.ui.viewSettings.fieldsPanel.hideAll)}
@@ -153,7 +153,7 @@ export const ViewFieldsPanel = () => {
                     return
                   }
 
-                  currentViewDomain?.display.move(
+                  currentViewDomain?.fields.move(
                     [key],
                     {
                       before: before ?? null

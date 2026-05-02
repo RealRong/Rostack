@@ -1,6 +1,5 @@
 import assert from 'node:assert/strict'
 import { test } from 'vitest'
-import { entityTable } from '@shared/core'
 import type {
   DateField,
   MultiSelectField,
@@ -42,7 +41,7 @@ const selectField: SelectField = {
   id: 'status',
   name: 'Status',
   kind: 'select',
-  options: entityTable.normalize.list([
+  options: [
     {
       id: 'todo',
       name: 'Todo',
@@ -53,14 +52,14 @@ const selectField: SelectField = {
       name: 'Done',
       color: 'green'
     }
-  ])
+  ]
 }
 
 const multiSelectField: MultiSelectField = {
   id: 'tags',
   name: 'Tags',
   kind: 'multiSelect',
-  options: entityTable.normalize.list([
+  options: [
     {
       id: 'feature',
       name: 'Feature',
@@ -71,7 +70,7 @@ const multiSelectField: MultiSelectField = {
       name: 'Bug',
       color: 'red'
     }
-  ])
+  ]
 }
 
 test('number and date filters share sorted query semantics', () => {

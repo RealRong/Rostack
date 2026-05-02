@@ -325,10 +325,7 @@ const sortRecordIds = (input: {
   index: IndexState
   view: View
 }): readonly RecordId[] => {
-  const sortRules = input.view.sort.rules.ids.flatMap(ruleId => {
-    const rule = input.view.sort.rules.byId[ruleId]
-    return rule ? [rule] : []
-  })
+  const sortRules = input.view.sort.rules
 
   if (!sortRules.length) {
     return input.ids
@@ -396,7 +393,7 @@ const applyViewOrders = (
   reader: DataviewQuery
 ): readonly RecordId[] => {
   const viewOrderIds = readViewOrderIds(view)
-  if (view.sort.rules.ids.length > 0 || !viewOrderIds.length) {
+  if (view.sort.rules.length > 0 || !viewOrderIds.length) {
     return ids
   }
 

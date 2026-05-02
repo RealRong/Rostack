@@ -1,5 +1,5 @@
 import type { Field, FieldId, View, ViewId, ViewSortRuleId } from '@dataview/core/types';
-import { readViewDisplayFieldIds } from '@dataview/core/view/display';
+import { readViewFieldIds } from '@dataview/core/view/fields';
 import { equal, store, type collection } from '@shared/core';
 import type { PageBody, PageHeader, PageModel, PageQuery, PageSortPanel, PageSortRow, PageSettings, PageToolbar } from '@dataview/runtime/model/page/types';
 import type { EngineSource } from '@dataview/engine';
@@ -268,7 +268,7 @@ export const createPageModel = (input: {
     const displayFieldIds = store.value<readonly FieldId[]>(() => {
         const currentView = store.read(view);
         return currentView
-            ? readViewDisplayFieldIds(currentView.display)
+            ? readViewFieldIds(currentView)
             : EMPTY_FIELD_IDS;
     }, {
         isEqual: equal.sameOrder

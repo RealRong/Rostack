@@ -22,9 +22,9 @@ import {
   fieldOption
 } from '@dataview/core/field/options'
 import {
-  replaceViewDisplayFields,
-  readViewDisplayFieldIds
-} from '@dataview/core/view/display'
+  replaceViewFields,
+  readViewFieldIds
+} from '@dataview/core/view/fields'
 import {
   readViewOrderIds,
   replaceViewOrder
@@ -113,38 +113,23 @@ const writeFieldOptions = (
       field.kind === 'status'
         ? {
             ...field,
-            options: entityTable.normalize.list(
-              nextOptions.flatMap((option) => ('category' in option
-                ? [{
-                    id: option.id,
-                    name: option.name,
-                    color: option.color ?? null,
-                    category: option.category
-                  } satisfies StatusOption]
-                : []))
-            )
+            options: nextOptions.flatMap((option) => ('category' in option
+              ? [{
+                  id: option.id,
+                  name: option.name,
+                  color: option.color ?? null,
+                  category: option.category
+                } satisfies StatusOption]
+              : []))
           }
-        : field.kind === 'select'
-          ? {
-              ...field,
-              options: entityTable.normalize.list(
-                nextOptions.map((option) => ({
-                  id: option.id,
-                  name: option.name,
-                  color: option.color ?? null
-                } satisfies FlatOption))
-              )
-            }
-          : {
-              ...field,
-              options: entityTable.normalize.list(
-                nextOptions.map((option) => ({
-                  id: option.id,
-                  name: option.name,
-                  color: option.color ?? null
-                } satisfies FlatOption))
-              )
-            }
+        : {
+            ...field,
+            options: nextOptions.map((option) => ({
+              id: option.id,
+              name: option.name,
+              color: option.color ?? null
+            } satisfies FlatOption))
+          }
     ))
   }
 }
@@ -180,7 +165,7 @@ const writeViewOrder = (
   }
 }
 
-const readViewDisplayFields = (
+const readViewFields = (
   document: DataDoc,
   viewId: ViewId
 ): readonly FieldId[] => {
@@ -189,10 +174,10 @@ const readViewDisplayFields = (
     throw new Error(`View ${viewId} not found.`)
   }
 
-  return readViewDisplayFieldIds(view.display)
+  return readViewFieldIds(view)
 }
 
-const writeViewDisplayFields = (
+const writeViewFields = (
   document: DataDoc,
   viewId: ViewId,
   fieldIds: readonly FieldId[]
@@ -206,7 +191,7 @@ const writeViewDisplayFields = (
     ...document,
     views: entityTable.write.put(document.views, {
       ...view,
-      display: replaceViewDisplayFields(fieldIds)
+      fields: replaceViewFields(fieldIds)
     })
   }
 }
@@ -334,11 +319,11 @@ export const dataviewMutationModel = defineMutationModel<DataDoc>()({
       options: [record('options').deep()]
     }),
     ordered: {
-      displayFields: ordered<FieldId>()({
-        read: readViewDisplayFields,
-        write: writeViewDisplayFields,
+      fields: ordered<FieldId>()({
+        read: readViewFields,
+        write: writeViewFields,
         identify: (fieldId) => fieldId,
-        emits: 'display'
+        emits: 'fields'
       }),
       order: ordered<RecordId>()({
         read: readViewOrder,

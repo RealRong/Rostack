@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest'
 import type { EntityTable } from '@shared/core'
-import { draft, path, patch } from '@shared/draft'
+import { draft, path, patch, isUnsetRecordWrite, unsetRecordWrite } from '@shared/draft'
 
 describe('@shared/draft', () => {
   test('root preserves untouched branch references', () => {
@@ -161,10 +161,34 @@ describe('@shared/draft', () => {
     expect(draft.record.inverse(base, writes)).toEqual({
       'data.text': 'A',
       'style.fontSize': 12,
-      'style.color': undefined
+      'style.color': unsetRecordWrite()
     })
 
     expect(draft.record.diff(base, next)).toEqual(writes)
+  })
+
+  test('record distinguishes set undefined from unset missing path', () => {
+    const base = {
+      preview: {
+        selection: {
+          guides: []
+        }
+      }
+    }
+
+    const next = draft.record.apply(base, {
+      'preview.selection.marquee': undefined
+    })
+
+    expect(Object.prototype.hasOwnProperty.call(next.preview.selection, 'marquee')).toBe(true)
+    expect(next.preview.selection.marquee).toBeUndefined()
+
+    const inverse = draft.record.inverse(base, {
+      'preview.selection.marquee': undefined
+    })
+
+    expect(isUnsetRecordWrite(inverse['preview.selection.marquee'])).toBe(true)
+    expect(draft.record.apply(next, inverse)).toEqual(base)
   })
 
   test('entityTable only replaces changed branches', () => {

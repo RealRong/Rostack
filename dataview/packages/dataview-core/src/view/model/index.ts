@@ -4,7 +4,7 @@ export {
 
 export {
   viewCalcFields,
-  viewDisplayFields,
+  viewVisibleFields,
   viewFilterFields,
   viewSearchFields,
   viewSortFields

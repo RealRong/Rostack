@@ -20,7 +20,6 @@ import type {
   StatusCategory,
   TableView,
   ViewCalc,
-  ViewDisplay,
   ViewGroup,
   ViewGroupBucketId,
   ViewFilterRuleId,
@@ -65,7 +64,7 @@ interface ViewCreateInputBase {
   filter?: Filter
   sort?: Sort
   calc?: ViewCalc
-  display?: ViewDisplay
+  fields?: FieldId[]
 }
 
 export interface TableViewCreateInput extends ViewCreateInputBase {
@@ -375,30 +374,30 @@ export type Intent =
       before?: RecordId
     }
   | {
-      type: 'view.display.move'
+      type: 'view.fields.move'
       id: ViewId
       field: FieldId
       before?: FieldId
     }
   | {
-      type: 'view.display.splice'
+      type: 'view.fields.splice'
       id: ViewId
       fields: FieldId[]
       before?: FieldId
     }
   | {
-      type: 'view.display.show'
+      type: 'view.fields.show'
       id: ViewId
       field: FieldId
       before?: FieldId
     }
   | {
-      type: 'view.display.hide'
+      type: 'view.fields.hide'
       id: ViewId
       field: FieldId
     }
   | {
-      type: 'view.display.clear'
+      type: 'view.fields.clear'
       id: ViewId
     }
   | {

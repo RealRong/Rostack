@@ -6,6 +6,7 @@ import type {
   ViewId
 } from '@dataview/core/types'
 import type {
+  DataviewDeltaQuery,
   DataviewMutationDelta,
   DataviewQuery,
   DataviewQueryContext
@@ -47,6 +48,7 @@ export interface DataviewFrame {
   reader: DataviewQuery
   query: DataviewQuery
   delta: DataviewMutationDelta
+  changes: DataviewDeltaQuery
   active?: DataviewActiveSpec
 }
 
@@ -63,6 +65,7 @@ export const createDataviewFrame = (input: {
     reader: context.query,
     query: context.query,
     delta: input.delta,
+    changes: context.query.changes(input.delta),
     active: resolveDataviewActive(context, context.activeViewId)
   }
 }

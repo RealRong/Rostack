@@ -535,22 +535,22 @@ const cloneFlatOptions = (
   color: option.color ?? null
 }))
 
-const toFlatOptionTable = (
+const toFlatOptions = (
   options: readonly FlatOption[]
-) => entityTable.normalize.list(options.map(option => ({
+): FlatOption[] => options.map(option => ({
   id: option.id,
   name: option.name,
   color: option.color ?? null
-})))
+}))
 
-const toStatusOptionTable = (
+const toStatusOptions = (
   options: readonly StatusOption[]
-) => entityTable.normalize.list(options.map(option => ({
+): StatusOption[] => options.map(option => ({
   id: option.id,
   name: option.name,
   color: option.color ?? null,
   category: option.category
-})))
+}))
 
 const cloneStatusOptions = (
   field: CustomField
@@ -1515,12 +1515,12 @@ export const fieldKindSpec = {
       default: input => ({
         ...input,
         kind: 'select',
-        options: toFlatOptionTable([])
+        options: toFlatOptions([])
       }),
       convert: field => ({
         ...cloneBase(field),
         kind: 'select',
-        options: toFlatOptionTable(cloneFlatOptions(field))
+        options: toFlatOptions(cloneFlatOptions(field))
       })
     },
     schema: {
@@ -1532,7 +1532,7 @@ export const fieldKindSpec = {
         return {
           ...cloneBase(current),
           kind: 'select',
-          options: toFlatOptionTable(options)
+          options: toFlatOptions(options)
         }
       },
       validate: (field, path) => validateBaseOptions(readFieldOptions(field as SelectField), `${path}.options`)
@@ -1569,12 +1569,12 @@ export const fieldKindSpec = {
       default: input => ({
         ...input,
         kind: 'multiSelect',
-        options: toFlatOptionTable([])
+        options: toFlatOptions([])
       }),
       convert: field => ({
         ...cloneBase(field),
         kind: 'multiSelect',
-        options: toFlatOptionTable(cloneFlatOptions(field))
+        options: toFlatOptions(cloneFlatOptions(field))
       })
     },
     schema: {
@@ -1586,7 +1586,7 @@ export const fieldKindSpec = {
         return {
           ...cloneBase(current),
           kind: 'multiSelect',
-          options: toFlatOptionTable(options)
+          options: toFlatOptions(options)
         }
       },
       validate: (field, path) => validateBaseOptions(readFieldOptions(field as MultiSelectField), `${path}.options`)
@@ -1633,7 +1633,7 @@ export const fieldKindSpec = {
         return {
           ...input,
           kind: 'status',
-          options: toStatusOptionTable(options),
+          options: toStatusOptions(options),
           defaultOptionId: options[0]?.id ?? null
         }
       },
@@ -1642,7 +1642,7 @@ export const fieldKindSpec = {
         return {
           ...cloneBase(field),
           kind: 'status',
-          options: toStatusOptionTable(options),
+          options: toStatusOptions(options),
           defaultOptionId: options[0]?.id ?? null
         }
       },
@@ -1665,7 +1665,7 @@ export const fieldKindSpec = {
         return {
           ...cloneBase(current),
           kind: 'status',
-          options: toStatusOptionTable(nextOptions),
+          options: toStatusOptions(nextOptions),
           defaultOptionId: normalizeStatusDefaultOptionId(nextOptions, current.defaultOptionId)
         }
       },

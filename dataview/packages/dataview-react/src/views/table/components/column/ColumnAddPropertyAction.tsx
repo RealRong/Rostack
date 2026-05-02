@@ -37,7 +37,7 @@ export const ColumnAddPropertyAction = () => {
         return
       }
 
-      editor.active.display.show(fieldId)
+      editor.active.fields.show(fieldId)
       openNextFrame(() => {
         page.settings.open({
           kind: 'field',

@@ -2,11 +2,6 @@ import assert from 'node:assert/strict'
 import { afterEach, test, vi } from 'vitest'
 import { store } from '@shared/core'
 import { createRecordWorkflow } from '@dataview/runtime'
-import { entityTable } from '@shared/core'
-
-const displayFields = (fieldIds: readonly string[]) => entityTable.normalize.list(
-  fieldIds.map((fieldId) => ({ id: fieldId }))
-)
 
 afterEach(() => {
   vi.useRealTimers()
@@ -21,20 +16,18 @@ test('createRecord runtime retries opening until the created record becomes avai
     name: 'Table',
     filter: {
       mode: 'and',
-      rules: entityTable.normalize.list([])
+      rules: []
     },
     search: {
       query: ''
     },
     sort: {
-      rules: entityTable.normalize.list([])
+      rules: []
     },
     calc: {},
-    display: {
-      fields: displayFields([])
-    },
+    fields: [],
     options: {},
-    order: entityTable.normalize.list([])
+    order: []
   } as any)
   const runtime = createRecordWorkflow({
     view
@@ -68,20 +61,18 @@ test('createRecord runtime cancels pending retries when the owner view changes',
     name: 'Table',
     filter: {
       mode: 'and',
-      rules: entityTable.normalize.list([])
+      rules: []
     },
     search: {
       query: ''
     },
     sort: {
-      rules: entityTable.normalize.list([])
+      rules: []
     },
     calc: {},
-    display: {
-      fields: displayFields([])
-    },
+    fields: [],
     options: {},
-    order: entityTable.normalize.list([])
+    order: []
   } as any)
   const runtime = createRecordWorkflow({
     view

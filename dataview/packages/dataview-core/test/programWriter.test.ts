@@ -17,7 +17,7 @@ test('dataview mutation ports lower entity and ordered writes to shared program 
   program.record.patch('record_1', {
     title: 'Next'
   })
-  program.viewDisplay('view_1').insert('field_1', {
+  program.viewFields('view_1').insert('field_1', {
     kind: 'before',
     itemId: 'field_2'
   })
@@ -51,7 +51,7 @@ test('dataview mutation ports lower entity and ordered writes to shared program 
         type: 'ordered.insert',
         target: {
           kind: 'ordered',
-          type: 'view.displayFields',
+          type: 'view.fields',
           key: 'view_1'
         },
         itemId: 'field_1',

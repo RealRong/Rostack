@@ -132,7 +132,7 @@ export const createActiveRecordsApi = (input: {
     }
     const actions: CoreIntent[] = [...created]
 
-    if (!state.view.sort.rules.ids.length && context.beforeRecord) {
+    if (!state.view.sort.rules.length && context.beforeRecord) {
       const moveAction = createMoveOrderAction(
         input.base,
         [recordId],

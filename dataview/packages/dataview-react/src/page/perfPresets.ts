@@ -30,9 +30,6 @@ import {
   view
 } from '@dataview/core/view'
 import {
-  replaceViewDisplayFields
-} from '@dataview/core/view/display'
-import {
   replaceViewOrder
 } from '@dataview/core/view/order'
 import type {
@@ -158,14 +155,14 @@ type SortSeed = {
 
 const createEmptyFilter = (): Filter => ({
   mode: 'and',
-  rules: createEntityTable<FilterRule>([])
+  rules: []
 })
 
 const createSort = (
   viewId: string,
   rules: readonly SortSeed[] | undefined
 ): Sort => ({
-  rules: createEntityTable((rules ?? []).map((rule, index) => {
+  rules: (rules ?? []).map((rule, index) => {
     const fieldId = rule.fieldId
     if (!fieldId) {
       throw new Error(`Sort preset at ${viewId}[${index}] is missing fieldId`)
@@ -176,7 +173,7 @@ const createSort = (
       fieldId,
       direction: rule.direction === 'desc' ? 'desc' : 'asc'
     } satisfies SortRule
-  }))
+  })
 })
 
 const createTextField = (
@@ -215,7 +212,7 @@ const createSelectField = (
   id,
   name,
   kind: 'select',
-  options: entityTable.normalize.list(options.map(option => ({ ...option })))
+  options: options.map(option => ({ ...option }))
 })
 
 const createMultiSelectField = (
@@ -226,7 +223,7 @@ const createMultiSelectField = (
   id,
   name,
   kind: 'multiSelect',
-  options: entityTable.normalize.list(options.map(option => ({ ...option })))
+  options: options.map(option => ({ ...option }))
 })
 
 const createStatusField = (
@@ -238,7 +235,7 @@ const createStatusField = (
   name,
   kind: 'status',
   defaultOptionId: options[0]?.id ?? null,
-  options: entityTable.normalize.list(options.map(option => ({ ...option })))
+  options: options.map(option => ({ ...option }))
 })
 
 const createDateField = (
@@ -327,8 +324,8 @@ const createView = (input: {
   id: string
   type: ViewType
   name: string
-  fields: readonly CustomField[]
-  displayFields: readonly FieldId[]
+  schemaFields: readonly CustomField[]
+  fields: readonly FieldId[]
   sort?: readonly SortSeed[]
   group?: ViewGroup
   calc?: Partial<Record<FieldId, CalculationMetric>>
@@ -350,7 +347,7 @@ const createView = (input: {
     calc: {
       ...(input.calc ?? {})
     },
-    display: replaceViewDisplayFields(input.displayFields),
+    fields: [...input.fields],
     order: replaceViewOrder([])
   }
 
@@ -366,7 +363,7 @@ const createView = (input: {
               }
             }
           : {}),
-        options: patchViewOptions('table', input.fields, input.options)
+        options: patchViewOptions('table', input.schemaFields, input.options)
       }
     case 'gallery':
       return {
@@ -379,7 +376,7 @@ const createView = (input: {
               }
             }
           : {}),
-        options: patchViewOptions('gallery', input.fields, input.options)
+        options: patchViewOptions('gallery', input.schemaFields, input.options)
       }
     case 'kanban':
       return {
@@ -394,7 +391,7 @@ const createView = (input: {
               mode: 'category',
               bucketSort: 'manual'
             },
-        options: patchViewOptions('kanban', input.fields, input.options)
+        options: patchViewOptions('kanban', input.schemaFields, input.options)
       }
   }
 }
@@ -1345,8 +1342,8 @@ const createRoadmapDocument = (recordCount: number, seed: number): DataDoc => {
     id: 'view_roadmap_table',
     type: 'table',
     name: 'Roadmap',
-    fields,
-    displayFields: [
+    schemaFields: fields,
+    fields: [
       TITLE_FIELD_ID,
       'status',
       'priority',
@@ -1373,8 +1370,8 @@ const createRoadmapDocument = (recordCount: number, seed: number): DataDoc => {
     id: 'view_roadmap_board',
     type: 'kanban',
     name: 'By Status',
-    fields,
-    displayFields: [
+    schemaFields: fields,
+    fields: [
       'owner',
       'initiative',
       'targetDate',
@@ -1391,8 +1388,8 @@ const createRoadmapDocument = (recordCount: number, seed: number): DataDoc => {
     id: 'view_roadmap_gallery',
     type: 'gallery',
     name: 'Highlights',
-    fields,
-    displayFields: [
+    schemaFields: fields,
+    fields: [
       'status',
       'priority',
       'owner',
@@ -1578,8 +1575,8 @@ const createSalesDocument = (recordCount: number, seed: number): DataDoc => {
     id: 'view_sales_table',
     type: 'table',
     name: 'Pipeline Table',
-    fields,
-    displayFields: [
+    schemaFields: fields,
+    fields: [
       TITLE_FIELD_ID,
       'stage',
       'company',
@@ -1605,8 +1602,8 @@ const createSalesDocument = (recordCount: number, seed: number): DataDoc => {
     id: 'view_sales_board',
     type: 'kanban',
     name: 'Revenue Board',
-    fields,
-    displayFields: [
+    schemaFields: fields,
+    fields: [
       'company',
       'owner',
       'expectedRevenue',
@@ -1623,8 +1620,8 @@ const createSalesDocument = (recordCount: number, seed: number): DataDoc => {
     id: 'view_sales_gallery',
     type: 'gallery',
     name: 'Account Focus',
-    fields,
-    displayFields: [
+    schemaFields: fields,
+    fields: [
       'stage',
       'company',
       'expectedRevenue',
@@ -1761,8 +1758,8 @@ const createContentDocument = (recordCount: number, seed: number): DataDoc => {
     id: 'view_content_gallery',
     type: 'gallery',
     name: 'Editorial Gallery',
-    fields,
-    displayFields: [
+    schemaFields: fields,
+    fields: [
       'status',
       'channel',
       'campaign',
@@ -1791,8 +1788,8 @@ const createContentDocument = (recordCount: number, seed: number): DataDoc => {
     id: 'view_content_table',
     type: 'table',
     name: 'Publishing Table',
-    fields,
-    displayFields: [
+    schemaFields: fields,
+    fields: [
       TITLE_FIELD_ID,
       'status',
       'channel',
@@ -1817,8 +1814,8 @@ const createContentDocument = (recordCount: number, seed: number): DataDoc => {
     id: 'view_content_board',
     type: 'kanban',
     name: 'Production Board',
-    fields,
-    displayFields: [
+    schemaFields: fields,
+    fields: [
       'channel',
       'campaign',
       'publishDate',
@@ -2028,8 +2025,8 @@ const createEngineeringDocument = (recordCount: number, seed: number): DataDoc =
     id: 'view_engineering_table',
     type: 'table',
     name: 'Engineering Table',
-    fields,
-    displayFields: [
+    schemaFields: fields,
+    fields: [
       TITLE_FIELD_ID,
       'status',
       'priority',
@@ -2062,8 +2059,8 @@ const createEngineeringDocument = (recordCount: number, seed: number): DataDoc =
     id: 'view_engineering_board',
     type: 'kanban',
     name: 'Delivery Board',
-    fields,
-    displayFields: [
+    schemaFields: fields,
+    fields: [
       'priority',
       'assignee',
       'estimate',
@@ -2080,8 +2077,8 @@ const createEngineeringDocument = (recordCount: number, seed: number): DataDoc =
     id: 'view_engineering_gallery',
     type: 'gallery',
     name: 'Focus List',
-    fields,
-    displayFields: [
+    schemaFields: fields,
+    fields: [
       'status',
       'component',
       'priority',
@@ -2281,8 +2278,8 @@ const createDenseAnalyticsDocument = (recordCount: number, seed: number): DataDo
     id: 'view_dense_table',
     type: 'table',
     name: 'Analytics Table',
-    fields,
-    displayFields: [
+    schemaFields: fields,
+    fields: [
       TITLE_FIELD_ID,
       'status',
       'segment',
@@ -2320,8 +2317,8 @@ const createDenseAnalyticsDocument = (recordCount: number, seed: number): DataDo
     id: 'view_dense_board',
     type: 'kanban',
     name: 'Operating Board',
-    fields,
-    displayFields: [
+    schemaFields: fields,
+    fields: [
       'region',
       'channel',
       'forecast',
@@ -2338,8 +2335,8 @@ const createDenseAnalyticsDocument = (recordCount: number, seed: number): DataDo
     id: 'view_dense_gallery',
     type: 'gallery',
     name: 'Metric Cards',
-    fields,
-    displayFields: [
+    schemaFields: fields,
+    fields: [
       'segment',
       'forecast',
       'variance',

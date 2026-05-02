@@ -353,7 +353,7 @@ const resolveChangedRecordIds = (input: {
   queryDelta: QueryDelta
   bucketDelta?: IndexDelta['bucket']
 }): ReadonlySet<RecordId> | 'all' => {
-  const touchedRecords = input.reader.delta.touchedRecords(input.delta)
+  const touchedRecords = input.reader.changes(input.delta).touchedRecords()
   if (touchedRecords === 'all') {
     return 'all'
   }

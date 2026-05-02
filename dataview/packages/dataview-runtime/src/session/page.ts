@@ -277,12 +277,12 @@ const resolveQueryRoute = (
   }
 
   if (route.kind === 'sort') {
-    return view.sort.rules.byId[route.id]
+    return view.sort.rules.find((rule) => rule.id === route.id)
       ? { kind: 'sort', id: route.id }
       : null
   }
 
-  const rule = view.filter.rules.byId[route.id]
+  const rule = view.filter.rules.find((entry) => entry.id === route.id)
   return rule
     ? {
         kind: 'filter',
@@ -298,8 +298,8 @@ export const resolvePageQueryBarState = (input: {
   const hasEntries = Boolean(
     input.view
     && (
-      input.view.filter.rules.ids.length > 0
-      || input.view.sort.rules.ids.length > 0
+      input.view.filter.rules.length > 0
+      || input.view.sort.rules.length > 0
     )
   )
 

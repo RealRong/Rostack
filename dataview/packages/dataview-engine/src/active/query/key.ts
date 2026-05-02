@@ -93,15 +93,10 @@ const encodeFilters = (
 const encodeSort = (
   sort: Sort
 ): string | undefined => {
-  const entries = sort.rules.ids.flatMap((ruleId) => {
-    const rule = sort.rules.byId[ruleId]
-    return rule
-      ? [sortKey.write({
-          fieldId: rule.fieldId,
-          direction: rule.direction
-        })]
-      : []
-  })
+  const entries = sort.rules.map((rule) => sortKey.write({
+    fieldId: rule.fieldId,
+    direction: rule.direction
+  }))
 
   return entries.length
     ? pathKey.write(entries)

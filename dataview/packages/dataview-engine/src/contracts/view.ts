@@ -248,7 +248,7 @@ export interface ActiveViewApi {
   summary: {
     set: (fieldId: FieldId, metric: CalculationMetric | null) => void
   }
-  display: {
+  fields: {
     move: (
       ids: readonly FieldId[],
       target: {

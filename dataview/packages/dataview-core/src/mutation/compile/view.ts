@@ -14,7 +14,6 @@ import {
 } from '@dataview/core/view'
 import {
   createId,
-  entityTable,
   equal,
   string
 } from '@shared/core'
@@ -36,9 +35,9 @@ import {
   spliceRecordIds
 } from '../../view/order'
 import {
-  readViewDisplayFieldIds,
-  replaceViewDisplayFields
-} from '../../view/display'
+  readViewFieldIds,
+  replaceViewFields
+} from '../../view/fields'
 import {
   resolveDefaultKanbanGroup,
   setViewType
@@ -336,15 +335,15 @@ const lowerViewCreate = (
     },
     filter: intent.input.filter ?? {
       mode: 'and',
-      rules: entityTable.normalize.list([])
+      rules: []
     },
     sort: intent.input.sort ?? {
-      rules: entityTable.normalize.list([])
+      rules: []
     },
     calc: intent.input.calc ?? {},
-    display: intent.input.display
-      ? viewApi.display.clone(intent.input.display)
-      : viewApi.options.defaultDisplay(intent.input.type, fields),
+    fields: intent.input.fields
+      ? viewApi.fields.clone(intent.input.fields)
+      : viewApi.options.defaultFields(intent.input.type, fields),
     order: replaceViewOrder([])
   }
 
@@ -723,7 +722,7 @@ const lowerViewFilterCreate = (
       ...view,
       filter: created.filter
     }
-    const rule = nextView.filter.rules.byId[created.id] ?? created.filter.rules.byId[created.id]
+    const rule = nextView.filter.rules.find((entry) => entry.id === created.id)
     if (!rule) {
       emitProblem(input, 'view.invalidProjection', `Unable to create filter rule ${created.id}`, 'input')
       return
@@ -747,7 +746,7 @@ const lowerViewFilterPatch = (
     return
   }
 
-  const currentRule = view.filter.rules.byId[intent.rule]
+  const currentRule = view.filter.rules.find((rule) => rule.id === intent.rule)
   if (!currentRule) {
     emitProblem(input, 'view.invalidProjection', `Unknown filter rule: ${intent.rule}`, 'rule')
     return
@@ -862,7 +861,7 @@ const lowerViewSortCreate = (
       ...view,
       sort: created.sort
     }
-    const rule = nextView.sort.rules.byId[created.id] ?? created.sort.rules.byId[created.id]
+    const rule = nextView.sort.rules.find((entry) => entry.id === created.id)
     if (!rule) {
       emitProblem(input, 'view.invalidProjection', `Unable to create sort rule ${created.id}`, 'input')
       return
@@ -900,7 +899,7 @@ const lowerViewSortPatch = (
       ...view,
       sort: nextSort
     }
-    const rule = nextView.sort.rules.byId[intent.rule]
+    const rule = nextView.sort.rules.find((entry) => entry.id === intent.rule)
     if (!rule) {
       emitProblem(input, 'view.invalidProjection', `Unknown sort rule: ${intent.rule}`, 'rule')
       return
@@ -1064,8 +1063,8 @@ const lowerViewOrderSplice = (
   return emitViewUpdate(input, view, nextView)
 }
 
-const lowerViewDisplayMove = (
-  input: DataviewCompileContext<Extract<Intent, { type: 'view.display.move' }>>
+const lowerViewFieldsMove = (
+  input: DataviewCompileContext<Extract<Intent, { type: 'view.fields.move' }>>
 ) => {
   const { intent } = input
   if (!requireView(input, intent.id)) {
@@ -1075,7 +1074,7 @@ const lowerViewDisplayMove = (
     return
   }
 
-  input.program.viewDisplay(intent.id).move(
+  input.program.viewFields(intent.id).move(
     intent.field,
     intent.before !== undefined && intent.before !== intent.field
       ? toBeforeAnchor(intent.before)
@@ -1083,8 +1082,8 @@ const lowerViewDisplayMove = (
   )
 }
 
-const lowerViewDisplaySplice = (
-  input: DataviewCompileContext<Extract<Intent, { type: 'view.display.splice' }>>
+const lowerViewFieldsSplice = (
+  input: DataviewCompileContext<Extract<Intent, { type: 'view.fields.splice' }>>
 ) => {
   const { intent } = input
   const { reader } = input
@@ -1094,7 +1093,7 @@ const lowerViewDisplaySplice = (
 
   const fieldIds = Array.from(new Set(intent.fields))
   if (!fieldIds.length) {
-    emitProblem(input, 'view.invalidProjection', 'view.display.splice requires at least one field id', 'fields')
+    emitProblem(input, 'view.invalidProjection', 'view.fields.splice requires at least one field id', 'fields')
     return
   }
   if (fieldIds.some((fieldId) => !reader.fields.has(fieldId))) {
@@ -1103,7 +1102,7 @@ const lowerViewDisplaySplice = (
     return
   }
 
-  input.program.viewDisplay(intent.id).splice(
+  input.program.viewFields(intent.id).splice(
     fieldIds,
     intent.before !== undefined
       ? toBeforeAnchor(intent.before)
@@ -1111,8 +1110,8 @@ const lowerViewDisplaySplice = (
   )
 }
 
-const lowerViewDisplayShow = (
-  input: DataviewCompileContext<Extract<Intent, { type: 'view.display.show' }>>
+const lowerViewFieldsShow = (
+  input: DataviewCompileContext<Extract<Intent, { type: 'view.fields.show' }>>
 ) => {
   const { intent } = input
   const { reader } = input
@@ -1124,17 +1123,17 @@ const lowerViewDisplayShow = (
     return
   }
 
-  const currentFields = readViewDisplayFieldIds(view.display)
-  const nextDisplay = currentFields.includes(intent.field)
-    ? viewApi.display.move(
-        view.display,
+  const currentFields = readViewFieldIds(view)
+  const nextFields = currentFields.includes(intent.field)
+    ? viewApi.fields.move(
+        view.fields,
         [intent.field],
         intent.before !== undefined && intent.before !== intent.field
           ? intent.before
           : undefined
       )
-    : viewApi.display.show(
-        view.display,
+    : viewApi.fields.show(
+        view.fields,
         intent.field,
         intent.before !== undefined && intent.before !== intent.field
           ? intent.before
@@ -1143,13 +1142,13 @@ const lowerViewDisplayShow = (
 
   const nextView = {
     ...view,
-    display: nextDisplay
+    fields: nextFields
   }
   return emitViewUpdate(input, view, nextView)
 }
 
-const lowerViewDisplayHide = (
-  input: DataviewCompileContext<Extract<Intent, { type: 'view.display.hide' }>>
+const lowerViewFieldsHide = (
+  input: DataviewCompileContext<Extract<Intent, { type: 'view.fields.hide' }>>
 ) => {
   const { intent } = input
   if (!requireView(input, intent.id)) {
@@ -1159,11 +1158,11 @@ const lowerViewDisplayHide = (
     return
   }
 
-  input.program.viewDisplay(intent.id).delete(intent.field)
+  input.program.viewFields(intent.id).delete(intent.field)
 }
 
-const lowerViewDisplayClear = (
-  input: DataviewCompileContext<Extract<Intent, { type: 'view.display.clear' }>>
+const lowerViewFieldsClear = (
+  input: DataviewCompileContext<Extract<Intent, { type: 'view.fields.clear' }>>
 ) => {
   const { intent } = input
   const view = requireView(input, intent.id)
@@ -1171,8 +1170,8 @@ const lowerViewDisplayClear = (
     return
   }
 
-  readViewDisplayFieldIds(view.display).forEach((fieldId) => {
-    input.program.viewDisplay(view.id).delete(fieldId)
+  readViewFieldIds(view).forEach((fieldId) => {
+    input.program.viewFields(view.id).delete(fieldId)
   })
 }
 
@@ -1235,11 +1234,11 @@ export const dataviewViewIntentHandlers: DataviewViewIntentHandlers = {
   'view.kanban.cardsPerColumn.set': handleViewKanbanCardsPerColumnSet,
   'view.order.move': lowerViewOrderMove,
   'view.order.splice': lowerViewOrderSplice,
-  'view.display.move': lowerViewDisplayMove,
-  'view.display.splice': lowerViewDisplaySplice,
-  'view.display.show': lowerViewDisplayShow,
-  'view.display.hide': lowerViewDisplayHide,
-  'view.display.clear': lowerViewDisplayClear,
+  'view.fields.move': lowerViewFieldsMove,
+  'view.fields.splice': lowerViewFieldsSplice,
+  'view.fields.show': lowerViewFieldsShow,
+  'view.fields.hide': lowerViewFieldsHide,
+  'view.fields.clear': lowerViewFieldsClear,
   'view.open': lowerViewOpen,
   'view.remove': lowerViewRemove
 }

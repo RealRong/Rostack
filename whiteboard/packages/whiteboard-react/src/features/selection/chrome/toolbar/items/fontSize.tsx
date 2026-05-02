@@ -27,7 +27,7 @@ export const fontSizeItem: ToolbarItemSpec = {
           togglePanel('font-size')
         }}
         onCommit={(value) => {
-          editor.write.node.text.size({
+          editor.actions.node.text.size({
             nodeIds: node.nodeIds,
             value
           })
@@ -50,7 +50,7 @@ export const fontSizeItem: ToolbarItemSpec = {
         value={node.fontSize}
         onChange={(value) => {
           closePanel()
-          editor.write.node.text.size({
+          editor.actions.node.text.size({
             nodeIds: node.nodeIds,
             value
           })

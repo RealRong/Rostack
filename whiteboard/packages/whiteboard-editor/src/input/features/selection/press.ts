@@ -12,7 +12,6 @@ import type { SelectionMode } from '@whiteboard/core/node'
 import type { GroupId, Node, NodeId } from '@whiteboard/core/types'
 import type { EditorInputContext } from '@whiteboard/editor/input/runtime'
 import type { EditorCommand } from '@whiteboard/editor/state-engine/intents'
-import { resolveNodeEditorCapability } from '@whiteboard/editor/types/node'
 
 const startNodeEdit = (input: {
   ctx: Pick<EditorInputContext, 'editor'>
@@ -31,7 +30,7 @@ const startNodeEdit = (input: {
     return null
   }
 
-  const capability = input.ctx.editor.nodeType.edit(committed.type, input.field)
+  const capability = input.ctx.editor.runtime.nodeType.edit(committed.type, input.field)
   if (!capability) {
     return null
   }
@@ -819,7 +818,7 @@ const tryStartSelectionPress = (
       canEnter: (nodeId) => {
         const node = ctx.editor.document.node(nodeId)
         return node
-          ? resolveNodeEditorCapability(node, ctx.editor.nodeType).enter
+          ? ctx.editor.runtime.nodeType.support(node).enter
           : false
       },
       groupId: ctx.editor.scene.groups.ofNode

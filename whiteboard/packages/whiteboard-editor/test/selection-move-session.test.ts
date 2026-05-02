@@ -77,18 +77,18 @@ describe('createMoveInteraction', () => {
             }
           }
         },
-        viewport: {
-          read: {
+        runtime: {
+          viewport: {
             pointer: vi.fn()
+          },
+          snap: {
+            node: {
+              move: vi.fn()
+            }
           }
         },
         dispatch: vi.fn(),
-        snap: {
-          node: {
-            move: vi.fn()
-          }
-        },
-        mutate: {
+        write: {
           canvas: {
             selection: {
               move: moveSelection

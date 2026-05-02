@@ -139,14 +139,12 @@ const createTransformContext = ({
           }
         }
       },
-      viewport: {
-        input: {
+      runtime: {
+        viewport: {
           screenPoint: (screenX: number, screenY: number) => ({
             x: screenX,
             y: screenY
-          })
-        },
-        read: {
+          }),
           pointer: (pointer: {
             clientX: number
             clientY: number
@@ -156,31 +154,40 @@ const createTransformContext = ({
               y: pointer.clientY
             }
           })
-        }
-      },
-      snap: {
-        node: {
-          resize: (input: {
-            rect: typeof projectedRect
-          }) => ({
-            update: {
-              position: {
-                x: input.rect.x,
-                y: input.rect.y
+        },
+        snap: {
+          node: {
+            resize: (input: {
+              rect: typeof projectedRect
+            }) => ({
+              update: {
+                position: {
+                  x: input.rect.x,
+                  y: input.rect.y
+                },
+                size: {
+                  width: input.rect.width,
+                  height: input.rect.height
+                }
               },
-              size: {
-                width: input.rect.width,
-                height: input.rect.height
-              }
-            },
-            guides: []
+              guides: []
+            })
+          }
+        },
+        nodeType: {
+          support: () => ({
+            role: 'shape',
+            connect: true,
+            enter: true,
+            resize: true,
+            rotate: false
           })
         }
       },
-      mutate: {
-        node: {
-          updateMany: (nextUpdates: typeof updates) => {
-            updates.push(...nextUpdates)
+      write: {
+          node: {
+            updateMany: (nextUpdates: typeof updates) => {
+              updates.push(...nextUpdates)
           }
         }
       }

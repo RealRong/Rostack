@@ -37,14 +37,12 @@ const formatZoom = (zoom: number) => `${Math.round(zoom * 100)}%`
 export const ViewportDock = () => {
   const editor = useEditor()
   const zoom = useStoreValue(editor.scene.ui.state.viewport).zoom
-  const history = useStoreValue(editor.history)
-
   const fitToScreen = () => {
     const bounds = editor.scene.bounds()
     if (!bounds) {
       return
     }
-    editor.write.viewport.fit(bounds)
+    editor.actions.viewport.fit(bounds)
   }
 
   return (
@@ -61,9 +59,8 @@ export const ViewportDock = () => {
             type="button"
             className={iconButtonClassName}
             onClick={() => {
-              editor.write.history.undo()
+              editor.actions.history.undo()
             }}
-            disabled={!history.canUndo || history.isApplying}
             title="Undo"
           >
             <ToolIcon icon={Undo2} />
@@ -72,9 +69,8 @@ export const ViewportDock = () => {
             type="button"
             className={iconButtonClassName}
             onClick={() => {
-              editor.write.history.redo()
+              editor.actions.history.redo()
             }}
-            disabled={!history.canRedo || history.isApplying}
             title="Redo"
           >
             <ToolIcon icon={Redo2} />
@@ -97,7 +93,7 @@ export const ViewportDock = () => {
             type="button"
             className={iconButtonClassName}
             onClick={() => {
-              editor.write.viewport.zoomTo(zoom / ZOOM_FACTOR)
+              editor.actions.viewport.zoomTo(zoom / ZOOM_FACTOR)
             }}
             title="Zoom out"
           >
@@ -107,7 +103,7 @@ export const ViewportDock = () => {
             type="button"
             className={zoomButtonClassName}
             onClick={() => {
-              editor.write.viewport.zoomTo(1)
+              editor.actions.viewport.zoomTo(1)
             }}
             title="Reset zoom"
           >
@@ -117,7 +113,7 @@ export const ViewportDock = () => {
             type="button"
             className={iconButtonClassName}
             onClick={() => {
-              editor.write.viewport.zoomTo(zoom * ZOOM_FACTOR)
+              editor.actions.viewport.zoomTo(zoom * ZOOM_FACTOR)
             }}
             title="Zoom in"
           >

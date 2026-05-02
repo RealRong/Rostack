@@ -25,7 +25,7 @@ export const MindmapChrome = memo(({
 
   const onAddChild = useCallback(
     (nodeId: MindmapNodeId, placement: 'left' | 'right') => {
-      editor.write.mindmap.insertRelative({
+      editor.actions.mindmap.insertRelative({
         id: mindmapId,
         targetNodeId: nodeId,
         relation: 'child',

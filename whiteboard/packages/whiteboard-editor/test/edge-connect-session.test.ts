@@ -52,33 +52,33 @@ const createInteractionDeps = () => {
             }
           }
         },
-        viewport: {
-          read: {
+        runtime: {
+          viewport: {
             pointer: () => ({
               world: { x: 0, y: 0 }
             })
+          },
+          snap: {
+            edge: {
+              connect: ({
+                pointerWorld
+              }: {
+                pointerWorld: {
+                  x: number
+                  y: number
+                }
+              }) => ({
+                focusedNodeId: undefined,
+                resolution: {
+                  mode: 'free' as const,
+                  pointWorld: pointerWorld
+                }
+              })
+            }
           }
         },
         dispatch: vi.fn(),
-        snap: {
-          edge: {
-            connect: ({
-              pointerWorld
-            }: {
-              pointerWorld: {
-                x: number
-                y: number
-              }
-            }) => ({
-              focusedNodeId: undefined,
-              resolution: {
-                mode: 'free' as const,
-                pointWorld: pointerWorld
-              }
-            })
-          }
-        },
-        write: {
+        actions: {
           edge: {
             reconnectCommit,
             create: vi.fn(),

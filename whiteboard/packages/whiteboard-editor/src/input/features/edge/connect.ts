@@ -13,48 +13,38 @@ import type {
   NodeId,
   EdgePatch
 } from '@whiteboard/core/types'
+import type { EditorScene } from '@whiteboard/editor-scene'
 import type { PointerDownInput, KeyboardInput, ModifierKeys } from '@whiteboard/editor/types/input'
 import type { Tool } from '@whiteboard/editor/types/tool'
 import type { InteractionSession } from '@whiteboard/editor/input/core/types'
 import { FINISH } from '@whiteboard/editor/input/session/result'
 import { createGesture } from '@whiteboard/editor/input/core/gesture'
 import type { EditorInputContext } from '@whiteboard/editor/input/runtime'
-import { resolveNodeEditorCapability } from '@whiteboard/editor/types/node'
-
-type EdgeConnectNodeRead = Pick<EditorInputContext, 'editor'>
-type EdgeConnectPreviewGeometryRead = Pick<EditorInputContext['editor']['scene'], 'nodes'>
-type EdgeConnectEdgeRead = Pick<EditorInputContext, 'editor'>
-type EdgeConnectSnap = (input: {
-  pointerWorld: PointerDownInput['world']
-}) => EdgeConnectEvaluation
 
 type EdgeConnectStartInput = {
   tool: Tool
   pointer: PointerDownInput
-  node: EdgeConnectNodeRead
-  edge: EdgeConnectEdgeRead
+  editor: EditorInputContext['editor']
   zoom: number
   config: BoardConfig['edge']
 }
 
 type EdgeConnectStepInput = {
-  geometry: EdgeConnectPreviewGeometryRead
+  scene: Pick<EditorScene, 'nodes'>
   state: EdgeConnectState
   world: PointerDownInput['world']
-  snap: EdgeConnectSnap
+  snap: (input: {
+    pointerWorld: PointerDownInput['world']
+  }) => EdgeConnectEvaluation
   showPreviewPath: boolean
 }
 
 type EdgeConnectGestureInput = {
-  geometry: EdgeConnectPreviewGeometryRead
+  scene: Pick<EditorScene, 'nodes'>
   state: EdgeConnectState
   evaluation: EdgeConnectEvaluation
   showPreviewPath: boolean
 }
-
-type ConnectNodeEntry = NonNullable<
-  ReturnType<EdgeConnectPreviewGeometryRead['nodes']['get']>
->
 
 const EMPTY_MODIFIERS: ModifierKeys = {
   alt: false,
@@ -110,7 +100,7 @@ const startNodeEdgeCreate = (input: {
 })
 
 const resolveNodeHandleStart = (input: {
-  node: EdgeConnectNodeRead
+  editor: EditorInputContext['editor']
   pointer: PointerDownInput
   template: EdgeTemplate
 }): EdgeConnectState | undefined => {
@@ -123,15 +113,13 @@ const resolveNodeHandleStart = (input: {
     return undefined
   }
 
-  const entry = input.node.editor.scene.nodes.get(
-    pick.id
-  ) as ConnectNodeEntry | undefined
+  const entry = input.editor.scene.nodes.get(pick.id)
   if (!entry) {
     return undefined
   }
   if (
     entry.base.node.locked
-    || !resolveNodeEditorCapability(entry.base.node, input.node.editor.nodeType).connect
+    || !input.editor.runtime.nodeType.support(entry.base.node).connect
   ) {
     return undefined
   }
@@ -160,7 +148,7 @@ const resolveNodeHandleStart = (input: {
 }
 
 const resolveNodeBodyStart = (input: {
-  node: EdgeConnectNodeRead
+  editor: EditorInputContext['editor']
   pointer: PointerDownInput
   template: EdgeTemplate
   zoom: number
@@ -174,15 +162,13 @@ const resolveNodeBodyStart = (input: {
     return undefined
   }
 
-  const entry = input.node.editor.scene.nodes.get(
-    pick.id
-  ) as ConnectNodeEntry | undefined
+  const entry = input.editor.scene.nodes.get(pick.id)
   if (!entry) {
     return undefined
   }
   if (
     entry.base.node.locked
-    || !resolveNodeEditorCapability(entry.base.node, input.node.editor.nodeType).connect
+    || !input.editor.runtime.nodeType.support(entry.base.node).connect
   ) {
     return undefined
   }
@@ -210,7 +196,7 @@ const resolveNodeBodyStart = (input: {
 }
 
 const resolveCreateStart = (input: {
-  node: EdgeConnectNodeRead
+  editor: EditorInputContext['editor']
   pointer: PointerDownInput
   template: EdgeTemplate
   zoom: number
@@ -221,19 +207,19 @@ const resolveCreateStart = (input: {
 )
 
 const resolveReconnectStart = (input: {
-  edge: EdgeConnectEdgeRead
+  editor: EditorInputContext['editor']
   edgeId: EdgeId
   end: 'source' | 'target'
   pointerId: number
 }): EdgeConnectState | undefined => {
-  const edge = input.edge.editor.scene.edges.get(input.edgeId)?.base.edge
-  const resolved = input.edge.editor.scene.edges.get(input.edgeId)
+  const edge = input.editor.scene.edges.get(input.edgeId)?.base.edge
+  const resolved = input.editor.scene.edges.get(input.edgeId)
   const resolvedEnd = resolved?.route.ends?.[input.end]
   if (!edge || !resolvedEnd) {
     return undefined
   }
 
-  const capability = input.edge.editor.scene.edges.capability(
+  const capability = input.editor.scene.edges.capability(
     input.edgeId
   )
   if (
@@ -271,7 +257,7 @@ export const tryStartEdgeConnect = (
     }
 
     return resolveCreateStart({
-      node: input.node,
+      editor: input.editor,
       pointer: input.pointer,
       template: input.tool.template,
       zoom: input.zoom,
@@ -289,7 +275,7 @@ export const tryStartEdgeConnect = (
   }
 
   return resolveReconnectStart({
-    edge: input.edge,
+    editor: input.editor,
     edgeId: input.pointer.pick.id,
     end: input.pointer.pick.end,
     pointerId: input.pointer.pointerId
@@ -327,7 +313,7 @@ const readEdgeConnectGesture = (
       ? edgeApi.connect.previewPath({
           state: input.state,
           readNodeGeometry: (nodeId) => {
-            const current = input.geometry.nodes.get(nodeId)
+            const current = input.scene.nodes.get(nodeId)
             return current
               ? {
                   node: current.base.node,
@@ -373,7 +359,7 @@ const stepEdgeConnect = (
   return {
     state,
     gesture: readEdgeConnectGesture({
-      geometry: input.geometry,
+      scene: input.scene,
       state,
       evaluation,
       showPreviewPath: input.showPreviewPath
@@ -400,7 +386,7 @@ const commitConnectState = (
       state,
       draftPatch: reconnectDraftPatch
     })
-    ctx.editor.write.edge.reconnectCommit({
+    ctx.editor.actions.edge.reconnectCommit({
       edgeId: commit.edgeId,
       end: commit.end,
       target: commit.target,
@@ -422,7 +408,7 @@ const commitConnectState = (
     return
   }
 
-  const result = ctx.editor.write.edge.create({
+  const result = ctx.editor.actions.edge.create({
     from: commit.input.source,
     to: commit.input.target,
     template: {
@@ -435,7 +421,7 @@ const commitConnectState = (
     return
   }
 
-  ctx.editor.write.tool.select()
+  ctx.editor.actions.tool.select()
   ctx.editor.dispatch({
     type: 'selection.set',
     selection: {
@@ -492,7 +478,7 @@ export const createEdgeConnectSession = (
       allowLatch
     })
     const result = stepEdgeConnect({
-      geometry: ctx.editor.scene,
+      scene: ctx.editor.scene,
       state,
       world: edgeApi.connect.reconnectWorld({
         state,
@@ -501,7 +487,7 @@ export const createEdgeConnectSession = (
         shift: modifiers.shift,
         draftPatch: reconnectDraftPatch
       }),
-      snap: ctx.editor.snap.edge.connect,
+      snap: ctx.editor.runtime.snap.edge.connect,
       showPreviewPath: shouldShowPreviewPath(world)
     })
     state = result.state
@@ -542,7 +528,7 @@ export const createEdgeConnectSession = (
     autoPan: {
       frame: (pointer) => {
         interaction.gesture = project({
-          world: ctx.editor.viewport.read.pointer(pointer).world,
+          world: ctx.editor.runtime.viewport.pointer(pointer).world,
           modifiers: lastModifiers,
           allowLatch: true,
           pointerId: state.pointerId

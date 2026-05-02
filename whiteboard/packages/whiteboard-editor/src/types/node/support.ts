@@ -33,16 +33,6 @@ const readStyleValue = (
   return draftRecord.read(node.style, fieldKey.write(path))
 }
 
-const readFallbackMeta = (
-  type: NodeType
-): NodeMeta => ({
-  type,
-  name: type,
-  family: 'shape',
-  icon: type,
-  controls: EMPTY_CONTROLS
-})
-
 const readStyleValueMatchesKind = (
   value: unknown,
   kind: NodeStyleFieldKind
@@ -56,28 +46,6 @@ const readStyleValueMatchesKind = (
 
   return Array.isArray(value) && value.every((entry) => typeof entry === 'number')
 }
-
-const readDefinitionCapability = (
-  capability: NodeTypeCapability
-): NodeTypeCapability => {
-  return capability
-}
-
-export const resolveNodeEditorCapability = (
-  node: Pick<Node, 'id' | 'type' | 'owner'>,
-  type: Pick<NodeTypeSupport, 'capability'>
-): NodeTypeCapability => {
-  const base = type.capability(node.type)
-  const mindmapOwned = node.owner?.kind === 'mindmap'
-
-  return {
-    ...base,
-    connect: base.connect,
-    resize: !mindmapOwned && base.resize,
-    rotate: !mindmapOwned && base.rotate
-  }
-}
-
 export const createNodeTypeSupport = (
   spec: NodeSpec
 ): NodeTypeSupport => {
@@ -97,7 +65,13 @@ export const createNodeTypeSupport = (
       return cached
     }
 
-    const next = compiled.metaByType.resolve(type) ?? readFallbackMeta(type)
+    const next = compiled.metaByType.resolve(type) ?? {
+      type,
+      name: type,
+      family: 'shape',
+      icon: type,
+      controls: EMPTY_CONTROLS
+    } satisfies NodeMeta
     metaCache.set(type, next)
     return next
   }
@@ -108,7 +82,7 @@ export const createNodeTypeSupport = (
       return cached
     }
 
-    const next = readDefinitionCapability(compiled.capabilityByType.resolve(type))
+    const next = compiled.capabilityByType.resolve(type)
     capabilityCache.set(type, next)
     return next
   }
@@ -128,6 +102,16 @@ export const createNodeTypeSupport = (
     meta,
     capability,
     edit,
+    support: (node) => {
+      const base = capability(node.type)
+      const mindmapOwned = node.owner?.kind === 'mindmap'
+
+      return {
+        ...base,
+        resize: !mindmapOwned && base.resize,
+        rotate: !mindmapOwned && base.rotate
+      }
+    },
     hasControl: (node, control) => meta(node.type).controls.includes(control),
     supportsStyle: (node: Pick<Node, 'type' | 'style'>, field, kind) => {
       const cacheKey = `${node.type}\u0001${field}\u0001${kind}`

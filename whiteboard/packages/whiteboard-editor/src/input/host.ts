@@ -36,21 +36,12 @@ export const createEditorInputHost = ({
 
   const updateInteraction = (
     update: (
-      current: ReturnType<typeof editor.snapshot>['overlay']['hover']
-    ) => ReturnType<typeof editor.snapshot>['overlay']['hover']
+      current: ReturnType<typeof editor.read>['overlay']['hover']
+    ) => ReturnType<typeof editor.read>['overlay']['hover']
   ) => {
     editor.dispatch({
       type: 'overlay.hover.set',
-      hover: update(editor.snapshot().overlay.hover)
-    } satisfies EditorCommand)
-  }
-
-  const dispatchViewport = (
-    viewport: ReturnType<Editor['viewport']['read']['get']>
-  ) => {
-    editor.dispatch({
-      type: 'viewport.set',
-      viewport
+      hover: update(editor.read().overlay.hover)
     } satisfies EditorCommand)
   }
 
@@ -191,17 +182,14 @@ export const createEditorInputHost = ({
         return true
       }
 
-      dispatchViewport(editor.viewport.resolve.wheel(
-        {
-          deltaX: input.deltaX,
-          deltaY: input.deltaY,
-          ctrlKey: input.modifiers.ctrl,
-          metaKey: input.modifiers.meta,
-          clientX: input.client.x,
-          clientY: input.client.y
-        },
-        1
-      ))
+      editor.actions.viewport.wheel({
+        deltaX: input.deltaX,
+        deltaY: input.deltaY,
+        ctrlKey: input.modifiers.ctrl,
+        metaKey: input.modifiers.meta,
+        clientX: input.client.x,
+        clientY: input.client.y
+      })
       return true
     },
     keyDown: (input) => interaction.handleKeyDown(input),

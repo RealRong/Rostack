@@ -35,10 +35,9 @@ export const createEdgeBinding = (
     const connect = tryStartEdgeConnect({
       tool,
       pointer: input,
-      node: ctx,
-      edge: ctx,
+      editor: ctx.editor,
       zoom: ctx.editor.scene.ui.state.viewport.get().zoom,
-      config: ctx.editor.config.edge
+      config: ctx.editor.runtime.config.edge
     })
     if (connect) {
       if (connect.kind === 'reconnect') {

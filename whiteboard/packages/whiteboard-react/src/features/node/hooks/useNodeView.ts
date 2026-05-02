@@ -110,7 +110,7 @@ const resolveNodeOverlayViewState = (
 }
 
 const resolveNodeViewState = (
-  editor: Pick<ReturnType<typeof useEditorRuntime>, 'write'>,
+  editor: Pick<ReturnType<typeof useEditorRuntime>, 'actions'>,
   nodes: ReturnType<typeof useNodeSpec>,
   baseView: RuntimeNodeView,
   capability: ReturnType<typeof resolveNodeCapability>
@@ -119,7 +119,7 @@ const resolveNodeViewState = (
   const rect = resolveDisplayRect(baseView)
   const write: NodeWrite = {
     patch: (update: NodeUpdateInput) => {
-      editor.write.node.patch([baseView.node.id], update)
+      editor.actions.node.patch([baseView.node.id], update)
     }
   }
   const renderProps: NodeRenderProps = {

@@ -150,7 +150,7 @@ export const createEdgeMoveSession = (
     chrome: false,
     gesture: null,
     autoPan: {
-      frame: (pointer) => step(ctx.editor.viewport.read.pointer(pointer).world)
+      frame: (pointer) => step(ctx.editor.runtime.viewport.pointer(pointer).world)
     },
     move: (input) => {
       const transition = step(input.world)
@@ -166,7 +166,7 @@ export const createEdgeMoveSession = (
 
       const commit = commitEdgeMove(state)
       if (commit) {
-        ctx.editor.write.edge.move({
+        ctx.editor.actions.edge.move({
           ids: [commit.edgeId],
           delta: commit.delta
         })

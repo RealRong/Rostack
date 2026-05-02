@@ -1,5 +1,4 @@
 import { store } from '@shared/core'
-import type { HistoryPort } from '@shared/mutation'
 import type { SliceExportResult } from '@whiteboard/core/document'
 import type { Guide } from '@whiteboard/core/node'
 import type {
@@ -53,7 +52,6 @@ import type { NodeTypeSupport } from '@whiteboard/editor/types/node'
 import type { Tool } from '@whiteboard/editor/types/tool'
 import type { EditorWrite as EditorMutationWrite } from '@whiteboard/editor/write'
 import type { BoardConfig } from '@whiteboard/engine/config'
-import type { IntentResult } from '@whiteboard/engine'
 
 export type { EditorScene } from '@whiteboard/editor-scene'
 
@@ -118,6 +116,27 @@ export type EditorViewportStateRead = {
   value: store.ReadStore<Viewport>
   zoom: store.ReadStore<number>
   center: store.ReadStore<Point>
+}
+
+export type EditorViewportRuntime = {
+  get: () => Viewport
+  subscribe: (listener: () => void) => store.Unsubscribe
+  pointer: (input: {
+    clientX: number
+    clientY: number
+  }) => {
+    screen: Point
+    world: Point
+  }
+  worldToScreen: (point: Point) => Point
+  worldRect: () => Rect
+  screenPoint: (clientX: number, clientY: number) => Point
+  size: () => {
+    width: number
+    height: number
+  }
+  setRect: EditorStateRuntime['viewport']['setRect']
+  setLimits: EditorStateRuntime['viewport']['setLimits']
 }
 
 export type EditorState = {
@@ -193,19 +212,22 @@ export type EditorSceneFacade = EditorScene & {
   capture(): Capture
 }
 
-export type Editor = {
-  scene: EditorSceneFacade
-  document: DocumentFrame
-  history: HistoryPort<IntentResult>
-  input: EditorInputHost
-  write: EditorWrite
-  mutate: EditorMutationWrite
-  viewport: EditorStateRuntime['viewport']
-  snapshot: () => EditorStateDocument
+export type EditorRuntime = {
+  viewport: EditorViewportRuntime
   config: BoardConfig
   nodeType: NodeTypeSupport
   snap: SnapRuntime
-  dispatch: (command: EditorDispatchInput) => void
+}
+
+export type Editor = {
+  scene: EditorSceneFacade
+  document: DocumentFrame
+  input: EditorInputHost
+  actions: EditorWrite
+  write: EditorMutationWrite
+  read: () => EditorStateDocument
+  runtime: EditorRuntime
+  dispatch: (command: EditorDispatchInput | readonly EditorDispatchInput[]) => void
   dispose: () => void
 }
 

@@ -60,23 +60,23 @@ export const strokeItem: ToolbarItemSpec = {
         showStyle={node.canEditStrokeDash}
         showOpacity={node.canEditStrokeOpacity || node.canEditNodeOpacity}
         onStrokeChange={(value) => {
-          editor.write.node.style.stroke(node.nodeIds, value)
+          editor.actions.node.style.stroke(node.nodeIds, value)
         }}
         onStrokeWidthChange={(value) => {
-          editor.write.node.style.strokeWidth(node.nodeIds, value)
+          editor.actions.node.style.strokeWidth(node.nodeIds, value)
         }}
         onOpacityChange={(value) => {
           if (node.canEditStrokeOpacity) {
-            editor.write.node.style.strokeOpacity(node.nodeIds, value)
+            editor.actions.node.style.strokeOpacity(node.nodeIds, value)
             return
           }
 
           if (node.canEditNodeOpacity) {
-            editor.write.node.style.opacity(node.nodeIds, value)
+            editor.actions.node.style.opacity(node.nodeIds, value)
           }
         }}
         onStrokeDashChange={node.canEditStrokeDash
-          ? (value) => editor.write.node.style.strokeDash(node.nodeIds, value)
+          ? (value) => editor.actions.node.style.strokeDash(node.nodeIds, value)
           : undefined}
       />
     )

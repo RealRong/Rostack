@@ -140,29 +140,29 @@ export const runShortcut = (
 
   switch (action) {
     case 'selection.selectAll':
-      editor.write.selection.selectAll()
+      editor.actions.selection.selectAll()
       return true
     case 'selection.clear':
       if (!editor.scene.ui.state.tool.is('select')) {
-        editor.write.tool.select()
+        editor.actions.tool.select()
       }
-      editor.write.selection.clear()
+      editor.actions.selection.clear()
       return true
     case 'selection.delete':
-      return editor.write.selection.delete(selection)
+      return editor.actions.selection.delete(selection)
     case 'selection.duplicate': {
-      return editor.write.selection.duplicate(selection)
+      return editor.actions.selection.duplicate(selection)
     }
     case 'group.merge': {
-      return editor.write.selection.group(selection)
+      return editor.actions.selection.group(selection)
     }
     case 'group.ungroup': {
-      return editor.write.selection.ungroup(selection)
+      return editor.actions.selection.ungroup(selection)
     }
     case 'history.undo':
-      return editor.write.history.undo().ok
+      return editor.actions.history.undo().ok
     case 'history.redo':
-      return editor.write.history.redo().ok
+      return editor.actions.history.redo().ok
     case 'mindmap.navigate.parent':
     case 'mindmap.navigate.first-child':
     case 'mindmap.navigate.prev-sibling':
@@ -189,7 +189,7 @@ export const runShortcut = (
         return false
       }
 
-      editor.write.selection.replace({
+      editor.actions.selection.replace({
         nodeIds: [target]
       })
       return true
@@ -201,7 +201,7 @@ export const runShortcut = (
         return false
       }
 
-      return Boolean(editor.write.mindmap.insertRelative({
+      return Boolean(editor.actions.mindmap.insertRelative({
         id: activeMindmap.treeId,
         targetNodeId: activeMindmap.nodeId,
         relation: action === 'mindmap.insert.child'

@@ -123,7 +123,7 @@ const createPointerInput = (
 describe('mindmap drag preview', () => {
   it('commits whole-tree movement through pointer drag on root field', () => {
     const editor = createEditor()
-    const created = editor.write.mindmap.create({
+    const created = editor.actions.mindmap.create({
       template: product.mindmap.template.build({
         preset: 'mindmap.underline-split'
       })
@@ -134,7 +134,7 @@ describe('mindmap drag preview', () => {
       return
     }
 
-    const insert = editor.write.mindmap.insertRelative({
+    const insert = editor.actions.mindmap.insertRelative({
       id: created.data.mindmapId,
       targetNodeId: created.data.rootId,
       relation: 'child',
@@ -150,7 +150,7 @@ describe('mindmap drag preview', () => {
       return
     }
 
-    editor.write.selection.replace({
+    editor.actions.selection.replace({
       nodeIds: [created.data.rootId]
     })
 
@@ -203,7 +203,7 @@ describe('mindmap drag preview', () => {
 
   it('updates root and child render rects during root drag preview', async () => {
     const editor = createEditor()
-    const created = editor.write.mindmap.create({
+    const created = editor.actions.mindmap.create({
       template: product.mindmap.template.build({
         preset: 'mindmap.underline-split'
       })
@@ -214,7 +214,7 @@ describe('mindmap drag preview', () => {
       return
     }
 
-    const insert = editor.write.mindmap.insertRelative({
+    const insert = editor.actions.mindmap.insertRelative({
       id: created.data.mindmapId,
       targetNodeId: created.data.rootId,
       relation: 'child',
@@ -230,7 +230,7 @@ describe('mindmap drag preview', () => {
       return
     }
 
-    editor.write.selection.replace({
+    editor.actions.selection.replace({
       nodeIds: [created.data.rootId]
     })
 
@@ -281,7 +281,7 @@ describe('mindmap drag preview', () => {
 
   it('updates subtree render rects during topic drag preview', async () => {
     const editor = createEditor()
-    const created = editor.write.mindmap.create({
+    const created = editor.actions.mindmap.create({
       template: product.mindmap.template.build({
         preset: 'mindmap.underline-split'
       })
@@ -292,7 +292,7 @@ describe('mindmap drag preview', () => {
       return
     }
 
-    const first = editor.write.mindmap.insertRelative({
+    const first = editor.actions.mindmap.insertRelative({
       id: created.data.mindmapId,
       targetNodeId: created.data.rootId,
       relation: 'child',
@@ -308,7 +308,7 @@ describe('mindmap drag preview', () => {
       return
     }
 
-    const second = editor.write.mindmap.insertRelative({
+    const second = editor.actions.mindmap.insertRelative({
       id: created.data.mindmapId,
       targetNodeId: first.data.nodeId,
       relation: 'child',
@@ -324,7 +324,7 @@ describe('mindmap drag preview', () => {
       return
     }
 
-    editor.write.selection.replace({
+    editor.actions.selection.replace({
       nodeIds: [first.data.nodeId]
     })
 

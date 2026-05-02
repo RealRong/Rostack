@@ -12,6 +12,10 @@ import {
   createEditorProjection,
   createEditorSceneFacade
 } from '@whiteboard/editor/editor/projection'
+import {
+  createEditorStateStores,
+  createEditorStateView
+} from '@whiteboard/editor/editor/ui/state'
 import { createSnapRuntime } from '@whiteboard/editor/input/core/snap'
 import { createEditorHost } from '@whiteboard/editor/input/runtime'
 import { createProjectionRuntime } from '@whiteboard/editor-scene'
@@ -21,6 +25,7 @@ import {
 } from '@whiteboard/editor/session/draw/state'
 import { createEditorStateRuntime } from '@whiteboard/editor/state-engine/runtime'
 import type { EditorCommand } from '@whiteboard/editor/state-engine/intents'
+import type { EditorDispatchInput } from '@whiteboard/editor/state-engine/intents'
 import {
   collectEditorCommitFlags,
   createBootstrapEditorDelta,
@@ -38,7 +43,6 @@ import {
   createNodeTypeSupport,
   type NodeSpec
 } from '@whiteboard/editor/types/node'
-import { resolveNodeEditorCapability } from '@whiteboard/editor/types/node'
 import type { Tool } from '@whiteboard/editor/types/tool'
 import { createEditorWrite } from '@whiteboard/editor/write'
 import type { IntentResult } from '@whiteboard/engine'
@@ -143,6 +147,11 @@ export const createEditor = (input: {
     initialViewport: input.initialViewport
   })
   const tasks = createEditorTaskRuntime()
+  const stateStores = createEditorStateStores(stateRuntime)
+  const editorState = createEditorStateView({
+    stores: stateStores,
+    runtime: stateRuntime
+  })
 
   let currentSnapshot = stateRuntime.snapshot()
   const sceneRuntime = createProjectionRuntime({
@@ -150,12 +159,12 @@ export const createEditor = (input: {
     nodeCapability: {
       meta: nodeType.meta,
       edit: nodeType.edit,
-      capability: (node) => resolveNodeEditorCapability(node, nodeType)
+      capability: nodeType.support
     },
     view: () => ({
-      zoom: stateRuntime.viewport.read.get().zoom,
-      center: stateRuntime.viewport.read.get().center,
-      worldRect: stateRuntime.viewport.read.worldRect()
+      zoom: stateRuntime.viewport.get().zoom,
+      center: stateRuntime.viewport.get().center,
+      worldRect: stateRuntime.viewport.worldRect()
     })
   })
 
@@ -173,13 +182,13 @@ export const createEditor = (input: {
 
   const projection = createEditorProjection({
     scene: sceneRuntime.scene,
-    runtime: stateRuntime,
+    state: editorState,
     nodeType,
     defaults: defaults.selection
   })
   const scene = createEditorSceneFacade({
     projection,
-    runtime: stateRuntime,
+    state: editorState,
     capture: sceneRuntime.capture
   })
   const document = projection.document
@@ -226,50 +235,98 @@ export const createEditor = (input: {
     tasks,
     write: writeRuntime,
     nodeType,
-    defaults: defaults.templates,
-    onViewportFrameChange: () => {
-      const previous = currentSnapshot
-      const next = stateRuntime.snapshot()
-      currentSnapshot = next
-      sceneRuntime.update({
-        document: {
-          snapshot: input.engine.doc(),
-          rev: input.engine.rev(),
-          delta: EMPTY_DOCUMENT_DELTA
-        },
-        editor: {
-          snapshot: next,
-          delta: createEditorDeltaFromCommitFlags({
-            flags: {
-              tool: false,
-              draw: false,
-              selection: false,
-              edit: false,
-              interaction: false,
-              hover: false,
-              preview: false,
-              viewport: true
-            },
-            previous,
-            next
-          })
-        }
-      })
-    }
+    defaults: defaults.templates
   })
+
+  const runtime = {
+    viewport: {
+      get: stateRuntime.viewport.get,
+      subscribe: stateRuntime.viewport.subscribe,
+      pointer: stateRuntime.viewport.pointer,
+      worldToScreen: stateRuntime.viewport.worldToScreen,
+      worldRect: stateRuntime.viewport.worldRect,
+      screenPoint: stateRuntime.viewport.screenPoint,
+      size: stateRuntime.viewport.size,
+      setRect: (rect: Parameters<typeof stateRuntime.viewport.setRect>[0]) => {
+        stateRuntime.viewport.setRect(rect)
+
+        const previous = currentSnapshot
+        const next = stateRuntime.snapshot()
+        currentSnapshot = next
+        sceneRuntime.update({
+          document: {
+            snapshot: input.engine.doc(),
+            rev: input.engine.rev(),
+            delta: EMPTY_DOCUMENT_DELTA
+          },
+          editor: {
+            snapshot: next,
+            delta: createEditorDeltaFromCommitFlags({
+              flags: {
+                tool: false,
+                draw: false,
+                selection: false,
+                edit: false,
+                interaction: false,
+                hover: false,
+                preview: false,
+                viewport: true
+              },
+              previous,
+              next
+            })
+          }
+        })
+      },
+      setLimits: (limits: Parameters<typeof stateRuntime.viewport.setLimits>[0]) => {
+        stateRuntime.viewport.setLimits(limits)
+
+        const previous = currentSnapshot
+        const next = stateRuntime.snapshot()
+        currentSnapshot = next
+        sceneRuntime.update({
+          document: {
+            snapshot: input.engine.doc(),
+            rev: input.engine.rev(),
+            delta: EMPTY_DOCUMENT_DELTA
+          },
+          editor: {
+            snapshot: next,
+            delta: createEditorDeltaFromCommitFlags({
+              flags: {
+                tool: false,
+                draw: false,
+                selection: false,
+                edit: false,
+                interaction: false,
+                hover: false,
+                preview: false,
+                viewport: true
+              },
+              previous,
+              next
+            })
+          }
+        })
+      }
+    },
+    config: input.engine.config,
+    nodeType,
+    snap
+  }
+
+  const dispatch: Editor['dispatch'] = (command) => {
+    stateRuntime.dispatch(command as EditorDispatchInput)
+  }
 
   const editorBase = {
     scene,
     document,
-    history: input.history,
-    write: actions,
-    mutate: writeRuntime,
-    viewport: stateRuntime.viewport,
-    snapshot: stateRuntime.snapshot,
-    config: input.engine.config,
-    nodeType,
-    snap,
-    dispatch: stateRuntime.dispatch
+    actions,
+    write: writeRuntime,
+    read: stateRuntime.snapshot,
+    runtime,
+    dispatch
   }
   const host = createEditorHost({
     editor: {

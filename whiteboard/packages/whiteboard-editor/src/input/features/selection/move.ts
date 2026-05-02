@@ -149,7 +149,7 @@ export const createMoveInteraction = (
       pointerWorld: nextInput.world,
       snap: ctx.editor.scene.ui.state.tool.is('select')
         ? ({ rect, excludeIds }) => {
-            const snapped = ctx.editor.snap.node.move({
+            const snapped = ctx.editor.runtime.snap.node.move({
               rect,
               excludeIds,
               modifiers: nextInput.modifiers
@@ -180,7 +180,7 @@ export const createMoveInteraction = (
     autoPan: {
       frame: (pointer) => {
         project({
-          world: ctx.editor.viewport.read.pointer(pointer).world,
+          world: ctx.editor.runtime.viewport.pointer(pointer).world,
           modifiers
         })
       }
@@ -194,7 +194,7 @@ export const createMoveInteraction = (
     up: () => {
       const commit = nodeApi.move.state.finish(state)
       if (commit.delta) {
-        ctx.editor.mutate.canvas.selection.move({
+        ctx.editor.write.canvas.selection.move({
           nodeIds: input.target.nodeIds,
           edgeIds: input.target.edgeIds,
           delta: commit.delta

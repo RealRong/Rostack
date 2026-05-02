@@ -47,7 +47,7 @@ const createEditor = (input: {
       }
     }
   },
-  write: {
+  actions: {
     edit: {
       commit: input.commit
     },

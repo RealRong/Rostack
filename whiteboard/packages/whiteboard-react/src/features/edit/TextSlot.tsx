@@ -98,19 +98,19 @@ export const TextSlot = ({
 
     if (isEscapeEditingKey(event)) {
       event.preventDefault()
-      editor.write.edit.cancel()
+      editor.actions.edit.cancel()
       return
     }
 
     if (!multiline && event.key === 'Enter') {
       event.preventDefault()
-      editor.write.edit.commit()
+      editor.actions.edit.commit()
       return
     }
 
     if (isSubmitEditingKey(event)) {
       event.preventDefault()
-      editor.write.edit.commit()
+      editor.actions.edit.commit()
     }
   }
 
@@ -132,30 +132,30 @@ export const TextSlot = ({
       onCompositionStart={editable
         ? () => {
             composingRef.current = true
-            editor.write.edit.composing(true)
+            editor.actions.edit.composing(true)
           }
         : undefined}
       onCompositionUpdate={editable
         ? (event) => {
-            editor.write.edit.input(readEditableText(event.currentTarget))
-            editor.write.edit.composing(true)
+            editor.actions.edit.input(readEditableText(event.currentTarget))
+            editor.actions.edit.composing(true)
           }
         : undefined}
       onCompositionEnd={editable
         ? (event) => {
             composingRef.current = false
-            editor.write.edit.input(readEditableText(event.currentTarget))
-            editor.write.edit.composing(false)
+            editor.actions.edit.input(readEditableText(event.currentTarget))
+            editor.actions.edit.composing(false)
           }
         : undefined}
       onInput={editable
         ? (event) => {
-            editor.write.edit.input(readEditableText(event.currentTarget))
+            editor.actions.edit.input(readEditableText(event.currentTarget))
           }
         : undefined}
       onBlur={editable
         ? () => {
-            editor.write.edit.commit()
+            editor.actions.edit.commit()
           }
         : undefined}
       onKeyDown={onKeyDown}

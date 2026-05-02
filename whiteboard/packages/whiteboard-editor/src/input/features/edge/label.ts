@@ -181,7 +181,7 @@ const createEdgeLabelDragSession = (
     gesture: null,
     autoPan: {
       frame: (pointer) => {
-        step(ctx.editor.viewport.read.pointer(pointer).world)
+        step(ctx.editor.runtime.viewport.pointer(pointer).world)
       }
     },
     move: (input) => {
@@ -191,7 +191,7 @@ const createEdgeLabelDragSession = (
       step(input.world)
 
       if (state.draft) {
-        ctx.editor.write.edge.label.patch(
+        ctx.editor.actions.edge.label.patch(
           state.edgeId,
           state.labelId,
           state.draft

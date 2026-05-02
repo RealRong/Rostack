@@ -95,7 +95,7 @@ export const SelectionActionMenu = ({
       label: 'Duplicate',
       disabled: !selectionCan.duplicate,
       onSelect: () => {
-        editor.write.selection.duplicate(target)
+        editor.actions.selection.duplicate(target)
       }
     },
     {
@@ -112,7 +112,7 @@ export const SelectionActionMenu = ({
         key: item.key,
         label: item.label,
         onSelect: () => {
-          editor.write.selection.order(target, item.mode)
+          editor.actions.selection.order(target, item.mode)
         }
       }))
     },
@@ -124,7 +124,7 @@ export const SelectionActionMenu = ({
             label: 'Group',
             disabled: !selectionCan.makeGroup,
             onSelect: () => {
-              editor.write.selection.group(target)
+              editor.actions.selection.group(target)
             }
           }
         ]
@@ -137,7 +137,7 @@ export const SelectionActionMenu = ({
             label: 'Ungroup',
             disabled: !selectionCan.ungroup,
             onSelect: () => {
-              editor.write.selection.ungroup(target)
+              editor.actions.selection.ungroup(target)
             }
           }
         ]
@@ -149,7 +149,7 @@ export const SelectionActionMenu = ({
             key: 'state.lock',
             label: readLockLabel(nodeStats.lock),
             onSelect: () => {
-              editor.write.node.lock.set(
+              editor.actions.node.lock.set(
                 [...nodeIds],
                 nodeStats.lock !== 'all'
               )
@@ -164,7 +164,7 @@ export const SelectionActionMenu = ({
             key: 'structure.frame',
             label: 'Create frame',
             onSelect: () => {
-              editor.write.selection.frame(summary.box!)
+              editor.actions.selection.frame(summary.box!)
             }
           }
         ]
@@ -180,7 +180,7 @@ export const SelectionActionMenu = ({
             key: 'viewport.zoom-in',
             label: 'Zoom in',
             onSelect: () => {
-              editor.write.viewport.fit(summary.box!)
+              editor.actions.viewport.fit(summary.box!)
             }
           }
         ]
@@ -192,7 +192,7 @@ export const SelectionActionMenu = ({
       tone: 'destructive' as const,
       disabled: !selectionCan.delete,
       onSelect: () => {
-        editor.write.selection.delete(target)
+        editor.actions.selection.delete(target)
       }
     }
   ])

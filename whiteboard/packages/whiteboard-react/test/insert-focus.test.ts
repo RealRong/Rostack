@@ -140,7 +140,7 @@ describe('insert focus', () => {
       catalog: product.insert.catalog.WHITEBOARD_INSERT_CATALOG
     })
 
-    editor.write.tool.insert(
+    editor.actions.tool.insert(
       createInsertTool(product.insert.catalog.WHITEBOARD_INSERT_CATALOG.defaults.text).template
     )
 
@@ -169,7 +169,7 @@ describe('insert focus', () => {
     })
 
     const presetKey = product.insert.catalog.WHITEBOARD_INSERT_CATALOG.defaults.sticky
-    editor.write.tool.insert(
+    editor.actions.tool.insert(
       createInsertTool(presetKey).template
     )
 
@@ -198,7 +198,7 @@ describe('insert focus', () => {
     })
 
     const presetKey = product.insert.catalog.WHITEBOARD_INSERT_CATALOG.defaults.mindmap
-    editor.write.tool.insert(
+    editor.actions.tool.insert(
       createInsertTool(presetKey).template
     )
 

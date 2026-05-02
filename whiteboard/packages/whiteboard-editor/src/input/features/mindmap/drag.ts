@@ -277,7 +277,7 @@ export const createMindmapDragSession = (
     autoPan: {
       frame: (pointer) => {
         project(
-          ctx.editor.viewport.read.pointer(pointer).world
+          ctx.editor.runtime.viewport.pointer(pointer).world
         )
       }
     },
@@ -288,7 +288,7 @@ export const createMindmapDragSession = (
       const commit = commitMindmapDrag(state)
 
       if (commit?.kind === 'root') {
-        ctx.editor.write.mindmap.moveRoot({
+        ctx.editor.actions.mindmap.moveRoot({
           nodeId: commit.nodeId,
           position: commit.position,
           origin: commit.origin
@@ -296,7 +296,7 @@ export const createMindmapDragSession = (
       }
 
       if (commit?.kind === 'subtree') {
-        ctx.editor.write.mindmap.moveByDrop({
+        ctx.editor.actions.mindmap.moveByDrop({
           id: commit.id,
           nodeId: commit.nodeId,
           drop: commit.drop,

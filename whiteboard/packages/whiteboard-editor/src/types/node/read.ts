@@ -30,6 +30,7 @@ export type NodeTypeRead = {
 }
 
 export type NodeTypeSupport = NodeTypeRead & {
+  support: (node: Pick<NodeModel, 'type' | 'owner'>) => NodeTypeCapability
   hasControl: (node: NodeModel, control: ControlId) => boolean
   supportsStyle: (
     node: NodeModel,

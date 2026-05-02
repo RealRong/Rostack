@@ -92,11 +92,11 @@ const createMarkerItem = (
           value={side === 'start' ? edge.start : edge.end}
           onChange={(value) => {
             if (side === 'start') {
-              editor.write.edge.style.start(edge.edgeIds, value)
+              editor.actions.edge.style.start(edge.edgeIds, value)
               return
             }
 
-            editor.write.edge.style.end(edge.edgeIds, value)
+            editor.actions.edge.style.end(edge.edgeIds, value)
           }}
         />
       )
@@ -152,10 +152,10 @@ const edgeStrokeItem: ToolbarItemSpec = {
         color={edge.color}
         opacity={edge.opacity}
         onColorChange={(value) => {
-          editor.write.edge.style.color(edge.edgeIds, value)
+          editor.actions.edge.style.color(edge.edgeIds, value)
         }}
         onOpacityChange={(value) => {
-          editor.write.edge.style.opacity(edge.edgeIds, value)
+          editor.actions.edge.style.opacity(edge.edgeIds, value)
         }}
       />
     )
@@ -210,13 +210,13 @@ const edgeGeometryItem: ToolbarItemSpec = {
         dash={edge.dash}
         width={edge.width}
         onTypeChange={(value) => {
-          editor.write.edge.type.set(edge.edgeIds, value)
+          editor.actions.edge.type.set(edge.edgeIds, value)
         }}
         onDashChange={(value) => {
-          editor.write.edge.style.dash(edge.edgeIds, value)
+          editor.actions.edge.style.dash(edge.edgeIds, value)
         }}
         onWidthChange={(value) => {
-          editor.write.edge.style.width(edge.edgeIds, value)
+          editor.actions.edge.style.width(edge.edgeIds, value)
         }}
       />
     )
@@ -237,7 +237,7 @@ const edgeMarkerSwapItem: ToolbarItemSpec = {
     return (
       <ToolbarIconButton
         onClick={() => {
-          editor.write.edge.style.swapMarkers(edge.edgeIds)
+          editor.actions.edge.style.swapMarkers(edge.edgeIds)
         }}
         title="Swap markers"
         aria-label="Swap markers"
@@ -263,7 +263,7 @@ const edgeAddLabelItem: ToolbarItemSpec = {
       <ToolbarIconButton
         onClick={() => {
           if (edge.primaryEdgeId) {
-            editor.write.edge.label.add(edge.primaryEdgeId)
+            editor.actions.edge.label.add(edge.primaryEdgeId)
           }
         }}
         title="Add label"
@@ -295,7 +295,7 @@ const edgeTextModeItem: ToolbarItemSpec = {
       <ToolbarIconButton
         active={activeTextMode === 'tangent'}
         onClick={() => {
-          editor.write.edge.textMode.set(edge.edgeIds, nextTextMode)
+          editor.actions.edge.textMode.set(edge.edgeIds, nextTextMode)
         }}
         title={activeTextMode === 'tangent'
           ? 'Use horizontal labels'

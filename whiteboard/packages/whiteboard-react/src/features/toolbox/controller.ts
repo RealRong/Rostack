@@ -55,15 +55,15 @@ export const createToolPaletteController = ({
   togglePrimaryTool: () => {
     closeMenu()
     if (tool.type === 'hand') {
-      editor.write.tool.select()
+      editor.actions.tool.select()
       return
     }
     if (tool.type !== 'select') {
-      editor.write.tool.select()
+      editor.actions.tool.select()
       return
     }
 
-    editor.write.tool.hand()
+    editor.actions.tool.hand()
   },
   toggleEdgeMenu: () => {
     if (tool.type !== 'edge') {
@@ -71,7 +71,7 @@ export const createToolPaletteController = ({
       if (!template) {
         return
       }
-      editor.write.tool.edge(template)
+      editor.actions.tool.edge(template)
       setOpenMenu('edge')
       return
     }
@@ -83,11 +83,11 @@ export const createToolPaletteController = ({
   },
   activateTextTool: () => {
     closeMenu()
-    editor.write.tool.insert(product.insert.catalog.WHITEBOARD_TEXT_INSERT_PRESET.template)
+    editor.actions.tool.insert(product.insert.catalog.WHITEBOARD_TEXT_INSERT_PRESET.template)
   },
   toggleDrawMenu: () => {
     if (tool.type !== 'draw') {
-      editor.write.tool.draw(palette.drawMode)
+      editor.actions.tool.draw(palette.drawMode)
       setDrawPanelOpen(false)
       setOpenMenu('draw')
       return
@@ -103,7 +103,7 @@ export const createToolPaletteController = ({
   },
   selectDrawMode: (value) => {
     setDrawPanelOpen(false)
-    editor.write.tool.draw(value)
+    editor.actions.tool.draw(value)
   },
   selectDrawSlot: (value) => {
     if (value === palette.draw.slot) {
@@ -111,11 +111,11 @@ export const createToolPaletteController = ({
       return
     }
 
-    editor.write.draw.slot(value)
+    editor.actions.draw.slot(value)
     setDrawPanelOpen(true)
   },
   patchDrawStyle: (patch) => {
-    editor.write.draw.patch(patch)
+    editor.actions.draw.patch(patch)
   },
   selectEdgePreset: (value) => {
     const template = product.edge.presets.resolveWhiteboardEdgeTemplate(value)
@@ -123,7 +123,7 @@ export const createToolPaletteController = ({
       return
     }
     closeMenu()
-    editor.write.tool.edge(template)
+    editor.actions.tool.edge(template)
   },
   selectInsertPreset: (value) => {
     const preset = product.insert.catalog.getWhiteboardInsertPreset(value)
@@ -131,6 +131,6 @@ export const createToolPaletteController = ({
       return
     }
     closeMenu()
-    editor.write.tool.insert(preset.template)
+    editor.actions.tool.insert(preset.template)
   }
 })

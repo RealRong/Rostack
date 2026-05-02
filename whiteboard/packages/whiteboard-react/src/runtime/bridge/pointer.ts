@@ -98,7 +98,7 @@ export const createPointerBridge = ({
 
   const refreshContainerRect = (container: HTMLDivElement) => {
     const rect = container.getBoundingClientRect()
-    editor.write.viewport.setRect({
+    editor.runtime.viewport.setRect({
       left: rect.left,
       top: rect.top,
       width: rect.width,

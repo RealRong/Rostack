@@ -332,10 +332,10 @@ describe('node edit selection chrome', () => {
   it('keeps toolbar and overlay visible while editing a selected text node', async () => {
     const editor = createTextEditor()
 
-    editor.write.selection.replace({
+    editor.actions.selection.replace({
       nodeIds: ['text-1']
     })
-    editor.write.edit.startNode('text-1', 'text')
+    editor.actions.edit.startNode('text-1', 'text')
 
     expect(editor.scene.ui.chrome.selection.toolbar.get()).toMatchObject({
       selectionKind: 'nodes',
@@ -354,10 +354,10 @@ describe('node edit selection chrome', () => {
   it('keeps toolbar and overlay visible while editing a selected mindmap-owned root topic', async () => {
     const editor = createMindmapEditor()
 
-    editor.write.selection.replace({
+    editor.actions.selection.replace({
       nodeIds: ['root-1']
     })
-    editor.write.edit.startNode('root-1', 'text')
+    editor.actions.edit.startNode('root-1', 'text')
 
     expect(editor.scene.ui.chrome.selection.toolbar.get()).toMatchObject({
       selectionKind: 'nodes',
@@ -376,10 +376,10 @@ describe('node edit selection chrome', () => {
   it('continues hiding the selection toolbar while editing an edge label', async () => {
     const editor = createEdgeEditor()
 
-    editor.write.selection.replace({
+    editor.actions.selection.replace({
       edgeIds: ['edge-1']
     })
-    editor.write.edit.startEdgeLabel('edge-1', 'label-1')
+    editor.actions.edit.startEdgeLabel('edge-1', 'label-1')
 
     expect(editor.scene.ui.chrome.selection.toolbar.get()).toBeUndefined()
   })
@@ -387,7 +387,7 @@ describe('node edit selection chrome', () => {
   it('keeps node drag and toolbar style writes working for a selected shape', async () => {
     const editor = createShapeEditor()
 
-    editor.write.selection.replace({
+    editor.actions.selection.replace({
       nodeIds: ['shape-1']
     })
 
@@ -439,9 +439,9 @@ describe('node edit selection chrome', () => {
     const scope = toolbar?.scopes.find((entry) => entry.key === toolbar.defaultScopeKey)
     expect(scope?.node?.nodeIds).toEqual(['shape-1'])
 
-    editor.write.node.style.fill(scope!.node!.nodeIds, '#22c55e')
-    editor.write.node.style.stroke(scope!.node!.nodeIds, '#ef4444')
-    editor.write.node.style.strokeWidth(scope!.node!.nodeIds, 3)
+    editor.actions.node.style.fill(scope!.node!.nodeIds, '#22c55e')
+    editor.actions.node.style.stroke(scope!.node!.nodeIds, '#ef4444')
+    editor.actions.node.style.strokeWidth(scope!.node!.nodeIds, 3)
 
     expect(editor.scene.document.snapshot().nodes['shape-1']?.style).toMatchObject({
       fill: '#22c55e',
@@ -458,7 +458,7 @@ describe('node edit selection chrome', () => {
   it('keeps root drag working for a selected mindmap-owned topic', async () => {
     const editor = createMindmapEditor()
 
-    editor.write.selection.replace({
+    editor.actions.selection.replace({
       nodeIds: ['root-1']
     })
 
@@ -509,7 +509,7 @@ describe('node edit selection chrome', () => {
   it('keeps mindmap topic style writes working for a selected root topic', async () => {
     const editor = createMindmapEditor()
 
-    editor.write.selection.replace({
+    editor.actions.selection.replace({
       nodeIds: ['root-1']
     })
 
@@ -518,7 +518,7 @@ describe('node edit selection chrome', () => {
     const scope = toolbar?.scopes.find((entry) => entry.key === toolbar.defaultScopeKey)
     expect(scope?.node?.nodeIds).toEqual(['root-1'])
 
-    const result = editor.write.mindmap.style.topic({
+    const result = editor.actions.mindmap.style.topic({
       nodeIds: scope!.node!.nodeIds,
       patch: {
         frameKind: 'underline',

@@ -115,22 +115,24 @@ describe('mindmap field drag', () => {
           }
         },
         dispatch: vi.fn(),
-        write: {
+        actions: {
           mindmap: {
             moveRoot: vi.fn(),
             moveByDrop: vi.fn()
           }
         },
-        mutate: {
+        write: {
           canvas: {
             selection: {
               move: vi.fn()
             }
           }
         },
-        snap: {
-          node: {
-            move: vi.fn()
+        runtime: {
+          snap: {
+            node: {
+              move: vi.fn()
+            }
           }
         }
       }

@@ -217,10 +217,11 @@ export type Editor = {
 1. `write -> actions`
 2. `mutate -> write`
 3. `snapshot() -> read()`
-4. `viewport` 不再顶层暴露，改为 `editor.runtime.viewport`
-5. `nodeType` 不再顶层暴露，改为 `editor.runtime.nodeType`
-6. `snap` 不再顶层暴露，改为 `editor.runtime.snap`
-7. `config` 不再顶层暴露，改为 `editor.runtime.config`
+4. viewport 写操作统一进入 `editor.actions.viewport.*`
+5. viewport 读能力改为扁平的 `editor.runtime.viewport.*`
+6. `nodeType` 不再顶层暴露，改为 `editor.runtime.nodeType`
+7. `snap` 不再顶层暴露，改为 `editor.runtime.snap`
+8. `config` 不再顶层暴露，改为 `editor.runtime.config`
 
 ### 3.4 输入层直接依赖主轴，不再造局部 transport types
 
@@ -341,35 +342,50 @@ export type EditorRuntime = {
 
 ### 4.3 `EditorViewportRuntime`
 
-当前 `EditorStateRuntime['viewport']` 直接透出不够好，类型名也不稳定。
+当前 `EditorStateRuntime['viewport']` 直接透出不够好，类型名也不稳定；同时 `read` / `input` / `resolve` 这类嵌套也没有必要保留。
 
-应该显式命名：
+最终应当压平成扁平 runtime：
 
 ```ts
 export type EditorViewportRuntime = {
-  read: EditorViewportStateRead
-  input: {
-    screenPoint(clientX: number, clientY: number): Point
-    size(): { width: number; height: number }
+  get(): Viewport
+  subscribe(listener: () => void): () => void
+  pointer(input: { clientX: number; clientY: number }): {
+    screen: Point
+    world: Point
   }
-  resolve: {
-    set(viewport: Viewport): EditorCommand
-    panBy(delta: Point): EditorCommand
-    panScreenBy(deltaScreen: Point): EditorCommand
-    zoomTo(zoom: number, anchor?: Point): EditorCommand
-    fit(rect: Rect, options?: FitViewportOptions): EditorCommand
-    reset(): EditorCommand
-    wheel(input: WheelViewportInput): EditorCommand
+  worldToScreen(point: Point): Point
+  worldRect(): Rect
+  screenPoint(clientX: number, clientY: number): Point
+  size(): {
+    width: number
+    height: number
   }
   setRect(rect: Rect): void
   setLimits(limits: ViewportLimits): void
 }
 ```
 
+写操作全部收进 `editor.actions.viewport.*`：
+
+```ts
+editor.actions.viewport.set(viewport)
+editor.actions.viewport.panBy(delta)
+editor.actions.viewport.panScreenBy(deltaScreen)
+editor.actions.viewport.zoomTo(zoom, anchor)
+editor.actions.viewport.fit(rect, options)
+editor.actions.viewport.reset()
+editor.actions.viewport.wheel(input)
+```
+
 重点：
 
 1. `viewport` 不是值，而是 runtime。
-2. 不应继续用 `EditorStateRuntime['viewport']` 这种“从实现里抠类型”的方式暴露。
+2. `viewport` runtime 只负责读、坐标换算、宿主环境同步。
+3. `viewport` 相关状态写入全部通过 `actions.viewport.*`。
+4. 不再保留 `viewport.resolve.*`。
+5. 不再保留 `viewport.read.*` / `viewport.input.*` 这种纯分组式嵌套。
+6. 不应继续用 `EditorStateRuntime['viewport']` 这种“从实现里抠类型”的方式暴露。
 
 ---
 
@@ -382,7 +398,8 @@ export type EditorViewportRuntime = {
 1. 收窄根对象。
 2. 改正 `write` / `mutate` 命名。
 3. 引入 `EditorRuntime`、`EditorViewportRuntime` 显式类型。
-4. 把顶层的 `config`、`nodeType`、`snap`、`viewport` 下沉到 `runtime`。
+4. 把顶层的 `config`、`nodeType`、`snap` 下沉到 `runtime`。
+5. 顶层 `viewport` 删除，读能力进入扁平的 `editor.runtime.viewport.*`，写能力进入 `editor.actions.viewport.*`。
 5. `snapshot` 改成 `read`。
 
 ### 5.2 `editor/createEditor.ts`
@@ -390,9 +407,10 @@ export type EditorViewportRuntime = {
 要做：
 
 1. 创建 `actions` 与 `write` 的最终命名。
-2. 组装 `runtime` 对象，而不是把内部件平铺到根。
-3. 停止返回“半公开半内部”的杂糅对象。
-4. 让 `input` 只依赖最终 `Editor` 形状。
+2. 把 viewport 写逻辑收到 `actions.viewport.*`。
+3. 组装 `runtime` 对象，而不是把内部件平铺到根。
+4. 停止返回“半公开半内部”的杂糅对象。
+5. 让 `input` 只依赖最终 `Editor` 形状。
 
 ### 5.3 `input/runtime.ts`
 
@@ -400,7 +418,9 @@ export type EditorViewportRuntime = {
 
 1. `EditorInputContext` 只依赖最终的 `Editor` 协议。
 2. 不再假设根对象上直接有 `viewport` / `snap` / `nodeType` / `config`。
-3. 统一改从 `editor.runtime.*` 读取。
+3. viewport 写入统一走 `editor.actions.viewport.*`。
+4. viewport 读取统一走扁平的 `editor.runtime.viewport.*`。
+5. 其他运行时能力统一改从 `editor.runtime.*` 读取。
 
 ### 5.4 `input/features/edge/connect.ts`
 
@@ -464,24 +484,28 @@ export type EditorViewportRuntime = {
 2. 完成 `mutate -> write`
 3. `snapshot() -> read()`
 4. 引入 `runtime`
-5. 根对象移除 `viewport` / `snap` / `nodeType` / `config`
+5. viewport 写操作迁到 `actions.viewport.*`
+6. viewport 读能力迁到扁平的 `runtime.viewport.*`
+7. 根对象移除 `viewport` / `snap` / `nodeType` / `config`
 
 实施清单：
 
 1. 改 `types/editor.ts`
 2. 改 `editor/createEditor.ts`
-3. 改所有直接访问 `editor.viewport` 的地方到 `editor.runtime.viewport`
-4. 改所有直接访问 `editor.snap` 的地方到 `editor.runtime.snap`
-5. 改所有直接访问 `editor.nodeType` 的地方到 `editor.runtime.nodeType`
-6. 改所有直接访问 `editor.config` 的地方到 `editor.runtime.config`
-7. 改所有直接访问 `editor.write` 的高层 action 调用到 `editor.actions`
-8. 改所有直接访问 `editor.mutate` 的低层写入调用到 `editor.write`
+3. 改所有 viewport 写调用到 `editor.actions.viewport.*`
+4. 改所有 viewport 读调用到扁平的 `editor.runtime.viewport.*`
+5. 改所有直接访问 `editor.snap` 的地方到 `editor.runtime.snap`
+6. 改所有直接访问 `editor.nodeType` 的地方到 `editor.runtime.nodeType`
+7. 改所有直接访问 `editor.config` 的地方到 `editor.runtime.config`
+8. 改所有直接访问 `editor.write` 的高层 action 调用到 `editor.actions`
+9. 改所有直接访问 `editor.mutate` 的低层写入调用到 `editor.write`
 
 验收标准：
 
 1. `Editor` 根对象只保留主能力字段。
 2. 运行时内部能力全部收进 `editor.runtime`。
-3. 代码里不再出现旧命名访问面。
+3. viewport 不再存在 `resolve` / `read` / `input` 分层。
+4. 代码里不再出现旧命名访问面。
 
 ### Phase 2：压平 input 协议
 
@@ -574,10 +598,13 @@ export type EditorViewportRuntime = {
 5. `Editor` 顶层的 `nodeType` 平铺能力。
 6. `Editor` 顶层的 `config` 平铺能力。
 7. `snapshot()` 旧命名。
-8. `resolveNodeEditorCapability` 外围 helper。
-9. `edge/connect.ts` 中仅用于字段搬运的局部协议类型。
-10. `selection-policy-node.ts` 中无必要保留的细碎 style helper。
-11. `projection.ts` 中重复 state store 构造。
+8. `viewport.resolve.*`
+9. `viewport.read.*`
+10. `viewport.input.*`
+11. `resolveNodeEditorCapability` 外围 helper。
+12. `edge/connect.ts` 中仅用于字段搬运的局部协议类型。
+13. `selection-policy-node.ts` 中无必要保留的细碎 style helper。
+14. `projection.ts` 中重复 state store 构造。
 
 ---
 
@@ -598,11 +625,12 @@ export type EditorViewportRuntime = {
 
 1. `Editor` 根对象只暴露主能力。
 2. 运行时内部依赖全部下沉到 `editor.runtime`。
-3. `actions` 与 `write` 按层级语义重新命名。
-4. `NodeTypeSupport` 升级成统一 runtime 能力对象，吃掉外围 capability helper。
-5. 输入特性直接依赖 `EditorInputContext`，不再定义大量局部 transport types。
-6. selection policy 升级成明确中轴模块，不再继续以 helper 堆叠。
-7. projection/store 适配边界继续压平，避免 editor 核心对象承担 UI 适配角色。
+3. viewport 写操作统一进入 `editor.actions.viewport.*`，runtime 只保留扁平读能力。
+4. `actions` 与 `write` 按层级语义重新命名。
+5. `NodeTypeSupport` 升级成统一 runtime 能力对象，吃掉外围 capability helper。
+6. 输入特性直接依赖 `EditorInputContext`，不再定义大量局部 transport types。
+7. selection policy 升级成明确中轴模块，不再继续以 helper 堆叠。
+8. projection/store 适配边界继续压平，避免 editor 核心对象承担 UI 适配角色。
 
 如果按这个方向收尾，`whiteboard-editor` 的主轴会明显更简单：
 

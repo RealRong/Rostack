@@ -1,5 +1,5 @@
 import { geometry as geometryApi, type ContainerRect, type ViewportLimits, type WheelInput } from '@whiteboard/core/geometry'
-import type { Point, Viewport } from '@whiteboard/core/types'
+import type { Point, Rect, Viewport } from '@whiteboard/core/types'
 import { record as draftRecord } from '@shared/draft'
 import {
   MutationEngine,
@@ -17,8 +17,6 @@ import type {
 } from '@whiteboard/editor/session/draw/state'
 import type { Tool } from '@whiteboard/editor/types/tool'
 import type {
-  ViewportInputRuntime,
-  ViewportRead,
   ViewportRuntime
 } from '@whiteboard/editor/session/viewport'
 import {
@@ -214,7 +212,7 @@ const createViewportRuntime = (input: {
     }
   }
 
-  const read: ViewportRead = {
+  return {
     get: input.readViewport,
     subscribe: input.subscribeViewport,
     pointer: readPointer,
@@ -228,18 +226,12 @@ const createViewportRuntime = (input: {
         x: rect.width,
         y: rect.height
       }, input.readViewport(), rect)
-    )
-  }
-
-  const inputRuntime: ViewportInputRuntime = {
+    ),
     screenPoint: readScreenPoint,
     size: () => ({
       width: rect.width,
       height: rect.height
-    })
-  }
-
-  const resolve = {
+    }),
     set: (viewport: Viewport): Viewport => geometryApi.viewport.normalize(
       viewport,
       limits
@@ -277,7 +269,7 @@ const createViewportRuntime = (input: {
       )
     },
     fit: (
-      bounds: ReturnType<ViewportRead['worldRect']>,
+      bounds: Rect,
       padding: number = geometryApi.viewport.fitPadding
     ): Viewport => geometryApi.viewport.fitToRect({
       viewport: input.readViewport(),
@@ -306,13 +298,7 @@ const createViewportRuntime = (input: {
       rect,
       limits,
       wheelSensitivity: Math.max(0, wheelSensitivity)
-    })
-  }
-
-  return {
-    read,
-    resolve,
-    input: inputRuntime,
+    }),
     setRect: (nextRect: ContainerRect) => {
       if (equal.sameBox(rect, nextRect)) {
         return

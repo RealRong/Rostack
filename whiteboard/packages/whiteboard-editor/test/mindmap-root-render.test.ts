@@ -3,7 +3,7 @@ import { document as documentApi } from '@whiteboard/core/document'
 import { engine as engineApi } from '@whiteboard/engine'
 import { product } from '@whiteboard/product'
 import { editor as editorApi, type LayoutBackend, type NodeSpec } from '../src'
-import { createNodeTypeSupport, resolveNodeEditorCapability } from '../src/types/node'
+import { createNodeTypeSupport } from '../src/types/node'
 import { createEditorTestLayout } from './support'
 
 const nodes: NodeSpec = {
@@ -114,7 +114,7 @@ const createEditor = () => {
 describe('mindmap root render', () => {
   it('treats the root as a normal node and exposes both root add buttons through chrome', async () => {
     const editor = createEditor()
-    const created = editor.write.mindmap.create({
+    const created = editor.actions.mindmap.create({
       template: product.mindmap.template.build({
         preset: 'mindmap.underline-split'
       })
@@ -125,13 +125,14 @@ describe('mindmap root render', () => {
       return
     }
 
-    editor.write.selection.replace({
+    editor.actions.selection.replace({
       nodeIds: [created.data.rootId]
     })
 
     const rootNode = editor.scene.nodes.get(created.data.rootId)?.base.node
+    const nodeType = createNodeTypeSupport(nodes)
     const rootCapability = rootNode
-      ? resolveNodeEditorCapability(rootNode, createNodeTypeSupport(nodes))
+      ? nodeType.support(rootNode)
       : undefined
     expect(rootCapability?.connect).toBe(true)
     expect(rootCapability?.resize).toBe(false)

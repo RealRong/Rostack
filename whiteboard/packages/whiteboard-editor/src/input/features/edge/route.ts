@@ -275,7 +275,7 @@ export const removeEdgeRoutePoint = (
     throw new Error(`Edge route point ${edgeId}:${index} not found.`)
   }
 
-  ctx.editor.write.edge.route.set(edgeId, patch.route ?? {
+  ctx.editor.actions.edge.route.set(edgeId, patch.route ?? {
     kind: 'auto'
   })
 }
@@ -455,7 +455,7 @@ const readViewportWorld = (
     clientX: number
     clientY: number
   }
-) => ctx.editor.viewport.read.pointer(pointer).world
+) => ctx.editor.runtime.viewport.pointer(pointer).world
 
 const readRouteGesture = (
   state: EdgeRouteHandleState,
@@ -484,7 +484,7 @@ const submitEdgeRouteCommit = (
   }
 
   if (commit.kind === 'update-route') {
-    ctx.editor.write.edge.route.set(commit.edgeId, commit.route ?? {
+    ctx.editor.actions.edge.route.set(commit.edgeId, commit.route ?? {
       kind: 'auto'
     })
     return
@@ -495,7 +495,7 @@ const submitEdgeRouteCommit = (
     ? readRoutePointIdAtIndex(edge, commit.index)
     : undefined
   if (pointId) {
-    ctx.editor.write.edge.route.movePoint(commit.edgeId, commit.index, commit.point)
+    ctx.editor.actions.edge.route.movePoint(commit.edgeId, commit.index, commit.point)
   }
 }
 

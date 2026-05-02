@@ -25,6 +25,5 @@ export {
   compileNodeSpec
 } from '@whiteboard/editor/types/node/compile'
 export {
-  createNodeTypeSupport,
-  resolveNodeEditorCapability
+  createNodeTypeSupport
 } from '@whiteboard/editor/types/node/support'

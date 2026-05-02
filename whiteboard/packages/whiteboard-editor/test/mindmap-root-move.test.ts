@@ -90,7 +90,7 @@ describe('mindmap root move', () => {
       }
     }))
 
-    const created = editor.write.mindmap.create({
+    const created = editor.actions.mindmap.create({
       template: product.mindmap.template.build({
         preset: 'mindmap.underline-split'
       })
@@ -108,7 +108,7 @@ describe('mindmap root move', () => {
     expect(beforeTree).toBeDefined()
     expect(beforeRoot).toBeDefined()
 
-    editor.write.mindmap.moveRoot({
+    editor.actions.mindmap.moveRoot({
       nodeId: mindmapId,
       position: {
         x: beforeRoot!.x + 120,
@@ -136,7 +136,7 @@ describe('mindmap root move', () => {
 
     const session = createMindmapDragSession({
       editor: {
-        write: {
+        actions: {
           mindmap: {
             moveRoot,
             moveByDrop

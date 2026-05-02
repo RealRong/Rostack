@@ -102,11 +102,11 @@ export type DrawActions = {
 export type ViewportActions = {
   set: (viewport: import('@whiteboard/core/types').Viewport) => void
   panBy: (delta: Point) => void
+  panScreenBy: (delta: Point) => void
   zoomTo: (zoom: number, anchor?: Point) => void
   fit: (bounds: import('@whiteboard/core/types').Rect, padding?: number) => void
   reset: () => void
-  setRect: (rect: ContainerRect) => void
-  setLimits: (limits: ViewportLimits) => void
+  wheel: (input: import('@whiteboard/core/geometry').WheelInput, wheelSensitivity?: number) => void
 }
 
 export type SelectionActions = {

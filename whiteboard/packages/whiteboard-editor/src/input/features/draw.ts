@@ -326,7 +326,7 @@ const createDrawStrokeSession = (
           position,
           ...template
         } = commit
-        ctx.editor.write.node.create({
+        ctx.editor.actions.node.create({
           position,
           template
         })
@@ -367,7 +367,7 @@ const createEraseSession = (
     up: (input) => {
       step(input)
       if (state.ids.length > 0) {
-        ctx.editor.write.node.delete([...state.ids])
+        ctx.editor.actions.node.delete([...state.ids])
       }
       return FINISH
     },

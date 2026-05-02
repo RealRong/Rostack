@@ -10,7 +10,6 @@ import { FINISH } from '@whiteboard/editor/input/session/result'
 import { createGesture } from '@whiteboard/editor/input/core/gesture'
 import type { PointerDownInput } from '@whiteboard/editor/types/input'
 import type { EditorInputContext } from '@whiteboard/editor/input/runtime'
-import { resolveNodeEditorCapability } from '@whiteboard/editor/types/node'
 
 export type TransformTarget = TransformSelectionMember<Node>
 export type RuntimeTransformSpec = TransformSpec<Node>
@@ -70,7 +69,7 @@ const resolveTransformSpec = (
       return null
     }
 
-    const capability = resolveNodeEditorCapability(geometry.base.node, ctx.editor.nodeType)
+    const capability = ctx.editor.runtime.nodeType.support(geometry.base.node)
     return nodeApi.transform.resolveSpec({
       target: {
         id: geometry.base.node.id,
@@ -137,7 +136,7 @@ export const createTransformSession = (
       zoom: ctx.editor.scene.ui.state.viewport.get().zoom,
       minSize: RESIZE_MIN_SIZE,
       snap: (resize) => {
-        const snapped = ctx.editor.snap.node.resize(resize)
+        const snapped = ctx.editor.runtime.snap.node.resize(resize)
         return {
           rect: nodeApi.transform.resizeUpdateRect(snapped.update),
           guides: snapped.guides
@@ -177,8 +176,8 @@ export const createTransformSession = (
     autoPan: {
       frame: (pointer) => {
         project({
-          screen: ctx.editor.viewport.input.screenPoint(pointer.clientX, pointer.clientY),
-          world: ctx.editor.viewport.read.pointer(pointer).world,
+          screen: ctx.editor.runtime.viewport.screenPoint(pointer.clientX, pointer.clientY),
+          world: ctx.editor.runtime.viewport.pointer(pointer).world,
           modifiers
         })
       }
@@ -195,7 +194,7 @@ export const createTransformSession = (
         commitTargetIds: state.commitIds
       })
       if (updates.length > 0) {
-        ctx.editor.mutate.node.updateMany(updates.map((entry) => ({
+        ctx.editor.write.node.updateMany(updates.map((entry) => ({
           id: entry.id,
           input: entry.update
         })))

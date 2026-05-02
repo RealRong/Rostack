@@ -40,7 +40,7 @@ export const createClipboardBridge = ({
 }): ClipboardBridge => {
   return {
     copy: async (target = 'selection', options) => {
-      const packet = editor.write.clipboard.copy(target)
+      const packet = editor.actions.clipboard.copy(target)
       if (!packet) {
         return false
       }
@@ -48,7 +48,7 @@ export const createClipboardBridge = ({
       return adapter.write(packet, options?.event)
     },
     cut: async (target = 'selection', options) => {
-      const packet = editor.write.clipboard.cut(target)
+      const packet = editor.actions.clipboard.cut(target)
       if (!packet) {
         return false
       }
@@ -61,7 +61,7 @@ export const createClipboardBridge = ({
         return false
       }
 
-      return editor.write.clipboard.paste(packet, {
+      return editor.actions.clipboard.paste(packet, {
         origin: options?.origin ?? clonePoint(readDefaultOrigin())
       })
     }

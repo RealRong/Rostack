@@ -6,42 +6,33 @@ import type { EditorProjection } from '@whiteboard/editor/editor/projection/type
 import { createEditorChromeUi } from '@whiteboard/editor/editor/ui/chrome'
 import { createEditorMindmapUi } from '@whiteboard/editor/editor/ui/mindmap'
 import { createEditorSelectionUi } from '@whiteboard/editor/editor/ui/selection'
-import {
-  createEditorStateStores,
-  createEditorStateView
-} from '@whiteboard/editor/editor/ui/state'
-import type { EditorStateRuntime } from '@whiteboard/editor/state-engine/runtime'
+import type { EditorState } from '@whiteboard/editor/types/editor'
 import type { EditorDefaults } from '@whiteboard/editor/types/defaults'
 import type { NodeTypeSupport } from '@whiteboard/editor/types/node'
 import type { EditorSceneFacade } from '@whiteboard/editor/types/editor'
 
 export const createEditorProjection = (input: {
   scene: EditorScene
-  runtime: EditorStateRuntime
+  state: EditorState
   nodeType: NodeTypeSupport
   defaults: EditorDefaults['selection']
 }): EditorProjection => {
-  const stateStores = createEditorStateStores(input.runtime)
-  const state = createEditorStateView({
-    stores: stateStores,
-    runtime: input.runtime
-  })
   const selection = createEditorSelectionUi({
     scene: input.scene,
-    state,
+    state: input.state,
     nodeType: input.nodeType,
     defaults: input.defaults
   })
   const chrome = createEditorChromeUi({
     scene: input.scene,
-    state,
+    state: input.state,
     selection,
     nodeType: input.nodeType,
     defaults: input.defaults
   })
   const mindmap = createEditorMindmapUi({
     scene: input.scene,
-    state
+    state: input.state
   })
 
   return {
@@ -56,14 +47,9 @@ export const createEditorProjection = (input: {
 
 export const createEditorSceneFacade = (input: {
   projection: EditorProjection
-  runtime: EditorStateRuntime
+  state: EditorState
   capture: () => Capture
 }): EditorSceneFacade => {
-  const stateStores = createEditorStateStores(input.runtime)
-  const editorState = createEditorStateView({
-    stores: stateStores,
-    runtime: input.runtime
-  })
   const {
     ui,
     ...scene
@@ -72,7 +58,7 @@ export const createEditorSceneFacade = (input: {
   return {
     ...scene,
     ui: {
-      state: editorState,
+      state: input.state,
       ...ui
     },
     capture: input.capture

@@ -264,7 +264,7 @@ export const createMarqueeSession = (
           return
         }
 
-        const sample = ctx.editor.viewport.read.pointer(pointer)
+        const sample = ctx.editor.runtime.viewport.pointer(pointer)
         step({
           screen: sample.screen,
           world: sample.world

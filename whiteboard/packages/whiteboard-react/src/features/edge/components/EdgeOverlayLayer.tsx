@@ -79,7 +79,7 @@ const EdgeRoutePointHandle = ({
               return
             }
 
-            editor.write.edge.route.removePoint(point.edgeId, point.pick.index)
+            editor.actions.edge.route.removePoint(point.edgeId, point.pick.index)
             event.preventDefault()
             event.stopPropagation()
           }

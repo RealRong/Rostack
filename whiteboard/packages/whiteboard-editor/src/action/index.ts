@@ -1,3 +1,4 @@
+import { geometry as geometryApi } from '@whiteboard/core/geometry'
 import { node as nodeApi } from '@whiteboard/core/node'
 import type {
   AppActions,
@@ -104,7 +105,7 @@ export const createEditorActionsApi = ({
   }
 
   const dispatchViewport = (
-    viewport: ReturnType<typeof editor.viewport.read.get>
+    viewport: ReturnType<typeof editor.viewport.get>
   ) => {
     editor.dispatch({
       type: 'viewport.set',
@@ -224,7 +225,7 @@ export const createEditorActionsApi = ({
       },
       selectionState: editor.selection,
       viewportState: {
-        get: editor.viewport.read.get
+        get: editor.viewport.get
       }
     }
   })
@@ -256,33 +257,37 @@ export const createEditorActionsApi = ({
     },
     viewport: {
       set: (viewport) => {
-        dispatchViewport(editor.viewport.resolve.set(viewport))
+        dispatchViewport(editor.viewport.set(viewport))
       },
       panBy: (delta) => {
-        const next = editor.viewport.resolve.panBy(delta)
+        const next = editor.viewport.panBy(delta)
+        if (next) {
+          dispatchViewport(next)
+        }
+      },
+      panScreenBy: (deltaScreen) => {
+        const next = editor.viewport.panScreenBy(deltaScreen)
         if (next) {
           dispatchViewport(next)
         }
       },
       zoomTo: (zoom, anchor) => {
-        const next = editor.viewport.resolve.zoomTo(zoom, anchor)
+        const next = editor.viewport.zoomTo(zoom, anchor)
         if (next) {
           dispatchViewport(next)
         }
       },
       fit: (rect, options) => {
-        dispatchViewport(editor.viewport.resolve.fit(rect, options))
+        dispatchViewport(editor.viewport.fit(rect, options))
       },
       reset: () => {
-        dispatchViewport(editor.viewport.resolve.reset())
+        dispatchViewport(editor.viewport.reset())
       },
-      setRect: (rect) => {
-        editor.viewport.setRect(rect)
-        onViewportFrameChange?.()
-      },
-      setLimits: (limits) => {
-        editor.viewport.setLimits(limits)
-        onViewportFrameChange?.()
+      wheel: (input, wheelSensitivity = 1) => {
+        dispatchViewport(editor.viewport.wheel(
+          input,
+          wheelSensitivity
+        ))
       }
     },
     draw: {

@@ -4,7 +4,7 @@ import { scheduler } from '@shared/core'
 import type { WhiteboardRuntime as Editor } from '@whiteboard/react/types/runtime'
 import { resolveWheelInput } from '@whiteboard/react/dom/host/input'
 
-type ContainerRect = Parameters<Editor['write']['viewport']['setRect']>[0]
+type ContainerRect = Parameters<Editor['runtime']['viewport']['setRect']>[0]
 type WheelInput = Parameters<Editor['input']['wheel']>[0]
 
 type ViewportInputOptions = {
@@ -78,7 +78,7 @@ export const useBindViewportInput = ({
     let pendingWheelInput: WheelInput | null = null
 
     const refreshContainerRect = () => {
-      editor.write.viewport.setRect(readContainerRect(element))
+      editor.runtime.viewport.setRect(readContainerRect(element))
     }
 
     refreshContainerRect()

@@ -129,11 +129,11 @@ export const createEditorStateView = (input: {
         viewport: {
             get: input.stores.viewport.get,
             subscribe: input.stores.viewport.subscribe,
-            pointer: input.runtime.viewport.read.pointer,
-            worldToScreen: input.runtime.viewport.read.worldToScreen,
-            worldRect: input.runtime.viewport.read.worldRect,
-            screenPoint: input.runtime.viewport.input.screenPoint,
-            size: input.runtime.viewport.input.size,
+            pointer: input.runtime.viewport.pointer,
+            worldToScreen: input.runtime.viewport.worldToScreen,
+            worldRect: input.runtime.viewport.worldRect,
+            screenPoint: input.runtime.viewport.screenPoint,
+            size: input.runtime.viewport.size,
             value: input.stores.viewport,
             zoom,
             center

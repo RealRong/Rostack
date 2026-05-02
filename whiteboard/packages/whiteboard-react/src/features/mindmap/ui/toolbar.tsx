@@ -114,7 +114,7 @@ const mindmapBranchItem: ToolbarItemSpec = {
         width={mindmap.branchWidth}
         stroke={mindmap.branchStroke}
         onColorChange={(value) => {
-          editor.write.mindmap.style.branch({
+          editor.actions.mindmap.style.branch({
             id: mindmap.treeId!,
             nodeIds: mindmap.nodeIds,
             patch: {
@@ -124,7 +124,7 @@ const mindmapBranchItem: ToolbarItemSpec = {
           })
         }}
         onLineChange={(value) => {
-          editor.write.mindmap.style.branch({
+          editor.actions.mindmap.style.branch({
             id: mindmap.treeId!,
             nodeIds: mindmap.nodeIds,
             patch: {
@@ -134,7 +134,7 @@ const mindmapBranchItem: ToolbarItemSpec = {
           })
         }}
         onWidthChange={(value) => {
-          editor.write.mindmap.style.branch({
+          editor.actions.mindmap.style.branch({
             id: mindmap.treeId!,
             nodeIds: mindmap.nodeIds,
             patch: {
@@ -144,7 +144,7 @@ const mindmapBranchItem: ToolbarItemSpec = {
           })
         }}
         onStrokeChange={(value) => {
-          editor.write.mindmap.style.branch({
+          editor.actions.mindmap.style.branch({
             id: mindmap.treeId!,
             nodeIds: mindmap.nodeIds,
             patch: {
@@ -211,7 +211,7 @@ const mindmapBorderItem: ToolbarItemSpec = {
         strokeWidth={node.strokeWidth}
         fill={node.fill}
         onKindChange={(value) => {
-          editor.write.mindmap.style.topic({
+          editor.actions.mindmap.style.topic({
             nodeIds: node.nodeIds,
             patch: {
               frameKind: value
@@ -219,7 +219,7 @@ const mindmapBorderItem: ToolbarItemSpec = {
           })
         }}
         onStrokeChange={(value) => {
-          editor.write.mindmap.style.topic({
+          editor.actions.mindmap.style.topic({
             nodeIds: node.nodeIds,
             patch: {
               stroke: value
@@ -227,7 +227,7 @@ const mindmapBorderItem: ToolbarItemSpec = {
           })
         }}
         onStrokeWidthChange={(value) => {
-          editor.write.mindmap.style.topic({
+          editor.actions.mindmap.style.topic({
             nodeIds: node.nodeIds,
             patch: {
               strokeWidth: value
@@ -235,7 +235,7 @@ const mindmapBorderItem: ToolbarItemSpec = {
           })
         }}
         onFillChange={(value) => {
-          editor.write.mindmap.style.topic({
+          editor.actions.mindmap.style.topic({
             nodeIds: node.nodeIds,
             patch: {
               fill: value

@@ -30,7 +30,7 @@ export const createEditorHost = (
 
   const syncPreview = () => {
     const basePreview = readPersistentPreviewState(
-      input.editor.snapshot().overlay.preview
+      input.editor.read().overlay.preview
     )
     const nextPreview = composeEditorPreviewState({
       base: basePreview,
@@ -38,7 +38,7 @@ export const createEditorHost = (
       edgeGuide,
       readDocument: input.editor.document.snapshot
     })
-    const current = input.editor.snapshot().overlay.preview
+    const current = input.editor.read().overlay.preview
     if (isPreviewEqual(current, nextPreview)) {
       return
     }
@@ -51,16 +51,10 @@ export const createEditorHost = (
 
   const interaction = createInteractionRuntime({
     getViewport: () => ({
-      screenPoint: input.editor.viewport.input.screenPoint,
-      size: input.editor.viewport.input.size,
+      screenPoint: input.editor.runtime.viewport.screenPoint,
+      size: input.editor.runtime.viewport.size,
       panScreenBy: (deltaScreen) => {
-        const next = input.editor.viewport.resolve.panScreenBy(deltaScreen)
-        if (next) {
-          input.editor.dispatch({
-            type: 'viewport.set',
-            viewport: next
-          })
-        }
+        input.editor.actions.viewport.panScreenBy(deltaScreen)
       }
     }),
     getBindings: () => ([
@@ -72,24 +66,24 @@ export const createEditorHost = (
     ]),
     state: {
       readInteraction: () => ({
-        mode: input.editor.snapshot().state.interaction.mode,
-        chrome: input.editor.snapshot().state.interaction.chrome,
-        space: input.editor.snapshot().state.interaction.space,
-        hover: input.editor.snapshot().overlay.hover
+        mode: input.editor.read().state.interaction.mode,
+        chrome: input.editor.read().state.interaction.chrome,
+        space: input.editor.read().state.interaction.space,
+        hover: input.editor.read().overlay.hover
       }),
       dispatch: input.editor.dispatch,
       setGesture: (nextGesture) => {
         gesture = nextGesture
         syncPreview()
       },
-      getSpace: () => input.editor.snapshot().state.interaction.space
+      getSpace: () => input.editor.read().state.interaction.space
     }
   })
 
   const edgeHover = createEdgeHoverService(
     {
-      readTool: () => input.editor.snapshot().state.tool,
-      snap: input.editor.snap
+      readTool: () => input.editor.read().state.tool,
+      snap: input.editor.runtime.snap
     },
     {
       read: () => edgeGuide,

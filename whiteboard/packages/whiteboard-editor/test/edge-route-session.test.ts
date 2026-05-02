@@ -52,8 +52,8 @@ const createDeps = () => {
             get: vi.fn(() => undefined)
           }
         },
-        viewport: {
-          read: {
+        runtime: {
+          viewport: {
             pointer: ({
               clientX,
               clientY
@@ -68,7 +68,7 @@ const createDeps = () => {
             })
           }
         },
-        write: {
+        actions: {
           edge: {
             route: {
               set: setRoute,

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { Node } from '@whiteboard/core/types'
 import { createTransformSession } from '../src/input/features/transform'
-import { EMPTY_PREVIEW_STATE } from '../src/preview/state'
+import { EMPTY_PREVIEW_STATE } from '../src/state/preview'
 import { createEditorTestLayout } from './support'
 
 const createTextNode = (

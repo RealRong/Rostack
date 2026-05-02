@@ -1,7 +1,14 @@
-import { document as documentApi, type DocumentReader } from '@whiteboard/core/document'
+import { createMutationReader } from '@shared/mutation'
+import { document as documentApi } from '@whiteboard/core/document'
 import { edge as edgeApi } from '@whiteboard/core/edge'
 import { mindmap as mindmapApi } from '@whiteboard/core/mindmap'
+import { whiteboardMutationModel } from '@whiteboard/core/mutation'
 import { node as nodeApi } from '@whiteboard/core/node'
+import {
+  createWhiteboardQuery,
+  type WhiteboardQuery,
+  type WhiteboardReader,
+} from '@whiteboard/core/query'
 import { selection as selectionApi, type SelectionTarget } from '@whiteboard/core/selection'
 import type {
   EdgeId,
@@ -54,7 +61,6 @@ export interface ProjectionScene extends Omit<EditorScene, 'stores' | 'pick'> {
     items(): WorkingState['items']
     ui(): UiCapture
   }
-  source: DocumentReader
 }
 
 const resolveMindmapId = (
@@ -87,22 +93,23 @@ const toGroupTarget = (
 
 const createDocumentRead = (input: {
   state: () => WorkingState
-  source: DocumentReader
+  reader: WhiteboardReader
+  query: WhiteboardQuery
 }): DocumentFrame => ({
   snapshot: () => input.state().document.snapshot,
   background: () => input.state().document.background,
-  node: input.source.nodes.get,
-  edge: input.source.edges.get,
-  group: input.source.groups.get,
-  mindmap: input.source.mindmaps.get,
-  nodeIds: input.source.nodes.ids,
-  edgeIds: input.source.edges.ids,
-  groupIds: input.source.groups.ids,
-  mindmapIds: input.source.mindmaps.ids,
+  node: input.reader.node.get,
+  edge: input.reader.edge.get,
+  group: input.reader.group.get,
+  mindmap: input.reader.mindmap.get,
+  nodeIds: input.reader.node.ids,
+  edgeIds: input.reader.edge.ids,
+  groupIds: input.reader.group.ids,
+  mindmapIds: input.reader.mindmap.ids,
   order: {
-    order: input.source.documentOrder.order,
-    slot: input.source.documentOrder.slot,
-    groupRefs: input.source.documentOrder.groupRefs
+    order: input.reader.document.order().items,
+    slot: input.query.order.slot,
+    groupRefs: input.query.group.refsInOrder
   },
   slice: ({ nodeIds, edgeIds }) => {
     const exported = documentApi.slice.export.selection({
@@ -151,7 +158,11 @@ export const createProjectionRead = (runtime: {
   const spatial = createSpatialRead({
     state: runtime.spatial
   })
-  const source = documentApi.reader(() => runtime.state().document.snapshot)
+  const reader = createMutationReader(
+    whiteboardMutationModel,
+    () => runtime.state().document.snapshot
+  )
+  const query = createWhiteboardQuery(reader)
   const bounds = createBoundsRead({
     state: runtime.state
   })
@@ -510,7 +521,6 @@ export const createProjectionRead = (runtime: {
 
   return {
     revision: runtime.revision,
-    source,
     capture: {
       documentRevision: () => runtime.state().revision.document,
       graph: () => ({
@@ -548,7 +558,8 @@ export const createProjectionRead = (runtime: {
     },
     document: createDocumentRead({
       state: runtime.state,
-      source
+      reader,
+      query
     }),
     runtime: createRuntimeRead({
       state: runtime.state

@@ -4,13 +4,13 @@ import type {
   EdgeRouteInput,
   Point
 } from '@whiteboard/core/types'
-import type { EdgeActions } from '@whiteboard/editor/action/types'
+import type { EdgeActions } from '@whiteboard/editor/actions/types'
 import type { EditorScene } from '@whiteboard/editor-scene'
 import type {
   EditorCommand,
   EditorDispatchInput
-} from '@whiteboard/editor/state-engine/intents'
-import type { EditSession } from '@whiteboard/editor/session/edit'
+} from '@whiteboard/editor/state/intents'
+import type { EditSession } from '@whiteboard/editor/schema/edit'
 import type { DocumentFrame } from '@whiteboard/editor-scene'
 import type { EditorWrite } from '@whiteboard/editor/write'
 

@@ -5,7 +5,7 @@ import type { ClipboardBridge } from '@whiteboard/react/runtime/bridge/clipboard
 import type { InsertBridge } from '@whiteboard/react/runtime/bridge/insert'
 import type { PointerBridge } from '@whiteboard/react/runtime/bridge/pointer'
 import type { Engine } from '@whiteboard/engine'
-import type { CompiledNodeSpec } from '@whiteboard/editor/types/node'
+import type { CompiledNodeSpec } from '@whiteboard/editor/node/compile'
 import type { TextSourceStore } from '@whiteboard/react/features/node/dom/textSourceStore'
 import type { WhiteboardSpec } from '@whiteboard/react/types/spec'
 

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { createEdgeRoutePressSession } from '../src/input/features/edge/route'
-import { EMPTY_PREVIEW_STATE } from '../src/preview/state'
+import { EMPTY_PREVIEW_STATE } from '../src/state/preview'
 
 const createEdge = () => ({
   id: 'edge-1',

@@ -16,14 +16,14 @@ import type {
 import { equal } from '@shared/core'
 import type {
   DrawState
-} from '@whiteboard/editor/session/draw/state'
-import type { Tool } from '@whiteboard/editor/types/tool'
+} from '@whiteboard/editor/schema/draw-state'
+import type { Tool } from '@whiteboard/editor/schema/tool'
 import type {
   ViewportRuntime
-} from '@whiteboard/editor/session/viewport'
+} from '@whiteboard/editor/state/viewport'
 import {
   EMPTY_PREVIEW_STATE
-} from '@whiteboard/editor/preview/state'
+} from '@whiteboard/editor/state/preview'
 import {
   buildEditorStateDocument,
   isViewportEqual,

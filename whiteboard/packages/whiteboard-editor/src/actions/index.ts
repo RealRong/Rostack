@@ -6,22 +6,22 @@ import type {
   EditorActions,
   HistoryActions,
   ToolActions
-} from '@whiteboard/editor/action/types'
+} from '@whiteboard/editor/actions/types'
 import {
   createClipboardActions
-} from '@whiteboard/editor/action/clipboard'
+} from '@whiteboard/editor/actions/clipboard'
 import {
   createEditController
-} from '@whiteboard/editor/action/edit'
+} from '@whiteboard/editor/actions/edit'
 import {
   createEdgeActions
-} from '@whiteboard/editor/action/edge'
+} from '@whiteboard/editor/actions/edge'
 import {
   createMindmapActionApi
-} from '@whiteboard/editor/action/mindmap'
+} from '@whiteboard/editor/actions/mindmap'
 import {
   createSelectionActions
-} from '@whiteboard/editor/action/selection'
+} from '@whiteboard/editor/actions/selection'
 import type {
   EditorScene,
   PreviewInput
@@ -30,23 +30,23 @@ import { json } from '@shared/core'
 import type {
   EditorCommand,
   EditorDispatchInput
-} from '@whiteboard/editor/state-engine/intents'
+} from '@whiteboard/editor/state/intents'
 import {
   DEFAULT_DRAW_BRUSH,
   hasDrawBrush
-} from '@whiteboard/editor/session/draw/model'
+} from '@whiteboard/editor/schema/draw-mode'
 import {
   patchDrawStyle,
   setDrawSlot
-} from '@whiteboard/editor/session/draw/state'
-import type { DrawState } from '@whiteboard/editor/session/draw/state'
-import type { EditSession } from '@whiteboard/editor/session/edit'
-import type { EditorStateRuntime } from '@whiteboard/editor/state-engine/runtime'
+} from '@whiteboard/editor/schema/draw-state'
+import type { DrawState } from '@whiteboard/editor/schema/draw-state'
+import type { EditSession } from '@whiteboard/editor/schema/edit'
+import type { EditorStateRuntime } from '@whiteboard/editor/state/runtime'
 import type { EditorTaskRuntime } from '@whiteboard/editor/tasks/runtime'
-import type { EditorDefaults } from '@whiteboard/editor/types/defaults'
-import type { Tool } from '@whiteboard/editor/types/tool'
+import type { EditorDefaults } from '@whiteboard/editor/schema/defaults'
+import type { Tool } from '@whiteboard/editor/schema/tool'
 import type { DocumentFrame } from '@whiteboard/editor-scene'
-import type { NodeTypeSupport } from '@whiteboard/editor/types/node'
+import type { NodeTypeSupport } from '@whiteboard/editor/node'
 import type { EditorWrite } from '@whiteboard/editor/write'
 
 export type CreateEditorActionsApiDeps = {

@@ -2,23 +2,23 @@ import { node as nodeApi, type Guide, type MoveStepResult } from '@whiteboard/co
 import type { SelectionTarget } from '@whiteboard/core/selection'
 import {
   FINISH
-} from '@whiteboard/editor/input/session/result'
+} from '@whiteboard/editor/input/internals/result'
 import type {
   InteractionSession
 } from '@whiteboard/editor/input/core/types'
 import { createMindmapDragSession, tryStartMindmapDragForNode } from '@whiteboard/editor/input/features/mindmap/drag'
 import type {
   PointerDownInput
-} from '@whiteboard/editor/types/input'
+} from '@whiteboard/editor/api/input'
 import type { SelectionMoveVisibility } from '@whiteboard/editor/input/features/selection/press'
-import type { Editor } from '@whiteboard/editor/types/editor'
-import type { EditorCommand } from '@whiteboard/editor/state-engine/intents'
+import type { Editor } from '@whiteboard/editor/api/editor'
+import type { EditorCommand } from '@whiteboard/editor/state/intents'
 import {
   isPreviewEqual,
   replacePreviewEdgeInteraction,
   replacePreviewNodeInteraction,
   setPreviewSelection
-} from '@whiteboard/editor/preview/state'
+} from '@whiteboard/editor/state/preview'
 
 const toMoveNodePatches = (
   result: MoveStepResult

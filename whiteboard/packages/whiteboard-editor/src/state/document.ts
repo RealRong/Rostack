@@ -12,23 +12,23 @@ import {
   isHoverStateEqual,
   normalizeHoverState
 } from '@whiteboard/editor/input/hover/store'
-import type { Tool } from '@whiteboard/editor/types/tool'
+import type { Tool } from '@whiteboard/editor/schema/tool'
 import type {
   DrawState
-} from '@whiteboard/editor/session/draw/state'
+} from '@whiteboard/editor/schema/draw-state'
 import {
   isDrawStateEqual,
   normalizeDrawState
-} from '@whiteboard/editor/session/draw/state'
+} from '@whiteboard/editor/schema/draw-state'
 import {
   EMPTY_PREVIEW_STATE,
   isEditorPreviewStateEqual,
   normalizeEditorPreviewState
-} from '@whiteboard/editor/preview/state'
+} from '@whiteboard/editor/state/preview'
 import type {
   EditCaret,
   EditSession
-} from '@whiteboard/editor/session/edit'
+} from '@whiteboard/editor/schema/edit'
 
 export interface EditorStableInteractionState {
   mode: InteractionMode

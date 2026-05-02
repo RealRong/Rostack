@@ -1,6 +1,6 @@
 import type { WhiteboardLayoutService } from '@whiteboard/core/layout'
-import type { EditorCommand } from '@whiteboard/editor/state-engine/intents'
-import type { Editor, EditorInputHost } from '@whiteboard/editor/types/editor'
+import type { EditorCommand } from '@whiteboard/editor/state/intents'
+import type { Editor, EditorInputHost } from '@whiteboard/editor/api/editor'
 import { createInteractionRuntime } from '@whiteboard/editor/input/core/runtime'
 import { createDrawBinding } from '@whiteboard/editor/input/features/draw'
 import { createEdgeBinding } from '@whiteboard/editor/input/features/edge'
@@ -16,7 +16,7 @@ import {
 import {
   isPreviewEqual,
   setPreviewEdgeGuide
-} from '@whiteboard/editor/preview/state'
+} from '@whiteboard/editor/state/preview'
 
 export const createEditorInputHost = ({
   editor,

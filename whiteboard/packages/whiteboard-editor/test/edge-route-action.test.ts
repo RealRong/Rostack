@@ -2,9 +2,9 @@ import { describe, expect, it, vi } from 'vitest'
 import type { Edge } from '@whiteboard/core/types'
 import {
   createEditorActionsApi
-} from '../src/action'
-import { EMPTY_PREVIEW_STATE } from '../src/preview/state'
-import { DEFAULT_DRAW_STATE } from '../src/session/draw/state'
+} from '../src/actions'
+import { EMPTY_PREVIEW_STATE } from '../src/state/preview'
+import { DEFAULT_DRAW_STATE } from '../src/schema/draw-state'
 import { createEditorTaskRuntime } from '../src/tasks/runtime'
 
 const okResult = () => ({ ok: true }) as const

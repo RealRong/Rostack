@@ -1,6 +1,6 @@
 import { store } from '@shared/core';
 import type { EditorScene } from '@whiteboard/editor-scene';
-import type { EditorSceneUiMindmap, EditorState, MindmapChrome } from '@whiteboard/editor/types/editor';
+import type { EditorSceneUiMindmap, EditorState, MindmapChrome } from '@whiteboard/editor/scene-ui/types';
 export const createEditorMindmapUi = (input: {
     scene: EditorScene;
     state: EditorState;

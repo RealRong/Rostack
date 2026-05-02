@@ -6,7 +6,7 @@ import type {
 import type {
   EditCapability,
   EditField
-} from '@whiteboard/editor/session/edit'
+} from '@whiteboard/editor/schema/edit'
 
 export type NodeHit = 'box' | 'path' | 'none'
 export type NodeFamily = 'text' | 'shape' | 'frame' | 'draw'

@@ -2,13 +2,13 @@ import type { MindmapStructure } from '@whiteboard/core/mindmap'
 import { node as nodeApi } from '@whiteboard/core/node'
 import type { MindmapId, MindmapNodeId, NodeId, NodeModel } from '@whiteboard/core/types'
 import { collection, equal } from '@shared/core'
-import type { EditorDefaults, EditorNodePaintDefaults } from '@whiteboard/editor/types/defaults'
+import type { EditorDefaults, EditorNodePaintDefaults } from '@whiteboard/editor/schema/defaults'
 import type {
   SelectionNodeStats,
   SelectionToolbarNodeKind,
   SelectionToolbarNodeScope
-} from '@whiteboard/editor/types/selectionPresentation'
-import type { NodeTypeSupport } from '@whiteboard/editor/types/node'
+} from '@whiteboard/editor/scene-ui/schema'
+import type { NodeTypeSupport } from '@whiteboard/editor/node'
 
 const readString = (
   node: NodeModel,

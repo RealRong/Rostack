@@ -3,7 +3,7 @@ import { document as documentApi } from '@whiteboard/core/document'
 import { engine as engineApi } from '@whiteboard/engine'
 import { product } from '@whiteboard/product'
 import { editor as editorApi, type LayoutBackend, type NodeSpec } from '../src'
-import { createNodeTypeSupport } from '../src/types/node'
+import { createNodeTypeSupport } from '../src/node'
 import { createEditorTestLayout } from './support'
 
 const nodes: NodeSpec = {

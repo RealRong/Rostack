@@ -2,13 +2,19 @@ import type {
   MutationWriter,
 } from '@shared/mutation'
 import type {
+  MutationCompileControl,
+  MutationCompileHandler,
   MutationCompileHandlerInput,
-  MutationCompileHandlerTable,
 } from '@shared/mutation/engine'
 import type { WhiteboardLayoutService } from '@whiteboard/core/layout'
 import {
   whiteboardMutationModel
 } from '@whiteboard/core/mutation/model'
+import {
+  createWhiteboardQuery,
+  type WhiteboardQuery,
+  type WhiteboardReader,
+} from '@whiteboard/core/query'
 import type {
   CoreRegistries,
   Document,
@@ -24,9 +30,6 @@ import type {
   WhiteboardIntentOutput,
   WhiteboardMutationTable
 } from '@whiteboard/core/mutation/intents'
-import type {
-  WhiteboardCompileReader
-} from './reader'
 
 export type WhiteboardCompileCode = ResultCode
 
@@ -45,6 +48,13 @@ export type WhiteboardCompileServices = {
   layout: WhiteboardLayoutService
 }
 
+export type WhiteboardCompileExpect = {
+  node(id: NodeId): Document['nodes'][NodeId] | undefined
+  edge(id: EdgeId): Document['edges'][EdgeId] | undefined
+  group(id: GroupId): Document['groups'][GroupId] | undefined
+  mindmap(id: MindmapId): Document['mindmaps'][MindmapId] | undefined
+}
+
 export type WhiteboardCompileContext<
   K extends WhiteboardIntentKind = WhiteboardIntentKind
 > = MutationCompileHandlerInput<
@@ -52,19 +62,23 @@ export type WhiteboardCompileContext<
   WhiteboardIntent<K>,
   MutationWriter<typeof whiteboardMutationModel>,
   WhiteboardIntentOutput<K>,
-  WhiteboardCompileReader,
+  WhiteboardReader,
   WhiteboardCompileServices,
   WhiteboardCompileCode
->
+> & {
+  query: WhiteboardQuery
+  expect: WhiteboardCompileExpect
+}
 
-export type WhiteboardCompileHandlerTable = MutationCompileHandlerTable<
-  WhiteboardMutationTable,
-  Document,
-  MutationWriter<typeof whiteboardMutationModel>,
-  WhiteboardCompileReader,
-  WhiteboardCompileServices,
-  WhiteboardCompileCode
->
+export type WhiteboardCompileHandler<
+  K extends WhiteboardIntentKind = WhiteboardIntentKind
+> = (
+  input: WhiteboardCompileContext<K>
+) => void | MutationCompileControl<WhiteboardCompileCode>
+
+export type WhiteboardCompileHandlerTable = {
+  [K in WhiteboardIntentKind]: WhiteboardCompileHandler<K>
+}
 
 export const readCompileServices = (
   input: WhiteboardCompileContext
@@ -79,3 +93,80 @@ export const readCompileServices = (
 export const readCompileRegistries = (
   input: WhiteboardCompileContext
 ): CoreRegistries => readCompileServices(input).registries
+
+const createCompileExpect = (
+  input: MutationCompileHandlerInput<
+    Document,
+    WhiteboardIntent,
+    MutationWriter<typeof whiteboardMutationModel>,
+    WhiteboardIntentOutput,
+    WhiteboardReader,
+    WhiteboardCompileServices,
+    WhiteboardCompileCode
+  >
+): WhiteboardCompileExpect => ({
+  node: (id) => {
+    const node = input.reader.node.get(id)
+    if (node) {
+      return node
+    }
+
+    input.invalid(`Node ${id} not found.`)
+    return undefined
+  },
+  edge: (id) => {
+    const edge = input.reader.edge.get(id)
+    if (edge) {
+      return edge
+    }
+
+    input.invalid(`Edge ${id} not found.`)
+    return undefined
+  },
+  group: (id) => {
+    const group = input.reader.group.get(id)
+    if (group) {
+      return group
+    }
+
+    input.invalid(`Group ${id} not found.`)
+    return undefined
+  },
+  mindmap: (id) => {
+    const mindmap = input.reader.mindmap.get(id)
+    if (mindmap) {
+      return mindmap
+    }
+
+    input.invalid(`Mindmap ${id} not found.`)
+    return undefined
+  },
+})
+
+export const withCompileContext = <
+  K extends WhiteboardIntentKind
+>(
+  handler: WhiteboardCompileHandler<K>
+): MutationCompileHandler<
+  Document,
+  WhiteboardIntent<K>,
+  MutationWriter<typeof whiteboardMutationModel>,
+  WhiteboardIntentOutput<K>,
+  WhiteboardReader,
+  WhiteboardCompileServices,
+  WhiteboardCompileCode
+> => (input) => handler({
+  ...input,
+  query: createWhiteboardQuery(input.reader),
+  expect: createCompileExpect(
+    input as MutationCompileHandlerInput<
+      Document,
+      WhiteboardIntent,
+      MutationWriter<typeof whiteboardMutationModel>,
+      WhiteboardIntentOutput,
+      WhiteboardReader,
+      WhiteboardCompileServices,
+      WhiteboardCompileCode
+    >
+  ),
+})

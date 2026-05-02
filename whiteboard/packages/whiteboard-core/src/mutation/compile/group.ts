@@ -42,9 +42,7 @@ export const groupIntentHandlers: GroupIntentHandlers = {
     })
   },
   'group.order.move': (ctx) => {
-    const refs = ctx.intent.ids.flatMap((groupId) =>
-      ctx.reader.document.order().groupRefs(groupId)
-    )
+    const refs = ctx.intent.ids.flatMap((groupId) => ctx.query.group.refsInOrder(groupId))
     const currentOrder = ctx.reader.document.order().items()
     const existingRefs = refs.filter((ref) => (
       currentOrder.some((entry) => entry.kind === ref.kind && entry.id === ref.id)
@@ -63,7 +61,7 @@ export const groupIntentHandlers: GroupIntentHandlers = {
     const edgeIds: string[] = []
 
     ctx.intent.ids.forEach((groupId) => {
-      const refs = ctx.reader.document.order().groupRefs(groupId)
+      const refs = ctx.query.group.refsInOrder(groupId)
       ctx.program.group.delete(groupId)
 
       refs.forEach((ref) => {

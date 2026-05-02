@@ -8,8 +8,8 @@ import { node as nodeApi,
   type VerticalResizeEdge
 } from '@whiteboard/core/node'
 import type { Point, Rect, Size } from '@whiteboard/core/types'
-import type { ModifierKeys } from '@whiteboard/editor/types/input'
-import { EMPTY_GUIDES } from '@whiteboard/editor/preview/selection'
+import type { ModifierKeys } from '@whiteboard/editor/api/input'
+import { EMPTY_GUIDES } from '@whiteboard/editor/state/preview-selection'
 
 const DEFAULT_MIN_SIZE: Size = {
   width: 20,

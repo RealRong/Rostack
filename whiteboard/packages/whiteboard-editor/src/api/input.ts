@@ -1,6 +1,6 @@
 import type { EdgeId, Point } from '@whiteboard/core/types'
 import { store } from '@shared/core'
-import type { EditorPick } from '@whiteboard/editor/types/pick'
+import type { EditorPick } from '@whiteboard/editor/api/pick'
 
 export type ModifierKeys = {
   alt: boolean

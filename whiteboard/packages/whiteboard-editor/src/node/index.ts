@@ -11,19 +11,13 @@ export type {
   NodeHit,
   NodeMeta,
   NodeFamily
-} from '@whiteboard/editor/types/node/spec'
+} from '@whiteboard/editor/node/spec'
 export type {
   NodeStyleFieldKind,
   NodeTypeCapability,
   NodeTypeRead,
   NodeTypeSupport
-} from '@whiteboard/editor/types/node/read'
-export type {
-  CompiledNodeSpec
-} from '@whiteboard/editor/types/node/compile'
-export {
-  compileNodeSpec
-} from '@whiteboard/editor/types/node/compile'
+} from '@whiteboard/editor/node/read'
 export {
   createNodeTypeSupport
-} from '@whiteboard/editor/types/node/support'
+} from '@whiteboard/editor/node/support'

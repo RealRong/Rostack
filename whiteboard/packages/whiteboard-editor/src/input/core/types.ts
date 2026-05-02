@@ -4,7 +4,7 @@ import type {
   PointerMoveInput,
   PointerUpInput,
   WheelInput
-} from '@whiteboard/editor/types/input'
+} from '@whiteboard/editor/api/input'
 
 export type InteractionMode =
   | 'idle'

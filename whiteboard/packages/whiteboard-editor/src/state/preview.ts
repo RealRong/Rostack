@@ -14,19 +14,19 @@ import type {
 import {
   EMPTY_EDGE_GUIDE,
   isEdgeGuideEqual
-} from '@whiteboard/editor/preview/edge'
+} from '@whiteboard/editor/state/preview-edge'
 import {
   EMPTY_NODE_HIDDEN,
   EMPTY_NODE_PATCHES
-} from '@whiteboard/editor/preview/node'
+} from '@whiteboard/editor/state/preview-node'
 import {
   EMPTY_GUIDES
-} from '@whiteboard/editor/preview/selection'
+} from '@whiteboard/editor/state/preview-selection'
 import type {
   EdgeFeedbackEntry,
   EdgeGuide,
   NodePreviewEntry
-} from '@whiteboard/editor/preview/types'
+} from '@whiteboard/editor/state/preview-types'
 
 type NodePreviewRecord = PreviewInput['nodes']
 type EdgePreviewRecord = PreviewInput['edges']

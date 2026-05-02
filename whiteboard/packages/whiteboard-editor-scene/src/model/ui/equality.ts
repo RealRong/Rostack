@@ -3,7 +3,7 @@ import type {
   EdgeId,
   NodeId
 } from '@whiteboard/core/types'
-import type { EditCaret } from '@whiteboard/editor/protocol'
+import type { EditCaret } from '@whiteboard/editor/schema/edit'
 import type {
   ChromeOverlay,
   ChromeView,

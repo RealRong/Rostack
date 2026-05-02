@@ -1,12 +1,12 @@
 import type { Viewport } from '@whiteboard/core/types'
 import type { PreviewInput } from '@whiteboard/editor-scene'
-import type { Tool } from '@whiteboard/editor/types/tool'
+import type { Tool } from '@whiteboard/editor/schema/tool'
 import type {
   DrawState
-} from '@whiteboard/editor/session/draw/state'
+} from '@whiteboard/editor/schema/draw-state'
 import type {
   EditSession
-} from '@whiteboard/editor/session/edit'
+} from '@whiteboard/editor/schema/edit'
 import type {
   SelectionTarget
 } from '@whiteboard/core/selection'

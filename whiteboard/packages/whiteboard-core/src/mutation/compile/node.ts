@@ -62,7 +62,7 @@ const writeMindmapTopicUpdate = (
   }
 
   const fields = update.fields
-  const isRoot = reader.mindmap.isRoot(node.id)
+  const isRoot = ctx.query.mindmap.isRoot(node.id)
 
   if (fields?.position) {
     if (!isRoot) {
@@ -283,7 +283,7 @@ export const nodeIntentHandlers: NodeIntentHandlers = {
         continue
       }
 
-      if (!reader.mindmap.isRoot(id)) {
+      if (!ctx.query.mindmap.isRoot(id)) {
         return ctx.invalid('Mindmap member move must use mindmap drag.')
       }
 

@@ -1,11 +1,11 @@
 import { store } from '@shared/core';
 import type { EditorScene } from '@whiteboard/editor-scene';
-import { EMPTY_EDGE_GUIDE, isEdgeGuideEqual } from '@whiteboard/editor/preview/edge';
-import { resolveSelectionOverlay } from '@whiteboard/editor/editor/ui/selection-policy-overlay';
-import { resolveSelectionToolbar } from '@whiteboard/editor/editor/ui/selection-policy-toolbar';
-import type { EditorMarqueePreview, EditorSceneUiChrome, EditorSceneUiSelection, EditorState } from '@whiteboard/editor/types/editor';
-import type { EditorDefaults } from '@whiteboard/editor/types/defaults';
-import type { NodeTypeSupport } from '@whiteboard/editor/types/node';
+import type { NodeTypeSupport } from '@whiteboard/editor/node';
+import type { EditorDefaults } from '@whiteboard/editor/schema/defaults';
+import { EMPTY_EDGE_GUIDE, isEdgeGuideEqual } from '@whiteboard/editor/state/preview-edge';
+import { resolveSelectionOverlay } from '@whiteboard/editor/scene-ui/selection-policy-overlay';
+import { resolveSelectionToolbar } from '@whiteboard/editor/scene-ui/selection-policy-toolbar';
+import type { EditorMarqueePreview, EditorSceneUiChrome, EditorSceneUiSelection, EditorState } from '@whiteboard/editor/scene-ui/types';
 export const createEditorChromeUi = (input: {
     scene: EditorScene;
     state: EditorState;

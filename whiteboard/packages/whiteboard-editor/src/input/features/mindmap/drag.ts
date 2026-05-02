@@ -7,18 +7,18 @@ import type { SelectionSummary } from '@whiteboard/core/selection'
 import type { NodeId, Point } from '@whiteboard/core/types'
 import { store } from '@shared/core'
 import type { InteractionSession } from '@whiteboard/editor/input/core/types'
-import { FINISH } from '@whiteboard/editor/input/session/result'
-import type { PointerDownInput } from '@whiteboard/editor/types/input'
-import type { Tool } from '@whiteboard/editor/types/tool'
-import type { MindmapPreviewState } from '@whiteboard/editor/preview/types'
+import { FINISH } from '@whiteboard/editor/input/internals/result'
+import type { PointerDownInput } from '@whiteboard/editor/api/input'
+import type { Tool } from '@whiteboard/editor/schema/tool'
+import type { MindmapPreviewState } from '@whiteboard/editor/state/preview-types'
 import type { Node } from '@whiteboard/core/types'
-import type { Editor } from '@whiteboard/editor/types/editor'
-import type { EditorCommand } from '@whiteboard/editor/state-engine/intents'
+import type { Editor } from '@whiteboard/editor/api/editor'
+import type { EditorCommand } from '@whiteboard/editor/state/intents'
 import type { MindmapPreview } from '@whiteboard/editor-scene'
 import {
   isPreviewEqual,
   setPreviewMindmap
-} from '@whiteboard/editor/preview/state'
+} from '@whiteboard/editor/state/preview'
 
 export type MindmapDragState = CoreMindmapDragState
 

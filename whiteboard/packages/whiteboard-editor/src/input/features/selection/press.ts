@@ -1,8 +1,8 @@
-import type { PointerDownInput } from '@whiteboard/editor/types/input'
+import type { PointerDownInput } from '@whiteboard/editor/api/input'
 import type { InteractionBinding, InteractionSession } from '@whiteboard/editor/input/core/types'
 import { createMoveInteraction } from '@whiteboard/editor/input/features/selection/move'
 import { createMarqueeSession, type MarqueeMatch } from '@whiteboard/editor/input/features/selection/marquee'
-import { createPressDragSession } from '@whiteboard/editor/input/session/press'
+import { createPressDragSession } from '@whiteboard/editor/input/internals/press'
 import { selection as selectionApi, type SelectionTarget } from '@whiteboard/core/selection'
 import type {
   SelectionAffordance,
@@ -10,8 +10,8 @@ import type {
 } from '@whiteboard/core/selection'
 import type { SelectionMode } from '@whiteboard/core/node'
 import type { GroupId, Node, NodeId } from '@whiteboard/core/types'
-import type { EditorCommand } from '@whiteboard/editor/state-engine/intents'
-import type { Editor } from '@whiteboard/editor/types/editor'
+import type { EditorCommand } from '@whiteboard/editor/state/intents'
+import type { Editor } from '@whiteboard/editor/api/editor'
 
 type EditorDeps = {
   editor: Editor

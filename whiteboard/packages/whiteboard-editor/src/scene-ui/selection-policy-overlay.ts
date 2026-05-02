@@ -2,9 +2,9 @@ import type {
   SelectionAffordance,
   SelectionSummary
 } from '@whiteboard/core/selection'
-import type { EditSession } from '@whiteboard/editor/session/edit'
-import type { SelectionOverlay } from '@whiteboard/editor/types/selectionPresentation'
-import type { Tool } from '@whiteboard/editor/types/tool'
+import type { EditSession } from '@whiteboard/editor/schema/edit'
+import type { SelectionOverlay } from '@whiteboard/editor/scene-ui/schema'
+import type { Tool } from '@whiteboard/editor/schema/tool'
 
 export const resolveSelectionOverlay = ({
   summary,

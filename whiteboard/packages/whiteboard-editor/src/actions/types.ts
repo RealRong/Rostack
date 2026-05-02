@@ -27,23 +27,23 @@ import type {
   Point
 } from '@whiteboard/core/types'
 import type { IntentResult } from '@whiteboard/engine/types/result'
-import type { ClipboardPacket } from '@whiteboard/editor/clipboard/packet'
+import type { ClipboardPacket } from '@whiteboard/editor/clipboard'
 import type {
   BrushStylePatch,
   DrawState
-} from '@whiteboard/editor/session/draw/state'
+} from '@whiteboard/editor/schema/draw-state'
 import type {
   DrawMode,
   DrawSlot
-} from '@whiteboard/editor/session/draw/model'
+} from '@whiteboard/editor/schema/draw-mode'
 import type {
   EditCaret,
   EditField
-} from '@whiteboard/editor/session/edit'
+} from '@whiteboard/editor/schema/edit'
 import type {
   InsertTemplate,
   Tool
-} from '@whiteboard/editor/types/tool'
+} from '@whiteboard/editor/schema/tool'
 import type {
   EdgeLabelPatch,
   MindmapBorderPatch,

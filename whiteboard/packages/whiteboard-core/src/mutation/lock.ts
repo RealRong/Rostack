@@ -1,11 +1,13 @@
 import { edge as edgeApi } from '@whiteboard/core/edge'
+import { createMutationReader } from '@shared/mutation'
 import {
-  createDocumentReader,
-  type DocumentReader
-} from '@whiteboard/core/document'
-import type {
-  WhiteboardCompileReader
-} from '@whiteboard/core/mutation/compile/reader'
+  createWhiteboardQuery,
+  type WhiteboardQuery,
+  type WhiteboardReader,
+} from '@whiteboard/core/query'
+import {
+  whiteboardMutationModel,
+} from '@whiteboard/core/mutation/model'
 import type {
   CanvasItemRef,
   Document,
@@ -19,48 +21,6 @@ import type {
   Operation,
   Origin
 } from '@whiteboard/core/types'
-
-type LockReader = {
-  document: {
-    order(): {
-      groupRefs(groupId: GroupId): readonly CanvasItemRef[]
-    }
-  }
-  node: {
-    get(nodeId: NodeId): Document['nodes'][NodeId] | undefined
-  }
-  edge: {
-    get(edgeId: EdgeId): Document['edges'][EdgeId] | undefined
-  }
-  mindmap: {
-    get(id: MindmapId): Document['mindmaps'][MindmapId] | undefined
-    subtreeNodeIds(id: MindmapId, rootId?: NodeId): readonly NodeId[]
-    isRoot(nodeId: NodeId): boolean
-  }
-}
-
-const toLockReader = (
-  reader: DocumentReader | WhiteboardCompileReader | LockReader
-): LockReader => 'node' in reader
-  ? reader
-  : {
-      document: {
-        order: () => ({
-          groupRefs: (groupId) => reader.documentOrder.groupRefs(groupId)
-        })
-      },
-      node: {
-        get: (nodeId) => reader.nodes.get(nodeId)
-      },
-      edge: {
-        get: (edgeId) => reader.edges.get(edgeId)
-      },
-      mindmap: {
-        get: (id) => reader.mindmaps.get(id),
-        subtreeNodeIds: (id, rootId) => reader.mindmaps.subtreeNodeIds(id, rootId),
-        isRoot: (nodeId) => reader.mindmaps.isRoot(nodeId)
-      }
-    }
 
 const hasOwn = <T extends object>(
   target: T,
@@ -114,13 +74,13 @@ const uniqueIds = <TId extends string>(
 ): readonly TId[] => Array.from(new Set(ids))
 
 const listGroupNodeIds = (
-  reader: LockReader,
+  query: WhiteboardQuery,
   groupId: GroupId
-): readonly NodeId[] => reader.document.order().groupRefs(groupId)
+): readonly NodeId[] => query.group.refsInOrder(groupId)
   .flatMap((ref) => ref.kind === 'node' ? [ref.id] : [])
 
 const collectLockedNodeIds = (
-  reader: LockReader,
+  reader: WhiteboardReader,
   nodeIds: readonly NodeId[]
 ): readonly NodeId[] => uniqueIds(
   nodeIds.filter((nodeId) => Boolean(reader.node.get(nodeId)?.locked))
@@ -138,14 +98,14 @@ const collectLockedNodeIdsFromEnds = (
 )
 
 const collectLockedEdgeIds = (
-  reader: LockReader,
+  reader: WhiteboardReader,
   edgeIds: readonly EdgeId[]
 ): readonly EdgeId[] => uniqueIds(
   edgeIds.filter((edgeId) => Boolean(reader.edge.get(edgeId)?.locked))
 )
 
 const collectLockedNodeIdsForEdgeIds = (
-  reader: LockReader,
+  reader: WhiteboardReader,
   edgeIds: readonly EdgeId[]
 ): readonly NodeId[] => uniqueIds(
   edgeIds.flatMap((edgeId) => {
@@ -165,14 +125,14 @@ export const resolveLockDecision = ({
   reader,
   target
 }: {
-  reader: LockReader | DocumentReader | WhiteboardCompileReader
+  reader: WhiteboardReader
   target: LockTarget
 }): LockDecision => {
-  const lockReader = toLockReader(reader)
+  const query = createWhiteboardQuery(reader)
 
   switch (target.kind) {
     case 'nodes': {
-      const lockedNodeIds = collectLockedNodeIds(lockReader, target.nodeIds)
+      const lockedNodeIds = collectLockedNodeIds(reader, target.nodeIds)
       return {
         allowed: lockedNodeIds.length === 0,
         lockedNodeIds,
@@ -183,7 +143,7 @@ export const resolveLockDecision = ({
     case 'groups': {
       const lockedNodeIds = uniqueIds(
         target.groupIds.flatMap((groupId) =>
-          collectLockedNodeIds(lockReader, listGroupNodeIds(lockReader, groupId))
+          collectLockedNodeIds(reader, listGroupNodeIds(query, groupId))
         )
       )
       return {
@@ -195,16 +155,16 @@ export const resolveLockDecision = ({
     }
     case 'refs': {
       const directLockedNodeIds = collectLockedNodeIds(
-        lockReader,
+        reader,
         target.refs.flatMap((ref) => ref.kind === 'node' ? [ref.id] : [])
       )
       const directLockedEdgeIds = collectLockedEdgeIds(
-        lockReader,
+        reader,
         target.refs.flatMap((ref) => ref.kind === 'edge' ? [ref.id] : [])
       )
       const relationLockedNodeIds = target.includeEdgeRelations
         ? collectLockedNodeIdsForEdgeIds(
-            lockReader,
+            reader,
             target.refs.flatMap((ref) => ref.kind === 'edge' ? [ref.id] : [])
           )
         : []
@@ -230,8 +190,8 @@ export const resolveLockDecision = ({
       }
     }
     case 'edge-ids': {
-      const lockedEdgeIds = collectLockedEdgeIds(lockReader, target.edgeIds)
-      const lockedNodeIds = collectLockedNodeIdsForEdgeIds(lockReader, target.edgeIds)
+      const lockedEdgeIds = collectLockedEdgeIds(reader, target.edgeIds)
+      const lockedNodeIds = collectLockedNodeIdsForEdgeIds(reader, target.edgeIds)
       return {
         allowed: lockedEdgeIds.length === 0 && lockedNodeIds.length === 0,
         lockedNodeIds,
@@ -246,7 +206,7 @@ export const resolveLockDecision = ({
     }
     case 'edge-ends': {
       const lockedNodeIds = collectLockedNodeIdsFromEnds(
-        (nodeId) => Boolean(lockReader.node.get(nodeId)?.locked),
+        (nodeId) => Boolean(reader.node.get(nodeId)?.locked),
         target.ends
       )
       return {
@@ -311,6 +271,7 @@ const readNextEdgeEnd = (
 
 const readLockViolationForOperation = ({
   reader,
+  query,
   operation,
   readNodeLocked,
   readEdgeLocked,
@@ -318,7 +279,8 @@ const readLockViolationForOperation = ({
   updateNodeLocked,
   updateEdgeLocked
 }: {
-  reader: LockReader
+  reader: WhiteboardReader
+  query: WhiteboardQuery
   operation: Operation
   readNodeLocked: (nodeId: NodeId) => boolean
   readEdgeLocked: (edgeId: EdgeId) => boolean
@@ -449,7 +411,7 @@ const readLockViolationForOperation = ({
       })
       return undefined
     case 'mindmap.delete': {
-      const lockedNodeIds = reader.mindmap.subtreeNodeIds(operation.id)
+      const lockedNodeIds = query.mindmap.subtreeNodeIds(operation.id)
         .filter((nodeId) => readNodeLocked(nodeId))
       return lockedNodeIds.length
         ? {
@@ -470,7 +432,7 @@ const readLockViolationForOperation = ({
         : undefined
     }
     case 'mindmap.layout': {
-      const lockedNodeIds = reader.mindmap.subtreeNodeIds(operation.id)
+      const lockedNodeIds = query.mindmap.subtreeNodeIds(operation.id)
         .filter((nodeId) => readNodeLocked(nodeId))
       return lockedNodeIds.length
         ? {
@@ -517,7 +479,7 @@ const readLockViolationForOperation = ({
         : undefined
     }
     case 'mindmap.topic.delete': {
-      const lockedNodeIds = reader.mindmap.subtreeNodeIds(
+      const lockedNodeIds = query.mindmap.subtreeNodeIds(
         operation.id,
         operation.input.nodeId
       ).filter((nodeId) => readNodeLocked(nodeId))
@@ -601,7 +563,8 @@ export const validateLockOperations = ({
     return undefined
   }
 
-  const reader = toLockReader(createDocumentReader(() => document))
+  const reader = createMutationReader(whiteboardMutationModel, () => document)
+  const query = createWhiteboardQuery(reader)
   const nodeLocked = new Map<NodeId, boolean>(
     Object.values(document.nodes).map((node) => [node.id, Boolean(node.locked)] as const)
   )
@@ -642,6 +605,7 @@ export const validateLockOperations = ({
   for (const operation of operations) {
     const violation = readLockViolationForOperation({
       reader,
+      query,
       operation,
       readNodeLocked,
       readEdgeLocked,
@@ -683,10 +647,10 @@ export const validateLockOperations = ({
         deleteNodeLocked(operation.id)
         break
       case 'mindmap.delete':
-        reader.mindmap.subtreeNodeIds(operation.id).forEach(deleteNodeLocked)
+        query.mindmap.subtreeNodeIds(operation.id).forEach(deleteNodeLocked)
         break
       case 'mindmap.topic.delete':
-        reader.mindmap.subtreeNodeIds(operation.id, operation.input.nodeId).forEach(deleteNodeLocked)
+        query.mindmap.subtreeNodeIds(operation.id, operation.input.nodeId).forEach(deleteNodeLocked)
         break
       default:
         break

@@ -10,7 +10,7 @@ import type {
 import type {
   MindmapActions,
   MindmapInsertBehavior
-} from '@whiteboard/editor/action/types'
+} from '@whiteboard/editor/actions/types'
 import type {
   EditorScene,
   PreviewInput
@@ -18,10 +18,10 @@ import type {
 import type {
   EditorCommand,
   EditorDispatchInput
-} from '@whiteboard/editor/state-engine/intents'
+} from '@whiteboard/editor/state/intents'
 import {
   updatePreviewNodePresentation
-} from '@whiteboard/editor/preview/state'
+} from '@whiteboard/editor/state/preview'
 import type { EditorWrite } from '@whiteboard/editor/write'
 import type { EditorTaskRuntime } from './runtime'
 import {

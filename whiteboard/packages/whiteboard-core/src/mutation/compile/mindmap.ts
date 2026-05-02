@@ -136,13 +136,13 @@ export const emitMindmapDelete = (
   id: string
 ) => {
   const current = ctx.reader.mindmap.get(id)
-  const tree = ctx.reader.mindmap.tree(id)
+  const tree = ctx.query.mindmap.tree(id)
   if (!current || !tree) {
     return
   }
 
-  const nodeIds = [...new Set(ctx.reader.mindmap.subtreeNodeIds(id, tree.rootNodeId))]
-  const connectedEdges = ctx.reader.edge.connectedToNodes(new Set(nodeIds))
+  const nodeIds = [...new Set(ctx.query.mindmap.subtreeNodeIds(id, tree.rootNodeId))]
+  const connectedEdges = ctx.query.edge.connectedToNodes(new Set(nodeIds))
 
   ctx.program.document.order().delete(canvasRefKey({
     kind: 'mindmap',
@@ -346,7 +346,7 @@ export const emitMindmapTopicDelete = (
   nodeId: NodeId
 ) => {
   const current = ctx.reader.mindmap.get(id)
-  const tree = ctx.reader.mindmap.tree(id)
+  const tree = ctx.query.mindmap.tree(id)
   if (!current || !tree) {
     return ctx.invalid(`Mindmap ${id} not found.`)
   }
@@ -354,8 +354,8 @@ export const emitMindmapTopicDelete = (
     return ctx.invalid('Root topic cannot use mindmap.topic.delete.')
   }
 
-  const nodeIds = [...new Set(ctx.reader.mindmap.subtreeNodeIds(id, nodeId))]
-  const connectedEdges = ctx.reader.edge.connectedToNodes(new Set(nodeIds))
+  const nodeIds = [...new Set(ctx.query.mindmap.subtreeNodeIds(id, nodeId))]
+  const connectedEdges = ctx.query.edge.connectedToNodes(new Set(nodeIds))
 
   ctx.program.mindmap.structure(id).delete(nodeId)
   connectedEdges.forEach((edge: Edge) => {

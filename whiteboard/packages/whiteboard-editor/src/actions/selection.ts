@@ -4,10 +4,10 @@ import type {
   CanvasItemRef,
   GroupId
 } from '@whiteboard/core/types'
-import type { EditorDispatchInput } from '@whiteboard/editor/state-engine/intents'
+import type { EditorDispatchInput } from '@whiteboard/editor/state/intents'
 import type { EditorScene } from '@whiteboard/editor-scene'
-import type { EditorDefaults } from '@whiteboard/editor/types/defaults'
-import type { EditorState } from '@whiteboard/editor/types/editor'
+import type { EditorDefaults } from '@whiteboard/editor/schema/defaults'
+import type { EditorState } from '@whiteboard/editor/scene-ui/types'
 import type {
   CanvasWrite,
   GroupWrite,
@@ -15,7 +15,7 @@ import type {
 } from '@whiteboard/editor/write/types'
 import type {
   SelectionActions
-} from '@whiteboard/editor/action/types'
+} from '@whiteboard/editor/actions/types'
 
 const DEFAULT_FRAME_PADDING = 32
 

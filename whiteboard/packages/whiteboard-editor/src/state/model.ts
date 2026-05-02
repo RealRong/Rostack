@@ -15,13 +15,13 @@ import type {
 } from '@whiteboard/editor-scene'
 import type {
   DrawState
-} from '@whiteboard/editor/session/draw/state'
+} from '@whiteboard/editor/schema/draw-state'
 import type {
   EditSession
-} from '@whiteboard/editor/session/edit'
+} from '@whiteboard/editor/schema/edit'
 import type {
   Tool
-} from '@whiteboard/editor/types/tool'
+} from '@whiteboard/editor/schema/tool'
 import type {
   EditorStableInteractionState,
   EditorStateDocument

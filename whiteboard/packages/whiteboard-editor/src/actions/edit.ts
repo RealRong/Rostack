@@ -2,14 +2,14 @@ import type { EdgeLabel } from '@whiteboard/core/types'
 import type {
   EditorEditActions,
   MindmapInsertBehavior
-} from '@whiteboard/editor/action/types'
+} from '@whiteboard/editor/actions/types'
 import type { DocumentFrame } from '@whiteboard/editor-scene'
-import type { EditField, EditSession } from '@whiteboard/editor/session/edit'
+import type { EditField, EditSession } from '@whiteboard/editor/schema/edit'
 import type {
   EditorCommand,
   EditorDispatchInput
-} from '@whiteboard/editor/state-engine/intents'
-import type { NodeTypeSupport } from '@whiteboard/editor/types/node'
+} from '@whiteboard/editor/state/intents'
+import type { NodeTypeSupport } from '@whiteboard/editor/node'
 import type { EditorWrite } from '@whiteboard/editor/write'
 
 const resolveNodeCommitValue = (input: {

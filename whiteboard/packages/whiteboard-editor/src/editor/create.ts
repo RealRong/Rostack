@@ -9,25 +9,25 @@ import {
 } from '@whiteboard/core/mutation'
 import type { Viewport } from '@whiteboard/core/types'
 import type { WhiteboardLayoutService } from '@whiteboard/core/layout'
-import { createEditorActionsApi } from '@whiteboard/editor/action'
+import { createEditorActionsApi } from '@whiteboard/editor/actions'
 import {
-  createEditorProjection,
+  createEditorSceneUi,
   createEditorSceneFacade
-} from '@whiteboard/editor/editor/projection'
+} from '@whiteboard/editor/scene-ui'
 import {
   createEditorStateStores,
   createEditorStateView
-} from '@whiteboard/editor/editor/ui/state'
+} from '@whiteboard/editor/scene-ui/state'
 import { createSnapRuntime } from '@whiteboard/editor/input/core/snap'
 import { createEditorInputHost } from '@whiteboard/editor/input/host'
 import { createProjectionRuntime } from '@whiteboard/editor-scene'
 import {
   DEFAULT_DRAW_STATE,
   type DrawState
-} from '@whiteboard/editor/session/draw/state'
-import { createEditorStateRuntime } from '@whiteboard/editor/state-engine/runtime'
-import type { EditorCommand } from '@whiteboard/editor/state-engine/intents'
-import type { EditorDispatchInput } from '@whiteboard/editor/state-engine/intents'
+} from '@whiteboard/editor/schema/draw-state'
+import { createEditorStateRuntime } from '@whiteboard/editor/state/runtime'
+import type { EditorCommand } from '@whiteboard/editor/state/intents'
+import type { EditorDispatchInput } from '@whiteboard/editor/state/intents'
 import {
   collectEditorCommitFlags,
   createBootstrapEditorDelta,
@@ -35,18 +35,18 @@ import {
   createEditorDeltaFromCommitFlags,
   mergeEditorDeltas,
   type EditorStateMutationDelta
-} from '@whiteboard/editor/state-engine/delta'
+} from '@whiteboard/editor/state/delta'
 import { createEditorTaskRuntime } from '@whiteboard/editor/tasks/runtime'
-import type { Editor } from '@whiteboard/editor/types/editor'
+import type { Editor } from '@whiteboard/editor/api/editor'
 import {
   DEFAULT_EDITOR_DEFAULTS,
   type EditorDefaults
-} from '@whiteboard/editor/types/defaults'
+} from '@whiteboard/editor/schema/defaults'
 import {
   createNodeTypeSupport,
   type NodeSpec
-} from '@whiteboard/editor/types/node'
-import type { Tool } from '@whiteboard/editor/types/tool'
+} from '@whiteboard/editor/node'
+import type { Tool } from '@whiteboard/editor/schema/tool'
 import { createEditorWrite } from '@whiteboard/editor/write'
 import type { IntentResult } from '@whiteboard/engine'
 import type {
@@ -72,7 +72,7 @@ const reconcileEditorAfterDocumentCommit = (input: {
     nodeIds: readonly string[]
     edgeIds: readonly string[]
   }
-  edit: import('@whiteboard/editor/session/edit').EditSession
+  edit: import('@whiteboard/editor/schema/edit').EditSession
   document: {
     node: (id: string) => unknown
     edge: (id: string) => unknown
@@ -194,7 +194,7 @@ export const createEditor = (input: {
     }
   })
 
-  const projection = createEditorProjection({
+  const projection = createEditorSceneUi({
     scene: sceneRuntime.scene,
     state: editorState,
     nodeType,

@@ -1,5 +1,5 @@
-import { createAutoPan } from '@whiteboard/editor/input/session/autoPan'
-import type { Editor } from '@whiteboard/editor/types/editor'
+import { createAutoPan } from '@whiteboard/editor/input/internals/autoPan'
+import type { Editor } from '@whiteboard/editor/api/editor'
 import type {
   InteractionBinding,
   InteractionRuntime,

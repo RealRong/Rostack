@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from 'vitest'
 import { edge as edgeApi } from '@whiteboard/core/edge'
 import type { Edge } from '@whiteboard/core/types'
-import { EMPTY_PREVIEW_STATE } from '../src/preview/state'
+import { EMPTY_PREVIEW_STATE } from '../src/state/preview'
 import { createEdgeMoveSession, stepEdgeMove, type EdgeMoveState } from '../src/input/features/edge/move'
-import type { PointerMoveInput } from '../src/types/input'
+import type { PointerMoveInput } from '../src/api/input'
 
 const createMovableEdge = (): Edge => ({
   id: 'edge-1',

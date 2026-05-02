@@ -7,13 +7,13 @@ import type { DocumentFrame } from '@whiteboard/editor-scene'
 import type {
   ClipboardActions,
   ClipboardTarget,
-} from '@whiteboard/editor/action/types'
-import type { EditorDispatchInput } from '@whiteboard/editor/state-engine/intents'
+} from '@whiteboard/editor/actions/types'
+import type { EditorDispatchInput } from '@whiteboard/editor/state/intents'
 import {
   createClipboardPacket,
   type ClipboardPacket
-} from '@whiteboard/editor/clipboard/packet'
-import type { SelectionActionHelpers } from '@whiteboard/editor/action/selection'
+} from '@whiteboard/editor/clipboard'
+import type { SelectionActionHelpers } from '@whiteboard/editor/actions/selection'
 import type { DocumentWrite } from '@whiteboard/editor/write/types'
 
 type ClipboardActionHelpersHost = {

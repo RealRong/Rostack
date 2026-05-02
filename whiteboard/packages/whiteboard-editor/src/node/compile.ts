@@ -17,11 +17,11 @@ import type {
   NodeSpec,
   NodeSpecEntry,
   NodeStyleFieldKey
-} from '@whiteboard/editor/types/node/spec'
+} from '@whiteboard/editor/node/spec'
 import type {
   NodeStyleFieldKind,
   NodeTypeCapability
-} from '@whiteboard/editor/types/node/read'
+} from '@whiteboard/editor/node/read'
 
 const EMPTY_CONTROLS: readonly NodeMeta['controls'][number][] = []
 const EMPTY_STYLE_FIELDS = Object.freeze({})

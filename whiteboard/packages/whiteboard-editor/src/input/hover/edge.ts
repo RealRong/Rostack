@@ -2,7 +2,7 @@ import { scheduler } from '@shared/core'
 import type { Point } from '@whiteboard/core/types'
 import type { SnapRuntime } from '@whiteboard/editor/input/core/snap'
 import type { EdgeGuidePreview } from '@whiteboard/editor-scene'
-import type { Tool } from '@whiteboard/editor/types/tool'
+import type { Tool } from '@whiteboard/editor/schema/tool'
 
 export type EdgeHoverService = {
   move: (world: Point) => void

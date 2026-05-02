@@ -1,8 +1,8 @@
 import {
   parseClipboardPacket,
   serializeClipboardPacket
-} from '@whiteboard/editor/clipboard/packet'
-import { createEditor } from '@whiteboard/editor/editor/createEditor'
+} from '@whiteboard/editor/clipboard'
+import { createEditor } from '@whiteboard/editor/editor/create'
 
 export const editor = {
   create: createEditor,
@@ -14,25 +14,25 @@ export const editor = {
 
 export type {
   DrawMode
-} from '@whiteboard/editor/session/draw/model'
+} from '@whiteboard/editor/schema/draw-mode'
 export type {
   DrawState
-} from '@whiteboard/editor/session/draw/state'
+} from '@whiteboard/editor/schema/draw-state'
 export type {
   ClipboardPacket
-} from '@whiteboard/editor/clipboard/packet'
+} from '@whiteboard/editor/clipboard'
 export type {
   EditCaret,
   EditField,
   EditSession
-} from '@whiteboard/editor/session/edit'
+} from '@whiteboard/editor/schema/edit'
 export type {
   Editor,
   EditorSceneFacade
-} from '@whiteboard/editor/types/editor'
+} from '@whiteboard/editor/api/editor'
 export type {
   ClipboardTarget
-} from '@whiteboard/editor/action/types'
+} from '@whiteboard/editor/actions/types'
 export type {
   ContextMenuInput,
   ContextMenuIntent,
@@ -44,13 +44,13 @@ export type {
   PointerSample,
   PointerUpInput,
   WheelInput
-} from '@whiteboard/editor/types/input'
+} from '@whiteboard/editor/api/input'
 export type {
   EditorPick
-} from '@whiteboard/editor/types/pick'
+} from '@whiteboard/editor/api/pick'
 export type {
   Tool
-} from '@whiteboard/editor/types/tool'
+} from '@whiteboard/editor/schema/tool'
 export type {
   ControlId,
   NodeFamily,
@@ -64,7 +64,7 @@ export type {
   NodeSpec,
   NodeSpecEntry,
   NodeSpecReader
-} from '@whiteboard/editor/types/node'
+} from '@whiteboard/editor/node'
 export type {
   LayoutBackend,
   LayoutBackendRequest,
@@ -76,4 +76,4 @@ export type {
   SelectionOverlay,
   SelectionToolbarContext,
   SelectionToolbarScope
-} from '@whiteboard/editor/types/selectionPresentation'
+} from '@whiteboard/editor/scene-ui/schema'

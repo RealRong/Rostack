@@ -5,8 +5,8 @@ import type {
 } from '@whiteboard/core/types'
 import type {
   DrawMode
-} from '@whiteboard/editor/session/draw/model'
-import type { EditField } from '@whiteboard/editor/session/edit'
+} from '@whiteboard/editor/schema/draw-mode'
+import type { EditField } from '@whiteboard/editor/schema/edit'
 
 export type SelectTool = {
   type: 'select'

@@ -1,10 +1,10 @@
 import type { NodeId } from '@whiteboard/core/types'
-import type { NodeTypeSupport } from '@whiteboard/editor/types/node'
+import type { NodeTypeSupport } from '@whiteboard/editor/node'
 import type { SelectionSummary } from '@whiteboard/core/selection'
 import type {
   SelectionNodeStats,
   SelectionNodeTypeInfo
-} from '@whiteboard/editor/types/selectionPresentation'
+} from '@whiteboard/editor/scene-ui/schema'
 
 export const createSelectionNodeStats = (input: {
   summary: SelectionSummary

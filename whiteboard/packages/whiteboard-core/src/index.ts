@@ -5,6 +5,7 @@ export { node } from '@whiteboard/core/node'
 export { edge } from '@whiteboard/core/edge'
 export { mindmap } from '@whiteboard/core/mindmap'
 export { selection } from '@whiteboard/core/selection'
+export { createWhiteboardQuery } from '@whiteboard/core/query'
 export * from '@whiteboard/core/layout'
 
 export type * from '@whiteboard/core/types'

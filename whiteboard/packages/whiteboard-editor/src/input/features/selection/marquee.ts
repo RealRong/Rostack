@@ -7,18 +7,18 @@ import { selection as selectionApi, type SelectionTarget } from '@whiteboard/cor
 import type { SelectionMode } from '@whiteboard/core/node'
 import {
   FINISH
-} from '@whiteboard/editor/input/session/result'
+} from '@whiteboard/editor/input/internals/result'
 import type {
   InteractionSession
 } from '@whiteboard/editor/input/core/types'
-import type { PointerDownInput } from '@whiteboard/editor/types/input'
-import { GestureTuning } from '@whiteboard/editor/input/session/tuning'
+import type { PointerDownInput } from '@whiteboard/editor/api/input'
+import { GestureTuning } from '@whiteboard/editor/input/internals/tuning'
 import {
   isPreviewEqual,
   setPreviewSelection
-} from '@whiteboard/editor/preview/state'
-import type { Editor } from '@whiteboard/editor/types/editor'
-import type { EditorCommand } from '@whiteboard/editor/state-engine/intents'
+} from '@whiteboard/editor/state/preview'
+import type { Editor } from '@whiteboard/editor/api/editor'
+import type { EditorCommand } from '@whiteboard/editor/state/intents'
 
 export type MarqueeMatch = 'touch' | 'contain'
 

@@ -9,10 +9,12 @@ import {
 } from '@shared/mutation/engine'
 import type {
   WhiteboardCompileIds,
-  WhiteboardCompileReader,
   WhiteboardCompileServices,
   WhiteboardMutationTable
 } from '@whiteboard/core/mutation'
+import type {
+  WhiteboardReader,
+} from '@whiteboard/core/query'
 import {
   isCheckpointProgram,
   whiteboardCompile,
@@ -117,7 +119,7 @@ export const createEngine = ({
     Document,
     WhiteboardMutationTable,
     Operation,
-    WhiteboardCompileReader,
+    WhiteboardReader,
     WhiteboardCompileServices,
     ResultCode,
     import('@shared/mutation').MutationWriter<typeof whiteboardMutationModel>,
@@ -125,7 +127,6 @@ export const createEngine = ({
   >({
     document,
     normalize: normalizeDocument,
-    createReader: whiteboardCompile.createReader,
     model: whiteboardMutationModel,
     services,
     compile: whiteboardCompile.handlers,

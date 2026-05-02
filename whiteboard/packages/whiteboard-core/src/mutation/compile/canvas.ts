@@ -76,7 +76,7 @@ export const compileCanvasDelete = (
       return
     }
 
-    if (ctx.reader.mindmap.isRoot(ref.id)) {
+    if (ctx.query.mindmap.isRoot(ref.id)) {
       emitMindmapDelete(ctx, mindmapId)
       return
     }
@@ -109,7 +109,7 @@ export const compileCanvasDuplicate = (
   }
 
   const nodeIds = refs.filter((ref) => ref.kind === 'node').map((ref) => ref.id)
-  if (nodeIds.some((nodeId) => ctx.reader.mindmap.byNode(nodeId))) {
+  if (nodeIds.some((nodeId) => ctx.query.mindmap.byNode(nodeId))) {
     return ctx.invalid('Mindmap duplication must use dedicated mindmap commands.')
   }
 

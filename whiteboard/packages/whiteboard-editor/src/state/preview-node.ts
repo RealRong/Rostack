@@ -9,11 +9,11 @@ import type {
   NodeTextPreviewState,
   TextPreviewEntry,
   TextPreviewPatch
-} from '@whiteboard/editor/preview/types'
+} from '@whiteboard/editor/state/preview-types'
 
 export const EMPTY_NODE_PATCHES: readonly NodePreviewEntry[] = []
-export const EMPTY_TEXT_PREVIEW_PATCHES: readonly TextPreviewEntry[] = []
-export const EMPTY_NODE_PRESENTATIONS: readonly NodePresentationEntry[] = []
+const EMPTY_TEXT_PREVIEW_PATCHES: readonly TextPreviewEntry[] = []
+const EMPTY_NODE_PRESENTATIONS: readonly NodePresentationEntry[] = []
 export const EMPTY_NODE_HIDDEN: readonly NodeId[] = []
 
 export const EMPTY_NODE_SELECTION_FEEDBACK: NodeSelectionPreviewState = {
@@ -24,7 +24,7 @@ const EMPTY_NODE_TEXT_FEEDBACK: NodeTextPreviewState = {
   patches: EMPTY_TEXT_PREVIEW_PATCHES
 }
 
-export const EMPTY_NODE_FEEDBACK: NodePreviewState = {
+const EMPTY_NODE_FEEDBACK: NodePreviewState = {
   text: EMPTY_NODE_TEXT_FEEDBACK,
   presentation: EMPTY_NODE_PRESENTATIONS
 }
@@ -199,19 +199,6 @@ export const updateNodeTextPreview = (
   )
 }
 
-export const clearNodeTextPreview = (
-  state: NodeTextPreviewState,
-  nodeId: NodeId
-): NodeTextPreviewState => {
-  if (!readTextPreviewEntry(state.patches, nodeId)) {
-    return state
-  }
-
-  return toNodeTextPreviewState(
-    replaceTextPreviewEntry(state.patches, nodeId, undefined)
-  )
-}
-
 export const clearNodeTextPreviewSize = (
   state: NodeTextPreviewState,
   nodeId: NodeId
@@ -242,15 +229,7 @@ export const clearNodeTextPreviewSize = (
   )
 }
 
-export const isNodeFeedbackStateEqual = (
-  left: NodePreviewState,
-  right: NodePreviewState
-) => (
-  left.text.patches === right.text.patches
-  && left.presentation === right.presentation
-)
-
-export const normalizeNodeFeedbackState = (
+const normalizeNodeFeedbackState = (
   state: NodePreviewState
 ): NodePreviewState => {
   const textPatches = state.text.patches.length > 0
@@ -278,7 +257,7 @@ export const normalizeNodeFeedbackState = (
   }
 }
 
-export const updateNodePresentation = (
+const updateNodePresentation = (
   state: NodePreviewState,
   nodeId: NodeId,
   presentation: NodePresentation | undefined
@@ -301,8 +280,3 @@ export const updateNodePresentation = (
     presentation: next
   })
 }
-
-export const clearNodePresentation = (
-  state: NodePreviewState,
-  nodeId: NodeId
-): NodePreviewState => updateNodePresentation(state, nodeId, undefined)

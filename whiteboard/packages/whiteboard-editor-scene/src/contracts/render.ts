@@ -15,7 +15,7 @@ import type {
 import type {
   EditCaret,
   EditField
-} from '@whiteboard/editor/protocol'
+} from '@whiteboard/editor/schema/edit'
 import type {
   DrawPreview,
   MindmapPreview,

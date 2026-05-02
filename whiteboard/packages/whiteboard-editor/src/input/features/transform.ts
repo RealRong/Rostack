@@ -6,17 +6,17 @@ import { node as nodeApi,
 } from '@whiteboard/core/node'
 import type { Node } from '@whiteboard/core/types'
 import type { InteractionBinding, InteractionSession } from '@whiteboard/editor/input/core/types'
-import { FINISH } from '@whiteboard/editor/input/session/result'
-import type { PointerDownInput } from '@whiteboard/editor/types/input'
+import { FINISH } from '@whiteboard/editor/input/internals/result'
+import type { PointerDownInput } from '@whiteboard/editor/api/input'
 import type { WhiteboardLayoutService } from '@whiteboard/core/layout'
-import type { Editor } from '@whiteboard/editor/types/editor'
-import type { EditorCommand } from '@whiteboard/editor/state-engine/intents'
+import type { Editor } from '@whiteboard/editor/api/editor'
+import type { EditorCommand } from '@whiteboard/editor/state/intents'
 import {
   isPreviewEqual,
   replacePreviewEdgeInteraction,
   replacePreviewNodeInteraction,
   setPreviewSelection
-} from '@whiteboard/editor/preview/state'
+} from '@whiteboard/editor/state/preview'
 
 export type TransformTarget = TransformSelectionMember<Node>
 export type RuntimeTransformSpec = TransformSpec<Node>

@@ -15,7 +15,7 @@ import type {
 import type { Revision } from '@shared/projection'
 import type {
   EditorStateDocument as EditorSnapshot
-} from '@whiteboard/editor/protocol'
+} from '@whiteboard/editor/state/document'
 import type {
   ChromeView,
   ChromeStateView,

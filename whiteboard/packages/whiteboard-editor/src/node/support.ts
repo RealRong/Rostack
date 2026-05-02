@@ -7,20 +7,20 @@ import type {
 import type {
   EditCapability,
   EditField
-} from '@whiteboard/editor/session/edit'
+} from '@whiteboard/editor/schema/edit'
 import type {
   ControlId,
   NodeMeta,
   NodeSpec,
   NodeStyleFieldKey
-} from '@whiteboard/editor/types/node/spec'
+} from '@whiteboard/editor/node/spec'
 import type {
   NodeStyleFieldKind,
   NodeTypeCapability,
   NodeTypeRead,
   NodeTypeSupport
-} from '@whiteboard/editor/types/node/read'
-import { compileNodeSpec } from '@whiteboard/editor/types/node/compile'
+} from '@whiteboard/editor/node/read'
+import { compileNodeSpec } from '@whiteboard/editor/node/compile'
 
 const EMPTY_CONTROLS: readonly ControlId[] = []
 const fieldKey = key.path()

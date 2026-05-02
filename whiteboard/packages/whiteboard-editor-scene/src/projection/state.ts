@@ -30,7 +30,7 @@ import type {
 } from '../contracts/editor'
 import type {
   EditorStateDocument as EditorSnapshot
-} from '@whiteboard/editor/protocol'
+} from '@whiteboard/editor/state/document'
 import type {
   EdgeActiveView,
   NodeRenderView

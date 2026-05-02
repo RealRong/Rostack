@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { createMindmapDragSession } from '../src/input/features/mindmap/drag'
-import { EMPTY_PREVIEW_STATE } from '../src/preview/state'
+import { EMPTY_PREVIEW_STATE } from '../src/state/preview'
 
 describe('mindmap preview state', () => {
   it('projects mindmap drag into overlay preview truth', () => {

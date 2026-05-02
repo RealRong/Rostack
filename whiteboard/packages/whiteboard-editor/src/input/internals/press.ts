@@ -1,15 +1,15 @@
 import { scheduler } from '@shared/core'
-import { GestureTuning } from '@whiteboard/editor/input/session/tuning'
+import { GestureTuning } from '@whiteboard/editor/input/internals/tuning'
 import {
   FINISH,
   replaceSession
-} from '@whiteboard/editor/input/session/result'
+} from '@whiteboard/editor/input/internals/result'
 import type { InteractionSession, InteractionSessionTransition } from '@whiteboard/editor/input/core/types'
 import type {
   PointerDownInput,
   PointerMoveInput,
   PointerUpInput
-} from '@whiteboard/editor/types/input'
+} from '@whiteboard/editor/api/input'
 
 const isDragStart = (
   start: PointerDownInput,

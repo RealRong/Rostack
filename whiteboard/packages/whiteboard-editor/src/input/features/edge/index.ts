@@ -1,4 +1,4 @@
-import { HANDLED } from '@whiteboard/editor/input/session/result'
+import { HANDLED } from '@whiteboard/editor/input/internals/result'
 import type { InteractionBinding } from '@whiteboard/editor/input/core/types'
 import { createEdgeConnectSession, tryStartEdgeConnect } from '@whiteboard/editor/input/features/edge/connect'
 import {
@@ -12,7 +12,7 @@ import {
   tryStartEdgeRoute
 } from '@whiteboard/editor/input/features/edge/route'
 import type { WhiteboardLayoutService } from '@whiteboard/core/layout'
-import type { Editor } from '@whiteboard/editor/types/editor'
+import type { Editor } from '@whiteboard/editor/api/editor'
 
 const selectEdge = (
   editor: Editor,

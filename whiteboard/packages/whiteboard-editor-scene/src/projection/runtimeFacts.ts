@@ -4,10 +4,14 @@ import type {
   NodeId
 } from '@whiteboard/core/types'
 import type {
-  EditorDelta,
-  EditorStateDocument as EditorSnapshot,
   EditSession
-} from '@whiteboard/editor/protocol'
+} from '@whiteboard/editor/schema/edit'
+import type {
+  EditorDelta
+} from '@whiteboard/editor/state/delta'
+import type {
+  EditorStateDocument as EditorSnapshot
+} from '@whiteboard/editor/state/document'
 import type {
   PreviewInput,
   SceneRuntimeFacts

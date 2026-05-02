@@ -29,7 +29,7 @@ import type {
   MindmapBranchLineKind,
   MindmapStrokeStyle
 } from '@whiteboard/core/mindmap'
-import type { NodeFamily } from '@whiteboard/editor/types/node'
+import type { NodeFamily } from '@whiteboard/editor/node'
 
 export type SelectionNodeTypeInfo = {
   key: string

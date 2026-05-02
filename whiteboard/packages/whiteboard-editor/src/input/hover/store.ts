@@ -1,7 +1,7 @@
 import type {
   HoverState
 } from '@whiteboard/editor-scene'
-import type { EditorPick } from '@whiteboard/editor/types/pick'
+import type { EditorPick } from '@whiteboard/editor/api/pick'
 
 export type { HoverState } from '@whiteboard/editor-scene'
 

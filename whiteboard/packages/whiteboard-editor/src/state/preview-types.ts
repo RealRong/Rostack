@@ -17,7 +17,7 @@ import type {
 import type { Size } from '@whiteboard/core/types'
 import type {
   DrawPreview
-} from '@whiteboard/editor/session/draw/state'
+} from '@whiteboard/editor/schema/draw-state'
 import type { MarqueeMatch } from '@whiteboard/editor/input/features/selection/marquee'
 
 export type NodePatch = Pick<

@@ -9,28 +9,28 @@ import type {
 import {
   type DrawState,
   type DrawStyle
-} from '@whiteboard/editor/session/draw/state'
+} from '@whiteboard/editor/schema/draw-state'
 import type {
   DrawPreview
-} from '@whiteboard/editor/session/draw/state'
+} from '@whiteboard/editor/schema/draw-state'
 import {
   readDrawStyle
-} from '@whiteboard/editor/session/draw/state'
+} from '@whiteboard/editor/schema/draw-state'
 import {
   type DrawBrush,
   hasDrawBrush
-} from '@whiteboard/editor/session/draw/model'
+} from '@whiteboard/editor/schema/draw-mode'
 import type { InteractionBinding, InteractionSession } from '@whiteboard/editor/input/core/types'
-import { FINISH } from '@whiteboard/editor/input/session/result'
-import type { PointerDownInput, PointerSample } from '@whiteboard/editor/types/input'
-import type { Tool } from '@whiteboard/editor/types/tool'
-import type { Editor } from '@whiteboard/editor/types/editor'
-import type { EditorCommand } from '@whiteboard/editor/state-engine/intents'
+import { FINISH } from '@whiteboard/editor/input/internals/result'
+import type { PointerDownInput, PointerSample } from '@whiteboard/editor/api/input'
+import type { Tool } from '@whiteboard/editor/schema/tool'
+import type { Editor } from '@whiteboard/editor/api/editor'
+import type { EditorCommand } from '@whiteboard/editor/state/intents'
 import {
   isPreviewEqual,
   replacePreviewNodeInteraction,
   setPreviewDraw
-} from '@whiteboard/editor/preview/state'
+} from '@whiteboard/editor/state/preview'
 
 const DRAW_MIN_LENGTH_SCREEN = 4
 const SAMPLE_DISTANCE_SCREEN = 1

@@ -10,11 +10,10 @@ import {
   createEdgeLabelPatch,
   readEdgeLabelUpdateFromPatch
 } from '@whiteboard/core/edge/update'
-import {
-  createDocumentReader,
-  type DocumentReader
-} from '@whiteboard/core/document/reader'
 import { mindmap as mindmapApi } from '@whiteboard/core/mindmap'
+import {
+  toMindmapTree,
+} from '@whiteboard/core/mindmap/tree'
 import type {
   CanvasItemRef,
   CanvasOrderAnchor,
@@ -417,16 +416,18 @@ export const writeEdgeRoute = (
 }
 
 const readMindmapLayoutRects = (
-  reader: DocumentReader,
+  document: Document,
   id: MindmapId
 ): ReturnType<typeof mindmapApi.layout.anchor>['node'] | undefined => {
-  const record = reader.mindmaps.get(id)
-  const tree = reader.mindmaps.tree(id)
+  const record = document.mindmaps[id]
+  const tree = record
+    ? toMindmapTree(record)
+    : undefined
   if (!record || !tree) {
     return undefined
   }
 
-  const root = reader.nodes.get(record.root)
+  const root = document.nodes[record.root]
   if (!root) {
     return undefined
   }
@@ -434,7 +435,7 @@ const readMindmapLayoutRects = (
   const computed = mindmapApi.layout.compute(
     tree,
     (nodeId) => {
-      const node = reader.nodes.get(nodeId)
+      const node = document.nodes[nodeId]
       return {
         width: Math.max(node?.size?.width ?? 1, 1),
         height: Math.max(node?.size?.height ?? 1, 1)
@@ -456,11 +457,11 @@ export const readMindmapLayoutChangedNodeIds = (input: {
   exclude?: Iterable<NodeId>
 }): readonly NodeId[] => {
   const beforeRects = readMindmapLayoutRects(
-    createDocumentReader(() => input.before),
+    input.before,
     input.id
   ) ?? {}
   const afterRects = readMindmapLayoutRects(
-    createDocumentReader(() => input.after),
+    input.after,
     input.id
   ) ?? {}
   const excluded = new Set(input.exclude ?? [])

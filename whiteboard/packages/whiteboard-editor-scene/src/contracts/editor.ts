@@ -58,15 +58,25 @@ import type {
 import { store } from '@shared/core'
 import type { WhiteboardMutationDelta } from '@whiteboard/engine/mutation'
 import type {
-  DrawState,
+  DrawState
+} from '@whiteboard/editor/schema/draw-state'
+import type {
   EditCaret,
   EditField,
-  EditSession,
-  EditorDelta,
-  EditorStateDocument as EditorSnapshot,
-  InteractionMode,
+  EditSession
+} from '@whiteboard/editor/schema/edit'
+import type {
+  EditorDelta
+} from '@whiteboard/editor/state/delta'
+import type {
+  EditorStateDocument as EditorSnapshot
+} from '@whiteboard/editor/state/document'
+import type {
+  InteractionMode
+} from '@whiteboard/editor/input/core/types'
+import type {
   Tool
-} from '@whiteboard/editor/protocol'
+} from '@whiteboard/editor/schema/tool'
 import type { Capture } from './capture'
 import type { IdDelta, SceneItemKey } from './delta'
 import type {

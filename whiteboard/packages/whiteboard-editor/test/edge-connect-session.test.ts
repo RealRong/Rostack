@@ -4,7 +4,7 @@ import type {
   EdgePatch
 } from '@whiteboard/core/types'
 import { createEdgeConnectSession } from '../src/input/features/edge/connect'
-import { EMPTY_PREVIEW_STATE } from '../src/preview/state'
+import { EMPTY_PREVIEW_STATE } from '../src/state/preview'
 
 const createInteractionDeps = () => {
   const reconnectCommit = vi.fn(() => ({ ok: true }))

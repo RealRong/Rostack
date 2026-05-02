@@ -5,8 +5,8 @@ import type {
   SelectionTarget
 } from '@whiteboard/core/selection'
 import type { Edge, EdgeId, MindmapId, NodeId, NodeModel } from '@whiteboard/core/types'
-import type { EditorDefaults } from '@whiteboard/editor/types/defaults'
-import type { EditSession } from '@whiteboard/editor/session/edit'
+import type { EditorDefaults } from '@whiteboard/editor/schema/defaults'
+import type { EditSession } from '@whiteboard/editor/schema/edit'
 import type {
   SelectionEdgeStats,
   SelectionMembers,
@@ -16,9 +16,9 @@ import type {
   SelectionToolbarLockState,
   SelectionToolbarNodeScope,
   SelectionToolbarScope
-} from '@whiteboard/editor/types/selectionPresentation'
-import type { Tool } from '@whiteboard/editor/types/tool'
-import type { NodeTypeSupport } from '@whiteboard/editor/types/node'
+} from '@whiteboard/editor/scene-ui/schema'
+import type { Tool } from '@whiteboard/editor/schema/tool'
+import type { NodeTypeSupport } from '@whiteboard/editor/node'
 import { readEdgeScope } from './selection-policy-edge'
 import { readNodeScope } from './selection-policy-node'
 

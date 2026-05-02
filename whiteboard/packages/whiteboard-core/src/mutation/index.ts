@@ -31,9 +31,9 @@ export type {
   ReplaceDocumentIntent,
   WhiteboardCompileCode,
   WhiteboardCompileContext,
+  WhiteboardCompileExpect,
   WhiteboardCompileHandlerTable,
   WhiteboardCompileIds,
-  WhiteboardCompileReader,
   WhiteboardCompileServices,
   WhiteboardIntent,
   WhiteboardIntentKind,
@@ -41,6 +41,10 @@ export type {
   WhiteboardIntentTable,
   WhiteboardMutationTable
 } from './compile'
+export type {
+  WhiteboardQuery,
+  WhiteboardReader,
+} from '@whiteboard/core/query'
 export type {
   LockDecision,
   LockDecisionReason,

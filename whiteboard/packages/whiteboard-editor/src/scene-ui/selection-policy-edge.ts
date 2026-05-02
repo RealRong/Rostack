@@ -1,7 +1,7 @@
 import type { Edge, EdgeId } from '@whiteboard/core/types'
 import { collection } from '@shared/core'
-import type { EditorDefaults } from '@whiteboard/editor/types/defaults'
-import type { SelectionToolbarEdgeScope } from '@whiteboard/editor/types/selectionPresentation'
+import type { EditorDefaults } from '@whiteboard/editor/schema/defaults'
+import type { SelectionToolbarEdgeScope } from '@whiteboard/editor/scene-ui/schema'
 
 export const readEdgeScope = ({
   edges,

@@ -531,7 +531,7 @@ export const edgeIntentHandlers: EdgeIntentHandlers = {
     })
   },
   'edge.label.insert': (ctx) => {
-    const edge = ctx.reader.edge.require(ctx.intent.edgeId)
+    const edge = ctx.expect.edge(ctx.intent.edgeId)
     if (!edge) {
       return
     }
@@ -556,7 +556,7 @@ export const edgeIntentHandlers: EdgeIntentHandlers = {
     })
   },
   'edge.label.update': (ctx) => {
-    const edge = ctx.reader.edge.require(ctx.intent.edgeId)
+    const edge = ctx.expect.edge(ctx.intent.edgeId)
     if (!edge) {
       return
     }
@@ -587,7 +587,7 @@ export const edgeIntentHandlers: EdgeIntentHandlers = {
     ctx.program.edge.labels(ctx.intent.edgeId).delete(ctx.intent.labelId)
   },
   'edge.route.insert': (ctx) => {
-    const edge = ctx.reader.edge.require(ctx.intent.edgeId)
+    const edge = ctx.expect.edge(ctx.intent.edgeId)
     if (!edge) {
       return
     }
@@ -605,7 +605,7 @@ export const edgeIntentHandlers: EdgeIntentHandlers = {
     })
   },
   'edge.route.update': (ctx) => {
-    const edge = ctx.reader.edge.require(ctx.intent.edgeId)
+    const edge = ctx.expect.edge(ctx.intent.edgeId)
     if (!edge) {
       return
     }
@@ -631,7 +631,7 @@ export const edgeIntentHandlers: EdgeIntentHandlers = {
     ctx.program.edge.route(edge.id).patch(point.id, fields)
   },
   'edge.route.set': (ctx) => {
-    const edge = ctx.reader.edge.require(ctx.intent.edgeId)
+    const edge = ctx.expect.edge(ctx.intent.edgeId)
     if (!edge) {
       return
     }
@@ -649,14 +649,14 @@ export const edgeIntentHandlers: EdgeIntentHandlers = {
     )
   },
   'edge.route.delete': (ctx) => {
-    const edge = ctx.reader.edge.require(ctx.intent.edgeId)
+    const edge = ctx.expect.edge(ctx.intent.edgeId)
     if (!edge) {
       return
     }
     return compileEdgeRouteDelete(edge, ctx.intent.pointId, ctx)
   },
   'edge.route.clear': (ctx) => {
-    const edge = ctx.reader.edge.require(ctx.intent.edgeId)
+    const edge = ctx.expect.edge(ctx.intent.edgeId)
     if (!edge) {
       return
     }

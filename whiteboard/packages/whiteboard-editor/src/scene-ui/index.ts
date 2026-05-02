@@ -2,21 +2,24 @@ import type {
   EditorScene,
   Capture
 } from '@whiteboard/editor-scene'
-import type { EditorProjection } from '@whiteboard/editor/editor/projection/types'
-import { createEditorChromeUi } from '@whiteboard/editor/editor/ui/chrome'
-import { createEditorMindmapUi } from '@whiteboard/editor/editor/ui/mindmap'
-import { createEditorSelectionUi } from '@whiteboard/editor/editor/ui/selection'
-import type { EditorState } from '@whiteboard/editor/types/editor'
-import type { EditorDefaults } from '@whiteboard/editor/types/defaults'
-import type { NodeTypeSupport } from '@whiteboard/editor/types/node'
-import type { EditorSceneFacade } from '@whiteboard/editor/types/editor'
+import { createEditorChromeUi } from '@whiteboard/editor/scene-ui/chrome'
+import { createEditorMindmapUi } from '@whiteboard/editor/scene-ui/mindmap'
+import { createEditorSelectionUi } from '@whiteboard/editor/scene-ui/selection'
+import type { EditorDefaults } from '@whiteboard/editor/schema/defaults'
+import type { NodeTypeSupport } from '@whiteboard/editor/node'
+import type { EditorSceneFacade } from '@whiteboard/editor/api/editor'
+import type { EditorSceneUi, EditorState } from '@whiteboard/editor/scene-ui/types'
 
-export const createEditorProjection = (input: {
+type EditorSceneUiProjection = EditorScene & {
+  ui: Omit<EditorSceneUi, 'state'>
+}
+
+export const createEditorSceneUi = (input: {
   scene: EditorScene
   state: EditorState
   nodeType: NodeTypeSupport
   defaults: EditorDefaults['selection']
-}): EditorProjection => {
+}): EditorSceneUiProjection => {
   const selection = createEditorSelectionUi({
     scene: input.scene,
     state: input.state,
@@ -46,7 +49,7 @@ export const createEditorProjection = (input: {
 }
 
 export const createEditorSceneFacade = (input: {
-  projection: EditorProjection
+  projection: EditorSceneUiProjection
   state: EditorState
   capture: () => Capture
 }): EditorSceneFacade => {

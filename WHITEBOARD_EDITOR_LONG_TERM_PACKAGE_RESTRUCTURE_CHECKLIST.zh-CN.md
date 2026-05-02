@@ -747,7 +747,208 @@ whiteboard-editor/src/
 
 ---
 
-## 12. 最终判断
+## 12. 已确认当前无使用方，可直接删的东西
+
+这一节不是架构判断，而是基于当前仓库全文搜索后的“直接证据”。
+
+判断口径：
+
+1. 搜索范围包含 `whiteboard-editor/src`
+2. 包含 `whiteboard-editor/test`
+3. 包含 `whiteboard-react/src`
+4. 只要没有任何真实引用，就归入“当前无使用方”
+
+注意：
+
+1. 这里说的“无使用方”是指当前仓库内无使用方。
+2. 如果某个符号是对外公共 API，是否保留还取决于你是否在乎包外调用。
+3. 但按本次目标“长期最优、不留兼容”，这些对外但无仓内使用的导出也应优先删除。
+
+## 12.1 整文件可删
+
+### 1. `src/protocol/index.ts`
+
+现状：
+
+1. 当前仓库内没有任何地方 import 这个文件。
+2. 它只是旧协议名义下的重导出壳。
+
+结论：
+
+1. 整文件可直接删除。
+
+### 2. `src/editor/projection/types.ts`
+
+现状：
+
+1. `EditorProjection` 只被 `src/editor/projection.ts` 自己使用。
+2. 没有第二个使用方。
+
+结论：
+
+1. 这个文件没有独立存在价值。
+2. 类型应直接内联到 `src/editor/projection.ts`，然后删除此文件。
+
+### 3. `src/input/interaction/mode.ts`
+
+现状：
+
+1. 只导出一个 `isEdgeInteractionMode(...)`
+2. 当前只有 `src/editor/ui/state.ts` 一处使用。
+
+结论：
+
+1. 直接内联到 `editor/ui/state.ts`
+2. 删掉整个文件
+
+## 12.2 `preview/node.ts` 中当前无使用方的导出
+
+经搜索确认，以下导出当前仓库内没有任何使用方：
+
+1. `clearNodeTextPreview`
+2. `isNodeFeedbackStateEqual`
+3. `clearNodePresentation`
+
+这几个可以直接删除。
+
+另外，以下导出当前只在文件内部自用，作为 `export` 没有意义：
+
+1. `EMPTY_NODE_FEEDBACK`
+2. `normalizeNodeFeedbackState`
+3. `updateNodePresentation`
+
+如果 `preview/node.ts` 暂时保留：
+
+1. 这些导出至少应降级为文件私有
+2. 不应该继续 `export`
+
+更进一步：
+
+1. `EMPTY_TEXT_PREVIEW_PATCHES`
+2. `EMPTY_NODE_PRESENTATIONS`
+
+这两个当前也没有跨文件使用方，只在本文件内部被消费；同样不应继续 `export`。
+
+## 12.3 `preview/edge.ts` 中当前无使用方的导出
+
+经搜索确认，以下导出当前仓库内没有任何使用方：
+
+1. `EMPTY_EDGE_FEEDBACK`
+2. `normalizeEdgeFeedbackState`
+
+这两个可以直接删除。
+
+保留中的必要导出只有：
+
+1. `EMPTY_EDGE_GUIDE`
+2. `isEdgeGuideEqual`
+
+`EMPTY_EDGE_FEEDBACK_ENTRIES` 目前仍被 `preview/selection.ts` 使用，但如果后续按文档删除整个 `preview/` 目录，它也会跟着消失，不需要长期保留为公共导出。
+
+## 12.4 `preview/selection.ts` 中当前无使用方的导出
+
+经搜索确认，以下导出当前仓库内没有任何使用方：
+
+1. `EMPTY_SELECTION_FEEDBACK`
+2. `isSelectionFeedbackStateEqual`
+3. `normalizeSelectionFeedbackState`
+
+这三个可以直接删除。
+
+当前真正仍被跨文件使用的只有：
+
+1. `EMPTY_GUIDES`
+
+这进一步说明 `preview/selection.ts` 已经退化成一个只剩常量出口的小文件，后续应直接并入 `state/preview.ts`。
+
+## 12.5 `types/node/index.ts` 中应停止导出的东西
+
+这里要分两层看：
+
+### 仓库内确认无使用方的重导出
+
+1. `CompiledNodeSpec`
+2. `compileNodeSpec`
+
+现状：
+
+1. 仓库内真实实现使用 `compileNodeSpec` 的地方是 `types/node/support.ts`
+2. 但它直接从 `types/node/compile.ts` import
+3. 没有任何地方通过 `types/node/index.ts` 使用这两个重导出
+
+结论：
+
+1. 至少应停止在 `types/node/index.ts` 对外重导出这两个符号
+2. 若后续 `node/compile.ts` 也不需要包外可见，则进一步转为内部文件
+
+### 当前更适合降级为内部 contract 的类型
+
+1. `NodeTypeRead`
+2. `NodeTypeCapability`
+3. `NodeStyleFieldKind`
+
+这些不是“完全无使用方”，但主要服务 `node` 子系统内部实现。
+
+结论：
+
+1. 它们不应继续挂在 `types/node/index.ts` 作为高层公共出口
+2. 后续应下沉到 `node/read.ts` 并按需缩小导出面
+
+## 12.6 结构上应删但仍有 1 处使用的壳文件
+
+这类文件不是“0 使用方”，但仍应该删除，因为使用关系过薄，直接内联即可。
+
+1. `src/input/interaction/mode.ts`
+   - 1 处使用
+   - 内联
+2. `src/editor/projection/types.ts`
+   - 1 处使用
+   - 内联
+3. `src/preview/selection.ts`
+   - 本质只剩 `EMPTY_GUIDES`
+   - 并入 `state/preview.ts`
+4. `src/preview/edge.ts`
+   - 除 `EMPTY_EDGE_GUIDE` / `isEdgeGuideEqual` 外，其余导出已失效
+   - 并入 `state/preview.ts`
+5. `src/preview/node.ts`
+   - 多个导出已无使用方
+   - 能内联的应全部内联进 `state/preview.ts`
+
+## 12.7 对下一轮重构的直接指导
+
+如果按删除优先级排序，建议先做：
+
+### 第一批：完全无风险删除
+
+1. 删除 `src/protocol/index.ts`
+2. 删除 `preview/node.ts` 的：
+   - `clearNodeTextPreview`
+   - `isNodeFeedbackStateEqual`
+   - `clearNodePresentation`
+3. 删除 `preview/edge.ts` 的：
+   - `EMPTY_EDGE_FEEDBACK`
+   - `normalizeEdgeFeedbackState`
+4. 删除 `preview/selection.ts` 的：
+   - `EMPTY_SELECTION_FEEDBACK`
+   - `isSelectionFeedbackStateEqual`
+   - `normalizeSelectionFeedbackState`
+
+### 第二批：内联后删除文件
+
+1. 内联 `src/input/interaction/mode.ts`
+2. 内联 `src/editor/projection/types.ts`
+
+### 第三批：连目录一起清
+
+1. `preview/*` 并入 `state/preview.ts`
+2. 删整个 `preview/`
+3. `clipboard/packet.ts` 改成根级 `clipboard.ts`
+4. 删整个 `clipboard/`
+5. `types/node/index.ts` 取消对 `compileNodeSpec` / `CompiledNodeSpec` 的重导出
+
+---
+
+## 13. 最终判断
 
 是的，`whiteboard-editor` 内部还有很多文件应该删除，很多类型应该删除或合并，目录和文件也应该整体移位。
 

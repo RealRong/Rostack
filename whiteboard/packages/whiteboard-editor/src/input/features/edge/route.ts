@@ -10,19 +10,19 @@ import type {
   EdgeRoutePointAnchor,
   Point
 } from '@whiteboard/core/types'
-import type { PointerDownInput } from '@whiteboard/editor/types/input'
+import type { PointerDownInput } from '@whiteboard/editor/api/input'
 import {
   CANCEL,
   FINISH
-} from '@whiteboard/editor/input/session/result'
+} from '@whiteboard/editor/input/internals/result'
 import type { InteractionSession } from '@whiteboard/editor/input/core/types'
-import { createPressDragSession } from '@whiteboard/editor/input/session/press'
-import type { Editor } from '@whiteboard/editor/types/editor'
-import type { EditorCommand } from '@whiteboard/editor/state-engine/intents'
+import { createPressDragSession } from '@whiteboard/editor/input/internals/press'
+import type { Editor } from '@whiteboard/editor/api/editor'
+import type { EditorCommand } from '@whiteboard/editor/state/intents'
 import {
   isPreviewEqual,
   replacePreviewEdgeInteraction
-} from '@whiteboard/editor/preview/state'
+} from '@whiteboard/editor/state/preview'
 
 export type EdgeRouteHandleState =
   | {

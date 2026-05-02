@@ -13,7 +13,7 @@ import {
 } from '@shared/mutation'
 import { engine as engineApi } from '@whiteboard/engine'
 import { editor as editorApi, type DrawState } from '@whiteboard/editor'
-import { compileNodeSpec } from '@whiteboard/editor/types/node'
+import { compileNodeSpec } from '@whiteboard/editor/node/compile'
 import type { IntentResult } from '@whiteboard/engine'
 import { product } from '@whiteboard/product'
 import type { ResolvedConfig } from '@whiteboard/react/types/common/config'

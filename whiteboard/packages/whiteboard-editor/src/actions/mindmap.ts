@@ -4,14 +4,14 @@ import type {
   MindmapNodeId,
   NodeId
 } from '@whiteboard/core/types'
-import type { EditController } from '@whiteboard/editor/action/edit'
-import type { MindmapActions } from '@whiteboard/editor/action/types'
+import type { EditController } from '@whiteboard/editor/actions/edit'
+import type { MindmapActions } from '@whiteboard/editor/actions/types'
 import { createMindmapActions as createMindmapWorkflowActions } from '@whiteboard/editor/tasks/mindmap'
 import type {
   EditorScene,
   PreviewInput
 } from '@whiteboard/editor-scene'
-import type { EditorDispatchInput } from '@whiteboard/editor/state-engine/intents'
+import type { EditorDispatchInput } from '@whiteboard/editor/state/intents'
 import type { EditorTaskRuntime } from '@whiteboard/editor/tasks/runtime'
 import type { DocumentFrame } from '@whiteboard/editor-scene'
 import type { EditorWrite } from '@whiteboard/editor/write'

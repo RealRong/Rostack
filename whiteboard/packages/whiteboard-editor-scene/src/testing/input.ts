@@ -3,9 +3,11 @@ import type {
   SceneUpdateInput
 } from '../contracts/editor'
 import type {
-  DrawState,
+  DrawState
+} from '@whiteboard/editor/schema/draw-state'
+import type {
   EditorDelta
-} from '@whiteboard/editor/protocol'
+} from '@whiteboard/editor/state/delta'
 import { createEmptyDocumentSnapshot } from '../projection/state'
 import {
   whiteboardMutationModel

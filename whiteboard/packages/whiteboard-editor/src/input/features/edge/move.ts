@@ -11,13 +11,13 @@ import type {
 import {
   CANCEL,
   FINISH
-} from '@whiteboard/editor/input/session/result'
-import type { Editor } from '@whiteboard/editor/types/editor'
-import type { EditorCommand } from '@whiteboard/editor/state-engine/intents'
+} from '@whiteboard/editor/input/internals/result'
+import type { Editor } from '@whiteboard/editor/api/editor'
+import type { EditorCommand } from '@whiteboard/editor/state/intents'
 import {
   isPreviewEqual,
   replacePreviewEdgeInteraction
-} from '@whiteboard/editor/preview/state'
+} from '@whiteboard/editor/state/preview'
 
 export type EdgeMoveState = {
   edgeId: EdgeId

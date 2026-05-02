@@ -1,10 +1,16 @@
 import { geometry as geometryApi } from '@whiteboard/core/geometry';
 import { store } from '@shared/core';
 import { isHoverStateEqual } from '@whiteboard/editor/input/hover/store';
-import { isEdgeInteractionMode } from '@whiteboard/editor/input/interaction/mode';
-import { isDrawEqual, isEditSessionEqual, isInteractionStateEqual, isPreviewEqual, isSelectionEqual, isToolEqual, isViewportEqual, type EditorInteractionStateValue, type EditorStateDocument } from '@whiteboard/editor/state-engine/document';
-import type { EditorStateRuntime } from '@whiteboard/editor/state-engine/runtime';
-import type { EditorState, ToolRead } from '@whiteboard/editor/types/editor';
+import { isDrawEqual, isEditSessionEqual, isInteractionStateEqual, isPreviewEqual, isSelectionEqual, isToolEqual, isViewportEqual, type EditorInteractionStateValue, type EditorStateDocument } from '@whiteboard/editor/state/document';
+import type { EditorStateRuntime } from '@whiteboard/editor/state/runtime';
+import type { EditorState, ToolRead } from '@whiteboard/editor/scene-ui/types';
+
+const isEdgeInteractionMode = (
+    mode: EditorInteractionStateValue['mode']
+): boolean => (mode === 'edge-drag'
+    || mode === 'edge-label'
+    || mode === 'edge-connect'
+    || mode === 'edge-route');
 export type EditorStateStores = {
     tool: store.ReadStore<EditorStateDocument['state']['tool']>;
     draw: store.ReadStore<EditorStateDocument['state']['draw']>;

@@ -6,7 +6,7 @@ import { createMindmapDragSession } from '../src/input/features/mindmap/drag'
 import { editor as editorApi } from '../src'
 import type { NodeSpec } from '../src'
 import { createEditorTestLayout } from './support'
-import { EMPTY_PREVIEW_STATE } from '../src/preview/state'
+import { EMPTY_PREVIEW_STATE } from '../src/state/preview'
 
 const nodes: NodeSpec = {
   text: {

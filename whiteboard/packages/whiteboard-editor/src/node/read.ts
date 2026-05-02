@@ -6,12 +6,12 @@ import type {
 import type {
   EditCapability,
   EditField
-} from '@whiteboard/editor/session/edit'
+} from '@whiteboard/editor/schema/edit'
 import type {
   ControlId,
   NodeMeta,
   NodeStyleFieldKey
-} from '@whiteboard/editor/types/node/spec'
+} from '@whiteboard/editor/node/spec'
 
 export type NodeStyleFieldKind = 'string' | 'number' | 'numberArray'
 

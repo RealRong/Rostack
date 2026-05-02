@@ -10,9 +10,9 @@
     "./mindmap": "./src/mindmap/index.ts",
     "./edge": "./src/edge/index.ts",
     "./mutation": "./src/mutation/index.ts",
+    "./query": "./src/query/index.ts",
     "./registry": "./src/registry/index.ts",
     "./document": "./src/document/index.ts",
-    "./document/reader": "./src/document/reader.ts",
     "./selection": "./src/selection/index.ts"
   },
   "files": [

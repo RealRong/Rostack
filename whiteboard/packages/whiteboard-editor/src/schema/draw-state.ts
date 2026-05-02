@@ -5,7 +5,7 @@ import {
   DRAW_SLOTS,
   type DrawBrush,
   type DrawSlot
-} from '@whiteboard/editor/session/draw/model'
+} from '@whiteboard/editor/schema/draw-mode'
 
 export const DEFAULT_DRAW_STATE: DrawState = {
   pen: {

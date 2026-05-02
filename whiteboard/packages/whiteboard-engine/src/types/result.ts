@@ -2,7 +2,7 @@ import type {
   MutationError,
   MutationFailure,
   MutationResult
-} from '@shared/mutation/engine'
+} from '@shared/mutation'
 import type { EngineApplyCommit } from './engineWrite'
 
 export type WhiteboardErrorCode = string

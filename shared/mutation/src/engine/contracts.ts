@@ -458,20 +458,10 @@ export type MutationCurrent<Doc> = {
   document: Doc
 }
 
-export type MutationOperationKind =
+export type MutationEntityChangeKind =
   | 'create'
   | 'patch'
   | 'delete'
-
-export type MutationEntityCanonicalOperation = {
-  type: string
-  id?: string
-  value?: unknown
-  patch?: MutationEntityPatch
-}
-
-export type MutationCanonicalOperation =
-  | MutationEntityCanonicalOperation
 
 export type CompiledMemberSpec = {
   name: string
@@ -660,7 +650,7 @@ export const readFamilyFromKey = (
 
 export const endsWithOperationKey = (
   key: string,
-  operation: MutationOperationKind
+  operation: MutationEntityChangeKind
 ): boolean => key.endsWith(`.${operation}`)
 
 export const readChangeEntries = (

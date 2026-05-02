@@ -119,6 +119,7 @@ const compileMutationIntents = <
   Context extends Record<string, unknown>,
   Output = unknown
 >(input: {
+  schema: MutationSchemaDefinition<Doc>
   document: Doc
   intents: readonly TIntent[]
   compile: MutationCompileDefinition<TIntent, Doc, Writer, Reader, Services, Code, Context, any>
@@ -126,8 +127,6 @@ const compileMutationIntents = <
   entities: ReadonlyMap<string, CompiledEntitySpec>
   ordered: ReadonlyMap<string, CompiledOrderedSpec<Doc>>
   tree: ReadonlyMap<string, CompiledTreeSpec<Doc>>
-  createReader: (readDocument: () => Doc) => Reader
-  createWriter: (program: MutationProgramWriter) => Writer
 }): CompiledIntentProgramResult<Doc, Output, Code> => {
   const appliedSteps: MutationProgramStep[] = []
   const inverseSteps: MutationProgramStep[] = []
@@ -191,9 +190,15 @@ const compileMutationIntents = <
         type: intent.type
       },
       document: workingDocument,
-      reader: input.createReader(() => workingDocument),
+      reader: createMutationReader(
+        input.schema,
+        () => workingDocument
+      ) as Reader,
       services: input.services,
-      writer: input.createWriter(baseProgram),
+      writer: createMutationWriter(
+        input.schema,
+        baseProgram
+      ) as Writer,
       delta: (nextDelta) => {
         pendingDelta = mergeMutationDeltas(
           pendingDelta,
@@ -363,13 +368,11 @@ class MutationRuntime<
     ApplyCommit<Doc, MutationFootprint, void, Delta>
   >
 
-  private readonly createReader: (readDocument: () => Doc) => Reader
-  private readonly createDelta: (delta: MutationDelta) => Delta
+  private readonly schema: MutationSchemaDefinition<Doc>
   private readonly normalize: (doc: Doc) => Doc
   private readonly entities: ReadonlyMap<string, CompiledEntitySpec>
   private readonly ordered: ReadonlyMap<string, CompiledOrderedSpec<Doc>>
   private readonly tree: ReadonlyMap<string, CompiledTreeSpec<Doc>>
-  private readonly createWriter: (program: MutationProgramWriter) => Writer
   private readonly services: Services | undefined
   private readonly compileDefinition?: MutationCompileDefinition<TIntent, Doc, Writer, Reader, Services, Code, Context, any>
   private readonly historyOptions?: MutationHistoryOptions | false
@@ -397,15 +400,7 @@ class MutationRuntime<
       tree: ReadonlyMap<string, CompiledTreeSpec<Doc>>
     }
 
-    this.createReader = ((readDocument: () => Doc) => createMutationReader(
-      input.schema,
-      readDocument
-    ) as Reader)
-    this.createWriter = ((program) => createMutationWriter(
-      input.schema,
-      program
-    ) as Writer)
-    this.createDelta = (delta) => createMutationDelta(input.schema, delta) as unknown as Delta
+    this.schema = input.schema
     this.normalize = input.normalize
     this.entities = compiledModel.entities
     this.ordered = compiledModel.ordered
@@ -451,7 +446,10 @@ class MutationRuntime<
   }
 
   reader(): Reader {
-    return this.createReader(() => this.documentState)
+    return createMutationReader(
+      this.schema,
+      () => this.documentState
+    ) as Reader
   }
 
   current(): MutationCurrent<Doc> {
@@ -490,9 +488,9 @@ class MutationRuntime<
       at: Date.now(),
       origin: options?.origin ?? 'system',
       document: nextDocument,
-      delta: this.createDelta(normalizeMutationDelta({
+      delta: createMutationDelta(this.schema, normalizeMutationDelta({
         reset: true
-      })),
+      })) as unknown as Delta,
       structural: EMPTY_OUTPUTS as readonly MutationStructuralFact[],
       issues: EMPTY_ISSUES,
       outputs: EMPTY_OUTPUTS
@@ -554,15 +552,14 @@ class MutationRuntime<
       Code,
       Context
     >({
+      schema: this.schema,
       document: this.documentState,
       intents,
       compile: this.compileDefinition,
       services: this.services,
       entities: this.entities,
       ordered: this.ordered,
-      tree: this.tree,
-      createReader: this.createReader,
-      createWriter: this.createWriter
+      tree: this.tree
     })
     const issues = (planned.issues ?? EMPTY_COMPILE_ISSUES).map(normalizeCompileIssue)
     const canApply = (
@@ -707,7 +704,7 @@ class MutationRuntime<
       authored: input.authored,
       applied: input.applied,
       inverse: input.inverse,
-      delta: this.createDelta(input.delta),
+      delta: createMutationDelta(this.schema, input.delta) as unknown as Delta,
       structural: input.structural,
       footprint: input.footprint,
       issues: input.issues,

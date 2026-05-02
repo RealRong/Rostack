@@ -1,4 +1,4 @@
-import type { MutationCompileControl, MutationResult } from '@shared/mutation/engine'
+import type { MutationCompileControl, MutationResult } from '@shared/mutation'
 import type {
   CanvasIntent,
   DocumentIntent,

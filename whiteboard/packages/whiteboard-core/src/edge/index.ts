@@ -274,7 +274,7 @@ export type {
   EdgeConnectEvaluation,
   EdgeConnectResult,
   EdgeConnectTarget,
-  EdgeCreateOperationResult,
+  CreateEdgeResult,
   EdgeHandle,
   EdgeNodeCanvasSnapshot,
   EdgePathEnd,

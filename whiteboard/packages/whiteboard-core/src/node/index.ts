@@ -368,7 +368,7 @@ export type {
   TransformCommit,
   TransformCommitUpdate,
   TransformDraft,
-  TransformOperationFamily,
+  TransformFamily,
   TransformModifiers,
   SelectionTransformHandlePlan,
   SelectionTransformMember,

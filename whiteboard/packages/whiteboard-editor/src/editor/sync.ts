@@ -1,6 +1,6 @@
 import { equal } from '@shared/core'
 import { createMutationDelta } from '@shared/mutation'
-import { mergeMutationDeltas } from '@shared/mutation/engine'
+import { mergeMutationDeltas } from '@shared/mutation'
 import {
   isCheckpointProgram,
   whiteboardMutationSchema

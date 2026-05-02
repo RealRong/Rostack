@@ -4,7 +4,7 @@ import type {
   MutationExecuteResult,
   MutationExecuteResultOfInput,
   MutationResult
-} from '@shared/mutation/engine'
+} from '@shared/mutation'
 import type {
   Intent as CoreIntent,
 } from '@dataview/core/types'

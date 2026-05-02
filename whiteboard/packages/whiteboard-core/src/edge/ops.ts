@@ -11,7 +11,7 @@ import type {
   Point
 } from '@whiteboard/core/types'
 import type {
-  EdgeCreateOperationResult,
+  CreateEdgeResult,
   InsertRoutePointResult
 } from '@whiteboard/core/types/edge'
 import { isManualEdgeRoute, isNodeEdgeEnd, isPointEdgeEnd } from '@whiteboard/core/edge/guards'
@@ -71,7 +71,7 @@ export const createEdgeOp = ({
   registries,
   createEdgeId,
   createEdgeRoutePointId
-}: CreateEdgeOpInput): EdgeCreateOperationResult => {
+}: CreateEdgeOpInput): CreateEdgeResult => {
   if (!payload.source || !payload.target) {
     return err('invalid', 'Missing edge ends.')
   }

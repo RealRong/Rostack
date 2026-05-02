@@ -4,7 +4,7 @@ import type {
 import type {
   MutationCompileControl,
   MutationCompileHandlerInput,
-} from '@shared/mutation/engine'
+} from '@shared/mutation'
 import type { WhiteboardLayoutService } from '@whiteboard/core/layout'
 import {
   whiteboardMutationSchema

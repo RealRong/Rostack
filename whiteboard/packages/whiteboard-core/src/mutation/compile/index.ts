@@ -2,7 +2,7 @@ import { canvasIntentHandlers } from '@whiteboard/core/mutation/compile/canvas'
 import { documentIntentHandlers } from '@whiteboard/core/mutation/compile/document'
 import { edgeIntentHandlers } from '@whiteboard/core/mutation/compile/edge'
 import { groupIntentHandlers } from '@whiteboard/core/mutation/compile/group'
-import type { MutationCompileDefinition } from '@shared/mutation/engine'
+import type { MutationCompileDefinition } from '@shared/mutation'
 import type { MutationWriter } from '@shared/mutation'
 import type {
   WhiteboardCompileCode,

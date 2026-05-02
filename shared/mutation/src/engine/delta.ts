@@ -34,7 +34,7 @@ import {
 } from './footprint'
 import type {
   MutationFootprint,
-  MutationOperationKind
+  MutationEntityChangeKind
 } from './contracts'
 
 const addIdsToChange = (
@@ -474,7 +474,7 @@ const createDeltaChangeForRule = (
 
 const createLifecycleDelta = (
   spec: CompiledEntitySpec,
-  kind: MutationOperationKind,
+  kind: MutationEntityChangeKind,
   id: string | undefined
 ): MutationDeltaInput | undefined => {
   if (kind === 'patch') {
@@ -499,7 +499,7 @@ const createLifecycleDelta = (
 
 export const buildEntityDelta = (
   spec: CompiledEntitySpec,
-  kind: MutationOperationKind,
+  kind: MutationEntityChangeKind,
   id: string | undefined,
   changedPaths: readonly string[]
 ): MutationDelta => {

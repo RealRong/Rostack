@@ -4,7 +4,7 @@ import type {
   ApplyCommit,
   MutationCommitRecord,
   MutationReplaceCommit,
-} from '@shared/mutation/write'
+} from '@shared/mutation'
 import { createMutationCollabSession } from '../src'
 import { createHistoryPort } from '../../mutation/src/localHistory'
 

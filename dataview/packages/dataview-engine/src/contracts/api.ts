@@ -25,13 +25,13 @@ import type {
 import type {
   MutationOptions,
   MutationResult
-} from '@shared/mutation/engine'
+} from '@shared/mutation'
 import type {
   MutationProgram
 } from '@shared/mutation'
 import type {
   MutationReplaceCommit
-} from '@shared/mutation/write'
+} from '@shared/mutation'
 import type {
   ActiveViewApi
 } from '@dataview/engine/contracts/view'

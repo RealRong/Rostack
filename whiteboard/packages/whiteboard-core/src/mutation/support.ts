@@ -2,7 +2,7 @@ import type {
   MutationOrderedAnchor,
   MutationTreeSnapshot,
   MutationTreeSubtreeSnapshot
-} from '@shared/mutation/engine'
+} from '@shared/mutation'
 import {
   draft
 } from '@shared/draft'

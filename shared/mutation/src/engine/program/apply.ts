@@ -5,6 +5,7 @@ import type {
   MutationStructuralFact,
 } from '../../write'
 import {
+  COMPILE_APPLY_FAILED_CODE,
   EMPTY_DELTA,
   EMPTY_ISSUES,
   EMPTY_OUTPUTS,
@@ -12,6 +13,7 @@ import {
   type CompiledTreeSpec,
   type CompiledEntitySpec,
   type MutationApplyResult,
+  mutationFailure,
 } from '../contracts'
 import {
   buildEntityDelta,
@@ -22,7 +24,6 @@ import {
   appendTableCreateWrites,
   appendTableDeleteWrites,
   compileEntityPatchWrites,
-  invalidCanonicalOperation,
   prefixRecordWrites,
   readChangedPathsFromWrites,
   readEntityAtPath,
@@ -631,6 +632,11 @@ export const applyMutationProgram = <
       }
     }
   } catch (error) {
-    return invalidCanonicalOperation(error)
+    return mutationFailure(
+      COMPILE_APPLY_FAILED_CODE as Code,
+      error instanceof Error
+        ? error.message
+        : 'MutationEngine.apply received an invalid program step.'
+    )
   }
 }

@@ -1,4 +1,4 @@
-import type { EdgeInput, SpatialNodeInput } from '@whiteboard/core/types/operations'
+import type { EdgeInput, SpatialNodeInput } from '@whiteboard/core/types/writes'
 import type {
   MindmapBranchStyle,
   MindmapLayoutSpec

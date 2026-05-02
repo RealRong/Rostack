@@ -1,5 +1,5 @@
 export * from '@whiteboard/core/types/model'
-export * from '@whiteboard/core/types/operations'
+export * from '@whiteboard/core/types/writes'
 export * from '@whiteboard/core/types/result'
 export * from '@whiteboard/core/types/registry'
 export * from '@whiteboard/core/types/document'

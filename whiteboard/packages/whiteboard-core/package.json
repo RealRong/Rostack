@@ -24,8 +24,7 @@
     "@shared/delta": "workspace:*",
     "@shared/draft": "workspace:*",
     "@shared/mutation": "workspace:*",
-    "@shared/trace": "workspace:*",
-    "@shared/reducer": "workspace:*"
+    "@shared/trace": "workspace:*"
   },
   "scripts": {
     "build": "tsdown --config tsdown.config.ts",

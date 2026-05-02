@@ -14,7 +14,7 @@ import {
 import type {
   MutationCurrent,
   MutationIntent
-} from '@shared/mutation/engine'
+} from '@shared/mutation'
 
 type ItemId = `item_${number}`
 

@@ -4,15 +4,10 @@
   "version": "0.0.0",
   "type": "module",
   "exports": {
-    ".": "./src/index.ts",
-    "./engine": "./src/engine/index.ts",
-    "./write": "./src/write.ts",
-    "./localHistory": "./src/localHistory.ts",
-    "./history": "./src/history.ts"
+    ".": "./src/index.ts"
   },
   "dependencies": {
-    "@shared/core": "workspace:*",
-    "@shared/reducer": "workspace:*"
+    "@shared/core": "workspace:*"
   },
   "scripts": {
     "build": "tsdown --config tsdown.config.ts",

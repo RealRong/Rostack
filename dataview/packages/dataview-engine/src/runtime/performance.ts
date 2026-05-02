@@ -7,7 +7,7 @@ import {
 } from '@shared/mutation'
 import type {
   CommitRecord
-} from '@shared/mutation/write'
+} from '@shared/mutation'
 import {
   dataviewMutationSchema,
   type DataviewMutationDelta

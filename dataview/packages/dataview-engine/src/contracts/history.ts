@@ -4,7 +4,7 @@ import type {
 } from '@shared/mutation'
 import type {
   MutationResult
-} from '@shared/mutation/engine'
+} from '@shared/mutation'
 import type {
   EngineApplyCommit
 } from './write'

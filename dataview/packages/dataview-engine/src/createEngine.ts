@@ -21,7 +21,7 @@ import {
 } from '@shared/mutation'
 import type {
   MutationOptions
-} from '@shared/mutation/engine'
+} from '@shared/mutation'
 import { createActiveViewApi } from '@dataview/engine/active/api/active'
 import { createFieldsApi } from '@dataview/engine/api/fields'
 import { createRecordsApi } from '@dataview/engine/api/records'

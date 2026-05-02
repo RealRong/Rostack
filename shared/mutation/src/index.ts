@@ -8,27 +8,69 @@ export type {
   MutationEntityRef,
   MutationProgram,
   MutationProgramStep,
-  MutationProgramWriter,
-  MutationCompileDefinition,
   MutationOrderedProgramStep,
+  MutationTreeProgramStep,
+} from './engine/program/program'
+export type {
+  MutationProgramWriter
+} from './engine/program/writer'
+export type {
+  CompiledEntitySpec,
+  CompiledOrderedSpec,
+  CompiledTreeSpec,
+  MutationApplyResult,
+  MutationCompileControl,
+  MutationCompileDefinition,
+  MutationCompileHandler,
+  MutationCompileHandlerInput,
   MutationCompileHandlerTable,
   MutationCompileHandlerContext,
+  MutationCompileInput,
+  MutationCompileIssue,
   MutationEntitySpec,
-  MutationOrderedAnchor,
-  MutationOrderedSlot,
+  MutationCompileSource,
   MutationCompileReaderTools,
-  MutationStructuralFact,
-  MutationTreeProgramStep,
-  MutationTreeNodeSnapshot,
-  MutationTreeSnapshot,
-  MutationTreeSubtreeSnapshot,
-} from './engine'
+  MutationCurrent,
+  MutationEngineOptions,
+  MutationError,
+  MutationExecuteInput,
+  MutationExecuteResult,
+  MutationExecuteResultOfInput,
+  MutationFailure,
+  MutationHistoryOptions,
+  MutationIntent,
+  MutationOptions,
+  MutationResult,
+} from './engine/contracts'
 export {
   isMutationProgramStep,
-  createMutationProgramWriter,
-  normalizeMutationDelta,
+} from './engine/program/program'
+export {
+  createMutationProgramWriter
+} from './engine/program/writer'
+export {
+  APPLY_EMPTY_CODE,
+  COMPILE_APPLY_FAILED_CODE,
+  COMPILE_BLOCKED_CODE,
+  COMPILE_EMPTY_CODE,
+  EMPTY_COMPILE_ISSUES,
+  EMPTY_DELTA,
+  EMPTY_ISSUES,
+  EMPTY_OUTPUTS,
+  EXECUTE_EMPTY_CODE,
+  hasCompileErrors,
+  isCompileControl,
+  mutationFailure,
+  mutationSuccess,
+  normalizeCompileIssue,
+} from './engine/contracts'
+export {
+  mergeMutationDeltas,
+  normalizeMutationDelta
+} from './engine/delta'
+export {
   MutationEngine
-} from './engine'
+} from './engine/runtime'
 export type {
   HistoryPort,
 } from './localHistory'
@@ -73,10 +115,17 @@ export type {
   MutationDelta,
   MutationDeltaInput,
   MutationFootprint,
+  MutationIssue,
+  MutationOrderedAnchor,
+  MutationOrderedSlot,
   MutationOrigin,
   Origin,
   MutationReplaceCommit,
   MutationReplaceResult,
+  MutationStructuralFact,
+  MutationTreeNodeSnapshot,
+  MutationTreeSnapshot,
+  MutationTreeSubtreeSnapshot,
 } from './write'
 export {
   assertMutationFootprint,

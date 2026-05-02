@@ -1,413 +1,478 @@
 # Whiteboard Editor Transient State 长期最优 API 设计与重构方案
 
-## 1. 目标与结论
+## 1. 范围与结论
 
-本文只讨论 `whiteboard/packages/whiteboard-editor` 中 **本地 transient state** 的长期最优架构，不讨论 document / engine 写路径。
+本文讨论 `whiteboard/packages/whiteboard-editor` 的 **顶层 Editor 设计** 与 **本地 transient state API** 的长期最优方案。
 
-结论：
+这里的“长期最优”有两个前提：
 
-- `editor transient state` 不再保留 `intent system`
-- 不再保留 `compileHandlers`
-- 不再保留 `dispatch -> applyCommand -> engine.execute(commands)` 这条本地状态写链
-- 统一改为 `local state store + local writer + semantic facade`
-- document / engine 侧仍然保留 `intent -> compile -> writer`
+- 不考虑兼容成本
+- 目标不是做最小改造，而是让顶层 API、职责边界、调用路径长期自洽
 
-这里的核心判断不是“是否使用 writer”，而是“本地 transient state 是否值得继续维护一套 command / intent 编译系统”。
+结论先给出：
 
-长期最优答案是否定的。
+- 顶层 `Editor` 不应推倒重来，而应保留当前已经成立的几条主轴：
+  - `scene`
+  - `document`
+  - `input`
+  - `actions`
+  - `write`
+  - `viewport`
+  - `runtime`
+- 真正需要重做的是 `state` 这条轴，以及 `actions` 与 transient state 的关系
+- document semantic write 继续保留 `write -> engine.execute(intent)` 路线
+- transient state 不再保留 `intent system`
+- transient state 不再保留 `dispatch`
+- transient state 改为 `state.read() / state.write()` 为唯一底层通道
+- transient 语义入口不单独上升为新的顶层 `session / hover / preview`，而应并入 `actions.session`，保持当前 `actions` 作为 policy facade 的地位
 
-transient state 的本质是：
+一句话总结：
 
-- editor session state
-- hover state
-- preview state
-- 交互过程中只在本地存在、不会成为持久文档协议的一类状态
+**长期最优方案不是把 Editor 改成“document + session + hover + preview”这种全新形态，而是保留现有 `actions/write/input/scene` 的大骨架，把 transient state 从 “command engine” 改成 “local store”，再把 transient policy 收口到 `actions.session`。**
 
-这类状态需要的是：
+## 2. 当前顶层 Editor 的真实结构
 
-- 高频更新下的直接写入
-- 明确的局部 API
-- 尽量少的抽象层
-- 易于维护和推导的状态边界
+当前顶层 `Editor` 并不是一个杂糅对象，而是已经形成了清晰但尚未彻底收束的分层。
 
-而不是一套与 engine 写路径相似、但语义上并不等价的小型 mutation command system。
+现状可以概括为：
 
-## 2. 当前问题
+```ts
+type Editor = {
+  scene: EditorSceneFacade
+  document: DocumentFrame
+  input: EditorInputHost
+  actions: EditorActions
+  write: EditorWrite
+  state: Pick<EditorStateRuntime, 'snapshot' | 'reader' | 'write' | 'commits'>
+  viewport: EditorViewport
+  read: () => EditorStateDocument
+  runtime: EditorRuntime
+  dispatch: (...)
+  dispose: () => void
+}
+```
 
-当前 transient state 实际同时存在三套表达：
+这个结构本身有相当多合理之处。
+
+### 2.1 `scene`
+
+`scene` 是投影后的可读空间与 UI query facade。
+
+它负责：
+
+- 几何读
+- 命中测试
+- selection summary
+- chrome / background / mindmap UI 读
+- scene capture
+
+这条轴线是正确的，不应和 transient write 混在一起。
+
+### 2.2 `document`
+
+`document` 是面向编辑器层的 document read frame。
+
+它负责：
+
+- node / edge / slice 等 document 读
+- 作为 actions / input / projection 的读依赖
+
+这条轴线也正确，不应被 transient state facade 替代。
+
+### 2.3 `input`
+
+`input` 是输入宿主与交互 runtime。
+
+它负责：
+
+- pointer / wheel / keyboard / blur
+- context menu intent
+- 当前交互 session 驱动
+
+这条轴线本质是 runtime host，不应承载 editor state API 语义。
+
+### 2.4 `write`
+
+`write` 是 document semantic write facade。
+
+它负责：
+
+- `document`
+- `canvas`
+- `node`
+- `group`
+- `edge`
+- `mindmap`
+- `history`
+
+这些入口最终落到 `engine.execute(intent)`。
+
+它的本质不是通用 mutation writer，而是 **document semantic write 层**。
+
+### 2.5 `actions`
+
+`actions` 是 policy facade。
+
+这一点非常关键。
+
+当前 `actions` 不只是 `write` 的别名，而是在做：
+
+- tool 切换 policy
+- selection policy
+- edit 流程
+- clipboard policy
+- mindmap 交互组合
+- viewport UX 封装
+- draw 配置封装
+
+也就是说，`actions` 已经天然承担了“顶层编辑器语义 API”的角色。
+
+这是现有设计里最值得保留的一层。
+
+### 2.6 `state`
+
+`state` 当前暴露的是：
+
+- `snapshot`
+- `reader`
+- `write`
+- `commits`
+
+它已经隐约是 local state store，但内部仍然使用：
+
+- `EditorStateIntent`
+- `dispatch`
+- `applyCommand`
+- `compileHandlers`
+
+这就是当前最不自洽的点。
+
+### 2.7 `dispatch`
+
+`dispatch` 是当前 transient state command API。
+
+但它与 `state.write` 并存，已经构成双轨：
+
+- 一部分调用走 `dispatch`
+- 一部分高频逻辑直接走 `state.write`
+
+这说明 `dispatch` 已经不是必要骨架，而是在延续旧模型。
+
+## 3. 当前系统真正成立的边界
+
+在重写 API 设计之前，必须先承认当前系统里已经成立的边界。
+
+### 3.1 `actions` 与 `write` 的关系
+
+当前最有价值的结构不是 `dispatch`，而是：
+
+- `actions` 负责 policy / orchestration
+- `write` 负责 document semantic write
+
+这两个层次不应被打散。
+
+长期最优方案必须保留：
+
+- `write` 是稳定的底层 document write
+- `actions` 是稳定的上层用户语义 API
+
+### 3.2 `scene` 与 `document` 是读轴，不是写轴
+
+当前 `scene` / `document` 主要承担读职责。
+
+长期最优方案中，不应把 transient state API 改造成和它们平级的新“读写混合大对象”。
+
+### 3.3 `input` 是 host，不是业务 facade
+
+输入 runtime 可以读 scene / state / actions，但不应成为 transient API 的长期宿主。
+
+### 3.4 transient state 只应影响本地投影与交互
+
+transient state 的影响范围应严格限定在：
+
+- 编辑器会话状态
+- 交互状态
+- hover / guide
+- preview draft
+- scene projection / UI rendering
+
+它不应再伪装成 document command pipeline。
+
+## 4. 问题诊断：当前 transient state 为什么不是长期最优
+
+### 4.1 它在模仿 engine，但没有 engine 的语义收益
+
+document engine 之所以需要：
+
+- intent
+- compile
+- writer
+
+是因为它要处理：
+
+- semantic write
+- layout
+- lock
+- history
+- collab
+- replay
+
+而 transient state 并不需要这些。
+
+它当前的 intent 多数只是：
+
+- `tool.set`
+- `selection.set`
+- `edit.set`
+- `hover.set`
+- `preview.reset`
+
+这些本质只是 local state mutation。
+
+### 4.2 同一状态变化被描述了三次
+
+当前 transient state 同时由以下三层描述：
 
 1. `EditorStateIntent`
 2. `applyCommand`
 3. `compileHandlers`
 
-这三者描述的是同一件事：本地 editor state 如何变化。
+这是典型的过度建模。
 
-这会带来几个长期问题。
+### 4.3 代码已经说明 writer 才是实际主路径
 
-### 2.1 抽象层次错位
+高频逻辑，尤其是 input / transform / hover / sync，已经大量直接使用：
 
-当前 `EditorStateIntent` 多数只是：
+- `state.write(({ writer, snapshot }) => ...)`
 
-- `tool.set`
-- `selection.set`
-- `hover.set`
-- `preview.node.set`
-- `preview.reset`
+这说明系统已经自然偏向 store writer 模型，只是 API 设计还没承认这件事。
 
-这些并不是高层领域命令，只是本地状态写入动作。
+### 4.4 顶层 API 发生了错位
 
-也就是说，它们没有像 engine intent 那样承载真正的“语义编译”职责。
+现在最不合理的不是 transient state 本身，而是顶层语义入口被拆成：
 
-### 2.2 同一逻辑被实现多次
+- `actions.*`
+- `dispatch(...)`
+- `state.write(...)`
 
-同一份本地状态变更同时出现在：
+调用方需要自己判断：
 
-- command 定义
-- staged state 推导
-- compile 到 writer patch
+- 这是一个 action 吗
+- 这是一个 transient command 吗
+- 还是直接写 state
 
-结果是：
+长期来看，这会持续放大认知成本。
 
-- 维护成本高
-- 容易漂移
-- API 看起来比实际需求更复杂
+## 5. 长期最优的顶层 Editor 设计
 
-### 2.3 dispatch 与 writer 双轨并存
+长期最优设计应保留现有大骨架，但重新定义每条轴线的职责。
 
-当前很多高频 transient 更新已经直接使用 `state.write(({ writer }) => ...)`。
-
-这说明输入系统已经自然地偏向 writer 模式，而不是 intent 模式。
-
-继续保留完整 intent system，只会使架构边界越来越模糊：
-
-- 一部分 transient 走 dispatch
-- 一部分 transient 走 writer
-- 维护者需要不断判断“这里到底该不该发 intent”
-
-### 2.4 概念污染
-
-当前系统里 `intent`、`mutation`、`writer` 这些术语在 engine 层和 editor transient 层都存在，但承担的职责完全不同。
-
-这会造成长期认知负担：
-
-- engine intent 是 document semantic intent
-- editor intent 只是 local state setter command
-
-两者同名但不同义，不利于后续系统继续演化。
-
-## 3. 长期最优架构原则
-
-长期最优架构应满足以下原则。
-
-### 3.1 document 与 transient 必须严格分层
-
-必须明确区分两类写路径：
-
-- document write
-- editor transient write
-
-document write：
-
-- 保留 semantic intent
-- 进入 engine compile
-- 统一处理 layout / lock / history / collab / replay
-
-transient write：
-
-- 不走 intent system
-- 不走 compile pipeline
-- 直接写 local state store
-
-### 3.2 transient state 只保留一套真实写模型
-
-对于本地状态，“状态如何变化”只能在一个地方描述。
-
-长期最优实现中，这个地方就是：
-
-- local writer
-
-而不是：
-
-- command 定义一遍
-- reducer / applyCommand 定义一遍
-- compileHandlers 再定义一遍
-
-### 3.3 facade 与 writer 分层
-
-长期最优并不意味着“所有地方都裸写 schema patch”。
-
-需要保留两层：
-
-- semantic facade
-- local writer
-
-其中：
-
-- facade 负责对外语义 API 与 policy 组合
-- writer 负责 editor-local 状态落地
-
-这能避免两个极端：
-
-- 过度抽象成 intent engine
-- 过度裸露成全局到处 patch
-
-### 3.4 按生命周期而不是按技术实现组织 state
-
-transient state 的组织方式应该围绕生命周期与更新频率，而不是围绕“是否能塞进一个 mutation engine”。
-
-最合理的划分是：
-
-- session store
-- hover store
-- preview store
-
-## 4. 目标架构总览
-
-长期最优结构如下：
-
-```text
-editor
-  ├─ document writes
-  │    └─ engine.execute(intent)
-  │
-  └─ transient writes
-       ├─ session facade
-       ├─ hover facade
-       ├─ preview facade
-       └─ local state stores
-            └─ write(writer)
-```
-
-其中最重要的边界是：
-
-- `engine.execute(intent)` 只服务 document state
-- `editor.state.write(writer)` 只服务 transient state
-
-两者不共享 intent 协议。
-
-## 5. 目标 API 设计
-
-### 5.1 顶层 API 原则
-
-目标 API 应满足以下要求：
-
-- 对调用方清晰区分 document 与 transient
-- 不暴露不必要的 schema 细节
-- 高频更新可直接进入 writer
-- 语义较强的编辑器操作通过 facade 组织
-
-### 5.2 顶层 Editor API 形态
-
-建议目标形态：
+目标形态如下：
 
 ```ts
-interface Editor {
-  document: EditorDocumentFacade
-  session: EditorSessionFacade
-  hover: EditorHoverFacade
-  preview: EditorPreviewFacade
-  state: EditorLocalStateFacade
+type Editor = {
+  scene: EditorSceneFacade
+  document: DocumentFrame
+  input: EditorInputHost
+  actions: EditorActions
+  write: EditorWrite
+  state: EditorStateStoreFacade
+  viewport: EditorViewport
+  runtime: EditorRuntime
+  dispose: () => void
 }
 ```
 
-其中：
+关键变化只有两点：
 
-- `document` 对应持久文档读写
-- `session / hover / preview` 对应 transient semantic facade
-- `state` 是底层 local store 访问入口
+- 删除 `dispatch`
+- 删除 `read: () => EditorStateDocument`
 
-### 5.3 document facade
+并把它们的职责吸收到新的 `state` 中。
 
-document facade 不在本文重构范围内，但边界需要明确：
+### 5.1 为什么不推翻 `actions`
+
+因为 `actions` 已经是当前系统最接近“最终用户语义 API”的层。
+
+长期最优方案不应该削弱 `actions`，而应该强化它：
+
+- 它继续做顶层语义 facade
+- 它负责 orchestration 与 policy
+- 它既能驱动 document write，也能驱动 transient state write
+
+### 5.2 为什么不把 `session / hover / preview` 升成顶层字段
+
+从局部看，这样似乎更直接。
+
+但从现有架构看，这会带来新问题：
+
+- 顶层 API 过度膨胀
+- `actions` 的 policy facade 角色被削弱
+- 用户很难理解什么时候调用 `actions.tool.set`，什么时候调用 `editor.session.tool.set`
+- input / UI / product policy 会被分散到多个平级对象
+
+因此长期最优做法不是新增平级顶层字段，而是：
+
+- `actions` 继续做语义 facade
+- `state` 提供统一 local store
+- `actions.session` 成为 transient 语义入口
+
+## 6. 顶层 API 的长期最优职责划分
+
+### 6.1 `write`
+
+`write` 的职责固定为：
+
+- document semantic write
+- 无 transient local state policy
+- 尽量薄、稳定、可复用
+
+也就是说：
+
+- `write.node.move(...)`
+- `write.group.merge(...)`
+- `write.edge.route.set(...)`
+
+这些继续存在，继续只做 document semantic write。
+
+### 6.2 `actions`
+
+`actions` 的职责固定为：
+
+- 面向 UI / 产品层的语义 API
+- orchestration
+- UX policy
+- 组合本地 state 与 document write
+
+长期最优下，`actions` 应显式分成两类：
+
+- document-oriented actions
+- session-oriented actions
+
+但都保持在 `actions` 名下。
+
+### 6.3 `state`
+
+`state` 的职责固定为：
+
+- editor local state store
+- transient state 的唯一真实底层写模型
+- 供 scene / input / actions / react 订阅
+
+### 6.4 `viewport`
+
+`viewport` 保持独立是合理的。
+
+它有自己的状态机、坐标换算与 value store，不必强行吞进 transient state store。
+
+长期最优也仍然保留：
+
+- `editor.viewport`
+- `actions.viewport`
+
+前者是低层 runtime/geometry 能力，后者是高层 UX facade。
+
+## 7. `state` 的长期最优 API
+
+### 7.1 目标形态
+
+长期最优下，`state` 不再是 mutation runtime 的局部投影，而是显式的 local state store facade：
 
 ```ts
-editor.document.write.node.move(...)
-editor.document.write.group.merge(...)
-editor.document.write.node.text.commit(...)
+interface EditorStateStoreFacade {
+  read(): EditorStateSnapshot
+  write(
+    run: (ctx: {
+      writer: EditorStateWriter
+      snapshot: EditorStateSnapshot
+    }) => void
+  ): void
+  subscribe(listener: (commit: EditorStateCommit) => void): () => void
+  stores: EditorStateStores
+}
 ```
 
-这些调用长期仍然走：
+说明：
+
+- `read()` 取代当前的 `editor.read()`
+- `write()` 保留并成为唯一底层写入口
+- `subscribe()` 取代零散的 `commits.subscribe`
+- `stores` 保留面向 scene/react 的细粒度订阅值
+
+### 7.2 为什么保留 `stores`
+
+当前 scene-ui 已经建立了稳定的 store 读取模式。
+
+长期最优方案不应迫使：
+
+- scene projection
+- react hooks
+- ui chrome
+
+全部退化到订阅整份 snapshot。
+
+因此 `state` 长期最优应显式提供：
+
+- 统一 store facade
+- 细粒度 read stores
+
+例如：
 
 ```ts
-engine.execute(intent)
+interface EditorStateStores {
+  tool: ReadStore<Tool>
+  draw: ReadStore<DrawState>
+  selection: ReadStore<SelectionTarget>
+  edit: ReadStore<EditSession | null>
+  interaction: ReadStore<EditorInteractionStateValue>
+  preview: ReadStore<PreviewInput>
+  hover: ReadStore<EditorHoverState>
+}
 ```
 
-### 5.4 session facade
+当前把 hover 混在 `interaction` 聚合里并不长期最优，应该显式拉平。
 
-`session` 负责稳定但本地的编辑器会话状态。
+## 8. `EditorStateWriter` 的长期最优设计
 
-建议包含：
+### 8.1 基本原则
+
+`EditorStateWriter` 应成为 transient state 唯一真实写模型。
+
+原则：
+
+- 只描述一次状态变化
+- 不向业务层暴露 schema patch 细节
+- 支持高频写
+- 支持事务式批量写
+
+### 8.2 目标接口
 
 ```ts
-interface EditorSessionFacade {
+interface EditorStateWriter {
   tool: {
-    get(): Tool
     set(tool: Tool): void
   }
+  draw: {
+    set(state: DrawState): void
+    patch(patch: BrushStylePatch): void
+    slot(brush: DrawMode, slot: DrawSlot): void
+  }
   selection: {
-    get(): SelectionTarget
     set(selection: SelectionTarget): void
     clear(): void
   }
   edit: {
-    get(): EditSession
-    set(edit: EditSession): void
+    set(edit: EditSession | null): void
     clear(): void
-    startNode(input: {
-      nodeId: string
-      field: EditField
-      caret?: CaretTarget
-    }): void
-    startEdgeLabel(input: {
-      edgeId: string
-      labelId: string
-      caret?: CaretTarget
-    }): void
   }
   interaction: {
-    get(): EditorStableInteractionState
     set(state: EditorStableInteractionState): void
     clear(): void
   }
-}
-```
-
-特点：
-
-- facade 层允许集中 policy
-- 但底层不依赖 intent
-- 所有实现直接调用 local store writer
-
-### 5.5 hover facade
-
-`hover` 单独抽离，因为它具有更高频率和更短生命周期。
-
-```ts
-interface EditorHoverFacade {
-  get(): EditorHoverState
-  set(state: EditorHoverState): void
-  clear(): void
-  edgeGuide: {
-    get(): EdgeGuideValue
-    set(value: EdgeGuideValue): void
-    clear(): void
-  }
-}
-```
-
-特点：
-
-- pointer move 期间更新频繁
-- 与 selection / edit 的生命周期不同
-- 应避免和其它状态共用过重的调度模型
-
-### 5.6 preview facade
-
-`preview` 负责拖拽、变换、边连线、mindmap draft 等纯本地草稿态。
-
-```ts
-interface EditorPreviewFacade {
-  node: {
-    get(): PreviewInput['node']
-    replace(next: PreviewInput['node']): void
-    clear(): void
-  }
-  edge: {
-    get(): PreviewInput['edge']
-    replace(next: PreviewInput['edge']): void
-    clear(): void
-  }
-  mindmap: {
-    get(): PreviewInput['mindmap']
-    replace(next: PreviewInput['mindmap']): void
-    clear(): void
-  }
-  selection: {
-    get(): PreviewInput['selection']
-    set(next: PreviewInput['selection']): void
-    clear(): void
-  }
-  draw: {
-    get(): PreviewInput['draw']
-    set(next: PreviewInput['draw']): void
-    clear(): void
-  }
-  reset(): void
-}
-```
-
-特点：
-
-- `node / edge / mindmap` 主要是 replace 型 API
-- collection diff 是 preview 子系统内部细节，不应泄漏给上层
-- `reset()` 是高频常用能力，保留明确语义入口
-
-### 5.7 local state facade
-
-`state` 是唯一底层 local state 访问入口。
-
-```ts
-interface EditorLocalStateFacade {
-  read(): EditorLocalSnapshot
-  write(
-    run: (ctx: {
-      writer: EditorLocalWriter
-      snapshot: EditorLocalSnapshot
-    }) => void
-  ): void
-  subscribe(listener: (commit: EditorLocalCommit) => void): () => void
-}
-```
-
-要求：
-
-- `write()` 是 transient state 唯一底层写通道
-- facade 层最终都委托给 `write()`
-- 高频输入逻辑也可以直接用 `write()`
-
-## 6. Local Writer 设计
-
-### 6.1 设计原则
-
-`EditorLocalWriter` 不是底层 schema patch 原语的直接暴露，而是面向 transient state 领域的本地 writer。
-
-也就是说，writer 的设计目标是：
-
-- 足够低成本
-- 语义边界清晰
-- 避免重复 patch 代码外溢
-
-### 6.2 目标接口
-
-```ts
-interface EditorLocalWriter {
-  session: {
-    tool: {
-      set(tool: Tool): void
-    }
-    selection: {
-      set(selection: SelectionTarget): void
-      clear(): void
-    }
-    edit: {
-      set(edit: EditSession): void
-      clear(): void
-    }
-    interaction: {
-      set(state: EditorStableInteractionState): void
-      clear(): void
-    }
-  }
-
   hover: {
     set(state: EditorHoverState): void
     clear(): void
-    edgeGuide: {
-      set(value: EdgeGuideValue): void
-      clear(): void
-    }
   }
-
   preview: {
     node: {
       replace(next: PreviewInput['node']): void
@@ -429,84 +494,238 @@ interface EditorLocalWriter {
       set(next: PreviewInput['draw']): void
       clear(): void
     }
+    edgeGuide: {
+      set(value: PreviewInput['edgeGuide'] | undefined): void
+      clear(): void
+    }
     reset(): void
   }
 }
 ```
 
-### 6.3 replace 与 patch 的边界
+### 8.3 为什么 writer 仍然是分域的
 
-长期最优架构里，应尽量减少调用方自己拼 patch。
-
-推荐边界：
-
-- 对外 API 以 `set / replace / clear / reset` 为主
-- collection diff 与最小 patch 计算由 writer 内部负责
+不建议把 writer 暴露成一组裸 `patch(...)` 原语。
 
 原因：
 
-- 调用方关心的是“我要的 next state”
-- writer 负责决定最优落地方式
+- 会把 state schema 细节泄漏到输入层和 action 层
+- 预览态的 diff 会散落
+- reset / clear 语义会重复实现
 
-这能避免当前很多零散 preview 更新逻辑复制同样的 create / patch / delete diff。
+长期最优 writer 应当是：
 
-### 6.4 批量写与事务
+- 低层
+- 但仍按 editor state 领域分域
 
-`state.write()` 默认就是事务边界：
+## 9. `actions` 的长期最优重组
+
+### 9.1 现有 `actions` 的价值
+
+当前 `actions` 已经体现出一个重要事实：
+
+- 用户不该直接思考 mutation
+- 用户需要的是带 policy 的编辑器语义
+
+例如：
+
+- `tool.set`
+- `selection.group`
+- `edit.commit`
+- `clipboard.paste`
+
+这条路是对的。
+
+### 9.2 长期最优方向
+
+长期最优不是缩小 `actions`，而是让它更明确地区分：
+
+- document actions
+- session actions
+
+建议目标形态：
 
 ```ts
-editor.state.write(({ writer, snapshot }) => {
-  writer.hover.clear()
-  writer.preview.reset()
-  writer.session.selection.set(nextSelection)
-})
+type EditorActions = {
+  app: AppActions
+  viewport: ViewportActions
+
+  session: {
+    tool: ToolSessionActions
+    draw: DrawSessionActions
+    selection: SelectionSessionActions
+    edit: EditSessionActions
+    hover: HoverSessionActions
+    preview: PreviewSessionActions
+  }
+
+  document: {
+    node: NodeActions
+    edge: EdgeActions
+    mindmap: MindmapActions
+    clipboard: ClipboardActions
+    history: HistoryActions
+  }
+}
+```
+
+这比当前把 `tool/draw/selection/edit/node/edge/...` 全平铺更长期最优。
+
+原因：
+
+- 把 transient 与 document 语义边界直接反映到 API 上
+- 保留 `actions` 作为唯一 policy facade
+- 消除 `actions` 与未来潜在 `session.*` 顶层 API 的竞争
+
+### 9.3 `actions.session`
+
+`actions.session` 负责所有 transient 语义。
+
+示例：
+
+```ts
+actions.session.tool.set(tool)
+actions.session.selection.replace(selection)
+actions.session.edit.startNode(nodeId, 'text')
+actions.session.hover.clear()
+actions.session.preview.reset()
+```
+
+这些方法全部以 `state.write()` 为底层。
+
+### 9.4 `actions.document`
+
+`actions.document` 负责所有面向持久文档的用户语义。
+
+示例：
+
+```ts
+actions.document.node.create(...)
+actions.document.edge.create(...)
+actions.document.mindmap.insert(...)
+actions.document.clipboard.paste(...)
+actions.document.history.undo()
+```
+
+这些方法内部可以继续调用：
+
+- `write.*`
+- `state.*`
+- `scene.*`
+- `document.*`
+
+但最终 boundary 清晰。
+
+### 9.5 为什么 clipboard/history 更适合放进 document
+
+从实现看：
+
+- `clipboard` 的核心作用对象是 document slice
+- `history` 的核心对象是 engine history
+
+它们虽然有本地 policy，但其主语义仍是 document 侧。
+
+## 10. `write` 的长期最优设计
+
+`write` 的长期最优目标不是更高层，而是更纯粹。
+
+建议长期固定为：
+
+```ts
+type EditorWrite = {
+  document: DocumentWrite
+  canvas: CanvasWrite
+  node: NodeWrite
+  group: GroupWrite
+  edge: EdgeWrite
+  mindmap: MindmapWrite
+  history: HistoryWrite
+}
 ```
 
 要求：
 
-- 单次 `write()` 内产生一次 commit
-- 中间态不对外泄漏
-- 内部自动做 equality short-circuit
+- 不再掺杂 transient state 语义
+- 不再承担 UI policy
+- 只做 document semantic write facade
+- 继续作为 `actions.document.*` 的底层依赖
 
-## 7. Store 划分方案
+## 11. `input` 的长期最优依赖关系
 
-### 7.1 长期最优拆分
+长期最优下，`input` 不应再直接依赖 `dispatch`。
 
-长期最优建议拆成三份 store：
+应改为依赖：
+
+- `actions.session.*`
+- `state.write(...)`
+
+其中：
+
+- 简单 policy 通过 `actions.session`
+- 高频草稿更新直接通过 `state.write`
+
+例如：
+
+- pointer hover 更新 edge guide：`state.write`
+- pointer down 导致 selection policy：`actions.session.selection`
+- text edit start / commit：`actions.session.edit`
+
+这样调用选择规则非常清晰：
+
+- 有用户语义与 policy，用 `actions`
+- 只是交互帧级草稿 patch，用 `state.write`
+
+## 12. `scene` 与 `state` 的关系
+
+长期最优下，scene projection 继续订阅：
+
+- document commits
+- state commits
+
+但 state commit 来源不再是 intent engine，而是 local state store。
+
+这意味着：
+
+- scene 同步机制保留
+- scene update buffer 策略保留
+- editor state delta 仍可存在
+- 但 delta 不再有 command compile 的历史包袱
+
+## 13. transient state 的内部 store 划分
+
+### 13.1 顶层 API 不拆，内部 store 可拆
+
+长期最优下，**顶层 `editor.state` 仍保持一个统一 facade**。
+
+但内部实现建议拆成三类 store：
 
 1. `session store`
 2. `hover store`
 3. `preview store`
 
-### 7.2 session store
+这样兼顾：
+
+- 顶层 API 简洁
+- 内部生命周期与性能优化独立
+
+### 13.2 session store
 
 包含：
 
 - tool
+- draw
 - selection
 - edit
 - interaction
 
-特点：
-
-- 更新频率相对较低
-- 有较多 UI policy
-- 与 command / selection / editing 生命周期强关联
-
-### 7.3 hover store
+### 13.3 hover store
 
 包含：
 
-- hover target
-- edge guide
+- hover
+- edgeGuide
 
-特点：
-
-- 更新频率最高
-- 生命周期最短
-- 适合极轻量 commit 模型
-
-### 7.4 preview store
+### 13.4 preview store
 
 包含：
 
@@ -516,225 +735,181 @@ editor.state.write(({ writer, snapshot }) => {
 - preview.selection
 - preview.draw
 
-特点：
+### 13.5 为什么 tool/draw 归到 session
 
-- 高频
-- 结构复杂
-- 经常需要 replace / clear / reset
-- 应有独立优化空间
+这是因为从现有顶层语义看：
 
-### 7.5 为什么不是一个大 store
+- tool / draw 更接近编辑器会话配置
+- 它们和 selection / edit 一样，属于稳定 session state
 
-一个大 store 当然也可行，但不是长期最优。
+而不是 preview 或 hover。
 
-拆分的好处：
+## 14. 长期最优的目录结构
 
-- 高频 hover 不影响其它状态订阅
-- preview diff 策略可以独立优化
-- session API 更稳定清晰
-- 更容易针对不同生命周期做性能调优
+建议目标目录结构如下：
 
-### 7.6 过渡期策略
+```text
+whiteboard/packages/whiteboard-editor/src
+  ├─ api/
+  │   └─ editor.ts
+  ├─ actions/
+  │   ├─ session/
+  │   │   ├─ tool.ts
+  │   │   ├─ draw.ts
+  │   │   ├─ selection.ts
+  │   │   ├─ edit.ts
+  │   │   ├─ hover.ts
+  │   │   └─ preview.ts
+  │   ├─ document/
+  │   │   ├─ node.ts
+  │   │   ├─ edge.ts
+  │   │   ├─ mindmap.ts
+  │   │   ├─ clipboard.ts
+  │   │   └─ history.ts
+  │   ├─ viewport.ts
+  │   ├─ app.ts
+  │   ├─ index.ts
+  │   └─ types.ts
+  ├─ state/
+  │   ├─ store/
+  │   │   ├─ facade.ts
+  │   │   ├─ writer.ts
+  │   │   ├─ commit.ts
+  │   │   ├─ session.ts
+  │   │   ├─ hover.ts
+  │   │   └─ preview.ts
+  │   └─ index.ts
+  ├─ write/
+  │   └─ ...
+  ├─ input/
+  │   └─ ...
+  └─ editor/
+      ├─ create.ts
+      └─ sync.ts
+```
 
-如果重构初期希望控制范围，可以先保留一个 unified local store，再逐步拆成三份。
+明确删除：
 
-也就是说：
+- `state/intents.ts`
+- transient `dispatch`
+- transient `applyCommand`
+- transient `compileHandlers`
 
-- 短期迁移路径可以保守
-- 长期目标仍应是三类 store 分离
+## 15. 对外 API 示例
 
-## 8. 订阅与提交模型
-
-### 8.1 目标 commit 模型
-
-transient state store 仍然需要 commit / subscribe，但不再依赖 mutation intent engine。
-
-建议：
+### 15.1 顶层 Editor
 
 ```ts
-interface EditorLocalCommit<TSnapshot, TDelta> {
-  snapshot: TSnapshot
-  delta: TDelta
+interface Editor {
+  scene: EditorSceneFacade
+  document: DocumentFrame
+  input: EditorInputHost
+  actions: EditorActions
+  write: EditorWrite
+  state: EditorStateStoreFacade
+  viewport: EditorViewport
+  runtime: EditorRuntime
+  dispose(): void
 }
 ```
 
-### 8.2 delta 的职责
+### 15.2 state API
 
-delta 只服务本地订阅优化与 scene 更新，不承担跨层协议职责。
+```ts
+editor.state.read()
 
-因此：
-
-- 不需要像 document operation 那样稳定可回放
-- 不需要语义兼容承诺
-- 只需要足够支撑本地增量刷新
-
-### 8.3 subscribe 目标
-
-订阅模型需要支持：
-
-- React/UI 读状态
-- scene projection 更新
-- 输入系统联动
-
-但这些订阅都只面对 local state commit，而不是 command intent。
-
-## 9. 对外 API 语义边界
-
-### 9.1 应暴露什么
-
-推荐暴露：
-
-- semantic facade
-- `state.read()`
-- `state.write()`
-
-### 9.2 不应暴露什么
-
-不推荐继续对外暴露：
-
-- `EditorStateIntent`
-- `dispatch(command)`
-- `dispatch(updater)`
-- compile handler 概念
-- 直接 schema patch writer
-
-### 9.3 为什么不保留 dispatch
-
-`dispatch` 的核心价值通常是：
-
-- action / reducer 风格 API
-- 通过 command 对状态演进建模
-
-但 transient state 不需要这套模式：
-
-- 它不是跨端协议
-- 它不需要 replay contract
-- 它不需要 command history
-
-保留 dispatch 只会在 writer 之外再维持一套平行写模型。
-
-## 10. Policy 放置原则
-
-长期最优架构中，policy 不放在 intent compile，而放在 facade。
-
-例如：
-
-- `tool.set()` 时是否顺手清 hover
-- `selection.set()` 时是否清 preview
-- `edit.startNode()` 时如何同步 selection
-- `hover.clear()` 时是否清 edge guide
-
-这类逻辑属于：
-
-- editor interaction policy
-- local UX policy
-
-而不是：
-
-- local state command compilation
-
-推荐规则：
-
-- 纯状态落地放 writer
-- 组合行为与 UX 规则放 facade
-
-## 11. 迁移后的目录结构建议
-
-建议目标目录结构：
-
-```text
-whiteboard/packages/whiteboard-editor/src/state
-  ├─ local/
-  │   ├─ types.ts
-  │   ├─ store.ts
-  │   ├─ commit.ts
-  │   ├─ writer.ts
-  │   ├─ session.ts
-  │   ├─ hover.ts
-  │   └─ preview.ts
-  ├─ facade/
-  │   ├─ session.ts
-  │   ├─ hover.ts
-  │   └─ preview.ts
-  └─ index.ts
+editor.state.write(({ writer, snapshot }) => {
+  writer.hover.clear()
+  writer.preview.reset()
+  writer.selection.clear()
+})
 ```
 
-如果采用三份 store，进一步演化为：
+### 15.3 actions.session API
 
-```text
-whiteboard/packages/whiteboard-editor/src/state
-  ├─ session/
-  ├─ hover/
-  ├─ preview/
-  ├─ facade/
-  └─ index.ts
+```ts
+editor.actions.session.tool.set({ type: 'select' })
+editor.actions.session.selection.clear()
+editor.actions.session.edit.startNode(nodeId, 'text')
+editor.actions.session.preview.reset()
 ```
 
-明确移除：
+### 15.4 actions.document API
 
-- `state/intents.ts`
-- 当前的 `compileHandlers`
-- `applyCommand`
-- transient `dispatch` 体系
+```ts
+editor.actions.document.node.create({
+  position,
+  template
+})
 
-## 12. 分阶段重构方案
+editor.actions.document.history.undo()
+editor.actions.document.clipboard.paste(packet)
+```
 
-以下按“长期最优、但执行上可控”的顺序给出重构方案。
+### 15.5 write API
 
-### Phase 1: 建立新的 local writer 边界
+```ts
+editor.write.node.move({
+  ids,
+  delta
+})
 
-目标：
+editor.write.group.merge({
+  nodeIds,
+  edgeIds
+})
+```
 
-- 保持现有 state schema 不变
-- 新建 `EditorLocalWriter`
-- 所有新的 transient 写逻辑统一走 `state.write()`
+## 16. 重构顺序
 
-动作：
-
-- 抽出 `session / hover / preview` writer API
-- 把 collection diff 逻辑收进 writer 内部
-- 禁止新增 `EditorStateIntent`
-
-阶段结果：
-
-- writer 成为唯一推荐底层入口
-- intent system 进入冻结状态
-
-### Phase 2: 用 facade 替换 dispatch API
+### Phase 1: 固化顶层边界
 
 目标：
 
-- 用 semantic facade 取代 `dispatch(command)`
+- 明确 `actions` 是 policy facade
+- 明确 `write` 是 document semantic write
+- 明确 `state` 是 local store
 
 动作：
 
-- 提供 `editor.session.*`
-- 提供 `editor.hover.*`
-- 提供 `editor.preview.*`
-- 调用侧逐步迁移
+- 在类型层冻结 `write` 的职责
+- 停止给 transient state 新增 `dispatch` 调用点
 
-阶段结果：
-
-- 大部分调用侧不再依赖 `dispatch`
-- facade 与 writer 分层建立完成
-
-### Phase 3: 删除 EditorStateIntent 依赖
+### Phase 2: 新建 `EditorStateWriter`
 
 目标：
 
-- 所有调用侧停止构造 transient intent object
+- 把 transient state 的真实变更逻辑统一收口到 writer
 
 动作：
 
-- 下线 `EditorStateIntent`
-- 下线 `EditorDispatchInput`
-- 删除所有仅为 dispatch 存在的 helper
+- 增加 `tool/draw/selection/edit/interaction/hover/preview` writer 域
+- 把 preview diff 内聚到 writer 内部
 
-阶段结果：
+### Phase 3: 用 `state.read()` 替换 `editor.read()`
 
-- transient state 不再存在 command 协议
+目标：
 
-### Phase 4: 删除 compileHandlers 与 applyCommand
+- 收缩 state 入口
+
+动作：
+
+- 移除 `editor.read`
+- 统一改用 `editor.state.read()`
+
+### Phase 4: 用 `actions.session.*` 替换 `dispatch`
+
+目标：
+
+- 彻底收口 transient 语义 API
+
+动作：
+
+- 新增 `actions.session`
+- 迁移 `tool/draw/selection/edit` 等逻辑
+- 输入层与 actions 层停止直接构造 transient command
+
+### Phase 5: 删除 transient intent runtime
 
 目标：
 
@@ -742,139 +917,43 @@ whiteboard/packages/whiteboard-editor/src/state
 
 动作：
 
-- 删除 compileHandlers
-- 删除 applyCommand
-- 将 staged state 逻辑收敛到 local store 本身
+- 删除 `EditorStateIntent`
+- 删除 `EditorDispatchInput`
+- 删除 `applyCommand`
+- 删除 `compileHandlers`
 
-阶段结果：
-
-- “状态如何变化”只在 writer 中定义一次
-
-### Phase 5: 拆分 session / hover / preview stores
+### Phase 6: 内部拆分 stores
 
 目标：
 
-- 达到长期最优 store 形态
+- 达到生命周期级最优实现
 
 动作：
 
-- 从 unified local store 拆出三类 store
-- 保持 facade API 稳定
-- scene / UI 订阅改为按 store 订阅
+- 将 unified local store 拆为 session / hover / preview stores
+- 顶层 `state` facade 保持不变
 
-阶段结果：
+## 17. 最终判断
 
-- 生命周期分层彻底完成
-- 性能调优边界更清晰
+基于当前 `Editor` 顶层设计，长期最优方案不是：
 
-## 13. 迁移约束与实现原则
+- 新造一组平行于 `actions` 的 `session/hover/preview` 顶层 API
+- 也不是把所有 transient 更新都变成裸 `writer.patch(...)`
 
-### 13.1 facade API 稳定优先
+而是：
 
-即使底层 store 继续演进，也应尽量保持：
+- 保留当前 `scene/document/input/actions/write/viewport/runtime` 顶层骨架
+- 强化 `actions` 作为唯一 policy facade 的地位
+- 让 `write` 只做 document semantic write
+- 让 `state` 成为统一 local transient store
+- 把 transient 语义 API 收口到 `actions.session`
+- 把 transient 底层写入统一收口到 `state.write(writer)`
+- 删除 `dispatch` 与整套 transient intent runtime
 
-- `session.*`
-- `hover.*`
-- `preview.*`
+最终边界应稳定为：
 
-这些 facade 的对外稳定性。
+- document semantic path: `actions.document.* -> write.* -> engine.execute(intent)`
+- transient local path: `actions.session.* -> state.write(writer)`
+- frame-level draft path: `input / runtime -> state.write(writer)`
 
-### 13.2 writer 是唯一真实写模型
-
-长期必须坚持：
-
-- transient 的真实变更逻辑只写一遍
-- 位置就在 writer
-
-### 13.3 不把 schema patch 外溢到业务侧
-
-避免让输入层、action 层到处显式写：
-
-- create / patch / delete diff
-- state subtree patch
-- reset 细节
-
-这些都应由 writer 或 facade 吸收。
-
-### 13.4 preview diff 内聚
-
-`preview.node.replace(next)` 等 API 背后所需的：
-
-- create
-- patch
-- delete
-- equality skip
-
-都应只由 preview writer 负责。
-
-### 13.5 local delta 不上升为协议
-
-transient commit delta 只服务本地订阅优化。
-
-不要把它设计成：
-
-- operation protocol
-- replay contract
-- 对外部系统暴露的长期兼容接口
-
-## 14. 重构后的最终形态示例
-
-```ts
-editor.session.tool.set(tool)
-editor.session.selection.set({
-  nodeIds: [nodeId],
-  edgeIds: []
-})
-
-editor.hover.set(nextHover)
-editor.hover.edgeGuide.set(nextGuide)
-
-editor.preview.node.replace(nextPreviewNode)
-editor.preview.edge.clear()
-editor.preview.reset()
-
-editor.state.write(({ writer, snapshot }) => {
-  if (snapshot.session.edit) {
-    writer.session.edit.clear()
-  }
-  writer.hover.clear()
-  writer.preview.reset()
-})
-```
-
-而不是：
-
-```ts
-editor.dispatch({ type: 'tool.set', tool })
-editor.dispatch({ type: 'hover.set', hover })
-editor.dispatch({ type: 'preview.reset' })
-```
-
-也不是：
-
-```ts
-writer.state.patch(...)
-writer.preview.node.create(...)
-writer.preview.node.delete(...)
-```
-
-直接散落在全局各处。
-
-## 15. 最终结论
-
-如果不考虑兼容，`whiteboard-editor` 的 transient state 长期最优方案是：
-
-- 废弃本地 `intent system`
-- 废弃 transient `compileHandlers`
-- 废弃 transient `dispatch` 模型
-- 建立 `local state store + local writer + semantic facade`
-- 长期按 `session / hover / preview` 拆分 store
-
-最终的架构边界应被固定为：
-
-- document semantic write: `engine.execute(intent)`
-- editor transient write: `state.write(writer)`
-
-前者面向领域语义与持久状态，后者面向本地会话态与高频预览态。
-
-这条边界越清晰，whiteboard editor 的长期复杂度就越可控。
+这才是既贴合当前系统、又足够长期自洽的最优方案。

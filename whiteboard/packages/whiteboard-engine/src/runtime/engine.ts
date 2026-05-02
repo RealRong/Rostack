@@ -6,7 +6,7 @@ import {
   MutationEngine,
   type MutationResult,
   type MutationOptions
-} from '@shared/mutation/engine'
+} from '@shared/mutation'
 import type {
   WhiteboardCompileIds,
   WhiteboardCompileContext,

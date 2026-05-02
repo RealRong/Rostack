@@ -5,7 +5,7 @@ import {
 } from '@shared/collab-yjs'
 import {
   assertMutationFootprintList
-} from '@shared/mutation/write'
+} from '@shared/mutation'
 import type { DataDoc } from '@dataview/core/types'
 import {
   isMutationProgramStep,

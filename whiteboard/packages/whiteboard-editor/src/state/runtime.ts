@@ -3,7 +3,7 @@ import {
   MutationEngine,
   type MutationCompileHandlerTable,
   type MutationResult
-} from '@shared/mutation/engine'
+} from '@shared/mutation'
 import type {
   MutationFootprint,
   MutationCommitRecord,

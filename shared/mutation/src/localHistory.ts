@@ -3,7 +3,7 @@ import {
 } from '../../core/src/index'
 import {
   mutationFailure
-} from './engine'
+} from './engine/contracts'
 import type {
   HistoryController,
   HistoryState

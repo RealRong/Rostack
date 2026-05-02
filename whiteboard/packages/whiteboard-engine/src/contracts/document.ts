@@ -6,7 +6,7 @@ import type {
 } from '@shared/mutation'
 import type {
   MutationOptions
-} from '@shared/mutation/engine'
+} from '@shared/mutation'
 import type {
   CoreRegistries,
   Document

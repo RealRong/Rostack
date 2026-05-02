@@ -2,7 +2,7 @@ import type {
   MutationCompileIssue,
   MutationCompileHandlerInput,
   MutationCompileSource
-} from '@shared/mutation/engine/contracts'
+} from '@shared/mutation'
 import type {
   DataDoc,
   Intent

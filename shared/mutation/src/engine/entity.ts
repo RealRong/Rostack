@@ -3,12 +3,8 @@ import {
   type RecordWrite
 } from '@shared/draft'
 import {
-  createMutationProgramWriter
-} from './program/writer'
-import {
   appendPath,
   cloneValue,
-  COMPILE_APPLY_FAILED_CODE,
   type CompiledChangeRule,
   type CompiledEntitySpec,
   type CompiledMemberSpec,
@@ -16,18 +12,11 @@ import {
   DOCUMENT_FAMILY,
   hasOwn,
   isObjectRecord,
-  mutationFailure,
   type MutableRecordWrite,
-  type MutationApplyResult,
-  type MutationEntityCanonicalOperation,
   type MutationEntityPatch,
   type MutationEntitySpec,
-  type MutationOperationKind,
   sameJsonValue
 } from './contracts'
-import type {
-  MutationProgram
-} from './program/program'
 
 export const collectRecordLeafPaths = (
   value: unknown,
@@ -78,29 +67,6 @@ const collectRecordPatchWrites = (
       target
     )
   }
-}
-
-const setNestedPatchValue = (
-  target: Record<string, unknown>,
-  path: readonly string[],
-  value: unknown
-): void => {
-  const [head, ...rest] = path
-  if (!head) {
-    return
-  }
-
-  if (rest.length === 0) {
-    target[head] = cloneValue(value)
-    return
-  }
-
-  const current = target[head]
-  const next = isObjectRecord(current)
-    ? current
-    : {}
-  target[head] = next
-  setNestedPatchValue(next, rest, value)
 }
 
 const compilePathSelector = (
@@ -250,114 +216,6 @@ export const compileEntities = (
   return compiled
 }
 
-export const readCanonicalOperation = (
-  type: string
-): { family: string; kind: MutationOperationKind } | undefined => {
-  if (type.endsWith('.create')) {
-    return {
-      family: type.slice(0, -'.create'.length),
-      kind: 'create'
-    }
-  }
-
-  if (type.endsWith('.patch')) {
-    return {
-      family: type.slice(0, -'.patch'.length),
-      kind: 'patch'
-    }
-  }
-
-  if (type.endsWith('.delete')) {
-    return {
-      family: type.slice(0, -'.delete'.length),
-      kind: 'delete'
-    }
-  }
-
-  return undefined
-}
-
-export const lowerCanonicalEntityOperation = (input: {
-  operation: MutationEntityCanonicalOperation
-  spec: CompiledEntitySpec
-  kind: MutationOperationKind
-}): MutationProgram => {
-  const builder = createMutationProgramWriter()
-
-  if (input.kind === 'create') {
-    const value = readRequiredValue(input.spec.family, 'create', input.operation)
-    builder.entity.create(
-      {
-        kind: 'entity',
-        type: input.spec.family,
-        id: input.spec.kind === 'singleton'
-          ? input.spec.family
-          : readEntityIdFromValue(input.spec.family, value)
-      },
-      value
-    )
-    return builder.build()
-  }
-
-  if (input.kind === 'delete') {
-    builder.entity.delete({
-      kind: 'entity',
-      type: input.spec.family,
-      id: input.spec.kind === 'singleton'
-        ? input.spec.family
-        : readRequiredId(input.spec.family, input.operation)
-    })
-    return builder.build()
-  }
-
-  const patch = readRequiredPatch(input.spec.family, input.operation)
-  builder.entity.patch(
-    {
-      kind: 'entity',
-      type: input.spec.family,
-      id: input.spec.kind === 'singleton'
-        ? input.spec.family
-        : readRequiredId(input.spec.family, input.operation)
-    },
-    compileEntityPatchWrites(input.spec, patch)
-  )
-  return builder.build()
-}
-
-export const readRequiredId = (
-  family: string,
-  op: MutationEntityCanonicalOperation
-): string => {
-  if (typeof op.id !== 'string' || op.id.length === 0) {
-    throw new Error(`Mutation operation "${family}" requires a non-empty id.`)
-  }
-
-  return op.id
-}
-
-export const readRequiredValue = (
-  family: string,
-  kind: MutationOperationKind,
-  op: MutationEntityCanonicalOperation
-): unknown => {
-  if (!hasOwn(op, 'value')) {
-    throw new Error(`Mutation operation "${family}.${kind}" requires a value.`)
-  }
-
-  return op.value
-}
-
-export const readRequiredPatch = (
-  family: string,
-  op: MutationEntityCanonicalOperation
-): MutationEntityPatch => {
-  if (!isObjectRecord(op.patch)) {
-    throw new Error(`Mutation operation "${family}.patch" requires an object patch.`)
-  }
-
-  return op.patch
-}
-
 export const readEntityIdFromValue = (
   family: string,
   value: unknown
@@ -499,20 +357,6 @@ export const readEntityChangedPaths = (
   return [...changed].sort()
 }
 
-export const createPatchFromWrites = (
-  writes: RecordWrite
-): MutationEntityPatch => {
-  const patch: Record<string, unknown> = {}
-  const entries = Object.entries(writes)
-
-  for (let index = 0; index < entries.length; index += 1) {
-    const [path, value] = entries[index]!
-    setNestedPatchValue(patch, path.split('.').filter(Boolean), value)
-  }
-
-  return patch
-}
-
 export const prefixRecordWrites = (
   basePath: string,
   writes: RecordWrite
@@ -626,15 +470,3 @@ export const appendTableDeleteWrites = (
   }
   writes[idsPath] = currentIds.filter((currentId) => currentId !== id)
 }
-
-export const invalidCanonicalOperation = <
-  Doc,
-  Code extends string = string
->(
-  error: unknown
-): MutationApplyResult<Doc, Code> => mutationFailure(
-  COMPILE_APPLY_FAILED_CODE as Code,
-  error instanceof Error
-    ? error.message
-    : 'MutationEngine.apply received an invalid canonical operation.'
-)

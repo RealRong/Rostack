@@ -6,10 +6,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./types": "./src/types/index.ts",
-    "./intent": "./src/intent.ts",
-    "./op": "./src/op.ts",
     "./mutation": "./src/mutation/index.ts",
-    "./compile": "./src/compile.ts",
     "./document": "./src/document/index.ts",
     "./field": "./src/field/index.ts",
     "./view": "./src/view/index.ts"

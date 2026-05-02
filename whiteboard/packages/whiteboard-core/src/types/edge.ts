@@ -9,7 +9,7 @@ import type {
   NodeGeometry,
   Point
 } from '@whiteboard/core/types/model'
-import type { EdgePatch } from '@whiteboard/core/types/operations'
+import type { EdgePatch } from '@whiteboard/core/types/writes'
 import type { Result } from '@whiteboard/core/types/result'
 
 export type AnchorSnapOptions = NodeOutlineAnchorOptions
@@ -162,7 +162,7 @@ export type ResolvedEdgePathFromRects = {
   path: EdgePathResult
 }
 
-export type EdgeCreateOperationResult =
+export type CreateEdgeResult =
   Result<{
     edge: Edge
     edgeId: EdgeId

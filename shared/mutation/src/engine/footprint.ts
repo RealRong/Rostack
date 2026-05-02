@@ -1,7 +1,7 @@
 import type {
   CompiledEntitySpec,
   MutationFootprint,
-  MutationOperationKind
+  MutationEntityChangeKind
 } from './contracts'
 
 export const dedupeFootprints = (
@@ -26,7 +26,7 @@ export const dedupeFootprints = (
 
 export const buildEntityFootprint = (
   spec: CompiledEntitySpec,
-  kind: MutationOperationKind,
+  kind: MutationEntityChangeKind,
   id: string | undefined,
   changedPaths: readonly string[]
 ): readonly MutationFootprint[] => {

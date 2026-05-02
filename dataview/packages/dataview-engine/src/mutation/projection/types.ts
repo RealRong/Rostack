@@ -11,7 +11,7 @@ import type {
 } from '@shared/mutation'
 import type {
   MutationCommitRecord
-} from '@shared/mutation/write'
+} from '@shared/mutation'
 import type {
   DataDoc
 } from '@dataview/core/types'

@@ -32,14 +32,14 @@ type ResizeHandleMeta = {
 
 export type ResizeDirection = 'nw' | 'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w'
 
-export type TransformOperationFamily =
+export type TransformFamily =
   | 'resize-x'
   | 'resize-y'
   | 'scale-xy'
 
 export type NodeTransformBehavior = {
   kind: 'flow-text' | 'autofit-text' | 'fixed'
-  supportedFamilies: readonly TransformOperationFamily[]
+  supportedFamilies: readonly TransformFamily[]
 }
 
 export type TransformHandle = {
@@ -54,7 +54,7 @@ export type SelectionTransformHandlePlan = {
   id: ResizeDirection
   visible: boolean
   enabled: boolean
-  family?: TransformOperationFamily
+  family?: TransformFamily
   cursor: string
 }
 
@@ -322,7 +322,7 @@ export const resolveNodeTransformBehavior = (
 const resolveSelectionHandleFamily = (
   behavior: NodeTransformBehavior,
   handle: ResizeDirection
-): TransformOperationFamily | undefined => {
+): TransformFamily | undefined => {
   const family = isCornerResizeDirection(handle)
     ? 'scale-xy'
     : (handle === 'e' || handle === 'w')
@@ -339,8 +339,8 @@ const resolveSharedHandleFamily = <
 >(
   members: readonly SelectionTransformMember<TNode>[],
   handle: ResizeDirection
-): TransformOperationFamily | undefined => {
-  let family: TransformOperationFamily | undefined
+): TransformFamily | undefined => {
+  let family: TransformFamily | undefined
 
   for (const member of members) {
     const nextFamily = resolveSelectionHandleFamily(member.behavior, handle)
@@ -397,7 +397,7 @@ export const buildSelectionTransformPlan = <
 export const resolveSelectionTransformFamily = (
   plan: SelectionTransformPlan,
   handle: ResizeDirection
-): TransformOperationFamily | undefined => plan.handles.find(
+): TransformFamily | undefined => plan.handles.find(
   (entry) => entry.id === handle && entry.enabled && entry.visible
 )?.family
 
@@ -940,7 +940,7 @@ export const projectResizeTransformPatches = <TNode extends Node>(options: {
   startRect: Rect
   nextRect: Rect
   targets: readonly TransformSelectionMember<TNode>[]
-  family?: TransformOperationFamily
+  family?: TransformFamily
   handle: ResizeDirection
 }): readonly TransformPreviewPatch[] => (
   options.targets.length === 1
@@ -962,7 +962,7 @@ export const projectResizeTransformPatches = <TNode extends Node>(options: {
 const toSingleResizeTransformPatch = <TNode extends Node>(
   target: TransformSelectionMember<TNode>,
   nextRect: Rect,
-  family?: TransformOperationFamily,
+  family?: TransformFamily,
   handle?: ResizeDirection
 ): TransformPreviewPatch => {
   const preview: TransformPreviewPatch = {
@@ -1014,7 +1014,7 @@ const toSingleResizeTransformPatch = <TNode extends Node>(
 }
 
 const projectSelectionMemberRect = (input: {
-  family: TransformOperationFamily
+  family: TransformFamily
   startRect: Rect
   nextRect: Rect
   member: TransformProjectionMember
@@ -1068,7 +1068,7 @@ const readTextFontSize = (
 const toTransformPreviewPatch = <TNode extends Node>(
   member: SelectionTransformMember<TNode>,
   nextRect: Rect,
-  family: TransformOperationFamily,
+  family: TransformFamily,
   handle: ResizeDirection
 ): TransformPreviewPatch => {
   const preview: TransformPreviewPatch = {
@@ -1121,7 +1121,7 @@ const toTransformPreviewPatch = <TNode extends Node>(
 
 export const projectSelectionTransform = <TNode extends Node>(input: {
   plan: SelectionTransformPlan<TNode>
-  family: TransformOperationFamily
+  family: TransformFamily
   nextRect: Rect
   handle: ResizeDirection
 }): readonly TransformPreviewPatch[] => input.plan.members.map((member) => (

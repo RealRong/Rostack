@@ -6,7 +6,7 @@ import type {
   ApplyCommit,
   CommitStream,
   MutationCommitRecord
-} from '@shared/mutation/write'
+} from '@shared/mutation'
 
 export type EngineApplyCommit = ApplyCommit<
   DataDoc,

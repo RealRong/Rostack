@@ -87,10 +87,10 @@ const createEngine = () => new MutationEngine<
   normalize: (document) => document,
   createReader: (readDocument) => readDocument(),
   registry,
-  createProgram: (program) => program,
+  createWriter: (program) => program,
   compile: {
-    'item.add': ({ intent, program, output }) => {
-      program.entity.create({
+    'item.add': ({ intent, writer, output }) => {
+      writer.entity.create({
         kind: 'entity',
         type: 'item',
         id: intent.id
@@ -100,8 +100,8 @@ const createEngine = () => new MutationEngine<
       })
       output(intent.id)
     },
-    'item.open': ({ intent, program, output }) => {
-      program.entity.patch({
+    'item.open': ({ intent, writer, output }) => {
+      writer.entity.patch({
         kind: 'entity',
         type: 'document',
         id: 'document'

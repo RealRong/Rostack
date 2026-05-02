@@ -8,8 +8,8 @@ import type {
   Intent
 } from '@dataview/core/types'
 import type {
-  DataviewMutationPorts
-} from '../program'
+  DataviewMutationWriter
+} from '../model'
 import type {
   DataviewQuery
 } from '../query'
@@ -55,7 +55,7 @@ export type DataviewCompileContext<
 > = MutationCompileHandlerInput<
   DataDoc,
   TIntent,
-  DataviewMutationPorts,
+  DataviewMutationWriter,
   TOutput,
   DataviewQuery,
   void,

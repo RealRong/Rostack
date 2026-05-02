@@ -301,22 +301,22 @@ export const dataviewMutationModel = defineMutationModel<DataDoc>()({
     members: {
       name: value<View['name']>(),
       type: value<View['type']>(),
-      search: record<View['search']>(),
-      filter: record<View['filter']>(),
-      sort: record<View['sort']>(),
-      group: record<View['group']>(),
-      calc: record<View['calc']>(),
-      options: record<View['options']>()
+      search: value<View['search']>(),
+      filter: value<View['filter']>(),
+      sort: value<View['sort']>(),
+      group: value<View['group']>(),
+      calc: value<View['calc']>(),
+      options: value<View['options']>()
     },
     changes: ({ value, record }) => ({
       name: [value('name')],
       type: [value('type')],
-      search: [record('search').deep()],
-      filter: [record('filter').deep()],
-      sort: [record('sort').deep()],
-      group: [record('group').deep()],
-      calc: [record('calc').deep()],
-      options: [record('options').deep()]
+      search: [value('search')],
+      filter: [value('filter')],
+      sort: [value('sort')],
+      group: [value('group')],
+      calc: [value('calc')],
+      options: [value('options')]
     }),
     ordered: {
       fields: ordered<FieldId>()({

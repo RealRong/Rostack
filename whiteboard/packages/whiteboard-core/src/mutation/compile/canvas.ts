@@ -65,14 +65,14 @@ export const compileCanvasDelete = (
 
   refs.forEach((ref) => {
     if (ref.kind === 'edge') {
-      ctx.program.edge.delete(ref.id)
+      ctx.writer.edge.delete(ref.id)
       return
     }
 
     const node = ctx.reader.node.get(ref.id)
     const mindmapId = getNodeMindmapId(node)
     if (!mindmapId) {
-      ctx.program.node.delete(ref.id)
+      ctx.writer.node.delete(ref.id)
       return
     }
 
@@ -140,10 +140,10 @@ export const compileCanvasDuplicate = (
   }
 
   built.data.nodes.forEach((node) => {
-    ctx.program.node.create(node)
+    ctx.writer.node.create(node)
   })
   built.data.edges.forEach((edge) => {
-    ctx.program.edge.create(edge)
+    ctx.writer.edge.create(edge)
   })
   return {
     allNodeIds: built.data.allNodeIds,
@@ -237,7 +237,7 @@ const compileCanvasSelectionMove = (
         node.position.x !== entry.position.x
         || node.position.y !== entry.position.y
       ) {
-        ctx.program.node.patch(node.id, nodeApi.update.toPatch({
+        ctx.writer.node.patch(node.id, nodeApi.update.toPatch({
           fields: {
             position: entry.position
           }
@@ -314,14 +314,14 @@ export const canvasIntentHandlers: CanvasIntentHandlers = {
 
     const anchor = toCanvasOrderAnchor(currentOrder, existingRefs, ctx.intent.to)
     if (existingRefs.length === 1) {
-      ctx.program.document.order().move(
+      ctx.writer.document.order().move(
         canvasRefKey(existingRefs[0]!),
         anchor
       )
       return
     }
 
-    ctx.program.document.order().splice(
+    ctx.writer.document.order().splice(
       existingRefs.map((ref) => canvasRefKey(ref)),
       anchor
     )

@@ -24,20 +24,12 @@ export type {
   DataviewMutationWriter,
 } from './model'
 export type {
-  DataviewDocumentPatch,
-  DataviewFieldOptionPatch,
-  DataviewFieldPatch,
-  DataviewFilterRulePatch,
-  DataviewMutationPorts,
-  DataviewRecordPatch,
-  DataviewSortRulePatch,
-  DataviewViewPatch,
-  DataviewProgram,
-  DataviewProgramStep,
+  DataviewMutationProgram,
+  DataviewMutationProgramStep,
 } from './program'
 export {
-  createDataviewMutationPorts
-} from './program'
+  createDataviewMutationWriter
+} from './writer'
 
 export type DataviewQueryAspect =
   | 'search'

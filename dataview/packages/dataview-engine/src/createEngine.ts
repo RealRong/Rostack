@@ -11,7 +11,7 @@ import {
   createDataviewQueryContext,
   dataviewMutationModel,
   type DataviewMutationDelta,
-  type DataviewMutationPorts
+  type DataviewMutationWriter
 } from '@dataview/core/mutation'
 import type {
   DocumentOperation
@@ -80,13 +80,13 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
     ReturnType<typeof compile.createReader>,
     void,
     DataviewErrorCode,
-    DataviewMutationPorts
+    DataviewMutationWriter
   >({
     document: options.document,
     normalize: documentApi.normalize,
     model: dataviewMutationModel,
     createReader: compile.createReader,
-    createProgram: compile.createProgram,
+    createWriter: compile.createWriter,
     compile: compile.handlers,
     history: historyConfig.enabled
       ? {

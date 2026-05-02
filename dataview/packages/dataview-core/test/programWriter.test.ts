@@ -4,24 +4,24 @@ import {
   createMutationProgramWriter
 } from '@shared/mutation'
 import {
-  createDataviewMutationPorts
+  createDataviewMutationWriter
 } from '@dataview/core/mutation'
 
-test('dataview mutation ports lower entity and ordered writes to shared program steps', () => {
+test('dataview mutation writer lowers entity and ordered writes to shared program steps', () => {
   const base = createMutationProgramWriter<string>()
-  const program = createDataviewMutationPorts(base)
+  const writer = createDataviewMutationWriter(base)
 
-  program.document.patch({
+  writer.document.patch({
     activeViewId: 'view_1'
   })
-  program.record.patch('record_1', {
+  writer.record.patch('record_1', {
     title: 'Next'
   })
-  program.viewFields('view_1').insert('field_1', {
+  writer.view.fields('view_1').insert('field_1', {
     kind: 'before',
     itemId: 'field_2'
   })
-  program.fieldOptions('field_1').delete('option_1')
+  writer.field.options('field_1').delete('option_1')
 
   assert.deepEqual(base.build(), {
     steps: [

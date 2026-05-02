@@ -20,19 +20,19 @@ type GroupIntentHandlers = Pick<
 export const groupIntentHandlers: GroupIntentHandlers = {
   'group.merge': (ctx) => {
     const groupId = readCompileServices(ctx).ids.group()
-    ctx.program.group.create({
+    ctx.writer.group.create({
       id: groupId
     })
 
     ctx.intent.target.nodeIds?.forEach((nodeId) => {
-      ctx.program.node.patch(nodeId, nodeApi.update.toPatch({
+      ctx.writer.node.patch(nodeId, nodeApi.update.toPatch({
         fields: {
           groupId
         }
       }))
     })
     ctx.intent.target.edgeIds?.forEach((edgeId) => {
-      ctx.program.edge.patch(edgeId, {
+      ctx.writer.edge.patch(edgeId, {
         groupId
       })
     })
@@ -50,7 +50,7 @@ export const groupIntentHandlers: GroupIntentHandlers = {
     if (existingRefs.length === 0) {
       return
     }
-    ctx.program.document.order().splice(
+    ctx.writer.document.order().splice(
       existingRefs.map((ref) => canvasRefKey(ref)),
       toCanvasOrderAnchor(currentOrder, existingRefs, ctx.intent.to)
     )
@@ -62,12 +62,12 @@ export const groupIntentHandlers: GroupIntentHandlers = {
 
     ctx.intent.ids.forEach((groupId) => {
       const refs = ctx.query.group.refsInOrder(groupId)
-      ctx.program.group.delete(groupId)
+      ctx.writer.group.delete(groupId)
 
       refs.forEach((ref) => {
         if (ref.kind === 'node') {
           nodeIds.push(ref.id)
-          ctx.program.node.patch(ref.id, nodeApi.update.toPatch({
+          ctx.writer.node.patch(ref.id, nodeApi.update.toPatch({
             fields: {
               groupId: undefined
             }
@@ -76,7 +76,7 @@ export const groupIntentHandlers: GroupIntentHandlers = {
         }
 
         edgeIds.push(ref.id)
-        ctx.program.edge.patch(ref.id, {
+        ctx.writer.edge.patch(ref.id, {
           groupId: undefined
         })
       })

@@ -1,12 +1,9 @@
 import type {
   Field,
   FieldId,
-  FilterRule,
   Intent,
   RecordId,
-  SortRule,
   View,
-  ViewGroup,
   ViewId,
 } from '@dataview/core/types'
 import {
@@ -22,11 +19,12 @@ import type {
   ValidationCode
 } from './contracts'
 import {
+  replaceViewOrderInWriter,
+  toAnchor,
+} from './helpers'
+import {
   documentViews
 } from '../../document/views'
-import {
-  writeViewUpdate
-} from './viewDiff'
 import {
   applyRecordOrder,
   readViewOrderIds,
@@ -36,7 +34,6 @@ import {
 } from '../../view/order'
 import {
   readViewFieldIds,
-  replaceViewFields
 } from '../../view/fields'
 import {
   resolveDefaultKanbanGroup,
@@ -45,11 +42,6 @@ import {
 
 type DataviewCompileInput = DataviewCompileContext
 type ViewIntentType = Extract<Intent['type'], `view.${string}`>
-type TypedView<TType extends View['type']> = Extract<View, { type: TType }>
-type ViewIntent = Extract<Intent, { type: ViewIntentType }>
-type ExistingViewIntent = Extract<ViewIntent, { id: ViewId }>
-type ExistingViewContext<TIntent extends ExistingViewIntent = ExistingViewIntent> =
-  DataviewCompileContext<TIntent>
 type DataviewViewIntentHandlers = {
   [K in ViewIntentType]: (
     input: DataviewCompileContext<Extract<Intent, { type: K }>>
@@ -62,15 +54,6 @@ const readErrorMessage = (
 ): string => error instanceof Error
   ? error.message
   : fallback
-
-const toBeforeAnchor = (
-  before?: string
-) => before === undefined
-  ? undefined
-  : {
-      kind: 'before' as const,
-      itemId: before
-    }
 
 const reportSemanticError = (
   input: DataviewCompileContext,
@@ -99,181 +82,6 @@ const emitProblem = (
     ...(path === undefined ? {} : { path }),
     severity: 'error'
   })
-}
-
-const cloneFilterValueForOperation = (
-  value: FilterRule['value']
-): FilterRule['value'] => {
-  if (
-    typeof value === 'object'
-    && value !== null
-    && 'kind' in value
-    && value.kind === 'option-set'
-  ) {
-    return {
-      kind: 'option-set',
-      optionIds: [...value.optionIds]
-    }
-  }
-
-  return structuredClone(value)
-}
-
-const cloneFilterRuleForOperation = (
-  rule: FilterRule
-): FilterRule => ({
-  id: rule.id,
-  fieldId: rule.fieldId,
-  presetId: rule.presetId,
-  ...(Object.prototype.hasOwnProperty.call(rule, 'value')
-    ? {
-        value: cloneFilterValueForOperation(rule.value)
-      }
-    : {})
-})
-
-const cloneSortRuleForOperation = (
-  rule: SortRule
-): SortRule => ({
-  id: rule.id,
-  fieldId: rule.fieldId,
-  direction: rule.direction
-})
-
-const emitViewUpdate = <T,>(
-  input: DataviewCompileInput,
-  current: View,
-  next: View,
-  data?: T
-) => {
-  if (equal.sameJsonValue(current, next)) {
-    return undefined
-  }
-
-  writeViewUpdate(input.program, current, next)
-  if (data !== undefined) {
-    input.output(data)
-  }
-  return data
-}
-
-const updateExistingView = <TIntent extends ExistingViewIntent, TOutput = unknown>(
-  input: ExistingViewContext<TIntent>,
-  build: (view: View) => View | undefined,
-  data?: TOutput
-) => {
-  const view = requireView(input, input.intent.id)
-  if (!view) {
-    return
-  }
-
-  const nextView = build(view)
-  if (!nextView) {
-    return
-  }
-
-  return emitViewUpdate(input, view, nextView, data)
-}
-
-const patchGroupedView = <TIntent extends ExistingViewIntent>(
-  input: ExistingViewContext<TIntent>,
-  path: string,
-  message: string,
-  build: (view: View, field: Field) => ViewGroup | undefined
-) => updateExistingView(input, (view) => {
-  const field = requireGroupedField(input, view)
-  if (!field) {
-    return undefined
-  }
-
-  const nextGroup = build(view, field)
-  if (!nextGroup) {
-    emitProblem(input, 'view.invalidProjection', message, path)
-    return undefined
-  }
-
-  return {
-    ...view,
-    group: nextGroup
-  }
-})
-
-const patchTypedViewOptions = <
-  TType extends View['type'],
-  TIntent extends ExistingViewIntent
->(
-  input: ExistingViewContext<TIntent>,
-  viewType: TType,
-  invalidInputMessage: string,
-  buildOptions: (view: TypedView<TType>) => TypedView<TType>['options']
-) => updateExistingView(input, (view) => {
-  if (view.type !== viewType) {
-    emitProblem(input, 'view.invalidProjection', invalidInputMessage, 'id')
-    return undefined
-  }
-
-  const typedView = view as TypedView<TType>
-  const nextView = {
-    ...typedView,
-    options: buildOptions(typedView)
-  }
-
-  return nextView
-})
-
-const createViewUpdateHandler = <
-  TIntent extends ExistingViewIntent
->(
-  build: (
-    input: ExistingViewContext<TIntent>,
-    view: View
-  ) => View | undefined
-): ((input: ExistingViewContext<TIntent>) => void) => (
-  input
-) => {
-  updateExistingView(input, (view) => build(input, view))
-}
-
-const createGroupedViewHandler = <
-  TIntent extends ExistingViewIntent
->(
-  path: string,
-  message: string,
-  build: (
-    input: ExistingViewContext<TIntent>,
-    view: View,
-    field: Field
-  ) => ViewGroup | undefined
-): ((input: ExistingViewContext<TIntent>) => void) => (
-  input
-) => {
-  patchGroupedView(
-    input,
-    path,
-    message,
-    (view, field) => build(input, view, field)
-  )
-}
-
-const createTypedViewOptionsHandler = <
-  TType extends View['type'],
-  TIntent extends ExistingViewIntent
->(
-  viewType: TType,
-  invalidInputMessage: string,
-  buildOptions: (
-    input: ExistingViewContext<TIntent>,
-    view: TypedView<TType>
-  ) => TypedView<TType>['options']
-): ((input: ExistingViewContext<TIntent>) => void) => (
-  input
-) => {
-  patchTypedViewOptions(
-    input,
-    viewType,
-    invalidInputMessage,
-    (view) => buildOptions(input, view)
-  )
 }
 
 const requireView = (
@@ -388,141 +196,322 @@ const lowerViewCreate = (
     }
   }
 
-  const view = created
-  input.program.view.create(view)
+  input.writer.view.create(created)
   if (input.document.activeViewId === undefined) {
-    input.program.document.patch({
-      activeViewId: view.id
+    input.writer.document.patch({
+      activeViewId: created.id
     })
   }
   input.output({
-    id: view.id
+    id: created.id
   })
 }
 
-const handleViewRename: DataviewViewIntentHandlers['view.rename'] = createViewUpdateHandler(
-  (input, view) => {
-    const name = string.trimToUndefined(input.intent.name)
-    if (!name) {
-      emitProblem(input, 'view.invalid', 'View name must be a non-empty string', 'name')
-      return undefined
-    }
-
-    return {
-      ...view,
-      name
-    }
+const handleViewRename: DataviewViewIntentHandlers['view.rename'] = (
+  input
+) => {
+  const name = string.trimToUndefined(input.intent.name)
+  if (!name) {
+    emitProblem(input, 'view.invalid', 'View name must be a non-empty string', 'name')
+    return
   }
-)
 
-const handleViewTypeSet: DataviewViewIntentHandlers['view.type.set'] = createViewUpdateHandler(
-  (input, view) => {
-    const nextCandidate = setViewType({
-      view,
-      type: input.intent.viewType,
-      fields: input.reader.fields.list()
-    })
-    if (!nextCandidate) {
-      emitProblem(input, 'view.invalidProjection', 'Kanban view requires a groupable field', 'viewType')
-      return undefined
-    }
-
-    return nextCandidate
+  const view = requireView(input, input.intent.id)
+  if (!view || view.name === name) {
+    return
   }
-)
 
-const handleViewSearchSet: DataviewViewIntentHandlers['view.search.set'] = createViewUpdateHandler(
-  (input, view) => ({
-    ...view,
-    search: viewApi.search.state.clone(input.intent.search)
+  input.writer.view.patch(view.id, {
+    name
   })
-)
+}
 
-const handleViewFilterModeSet: DataviewViewIntentHandlers['view.filter.mode.set'] = createViewUpdateHandler(
-  (input, view) => ({
-    ...view,
-    filter: viewApi.filter.state.write.mode(view.filter, input.intent.mode)
+const handleViewTypeSet: DataviewViewIntentHandlers['view.type.set'] = (
+  input
+) => {
+  const view = requireView(input, input.intent.id)
+  if (!view) {
+    return
+  }
+
+  const nextView = setViewType({
+    view,
+    type: input.intent.viewType,
+    fields: input.reader.fields.list()
   })
-)
+  if (!nextView) {
+    emitProblem(input, 'view.invalidProjection', 'Kanban view requires a groupable field', 'viewType')
+    return
+  }
+  if (nextView === view) {
+    return
+  }
 
-const handleViewFilterClear: DataviewViewIntentHandlers['view.filter.clear'] = createViewUpdateHandler(
-  (input, view) => ({
-    ...view,
-    filter: viewApi.filter.rules.write.clear(view.filter)
+  const patch: Record<string, unknown> = {
+    type: nextView.type,
+    options: structuredClone(nextView.options)
+  }
+  if (!viewApi.group.state.same(view.group, nextView.group)) {
+    patch.group = nextView.group
+      ? viewApi.group.state.clone(nextView.group)
+      : undefined
+  }
+
+  input.writer.view.patch(view.id, patch)
+}
+
+const handleViewSearchSet: DataviewViewIntentHandlers['view.search.set'] = (
+  input
+) => {
+  const view = requireView(input, input.intent.id)
+  if (!view) {
+    return
+  }
+
+  const nextSearch = viewApi.search.state.clone(input.intent.search)
+  if (viewApi.search.state.same(view.search, nextSearch)) {
+    return
+  }
+
+  input.writer.view.patch(view.id, {
+    search: nextSearch
   })
-)
+}
 
-const handleViewSortClear: DataviewViewIntentHandlers['view.sort.clear'] = createViewUpdateHandler(
-  (input, view) => ({
-    ...view,
-    sort: viewApi.sort.rules.write.clear(view.sort)
+const handleViewFilterModeSet: DataviewViewIntentHandlers['view.filter.mode.set'] = (
+  input
+) => {
+  const view = requireView(input, input.intent.id)
+  if (!view) {
+    return
+  }
+
+  const nextFilter = viewApi.filter.state.write.mode(view.filter, input.intent.mode)
+  if (equal.sameJsonValue(view.filter, nextFilter)) {
+    return
+  }
+
+  input.writer.view.patch(view.id, {
+    filter: structuredClone(nextFilter)
   })
-)
+}
 
-const handleViewGroupSet: DataviewViewIntentHandlers['view.group.set'] = createViewUpdateHandler(
-  (input, view) => ({
-    ...view,
-    group: viewApi.group.state.clone(input.intent.group)
-  } as View)
-)
+const handleViewFilterClear: DataviewViewIntentHandlers['view.filter.clear'] = (
+  input
+) => {
+  const view = requireView(input, input.intent.id)
+  if (!view) {
+    return
+  }
 
-const handleViewGroupClear: DataviewViewIntentHandlers['view.group.clear'] = createViewUpdateHandler(
-  (input, view) => ({
-    ...view,
-    group: viewApi.group.write.clear(view.group)
-  } as View)
-)
+  const nextFilter = viewApi.filter.rules.write.clear(view.filter)
+  if (equal.sameJsonValue(view.filter, nextFilter)) {
+    return
+  }
+
+  input.writer.view.patch(view.id, {
+    filter: structuredClone(nextFilter)
+  })
+}
+
+const handleViewSortClear: DataviewViewIntentHandlers['view.sort.clear'] = (
+  input
+) => {
+  const view = requireView(input, input.intent.id)
+  if (!view) {
+    return
+  }
+
+  const nextSort = viewApi.sort.rules.write.clear(view.sort)
+  if (equal.sameJsonValue(view.sort, nextSort)) {
+    return
+  }
+
+  input.writer.view.patch(view.id, {
+    sort: structuredClone(nextSort)
+  })
+}
+
+const handleViewGroupSet: DataviewViewIntentHandlers['view.group.set'] = (
+  input
+) => {
+  const view = requireView(input, input.intent.id)
+  if (!view) {
+    return
+  }
+
+  const nextGroup = viewApi.group.state.clone(input.intent.group)
+  if (viewApi.group.state.same(view.group, nextGroup)) {
+    return
+  }
+
+  input.writer.view.patch(view.id, {
+    group: nextGroup
+  })
+}
+
+const handleViewGroupClear: DataviewViewIntentHandlers['view.group.clear'] = (
+  input
+) => {
+  const view = requireView(input, input.intent.id)
+  if (!view) {
+    return
+  }
+
+  const nextGroup = viewApi.group.write.clear(view.group)
+  if (viewApi.group.state.same(view.group, nextGroup)) {
+    return
+  }
+
+  input.writer.view.patch(view.id, {
+    group: nextGroup
+  })
+}
 
 const handleViewGroupToggle: DataviewViewIntentHandlers['view.group.toggle'] = (
   input
 ) => {
+  const view = requireView(input, input.intent.id)
   const field = requireField(input, input.intent.field, 'field')
+  if (!view || !field) {
+    return
+  }
+
+  const nextGroup = viewApi.group.write.toggle(view.group, field)
+  if (viewApi.group.state.same(view.group, nextGroup)) {
+    return
+  }
+
+  input.writer.view.patch(view.id, {
+    group: nextGroup
+  })
+}
+
+const handleViewGroupModeSet: DataviewViewIntentHandlers['view.group.mode.set'] = (
+  input
+) => {
+  const view = requireView(input, input.intent.id)
+  if (!view) {
+    return
+  }
+  const field = requireGroupedField(input, view)
   if (!field) {
     return
   }
 
-  updateExistingView(input, (view) => ({
-    ...view,
-    group: viewApi.group.write.toggle(view.group, field)
-  } as View))
-}
-
-const handleViewGroupModeSet: DataviewViewIntentHandlers['view.group.mode.set'] = createGroupedViewHandler(
-  'mode',
-  'Unable to update group mode.',
-  (input, view, field) => viewApi.group.write.update(view.group, field, {
+  const nextGroup = viewApi.group.write.update(view.group, field, {
     mode: input.intent.mode
   })
-)
+  if (!nextGroup) {
+    emitProblem(input, 'view.invalidProjection', 'Unable to update group mode.', 'mode')
+    return
+  }
+  if (viewApi.group.state.same(view.group, nextGroup)) {
+    return
+  }
 
-const handleViewGroupSortSet: DataviewViewIntentHandlers['view.group.sort.set'] = createGroupedViewHandler(
-  'sort',
-  'Unable to update group sort.',
-  (input, view, field) => viewApi.group.write.update(view.group, field, {
+  input.writer.view.patch(view.id, {
+    group: nextGroup
+  })
+}
+
+const handleViewGroupSortSet: DataviewViewIntentHandlers['view.group.sort.set'] = (
+  input
+) => {
+  const view = requireView(input, input.intent.id)
+  if (!view) {
+    return
+  }
+  const field = requireGroupedField(input, view)
+  if (!field) {
+    return
+  }
+
+  const nextGroup = viewApi.group.write.update(view.group, field, {
     bucketSort: input.intent.sort
   })
-)
+  if (!nextGroup) {
+    emitProblem(input, 'view.invalidProjection', 'Unable to update group sort.', 'sort')
+    return
+  }
+  if (viewApi.group.state.same(view.group, nextGroup)) {
+    return
+  }
 
-const handleViewGroupIntervalSet: DataviewViewIntentHandlers['view.group.interval.set'] = createGroupedViewHandler(
-  'interval',
-  'Unable to update group interval.',
-  (input, view, field) => viewApi.group.write.update(view.group, field, {
+  input.writer.view.patch(view.id, {
+    group: nextGroup
+  })
+}
+
+const handleViewGroupIntervalSet: DataviewViewIntentHandlers['view.group.interval.set'] = (
+  input
+) => {
+  const view = requireView(input, input.intent.id)
+  if (!view) {
+    return
+  }
+  const field = requireGroupedField(input, view)
+  if (!field) {
+    return
+  }
+
+  const nextGroup = viewApi.group.write.update(view.group, field, {
     bucketInterval: input.intent.interval
   })
-)
+  if (!nextGroup) {
+    emitProblem(input, 'view.invalidProjection', 'Unable to update group interval.', 'interval')
+    return
+  }
+  if (viewApi.group.state.same(view.group, nextGroup)) {
+    return
+  }
 
-const handleViewGroupShowEmptySet: DataviewViewIntentHandlers['view.group.showEmpty.set'] = createGroupedViewHandler(
-  'value',
-  'Unable to update group empty-bucket visibility.',
-  (input, view, field) => viewApi.group.write.update(view.group, field, {
+  input.writer.view.patch(view.id, {
+    group: nextGroup
+  })
+}
+
+const handleViewGroupShowEmptySet: DataviewViewIntentHandlers['view.group.showEmpty.set'] = (
+  input
+) => {
+  const view = requireView(input, input.intent.id)
+  if (!view) {
+    return
+  }
+  const field = requireGroupedField(input, view)
+  if (!field) {
+    return
+  }
+
+  const nextGroup = viewApi.group.write.update(view.group, field, {
     showEmpty: input.intent.value
   })
-)
+  if (!nextGroup) {
+    emitProblem(input, 'view.invalidProjection', 'Unable to update group empty-bucket visibility.', 'value')
+    return
+  }
+  if (viewApi.group.state.same(view.group, nextGroup)) {
+    return
+  }
 
-const handleViewSectionShow: DataviewViewIntentHandlers['view.section.show'] = createGroupedViewHandler(
-  'bucket',
-  'Unable to update group section state.',
-  (input, view, field) => viewApi.group.buckets.write.update(
+  input.writer.view.patch(view.id, {
+    group: nextGroup
+  })
+}
+
+const handleViewSectionShow: DataviewViewIntentHandlers['view.section.show'] = (
+  input
+) => {
+  const view = requireView(input, input.intent.id)
+  if (!view) {
+    return
+  }
+  const field = requireGroupedField(input, view)
+  if (!field) {
+    return
+  }
+
+  const nextGroup = viewApi.group.buckets.write.update(
     view.group,
     field,
     input.intent.bucket,
@@ -530,12 +519,32 @@ const handleViewSectionShow: DataviewViewIntentHandlers['view.section.show'] = c
       hidden: false
     }
   )
-)
+  if (!nextGroup) {
+    emitProblem(input, 'view.invalidProjection', 'Unable to update group section state.', 'bucket')
+    return
+  }
+  if (viewApi.group.state.same(view.group, nextGroup)) {
+    return
+  }
 
-const handleViewSectionHide: DataviewViewIntentHandlers['view.section.hide'] = createGroupedViewHandler(
-  'bucket',
-  'Unable to update group section state.',
-  (input, view, field) => viewApi.group.buckets.write.update(
+  input.writer.view.patch(view.id, {
+    group: nextGroup
+  })
+}
+
+const handleViewSectionHide: DataviewViewIntentHandlers['view.section.hide'] = (
+  input
+) => {
+  const view = requireView(input, input.intent.id)
+  if (!view) {
+    return
+  }
+  const field = requireGroupedField(input, view)
+  if (!field) {
+    return
+  }
+
+  const nextGroup = viewApi.group.buckets.write.update(
     view.group,
     field,
     input.intent.bucket,
@@ -543,12 +552,32 @@ const handleViewSectionHide: DataviewViewIntentHandlers['view.section.hide'] = c
       hidden: true
     }
   )
-)
+  if (!nextGroup) {
+    emitProblem(input, 'view.invalidProjection', 'Unable to update group section state.', 'bucket')
+    return
+  }
+  if (viewApi.group.state.same(view.group, nextGroup)) {
+    return
+  }
 
-const handleViewSectionCollapse: DataviewViewIntentHandlers['view.section.collapse'] = createGroupedViewHandler(
-  'bucket',
-  'Unable to update group section state.',
-  (input, view, field) => viewApi.group.buckets.write.update(
+  input.writer.view.patch(view.id, {
+    group: nextGroup
+  })
+}
+
+const handleViewSectionCollapse: DataviewViewIntentHandlers['view.section.collapse'] = (
+  input
+) => {
+  const view = requireView(input, input.intent.id)
+  if (!view) {
+    return
+  }
+  const field = requireGroupedField(input, view)
+  if (!field) {
+    return
+  }
+
+  const nextGroup = viewApi.group.buckets.write.update(
     view.group,
     field,
     input.intent.bucket,
@@ -556,12 +585,32 @@ const handleViewSectionCollapse: DataviewViewIntentHandlers['view.section.collap
       collapsed: true
     }
   )
-)
+  if (!nextGroup) {
+    emitProblem(input, 'view.invalidProjection', 'Unable to update group section state.', 'bucket')
+    return
+  }
+  if (viewApi.group.state.same(view.group, nextGroup)) {
+    return
+  }
 
-const handleViewSectionExpand: DataviewViewIntentHandlers['view.section.expand'] = createGroupedViewHandler(
-  'bucket',
-  'Unable to update group section state.',
-  (input, view, field) => viewApi.group.buckets.write.update(
+  input.writer.view.patch(view.id, {
+    group: nextGroup
+  })
+}
+
+const handleViewSectionExpand: DataviewViewIntentHandlers['view.section.expand'] = (
+  input
+) => {
+  const view = requireView(input, input.intent.id)
+  if (!view) {
+    return
+  }
+  const field = requireGroupedField(input, view)
+  if (!field) {
+    return
+  }
+
+  const nextGroup = viewApi.group.buckets.write.update(
     view.group,
     field,
     input.intent.bucket,
@@ -569,126 +618,317 @@ const handleViewSectionExpand: DataviewViewIntentHandlers['view.section.expand']
       collapsed: false
     }
   )
-)
+  if (!nextGroup) {
+    emitProblem(input, 'view.invalidProjection', 'Unable to update group section state.', 'bucket')
+    return
+  }
+  if (viewApi.group.state.same(view.group, nextGroup)) {
+    return
+  }
+
+  input.writer.view.patch(view.id, {
+    group: nextGroup
+  })
+}
 
 const handleViewCalcSet: DataviewViewIntentHandlers['view.calc.set'] = (
   input
 ) => {
-  if (!requireField(input, input.intent.field, 'field')) {
+  const view = requireView(input, input.intent.id)
+  if (!view || !requireField(input, input.intent.field, 'field')) {
     return
   }
 
-  updateExistingView(input, (view) => ({
-    ...view,
-    calc: viewApi.calc.set(view.calc, input.intent.field, input.intent.metric ?? null)
-  }))
+  const nextCalc = viewApi.calc.set(view.calc, input.intent.field, input.intent.metric ?? null)
+  if (viewApi.calc.same(view.calc, nextCalc)) {
+    return
+  }
+
+  input.writer.view.patch(view.id, {
+    calc: structuredClone(nextCalc)
+  })
 }
 
-const handleViewTableWidthsSet: DataviewViewIntentHandlers['view.table.widths.set'] = createTypedViewOptionsHandler(
-  'table',
-  'view.table.widths.set requires a table view',
-  (input, view) => viewApi.layout.table.patch(view.options, {
+const handleViewTableWidthsSet: DataviewViewIntentHandlers['view.table.widths.set'] = (
+  input
+) => {
+  const view = requireView(input, input.intent.id)
+  if (!view) {
+    return
+  }
+  if (view.type !== 'table') {
+    emitProblem(input, 'view.invalidProjection', 'view.table.widths.set requires a table view', 'id')
+    return
+  }
+
+  const nextOptions = viewApi.layout.table.patch(view.options, {
     widths: input.intent.widths
   })
-)
+  if (viewApi.options.same('table', view.options, nextOptions)) {
+    return
+  }
 
-const handleViewTableVerticalLinesSet: DataviewViewIntentHandlers['view.table.verticalLines.set'] = createTypedViewOptionsHandler(
-  'table',
-  'view.table.verticalLines.set requires a table view',
-  (input, view) => viewApi.layout.table.patch(view.options, {
+  input.writer.view.patch(view.id, {
+    options: nextOptions
+  })
+}
+
+const handleViewTableVerticalLinesSet: DataviewViewIntentHandlers['view.table.verticalLines.set'] = (
+  input
+) => {
+  const view = requireView(input, input.intent.id)
+  if (!view) {
+    return
+  }
+  if (view.type !== 'table') {
+    emitProblem(input, 'view.invalidProjection', 'view.table.verticalLines.set requires a table view', 'id')
+    return
+  }
+
+  const nextOptions = viewApi.layout.table.patch(view.options, {
     showVerticalLines: input.intent.value
   })
-)
+  if (viewApi.options.same('table', view.options, nextOptions)) {
+    return
+  }
 
-const handleViewTableWrapSet: DataviewViewIntentHandlers['view.table.wrap.set'] = createTypedViewOptionsHandler(
-  'table',
-  'view.table.wrap.set requires a table view',
-  (input, view) => viewApi.layout.table.patch(view.options, {
+  input.writer.view.patch(view.id, {
+    options: nextOptions
+  })
+}
+
+const handleViewTableWrapSet: DataviewViewIntentHandlers['view.table.wrap.set'] = (
+  input
+) => {
+  const view = requireView(input, input.intent.id)
+  if (!view) {
+    return
+  }
+  if (view.type !== 'table') {
+    emitProblem(input, 'view.invalidProjection', 'view.table.wrap.set requires a table view', 'id')
+    return
+  }
+
+  const nextOptions = viewApi.layout.table.patch(view.options, {
     wrap: input.intent.value
   })
-)
+  if (viewApi.options.same('table', view.options, nextOptions)) {
+    return
+  }
 
-const handleViewGalleryWrapSet: DataviewViewIntentHandlers['view.gallery.wrap.set'] = createTypedViewOptionsHandler(
-  'gallery',
-  'view.gallery.wrap.set requires a gallery view',
-  (input, view) => viewApi.layout.gallery.patch(view.options, {
+  input.writer.view.patch(view.id, {
+    options: nextOptions
+  })
+}
+
+const handleViewGalleryWrapSet: DataviewViewIntentHandlers['view.gallery.wrap.set'] = (
+  input
+) => {
+  const view = requireView(input, input.intent.id)
+  if (!view) {
+    return
+  }
+  if (view.type !== 'gallery') {
+    emitProblem(input, 'view.invalidProjection', 'view.gallery.wrap.set requires a gallery view', 'id')
+    return
+  }
+
+  const nextOptions = viewApi.layout.gallery.patch(view.options, {
     card: {
       wrap: input.intent.value
     }
   })
-)
+  if (viewApi.options.same('gallery', view.options, nextOptions)) {
+    return
+  }
 
-const handleViewGallerySizeSet: DataviewViewIntentHandlers['view.gallery.size.set'] = createTypedViewOptionsHandler(
-  'gallery',
-  'view.gallery.size.set requires a gallery view',
-  (input, view) => viewApi.layout.gallery.patch(view.options, {
+  input.writer.view.patch(view.id, {
+    options: nextOptions
+  })
+}
+
+const handleViewGallerySizeSet: DataviewViewIntentHandlers['view.gallery.size.set'] = (
+  input
+) => {
+  const view = requireView(input, input.intent.id)
+  if (!view) {
+    return
+  }
+  if (view.type !== 'gallery') {
+    emitProblem(input, 'view.invalidProjection', 'view.gallery.size.set requires a gallery view', 'id')
+    return
+  }
+
+  const nextOptions = viewApi.layout.gallery.patch(view.options, {
     card: {
       size: input.intent.value
     }
   })
-)
+  if (viewApi.options.same('gallery', view.options, nextOptions)) {
+    return
+  }
 
-const handleViewGalleryLayoutSet: DataviewViewIntentHandlers['view.gallery.layout.set'] = createTypedViewOptionsHandler(
-  'gallery',
-  'view.gallery.layout.set requires a gallery view',
-  (input, view) => viewApi.layout.gallery.patch(view.options, {
+  input.writer.view.patch(view.id, {
+    options: nextOptions
+  })
+}
+
+const handleViewGalleryLayoutSet: DataviewViewIntentHandlers['view.gallery.layout.set'] = (
+  input
+) => {
+  const view = requireView(input, input.intent.id)
+  if (!view) {
+    return
+  }
+  if (view.type !== 'gallery') {
+    emitProblem(input, 'view.invalidProjection', 'view.gallery.layout.set requires a gallery view', 'id')
+    return
+  }
+
+  const nextOptions = viewApi.layout.gallery.patch(view.options, {
     card: {
       layout: input.intent.value
     }
   })
-)
+  if (viewApi.options.same('gallery', view.options, nextOptions)) {
+    return
+  }
 
-const handleViewKanbanWrapSet: DataviewViewIntentHandlers['view.kanban.wrap.set'] = createTypedViewOptionsHandler(
-  'kanban',
-  'view.kanban.wrap.set requires a kanban view',
-  (input, view) => viewApi.layout.kanban.patch(view.options, {
+  input.writer.view.patch(view.id, {
+    options: nextOptions
+  })
+}
+
+const handleViewKanbanWrapSet: DataviewViewIntentHandlers['view.kanban.wrap.set'] = (
+  input
+) => {
+  const view = requireView(input, input.intent.id)
+  if (!view) {
+    return
+  }
+  if (view.type !== 'kanban') {
+    emitProblem(input, 'view.invalidProjection', 'view.kanban.wrap.set requires a kanban view', 'id')
+    return
+  }
+
+  const nextOptions = viewApi.layout.kanban.patch(view.options, {
     card: {
       wrap: input.intent.value
     }
   })
-)
+  if (viewApi.options.same('kanban', view.options, nextOptions)) {
+    return
+  }
 
-const handleViewKanbanSizeSet: DataviewViewIntentHandlers['view.kanban.size.set'] = createTypedViewOptionsHandler(
-  'kanban',
-  'view.kanban.size.set requires a kanban view',
-  (input, view) => viewApi.layout.kanban.patch(view.options, {
+  input.writer.view.patch(view.id, {
+    options: nextOptions
+  })
+}
+
+const handleViewKanbanSizeSet: DataviewViewIntentHandlers['view.kanban.size.set'] = (
+  input
+) => {
+  const view = requireView(input, input.intent.id)
+  if (!view) {
+    return
+  }
+  if (view.type !== 'kanban') {
+    emitProblem(input, 'view.invalidProjection', 'view.kanban.size.set requires a kanban view', 'id')
+    return
+  }
+
+  const nextOptions = viewApi.layout.kanban.patch(view.options, {
     card: {
       size: input.intent.value
     }
   })
-)
+  if (viewApi.options.same('kanban', view.options, nextOptions)) {
+    return
+  }
 
-const handleViewKanbanLayoutSet: DataviewViewIntentHandlers['view.kanban.layout.set'] = createTypedViewOptionsHandler(
-  'kanban',
-  'view.kanban.layout.set requires a kanban view',
-  (input, view) => viewApi.layout.kanban.patch(view.options, {
+  input.writer.view.patch(view.id, {
+    options: nextOptions
+  })
+}
+
+const handleViewKanbanLayoutSet: DataviewViewIntentHandlers['view.kanban.layout.set'] = (
+  input
+) => {
+  const view = requireView(input, input.intent.id)
+  if (!view) {
+    return
+  }
+  if (view.type !== 'kanban') {
+    emitProblem(input, 'view.invalidProjection', 'view.kanban.layout.set requires a kanban view', 'id')
+    return
+  }
+
+  const nextOptions = viewApi.layout.kanban.patch(view.options, {
     card: {
       layout: input.intent.value
     }
   })
-)
+  if (viewApi.options.same('kanban', view.options, nextOptions)) {
+    return
+  }
 
-const handleViewKanbanFillColorSet: DataviewViewIntentHandlers['view.kanban.fillColor.set'] = createTypedViewOptionsHandler(
-  'kanban',
-  'view.kanban.fillColor.set requires a kanban view',
-  (input, view) => viewApi.layout.kanban.patch(view.options, {
+  input.writer.view.patch(view.id, {
+    options: nextOptions
+  })
+}
+
+const handleViewKanbanFillColorSet: DataviewViewIntentHandlers['view.kanban.fillColor.set'] = (
+  input
+) => {
+  const view = requireView(input, input.intent.id)
+  if (!view) {
+    return
+  }
+  if (view.type !== 'kanban') {
+    emitProblem(input, 'view.invalidProjection', 'view.kanban.fillColor.set requires a kanban view', 'id')
+    return
+  }
+
+  const nextOptions = viewApi.layout.kanban.patch(view.options, {
     fillColumnColor: input.intent.value
   })
-)
+  if (viewApi.options.same('kanban', view.options, nextOptions)) {
+    return
+  }
 
-const handleViewKanbanCardsPerColumnSet: DataviewViewIntentHandlers['view.kanban.cardsPerColumn.set'] = createTypedViewOptionsHandler(
-  'kanban',
-  'view.kanban.cardsPerColumn.set requires a kanban view',
-  (input, view) => viewApi.layout.kanban.patch(view.options, {
+  input.writer.view.patch(view.id, {
+    options: nextOptions
+  })
+}
+
+const handleViewKanbanCardsPerColumnSet: DataviewViewIntentHandlers['view.kanban.cardsPerColumn.set'] = (
+  input
+) => {
+  const view = requireView(input, input.intent.id)
+  if (!view) {
+    return
+  }
+  if (view.type !== 'kanban') {
+    emitProblem(input, 'view.invalidProjection', 'view.kanban.cardsPerColumn.set requires a kanban view', 'id')
+    return
+  }
+
+  const nextOptions = viewApi.layout.kanban.patch(view.options, {
     cardsPerColumn: input.intent.value
   })
-)
+  if (viewApi.options.same('kanban', view.options, nextOptions)) {
+    return
+  }
+
+  input.writer.view.patch(view.id, {
+    options: nextOptions
+  })
+}
 
 const lowerViewFilterCreate = (
   input: DataviewCompileContext<Extract<Intent, { type: 'view.filter.create' }>>
 ) => {
   const { intent } = input
-  const { reader } = input
   const view = requireView(input, intent.id)
   const field = requireField(input, intent.input.fieldId, 'input.fieldId')
   if (!view || !field) {
@@ -705,30 +945,21 @@ const lowerViewFilterCreate = (
 
   try {
     const created = viewApi.filter.rules.write.insert(view.filter, field, {
-      ...(explicitRuleId !== undefined
-        ? { id: explicitRuleId }
-        : {}),
-      ...(intent.input.presetId !== undefined
-        ? { presetId: intent.input.presetId }
-        : {}),
+      ...(explicitRuleId !== undefined ? { id: explicitRuleId } : {}),
+      ...(intent.input.presetId !== undefined ? { presetId: intent.input.presetId } : {}),
       ...(Object.prototype.hasOwnProperty.call(intent.input, 'value')
         ? { value: intent.input.value }
         : {}),
-      ...(intent.before !== undefined
-        ? { before: intent.before }
-        : {})
+      ...(intent.before !== undefined ? { before: intent.before } : {})
     })
-    const nextView = {
-      ...view,
-      filter: created.filter
-    }
-    const rule = nextView.filter.rules.find((entry) => entry.id === created.id)
-    if (!rule) {
-      emitProblem(input, 'view.invalidProjection', `Unable to create filter rule ${created.id}`, 'input')
+    if (equal.sameJsonValue(view.filter, created.filter)) {
       return
     }
 
-    return emitViewUpdate(input, view, nextView, {
+    input.writer.view.patch(view.id, {
+      filter: structuredClone(created.filter)
+    })
+    input.output({
       id: created.id
     })
   } catch (error) {
@@ -740,7 +971,6 @@ const lowerViewFilterPatch = (
   input: DataviewCompileContext<Extract<Intent, { type: 'view.filter.patch' }>>
 ) => {
   const { intent } = input
-  const { reader } = input
   const view = requireView(input, intent.id)
   if (!view) {
     return
@@ -765,11 +995,13 @@ const lowerViewFilterPatch = (
       intent.patch,
       field
     )
-    const nextView = {
-      ...view,
-      filter: nextFilter
+    if (equal.sameJsonValue(view.filter, nextFilter)) {
+      return
     }
-    return emitViewUpdate(input, view, nextView)
+
+    input.writer.view.patch(view.id, {
+      filter: structuredClone(nextFilter)
+    })
   } catch (error) {
     reportSemanticError(input, error, 'patch')
   }
@@ -779,7 +1011,6 @@ const lowerViewFilterMove = (
   input: DataviewCompileContext<Extract<Intent, { type: 'view.filter.move' }>>
 ) => {
   const { intent } = input
-  const { reader } = input
   const view = requireView(input, intent.id)
   if (!view) {
     return
@@ -791,11 +1022,13 @@ const lowerViewFilterMove = (
       intent.rule,
       intent.before
     )
-    const nextView = {
-      ...view,
-      filter: nextFilter
+    if (equal.sameJsonValue(view.filter, nextFilter)) {
+      return
     }
-    return emitViewUpdate(input, view, nextView)
+
+    input.writer.view.patch(view.id, {
+      filter: structuredClone(nextFilter)
+    })
   } catch (error) {
     reportSemanticError(input, error, 'rule')
   }
@@ -805,18 +1038,20 @@ const lowerViewFilterRemove = (
   input: DataviewCompileContext<Extract<Intent, { type: 'view.filter.remove' }>>
 ) => {
   const { intent } = input
-  const { reader } = input
   const view = requireView(input, intent.id)
   if (!view) {
     return
   }
 
   try {
-    const nextView = {
-      ...view,
-      filter: viewApi.filter.rules.write.remove(view.filter, intent.rule)
+    const nextFilter = viewApi.filter.rules.write.remove(view.filter, intent.rule)
+    if (equal.sameJsonValue(view.filter, nextFilter)) {
+      return
     }
-    return emitViewUpdate(input, view, nextView)
+
+    input.writer.view.patch(view.id, {
+      filter: structuredClone(nextFilter)
+    })
   } catch (error) {
     reportSemanticError(input, error, 'rule')
   }
@@ -826,12 +1061,10 @@ const lowerViewSortCreate = (
   input: DataviewCompileContext<Extract<Intent, { type: 'view.sort.create' }>>
 ) => {
   const { intent } = input
-  const { reader } = input
   const view = requireView(input, intent.id)
   if (!view) {
     return
   }
-
   if (!requireField(input, intent.input.fieldId, 'input.fieldId')) {
     return
   }
@@ -846,28 +1079,19 @@ const lowerViewSortCreate = (
 
   try {
     const created = viewApi.sort.rules.write.insert(view.sort, {
-      ...(explicitRuleId !== undefined
-        ? { id: explicitRuleId }
-        : {}),
+      ...(explicitRuleId !== undefined ? { id: explicitRuleId } : {}),
       fieldId: intent.input.fieldId,
-      ...(intent.input.direction !== undefined
-        ? { direction: intent.input.direction }
-        : {}),
-      ...(intent.before !== undefined
-        ? { before: intent.before }
-        : {})
+      ...(intent.input.direction !== undefined ? { direction: intent.input.direction } : {}),
+      ...(intent.before !== undefined ? { before: intent.before } : {})
     })
-    const nextView = {
-      ...view,
-      sort: created.sort
-    }
-    const rule = nextView.sort.rules.find((entry) => entry.id === created.id)
-    if (!rule) {
-      emitProblem(input, 'view.invalidProjection', `Unable to create sort rule ${created.id}`, 'input')
+    if (equal.sameJsonValue(view.sort, created.sort)) {
       return
     }
 
-    return emitViewUpdate(input, view, nextView, {
+    input.writer.view.patch(view.id, {
+      sort: structuredClone(created.sort)
+    })
+    input.output({
       id: created.id
     })
   } catch (error) {
@@ -879,12 +1103,10 @@ const lowerViewSortPatch = (
   input: DataviewCompileContext<Extract<Intent, { type: 'view.sort.patch' }>>
 ) => {
   const { intent } = input
-  const { reader } = input
   const view = requireView(input, intent.id)
   if (!view) {
     return
   }
-
   if (intent.patch.fieldId && !requireField(input, intent.patch.fieldId, 'patch.fieldId')) {
     return
   }
@@ -895,17 +1117,13 @@ const lowerViewSortPatch = (
       intent.rule,
       intent.patch
     )
-    const nextView = {
-      ...view,
-      sort: nextSort
-    }
-    const rule = nextView.sort.rules.find((entry) => entry.id === intent.rule)
-    if (!rule) {
-      emitProblem(input, 'view.invalidProjection', `Unknown sort rule: ${intent.rule}`, 'rule')
+    if (equal.sameJsonValue(view.sort, nextSort)) {
       return
     }
 
-    return emitViewUpdate(input, view, nextView)
+    input.writer.view.patch(view.id, {
+      sort: structuredClone(nextSort)
+    })
   } catch (error) {
     reportSemanticError(input, error, 'patch')
   }
@@ -915,7 +1133,6 @@ const lowerViewSortMove = (
   input: DataviewCompileContext<Extract<Intent, { type: 'view.sort.move' }>>
 ) => {
   const { intent } = input
-  const { reader } = input
   const view = requireView(input, intent.id)
   if (!view) {
     return
@@ -927,11 +1144,13 @@ const lowerViewSortMove = (
       intent.rule,
       intent.before
     )
-    const nextView = {
-      ...view,
-      sort: nextSort
+    if (equal.sameJsonValue(view.sort, nextSort)) {
+      return
     }
-    return emitViewUpdate(input, view, nextView)
+
+    input.writer.view.patch(view.id, {
+      sort: structuredClone(nextSort)
+    })
   } catch (error) {
     reportSemanticError(input, error, 'rule')
   }
@@ -941,18 +1160,20 @@ const lowerViewSortRemove = (
   input: DataviewCompileContext<Extract<Intent, { type: 'view.sort.remove' }>>
 ) => {
   const { intent } = input
-  const { reader } = input
   const view = requireView(input, intent.id)
   if (!view) {
     return
   }
 
   try {
-    const nextView = {
-      ...view,
-      sort: viewApi.sort.rules.write.remove(view.sort, intent.rule)
+    const nextSort = viewApi.sort.rules.write.remove(view.sort, intent.rule)
+    if (equal.sameJsonValue(view.sort, nextSort)) {
+      return
     }
-    return emitViewUpdate(input, view, nextView)
+
+    input.writer.view.patch(view.id, {
+      sort: structuredClone(nextSort)
+    })
   } catch (error) {
     reportSemanticError(input, error, 'rule')
   }
@@ -961,13 +1182,12 @@ const lowerViewSortRemove = (
 const lowerViewOpen = (
   input: DataviewCompileContext<Extract<Intent, { type: 'view.open' }>>
 ) => {
-  const { intent } = input
-  const view = requireView(input, intent.id)
+  const view = requireView(input, input.intent.id)
   if (!view) {
     return
   }
 
-  input.program.document.patch({
+  input.writer.document.patch({
     activeViewId: view.id
   })
 }
@@ -1002,17 +1222,21 @@ const lowerViewOrderMove = (
     reader.records.list().map((record) => record.id),
     readViewOrderIds(view)
   )
-  const nextView = {
-    ...view,
-    order: replaceViewOrder(reorderRecordIds(currentOrder, recordId, {
-      ...(beforeRecordId !== undefined && beforeRecordId !== recordId
-        ? {
-            beforeRecordId
-          }
-        : {})
-    }))
+  const nextOrder = replaceViewOrder(reorderRecordIds(currentOrder, recordId, {
+    ...(beforeRecordId !== undefined && beforeRecordId !== recordId
+      ? { beforeRecordId }
+      : {})
+  }))
+  if (equal.sameOrder(readViewOrderIds(view), nextOrder)) {
+    return
   }
-  return emitViewUpdate(input, view, nextView)
+
+  replaceViewOrderInWriter(
+    input.writer,
+    view.id,
+    readViewOrderIds(view),
+    nextOrder
+  )
 }
 
 const lowerViewOrderSplice = (
@@ -1050,35 +1274,34 @@ const lowerViewOrderSplice = (
     reader.records.list().map((record) => record.id),
     readViewOrderIds(view)
   )
-  const nextView = {
-    ...view,
-    order: replaceViewOrder(spliceRecordIds(currentOrder, recordIds, {
-      ...(beforeRecordId !== undefined
-        ? {
-            beforeRecordId
-          }
-        : {})
-    }))
+  const nextOrder = replaceViewOrder(spliceRecordIds(currentOrder, recordIds, {
+    ...(beforeRecordId !== undefined ? { beforeRecordId } : {})
+  }))
+  if (equal.sameOrder(readViewOrderIds(view), nextOrder)) {
+    return
   }
-  return emitViewUpdate(input, view, nextView)
+
+  replaceViewOrderInWriter(
+    input.writer,
+    view.id,
+    readViewOrderIds(view),
+    nextOrder
+  )
 }
 
 const lowerViewFieldsMove = (
   input: DataviewCompileContext<Extract<Intent, { type: 'view.fields.move' }>>
 ) => {
   const { intent } = input
-  if (!requireView(input, intent.id)) {
-    return
-  }
-  if (!requireField(input, intent.field, 'field')) {
+  if (!requireView(input, intent.id) || !requireField(input, intent.field, 'field')) {
     return
   }
 
-  input.program.viewFields(intent.id).move(
+  input.writer.view.fields(intent.id).move(
     intent.field,
-    intent.before !== undefined && intent.before !== intent.field
-      ? toBeforeAnchor(intent.before)
-      : undefined
+    toAnchor(intent.before !== undefined && intent.before !== intent.field
+      ? intent.before
+      : undefined)
   )
 }
 
@@ -1102,11 +1325,9 @@ const lowerViewFieldsSplice = (
     return
   }
 
-  input.program.viewFields(intent.id).splice(
+  input.writer.view.fields(intent.id).splice(
     fieldIds,
-    intent.before !== undefined
-      ? toBeforeAnchor(intent.before)
-      : undefined
+    toAnchor(intent.before)
   )
 }
 
@@ -1114,80 +1335,58 @@ const lowerViewFieldsShow = (
   input: DataviewCompileContext<Extract<Intent, { type: 'view.fields.show' }>>
 ) => {
   const { intent } = input
-  const { reader } = input
   const view = requireView(input, intent.id)
-  if (!view) {
-    return
-  }
-  if (!requireField(input, intent.field, 'field')) {
+  if (!view || !requireField(input, intent.field, 'field')) {
     return
   }
 
-  const currentFields = readViewFieldIds(view)
-  const nextFields = currentFields.includes(intent.field)
-    ? viewApi.fields.move(
-        view.fields,
-        [intent.field],
-        intent.before !== undefined && intent.before !== intent.field
-          ? intent.before
-          : undefined
-      )
-    : viewApi.fields.show(
-        view.fields,
-        intent.field,
-        intent.before !== undefined && intent.before !== intent.field
-          ? intent.before
-          : undefined
-      )
-
-  const nextView = {
-    ...view,
-    fields: nextFields
+  const before = intent.before !== undefined && intent.before !== intent.field
+    ? intent.before
+    : undefined
+  if (readViewFieldIds(view).includes(intent.field)) {
+    input.writer.view.fields(intent.id).move(intent.field, toAnchor(before))
+    return
   }
-  return emitViewUpdate(input, view, nextView)
+
+  input.writer.view.fields(intent.id).insert(intent.field, toAnchor(before))
 }
 
 const lowerViewFieldsHide = (
   input: DataviewCompileContext<Extract<Intent, { type: 'view.fields.hide' }>>
 ) => {
   const { intent } = input
-  if (!requireView(input, intent.id)) {
-    return
-  }
-  if (!requireField(input, intent.field, 'field')) {
+  if (!requireView(input, intent.id) || !requireField(input, intent.field, 'field')) {
     return
   }
 
-  input.program.viewFields(intent.id).delete(intent.field)
+  input.writer.view.fields(intent.id).delete(intent.field)
 }
 
 const lowerViewFieldsClear = (
   input: DataviewCompileContext<Extract<Intent, { type: 'view.fields.clear' }>>
 ) => {
-  const { intent } = input
-  const view = requireView(input, intent.id)
+  const view = requireView(input, input.intent.id)
   if (!view) {
     return
   }
 
   readViewFieldIds(view).forEach((fieldId) => {
-    input.program.viewFields(view.id).delete(fieldId)
+    input.writer.view.fields(view.id).delete(fieldId)
   })
 }
 
 const lowerViewRemove = (
   input: DataviewCompileContext<Extract<Intent, { type: 'view.remove' }>>
 ) => {
-  const { intent } = input
-  const view = requireView(input, intent.id)
+  const view = requireView(input, input.intent.id)
   if (!view) {
     return
   }
 
   const nextDocument = documentViews.remove(input.document, view.id)
-  input.program.view.delete(view.id)
+  input.writer.view.delete(view.id)
   if (input.document.activeViewId !== nextDocument.activeViewId) {
-    input.program.document.patch({
+    input.writer.document.patch({
       activeViewId: nextDocument.activeViewId
     })
   }

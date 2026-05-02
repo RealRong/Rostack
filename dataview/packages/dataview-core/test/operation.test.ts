@@ -10,7 +10,7 @@ import type {
 import {
   compile,
   dataviewMutationModel,
-  type DataviewMutationPorts
+  type DataviewMutationWriter
 } from '@dataview/core/mutation'
 import {
   document as documentApi
@@ -57,13 +57,13 @@ const createExecuteMutation = () => new MutationEngine<
   ReturnType<typeof compile.createReader>,
   void,
   string,
-  DataviewMutationPorts
+  DataviewMutationWriter
 >({
   document: createEmptyDocument(),
   normalize: documentApi.normalize,
   model: dataviewMutationModel,
   createReader: compile.createReader,
-  createProgram: compile.createProgram,
+  createWriter: compile.createWriter,
   compile: {
     'field.create': compile.handlers['field.create']
   }

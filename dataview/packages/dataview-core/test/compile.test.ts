@@ -26,7 +26,7 @@ test('MutationEngine.compile lowers field.create into executable operations', ()
     normalize: document => document,
     model: dataviewMutationModel,
     createReader: compile.createReader,
-    createProgram: compile.createProgram,
+    createWriter: compile.createWriter,
     compile: compile.handlers,
   })
   const result = mutation.execute([{

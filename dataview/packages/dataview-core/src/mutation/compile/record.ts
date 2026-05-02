@@ -16,8 +16,9 @@ import type {
   DataviewCompileContext
 } from './contracts'
 import {
-  writeViewUpdate
-} from './viewDiff'
+  writeRecordValues,
+  writeViewUpdate,
+} from './helpers'
 import {
   readViewOrderIds,
   replaceViewOrder
@@ -167,7 +168,7 @@ const lowerRecordCreate = (
     meta: intent.input.meta
   } satisfies DataRecord
 
-  input.program.record.create(record)
+  input.writer.record.create(record)
   input.output({
     id: record.id
   })
@@ -190,14 +191,14 @@ const lowerRecordRemove = (
       return
     }
 
-    writeViewUpdate(input.program, view, {
+    writeViewUpdate(input.writer, view, {
       ...view,
       order: replaceViewOrder(nextOrders)
     })
   })
 
   recordIds.forEach((recordId) => {
-    input.program.record.delete(recordId)
+    input.writer.record.delete(recordId)
   })
 }
 
@@ -244,8 +245,7 @@ const lowerRecordFieldsWriteMany = (
     return
   }
 
-  input.program.record.writeValuesMany({
-    recordIds,
+  writeRecordValues(input.writer, recordIds, {
     ...(Object.keys(nextSet).length
       ? {
           set: nextSet

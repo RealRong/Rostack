@@ -113,7 +113,7 @@ export type MutationCompileControl<Code extends string = string> =
 export interface MutationCompileHandlerInput<
   Doc,
   Intent,
-  Program,
+  Writer,
   Output,
   Reader,
   Services = void,
@@ -124,7 +124,7 @@ export interface MutationCompileHandlerInput<
   document: Doc
   reader: Reader
   services: Services | undefined
-  program: Program
+  writer: Writer
   output(value: Output): void
   issue(...issues: readonly MutationCompileIssue<Code>[]): void
   stop(): {
@@ -155,13 +155,13 @@ export interface MutationCompileHandlerInput<
 export type MutationCompileHandler<
   Doc,
   Intent,
-  Program,
+  Writer,
   Output,
   Reader,
   Services = void,
   Code extends string = string
 > = (
-  input: MutationCompileHandlerInput<Doc, Intent, Program, Output, Reader, Services, Code>
+  input: MutationCompileHandlerInput<Doc, Intent, Writer, Output, Reader, Services, Code>
 ) => void | MutationCompileControl<Code>
 
 export interface MutationCompileInput<
@@ -247,7 +247,7 @@ export type MutationOutputOf<
 export type MutationCompileHandlerTable<
   Table extends MutationIntentTable,
   Doc,
-  Program,
+  Writer,
   Reader,
   Services = void,
   Code extends string = string
@@ -255,7 +255,7 @@ export type MutationCompileHandlerTable<
   [K in MutationIntentKind<Table>]: MutationCompileHandler<
     Doc,
     MutationIntentOf<Table, K>,
-    Program,
+    Writer,
     MutationOutputOf<Table, K>,
     Reader,
     Services,
@@ -263,11 +263,11 @@ export type MutationCompileHandlerTable<
   >
 }
 
-export type MutationCompileProgramFactory<
-  Program
+export type MutationCompileWriterFactory<
+  Writer
 > = (
-  program: MutationProgramWriter<string>
-) => Program
+  writer: MutationProgramWriter<string>
+) => Writer
 
 export type MutationExecuteResult<
   T extends MutationIntentTable,
@@ -322,7 +322,7 @@ export interface MutationEngineOptions<
   Reader,
   Services = void,
   Code extends string = string,
-  Program = MutationProgramWriter<string>,
+  Writer = MutationProgramWriter<string>,
   Delta extends MutationDelta = MutationDelta
 > {
   document: Doc
@@ -331,8 +331,8 @@ export interface MutationEngineOptions<
   services?: Services
   registry?: MutationRegistry<Doc>
   model?: MutationModelDefinition<Doc>
-  compile?: MutationCompileHandlerTable<Table, Doc, Program, Reader, Services, Code>
-  createProgram?: MutationCompileProgramFactory<Program>
+  compile?: MutationCompileHandlerTable<Table, Doc, Writer, Reader, Services, Code>
+  createWriter?: MutationCompileWriterFactory<Writer>
   createDelta?: (delta: MutationDelta) => Delta
   history?: MutationHistoryOptions | false
 }

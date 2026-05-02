@@ -14,7 +14,7 @@ export type {
   MutationProgram,
   MutationProgramStep,
   MutationProgramWriter,
-  MutationCompileProgramFactory,
+  MutationCompileWriterFactory,
   MutationOrderedProgramStep,
   MutationCompileHandlerTable,
   MutationEntitySpec,

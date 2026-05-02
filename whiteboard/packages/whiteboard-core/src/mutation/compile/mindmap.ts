@@ -105,7 +105,7 @@ const compileMindmapCreate = (
     ])
   ) as MindmapRecord['members']
 
-  ctx.program.document.order().insert(
+  ctx.writer.document.order().insert(
     {
       kind: 'mindmap',
       id: mindmapId
@@ -115,9 +115,9 @@ const compileMindmapCreate = (
     }
   )
   nodes.forEach((node) => {
-    ctx.program.node.create(node)
+    ctx.writer.node.create(node)
   })
-  ctx.program.mindmap.create({
+  ctx.writer.mindmap.create({
     id: mindmapId,
     root: rootId,
     members,
@@ -144,21 +144,21 @@ export const emitMindmapDelete = (
   const nodeIds = [...new Set(ctx.query.mindmap.subtreeNodeIds(id, tree.rootNodeId))]
   const connectedEdges = ctx.query.edge.connectedToNodes(new Set(nodeIds))
 
-  ctx.program.document.order().delete(canvasRefKey({
+  ctx.writer.document.order().delete(canvasRefKey({
     kind: 'mindmap',
     id
   }))
   connectedEdges.forEach((edge: Edge) => {
-    ctx.program.document.order().delete(canvasRefKey({
+    ctx.writer.document.order().delete(canvasRefKey({
       kind: 'edge',
       id: edge.id
     }))
-    ctx.program.edge.delete(edge.id)
+    ctx.writer.edge.delete(edge.id)
   })
   nodeIds.forEach((nodeId) => {
-    ctx.program.node.delete(nodeId)
+    ctx.writer.node.delete(nodeId)
   })
-  ctx.program.mindmap.delete(id)
+  ctx.writer.mindmap.delete(id)
 }
 
 export const emitMindmapMove = (
@@ -177,7 +177,7 @@ export const emitMindmapMove = (
     return
   }
 
-  ctx.program.node.patch(root.id, {
+  ctx.writer.node.patch(root.id, {
     position: clone(position)!
   }, undefined, createMetadata({
     delta: createIdDelta('mindmap.layout', id)
@@ -202,7 +202,7 @@ const emitMindmapLayout = (
     return
   }
 
-  ctx.program.mindmap.patch(id, {
+  ctx.writer.mindmap.patch(id, {
     layout: nextLayout
   })
 }
@@ -218,8 +218,8 @@ export const emitMindmapTopicInsert = (
     return ctx.invalid(`Mindmap ${id} not found.`)
   }
 
-  ctx.program.node.create(node)
-  const tree = ctx.program.mindmap.structure(id)
+  ctx.writer.node.create(node)
+  const tree = ctx.writer.mindmap.structure(id)
 
   switch (input.kind) {
     case 'child': {
@@ -324,7 +324,7 @@ export const emitMindmapTopicMove = (
   const nextSide = input.parentId === current.root
     ? (input.side ?? member.side ?? 'right')
     : undefined
-  const tree = ctx.program.mindmap.structure(id)
+  const tree = ctx.writer.mindmap.structure(id)
   tree.move(
     input.nodeId,
     input.parentId,
@@ -357,16 +357,16 @@ export const emitMindmapTopicDelete = (
   const nodeIds = [...new Set(ctx.query.mindmap.subtreeNodeIds(id, nodeId))]
   const connectedEdges = ctx.query.edge.connectedToNodes(new Set(nodeIds))
 
-  ctx.program.mindmap.structure(id).delete(nodeId)
+  ctx.writer.mindmap.structure(id).delete(nodeId)
   connectedEdges.forEach((edge: Edge) => {
-    ctx.program.document.order().delete(canvasRefKey({
+    ctx.writer.document.order().delete(canvasRefKey({
       kind: 'edge',
       id: edge.id
     }))
-    ctx.program.edge.delete(edge.id)
+    ctx.writer.edge.delete(edge.id)
   })
   nodeIds.forEach((memberId) => {
-    ctx.program.node.delete(memberId)
+    ctx.writer.node.delete(memberId)
   })
 }
 
@@ -410,7 +410,7 @@ export const emitMindmapTopicPatch = (
     id
   })
 
-  ctx.program.node.patch(topicId, writes, undefined, createMetadata({
+  ctx.writer.node.patch(topicId, writes, undefined, createMetadata({
     footprint: [
       entityKey('mindmap', id)
     ],
@@ -457,7 +457,7 @@ export const emitMindmapBranchPatch = (
     return
   }
 
-  ctx.program.mindmap.structure(id).patch(topicId, {
+  ctx.writer.mindmap.structure(id).patch(topicId, {
     branchStyle: nextBranchStyle
   })
 }
@@ -483,7 +483,7 @@ export const emitMindmapTopicCollapse = (
     return
   }
 
-  ctx.program.mindmap.structure(id).patch(topicId, {
+  ctx.writer.mindmap.structure(id).patch(topicId, {
     collapsed: nextCollapsed
   })
 }

@@ -6,15 +6,17 @@ import type {
   Intent
 } from '../../types'
 import {
-  createDataviewMutationPorts,
-  type DataviewMutationPorts
-} from '../program'
+  createDataviewMutationWriter
+} from '../writer'
 import {
   type DataviewCompileContext
 } from './contracts'
 import type {
   DataviewQuery
 } from '../query'
+import type {
+  DataviewMutationWriter
+} from '../model'
 import {
   createCompileReader
 } from './context'
@@ -37,7 +39,7 @@ type DataviewCompileTable = {
 export const dataviewIntentHandlers: MutationCompileHandlerTable<
   DataviewCompileTable,
   DataDoc,
-  DataviewMutationPorts,
+  DataviewMutationWriter,
   DataviewQuery,
   void,
   ValidationCode
@@ -49,7 +51,7 @@ export const dataviewIntentHandlers: MutationCompileHandlerTable<
 
 export const compile = {
   createReader: createCompileReader,
-  createProgram: createDataviewMutationPorts,
+  createWriter: createDataviewMutationWriter,
   handlers: dataviewIntentHandlers
 } as const
 

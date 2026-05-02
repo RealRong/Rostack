@@ -1,10 +1,8 @@
 import type {
   CustomField,
   FieldOption,
-  FieldId,
   Intent
 } from '@dataview/core/types'
-import { TITLE_FIELD_ID } from '@dataview/core/types'
 import {
   field as fieldApi
 } from '@dataview/core/field'
@@ -16,8 +14,10 @@ import type {
   DataviewCompileContext
 } from './contracts'
 import {
-  writeViewUpdate
-} from './viewDiff'
+  toAnchor,
+  writeRecordValues,
+  writeViewUpdate,
+} from './helpers'
 
 const DEFAULT_OPTION_NAME = 'Option'
 type FieldIntentType = Extract<Intent['type'], `field.${string}`>
@@ -26,15 +26,6 @@ type DataviewFieldIntentHandlers = {
     input: DataviewCompileContext<Extract<Intent, { type: K }>>
   ) => void
 }
-
-const toBeforeAnchor = (
-  before?: string
-) => before === undefined
-  ? undefined
-  : {
-      kind: 'before' as const,
-      itemId: before
-    }
 
 const createOptionName = (
   options: readonly FieldOption[]
@@ -144,7 +135,7 @@ const lowerFieldCreate = (
     meta: intent.input.meta
   })
 
-  input.program.field.create(field)
+  input.writer.field.create(field)
   input.output({ id: field.id })
 }
 
@@ -172,7 +163,7 @@ const lowerFieldPatch = (
   if (equal.sameJsonValue(field, nextField)) {
     return
   }
-  input.program.field.patch(intent.id, intent.patch)
+  input.writer.field.patch(intent.id, intent.patch)
 }
 
 const lowerFieldReplace = (
@@ -193,7 +184,7 @@ const lowerFieldReplace = (
     return
   }
 
-  input.program.field.patch(intent.id, json.diff(current, field))
+  input.writer.field.patch(intent.id, json.diff(current, field))
 }
 
 const lowerFieldSetKind = (
@@ -213,11 +204,11 @@ const lowerFieldSetKind = (
     return
   }
 
-  input.program.field.patch(intent.id, patch)
+  input.writer.field.patch(intent.id, patch)
   views.forEach((view) => {
     const nextView = viewApi.repair.field.converted(view, nextField)
     if (nextView !== view) {
-      writeViewUpdate(input.program, view, nextView)
+      writeViewUpdate(input.writer, view, nextView)
     }
   })
 }
@@ -244,15 +235,14 @@ const lowerFieldDuplicate = (
     )
   } satisfies CustomField
 
-  input.program.field.create(nextField)
+  input.writer.field.create(nextField)
 
   records.forEach((record) => {
     if (!Object.prototype.hasOwnProperty.call(record.values, sourceField.id)) {
       return
     }
 
-    input.program.record.writeValuesMany({
-      recordIds: [record.id],
+    writeRecordValues(input.writer, [record.id], {
       set: {
         [nextFieldId]: structuredClone(record.values[sourceField.id])
       }
@@ -270,14 +260,9 @@ const lowerFieldDuplicate = (
       return
     }
 
-    input.program.viewFields(view.id).insert(
+    input.writer.view.fields(view.id).insert(
       nextFieldId,
-      viewFieldIds[sourceIndex + 1] === undefined
-        ? undefined
-        : {
-            kind: 'before',
-            itemId: viewFieldIds[sourceIndex + 1]
-          }
+      toAnchor(viewFieldIds[sourceIndex + 1])
     )
   })
 
@@ -315,7 +300,7 @@ const lowerFieldOptionCreate = (
     options: context.options,
     name: explicitName ?? createOptionName(context.options)
   })
-  input.program.fieldOptions(intent.field).insert(nextOption)
+  input.writer.field.options(intent.field).insert(nextOption)
   input.output({ id: nextOption.id })
 }
 
@@ -358,15 +343,17 @@ const lowerFieldOptionMove = (
   if (context.field.kind === 'status' && intent.category !== undefined) {
     const category = fieldApi.status.category.get(context.field, optionId)
     if (category !== intent.category) {
-      input.program.fieldOptions(intent.field).patch(optionId, {
+      input.writer.field.options(intent.field).patch(optionId, {
         category: intent.category
       })
     }
   }
 
-  input.program.fieldOptions(intent.field).move(
+  input.writer.field.options(intent.field).move(
     optionId,
-    toBeforeAnchor(before)
+    before === undefined
+      ? undefined
+      : toAnchor(before)
   )
 }
 
@@ -412,7 +399,7 @@ const lowerFieldOptionPatch = (
     return
   }
 
-  input.program.fieldOptions(intent.field).patch(optionId, intent.patch)
+  input.writer.field.options(intent.field).patch(optionId, intent.patch)
 }
 
 const lowerFieldOptionRemove = (
@@ -458,9 +445,8 @@ const lowerFieldOptionRemove = (
       return
     }
 
-    input.program.record.writeValuesMany({
-      recordIds: [record.id],
-      ...(nextValue.kind === 'clear'
+    writeRecordValues(input.writer, [record.id], (
+      nextValue.kind === 'clear'
         ? {
             clear: [context.field.id]
           }
@@ -468,17 +454,17 @@ const lowerFieldOptionRemove = (
             set: {
               [context.field.id]: nextValue.value
             }
-          })
-    })
+          }
+    ))
   })
 
   if (context.field.kind === 'status' && context.field.defaultOptionId === optionId) {
-    input.program.field.patch(context.field.id, {
+    input.writer.field.patch(context.field.id, {
       defaultOptionId: null
     })
   }
 
-  input.program.fieldOptions(intent.field).delete(optionId)
+  input.writer.field.options(intent.field).delete(optionId)
 }
 
 const lowerFieldRemove = (
@@ -497,8 +483,7 @@ const lowerFieldRemove = (
       return
     }
 
-    input.program.record.writeValuesMany({
-      recordIds: [record.id],
+    writeRecordValues(input.writer, [record.id], {
       clear: [field.id]
     })
   })
@@ -506,11 +491,11 @@ const lowerFieldRemove = (
   views.forEach((view) => {
     const nextView = viewApi.repair.field.removed(view, intent.id)
     if (nextView !== view) {
-      writeViewUpdate(input.program, view, nextView)
+      writeViewUpdate(input.writer, view, nextView)
     }
   })
 
-  input.program.field.delete(intent.id)
+  input.writer.field.delete(intent.id)
 }
 
 export const dataviewFieldIntentHandlers: DataviewFieldIntentHandlers = {

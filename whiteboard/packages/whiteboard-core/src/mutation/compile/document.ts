@@ -18,7 +18,7 @@ type DocumentIntentHandlers = Pick<
 export const documentIntentHandlers: DocumentIntentHandlers = {
   'document.replace': (ctx) => {
     const intent = ctx.intent
-    ctx.program.document.create(
+    ctx.writer.document.create(
       normalizeDocument(documentApi.assert(intent.document))
     )
   },
@@ -41,10 +41,10 @@ export const documentIntentHandlers: DocumentIntentHandlers = {
     }
 
     built.data.nodes.forEach((node) => {
-      ctx.program.node.create(node)
+      ctx.writer.node.create(node)
     })
     built.data.edges.forEach((edge) => {
-      ctx.program.edge.create(edge)
+      ctx.writer.edge.create(edge)
     })
     ctx.output({
       allNodeIds: built.data.allNodeIds,
@@ -53,7 +53,7 @@ export const documentIntentHandlers: DocumentIntentHandlers = {
     })
   },
   'document.background.set': (ctx) => {
-    ctx.program.document.patch({
+    ctx.writer.document.patch({
       background: ctx.intent.background
     })
   }

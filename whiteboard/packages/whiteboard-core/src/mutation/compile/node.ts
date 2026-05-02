@@ -56,7 +56,7 @@ const writeMindmapTopicUpdate = (
   if (!mindmapId) {
     const patch = nodeApi.update.toPatch(update)
     if (Object.keys(patch).length > 0) {
-      ctx.program.node.patch(nodeId, patch)
+      ctx.writer.node.patch(nodeId, patch)
     }
     return
   }
@@ -195,8 +195,8 @@ export const nodeIntentHandlers: NodeIntentHandlers = {
       return ctx.invalid(built.error.message, built.error.details)
     }
 
-    ctx.program.node.create(built.data.node)
-    ctx.program.document.order().insert({
+    ctx.writer.node.create(built.data.node)
+    ctx.writer.document.order().insert({
       kind: 'node',
       id: built.data.nodeId
     })
@@ -272,7 +272,7 @@ export const nodeIntentHandlers: NodeIntentHandlers = {
 
       const mindmapId = getNodeMindmapId(node)
       if (!mindmapId) {
-        ctx.program.node.patch(id, nodeApi.update.toPatch({
+        ctx.writer.node.patch(id, nodeApi.update.toPatch({
           fields: {
             position: {
               x: node.position.x + intent.delta.x,
@@ -306,7 +306,7 @@ export const nodeIntentHandlers: NodeIntentHandlers = {
     }
 
     built.data.updates.forEach((update) => {
-      ctx.program.node.patch(update.id, nodeApi.update.toPatch({
+      ctx.writer.node.patch(update.id, nodeApi.update.toPatch({
         fields: {
           position: update.position
         }
@@ -325,7 +325,7 @@ export const nodeIntentHandlers: NodeIntentHandlers = {
     }
 
     built.data.updates.forEach((update) => {
-      ctx.program.node.patch(update.id, nodeApi.update.toPatch({
+      ctx.writer.node.patch(update.id, nodeApi.update.toPatch({
         fields: {
           position: update.position
         }

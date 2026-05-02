@@ -1,7 +1,7 @@
 export type {
   MutationApplyResult,
   MutationCompileControl,
-  MutationCompileProgramFactory,
+  MutationCompileWriterFactory,
   MutationCompileHandler,
   MutationCompileHandlerInput,
   MutationCompileHandlerTable,

@@ -154,7 +154,7 @@ const rebuildGroupItems = (
     return items
   }
 
-  document.canvas.order.forEach((ref) => {
+  document.order.forEach((ref) => {
     if (ref.kind === 'mindmap') {
       return
     }

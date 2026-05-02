@@ -3,8 +3,8 @@ export {
   whiteboardCompileHandlers
 } from './compile'
 export {
-  whiteboardMutationRegistry
-} from './targets'
+  whiteboardMutationModel
+} from './model'
 export {
   validateWhiteboardOperationBatch
 } from './validate'
@@ -41,9 +41,6 @@ export type {
   WhiteboardIntentTable,
   WhiteboardMutationTable
 } from './compile'
-export type {
-  WhiteboardMutationPorts,
-} from './program'
 export type {
   LockDecision,
   LockDecisionReason,

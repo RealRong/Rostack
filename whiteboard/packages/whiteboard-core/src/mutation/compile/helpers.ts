@@ -1,8 +1,14 @@
 import type {
+  MutationWriter,
+} from '@shared/mutation'
+import type {
   MutationCompileHandlerInput,
   MutationCompileHandlerTable,
 } from '@shared/mutation/engine'
 import type { WhiteboardLayoutService } from '@whiteboard/core/layout'
+import {
+  whiteboardMutationModel
+} from '@whiteboard/core/mutation/model'
 import type {
   CoreRegistries,
   Document,
@@ -18,9 +24,6 @@ import type {
   WhiteboardIntentOutput,
   WhiteboardMutationTable
 } from '@whiteboard/core/mutation/intents'
-import type {
-  WhiteboardMutationPorts
-} from '@whiteboard/core/mutation/program'
 import type {
   WhiteboardCompileReader
 } from './reader'
@@ -47,7 +50,7 @@ export type WhiteboardCompileContext<
 > = MutationCompileHandlerInput<
   Document,
   WhiteboardIntent<K>,
-  WhiteboardMutationPorts,
+  MutationWriter<typeof whiteboardMutationModel>,
   WhiteboardIntentOutput<K>,
   WhiteboardCompileReader,
   WhiteboardCompileServices,
@@ -57,7 +60,7 @@ export type WhiteboardCompileContext<
 export type WhiteboardCompileHandlerTable = MutationCompileHandlerTable<
   WhiteboardMutationTable,
   Document,
-  WhiteboardMutationPorts,
+  MutationWriter<typeof whiteboardMutationModel>,
   WhiteboardCompileReader,
   WhiteboardCompileServices,
   WhiteboardCompileCode

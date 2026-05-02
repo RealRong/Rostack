@@ -1,10 +1,12 @@
 import { equal } from '@shared/core'
 import {
-  normalizeMutationDelta,
-  type MutationDelta
+  createMutationDelta,
 } from '@shared/mutation'
 import type { HistoryPort } from '@shared/mutation'
-import { isCheckpointProgram } from '@whiteboard/core/mutation'
+import {
+  isCheckpointProgram,
+  whiteboardMutationModel
+} from '@whiteboard/core/mutation'
 import type { Viewport } from '@whiteboard/core/types'
 import type { WhiteboardLayoutService } from '@whiteboard/core/layout'
 import { createEditorActionsApi } from '@whiteboard/editor/action'
@@ -31,7 +33,8 @@ import {
   createBootstrapEditorDelta,
   createDocumentDrivenEditorDelta,
   createEditorDeltaFromCommitFlags,
-  mergeEditorDeltas
+  mergeEditorDeltas,
+  type EditorStateMutationDelta
 } from '@whiteboard/editor/state-engine/delta'
 import { createEditorTaskRuntime } from '@whiteboard/editor/tasks/runtime'
 import type { Editor } from '@whiteboard/editor/types/editor'
@@ -46,12 +49,23 @@ import {
 import type { Tool } from '@whiteboard/editor/types/tool'
 import { createEditorWrite } from '@whiteboard/editor/write'
 import type { IntentResult } from '@whiteboard/engine'
-import type { Engine } from '@whiteboard/engine'
+import type {
+  Engine
+} from '@whiteboard/engine'
+import type {
+  WhiteboardMutationDelta
+} from '@whiteboard/engine/mutation'
 
-const EMPTY_DOCUMENT_DELTA = normalizeMutationDelta()
-const BOOTSTRAP_DOCUMENT_DELTA = normalizeMutationDelta({
+const EMPTY_DOCUMENT_DELTA: WhiteboardMutationDelta = createMutationDelta(
+  whiteboardMutationModel,
+  {}
+)
+const BOOTSTRAP_DOCUMENT_DELTA: WhiteboardMutationDelta = createMutationDelta(
+  whiteboardMutationModel,
+  {
   reset: true
-})
+  }
+)
 
 const reconcileEditorAfterDocumentCommit = (input: {
   selection: {
@@ -338,7 +352,7 @@ export const createEditor = (input: {
   })
 
   let suppressEditorCommitProjection = false
-  let suppressedCommitDeltas: MutationDelta[] = []
+  let suppressedCommitDeltas: EditorStateMutationDelta[] = []
 
   const unsubscribeEditorCommits = stateRuntime.commits.subscribe((commit) => {
     if (suppressEditorCommitProjection) {

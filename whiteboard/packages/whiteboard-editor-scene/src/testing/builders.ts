@@ -1,12 +1,17 @@
 import {
+  createMutationDelta as createTypedMutationDelta,
+} from '@shared/mutation'
+import {
   createWhiteboardLayout,
   type LayoutNodeCatalog,
   type NodeDraftMeasure
 } from '@whiteboard/core/layout'
 import {
-  createWhiteboardMutationDelta,
   type WhiteboardMutationDelta
 } from '@whiteboard/engine/mutation'
+import {
+  whiteboardMutationModel
+} from '@whiteboard/core/mutation'
 import type {
   EdgeId,
   NodeId,
@@ -49,7 +54,7 @@ export const createEditorRuntimeDelta = (
 
 export const createMutationDelta = (input: {
   reset?: boolean
-} = {}): WhiteboardMutationDelta => createWhiteboardMutationDelta({
+} = {}): WhiteboardMutationDelta => createTypedMutationDelta(whiteboardMutationModel, {
   ...(input.reset
     ? {
         reset: true

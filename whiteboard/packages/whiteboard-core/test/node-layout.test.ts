@@ -75,7 +75,7 @@ test('buildNodeDistributeOperations uses visible bounds for rotated nodes', () =
   doc.nodes[first.id] = first
   doc.nodes[middle.id] = middle
   doc.nodes[last.id] = last
-  doc.canvas.order = [
+  doc.order = [
     { kind: 'node', id: first.id },
     { kind: 'node', id: middle.id },
     { kind: 'node', id: last.id }

@@ -79,7 +79,7 @@ test('node.text.commit deletes empty text nodes through engine semantics', () =>
       kind: 'auto'
     }
   }
-  document.canvas.order = [
+  document.order = [
     { kind: 'node', id: 'text_1' },
     { kind: 'node', id: 'text_2' },
     { kind: 'edge', id: 'edge_1' }
@@ -128,7 +128,7 @@ test('node.text.commit merges text and measured size for generic text nodes', ()
       fontSize: 14
     }
   }
-  document.canvas.order = [
+  document.order = [
     { kind: 'node', id: 'text_1' }
   ]
 

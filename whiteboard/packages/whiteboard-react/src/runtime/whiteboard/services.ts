@@ -57,7 +57,7 @@ export const isMirroredDocumentFromEngine = (
   && outbound.nodes === inbound.nodes
   && outbound.edges === inbound.edges
   && outbound.background === inbound.background
-  && outbound.meta === inbound.meta
+  && outbound.order === inbound.order
 )
 
 export type WhiteboardRuntimeServices = WhiteboardServicesContextValue & {

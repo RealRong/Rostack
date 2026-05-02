@@ -1,4 +1,5 @@
 import {
+  type MutationDeltaOf,
   type MutationOrigin
 } from '@shared/mutation'
 import {
@@ -10,13 +11,12 @@ import type {
   WhiteboardCompileIds,
   WhiteboardCompileReader,
   WhiteboardCompileServices,
-  WhiteboardMutationPorts,
   WhiteboardMutationTable
 } from '@whiteboard/core/mutation'
 import {
   isCheckpointProgram,
   whiteboardCompile,
-  whiteboardMutationRegistry
+  whiteboardMutationModel
 } from '@whiteboard/core/mutation'
 import {
   normalizeDocument
@@ -120,14 +120,14 @@ export const createEngine = ({
     WhiteboardCompileReader,
     WhiteboardCompileServices,
     ResultCode,
-    WhiteboardMutationPorts
+    import('@shared/mutation').MutationWriter<typeof whiteboardMutationModel>,
+    MutationDeltaOf<typeof whiteboardMutationModel>
   >({
     document,
     normalize: normalizeDocument,
     createReader: whiteboardCompile.createReader,
-    createProgram: whiteboardCompile.createProgram,
+    model: whiteboardMutationModel,
     services,
-    registry: whiteboardMutationRegistry,
     compile: whiteboardCompile.handlers,
     history: {
       capacity: 100,

@@ -6,8 +6,9 @@ import {
   readCompileServices
 } from '@whiteboard/core/mutation/compile/helpers'
 import {
+  canvasRefKey,
   toCanvasOrderAnchor,
-} from '@whiteboard/core/mutation/targets'
+} from '@whiteboard/core/mutation/support'
 
 type GroupIntentHandlers = Pick<
   WhiteboardCompileHandlerTable,
@@ -42,17 +43,17 @@ export const groupIntentHandlers: GroupIntentHandlers = {
   },
   'group.order.move': (ctx) => {
     const refs = ctx.intent.ids.flatMap((groupId) =>
-      ctx.reader.canvas.groupRefs(groupId)
+      ctx.reader.document.order().groupRefs(groupId)
     )
-    const currentOrder = ctx.reader.canvas.order()
+    const currentOrder = ctx.reader.document.order().items()
     const existingRefs = refs.filter((ref) => (
       currentOrder.some((entry) => entry.kind === ref.kind && entry.id === ref.id)
     ))
     if (existingRefs.length === 0) {
       return
     }
-    ctx.program.canvasOrder().spliceRefs(
-      existingRefs,
+    ctx.program.document.order().splice(
+      existingRefs.map((ref) => canvasRefKey(ref)),
       toCanvasOrderAnchor(currentOrder, existingRefs, ctx.intent.to)
     )
   },
@@ -62,7 +63,7 @@ export const groupIntentHandlers: GroupIntentHandlers = {
     const edgeIds: string[] = []
 
     ctx.intent.ids.forEach((groupId) => {
-      const refs = ctx.reader.canvas.groupRefs(groupId)
+      const refs = ctx.reader.document.order().groupRefs(groupId)
       ctx.program.group.delete(groupId)
 
       refs.forEach((ref) => {

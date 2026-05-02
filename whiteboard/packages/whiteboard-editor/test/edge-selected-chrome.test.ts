@@ -123,7 +123,7 @@ const createEdgeDocument = () => {
       text: 'Second'
     }]
   }
-  document.canvas.order = [
+  document.order = [
     {
       kind: 'node',
       id: 'node-1'

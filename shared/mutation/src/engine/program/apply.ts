@@ -131,6 +131,34 @@ const resolveEntityWrites = (
   ? input
   : compileEntityPatchWrites(spec, input)
 
+const readAccessCollection = (
+  spec: CompiledEntitySpec,
+  document: unknown
+): Record<string, unknown> => {
+  const current = spec.access?.read(document)
+  if (
+    typeof current !== 'object'
+    || current === null
+    || Array.isArray(current)
+  ) {
+    throw new Error(`Mutation family "${spec.family}" access.read must return an object collection.`)
+  }
+
+  return current as Record<string, unknown>
+}
+
+const writeAccessEntity = <Doc extends object>(
+  spec: CompiledEntitySpec,
+  document: Doc,
+  next: unknown
+): Doc => {
+  if (!spec.access) {
+    throw new Error(`Mutation family "${spec.family}" is missing compiled access.`)
+  }
+
+  return spec.access.write(document, next) as Doc
+}
+
 const applyEntityCreateEffect = <
   Doc extends object
 >(input: {
@@ -141,6 +169,83 @@ const applyEntityCreateEffect = <
   try {
     const { effect, spec } = input
     const value = effect.value
+
+    if (spec.access) {
+      if (spec.kind === 'singleton') {
+        const current = spec.access.read(input.document)
+        const changedPaths = readEntitySnapshotPaths(spec, value)
+        return {
+          document: writeAccessEntity(spec, input.document, value),
+          inverse: spec.family === 'document'
+            ? createMutationProgram([{
+                type: 'entity.create',
+                entity: {
+                  kind: 'entity',
+                  type: spec.family,
+                  id: spec.family
+                },
+                value: current
+              }])
+            : current === undefined
+              ? createMutationProgram([{
+                  type: 'entity.delete',
+                  entity: {
+                    kind: 'entity',
+                    type: spec.family,
+                    id: spec.family
+                  }
+                }])
+              : createMutationProgram([{
+                  type: 'entity.create',
+                  entity: {
+                    kind: 'entity',
+                    type: spec.family,
+                    id: spec.family
+                  },
+                  value: current
+                }]),
+          delta: mergeTagDelta(
+            buildEntityDelta(spec, 'create', undefined, changedPaths),
+            effect.tags
+          ),
+          structural: EMPTY_OUTPUTS as readonly MutationStructuralFact[],
+          footprint: buildEntityFootprint(spec, 'create', undefined, changedPaths),
+          issues: EMPTY_ISSUES,
+          historyMode: 'track'
+        }
+      }
+
+      const id = readEntityIdFromValue(spec.family, value)
+      const collection = readAccessCollection(spec, input.document)
+      if (collection[id] !== undefined) {
+        throw new Error(`Mutation operation "${spec.family}.create" found an existing entity "${id}".`)
+      }
+
+      const nextCollection = {
+        ...collection,
+        [id]: value
+      }
+      const changedPaths = readEntitySnapshotPaths(spec, value)
+      return {
+        document: writeAccessEntity(spec, input.document, nextCollection),
+        inverse: createMutationProgram([{
+          type: 'entity.delete',
+          entity: {
+            kind: 'entity',
+            type: spec.family,
+            id
+          }
+        }]),
+        delta: mergeTagDelta(
+          buildEntityDelta(spec, 'create', id, changedPaths),
+          effect.tags
+        ),
+        structural: EMPTY_OUTPUTS as readonly MutationStructuralFact[],
+        footprint: buildEntityFootprint(spec, 'create', id, changedPaths),
+        issues: EMPTY_ISSUES,
+        historyMode: 'track'
+      }
+    }
 
     if (spec.kind === 'singleton') {
       if (spec.family === 'document') {
@@ -239,6 +344,66 @@ const applyEntityPatchEffect = <
   spec: CompiledEntitySpec
 }): AppliedMutationProgram<Doc> => {
   const { effect, spec } = input
+  if (spec.access) {
+    const current = spec.kind === 'singleton'
+      ? spec.access.read(input.document)
+      : readAccessCollection(spec, input.document)[effect.entity.id]
+    if (current === undefined && spec.kind !== 'singleton') {
+      throw new Error(`Mutation operation "${spec.family}.patch" cannot find entity "${effect.entity.id}".`)
+    }
+
+    const entityWrites = resolveEntityWrites(spec, effect.writes)
+    const changedPaths = readChangedPathsFromWrites(entityWrites)
+    if (changedPaths.length === 0) {
+      return {
+        document: input.document,
+        inverse: createMutationProgram(),
+        delta: mergeTagDelta(EMPTY_DELTA, effect.tags),
+        structural: EMPTY_OUTPUTS as readonly MutationStructuralFact[],
+        footprint: [],
+        issues: EMPTY_ISSUES,
+        historyMode: 'neutral'
+      }
+    }
+
+    const inverseWrites = draft.record.inverse(current, entityWrites)
+    const nextEntity = draft.record.apply(current, entityWrites)
+    const nextDocument = spec.kind === 'singleton'
+      ? writeAccessEntity(spec, input.document, nextEntity)
+      : writeAccessEntity(spec, input.document, {
+          ...readAccessCollection(spec, input.document),
+          [effect.entity.id]: nextEntity
+        })
+    const entityId = spec.kind === 'singleton'
+      ? undefined
+      : effect.entity.id
+
+    return {
+      document: nextDocument,
+      inverse: Object.keys(inverseWrites).length === 0
+        ? createMutationProgram()
+        : createMutationProgram([{
+            type: 'entity.patch',
+            entity: {
+              kind: 'entity',
+              type: spec.family,
+              id: entityId ?? spec.family
+            },
+            writes: inverseWrites
+          }]),
+      delta: mergeTagDelta(
+        buildEntityDelta(spec, 'patch', entityId, changedPaths),
+        effect.tags
+      ),
+      structural: EMPTY_OUTPUTS as readonly MutationStructuralFact[],
+      footprint: buildEntityFootprint(spec, 'patch', entityId, changedPaths),
+      issues: EMPTY_ISSUES,
+      historyMode: Object.keys(inverseWrites).length === 0
+        ? 'neutral'
+        : 'track'
+    }
+  }
+
   const entityId = spec.kind === 'singleton'
     ? undefined
     : effect.entity.id
@@ -304,6 +469,72 @@ const applyEntityDeleteEffect = <
   spec: CompiledEntitySpec
 }): AppliedMutationProgram<Doc> => {
   const { effect, spec } = input
+  if (spec.access) {
+    if (spec.kind === 'singleton') {
+      if (spec.family === 'document') {
+        throw new Error('document.delete is not supported.')
+      }
+
+      const current = spec.access.read(input.document)
+      if (current === undefined) {
+        throw new Error(`Mutation operation "${spec.family}.delete" cannot find current value.`)
+      }
+      const changedPaths = readEntitySnapshotPaths(spec, current)
+      return {
+        document: writeAccessEntity(spec, input.document, undefined),
+        inverse: createMutationProgram([{
+          type: 'entity.create',
+          entity: {
+            kind: 'entity',
+            type: spec.family,
+            id: spec.family
+          },
+          value: current
+        }]),
+        delta: mergeTagDelta(
+          buildEntityDelta(spec, 'delete', undefined, changedPaths),
+          effect.tags
+        ),
+        structural: EMPTY_OUTPUTS as readonly MutationStructuralFact[],
+        footprint: buildEntityFootprint(spec, 'delete', undefined, changedPaths),
+        issues: EMPTY_ISSUES,
+        historyMode: 'track'
+      }
+    }
+
+    const collection = readAccessCollection(spec, input.document)
+    const current = collection[effect.entity.id]
+    if (current === undefined) {
+      throw new Error(`Mutation operation "${spec.family}.delete" cannot find entity "${effect.entity.id}".`)
+    }
+
+    const {
+      [effect.entity.id]: _removed,
+      ...nextCollection
+    } = collection
+    const changedPaths = readEntitySnapshotPaths(spec, current)
+    return {
+      document: writeAccessEntity(spec, input.document, nextCollection),
+      inverse: createMutationProgram([{
+        type: 'entity.create',
+        entity: {
+          kind: 'entity',
+          type: spec.family,
+          id: effect.entity.id
+        },
+        value: current
+      }]),
+      delta: mergeTagDelta(
+        buildEntityDelta(spec, 'delete', effect.entity.id, changedPaths),
+        effect.tags
+      ),
+      structural: EMPTY_OUTPUTS as readonly MutationStructuralFact[],
+      footprint: buildEntityFootprint(spec, 'delete', effect.entity.id, changedPaths),
+      issues: EMPTY_ISSUES,
+      historyMode: 'track'
+    }
+  }
+
   if (spec.kind === 'singleton') {
     if (spec.family === 'document') {
       throw new Error('document.delete is not supported.')

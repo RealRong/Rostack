@@ -1,7 +1,10 @@
-export {
-  createWhiteboardMutationDelta
-} from './delta'
+import type {
+  MutationDeltaOf
+} from '@shared/mutation'
+import {
+  whiteboardMutationModel
+} from '@whiteboard/core/mutation'
 
-export type {
-  WhiteboardMutationDelta
-} from './delta'
+export type WhiteboardMutationDelta = MutationDeltaOf<
+  typeof whiteboardMutationModel
+>

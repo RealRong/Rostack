@@ -4,12 +4,14 @@ import { record as draftRecord } from '@shared/draft'
 import {
   MutationEngine,
   type MutationCompileHandlerTable,
-  type MutationCurrent,
-  type MutationPorts,
   type MutationResult
 } from '@shared/mutation/engine'
 import type {
-  MutationCommitRecord
+  MutationFootprint,
+  MutationCommitRecord,
+  MutationDeltaOf,
+  MutationReader,
+  MutationWriter
 } from '@shared/mutation'
 import { equal } from '@shared/core'
 import type {
@@ -29,7 +31,9 @@ import {
   normalizeViewportValue,
   type EditorStateDocument
 } from './document'
-import { editorStateRegistry } from './entities'
+import {
+  editorStateMutationModel
+} from './model'
 import type {
   EditorCommand,
   EditorDispatchInput,
@@ -38,15 +42,12 @@ import type {
 } from './intents'
 import { EMPTY_HOVER_STATE } from '@whiteboard/editor/input/hover/store'
 
-type EditorStateReader = MutationCurrent<EditorStateDocument>['document']
-type EditorStateProgram = MutationPorts<typeof editorStateRegistry>
+type EditorStateReader = MutationReader<typeof editorStateMutationModel>
+type EditorStateProgram = MutationWriter<typeof editorStateMutationModel>
+type EditorStateMutationDelta = MutationDeltaOf<typeof editorStateMutationModel>
 type EditorStateOperation = {
   type: string
 }
-
-const createEditorStateReader = (
-  readDocument: () => EditorStateDocument
-): EditorStateReader => readDocument()
 
 const compileHandlers: MutationCompileHandlerTable<
   EditorStateMutationTable,
@@ -334,7 +335,8 @@ export interface EditorStateRuntime {
     EditorStateReader,
     void,
     string,
-    EditorStateProgram
+    EditorStateProgram,
+    EditorStateMutationDelta
   >
   snapshot(): EditorStateDocument
   dispatch: (
@@ -342,7 +344,7 @@ export interface EditorStateRuntime {
   ) => void
   commits: {
     subscribe: (
-      listener: (commit: MutationCommitRecord<EditorStateDocument, EditorStateOperation>) => void
+      listener: (commit: MutationCommitRecord<EditorStateDocument, EditorStateOperation, MutationFootprint, EditorStateMutationDelta>) => void
     ) => () => void
   }
   flush(): void
@@ -362,7 +364,8 @@ export const createEditorStateRuntime = (input: {
     EditorStateReader,
     void,
     string,
-    EditorStateProgram
+    EditorStateProgram,
+    EditorStateMutationDelta
   >({
     document: buildEditorStateDocument({
       tool: input.initialTool,
@@ -370,8 +373,7 @@ export const createEditorStateRuntime = (input: {
       viewport: input.initialViewport
     }),
     normalize: normalizeEditorStateDocument,
-    createReader: createEditorStateReader,
-    registry: editorStateRegistry,
+    model: editorStateMutationModel,
     compile: compileHandlers,
     history: false
   })
@@ -379,7 +381,7 @@ export const createEditorStateRuntime = (input: {
   let stagedDocument = engine.document()
   let pendingCommands: EditorCommand[] = []
   const commitListeners = new Set<(
-    commit: MutationCommitRecord<EditorStateDocument, EditorStateOperation>
+    commit: MutationCommitRecord<EditorStateDocument, EditorStateOperation, MutationFootprint, EditorStateMutationDelta>
   ) => void>()
 
   engine.subscribe((commit) => {
@@ -515,8 +517,7 @@ export const createEditorStateRuntime = (input: {
   ) => engine.subscribe((commit) => {
     if (
       commit.delta.reset === true
-      || commit.delta.has('state.viewport')
-      || Object.keys(commit.delta.changes).some((key) => key.startsWith('state.viewport.'))
+      || commit.delta.state.viewport.changed()
     ) {
       listener()
     }

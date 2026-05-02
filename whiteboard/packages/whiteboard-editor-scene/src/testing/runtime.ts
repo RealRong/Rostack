@@ -8,7 +8,6 @@ import type {
 import type { Capture } from '../contracts/capture'
 import type { EditorSceneRuntime } from '../contracts/runtime'
 import type { WorkingState } from '../contracts/working'
-import { createWhiteboardMutationDelta } from '@whiteboard/engine/mutation'
 import { createProjection } from '../projection/createProjection'
 import {
   createProjectionRuntime
@@ -16,7 +15,7 @@ import {
 const normalizeInput = (input: SceneUpdateInput): Input => ({
   document: input.document,
   editor: input.editor,
-  delta: createWhiteboardMutationDelta(input.document.delta)
+  delta: input.document.delta
 })
 
 const TEST_SCENE_VIEW = () => ({

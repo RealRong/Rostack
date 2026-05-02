@@ -50,9 +50,9 @@ const reorderCanvasRefs = (
 const createCanvasOrderMoveIntents = (
   current: readonly CanvasItemRef[],
   target: readonly CanvasItemRef[]
-): readonly Extract<Intent, { type: 'canvas.order.move' }>[] => {
+): readonly Extract<Intent, { type: 'document.order.move' }>[] => {
   const working = [...current]
-  const ops: Extract<Intent, { type: 'canvas.order.move' }>[] = []
+  const ops: Extract<Intent, { type: 'document.order.move' }>[] = []
 
   for (let index = 0; index < target.length; index += 1) {
     const ref = target[index]!
@@ -68,7 +68,7 @@ const createCanvasOrderMoveIntents = (
     working.splice(currentIndex, 1)
     working.splice(index, 0, ref)
     ops.push({
-      type: 'canvas.order.move',
+      type: 'document.order.move',
       refs: [ref],
       to: index === 0
         ? { kind: 'front' }
@@ -86,9 +86,9 @@ export const planCanvasOrderStep = (input: {
   document: Document
   refs: readonly CanvasItemRef[]
   direction: 'forward' | 'backward'
-}): readonly Extract<Intent, { type: 'canvas.order.move' }>[] => {
+}): readonly Extract<Intent, { type: 'document.order.move' }>[] => {
   const reader = createDocumentReader(() => input.document)
-  const current = reader.canvas.order()
+  const current = reader.documentOrder.order()
   const target = reorderCanvasRefs(current, input.refs, input.direction)
   return createCanvasOrderMoveIntents(current, target)
 }
@@ -97,9 +97,9 @@ export const planGroupOrderStep = (input: {
   document: Document
   ids: readonly GroupId[]
   direction: 'forward' | 'backward'
-}): readonly Extract<Intent, { type: 'canvas.order.move' }>[] => {
+}): readonly Extract<Intent, { type: 'document.order.move' }>[] => {
   const reader = createDocumentReader(() => input.document)
-  const refs = input.ids.flatMap((groupId) => reader.canvas.groupRefs(groupId))
+  const refs = input.ids.flatMap((groupId) => reader.documentOrder.groupRefs(groupId))
   return planCanvasOrderStep({
     document: input.document,
     refs,

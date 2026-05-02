@@ -206,14 +206,11 @@ export interface Document {
   id: DocumentId
   name?: string
   background?: Background
-  canvas: {
-    order: CanvasItemRef[]
-  }
+  order: CanvasItemRef[]
   nodes: Record<NodeId, NodeRecord>
   edges: Record<EdgeId, EdgeRecord>
   groups: Record<GroupId, GroupRecord>
   mindmaps: Record<MindmapId, MindmapRecord>
-  meta?: { createdAt?: string; updatedAt?: string }
 }
 
 export interface Snapshot {

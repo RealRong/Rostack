@@ -29,6 +29,9 @@ import type {
   MutationTreeSubtreeSnapshot,
   Origin,
 } from '../write'
+import type {
+  MutationModelDefinition,
+} from '../model'
 export type {
   MutationChange,
   MutationChangeInput,
@@ -319,15 +322,18 @@ export interface MutationEngineOptions<
   Reader,
   Services = void,
   Code extends string = string,
-  Program = MutationProgramWriter<string>
+  Program = MutationProgramWriter<string>,
+  Delta extends MutationDelta = MutationDelta
 > {
   document: Doc
   normalize(doc: Doc): Doc
-  createReader: MutationReaderFactory<Doc, Reader>
+  createReader?: MutationReaderFactory<Doc, Reader>
   services?: Services
   registry?: MutationRegistry<Doc>
+  model?: MutationModelDefinition<Doc>
   compile?: MutationCompileHandlerTable<Table, Doc, Program, Reader, Services, Code>
   createProgram?: MutationCompileProgramFactory<Program>
+  createDelta?: (delta: MutationDelta) => Delta
   history?: MutationHistoryOptions | false
 }
 
@@ -375,6 +381,10 @@ export type CompiledEntitySpec = {
   createType: string
   patchType: string
   deleteType: string
+  access?: {
+    read(document: unknown): unknown
+    write(document: unknown, next: unknown): unknown
+  }
 }
 
 export type DeltaAccumulatorEntry = {
@@ -548,11 +558,12 @@ export const readChangeEntries = (
 export type MutationCommitTypes<
   Doc,
   Op,
-  Extra = void
+  Extra = void,
+  Delta extends MutationDelta = MutationDelta
 > = {
-  apply: ApplyCommit<Doc, Op, MutationFootprint, Extra>
-  record: CommitRecord<Doc, Op, MutationFootprint, Extra>
-  stream: CommitStream<CommitRecord<Doc, Op, MutationFootprint, Extra>>
-  published: MutationCommitRecord<Doc, Op, MutationFootprint>
-  replace: MutationReplaceCommit<Doc>
+  apply: ApplyCommit<Doc, Op, MutationFootprint, Extra, string, Delta>
+  record: CommitRecord<Doc, Op, MutationFootprint, Extra, Delta>
+  stream: CommitStream<CommitRecord<Doc, Op, MutationFootprint, Extra, Delta>>
+  published: MutationCommitRecord<Doc, Op, MutationFootprint, Delta>
+  replace: MutationReplaceCommit<Doc, Delta>
 }

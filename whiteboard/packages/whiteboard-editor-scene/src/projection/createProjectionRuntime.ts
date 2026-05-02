@@ -1,4 +1,3 @@
-import { createWhiteboardMutationDelta } from '@whiteboard/engine/mutation'
 import type {
   Input,
   NodeCapabilityInput,
@@ -35,7 +34,7 @@ const normalizeSceneUpdateInput = (
 ): Input => ({
   document: input.document,
   editor: input.editor,
-  delta: createWhiteboardMutationDelta(input.document.delta)
+  delta: input.document.delta
 })
 
 export const createProjectionRuntime = (input: {

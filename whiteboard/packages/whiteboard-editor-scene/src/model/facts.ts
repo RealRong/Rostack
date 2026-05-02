@@ -114,7 +114,7 @@ export const createInputFacts = (
     || edgeTargets === 'all'
     || mindmapTargets === 'all'
     || groupTargets === 'all'
-  const order = reset || current.delta.canvas.orderChanged()
+  const order = reset || current.delta.document.order.changed()
 
   if (reset) {
     return {

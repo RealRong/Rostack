@@ -8,8 +8,6 @@ import type {
   Size
 } from '@whiteboard/core/types'
 import { createEngine } from '@whiteboard/engine'
-import { createWhiteboardMutationDelta } from '@whiteboard/engine/mutation'
-import type { MutationDelta } from '@shared/mutation'
 import type { SceneUpdateInput } from '../src/contracts/editor'
 import { createEmptyInput, createEmptyRuntimeInputDelta } from '../src/testing/input'
 import {
@@ -95,7 +93,7 @@ const createGroup = (input: {
 const createInput = (input: {
   engine: ReturnType<typeof createEngine>
   delta: SceneUpdateInput['editor']['delta']
-  documentDelta?: SceneUpdateInput['document']['delta'] | MutationDelta
+  documentDelta?: SceneUpdateInput['document']['delta']
   edit?: SceneUpdateInput['editor']['snapshot']['state']['edit']
   nodeMeasures?: ReadonlyMap<NodeId, Size>
 }): SceneUpdateInput => {
@@ -117,9 +115,7 @@ const createInput = (input: {
   value.document.snapshot = input.engine.doc()
   value.editor.snapshot.state.edit = input.edit ?? null
   value.editor.delta = input.delta
-  value.document.delta = createWhiteboardMutationDelta(
-    input.documentDelta ?? createMutationDelta()
-  )
+  value.document.delta = input.documentDelta ?? createMutationDelta()
   return value
 }
 
@@ -243,7 +239,7 @@ describe('graph delta patching', () => {
       }))
 
     const reorder = engine.execute({
-      type: 'canvas.order.move',
+      type: 'document.order.move',
       refs: [{
         kind: 'node',
         id: firstId

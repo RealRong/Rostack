@@ -1,4 +1,4 @@
-import { createWhiteboardMutationDelta } from '@whiteboard/engine/mutation'
+import { createMutationDelta } from '@shared/mutation'
 import type {
   SceneUpdateInput
 } from '../contracts/editor'
@@ -7,6 +7,9 @@ import type {
   EditorDelta
 } from '@whiteboard/editor/protocol'
 import { createEmptyDocumentSnapshot } from '../projection/state'
+import {
+  whiteboardMutationModel
+} from '@whiteboard/core/mutation'
 
 const EMPTY_MUTATION_CHANGES = Object.freeze(
   Object.create(null)
@@ -46,7 +49,7 @@ export const createEmptyInput = (): SceneUpdateInput => ({
   document: {
     rev: 0,
     snapshot: createEmptyDocumentSnapshot().document,
-    delta: createWhiteboardMutationDelta({
+    delta: createMutationDelta(whiteboardMutationModel, {
       changes: EMPTY_MUTATION_CHANGES
     })
   },

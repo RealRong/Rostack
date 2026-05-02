@@ -141,7 +141,7 @@ const createTextDocument = () => {
       text: 'hello world'
     }
   }
-  document.canvas.order = [{
+  document.order = [{
     kind: 'node',
     id: 'text-1'
   }]
@@ -169,7 +169,7 @@ const createStickyDocument = () => {
       fontSize: 28
     }
   }
-  document.canvas.order = [{
+  document.order = [{
     kind: 'node',
     id: 'sticky-1'
   }]

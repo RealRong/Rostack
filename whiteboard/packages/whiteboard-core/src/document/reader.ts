@@ -43,7 +43,7 @@ export interface DocumentReader {
   edges: EdgeReader
   groups: EntityReader<GroupId, Group>
   mindmaps: MindmapReader
-  canvas: {
+  documentOrder: {
     order(): readonly CanvasItemRef[]
     slot(ref: CanvasItemRef): {
       prev?: CanvasItemRef
@@ -163,12 +163,12 @@ export const createDocumentReader = (
         return record?.root === nodeId
       }
     },
-    canvas: {
-      order: () => readDocument().canvas.order,
-      slot: (ref) => readCanvasSlot(readDocument().canvas.order, ref),
+    documentOrder: {
+      order: () => readDocument().order,
+      slot: (ref) => readCanvasSlot(readDocument().order, ref),
       groupRefs: (groupId) => {
         const document = readDocument()
-        return document.canvas.order.filter((ref) => (
+        return document.order.filter((ref) => (
           ref.kind === 'node'
             ? document.nodes[ref.id]?.groupId === groupId
             : ref.kind === 'edge'

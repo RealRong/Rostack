@@ -32,7 +32,7 @@ export const syncSceneOrderState = (
   snapshot: DocumentSnapshot
 ) => {
   state.orderByKey.clear()
-  snapshot.document.canvas.order.forEach((item, index) => {
+  snapshot.document.order.forEach((item, index) => {
     state.orderByKey.set(toSpatialKey(item), index)
   })
 }

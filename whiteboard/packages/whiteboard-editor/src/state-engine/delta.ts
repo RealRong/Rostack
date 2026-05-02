@@ -1,7 +1,5 @@
-import {
-  normalizeMutationDelta,
-  type MutationDelta,
-  type MutationDeltaInput
+import type {
+  MutationDeltaOf
 } from '@shared/mutation'
 import type {
   EdgeId,
@@ -15,6 +13,9 @@ import type {
 import type {
   EditorStateDocument
 } from './document'
+import {
+  editorStateMutationModel
+} from './model'
 
 export interface EditorTouchedIds {
   touchedNodeIds: readonly NodeId[]
@@ -50,87 +51,9 @@ export interface EditorDelta {
   reset?: true
 }
 
-export type EditorStateMutationDelta = MutationDelta & {
-  raw: MutationDelta
-  tool: {
-    changed(): boolean
-  }
-  draw: {
-    changed(): boolean
-  }
-  selection: {
-    changed(): boolean
-  }
-  edit: {
-    changed(): boolean
-  }
-  interaction: {
-    changed(): boolean
-  }
-  hover: {
-    changed(): boolean
-  }
-  preview: {
-    changed(): boolean
-  }
-  viewport: {
-    changed(): boolean
-  }
-}
-
-const changedKey = (
-  delta: MutationDelta,
-  key: string
-): boolean => (
-  delta.reset === true
-  || delta.has(key)
-  || Object.keys(delta.changes).some((currentKey) => (
-    currentKey.startsWith(`${key}.`)
-  ))
-)
-
-const CACHE = new WeakMap<MutationDelta, EditorStateMutationDelta>()
-
-export const createEditorStateMutationDelta = (
-  raw: MutationDelta | MutationDeltaInput
-): EditorStateMutationDelta => {
-  const normalized = normalizeMutationDelta(raw)
-  const cached = CACHE.get(normalized)
-  if (cached) {
-    return cached
-  }
-
-  const delta = Object.assign({}, normalized, {
-    raw: normalized,
-    tool: {
-      changed: () => changedKey(normalized, 'state.tool')
-    },
-    draw: {
-      changed: () => changedKey(normalized, 'state.draw')
-    },
-    selection: {
-      changed: () => changedKey(normalized, 'state.selection')
-    },
-    edit: {
-      changed: () => changedKey(normalized, 'state.edit')
-    },
-    interaction: {
-      changed: () => changedKey(normalized, 'state.interaction')
-    },
-    hover: {
-      changed: () => changedKey(normalized, 'overlay.hover')
-    },
-    preview: {
-      changed: () => changedKey(normalized, 'overlay.preview')
-    },
-    viewport: {
-      changed: () => changedKey(normalized, 'state.viewport')
-    }
-  }) as EditorStateMutationDelta
-
-  CACHE.set(normalized, delta)
-  return delta
-}
+export type EditorStateMutationDelta = MutationDeltaOf<
+  typeof editorStateMutationModel
+>
 
 const EMPTY_IDS: readonly string[] = Object.freeze([])
 
@@ -281,20 +204,20 @@ const isMindmapPreviewEqual = (
 const toCommitFlags = (
   delta: EditorStateMutationDelta
 ): CommitFlags => ({
-  tool: delta.tool.changed(),
-  draw: delta.draw.changed(),
-  selection: delta.selection.changed(),
-  edit: delta.edit.changed(),
-  interaction: delta.interaction.changed(),
-  hover: delta.hover.changed(),
-  preview: delta.preview.changed(),
-  viewport: delta.viewport.changed()
+  tool: delta.state.tool.changed(),
+  draw: delta.state.draw.changed(),
+  selection: delta.state.selection.changed(),
+  edit: delta.state.edit.changed(),
+  interaction: delta.state.interaction.changed(),
+  hover: delta.overlay.hover.changed(),
+  preview: delta.overlay.preview.changed(),
+  viewport: delta.state.viewport.changed()
 })
 
 export const collectEditorCommitFlags = (
-  commits: readonly MutationDelta[]
+  commits: readonly EditorStateMutationDelta[]
 ): CommitFlags => commits.reduce<CommitFlags>((result, commit) => {
-  const current = toCommitFlags(createEditorStateMutationDelta(commit))
+  const current = toCommitFlags(commit)
   return {
     tool: result.tool || current.tool,
     draw: result.draw || current.draw,

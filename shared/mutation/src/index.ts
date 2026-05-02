@@ -40,6 +40,35 @@ export type {
   HistoryPort,
 } from './localHistory'
 export type {
+  MutationCollectionFamilySpec,
+  MutationDeltaOf,
+  MutationModel,
+  MutationModelDefinition,
+  MutationOrderedFamilySpec,
+  MutationReader,
+  MutationRecordMemberSpec,
+  MutationSingletonFamilySpec,
+  MutationTreeFamilySpec,
+  MutationUnset,
+  MutationValueMemberSpec,
+  MutationWriter,
+} from './model'
+export {
+  compileMutationModel,
+  createMutationDelta,
+  createMutationReader,
+  createMutationWriter,
+  defineMutationModel,
+  mapFamily,
+  ordered,
+  record,
+  singleton,
+  tableFamily,
+  tree,
+  unset,
+  value,
+} from './model'
+export type {
   ApplyCommit,
   CommitRecord,
   CommitStream,

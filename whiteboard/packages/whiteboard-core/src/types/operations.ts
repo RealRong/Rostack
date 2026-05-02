@@ -124,7 +124,7 @@ export type EdgeUpdateInput = {
 export type GroupPatch = Partial<Omit<Group, 'id'>>
 export type GroupField = 'locked' | 'name'
 
-export type DocumentPatch = Partial<Pick<Document, 'id' | 'name' | 'background' | 'canvas' | 'meta'>>
+export type DocumentPatch = Partial<Pick<Document, 'id' | 'name' | 'background' | 'order'>>
 
 export type EdgeLabelField = 'text' | 't' | 'offset'
 export type EdgeLabelRecordScope = 'data' | 'style'
@@ -232,7 +232,7 @@ export type MindmapBranchUpdateInput = {
 export type Op =
   | { readonly type: 'document.create'; readonly value: Document }
   | { readonly type: 'document.patch'; readonly patch: DocumentPatch }
-  | { readonly type: 'canvas.order.move'; readonly refs: readonly CanvasItemRef[]; readonly to: CanvasOrderAnchor }
+  | { readonly type: 'document.order.move'; readonly refs: readonly CanvasItemRef[]; readonly to: CanvasOrderAnchor }
   | { readonly type: 'node.create'; readonly value: Node }
   | { readonly type: 'node.patch'; readonly id: NodeId; readonly patch: NodePatch }
   | { readonly type: 'node.delete'; readonly id: NodeId }
@@ -265,7 +265,7 @@ export type Batch = {
 export type ChangeSet = {
   document: boolean
   background: boolean
-  canvasOrder: boolean
+  order: boolean
   nodes: SharedIdDelta<NodeId>
   edges: SharedIdDelta<EdgeId>
   groups: SharedIdDelta<GroupId>
@@ -275,7 +275,7 @@ export type ChangeSet = {
 export type Invalidation = {
   document: boolean
   background: boolean
-  canvasOrder: boolean
+  order: boolean
   nodes: Set<NodeId>
   edges: Set<EdgeId>
   groups: Set<GroupId>

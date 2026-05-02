@@ -22,7 +22,7 @@ export const createCanvasWrite = (
   },
   order: {
     move: (refs, to) => engine.execute({
-      type: 'canvas.order.move',
+      type: 'document.order.move',
       refs,
       to
     }),
@@ -35,7 +35,7 @@ export const createCanvasWrite = (
       return (planned.length > 0
         ? engine.execute(planned as any)
         : engine.execute({
-            type: 'canvas.order.move',
+            type: 'document.order.move',
             refs: [],
             to: {
               kind: 'front'

@@ -18,7 +18,7 @@ type DocumentSnapshot = {
 }
 
 const toSceneItem = (
-  ref: Document['canvas']['order'][number]
+  ref: Document['order'][number]
 ): SceneItem => ({
   kind: ref.kind,
   id: ref.id
@@ -28,7 +28,7 @@ const buildItemsSnapshot = (
   snapshot: DocumentSnapshot
 ): WorkingState['items'] => {
   const byId = new Map<SceneItemKey, SceneItem>()
-  const ids = snapshot.document.canvas.order.map((ref) => {
+  const ids = snapshot.document.order.map((ref) => {
     const key = sceneItemKey.write(ref)
     const item = toSceneItem(ref)
     byId.set(key, item)

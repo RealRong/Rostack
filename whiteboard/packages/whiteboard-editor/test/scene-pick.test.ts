@@ -79,7 +79,7 @@ const createPickDocument = () => {
       nodeId: 'node-2'
     }
   }
-  document.canvas.order = [
+  document.order = [
     {
       kind: 'node',
       id: 'node-1'

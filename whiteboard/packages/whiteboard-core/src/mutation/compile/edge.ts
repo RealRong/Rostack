@@ -17,6 +17,10 @@ import {
   readCompileServices,
 } from '@whiteboard/core/mutation/compile/helpers'
 import { resolveLockDecision } from '@whiteboard/core/mutation/lock'
+import {
+  canvasRefKey,
+  toMutationOrderedAnchor,
+} from '@whiteboard/core/mutation/support'
 import type {
   Edge,
   EdgeFieldPatch,
@@ -227,7 +231,10 @@ const emitEdgeRouteDiffOps = (
         x: point.x,
         y: point.y
       }
-      ctx.program.edgeRoute(edgeId).insert(routePoint, to)
+      ctx.program.edge.route(edgeId).insert(
+        routePoint,
+        toMutationOrderedAnchor(to)
+      )
       to = {
         kind: 'after',
         pointId: routePoint.id
@@ -238,7 +245,7 @@ const emitEdgeRouteDiffOps = (
 
   if (nextMiddle.length === 0) {
     currentMiddle.forEach((point) => {
-      ctx.program.edgeRoute(edgeId).delete(point.id)
+      ctx.program.edge.route(edgeId).delete(point.id)
     })
     return
   }
@@ -254,14 +261,14 @@ const emitEdgeRouteDiffOps = (
         fields.y = nextPoint.y
       }
       if (Object.keys(fields).length) {
-        ctx.program.edgeRoute(edgeId).patch(point.id, fields)
+        ctx.program.edge.route(edgeId).patch(point.id, fields)
       }
     })
     return
   }
 
   currentPoints.forEach((point) => {
-    ctx.program.edgeRoute(edgeId).delete(point.id)
+    ctx.program.edge.route(edgeId).delete(point.id)
   })
 
   let to: EdgeRoutePointAnchor = { kind: 'start' }
@@ -271,7 +278,10 @@ const emitEdgeRouteDiffOps = (
       x: point.x,
       y: point.y
     }
-    ctx.program.edgeRoute(edgeId).insert(routePoint, to)
+    ctx.program.edge.route(edgeId).insert(
+      routePoint,
+      toMutationOrderedAnchor(to)
+    )
     to = {
       kind: 'after',
       pointId: routePoint.id
@@ -357,7 +367,7 @@ const compileEdgeRouteDelete = (
     return ctx.invalid(`Edge ${edge.id} route point not found.`)
   }
 
-  ctx.program.edgeRoute(edge.id).delete(pointId)
+  ctx.program.edge.route(edge.id).delete(pointId)
 }
 
 type EdgeIntentHandlers = Pick<
@@ -405,7 +415,7 @@ export const edgeIntentHandlers: EdgeIntentHandlers = {
     }
 
     ctx.program.edge.create(built.data.edge)
-    ctx.program.canvasOrder().insert({
+    ctx.program.document.order().insert({
       kind: 'edge',
       id: built.data.edgeId
     })
@@ -426,7 +436,7 @@ export const edgeIntentHandlers: EdgeIntentHandlers = {
     }
 
     ctx.intent.updates.forEach((entry) => {
-      const edge = ctx.reader.edges.get(entry.id)
+      const edge = ctx.reader.edge.get(entry.id)
       if (!edge) {
         return
       }
@@ -447,7 +457,7 @@ export const edgeIntentHandlers: EdgeIntentHandlers = {
     }
 
     intent.ids.forEach((edgeId) => {
-      const edge = ctx.reader.edges.get(edgeId)
+      const edge = ctx.reader.edge.get(edgeId)
       const patch = edge ? edgeApi.edit.move(edge, intent.delta) : undefined
       if (!edge || !patch) {
         return
@@ -479,7 +489,7 @@ export const edgeIntentHandlers: EdgeIntentHandlers = {
       return failLockedEdgeModification(ctx, targetDecision.reason)
     }
 
-    const edge = ctx.reader.edges.get(intent.edgeId)
+    const edge = ctx.reader.edge.get(intent.edgeId)
     if (!edge) {
       return
     }
@@ -514,14 +524,14 @@ export const edgeIntentHandlers: EdgeIntentHandlers = {
 
     ctx.intent.ids.forEach((id) => {
       ctx.program.edge.delete(id)
-      ctx.program.canvasOrder().deleteRef({
+      ctx.program.document.order().delete(canvasRefKey({
         kind: 'edge',
         id
-      })
+      }))
     })
   },
   'edge.label.insert': (ctx) => {
-    const edge = ctx.reader.edges.require(ctx.intent.edgeId)
+    const edge = ctx.reader.edge.require(ctx.intent.edgeId)
     if (!edge) {
       return
     }
@@ -535,13 +545,18 @@ export const edgeIntentHandlers: EdgeIntentHandlers = {
       ...(ctx.intent.label.style !== undefined ? { style: ctx.intent.label.style } : {}),
       ...(ctx.intent.label.data !== undefined ? { data: ctx.intent.label.data } : {})
     }
-    ctx.program.edgeLabels(edge.id).insert(label, ctx.intent.to ?? { kind: 'end' })
+    ctx.program.edge.labels(edge.id).insert(
+      label,
+      ctx.intent.to
+        ? toMutationOrderedAnchor(ctx.intent.to)
+        : { kind: 'end' }
+    )
     ctx.output({
       labelId
     })
   },
   'edge.label.update': (ctx) => {
-    const edge = ctx.reader.edges.require(ctx.intent.edgeId)
+    const edge = ctx.reader.edge.require(ctx.intent.edgeId)
     if (!edge) {
       return
     }
@@ -557,35 +572,40 @@ export const edgeIntentHandlers: EdgeIntentHandlers = {
       return
     }
 
-    ctx.program.edgeLabels(edge.id).patch(label.id, createEdgeLabelPatch({
+    ctx.program.edge.labels(edge.id).patch(label.id, createEdgeLabelPatch({
       ...(fields ? { fields } : {}),
       ...(record ? { record } : {})
     }))
   },
   'edge.label.move': (ctx) => {
-    ctx.program.edgeLabels(ctx.intent.edgeId).move(ctx.intent.labelId, ctx.intent.to)
+    ctx.program.edge.labels(ctx.intent.edgeId).move(
+      ctx.intent.labelId,
+      toMutationOrderedAnchor(ctx.intent.to)
+    )
   },
   'edge.label.delete': (ctx) => {
-    ctx.program.edgeLabels(ctx.intent.edgeId).delete(ctx.intent.labelId)
+    ctx.program.edge.labels(ctx.intent.edgeId).delete(ctx.intent.labelId)
   },
   'edge.route.insert': (ctx) => {
-    const edge = ctx.reader.edges.require(ctx.intent.edgeId)
+    const edge = ctx.reader.edge.require(ctx.intent.edgeId)
     if (!edge) {
       return
     }
 
     const pointId = readCompileServices(ctx).ids.edgeRoutePoint()
-    ctx.program.edgeRoute(edge.id).insert({
+    ctx.program.edge.route(edge.id).insert({
       id: pointId,
       x: ctx.intent.point.x,
       y: ctx.intent.point.y
-    }, ctx.intent.to ?? { kind: 'end' })
+    }, ctx.intent.to
+      ? toMutationOrderedAnchor(ctx.intent.to)
+      : { kind: 'end' })
     ctx.output({
       pointId
     })
   },
   'edge.route.update': (ctx) => {
-    const edge = ctx.reader.edges.require(ctx.intent.edgeId)
+    const edge = ctx.reader.edge.require(ctx.intent.edgeId)
     if (!edge) {
       return
     }
@@ -608,10 +628,10 @@ export const edgeIntentHandlers: EdgeIntentHandlers = {
       return
     }
 
-    ctx.program.edgeRoute(edge.id).patch(point.id, fields)
+    ctx.program.edge.route(edge.id).patch(point.id, fields)
   },
   'edge.route.set': (ctx) => {
-    const edge = ctx.reader.edges.require(ctx.intent.edgeId)
+    const edge = ctx.reader.edge.require(ctx.intent.edgeId)
     if (!edge) {
       return
     }
@@ -623,17 +643,20 @@ export const edgeIntentHandlers: EdgeIntentHandlers = {
     )
   },
   'edge.route.move': (ctx) => {
-    ctx.program.edgeRoute(ctx.intent.edgeId).move(ctx.intent.pointId, ctx.intent.to)
+    ctx.program.edge.route(ctx.intent.edgeId).move(
+      ctx.intent.pointId,
+      toMutationOrderedAnchor(ctx.intent.to)
+    )
   },
   'edge.route.delete': (ctx) => {
-    const edge = ctx.reader.edges.require(ctx.intent.edgeId)
+    const edge = ctx.reader.edge.require(ctx.intent.edgeId)
     if (!edge) {
       return
     }
     return compileEdgeRouteDelete(edge, ctx.intent.pointId, ctx)
   },
   'edge.route.clear': (ctx) => {
-    const edge = ctx.reader.edges.require(ctx.intent.edgeId)
+    const edge = ctx.reader.edge.require(ctx.intent.edgeId)
     if (!edge) {
       return
     }
@@ -641,7 +664,7 @@ export const edgeIntentHandlers: EdgeIntentHandlers = {
       return
     }
     edge.route.points.forEach((point) => {
-      ctx.program.edgeRoute(edge.id).delete(point.id)
+      ctx.program.edge.route(edge.id).delete(point.id)
     })
   }
 }

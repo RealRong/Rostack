@@ -20,7 +20,7 @@ export const invalidationTraceSpec = {
     reset: 'flag',
     document: 'flag',
     background: 'flag',
-    canvasOrder: 'flag',
+    order: 'flag',
     nodes: 'flag',
     edges: 'flag',
     groups: 'flag',
@@ -39,7 +39,7 @@ export interface InvalidationTraceSummary {
     reset: boolean
     document: boolean
     background: boolean
-    canvasOrder: boolean
+    order: boolean
     nodes: boolean
     edges: boolean
     groups: boolean
@@ -85,7 +85,7 @@ export const summarizeInvalidation = (
       reset: invalidation.document,
       document: invalidation.document || invalidation.background,
       background: invalidation.background,
-      canvasOrder: invalidation.canvasOrder,
+      order: invalidation.order,
       nodes: invalidation.document || sharedTrace.has(touchedNodeCount),
       edges: invalidation.document || sharedTrace.has(touchedEdgeCount),
       groups: invalidation.document || sharedTrace.has(touchedGroupCount),
@@ -101,7 +101,7 @@ export const summarizeInvalidation = (
 
   summary.addFact('document.reset', invalidation.document)
   summary.addFact('document.background', invalidation.background)
-  summary.addFact('canvas.order', invalidation.canvasOrder)
+  summary.addFact('document.order', invalidation.order)
   summary.addFact('node.touch', invalidation.nodes)
   summary.addFact('edge.touch', invalidation.edges)
   summary.addFact('group.touch', invalidation.groups)
@@ -130,15 +130,15 @@ export const deriveImpact = (
     document: trace.summary.document,
     node: {
       ids: reset ? EMPTY_NODE_IDS : nodeIds,
-      geometry: reset || trace.summary.canvasOrder || mindmapTouched || nodeTouched,
-      list: reset || trace.summary.canvasOrder,
+      geometry: reset || trace.summary.order || mindmapTouched || nodeTouched,
+      list: reset || trace.summary.order,
       value: reset || mindmapTouched || nodeTouched
     },
     edge: {
       ids: reset ? EMPTY_EDGE_IDS : edgeIds,
       nodeIds: reset ? EMPTY_NODE_IDS : nodeIds,
-      geometry: reset || trace.summary.canvasOrder || nodeTouched || edgeTouched,
-      list: reset || trace.summary.canvasOrder,
+      geometry: reset || trace.summary.order || nodeTouched || edgeTouched,
+      list: reset || trace.summary.order,
       value: reset || nodeTouched || edgeTouched
     }
   }

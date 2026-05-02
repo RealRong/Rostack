@@ -51,7 +51,6 @@ import type {
   Size,
   Viewport
 } from '@whiteboard/core/types'
-import type { MutationDelta } from '@shared/mutation'
 import type {
   ProjectionTrace,
   Revision
@@ -111,7 +110,7 @@ export interface SceneUpdateInput {
   document: {
     snapshot: WhiteboardDocument
     rev: Revision
-    delta: MutationDelta
+    delta: WhiteboardMutationDelta
   }
   editor: {
     snapshot: EditorSnapshot
@@ -594,7 +593,7 @@ export interface DocumentFrame {
   edgeIds(): readonly EdgeId[]
   groupIds(): readonly GroupId[]
   mindmapIds(): readonly MindmapId[]
-  canvas: {
+  order: {
     order(): readonly import('@whiteboard/core/types').CanvasItemRef[]
     slot(ref: import('@whiteboard/core/types').CanvasItemRef): {
       prev?: import('@whiteboard/core/types').CanvasItemRef

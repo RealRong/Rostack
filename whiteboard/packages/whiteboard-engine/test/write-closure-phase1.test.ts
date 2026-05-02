@@ -97,7 +97,7 @@ test('canvas.selection.move compiles node, selected edge, and follow edge moveme
       y: 50
     }]
   })
-  document.canvas.order = [
+  document.order = [
     { kind: 'node', id: 'node_1' },
     { kind: 'node', id: 'node_2' },
     { kind: 'edge', id: 'edge_follow' },
@@ -181,7 +181,7 @@ test('edge.reconnect.commit applies endpoint, type, and route in one command', (
     }]
   })
   document.edges.edge_1.type = 'curve'
-  document.canvas.order = [
+  document.order = [
     { kind: 'node', id: 'node_1' },
     { kind: 'node', id: 'node_2' },
     { kind: 'edge', id: 'edge_1' }

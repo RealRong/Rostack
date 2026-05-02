@@ -10,9 +10,6 @@ import type {
 } from '@whiteboard/core/mutation/compile/helpers'
 import { mindmapIntentHandlers } from '@whiteboard/core/mutation/compile/mindmap'
 import { nodeIntentHandlers } from '@whiteboard/core/mutation/compile/node'
-import {
-  createWhiteboardMutationPorts
-} from '@whiteboard/core/mutation/program'
 export const whiteboardCompileHandlers: WhiteboardCompileHandlerTable = {
   'document.replace': documentIntentHandlers['document.replace'],
   'document.insert': documentIntentHandlers['document.insert'],
@@ -20,7 +17,7 @@ export const whiteboardCompileHandlers: WhiteboardCompileHandlerTable = {
   'canvas.delete': canvasIntentHandlers['canvas.delete'],
   'canvas.duplicate': canvasIntentHandlers['canvas.duplicate'],
   'canvas.selection.move': canvasIntentHandlers['canvas.selection.move'],
-  'canvas.order.move': canvasIntentHandlers['canvas.order.move'],
+  'document.order.move': canvasIntentHandlers['document.order.move'],
   'node.create': nodeIntentHandlers['node.create'],
   'node.update': nodeIntentHandlers['node.update'],
   'node.move': nodeIntentHandlers['node.move'],
@@ -63,7 +60,6 @@ export const whiteboardCompileHandlers: WhiteboardCompileHandlerTable = {
 
 export const whiteboardCompile = {
   createReader: createCompileReader,
-  createProgram: createWhiteboardMutationPorts,
   handlers: whiteboardCompileHandlers
 } as const
 

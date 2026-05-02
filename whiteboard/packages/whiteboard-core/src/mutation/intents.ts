@@ -89,7 +89,7 @@ export type CanvasIntent =
       delta: Point
     }
   | {
-      type: 'canvas.order.move'
+      type: 'document.order.move'
       refs: readonly CanvasItemRef[]
       to: CanvasOrderAnchor
     }
@@ -333,8 +333,8 @@ export interface WhiteboardIntentTable {
     intent: Extract<CanvasIntent, { type: 'canvas.selection.move' }>
     output: void
   }
-  'canvas.order.move': {
-    intent: Extract<CanvasIntent, { type: 'canvas.order.move' }>
+  'document.order.move': {
+    intent: Extract<CanvasIntent, { type: 'document.order.move' }>
     output: void
   }
   'node.create': {

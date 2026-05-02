@@ -92,7 +92,7 @@ const createTextEditor = () => {
       text: 'Hello'
     }
   }
-  document.canvas.order = [{
+  document.order = [{
     kind: 'node',
     id: 'text-1'
   }]
@@ -136,7 +136,7 @@ const createShapeEditor = () => {
       strokeWidth: 1
     }
   }
-  document.canvas.order = [{
+  document.order = [{
     kind: 'node',
     id: 'shape-1'
   }]
@@ -233,7 +233,7 @@ const createMindmapEditor = () => {
       vGap: 18
     }
   }
-  document.canvas.order = [{
+  document.order = [{
     kind: 'mindmap',
     id: 'mind-1'
   }]
@@ -291,7 +291,7 @@ const createEdgeEditor = () => {
       text: 'Label'
     }]
   }
-  document.canvas.order = [
+  document.order = [
     {
       kind: 'node',
       id: 'node-1'

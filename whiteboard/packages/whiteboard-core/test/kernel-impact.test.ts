@@ -9,7 +9,7 @@ import {
 const createInvalidation = (): Invalidation => ({
   document: false,
   background: false,
-  canvasOrder: false,
+  order: false,
   nodes: new Set(),
   edges: new Set(),
   groups: new Set(),
@@ -28,7 +28,7 @@ test('summarizeInvalidation 将 invalidation 收敛为共享 trace 摘要', () =
       reset: false,
       document: true,
       background: true,
-      canvasOrder: false,
+      order: false,
       nodes: true,
       edges: false,
       groups: true,

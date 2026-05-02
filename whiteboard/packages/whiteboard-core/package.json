@@ -10,7 +10,6 @@
     "./mindmap": "./src/mindmap/index.ts",
     "./edge": "./src/edge/index.ts",
     "./mutation": "./src/mutation/index.ts",
-    "./operations": "./src/operations/index.ts",
     "./registry": "./src/registry/index.ts",
     "./document": "./src/document/index.ts",
     "./document/reader": "./src/document/reader.ts",

@@ -47,7 +47,7 @@ const writeMindmapTopicUpdate = (
   update: NodeUpdateInput
 ) => {
   const reader = ctx.reader
-  const node = reader.nodes.get(nodeId)
+  const node = reader.node.get(nodeId)
   if (!node) {
     return
   }
@@ -62,7 +62,7 @@ const writeMindmapTopicUpdate = (
   }
 
   const fields = update.fields
-  const isRoot = reader.mindmaps.isRoot(node.id)
+  const isRoot = reader.mindmap.isRoot(node.id)
 
   if (fields?.position) {
     if (!isRoot) {
@@ -106,7 +106,7 @@ const compileNodeTextCommit = (
     intent
   } = ctx
   const reader = ctx.reader
-  const node = reader.nodes.get(intent.nodeId)
+  const node = reader.node.get(intent.nodeId)
   if (!node) {
     return
   }
@@ -196,7 +196,7 @@ export const nodeIntentHandlers: NodeIntentHandlers = {
     }
 
     ctx.program.node.create(built.data.node)
-    ctx.program.canvasOrder().insert({
+    ctx.program.document.order().insert({
       kind: 'node',
       id: built.data.nodeId
     })
@@ -224,7 +224,7 @@ export const nodeIntentHandlers: NodeIntentHandlers = {
     }
 
     for (const entry of ctx.intent.updates) {
-      const current = reader.nodes.get(entry.id)
+      const current = reader.node.get(entry.id)
       const update = current
         ? readCompileServices(ctx).layout.commit({
             kind: 'node.update',
@@ -265,7 +265,7 @@ export const nodeIntentHandlers: NodeIntentHandlers = {
     }
 
     for (const id of intent.ids) {
-      const node = reader.nodes.get(id)
+      const node = reader.node.get(id)
       if (!node) {
         return ctx.invalid(`Node ${id} not found.`)
       }
@@ -283,7 +283,7 @@ export const nodeIntentHandlers: NodeIntentHandlers = {
         continue
       }
 
-      if (!reader.mindmaps.isRoot(id)) {
+      if (!reader.mindmap.isRoot(id)) {
         return ctx.invalid('Mindmap member move must use mindmap drag.')
       }
 

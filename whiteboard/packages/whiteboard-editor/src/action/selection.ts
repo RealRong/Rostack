@@ -35,12 +35,12 @@ type SelectionActionHelpersHost = {
 }
 
 const orderRefs = (
-  canvas: Pick<CanvasWrite, 'order'>,
+  order: CanvasWrite['order'],
   refs: CanvasItemRef[],
   mode: 'front' | 'back' | 'forward' | 'backward'
 ) => mode === 'forward' || mode === 'backward'
-  ? canvas.order.step(refs, mode)
-  : canvas.order.move(refs, {
+  ? order.step(refs, mode)
+  : order.move(refs, {
       kind: mode
     } satisfies CanvasOrderAnchor)
 
@@ -220,7 +220,8 @@ export const createSelectionActions = (input: {
         return false
       }
 
-      return orderRefs(input.canvas, refs, mode).ok
+      const { order } = input.canvas
+      return orderRefs(order, refs, mode).ok
     },
     group: (value, options) => {
       const target = selectionApi.target.normalize(value)

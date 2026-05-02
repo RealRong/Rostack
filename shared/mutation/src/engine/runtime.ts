@@ -16,6 +16,13 @@ import type {
   Origin,
 } from '../write'
 import {
+  compileMutationModel,
+  createMutationDelta,
+  createMutationReader,
+  createMutationWriter,
+  type MutationModelDefinition,
+} from '../model'
+import {
   APPLY_EMPTY_CODE,
   COMPILE_APPLY_FAILED_CODE,
   COMPILE_BLOCKED_CODE,
@@ -354,16 +361,18 @@ class MutationRuntime<
   Reader,
   Services,
   Code extends string = string,
-  Program = MutationProgramWriter<string>
+  Program = MutationProgramWriter<string>,
+  Delta extends MutationDelta = MutationDelta
 > {
   readonly history: HistoryPort<
-    MutationResult<void, ApplyCommit<Doc, Op, MutationFootprint, void>, Code>,
+    MutationResult<void, ApplyCommit<Doc, Op, MutationFootprint, void, string, Delta>, Code>,
     MutationProgram<string>,
     MutationFootprint,
-    ApplyCommit<Doc, Op, MutationFootprint, void>
+    ApplyCommit<Doc, Op, MutationFootprint, void, string, Delta>
   >
 
   private readonly createReader: MutationReaderFactory<Doc, Reader>
+  private readonly createDelta: (delta: MutationDelta) => Delta
   private readonly normalize: (doc: Doc) => Doc
   private readonly entities: ReadonlyMap<string, CompiledEntitySpec>
   private readonly registry?: MutationRegistry<Doc>
@@ -374,30 +383,61 @@ class MutationRuntime<
   private readonly historyControllerRef?: HistoryController<
     MutationProgram<string>,
     MutationFootprint,
-    ApplyCommit<Doc, Op, MutationFootprint, void>
+    ApplyCommit<Doc, Op, MutationFootprint, void, string, Delta>
   >
   private readonly watchListeners = new Set<(current: MutationCurrent<Doc>) => void>()
-  private readonly commitListeners = new Set<(commit: CommitRecord<Doc, Op, MutationFootprint, void>) => void>()
+  private readonly commitListeners = new Set<(commit: CommitRecord<Doc, Op, MutationFootprint, void, Delta>) => void>()
   private rev = 0
   private documentState: Doc
 
   constructor(input: {
     document: Doc
     normalize(doc: Doc): Doc
-    createReader: MutationReaderFactory<Doc, Reader>
+    createReader?: MutationReaderFactory<Doc, Reader>
     registry?: MutationRegistry<Doc>
+    model?: MutationModelDefinition<Doc>
     services?: Services
     compile?: MutationCompileHandlerTable<any, Doc, Program, Reader, Services, Code>
     createProgram?: MutationCompileProgramFactory<Program>
+    createDelta?: (delta: MutationDelta) => Delta
     history?: MutationHistoryOptions | false
   }) {
-    this.createReader = input.createReader
+    const compiledModel = input.model
+      ? compileMutationModel(input.model)
+      : undefined
+    const registry = input.registry ?? compiledModel?.registry
+    const createReader = input.createReader ?? (
+      input.model
+        ? ((readDocument: () => Doc) => createMutationReader(
+            input.model!,
+            readDocument
+          ) as Reader)
+        : undefined
+    )
+
+    if (!createReader) {
+      throw new Error('MutationEngine requires createReader or model.')
+    }
+
+    this.createReader = createReader
+    this.createDelta = input.createDelta ?? (
+      input.model
+        ? ((delta) => createMutationDelta(input.model!, delta) as unknown as Delta)
+        : ((delta) => delta as Delta)
+    )
     this.normalize = input.normalize
-    this.registry = input.registry
-    this.entities = compileEntities(input.registry?.entity)
+    this.registry = registry as MutationRegistry<Doc> | undefined
+    this.entities = compiledModel?.entities ?? compileEntities(registry?.entity)
     this.services = input.services
     this.compileHandlers = input.compile
-    this.compileProgramFactory = input.createProgram
+    this.compileProgramFactory = input.createProgram ?? (
+      input.model
+        ? ((program) => createMutationWriter(
+            input.model!,
+            program
+          ) as Program)
+        : undefined
+    )
     this.historyOptions = input.history
     this.documentState = this.normalize(input.document)
 
@@ -405,7 +445,7 @@ class MutationRuntime<
       this.historyControllerRef = historyRuntime.create<
         MutationProgram<string>,
         MutationFootprint,
-        ApplyCommit<Doc, Op, MutationFootprint, void>
+        ApplyCommit<Doc, Op, MutationFootprint, void, string, Delta>
       >({
         capacity: input.history?.capacity,
         conflicts: mutationFootprintBatchConflicts
@@ -442,7 +482,7 @@ class MutationRuntime<
   }
 
   subscribe(
-    listener: (commit: MutationCommitRecord<Doc, Op, MutationFootprint>) => void
+    listener: (commit: MutationCommitRecord<Doc, Op, MutationFootprint, Delta>) => void
   ): () => void {
     this.commitListeners.add(listener)
     return () => {
@@ -462,17 +502,17 @@ class MutationRuntime<
   replace(
     document: Doc,
     options?: MutationOptions
-  ): MutationReplaceCommit<Doc> {
+  ): MutationReplaceCommit<Doc, Delta> {
     const nextDocument = this.normalize(document)
-    const commit: MutationReplaceCommit<Doc> = {
+    const commit: MutationReplaceCommit<Doc, Delta> = {
       kind: 'replace',
       rev: this.rev + 1,
       at: Date.now(),
       origin: options?.origin ?? 'system',
       document: nextDocument,
-      delta: normalizeMutationDelta({
+      delta: this.createDelta(normalizeMutationDelta({
         reset: true
-      }),
+      })),
       structural: EMPTY_OUTPUTS as readonly MutationStructuralFact[],
       issues: EMPTY_ISSUES,
       outputs: EMPTY_OUTPUTS
@@ -491,7 +531,7 @@ class MutationRuntime<
     options?: MutationOptions
   ): MutationExecuteResultOfInput<
     Table,
-    ApplyCommit<Doc, Op, MutationFootprint, void>,
+    ApplyCommit<Doc, Op, MutationFootprint, void, string, Delta>,
     Input,
     Code
   > {
@@ -504,7 +544,7 @@ class MutationRuntime<
         'MutationEngine.execute requires at least one intent.'
       ) as MutationExecuteResultOfInput<
         Table,
-        ApplyCommit<Doc, Op, MutationFootprint, void>,
+        ApplyCommit<Doc, Op, MutationFootprint, void, string, Delta>,
         Input,
         Code
       >
@@ -516,7 +556,7 @@ class MutationRuntime<
         'MutationEngine.execute requires compile handlers.'
       ) as MutationExecuteResultOfInput<
         Table,
-        ApplyCommit<Doc, Op, MutationFootprint, void>,
+        ApplyCommit<Doc, Op, MutationFootprint, void, string, Delta>,
         Input,
         Code
       >
@@ -547,7 +587,7 @@ class MutationRuntime<
         }
       ) as MutationExecuteResultOfInput<
         Table,
-        ApplyCommit<Doc, Op, MutationFootprint, void>,
+        ApplyCommit<Doc, Op, MutationFootprint, void, string, Delta>,
         Input,
         Code
       >
@@ -562,7 +602,7 @@ class MutationRuntime<
         }
       ) as MutationExecuteResultOfInput<
         Table,
-        ApplyCommit<Doc, Op, MutationFootprint, void>,
+        ApplyCommit<Doc, Op, MutationFootprint, void, string, Delta>,
         Input,
         Code
       >
@@ -586,17 +626,17 @@ class MutationRuntime<
           : readFirstOutput(planned.outputs)
       ) as MutationExecuteResultOfInput<
         Table,
-        ApplyCommit<Doc, Op, MutationFootprint, void>,
+        ApplyCommit<Doc, Op, MutationFootprint, void, string, Delta>,
         Input,
         Code
-      > extends MutationResult<infer Data, ApplyCommit<Doc, Op, MutationFootprint, void>, Code>
+      > extends MutationResult<infer Data, ApplyCommit<Doc, Op, MutationFootprint, void, string, Delta>, Code>
         ? Data
         : never
     })
 
     return committed as MutationExecuteResultOfInput<
       Table,
-      ApplyCommit<Doc, Op, MutationFootprint, void>,
+      ApplyCommit<Doc, Op, MutationFootprint, void, string, Delta>,
       Input,
       Code
     >
@@ -607,7 +647,7 @@ class MutationRuntime<
     options?: MutationOptions
   ): MutationResult<
     void,
-    ApplyCommit<Doc, Op, MutationFootprint, void>,
+    ApplyCommit<Doc, Op, MutationFootprint, void, string, Delta>,
     Code
   > {
     const applied = applyMutationProgram<Doc, Op, string, Code>({
@@ -641,7 +681,7 @@ class MutationRuntime<
     authored: MutationProgram<string>
     applied: MutationProgram<string>
     inverse: MutationProgram<string>
-    delta: any
+    delta: MutationDelta
     structural: readonly MutationStructuralFact[]
     footprint: readonly MutationFootprint[]
     outputs: readonly unknown[]
@@ -651,10 +691,10 @@ class MutationRuntime<
     data: TData
   }): MutationResult<
     TData,
-    ApplyCommit<Doc, Op, MutationFootprint, void>,
+    ApplyCommit<Doc, Op, MutationFootprint, void, string, Delta>,
     Code
   > {
-    const commit: ApplyCommit<Doc, Op, MutationFootprint, void> = {
+    const commit: ApplyCommit<Doc, Op, MutationFootprint, void, string, Delta> = {
       kind: 'apply',
       rev: this.rev + 1,
       at: Date.now(),
@@ -663,7 +703,7 @@ class MutationRuntime<
       authored: input.authored,
       applied: input.applied,
       inverse: input.inverse,
-      delta: input.delta,
+      delta: this.createDelta(input.delta),
       structural: input.structural,
       footprint: input.footprint,
       issues: input.issues,
@@ -686,7 +726,7 @@ class MutationRuntime<
 
     this.emitCurrent()
     this.emitCommit(commit)
-    return mutationSuccess<TData, ApplyCommit<Doc, Op, MutationFootprint, void>, Code>(
+    return mutationSuccess<TData, ApplyCommit<Doc, Op, MutationFootprint, void, string, Delta>, Code>(
       input.data,
       commit
     )
@@ -700,7 +740,7 @@ class MutationRuntime<
   }
 
   private emitCommit(
-    commit: CommitRecord<Doc, Op, MutationFootprint, void>
+    commit: CommitRecord<Doc, Op, MutationFootprint, void, Delta>
   ): void {
     this.commitListeners.forEach((listener) => {
       listener(commit)
@@ -717,28 +757,31 @@ export class MutationEngine<
   Reader,
   Services = void,
   Code extends string = string,
-  Program = MutationProgramWriter<string>
+  Program = MutationProgramWriter<string>,
+  Delta extends MutationDelta = MutationDelta
 > {
-  private readonly runtime: MutationRuntime<Doc, Op, Reader, Services, Code, Program>
+  private readonly runtime: MutationRuntime<Doc, Op, Reader, Services, Code, Program, Delta>
 
-  constructor(input: MutationEngineOptions<Doc, Table, Op, Reader, Services, Code, Program>) {
+  constructor(input: MutationEngineOptions<Doc, Table, Op, Reader, Services, Code, Program, Delta>) {
     this.runtime = new MutationRuntime({
       document: input.document,
       normalize: input.normalize,
       createReader: input.createReader,
       registry: input.registry,
+      model: input.model,
       services: input.services,
       compile: input.compile,
       createProgram: input.createProgram,
+      createDelta: input.createDelta,
       history: input.history
     })
   }
 
   get history(): HistoryPort<
-    MutationResult<void, ApplyCommit<Doc, Op, MutationFootprint, void>, Code>,
+    MutationResult<void, ApplyCommit<Doc, Op, MutationFootprint, void, string, Delta>, Code>,
     MutationProgram<string>,
     MutationFootprint,
-    ApplyCommit<Doc, Op, MutationFootprint, void>
+    ApplyCommit<Doc, Op, MutationFootprint, void, string, Delta>
   > {
     return this.runtime.history
   }
@@ -760,7 +803,7 @@ export class MutationEngine<
     options?: MutationOptions
   ): MutationExecuteResult<
     Table,
-    ApplyCommit<Doc, Op, MutationFootprint, void>,
+    ApplyCommit<Doc, Op, MutationFootprint, void, string, Delta>,
     K,
     Code
   >
@@ -769,7 +812,7 @@ export class MutationEngine<
     options?: MutationOptions
   ): MutationResult<
     readonly MutationOutputOf<Table>[],
-    ApplyCommit<Doc, Op, MutationFootprint, void>,
+    ApplyCommit<Doc, Op, MutationFootprint, void, string, Delta>,
     Code
   >
   execute<Input extends MutationExecuteInput<Table>>(
@@ -777,7 +820,7 @@ export class MutationEngine<
     options?: MutationOptions
   ): MutationExecuteResultOfInput<
     Table,
-    ApplyCommit<Doc, Op, MutationFootprint, void>,
+    ApplyCommit<Doc, Op, MutationFootprint, void, string, Delta>,
     Input,
     Code
   > {
@@ -789,7 +832,7 @@ export class MutationEngine<
     options?: MutationOptions
   ): MutationResult<
     void,
-    ApplyCommit<Doc, Op, MutationFootprint, void>,
+    ApplyCommit<Doc, Op, MutationFootprint, void, string, Delta>,
     Code
   > {
     return this.runtime.apply(program, options)
@@ -798,12 +841,12 @@ export class MutationEngine<
   replace(
     document: Doc,
     options?: MutationOptions
-  ): MutationReplaceCommit<Doc> {
+  ): MutationReplaceCommit<Doc, Delta> {
     return this.runtime.replace(document, options)
   }
 
   subscribe(
-    listener: (commit: MutationCommitRecord<Doc, Op, MutationFootprint>) => void
+    listener: (commit: MutationCommitRecord<Doc, Op, MutationFootprint, Delta>) => void
   ): () => void {
     return this.runtime.subscribe(listener)
   }

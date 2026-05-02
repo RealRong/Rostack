@@ -99,10 +99,10 @@ const createDocumentRead = (input: {
   edgeIds: input.source.edges.ids,
   groupIds: input.source.groups.ids,
   mindmapIds: input.source.mindmaps.ids,
-  canvas: {
-    order: input.source.canvas.order,
-    slot: input.source.canvas.slot,
-    groupRefs: input.source.canvas.groupRefs
+  order: {
+    order: input.source.documentOrder.order,
+    slot: input.source.documentOrder.slot,
+    groupRefs: input.source.documentOrder.groupRefs
   },
   slice: ({ nodeIds, edgeIds }) => {
     const exported = documentApi.slice.export.selection({

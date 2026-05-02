@@ -8,8 +8,6 @@ import type {
   Size
 } from '@whiteboard/core/types'
 import { createEngine } from '@whiteboard/engine'
-import { createWhiteboardMutationDelta } from '@whiteboard/engine/mutation'
-import type { MutationDelta } from '@shared/mutation'
 import {
   type Result
 } from '../src'
@@ -42,7 +40,7 @@ type RuntimeInputOptions = {
   guides?: readonly Guide[]
   mindmapPreview?: SceneUpdateInput['editor']['snapshot']['overlay']['preview']['mindmap']
   delta?: SceneUpdateInput['editor']['delta']
-  documentDelta?: SceneUpdateInput['document']['delta'] | MutationDelta
+  documentDelta?: SceneUpdateInput['document']['delta']
 }
 
 let currentMeasureState: EditorGraphLayoutState = {}
@@ -123,9 +121,7 @@ const createInput = (
     kind: 'none'
   }
   value.editor.delta = options.delta ?? createEditorRuntimeDelta()
-  value.document.delta = createWhiteboardMutationDelta(
-    options.documentDelta ?? createMutationDelta()
-  )
+  value.document.delta = options.documentDelta ?? createMutationDelta()
   return value
 }
 

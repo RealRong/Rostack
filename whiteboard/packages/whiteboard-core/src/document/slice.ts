@@ -494,7 +494,7 @@ const withCreatedNodes = (
   node?: Node
 ): Document => {
   const nodes = { ...doc.nodes }
-  const order = [...doc.canvas.order]
+  const order = [...doc.order]
 
   created.forEach((value) => {
     nodes[value.id] = value
@@ -519,10 +519,7 @@ const withCreatedNodes = (
   return {
     ...doc,
     nodes,
-    canvas: {
-      ...doc.canvas,
-      order
-    }
+    order
   }
 }
 
@@ -532,7 +529,7 @@ const withCreatedEdges = (
   edge?: Edge
 ): Document => {
   const edges = { ...doc.edges }
-  const order = [...doc.canvas.order]
+  const order = [...doc.order]
 
   created.forEach((value) => {
     edges[value.id] = value
@@ -557,10 +554,7 @@ const withCreatedEdges = (
   return {
     ...doc,
     edges,
-    canvas: {
-      ...doc.canvas,
-      order
-    }
+    order
   }
 }
 

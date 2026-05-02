@@ -8,7 +8,7 @@ import { node as nodeApi } from '@whiteboard/core/node'
 import { document as documentApi } from '@whiteboard/core/document'
 import { mindmap as mindmapApi } from '@whiteboard/core/mindmap'
 import {
-  whiteboardMutationRegistry
+  whiteboardMutationModel
 } from '@whiteboard/core/mutation'
 import type { Document } from '@whiteboard/core/types'
 
@@ -18,12 +18,8 @@ const FIXED_ISO = new Date(FIXED_TIMESTAMP).toISOString()
 const createDocWithNode = (node) => {
   const doc = documentApi.create('doc_1')
   doc.background = undefined
-  doc.meta = {
-    createdAt: FIXED_ISO,
-    updatedAt: FIXED_ISO
-  }
   doc.nodes[node.id] = node
-  doc.canvas.order = [{
+  doc.order = [{
     kind: 'node',
     id: node.id
   }]
@@ -54,8 +50,7 @@ const applyOperations = (
   const engine = new MutationEngine({
     document: doc,
     normalize: documentApi.normalize,
-    createReader: (readDocument: () => Document) => readDocument(),
-    registry: whiteboardMutationRegistry,
+    model: whiteboardMutationModel,
     history: false
   })
   return engine.apply(program, {
@@ -70,8 +65,7 @@ const replayInverse = (
   const engine = new MutationEngine({
     document: doc,
     normalize: documentApi.normalize,
-    createReader: (readDocument: () => Document) => readDocument(),
-    registry: whiteboardMutationRegistry,
+    model: whiteboardMutationModel,
     history: false
   })
 

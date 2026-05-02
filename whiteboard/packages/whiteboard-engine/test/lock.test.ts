@@ -80,7 +80,7 @@ const createLockedDocument = () => {
   document.nodes[lockedNode.id] = lockedNode
   document.nodes[freeNode.id] = freeNode
   document.edges[edge.id] = edge
-  document.canvas.order = [
+  document.order = [
     {
       kind: 'node',
       id: lockedNode.id
@@ -120,7 +120,7 @@ const createEdgeLockedDocument = () => {
   document.nodes[firstNode.id] = firstNode
   document.nodes[secondNode.id] = secondNode
   document.edges[edge.id] = edge
-  document.canvas.order = [
+  document.order = [
     {
       kind: 'node',
       id: firstNode.id

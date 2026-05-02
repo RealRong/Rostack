@@ -35,37 +35,33 @@ export const assertDocument = (document: Document): Document => {
   assertEntityRecord('groups', document.groups)
   assertEntityRecord('mindmaps', document.mindmaps)
 
-  if (!document.canvas || typeof document.canvas !== 'object' || Array.isArray(document.canvas)) {
-    throw new Error('Document canvas must be an object.')
+  if (!Array.isArray(document.order)) {
+    throw new Error('Document order must be an array.')
   }
 
-  if (!Array.isArray(document.canvas.order)) {
-    throw new Error('Document canvas.order must be an array.')
-  }
-
-  document.canvas.order.forEach((ref, index) => {
+  document.order.forEach((ref, index) => {
     if (!ref || typeof ref !== 'object') {
-      throw new Error(`Document canvas.order.${index} must be an object.`)
+      throw new Error(`Document order.${index} must be an object.`)
     }
     if (ref.kind === 'node') {
       if (!hasOwn(document.nodes, ref.id)) {
-        throw new Error(`Document canvas.order.${index} contains missing node ${ref.id}.`)
+        throw new Error(`Document order.${index} contains missing node ${ref.id}.`)
       }
       return
     }
     if (ref.kind === 'mindmap') {
       if (!hasOwn(document.mindmaps, ref.id)) {
-        throw new Error(`Document canvas.order.${index} contains missing mindmap ${ref.id}.`)
+        throw new Error(`Document order.${index} contains missing mindmap ${ref.id}.`)
       }
       return
     }
     if (ref.kind === 'edge') {
       if (!hasOwn(document.edges, ref.id)) {
-        throw new Error(`Document canvas.order.${index} contains missing edge ${ref.id}.`)
+        throw new Error(`Document order.${index} contains missing edge ${ref.id}.`)
       }
       return
     }
-    throw new Error(`Document canvas.order.${index} has invalid kind.`)
+    throw new Error(`Document order.${index} has invalid kind.`)
   })
 
   return document

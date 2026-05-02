@@ -51,11 +51,11 @@ test('engine exposes node create footprint through intent results', () => {
       }),
       serializeFootprint({
         kind: 'structure',
-        structure: 'canvas.order'
+        structure: 'document.order'
       }),
       serializeFootprint({
         kind: 'structure-item',
-        structure: 'canvas.order',
+        structure: 'document.order',
         id: `node\u0000${result.data.nodeId}`
       })
     ])
@@ -119,7 +119,7 @@ test('engine maps mindmap topic updates to node + mindmap history keys', () => {
   )
 })
 
-test('canvas.order.move keeps moved refs as a block when the target anchor is inside the moved set', () => {
+test('document.order.move keeps moved refs as a block when the target anchor is inside the moved set', () => {
   const engine = createEngine({
     document: documentApi.create('doc_engine_write_canvas_block_move'),
     layout: createTestLayout()
@@ -148,7 +148,7 @@ test('canvas.order.move keeps moved refs as a block when the target anchor is in
 
   const nodeIds = created.map((result) => result.data.nodeId)
   const moved = engine.execute({
-    type: 'canvas.order.move',
+    type: 'document.order.move',
     refs: [
       {
         kind: 'node',
@@ -174,7 +174,7 @@ test('canvas.order.move keeps moved refs as a block when the target anchor is in
   }
 
   assert.deepEqual(
-    moved.commit.document.canvas.order,
+    moved.commit.document.order,
     [
       {
         kind: 'node',

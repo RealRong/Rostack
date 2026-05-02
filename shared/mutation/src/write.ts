@@ -257,7 +257,8 @@ export interface MutationCommit<
   Doc,
   Op,
   Footprint = MutationFootprint,
-  Tag extends string = string
+  Tag extends string = string,
+  Delta extends MutationDelta = MutationDelta
 > {
   kind: 'apply'
   rev: number
@@ -267,55 +268,67 @@ export interface MutationCommit<
   authored: MutationProgram<Tag>
   applied: MutationProgram<Tag>
   inverse: MutationProgram<Tag>
-  delta: MutationDelta
+  delta: Delta
   structural: readonly MutationStructuralFact[]
   footprint: readonly Footprint[]
   issues: readonly MutationIssue[]
   outputs: readonly unknown[]
 }
 
-export interface MutationReplaceCommit<Doc> {
+export interface MutationReplaceCommit<
+  Doc,
+  Delta extends MutationDelta = MutationDelta
+> {
   kind: 'replace'
   rev: number
   at: number
   origin: MutationOrigin
   document: Doc
-  delta: MutationDelta
+  delta: Delta
   structural: readonly MutationStructuralFact[]
   issues: readonly MutationIssue[]
   outputs: readonly unknown[]
 }
 
-export type MutationReplaceResult<Doc> = MutationReplaceCommit<Doc>
+export type MutationReplaceResult<
+  Doc,
+  Delta extends MutationDelta = MutationDelta
+> = MutationReplaceCommit<Doc, Delta>
 
 export type MutationCommitRecord<
   Doc,
   Op,
-  Footprint = MutationFootprint
+  Footprint = MutationFootprint,
+  Delta extends MutationDelta = MutationDelta
 > =
-  | MutationCommit<Doc, Op, Footprint>
-  | MutationReplaceCommit<Doc>
+  | MutationCommit<Doc, Op, Footprint, string, Delta>
+  | MutationReplaceCommit<Doc, Delta>
 
 export interface ApplyCommit<
   Doc,
   Op,
   Footprint = MutationFootprint,
   Extra = void,
-  Tag extends string = string
-> extends MutationCommit<Doc, Op, Footprint, Tag> {
+  Tag extends string = string,
+  Delta extends MutationDelta = MutationDelta
+> extends MutationCommit<Doc, Op, Footprint, Tag, Delta> {
   extra: Extra
 }
 
-export type ReplaceCommit<Doc> = MutationReplaceCommit<Doc>
+export type ReplaceCommit<
+  Doc,
+  Delta extends MutationDelta = MutationDelta
+> = MutationReplaceCommit<Doc, Delta>
 
 export type CommitRecord<
   Doc,
   Op,
   Footprint = MutationFootprint,
-  Extra = void
+  Extra = void,
+  Delta extends MutationDelta = MutationDelta
 > =
-  | ApplyCommit<Doc, Op, Footprint, Extra>
-  | ReplaceCommit<Doc>
+  | ApplyCommit<Doc, Op, Footprint, Extra, string, Delta>
+  | ReplaceCommit<Doc, Delta>
 
 export interface CommitStream<C> {
   subscribe(listener: (commit: C) => void): () => void

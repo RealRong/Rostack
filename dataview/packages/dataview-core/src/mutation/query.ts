@@ -82,6 +82,19 @@ const unionTouched = <T extends string>(
   return result
 }
 
+const touchedIdsFor = <T extends string>(
+  delta: DataviewMutationDelta,
+  key: string
+): ReadonlySet<T> | 'all' => delta.reset === true
+  ? 'all'
+  : delta.ids(key) as ReadonlySet<T> | 'all'
+
+const changedFor = (
+  delta: DataviewMutationDelta,
+  key: string,
+  id?: string
+): boolean => delta.reset === true || delta.changed(key, id)
+
 const readChangedPathKeys = <TKey extends string>(
   delta: DataviewMutationDelta,
   changeKey: string,
@@ -182,7 +195,7 @@ export interface DataviewQueryContext {
 export const createDataviewQuery = (
   reader: DataviewMutationReader
 ): DataviewQuery => {
-  const readDocument = () => reader.document.get()
+  const readDocument = () => reader.document.value()
   const recordIds = () => reader.record.ids() as readonly RecordId[]
   const recordList = () => reader.record.list() as readonly DataRecord[]
   const fieldIds = () => [
@@ -217,16 +230,16 @@ export const createDataviewQuery = (
       touchedViews: () => unionTouched<ViewId>([
       delta.view.create.touchedIds(),
       delta.view.delete.touchedIds(),
-      delta.view.name.touchedIds(),
-      delta.view.type.touchedIds(),
-      delta.view.search.touchedIds(),
-      delta.view.filter.touchedIds(),
-      delta.view.sort.touchedIds(),
-      delta.view.group.touchedIds(),
-      delta.view.fields.touchedIds(),
-      delta.view.calc.touchedIds(),
-      delta.view.options.touchedIds(),
-      delta.view.order.touchedIds()
+      touchedIdsFor<ViewId>(delta, 'view.name'),
+      touchedIdsFor<ViewId>(delta, 'view.type'),
+      touchedIdsFor<ViewId>(delta, 'view.search'),
+      touchedIdsFor<ViewId>(delta, 'view.filter'),
+      touchedIdsFor<ViewId>(delta, 'view.sort'),
+      touchedIdsFor<ViewId>(delta, 'view.group'),
+      touchedIdsFor<ViewId>(delta, 'view.fields'),
+      touchedIdsFor<ViewId>(delta, 'view.calc'),
+      touchedIdsFor<ViewId>(delta, 'view.options'),
+      touchedIdsFor<ViewId>(delta, 'view.order')
     ]),
       touchedValueFields: () => {
       const touched = readChangedPathKeys<FieldId>(delta, 'record.values', 'values')
@@ -252,22 +265,22 @@ export const createDataviewQuery = (
       return result
     },
       fieldSchemaTouchedIds: () => unionTouched<FieldId>([
-      delta.field.name.touchedIds(),
-      delta.field.kind.touchedIds(),
-      delta.field.system.touchedIds(),
-      delta.field.displayFullUrl.touchedIds(),
-      delta.field.format.touchedIds(),
-      delta.field.precision.touchedIds(),
-      delta.field.currency.touchedIds(),
-      delta.field.useThousandsSeparator.touchedIds(),
-      delta.field.defaultOptionId.touchedIds(),
-      delta.field.displayDateFormat.touchedIds(),
-      delta.field.displayTimeFormat.touchedIds(),
-      delta.field.defaultValueKind.touchedIds(),
-      delta.field.defaultTimezone.touchedIds(),
-      delta.field.multiple.touchedIds(),
-      delta.field.accept.touchedIds(),
-      delta.field.options.touchedIds()
+      touchedIdsFor<FieldId>(delta, 'field.name'),
+      touchedIdsFor<FieldId>(delta, 'field.kind'),
+      touchedIdsFor<FieldId>(delta, 'field.system'),
+      touchedIdsFor<FieldId>(delta, 'field.displayFullUrl'),
+      touchedIdsFor<FieldId>(delta, 'field.format'),
+      touchedIdsFor<FieldId>(delta, 'field.precision'),
+      touchedIdsFor<FieldId>(delta, 'field.currency'),
+      touchedIdsFor<FieldId>(delta, 'field.useThousandsSeparator'),
+      touchedIdsFor<FieldId>(delta, 'field.defaultOptionId'),
+      touchedIdsFor<FieldId>(delta, 'field.displayDateFormat'),
+      touchedIdsFor<FieldId>(delta, 'field.displayTimeFormat'),
+      touchedIdsFor<FieldId>(delta, 'field.defaultValueKind'),
+      touchedIdsFor<FieldId>(delta, 'field.defaultTimezone'),
+      touchedIdsFor<FieldId>(delta, 'field.multiple'),
+      touchedIdsFor<FieldId>(delta, 'field.accept'),
+      touchedIdsFor<FieldId>(delta, 'field.options')
     ]),
       fieldSchemaChanged: (fieldId) => {
       if (fieldId === TITLE_FIELD_ID) {
@@ -275,10 +288,14 @@ export const createDataviewQuery = (
       }
 
       if (fieldId === undefined) {
-        return FIELD_SCHEMA_KEYS.some((key) => delta.field[key].changed())
+        return FIELD_SCHEMA_KEYS.some((key) => changedFor(delta, `field.${key}`))
       }
 
-      return FIELD_SCHEMA_KEYS.some((key) => delta.field[key].changed(fieldId as Exclude<FieldId, typeof TITLE_FIELD_ID>))
+      return FIELD_SCHEMA_KEYS.some((key) => changedFor(
+        delta,
+        `field.${key}`,
+        fieldId as Exclude<FieldId, typeof TITLE_FIELD_ID>
+      ))
     },
       viewQueryChanged: (viewId, aspect) => {
       if (aspect === undefined) {
@@ -303,10 +320,10 @@ export const createDataviewQuery = (
       }
     },
       viewLayoutChanged: (viewId) => (
-      delta.view.name.changed(viewId)
-      || delta.view.type.changed(viewId)
-      || delta.view.fields.changed(viewId)
-      || delta.view.options.changed(viewId)
+      changedFor(delta, 'view.name', viewId)
+      || changedFor(delta, 'view.type', viewId)
+      || changedFor(delta, 'view.fields', viewId)
+      || changedFor(delta, 'view.options', viewId)
     )
     }
 
@@ -336,7 +353,7 @@ export const createDataviewQuery = (
 
         return fieldId === TITLE_FIELD_ID
           ? record.title
-          : reader.record.values(recordId).get(fieldId as Exclude<FieldId, typeof TITLE_FIELD_ID>)
+          : reader.record(recordId).values.get(fieldId as Exclude<FieldId, typeof TITLE_FIELD_ID>)
       }
     },
     fields: {

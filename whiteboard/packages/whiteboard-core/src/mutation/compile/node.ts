@@ -196,7 +196,7 @@ export const nodeIntentHandlers = {
     }
 
     ctx.writer.node.create(built.data.node)
-    ctx.writer.document.order().insert({
+    ctx.writer.document.order.insert({
       kind: 'node',
       id: built.data.nodeId
     })

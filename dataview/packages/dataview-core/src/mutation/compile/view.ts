@@ -1297,7 +1297,7 @@ const lowerViewFieldsMove = (
     return
   }
 
-  input.writer.view.fields(intent.id).move(
+  input.writer.view(intent.id).fields.move(
     intent.field,
     toAnchor(intent.before !== undefined && intent.before !== intent.field
       ? intent.before
@@ -1325,7 +1325,7 @@ const lowerViewFieldsSplice = (
     return
   }
 
-  input.writer.view.fields(intent.id).splice(
+  input.writer.view(intent.id).fields.splice(
     fieldIds,
     toAnchor(intent.before)
   )
@@ -1344,11 +1344,11 @@ const lowerViewFieldsShow = (
     ? intent.before
     : undefined
   if (readViewFieldIds(view).includes(intent.field)) {
-    input.writer.view.fields(intent.id).move(intent.field, toAnchor(before))
+    input.writer.view(intent.id).fields.move(intent.field, toAnchor(before))
     return
   }
 
-  input.writer.view.fields(intent.id).insert(intent.field, toAnchor(before))
+  input.writer.view(intent.id).fields.insert(intent.field, toAnchor(before))
 }
 
 const lowerViewFieldsHide = (
@@ -1359,7 +1359,7 @@ const lowerViewFieldsHide = (
     return
   }
 
-  input.writer.view.fields(intent.id).delete(intent.field)
+  input.writer.view(intent.id).fields.delete(intent.field)
 }
 
 const lowerViewFieldsClear = (
@@ -1371,7 +1371,7 @@ const lowerViewFieldsClear = (
   }
 
   readViewFieldIds(view).forEach((fieldId) => {
-    input.writer.view.fields(view.id).delete(fieldId)
+    input.writer.view(view.id).fields.delete(fieldId)
   })
 }
 

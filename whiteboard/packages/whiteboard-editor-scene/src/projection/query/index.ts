@@ -111,7 +111,7 @@ const createDocumentRead = (input: {
   groupIds: input.reader.group.ids,
   mindmapIds: input.reader.mindmap.ids,
   order: {
-    order: input.reader.document.order().items,
+    order: input.reader.document.order.items,
     slot: input.query.order.slot,
     groupRefs: input.query.group.refsInOrder
   },

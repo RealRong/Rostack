@@ -19,7 +19,9 @@ import type {
   MutationDelta,
   MutationDeltaInput,
   MutationOrderedAnchor,
+  MutationTreeNodeSnapshot,
   MutationTreeSnapshot,
+  MutationTreeSubtreeSnapshot,
 } from './write'
 
 type MemberPath = string
@@ -320,6 +322,239 @@ export type MutationSchema<
   TDefinition extends MutationSchemaDefinition<Doc> = MutationSchemaDefinition<Doc>
 > = TDefinition
 
+type ShapeSequenceConfig<Item> = {
+  emit?: string
+  read?: (document: unknown, key?: string) => readonly Item[]
+  write?: (document: unknown, key: string | undefined, items: readonly Item[]) => unknown
+  identify?: (item: Item) => string
+  clone?: (item: Item) => Item
+  patch?: (item: Item, patch: unknown) => Item
+  diff?: (before: Item, after: Item) => unknown
+}
+
+type ShapeTreeConfig<Value> = {
+  emit?: string
+  read?: (document: unknown, key?: string) => MutationTreeSnapshot<Value>
+  write?: (document: unknown, key: string | undefined, treeValue: MutationTreeSnapshot<Value>) => unknown
+  clone?: (value: Value) => Value
+  patch?: (value: Value, patch: unknown) => Value
+  diff?: (before: Value, after: Value) => unknown
+}
+
+export type ShapeSequenceNode<Item> = {
+  readonly __shapeKind: 'sequence'
+  readonly __sequence?: Item
+  readonly __config?: ShapeSequenceConfig<Item>
+  using(config: ShapeSequenceConfig<Item>): ShapeSequenceNode<Item>
+}
+
+type ShapeSequenceFactory<Item> = ShapeSequenceNode<Item> & (<
+  Spec extends MutationOrderedFamilySpec<any, any, Item, string>
+>(
+  spec: Spec
+) => Spec)
+
+export type ShapeTreeNode<Value> = {
+  readonly __shapeKind: 'tree'
+  readonly __value?: Value
+  readonly __config?: ShapeTreeConfig<Value>
+  using(config: ShapeTreeConfig<Value>): ShapeTreeNode<Value>
+}
+
+type ShapeTreeFactory<Value> = ShapeTreeNode<Value> & (<
+  Spec extends MutationTreeFamilySpec<any, any, Value, string>
+>(
+  spec: Spec
+) => Spec)
+
+type ShapeMemberNode =
+  | MutationMemberSpec
+  | ShapeSequenceNode<any>
+  | ShapeTreeNode<any>
+
+type ShapeFamilyShape = Readonly<Record<string, ShapeMemberNode>>
+
+type ShapeFamilyFrom<
+  Doc,
+  Kind extends 'singleton' | 'map' | 'table',
+  Id extends string,
+  Entity
+> = {
+  path?: string
+} | (
+  Kind extends 'singleton'
+    ? SingletonFamilyAccess<Doc, Entity>
+    : CollectionFamilyAccess<Doc, Id, Entity>
+)
+
+type ShapeMemberSpecs<
+  TShape extends ShapeFamilyShape
+> = {
+  [K in keyof TShape as TShape[K] extends MutationMemberSpec
+    ? K
+    : never]: Extract<TShape[K], MutationMemberSpec>
+}
+
+type ShapeSequenceSpecs<
+  Doc,
+  TKind extends 'singleton' | 'map' | 'table',
+  TShape extends ShapeFamilyShape
+> = {
+  [K in keyof TShape as TShape[K] extends ShapeSequenceNode<any>
+    ? K
+    : never]: TShape[K] extends ShapeSequenceNode<infer TItem>
+      ? MutationOrderedFamilySpec<Doc, TKind, TItem, string>
+      : never
+}
+
+type ShapeTreeSpecs<
+  Doc,
+  TKind extends 'singleton' | 'map' | 'table',
+  TShape extends ShapeFamilyShape
+> = {
+  [K in keyof TShape as TShape[K] extends ShapeTreeNode<any>
+    ? K
+    : never]: TShape[K] extends ShapeTreeNode<infer TValue>
+      ? MutationTreeFamilySpec<Doc, TKind, TValue, string>
+      : never
+}
+
+export type ShapeSingletonNode<
+  Doc,
+  Entity,
+  TShape extends ShapeFamilyShape
+> = {
+  readonly __shapeKind: 'singleton'
+  readonly shape: TShape
+  readonly __entity?: Entity
+  readonly __from?: ShapeFamilyFrom<Doc, 'singleton', never, Entity>
+  readonly __changes?: MutationFamilyChanges<ShapeMemberSpecs<TShape>>
+  from(input: ShapeFamilyFrom<Doc, 'singleton', never, Entity>): ShapeSingletonNode<Doc, Entity, TShape>
+  changes(input: MutationFamilyChanges<ShapeMemberSpecs<TShape>>): ShapeSingletonNode<Doc, Entity, TShape>
+}
+
+export type ShapeCollectionNode<
+  Doc,
+  Kind extends 'map' | 'table',
+  Id extends string,
+  Entity,
+  TShape extends ShapeFamilyShape
+> = {
+  readonly __shapeKind: Kind
+  readonly shape: TShape
+  readonly __id?: Id
+  readonly __entity?: Entity
+  readonly __from?: ShapeFamilyFrom<Doc, Kind, Id, Entity>
+  readonly __changes?: MutationFamilyChanges<ShapeMemberSpecs<TShape>>
+  from(input: ShapeFamilyFrom<Doc, Kind, Id, Entity>): ShapeCollectionNode<Doc, Kind, Id, Entity, TShape>
+  changes(input: MutationFamilyChanges<ShapeMemberSpecs<TShape>>): ShapeCollectionNode<Doc, Kind, Id, Entity, TShape>
+}
+
+type ShapeFamilyNode<
+  Doc
+> =
+  | ShapeSingletonNode<Doc, unknown, ShapeFamilyShape>
+  | ShapeCollectionNode<Doc, 'map' | 'table', string, unknown, ShapeFamilyShape>
+
+type ShapeDocumentMembers<
+  TDefinition extends Readonly<Record<string, unknown>>
+> = {
+  [K in keyof TDefinition as TDefinition[K] extends MutationMemberSpec
+    ? K
+    : never]: Extract<TDefinition[K], MutationMemberSpec>
+}
+
+type ShapeDocumentSequences<
+  Doc,
+  TDefinition extends Readonly<Record<string, unknown>>
+> = {
+  [K in keyof TDefinition as TDefinition[K] extends ShapeSequenceNode<any>
+    ? K
+    : never]: TDefinition[K] extends ShapeSequenceNode<infer TItem>
+      ? MutationOrderedFamilySpec<Doc, 'singleton', TItem, string>
+      : never
+}
+
+type ShapeDocumentTrees<
+  Doc,
+  TDefinition extends Readonly<Record<string, unknown>>
+> = {
+  [K in keyof TDefinition as TDefinition[K] extends ShapeTreeNode<any>
+    ? K
+    : never]: TDefinition[K] extends ShapeTreeNode<infer TValue>
+      ? MutationTreeFamilySpec<Doc, 'singleton', TValue, string>
+      : never
+}
+
+type HasShapeDocumentFamily<
+  Doc,
+  TDefinition extends Readonly<Record<string, unknown>>
+> = [
+  keyof ShapeDocumentMembers<TDefinition>
+  | keyof ShapeDocumentSequences<Doc, TDefinition>
+  | keyof ShapeDocumentTrees<Doc, TDefinition>
+] extends [never]
+  ? false
+  : true
+
+type LowerShapeFamilyNode<
+  Doc,
+  TNode
+> = TNode extends ShapeSingletonNode<Doc, infer Entity, infer TShape extends ShapeFamilyShape>
+  ? MutationSingletonFamilySpec<
+      Doc,
+      Entity,
+      ShapeMemberSpecs<TShape>,
+      Readonly<Record<string, readonly MutationChangeSelector[]>>,
+      ShapeSequenceSpecs<Doc, 'singleton', TShape>,
+      ShapeTreeSpecs<Doc, 'singleton', TShape>
+    >
+  : TNode extends ShapeCollectionNode<Doc, infer Kind extends 'map' | 'table', infer Id extends string, infer Entity, infer TShape extends ShapeFamilyShape>
+    ? MutationCollectionFamilySpec<
+        Doc,
+        Kind,
+        Id,
+        Entity,
+        ShapeMemberSpecs<TShape>,
+        Readonly<Record<string, readonly MutationChangeSelector[]>>,
+        ShapeSequenceSpecs<Doc, Kind, TShape>,
+        ShapeTreeSpecs<Doc, Kind, TShape>
+      >
+    : never
+
+type LowerShapeDefinition<
+  Doc,
+  TDefinition extends Readonly<Record<string, unknown>>,
+  TRoot extends boolean = true
+> = (
+  TRoot extends true
+    ? HasShapeDocumentFamily<Doc, TDefinition> extends true
+      ? {
+          document: MutationSingletonFamilySpec<
+            Doc,
+            Doc,
+            ShapeDocumentMembers<TDefinition>,
+            Readonly<Record<string, readonly MutationChangeSelector[]>>,
+            ShapeDocumentSequences<Doc, TDefinition>,
+            ShapeDocumentTrees<Doc, TDefinition>
+          >
+        }
+      : {}
+    : {}
+) & {
+  [K in keyof TDefinition as TDefinition[K] extends ShapeFamilyNode<Doc>
+    ? K
+    : TDefinition[K] extends MutationMemberSpec | ShapeSequenceNode<any> | ShapeTreeNode<any>
+      ? never
+      : TDefinition[K] extends Readonly<Record<string, unknown>>
+        ? K
+        : never]: TDefinition[K] extends ShapeFamilyNode<Doc>
+          ? LowerShapeFamilyNode<Doc, TDefinition[K]>
+          : TDefinition[K] extends Readonly<Record<string, unknown>>
+            ? MutationGroupSpec<LowerShapeDefinition<Doc, TDefinition[K], false>>
+            : never
+}
+
 export const defineMutationSchema = <
   Doc
 >() => <
@@ -327,6 +562,230 @@ export const defineMutationSchema = <
 >(
   definition: TDefinition
 ): TDefinition => definition
+
+const SHAPE_NODE_BRAND = '__shapeKind'
+
+const createShapeSequenceNode = <Item,>(
+  config: ShapeSequenceConfig<Item> = {}
+): ShapeSequenceFactory<Item> => {
+  const node = ((spec: MutationOrderedFamilySpec<any, any, Item, string>) => spec) as ShapeSequenceFactory<Item>
+  ;(node as unknown as Record<string, unknown>)[SHAPE_NODE_BRAND] = 'sequence'
+  ;(node as unknown as Record<string, unknown>).__config = config
+  node.using = (nextConfig) => createShapeSequenceNode({
+    ...config,
+    ...nextConfig
+  })
+  return node
+}
+
+const createShapeTreeNode = <Value,>(
+  config: ShapeTreeConfig<Value> = {}
+): ShapeTreeFactory<Value> => {
+  const node = ((spec: MutationTreeFamilySpec<any, any, Value, string>) => spec) as ShapeTreeFactory<Value>
+  ;(node as unknown as Record<string, unknown>)[SHAPE_NODE_BRAND] = 'tree'
+  ;(node as unknown as Record<string, unknown>).__config = config
+  node.using = (nextConfig) => createShapeTreeNode({
+    ...config,
+    ...nextConfig
+  })
+  return node
+}
+
+const createShapeFamilyNode = <
+  Doc,
+  Kind extends 'singleton' | 'map' | 'table',
+  Id extends string,
+  Entity,
+  const TShape extends ShapeFamilyShape
+>(
+  kind: Kind,
+  shape: TShape
+): ShapeSingletonNode<Doc, Entity, TShape> | ShapeCollectionNode<Doc, Extract<Kind, 'map' | 'table'>, Id, Entity, TShape> => {
+  const node = {
+    __shapeKind: kind,
+    shape,
+    from(input: ShapeFamilyFrom<Doc, Kind, Id, Entity>) {
+      ;(this as Record<string, unknown>).__from = input
+      return this
+    },
+    changes(input: MutationFamilyChanges<ShapeMemberSpecs<TShape>>) {
+      ;(this as Record<string, unknown>).__changes = input
+      return this
+    }
+  } as ShapeSingletonNode<Doc, Entity, TShape> | ShapeCollectionNode<Doc, Extract<Kind, 'map' | 'table'>, Id, Entity, TShape>
+
+  return node
+}
+
+const isShapeSequenceNode = (
+  value: unknown
+): value is ShapeSequenceNode<unknown> => (
+  typeof value === 'function'
+  && (value as unknown as Record<string, unknown>)[SHAPE_NODE_BRAND] === 'sequence'
+)
+
+const isShapeTreeNode = (
+  value: unknown
+): value is ShapeTreeNode<unknown> => (
+  typeof value === 'function'
+  && (value as unknown as Record<string, unknown>)[SHAPE_NODE_BRAND] === 'tree'
+)
+
+const isShapeFamilyNode = <Doc,>(
+  value: unknown
+): value is ShapeFamilyNode<Doc> => Boolean(
+  value
+  && typeof value === 'object'
+  && !Array.isArray(value)
+  && (
+    (value as Record<string, unknown>)[SHAPE_NODE_BRAND] === 'singleton'
+    || (value as Record<string, unknown>)[SHAPE_NODE_BRAND] === 'map'
+    || (value as Record<string, unknown>)[SHAPE_NODE_BRAND] === 'table'
+  )
+)
+
+const isMutationMemberNode = (
+  value: unknown
+): value is MutationMemberSpec => Boolean(
+  value
+  && typeof value === 'object'
+  && !Array.isArray(value)
+  && (
+    (value as {
+      kind?: unknown
+    }).kind === 'field'
+    || (value as {
+      kind?: unknown
+    }).kind === 'record'
+    || (value as {
+      kind?: unknown
+    }).kind === 'keyed'
+  )
+)
+
+type ShapeSchemaOptions<
+  Doc,
+  TDefinition extends Readonly<Record<string, unknown>>
+> = {
+  changes?: MutationFamilyChanges<ShapeDocumentMembers<TDefinition>>
+}
+
+const readObjectPath = (
+  value: unknown,
+  path: readonly string[]
+): unknown => {
+  let current = value
+  for (let index = 0; index < path.length; index += 1) {
+    if (
+      typeof current !== 'object'
+      || current === null
+      || Array.isArray(current)
+    ) {
+      return undefined
+    }
+    current = (current as Record<string, unknown>)[path[index]!]
+  }
+  return current
+}
+
+const writeObjectPath = (
+  value: unknown,
+  path: readonly string[],
+  next: unknown
+): unknown => {
+  if (path.length === 0) {
+    return next
+  }
+
+  const [head, ...rest] = path
+  const current = (
+    typeof value === 'object'
+    && value !== null
+    && !Array.isArray(value)
+  )
+    ? value as Record<string, unknown>
+    : {}
+
+  return {
+    ...current,
+    [head!]: writeObjectPath(
+      current[head!],
+      rest,
+      next
+    )
+  }
+}
+
+const appendMissingIds = <TId extends string>(
+  previous: readonly TId[],
+  nextById: Readonly<Record<string, unknown>>
+): TId[] => {
+  const nextIds = previous.filter((id) => nextById[id] !== undefined)
+  const seen = new Set(nextIds)
+
+  Object.keys(nextById).forEach((id) => {
+    if (seen.has(id as TId)) {
+      return
+    }
+
+    nextIds.push(id as TId)
+    seen.add(id as TId)
+  })
+
+  return nextIds
+}
+
+const createDefaultFamilyChanges = (
+  members: Readonly<Record<string, MutationMemberSpec>>
+): Readonly<Record<string, readonly MutationChangeSelector[]>> => Object.fromEntries(
+  Object.entries(members).map(([name, member]) => [
+    name,
+    [member.kind === 'field'
+      ? {
+          kind: 'field',
+          member: name
+        } satisfies FieldSelector
+      : member.kind === 'record'
+        ? {
+            kind: 'record',
+            member: name,
+            mode: 'deep'
+          } satisfies RecordSelector
+        : {
+            kind: 'keyed',
+            member: name,
+            mode: 'deep'
+          } satisfies KeyedSelector]
+  ])
+)
+
+const readDefaultOrderedId = (
+  value: unknown
+): string => {
+  if (typeof value === 'string' && value.length > 0) {
+    return value
+  }
+  if (typeof value === 'number' || typeof value === 'bigint') {
+    return String(value)
+  }
+  if (
+    typeof value === 'object'
+    && value !== null
+    && 'id' in value
+    && typeof (value as {
+      id?: unknown
+    }).id === 'string'
+    && (value as {
+      id: string
+    }).id.length > 0
+  ) {
+    return (value as {
+      id: string
+    }).id
+  }
+
+  throw new Error('Mutation sequence item requires either a primitive id value or an object with string id.')
+}
 
 export const namespace = <
   const TChildren extends MutationModelDefinition<any>
@@ -364,7 +823,9 @@ export const dictionary = <TKey extends string, TValue>(
   ...(input.at === undefined ? {} : { at: input.at })
 })
 
-export const singleton = <Doc, Entity>() => <
+export const field = value
+
+export function singleton<Doc, Entity>(): <
   const TMembers extends Readonly<Record<string, MutationMemberSpec>>,
   const TOrdered extends Readonly<Record<string, MutationOrderedFamilySpec<Doc, 'singleton', unknown, string>>> | undefined = undefined,
   const TTree extends Readonly<Record<string, MutationTreeFamilySpec<Doc, 'singleton', unknown, string>>> | undefined = undefined,
@@ -377,10 +838,37 @@ export const singleton = <Doc, Entity>() => <
     sequence?: TOrdered
     tree?: TTree
   }
-): MutationSingletonFamilySpec<Doc, Entity, TMembers, TChanges, TOrdered, TTree> => ({
-  kind: 'singleton',
-  ...input
-}) as MutationSingletonFamilySpec<Doc, Entity, TMembers, TChanges, TOrdered, TTree>
+) => MutationSingletonFamilySpec<Doc, Entity, TMembers, TChanges, TOrdered, TTree>
+export function singleton<
+  Doc,
+  Entity,
+  const TShape extends ShapeFamilyShape
+>(
+  shape: TShape
+): ShapeSingletonNode<Doc, Entity, TShape>
+export function singleton(...args: unknown[]) {
+  if (args.length === 0) {
+    return <
+      Doc,
+      Entity,
+      const TMembers extends Readonly<Record<string, MutationMemberSpec>>,
+      const TOrdered extends Readonly<Record<string, MutationOrderedFamilySpec<Doc, 'singleton', unknown, string>>> | undefined = undefined,
+      const TTree extends Readonly<Record<string, MutationTreeFamilySpec<Doc, 'singleton', unknown, string>>> | undefined = undefined,
+      const TChanges extends Readonly<Record<string, readonly MutationChangeSelector[]>> = Readonly<Record<string, readonly MutationChangeSelector[]>>
+    >(input: {
+      access: SingletonFamilyAccess<Doc, Entity>
+      members: TMembers
+      changes?: MutationFamilyChanges<TMembers>
+      sequence?: TOrdered
+      tree?: TTree
+    }): MutationSingletonFamilySpec<Doc, Entity, TMembers, TChanges, TOrdered, TTree> => ({
+      kind: 'singleton',
+      ...input
+    }) as MutationSingletonFamilySpec<Doc, Entity, TMembers, TChanges, TOrdered, TTree>
+  }
+
+  return createShapeFamilyNode('singleton', args[0] as ShapeFamilyShape)
+}
 
 export const collection = <Doc, Id extends string, Entity>() => <
   const TMembers extends Readonly<Record<string, MutationMemberSpec>>,
@@ -399,21 +887,438 @@ export const collection = <Doc, Id extends string, Entity>() => <
   kind: 'map',
   ...input
 }) as MutationCollectionFamilySpec<Doc, 'map', Id, Entity, TMembers, TChanges, TOrdered, TTree>
+export const map = <
+  Doc,
+  Id extends string,
+  Entity,
+  const TShape extends ShapeFamilyShape
+>(
+  shape: TShape
+): ShapeCollectionNode<Doc, 'map', Id, Entity, TShape> => createShapeFamilyNode(
+  'map',
+  shape
+) as ShapeCollectionNode<Doc, 'map', Id, Entity, TShape>
+
+export const table = <
+  Doc,
+  Id extends string,
+  Entity,
+  const TShape extends ShapeFamilyShape
+>(
+  shape: TShape
+): ShapeCollectionNode<Doc, 'table', Id, Entity, TShape> => createShapeFamilyNode(
+  'table',
+  shape
+) as ShapeCollectionNode<Doc, 'table', Id, Entity, TShape>
+
 export const sequence = <
   Item
->() => <
-  Spec extends MutationOrderedFamilySpec<any, any, Item, string>
->(
-  spec: Spec
-): Spec => spec
+>() => createShapeSequenceNode<Item>()
 
 export const tree = <
   Value
->() => <
-  Spec extends MutationTreeFamilySpec<any, any, Value, string>
+>() => createShapeTreeNode<Value>()
+
+const readFamilyPath = (
+  familyName: string,
+  input: {
+    path?: string
+  } | undefined
+): readonly string[] => (
+  input?.path?.split('.').filter(Boolean)
+  ?? familyName.split('.').filter(Boolean)
+)
+
+const lowerShapeSequenceSpec = <Doc>(
+  familyAccess: SingletonFamilyAccess<Doc, unknown> | CollectionFamilyAccess<Doc, string, unknown>,
+  familyKind: 'singleton' | 'map' | 'table',
+  familyName: string,
+  structureName: string,
+  node: ShapeSequenceNode<unknown>
+): MutationOrderedFamilySpec<Doc, any, unknown, string> => {
+  const config = node.__config ?? {}
+  const readMember = (entity: unknown) => {
+    const value = (
+      typeof entity === 'object'
+      && entity !== null
+      && !Array.isArray(entity)
+    )
+      ? (entity as Record<string, unknown>)[structureName]
+      : undefined
+
+    if (Array.isArray(value)) {
+      return value
+    }
+
+    return []
+  }
+
+  const writeMember = (entity: unknown, items: readonly unknown[]) => ({
+    ...(typeof entity === 'object' && entity !== null && !Array.isArray(entity)
+      ? entity as Record<string, unknown>
+      : {}),
+    [structureName]: items
+  })
+
+  return {
+    read: config.read
+      ? ((document: Doc, key?: string) => config.read!(document, key))
+      : familyKind === 'singleton'
+        ? ((document: Doc) => readMember(
+            (familyAccess as SingletonFamilyAccess<Doc, unknown>).read(document)
+          ))
+        : ((document: Doc, key: string) => {
+            const entity = (familyAccess as CollectionFamilyAccess<Doc, string, unknown>).read(document)[key]
+            if (entity === undefined) {
+              throw new Error(`Mutation sequence "${familyName}.${structureName}" cannot find host entity "${key}".`)
+            }
+            return readMember(entity)
+          }),
+    write: config.write
+      ? ((document: Doc, key: string | undefined, items: readonly unknown[]) => config.write!(document, key, items) as Doc)
+      : familyKind === 'singleton'
+        ? ((document: Doc, items: readonly unknown[]) => (familyAccess as SingletonFamilyAccess<Doc, unknown>).write(
+            document,
+            writeMember((familyAccess as SingletonFamilyAccess<Doc, unknown>).read(document), items)
+          ))
+        : ((document: Doc, key: string, items: readonly unknown[]) => {
+            const access = familyAccess as CollectionFamilyAccess<Doc, string, unknown>
+            const collection = access.read(document)
+            const entity = collection[key]
+            if (entity === undefined) {
+              throw new Error(`Mutation sequence "${familyName}.${structureName}" cannot find host entity "${key}".`)
+            }
+            return access.write(document, {
+              ...collection,
+              [key]: writeMember(entity, items)
+            })
+          }),
+    identify: config.identify ?? readDefaultOrderedId,
+    emits: config.emit ?? structureName,
+    ...(config.clone === undefined ? {} : { clone: config.clone }),
+    ...(config.patch === undefined ? {} : { patch: config.patch }),
+    ...(config.diff === undefined ? {} : { diff: config.diff }),
+  } as unknown as MutationOrderedFamilySpec<Doc, any, unknown, string>
+}
+
+const lowerShapeTreeSpec = <Doc>(
+  familyAccess: SingletonFamilyAccess<Doc, unknown> | CollectionFamilyAccess<Doc, string, unknown>,
+  familyKind: 'singleton' | 'map' | 'table',
+  familyName: string,
+  structureName: string,
+  node: ShapeTreeNode<unknown>
+): MutationTreeFamilySpec<Doc, any, unknown, string> => {
+  const config = node.__config ?? {}
+  const readMember = (entity: unknown) => {
+    const value = (
+      typeof entity === 'object'
+      && entity !== null
+      && !Array.isArray(entity)
+    )
+      ? (entity as Record<string, unknown>)[structureName]
+      : undefined
+
+    if (
+      typeof value !== 'object'
+      || value === null
+      || !('rootIds' in value)
+      || !('nodes' in value)
+    ) {
+      throw new Error(`Mutation tree "${familyName}.${structureName}" must resolve to a tree snapshot.`)
+    }
+
+    return value as MutationTreeSnapshot
+  }
+
+  const writeMember = (entity: unknown, treeValue: MutationTreeSnapshot<unknown>) => ({
+    ...(typeof entity === 'object' && entity !== null && !Array.isArray(entity)
+      ? entity as Record<string, unknown>
+      : {}),
+    [structureName]: treeValue
+  })
+
+  return {
+    read: config.read
+      ? ((document: Doc, key?: string) => config.read!(document, key))
+      : familyKind === 'singleton'
+        ? ((document: Doc) => readMember(
+            (familyAccess as SingletonFamilyAccess<Doc, unknown>).read(document)
+          ))
+        : ((document: Doc, key: string) => {
+            const entity = (familyAccess as CollectionFamilyAccess<Doc, string, unknown>).read(document)[key]
+            if (entity === undefined) {
+              throw new Error(`Mutation tree "${familyName}.${structureName}" cannot find host entity "${key}".`)
+            }
+            return readMember(entity)
+          }),
+    write: config.write
+      ? ((document: Doc, key: string | undefined, treeValue: MutationTreeSnapshot<unknown>) => config.write!(document, key, treeValue) as Doc)
+      : familyKind === 'singleton'
+        ? ((document: Doc, treeValue: MutationTreeSnapshot<unknown>) => (familyAccess as SingletonFamilyAccess<Doc, unknown>).write(
+            document,
+            writeMember((familyAccess as SingletonFamilyAccess<Doc, unknown>).read(document), treeValue)
+          ))
+        : ((document: Doc, key: string, treeValue: MutationTreeSnapshot<unknown>) => {
+            const access = familyAccess as CollectionFamilyAccess<Doc, string, unknown>
+            const collection = access.read(document)
+            const entity = collection[key]
+            if (entity === undefined) {
+              throw new Error(`Mutation tree "${familyName}.${structureName}" cannot find host entity "${key}".`)
+            }
+            return access.write(document, {
+              ...collection,
+              [key]: writeMember(entity, treeValue)
+            })
+          }),
+    emits: config.emit ?? structureName,
+    ...(config.clone === undefined ? {} : { clone: config.clone }),
+    ...(config.patch === undefined ? {} : { patch: config.patch }),
+    ...(config.diff === undefined ? {} : { diff: config.diff }),
+  } as unknown as MutationTreeFamilySpec<Doc, any, unknown, string>
+}
+
+const lowerShapeFamily = <Doc>(
+  familyName: string,
+  family: ShapeFamilyNode<Doc>
+): MutationFamilySpec<Doc> => {
+  const members: Record<string, MutationMemberSpec> = {}
+  const ordered: Record<string, MutationOrderedFamilySpec<Doc, any, unknown, string>> = {}
+  const treeSpecs: Record<string, MutationTreeFamilySpec<Doc, any, unknown, string>> = {}
+
+  Object.entries(family.shape).forEach(([name, entry]) => {
+    if (isMutationMemberNode(entry)) {
+      members[name] = entry
+      return
+    }
+    if (isShapeSequenceNode(entry)) {
+      return
+    }
+    if (isShapeTreeNode(entry)) {
+      return
+    }
+    throw new Error(`Unknown shape member "${familyName}.${name}".`)
+  })
+
+  const path = readFamilyPath(familyName, family.__from as {
+    path?: string
+  } | undefined)
+  const isCustomAccess = Boolean(
+    family.__from
+    && typeof family.__from === 'object'
+    && 'read' in family.__from
+    && 'write' in family.__from
+  )
+
+  const access = isCustomAccess
+    ? family.__from as SingletonFamilyAccess<Doc, unknown> | CollectionFamilyAccess<Doc, string, unknown>
+    : family.__shapeKind === 'singleton'
+      ? {
+          read: (document: Doc) => (
+            path.length === 0
+              ? document
+              : readObjectPath(document, path)
+          ),
+          write: (document: Doc, next: unknown) => (
+            path.length === 0
+              ? next as Doc
+              : writeObjectPath(document, path, next) as Doc
+          )
+        } satisfies SingletonFamilyAccess<Doc, unknown>
+      : family.__shapeKind === 'table'
+        ? {
+            read: (document: Doc) => {
+              const tableValue = readObjectPath(document, path) as {
+                byId?: Readonly<Record<string, unknown>>
+              } | undefined
+              return tableValue?.byId ?? {}
+            },
+            write: (document: Doc, next: Readonly<Record<string, unknown>>) => {
+              const tableValue = readObjectPath(document, path) as {
+                ids?: readonly string[]
+                byId?: Readonly<Record<string, unknown>>
+              } | undefined
+              return writeObjectPath(document, path, {
+                ...(typeof tableValue === 'object' && tableValue !== null ? tableValue : {}),
+                byId: next,
+                ids: appendMissingIds(
+                  (tableValue?.ids ?? []) as readonly string[],
+                  next
+                )
+              }) as Doc
+            }
+          } satisfies CollectionFamilyAccess<Doc, string, unknown>
+        : {
+            read: (document: Doc) => (readObjectPath(document, path) as Readonly<Record<string, unknown>>) ?? {},
+            write: (document: Doc, next: Readonly<Record<string, unknown>>) => writeObjectPath(document, path, next) as Doc
+          } satisfies CollectionFamilyAccess<Doc, string, unknown>
+
+  Object.entries(family.shape).forEach(([name, entry]) => {
+    if (isShapeSequenceNode(entry)) {
+      ordered[name] = lowerShapeSequenceSpec(
+        access,
+        family.__shapeKind,
+        familyName,
+        name,
+        entry
+      )
+      return
+    }
+    if (isShapeTreeNode(entry)) {
+      treeSpecs[name] = lowerShapeTreeSpec(
+        access,
+        family.__shapeKind,
+        familyName,
+        name,
+        entry
+      )
+    }
+  })
+
+  const changes = family.__changes ?? createDefaultFamilyChanges(members)
+
+  return family.__shapeKind === 'singleton'
+    ? {
+        kind: 'singleton',
+        access: access as SingletonFamilyAccess<Doc, unknown>,
+        members,
+        changes,
+        ...(Object.keys(ordered).length === 0 ? {} : { sequence: ordered }),
+        ...(Object.keys(treeSpecs).length === 0 ? {} : { tree: treeSpecs }),
+      }
+    : {
+        kind: family.__shapeKind,
+        access: access as CollectionFamilyAccess<Doc, string, unknown>,
+        members,
+        changes,
+        ...(Object.keys(ordered).length === 0 ? {} : { sequence: ordered }),
+        ...(Object.keys(treeSpecs).length === 0 ? {} : { tree: treeSpecs }),
+      }
+}
+
+const lowerShapeGroup = <Doc>(
+  definition: Readonly<Record<string, unknown>>,
+  options?: ShapeSchemaOptions<Doc, Readonly<Record<string, unknown>>>,
+  root = true,
+  prefix = ''
+): MutationModelDefinition<Doc> => {
+  const lowered: Record<string, unknown> = {}
+  const documentMembers: Record<string, MutationMemberSpec> = {}
+  const documentOrdered: Record<string, MutationOrderedFamilySpec<Doc, 'singleton', unknown, string>> = {}
+  const documentTree: Record<string, MutationTreeFamilySpec<Doc, 'singleton', unknown, string>> = {}
+
+  Object.entries(definition).forEach(([name, entry]) => {
+    const familyName = prefix
+      ? `${prefix}.${name}`
+      : name
+
+    if (isMutationMemberNode(entry)) {
+      if (!root) {
+        throw new Error(`Nested schema group "${name}" cannot contain direct field members.`)
+      }
+      documentMembers[name] = entry
+      return
+    }
+
+    if (isShapeSequenceNode(entry)) {
+      if (!root) {
+        throw new Error(`Nested schema group "${name}" cannot contain direct sequence members.`)
+      }
+      documentOrdered[name] = lowerShapeSequenceSpec(
+        {
+          read: (document: Doc) => document,
+          write: (_document: Doc, next: unknown) => next as Doc
+        },
+        'singleton',
+        'document',
+        name,
+        entry
+      ) as MutationOrderedFamilySpec<Doc, 'singleton', unknown, string>
+      return
+    }
+
+    if (isShapeTreeNode(entry)) {
+      if (!root) {
+        throw new Error(`Nested schema group "${name}" cannot contain direct tree members.`)
+      }
+      documentTree[name] = lowerShapeTreeSpec(
+        {
+          read: (document: Doc) => document,
+          write: (_document: Doc, next: unknown) => next as Doc
+        },
+        'singleton',
+        'document',
+        name,
+        entry
+      ) as MutationTreeFamilySpec<Doc, 'singleton', unknown, string>
+      return
+    }
+
+    if (isShapeFamilyNode<Doc>(entry)) {
+      lowered[name] = lowerShapeFamily(familyName, entry)
+      return
+    }
+
+    if (
+      entry
+      && typeof entry === 'object'
+      && !Array.isArray(entry)
+    ) {
+      lowered[name] = namespace(
+        lowerShapeGroup(
+          entry as Readonly<Record<string, unknown>>,
+          undefined,
+          false,
+          familyName
+        )
+      )
+      return
+    }
+
+    throw new Error(`Unknown schema entry "${name}".`)
+  })
+
+  if (
+    root
+    && (
+      Object.keys(documentMembers).length > 0
+      || Object.keys(documentOrdered).length > 0
+      || Object.keys(documentTree).length > 0
+    )
+  ) {
+    lowered.document = {
+      kind: 'singleton',
+      access: {
+        read: (document: Doc) => document,
+        write: (_document: Doc, next: Doc) => next
+      },
+      members: documentMembers,
+      changes: options?.changes ?? createDefaultFamilyChanges(documentMembers),
+      ...(Object.keys(documentOrdered).length === 0 ? {} : { sequence: documentOrdered }),
+      ...(Object.keys(documentTree).length === 0 ? {} : { tree: documentTree }),
+    } satisfies MutationSingletonFamilySpec<
+      Doc,
+      Doc,
+      Readonly<Record<string, MutationMemberSpec>>,
+      Readonly<Record<string, readonly MutationChangeSelector[]>>,
+      Readonly<Record<string, MutationOrderedFamilySpec<Doc, 'singleton', unknown, string>>>,
+      Readonly<Record<string, MutationTreeFamilySpec<Doc, 'singleton', unknown, string>>>
+    >
+  }
+
+  return lowered as MutationModelDefinition<Doc>
+}
+
+export const schema = <
+  Doc,
+  const TDefinition extends Readonly<Record<string, unknown>>
 >(
-  spec: Spec
-): Spec => spec
+  definition: TDefinition,
+  options?: ShapeSchemaOptions<Doc, TDefinition>
+): LowerShapeDefinition<Doc, TDefinition> => lowerShapeGroup(
+  definition,
+  options as ShapeSchemaOptions<Doc, Readonly<Record<string, unknown>>> | undefined,
+  true
+) as LowerShapeDefinition<Doc, TDefinition>
 
 type FamilyEntity<
   TFamily
@@ -483,6 +1388,38 @@ type FamilyTreeOf<
     : never
   : never
 
+type IsAny<T> = 0 extends (1 & T)
+  ? true
+  : false
+
+type FamilySequenceNames<
+  TFamily
+> = TFamily extends {
+  sequence?: infer TOrdered
+}
+  ? IsAny<TOrdered> extends true
+    ? never
+    : TOrdered extends Readonly<Record<string, MutationOrderedFamilySpec<any, any, unknown, string>>>
+      ? keyof TOrdered
+      : never
+  : never
+
+type FamilyTreeNames<
+  TFamily
+> = TFamily extends {
+  tree?: infer TTree
+}
+  ? IsAny<TTree> extends true
+    ? never
+    : TTree extends Readonly<Record<string, MutationTreeFamilySpec<any, any, unknown, string>>>
+      ? keyof TTree
+      : never
+  : never
+
+type FamilyStructureNames<
+  TFamily
+> = FamilySequenceNames<TFamily> | FamilyTreeNames<TFamily>
+
 type PatchValueFromMember<
   TMember
 > = TMember extends MutationValueMemberSpec<infer TValue>
@@ -499,6 +1436,41 @@ type MutationPatchOfMembers<
   [K in keyof TMembers]: PatchValueFromMember<TMembers[K]>
 }>
 
+type MemberValueFromSpec<
+  TMember
+> = TMember extends MutationValueMemberSpec<infer TValue>
+  ? TValue
+  : TMember extends MutationRecordMemberSpec<infer TValue>
+    ? TValue
+    : TMember extends MutationKeyedMemberSpec<infer TKey, infer TValue>
+      ? Readonly<Record<TKey, TValue | undefined>>
+      : never
+
+type SequenceIdOf<
+  TItem
+> = TItem extends string
+  ? TItem
+  : string
+
+type SequenceTarget<
+  TItem
+> = TItem | SequenceIdOf<TItem>
+
+export type MutationSequenceAnchor =
+  | MutationOrderedAnchor
+  | {
+      before?: string
+      after?: string
+    }
+
+type MutationTreeLocation<
+  TValue
+> = {
+  parentId?: string
+  index?: number
+  value?: TValue
+}
+
 type KeyedWriterApi<
   TKey extends string,
   TValue
@@ -507,50 +1479,59 @@ type KeyedWriterApi<
     key: TKey,
     value: TValue
   ): void
+  delete(
+    key: TKey
+  ): void
   remove(
     key: TKey
   ): void
 }
 
 type OrderedWriterApi<
-  Item
+  TItem
 > = {
   insert(
-    value: Item,
-    to?: MutationOrderedAnchor
+    value: TItem,
+    to?: MutationSequenceAnchor
   ): void
   move(
-    itemId: string,
-    to?: MutationOrderedAnchor
+    item: SequenceTarget<TItem>,
+    to?: MutationSequenceAnchor
   ): void
   splice(
     itemIds: readonly string[],
-    to?: MutationOrderedAnchor
+    to?: MutationSequenceAnchor
   ): void
   patch(
-    itemId: string,
+    item: SequenceTarget<TItem>,
     patch: unknown
   ): void
   delete(
-    itemId: string
+    item: SequenceTarget<TItem>
+  ): void
+  remove(
+    item: SequenceTarget<TItem>
+  ): void
+  replace(
+    items: readonly TItem[]
   ): void
 }
 
 type TreeWriterApi<
-  Value
+  TValue
 > = {
   insert(
     nodeId: string,
-    parentId?: string,
-    index?: number,
-    value?: Value
+    location?: MutationTreeLocation<TValue>
   ): void
   move(
     nodeId: string,
-    parentId?: string,
-    index?: number
+    location?: Omit<MutationTreeLocation<TValue>, 'value'>
   ): void
   delete(
+    nodeId: string
+  ): void
+  remove(
     nodeId: string
   ): void
   patch(
@@ -559,111 +1540,193 @@ type TreeWriterApi<
   ): void
 }
 
-type FamilyStructuresWriter<
+type KeyedReaderApi<TKey extends string, TValue> = {
+  get(key: TKey): TValue | undefined
+  has(key: TKey): boolean
+  keys(): readonly TKey[]
+  entries(): readonly (readonly [TKey, TValue])[]
+}
+
+type MutationSequenceSlot<
+  TItem
+> = {
+  prev?: TItem
+  next?: TItem
+}
+
+type OrderedReaderApi<
+  TItem
+> = {
+  items(): readonly TItem[]
+  ids(): readonly SequenceIdOf<TItem>[]
+  contains(item: SequenceTarget<TItem>): boolean
+  indexOf(item: SequenceTarget<TItem>): number
+  before(item: SequenceTarget<TItem>): TItem | undefined
+  after(item: SequenceTarget<TItem>): TItem | undefined
+  slot(item: SequenceTarget<TItem>): MutationSequenceSlot<TItem> | undefined
+}
+
+type TreeReaderApi<
+  TValue
+> = {
+  snapshot(): MutationTreeSnapshot<TValue>
+  has(nodeId: string): boolean
+  node(nodeId: string): MutationTreeNodeSnapshot<TValue> | undefined
+  value(nodeId: string): TValue | undefined
+  parent(nodeId: string): string | undefined
+  children(nodeId: string): readonly string[]
+  rootIds(): readonly string[]
+  isRoot(nodeId: string): boolean
+  subtree(nodeId: string): MutationTreeSubtreeSnapshot<TValue> | undefined
+  isDescendant(nodeId: string, parentId: string): boolean
+}
+
+type FamilyEntityMemberReader<
   TFamily
-> = (
-  TFamily extends {
-    kind: 'singleton'
-    members: infer TMembers
-  }
-    ? TMembers extends Readonly<Record<string, MutationMemberSpec>>
-      ? {
-          [K in keyof TMembers as TMembers[K] extends MutationKeyedMemberSpec
-            ? K
-            : never]: TMembers[K] extends MutationKeyedMemberSpec<infer TKey, infer TValue>
-              ? () => KeyedWriterApi<TKey, TValue>
-              : never
-        }
-      : {}
-    : TFamily extends {
-        members: infer TMembers
+> = TFamily extends {
+  members: infer TMembers
+}
+  ? TMembers extends Readonly<Record<string, MutationMemberSpec>>
+    ? {
+        [K in keyof TMembers as K extends FamilyStructureNames<TFamily>
+          ? never
+          : K]: TMembers[K] extends MutationKeyedMemberSpec<infer TKey, infer TValue>
+          ? KeyedReaderApi<TKey, TValue>
+          : () => MemberValueFromSpec<TMembers[K]>
       }
-      ? TMembers extends Readonly<Record<string, MutationMemberSpec>>
-        ? {
-            [K in keyof TMembers as TMembers[K] extends MutationKeyedMemberSpec
-              ? K
-              : never]: TMembers[K] extends MutationKeyedMemberSpec<infer TKey, infer TValue>
-                ? (id: Extract<FamilyId<TFamily>, string>) => KeyedWriterApi<TKey, TValue>
-                : never
-          }
-        : {}
-      : {}
-) & (
-  TFamily extends {
-    kind: 'singleton'
-    sequence?: infer TOrdered
-  }
-    ? TOrdered extends Readonly<Record<string, MutationOrderedFamilySpec<any, any, unknown, string>>>
-      ? {
-          [K in keyof TOrdered]: TOrdered[K] extends MutationOrderedFamilySpec<any, any, infer TItem, string>
-            ? () => OrderedWriterApi<TItem>
+    : {}
+  : {}
+
+type FamilyEntitySequenceReader<
+  TFamily
+> = TFamily extends {
+  sequence?: infer TOrdered
+}
+  ? TOrdered extends Readonly<Record<string, MutationOrderedFamilySpec<any, any, unknown, string>>>
+    ? {
+        [K in keyof TOrdered]: TOrdered[K] extends MutationOrderedFamilySpec<any, any, infer TItem, string>
+          ? OrderedReaderApi<TItem>
+          : never
+      }
+    : {}
+  : {}
+
+type FamilyEntityTreeReader<
+  TFamily
+> = TFamily extends {
+  tree?: infer TTree
+}
+  ? TTree extends Readonly<Record<string, MutationTreeFamilySpec<any, any, unknown, string>>>
+    ? {
+        [K in keyof TTree]: TTree[K] extends MutationTreeFamilySpec<any, any, infer TValue, string>
+          ? TreeReaderApi<TValue>
+          : never
+      }
+    : {}
+  : {}
+
+type FamilyEntityReader<
+  TFamily
+> = {
+  value(): FamilyEntity<TFamily>
+  get(): FamilyEntity<TFamily>
+} & FamilyEntityMemberReader<TFamily>
+  & FamilyEntitySequenceReader<TFamily>
+  & FamilyEntityTreeReader<TFamily>
+
+type FamilyEntityMemberWriter<
+  TFamily
+> = TFamily extends {
+  members: infer TMembers
+}
+  ? TMembers extends Readonly<Record<string, MutationMemberSpec>>
+    ? {
+        [K in keyof TMembers as TMembers[K] extends MutationKeyedMemberSpec
+          ? K extends FamilyStructureNames<TFamily>
+            ? never
+            : K
+          : never]: TMembers[K] extends MutationKeyedMemberSpec<infer TKey, infer TValue>
+            ? KeyedWriterApi<TKey, TValue>
             : never
-        }
-      : {}
-    : TFamily extends {
-        sequence?: infer TOrdered
       }
-      ? TOrdered extends Readonly<Record<string, MutationOrderedFamilySpec<any, any, unknown, string>>>
-        ? {
-            [K in keyof TOrdered]: TOrdered[K] extends MutationOrderedFamilySpec<any, any, infer TItem, string>
-              ? (key: string) => OrderedWriterApi<TItem>
-              : never
-          }
-        : {}
-      : {}
-) & (
-  TFamily extends {
-    kind: 'singleton'
-    tree?: infer TTree
-  }
-    ? TTree extends Readonly<Record<string, MutationTreeFamilySpec<any, any, unknown, string>>>
-      ? {
-          [K in keyof TTree]: TTree[K] extends MutationTreeFamilySpec<any, any, infer TValue, string>
-            ? () => TreeWriterApi<TValue>
-            : never
-        }
-      : {}
-    : TFamily extends {
-        tree?: infer TTree
+    : {}
+  : {}
+
+type FamilyEntitySequenceWriter<
+  TFamily
+> = TFamily extends {
+  sequence?: infer TOrdered
+}
+  ? TOrdered extends Readonly<Record<string, MutationOrderedFamilySpec<any, any, unknown, string>>>
+    ? {
+        [K in keyof TOrdered]: TOrdered[K] extends MutationOrderedFamilySpec<any, any, infer TItem, string>
+          ? OrderedWriterApi<TItem>
+          : never
       }
-      ? TTree extends Readonly<Record<string, MutationTreeFamilySpec<any, any, unknown, string>>>
-        ? {
-            [K in keyof TTree]: TTree[K] extends MutationTreeFamilySpec<any, any, infer TValue, string>
-              ? (key: string) => TreeWriterApi<TValue>
-              : never
-          }
-        : {}
-      : {}
-)
+    : {}
+  : {}
+
+type FamilyEntityTreeWriter<
+  TFamily
+> = TFamily extends {
+  tree?: infer TTree
+}
+  ? TTree extends Readonly<Record<string, MutationTreeFamilySpec<any, any, unknown, string>>>
+    ? {
+        [K in keyof TTree]: TTree[K] extends MutationTreeFamilySpec<any, any, infer TValue, string>
+          ? TreeWriterApi<TValue>
+          : never
+      }
+    : {}
+  : {}
+
+type FamilyEntityWriter<
+  TFamily
+> = {
+  patch(
+    writes: MutationPatchOfMembers<FamilyMembersOf<TFamily>> | Readonly<Record<string, unknown>>
+  ): void
+  delete(): void
+} & FamilyEntityMemberWriter<TFamily>
+  & FamilyEntitySequenceWriter<TFamily>
+  & FamilyEntityTreeWriter<TFamily>
+
+type CollectionFamilyWriter<
+  TFamily
+> = {
+  (id: Extract<FamilyId<TFamily>, string>): FamilyEntityWriter<TFamily>
+  create(
+    value: FamilyEntity<TFamily>
+  ): void
+  patch(
+    id: Extract<FamilyId<TFamily>, string>,
+    writes: MutationPatchOfMembers<FamilyMembersOf<TFamily>> | Readonly<Record<string, unknown>>
+  ): void
+  delete(
+    id: Extract<FamilyId<TFamily>, string>
+  ): void
+  remove(
+    id: Extract<FamilyId<TFamily>, string>
+  ): void
+}
 
 type FamilyWriter<
   TFamily
-> = (
-  TFamily extends {
-    kind: 'singleton'
-  }
-    ? {
-        create(
-          value: FamilyEntity<TFamily>
-        ): void
-        patch(
-          writes: MutationPatchOfMembers<FamilyMembersOf<TFamily>> | Readonly<Record<string, unknown>>
-        ): void
-        delete(): void
-      }
-    : {
-        create(
-          value: FamilyEntity<TFamily>
-        ): void
-        patch(
-          id: Extract<FamilyId<TFamily>, string>,
-          writes: MutationPatchOfMembers<FamilyMembersOf<TFamily>> | Readonly<Record<string, unknown>>
-        ): void
-        delete(
-          id: Extract<FamilyId<TFamily>, string>
-        ): void
-      }
-) & FamilyStructuresWriter<TFamily>
+> = TFamily extends {
+  kind: 'singleton'
+}
+  ? {
+      create(
+        value: FamilyEntity<TFamily>
+      ): void
+      patch(
+        writes: MutationPatchOfMembers<FamilyMembersOf<TFamily>> | Readonly<Record<string, unknown>>
+      ): void
+      delete(): void
+    } & FamilyEntityMemberWriter<TFamily>
+      & FamilyEntitySequenceWriter<TFamily>
+      & FamilyEntityTreeWriter<TFamily>
+  : CollectionFamilyWriter<TFamily>
 
 type ExpandRecursively<TValue> = TValue extends (...args: any[]) => any
   ? TValue
@@ -687,111 +1750,20 @@ export type MutationWriter<
   TModel extends MutationModelDefinition<any>
 > = MutationWriterShape<TModel>
 
-type OrderedReaderApi<Item> = {
-  items(): readonly Item[]
-}
-
-type KeyedReaderApi<TKey extends string, TValue> = {
-  get(key: TKey): TValue | undefined
-  has(key: TKey): boolean
-  keys(): readonly TKey[]
-  entries(): readonly (readonly [TKey, TValue])[]
-}
-
-type TreeReaderApi<Value> = {
-  snapshot(): MutationTreeSnapshot<Value>
-}
-
-type FamilyStructuresReader<TFamily> = (
-  TFamily extends {
-    kind: 'singleton'
-    members: infer TMembers
-  }
-    ? TMembers extends Readonly<Record<string, MutationMemberSpec>>
-      ? {
-          [K in keyof TMembers as TMembers[K] extends MutationKeyedMemberSpec
-            ? K
-            : never]: TMembers[K] extends MutationKeyedMemberSpec<infer TKey, infer TValue>
-              ? () => KeyedReaderApi<TKey, TValue>
-              : never
-        }
-      : {}
-    : TFamily extends {
-        members: infer TMembers
-      }
-      ? TMembers extends Readonly<Record<string, MutationMemberSpec>>
-        ? {
-            [K in keyof TMembers as TMembers[K] extends MutationKeyedMemberSpec
-              ? K
-              : never]: TMembers[K] extends MutationKeyedMemberSpec<infer TKey, infer TValue>
-                ? (id: Extract<FamilyId<TFamily>, string>) => KeyedReaderApi<TKey, TValue>
-                : never
-          }
-        : {}
-      : {}
-) & (
-  TFamily extends {
-    kind: 'singleton'
-    sequence?: infer TOrdered
-  }
-    ? TOrdered extends Readonly<Record<string, MutationOrderedFamilySpec<any, any, unknown, string>>>
-      ? {
-          [K in keyof TOrdered]: TOrdered[K] extends MutationOrderedFamilySpec<any, any, infer TItem, string>
-            ? () => OrderedReaderApi<TItem>
-            : never
-        }
-      : {}
-    : TFamily extends {
-        sequence?: infer TOrdered
-      }
-      ? TOrdered extends Readonly<Record<string, MutationOrderedFamilySpec<any, any, unknown, string>>>
-        ? {
-            [K in keyof TOrdered]: TOrdered[K] extends MutationOrderedFamilySpec<any, any, infer TItem, string>
-              ? (key: Extract<FamilyId<TFamily>, string>) => OrderedReaderApi<TItem>
-              : never
-          }
-        : {}
-      : {}
-) & (
-  TFamily extends {
-    kind: 'singleton'
-    tree?: infer TTree
-  }
-    ? TTree extends Readonly<Record<string, MutationTreeFamilySpec<any, any, unknown, string>>>
-      ? {
-          [K in keyof TTree]: TTree[K] extends MutationTreeFamilySpec<any, any, infer TValue, string>
-            ? () => TreeReaderApi<TValue>
-            : never
-        }
-      : {}
-    : TFamily extends {
-        tree?: infer TTree
-      }
-      ? TTree extends Readonly<Record<string, MutationTreeFamilySpec<any, any, unknown, string>>>
-        ? {
-            [K in keyof TTree]: TTree[K] extends MutationTreeFamilySpec<any, any, infer TValue, string>
-              ? (key: Extract<FamilyId<TFamily>, string>) => TreeReaderApi<TValue>
-              : never
-          }
-        : {}
-      : {}
-)
-
 type FamilyReader<TFamily> = (
   TFamily extends {
     kind: 'singleton'
   }
-    ? {
-        get(): FamilyEntity<TFamily>
-      }
+    ? FamilyEntityReader<TFamily>
     : {
+        (id: Extract<FamilyId<TFamily>, string>): FamilyEntityReader<TFamily>
         ids(): readonly Extract<FamilyId<TFamily>, string>[]
         list(): readonly FamilyEntity<TFamily>[]
         get(id: Extract<FamilyId<TFamily>, string>): FamilyEntity<TFamily> | undefined
         require(id: Extract<FamilyId<TFamily>, string>): FamilyEntity<TFamily>
         has(id: Extract<FamilyId<TFamily>, string>): boolean
       }
-) & FamilyStructuresReader<TFamily>
+)
 
 type MutationReaderShape<
   TModel extends MutationModelDefinition<any>
@@ -823,6 +1795,80 @@ type SingletonKeyedTouchedView<TKey extends string> = {
   changed(key?: TKey): boolean
   touchedKeys(): ReadonlySet<TKey> | 'all'
 }
+
+type DeltaFieldView = {
+  changed(): boolean
+}
+
+type DeltaKeyedView<TKey extends string> = {
+  changed(key?: TKey): boolean
+  anyChanged(): boolean
+  touchedKeys(): ReadonlySet<TKey> | 'all'
+  contains(key: TKey): boolean
+}
+
+type DeltaSequenceView<TItem> = {
+  changed(): boolean
+  orderChanged(): boolean
+  contains(item: SequenceTarget<TItem>): boolean
+  touched(): ReadonlySet<string> | 'all'
+}
+
+type DeltaTreeView = {
+  changed(): boolean
+  structureChanged(): boolean
+  nodeChanged(nodeId: string): boolean
+}
+
+type FamilyEntityDeltaMembers<
+  TFamily
+> = TFamily extends {
+  members: infer TMembers
+}
+  ? TMembers extends Readonly<Record<string, MutationMemberSpec>>
+    ? {
+        [K in keyof TMembers as K extends FamilyStructureNames<TFamily>
+          ? never
+          : K]: TMembers[K] extends MutationKeyedMemberSpec<infer TKey, unknown>
+          ? DeltaKeyedView<TKey>
+          : DeltaFieldView
+      }
+    : {}
+  : {}
+
+type FamilyEntityDeltaSequences<
+  TFamily
+> = TFamily extends {
+  sequence?: infer TOrdered
+}
+  ? TOrdered extends Readonly<Record<string, MutationOrderedFamilySpec<any, any, unknown, string>>>
+    ? {
+        [K in keyof TOrdered]: TOrdered[K] extends MutationOrderedFamilySpec<any, any, infer TItem, string>
+          ? DeltaSequenceView<TItem>
+          : never
+      }
+    : {}
+  : {}
+
+type FamilyEntityDeltaTrees<
+  TFamily
+> = TFamily extends {
+  tree?: infer TTree
+}
+  ? TTree extends Readonly<Record<string, MutationTreeFamilySpec<any, any, unknown, string>>>
+    ? {
+        [K in keyof TTree]: DeltaTreeView
+      }
+    : {}
+  : {}
+
+type FamilyEntityDelta<
+  TFamily
+> = {
+  changed(): boolean
+} & FamilyEntityDeltaMembers<TFamily>
+  & FamilyEntityDeltaSequences<TFamily>
+  & FamilyEntityDeltaTrees<TFamily>
 
 type FamilyChangeDeltaEntry<
   TFamily,
@@ -874,18 +1920,21 @@ type FamilyDelta<
 > = TFamily extends {
   kind: 'singleton'
 }
-  ? {
-      changed(): boolean
-    } & {
-      [K in keyof FamilyChangesOf<TFamily>]: FamilyChangeDeltaEntry<TFamily, K>
+  ? FamilyEntityDelta<TFamily> & {
+      [K in keyof FamilyChangesOf<TFamily> as K extends FamilyStructureNames<TFamily>
+        ? never
+        : K]: FamilyChangeDeltaEntry<TFamily, K>
     } & FamilyStructureDelta<TFamily>
   : {
+      (id: Extract<FamilyId<TFamily>, string>): FamilyEntityDelta<TFamily>
       create: TouchedView<Extract<FamilyId<TFamily>, string>>
       delete: TouchedView<Extract<FamilyId<TFamily>, string>>
       changed(id?: Extract<FamilyId<TFamily>, string>): boolean
       touchedIds(): ReadonlySet<Extract<FamilyId<TFamily>, string>> | 'all'
     } & {
-      [K in keyof FamilyChangesOf<TFamily>]: FamilyChangeDeltaEntry<TFamily, K>
+      [K in keyof FamilyChangesOf<TFamily> as K extends FamilyStructureNames<TFamily>
+        ? never
+        : K]: FamilyChangeDeltaEntry<TFamily, K>
     } & FamilyStructureDelta<TFamily>
 
 type MutationDeltaShape<
@@ -901,6 +1950,14 @@ export type MutationDeltaOf<
 > = MutationDelta & {
   raw: MutationDelta
 } & MutationDeltaShape<TModel>
+
+export type MutationQuery<
+  TModel extends MutationModelDefinition<any>
+> = MutationReader<TModel> & {
+  changes(
+    delta: MutationDelta | MutationDeltaInput
+  ): MutationDeltaOf<TModel>
+}
 
 const createSelectorApi = <
   TMembers extends Readonly<Record<string, MutationMemberSpec>>
@@ -1262,67 +2319,191 @@ export const createMutationWriter = <
   const TModel extends MutationModelDefinition<Doc>
 >(
   model: TModel,
-  base: MutationProgramWriter
+  base: MutationProgramWriter,
+  readDocument?: () => Doc
 ): MutationWriter<TModel> => {
   const result: Record<string, unknown> = {}
 
-  forEachMutationFamily(model, (familyName, family) => {
-    const familyWriter: Record<string, unknown> = {}
-
-    familyWriter.create = (
-      value: unknown
-    ) => {
-      base.entity.create({
-        kind: 'entity',
-        type: familyName,
-        id: family.kind === 'singleton'
-          ? familyName
-          : String((value as {
-              id?: unknown
-            }).id)
-      }, value)
+  const normalizeSequenceAnchor = (
+    anchor?: MutationSequenceAnchor
+  ): MutationOrderedAnchor => {
+    if (!anchor) {
+      return {
+        kind: 'end'
+      }
     }
+    if ('kind' in anchor) {
+      return anchor
+    }
+    if (anchor.before !== undefined) {
+      return {
+        kind: 'before',
+        itemId: anchor.before
+      }
+    }
+    if (anchor.after !== undefined) {
+      return {
+        kind: 'after',
+        itemId: anchor.after
+      }
+    }
+    return {
+      kind: 'end'
+    }
+  }
 
-    if (family.kind === 'singleton') {
-      familyWriter.patch = (
-        writes: Readonly<Record<string, unknown>>
-      ) => {
-        base.entity.patch(
-          {
-            kind: 'entity',
-            type: familyName,
-            id: familyName
-          },
-          lowerPatchWrites(family.members, writes)
-        )
-      }
-      familyWriter.delete = () => {
-        base.entity.delete({
-          kind: 'entity',
-          type: familyName,
-          id: familyName
+  const createEntityRef = (
+    familyName: string,
+    id: string
+  ) => ({
+    kind: 'entity' as const,
+    type: familyName,
+    id
+  })
+
+  const resolveSequenceItemId = (
+    identify: (item: unknown) => string,
+    item: unknown
+  ): string => typeof item === 'string'
+    ? item
+    : identify(item)
+
+  const createOrderedWriterApi = (
+    type: string,
+    identify: (item: unknown) => string,
+    key?: string,
+    readItems?: () => readonly unknown[]
+  ) => {
+    const target = key === undefined
+      ? {
+          kind: 'ordered' as const,
+          type
+        }
+      : {
+          kind: 'ordered' as const,
+          type,
+          key
+        }
+
+    return {
+      insert: (value: unknown, to?: MutationSequenceAnchor) => base.ordered.insert(
+        target,
+        identify(value),
+        value,
+        normalizeSequenceAnchor(to)
+      ),
+      move: (item: unknown, to?: MutationSequenceAnchor) => base.ordered.move(
+        target,
+        resolveSequenceItemId(identify, item),
+        normalizeSequenceAnchor(to)
+      ),
+      splice: (itemIds: readonly string[], to?: MutationSequenceAnchor) => base.ordered.splice(
+        target,
+        itemIds,
+        normalizeSequenceAnchor(to)
+      ),
+      patch: (item: unknown, patch: unknown) => base.ordered.patch(
+        target,
+        resolveSequenceItemId(identify, item),
+        patch
+      ),
+      delete: (item: unknown) => base.ordered.delete(
+        target,
+        resolveSequenceItemId(identify, item)
+      ),
+      remove: (item: unknown) => base.ordered.delete(
+        target,
+        resolveSequenceItemId(identify, item)
+      ),
+      replace: (items: readonly unknown[]) => {
+        if (!readItems) {
+          throw new Error(`Mutation writer ordered "${type}" requires read access to replace items.`)
+        }
+
+        const currentItems = readItems()
+        const currentIds = new Set(currentItems.map((item) => identify(item)))
+        const nextIds = items.map((item) => identify(item))
+        const nextIdSet = new Set(nextIds)
+
+        currentItems.forEach((item) => {
+          const itemId = identify(item)
+          if (!nextIdSet.has(itemId)) {
+            base.ordered.delete(target, itemId)
+          }
+        })
+
+        items.forEach((item, index) => {
+          const itemId = identify(item)
+          const to = index === 0
+            ? {
+                kind: 'start' as const
+              }
+            : {
+                kind: 'after' as const,
+                itemId: nextIds[index - 1]!
+              }
+
+          if (currentIds.has(itemId)) {
+            base.ordered.move(target, itemId, to)
+            return
+          }
+
+          base.ordered.insert(target, itemId, item, to)
         })
       }
-    } else {
-      familyWriter.patch = (
-        id: string,
-        writes: Readonly<Record<string, unknown>>
-      ) => {
+    }
+  }
+
+  const createTreeWriterApi = (
+    type: string,
+    key?: string
+  ) => {
+    const target = key === undefined
+      ? {
+          kind: 'tree' as const,
+          type
+        }
+      : {
+          kind: 'tree' as const,
+          type,
+          key
+        }
+
+    return {
+      insert: (nodeId: string, location?: MutationTreeLocation<unknown>) => base.tree.insert(
+        target,
+        nodeId,
+        location?.parentId,
+        location?.index,
+        location?.value
+      ),
+      move: (nodeId: string, location?: Omit<MutationTreeLocation<unknown>, 'value'>) => base.tree.move(
+        target,
+        nodeId,
+        location?.parentId,
+        location?.index
+      ),
+      delete: (nodeId: string) => base.tree.delete(target, nodeId),
+      remove: (nodeId: string) => base.tree.delete(target, nodeId),
+      patch: (nodeId: string, patch: unknown) => base.tree.patch(target, nodeId, patch)
+    }
+  }
+
+  const createEntityWriterApi = (
+    familyName: string,
+    family: MutationFamilySpec<Doc>,
+    id: string
+  ) => {
+    const entityRef = createEntityRef(familyName, id)
+    const familyWriter: Record<string, unknown> = {
+      patch: (writes: Readonly<Record<string, unknown>>) => {
         base.entity.patch(
-          {
-            kind: 'entity',
-            type: familyName,
-            id
-          },
+          entityRef,
           lowerPatchWrites(family.members, writes)
         )
-      }
-      familyWriter.delete = (id: string) => {
-        base.entity.delete({
-          kind: 'entity',
-          type: familyName,
-          id
-        })
+      },
+      delete: () => {
+        base.entity.delete(entityRef)
       }
     }
 
@@ -1332,151 +2513,104 @@ export const createMutationWriter = <
       }
 
       const path = member.at ?? name
-      familyWriter[name] = family.kind === 'singleton'
-        ? () => ({
-            set: (key: string, value: unknown) => base.entity.patch({
-              kind: 'entity',
-              type: familyName,
-              id: familyName
-            }, {
-              [`${path}.${key}`]: value
-            }),
-            remove: (key: string) => base.entity.patch({
-              kind: 'entity',
-              type: familyName,
-              id: familyName
-            }, {
-              [`${path}.${key}`]: undefined
-            })
-          })
-        : (id: string) => ({
-            set: (key: string, value: unknown) => base.entity.patch({
-              kind: 'entity',
-              type: familyName,
-              id
-            }, {
-              [`${path}.${key}`]: value
-            }),
-            remove: (key: string) => base.entity.patch({
-              kind: 'entity',
-              type: familyName,
-              id
-            }, {
-              [`${path}.${key}`]: undefined
-            })
-          })
+      familyWriter[name] = {
+        set: (key: string, value: unknown) => base.entity.patch(entityRef, {
+          [`${path}.${key}`]: value
+        }),
+        delete: (key: string) => base.entity.patch(entityRef, {
+          [`${path}.${key}`]: undefined
+        }),
+        remove: (key: string) => base.entity.patch(entityRef, {
+          [`${path}.${key}`]: undefined
+        })
+      }
     })
 
-    Object.keys(family.sequence ?? {}).forEach((name) => {
+    Object.entries(family.sequence ?? {}).forEach(([name, spec]) => {
       const type = `${familyName}.${name}`
-      familyWriter[name] = family.kind === 'singleton'
-        ? () => ({
-            insert: (value: unknown, to?: MutationOrderedAnchor) => base.ordered.insert({
-              kind: 'ordered',
-              type
-            }, (family.sequence?.[name] as MutationOrderedFamilySpec<Doc, 'singleton', unknown, string>).identify(value), value, to ?? {
-              kind: 'end'
-            }),
-            move: (itemId: string, to?: MutationOrderedAnchor) => base.ordered.move({
-              kind: 'ordered',
-              type
-            }, itemId, to ?? {
-              kind: 'end'
-            }),
-            splice: (itemIds: readonly string[], to?: MutationOrderedAnchor) => base.ordered.splice({
-              kind: 'ordered',
-              type
-            }, itemIds, to ?? {
-              kind: 'end'
-            }),
-            patch: (itemId: string, patch: unknown) => base.ordered.patch({
-              kind: 'ordered',
-              type
-            }, itemId, patch),
-            delete: (itemId: string) => base.ordered.delete({
-              kind: 'ordered',
-              type
-            }, itemId)
-          })
-        : (key: string) => ({
-            insert: (value: unknown, to?: MutationOrderedAnchor) => base.ordered.insert({
-              kind: 'ordered',
-              type,
-              key
-            }, (family.sequence?.[name] as MutationOrderedFamilySpec<Doc, 'map' | 'table', unknown, string>).identify(value), value, to ?? {
-              kind: 'end'
-            }),
-            move: (itemId: string, to?: MutationOrderedAnchor) => base.ordered.move({
-              kind: 'ordered',
-              type,
-              key
-            }, itemId, to ?? {
-              kind: 'end'
-            }),
-            splice: (itemIds: readonly string[], to?: MutationOrderedAnchor) => base.ordered.splice({
-              kind: 'ordered',
-              type,
-              key
-            }, itemIds, to ?? {
-              kind: 'end'
-            }),
-            patch: (itemId: string, patch: unknown) => base.ordered.patch({
-              kind: 'ordered',
-              type,
-              key
-            }, itemId, patch),
-            delete: (itemId: string) => base.ordered.delete({
-              kind: 'ordered',
-              type,
-              key
-            }, itemId)
-          })
+      const readItems = readDocument
+        ? family.kind === 'singleton'
+          ? () => (
+              spec as MutationOrderedFamilySpec<Doc, 'singleton', unknown, string>
+            ).read(readDocument())
+          : () => (
+              spec as MutationOrderedFamilySpec<Doc, 'map' | 'table', unknown, string>
+            ).read(readDocument(), id)
+        : undefined
+
+      familyWriter[name] = createOrderedWriterApi(
+        type,
+        (spec as MutationOrderedFamilySpec<Doc, any, unknown, string>).identify,
+        family.kind === 'singleton'
+          ? undefined
+          : id,
+        readItems
+      )
     })
 
-    Object.keys(family.tree ?? {}).forEach((name) => {
-      const type = `${familyName}.${name}`
-      familyWriter[name] = family.kind === 'singleton'
-        ? () => ({
-            insert: (nodeId: string, parentId?: string, index?: number, value?: unknown) => base.tree.insert({
-              kind: 'tree',
-              type
-            }, nodeId, parentId, index, value),
-            move: (nodeId: string, parentId?: string, index?: number) => base.tree.move({
-              kind: 'tree',
-              type
-            }, nodeId, parentId, index),
-            delete: (nodeId: string) => base.tree.delete({
-              kind: 'tree',
-              type
-            }, nodeId),
-            patch: (nodeId: string, patch: unknown) => base.tree.patch({
-              kind: 'tree',
-              type
-            }, nodeId, patch)
-          })
-        : (key: string) => ({
-            insert: (nodeId: string, parentId?: string, index?: number, value?: unknown) => base.tree.insert({
-              kind: 'tree',
-              type,
-              key
-            }, nodeId, parentId, index, value),
-            move: (nodeId: string, parentId?: string, index?: number) => base.tree.move({
-              kind: 'tree',
-              type,
-              key
-            }, nodeId, parentId, index),
-            delete: (nodeId: string) => base.tree.delete({
-              kind: 'tree',
-              type,
-              key
-            }, nodeId),
-            patch: (nodeId: string, patch: unknown) => base.tree.patch({
-              kind: 'tree',
-              type,
-              key
-            }, nodeId, patch)
-          })
+    Object.entries(family.tree ?? {}).forEach(([name]) => {
+      familyWriter[name] = createTreeWriterApi(
+        `${familyName}.${name}`,
+        family.kind === 'singleton'
+          ? undefined
+          : id
+      )
     })
+
+    return familyWriter
+  }
+
+  forEachMutationFamily(model, (familyName, family) => {
+    const createValue = (value: unknown) => {
+      base.entity.create(
+        createEntityRef(
+          familyName,
+          family.kind === 'singleton'
+            ? familyName
+            : String((value as {
+                id?: unknown
+              }).id)
+        ),
+        value
+      )
+    }
+
+    const patchValue = (
+      id: string,
+      writes: Readonly<Record<string, unknown>>
+    ) => {
+      base.entity.patch(
+        createEntityRef(familyName, id),
+        lowerPatchWrites(family.members, writes)
+      )
+    }
+
+    const deleteValue = (id: string) => {
+      base.entity.delete(createEntityRef(familyName, id))
+    }
+
+    const familyWriter = family.kind === 'singleton'
+      ? {
+          create: createValue,
+          ...createEntityWriterApi(
+            familyName,
+            family,
+            familyName
+          )
+        }
+      : Object.assign(
+          (id: string) => createEntityWriterApi(
+            familyName,
+            family,
+            id
+          ),
+          {
+            create: createValue,
+            patch: (id: string, writes: Readonly<Record<string, unknown>>) => patchValue(id, writes),
+            delete: (id: string) => deleteValue(id),
+            remove: (id: string) => deleteValue(id)
+          }
+        )
 
     assignNested(result, familyName, familyWriter)
   })
@@ -1524,81 +2658,233 @@ export const createMutationReader = <
 ): MutationReader<TModel> => {
   const result: Record<string, unknown> = {}
 
+  const readMemberValue = (
+    entity: unknown,
+    memberName: string,
+    member: MutationMemberSpec
+  ) => readObjectPath(
+    entity,
+    (member.at ?? memberName).split('.').filter(Boolean)
+  )
+
+  const createKeyedReader = (
+    value: unknown
+  ) => {
+    const collection = readKeyedCollection(value, '', '')
+    return {
+      get: (key: string) => collection[key],
+      has: (key: string) => Object.prototype.hasOwnProperty.call(collection, key),
+      keys: () => Object.keys(collection),
+      entries: () => Object.entries(collection) as readonly (readonly [string, unknown])[]
+    }
+  }
+
+  const resolveSequenceItemId = (
+    identify: (item: unknown) => string,
+    item: unknown
+  ): string => typeof item === 'string'
+    ? item
+    : identify(item)
+
+  const createOrderedReaderApi = (
+    spec: MutationOrderedFamilySpec<Doc, any, unknown, string>,
+    key?: string
+  ) => {
+    const readItems = () => key === undefined
+      ? (spec as MutationOrderedFamilySpec<Doc, 'singleton', unknown, string>).read(readDocument())
+      : (spec as MutationOrderedFamilySpec<Doc, 'map' | 'table', unknown, string>).read(readDocument(), key)
+
+    const locate = (items: readonly unknown[], target: unknown) => {
+      const itemId = resolveSequenceItemId(spec.identify, target)
+      return items.findIndex((item) => spec.identify(item) === itemId)
+    }
+
+    return {
+      items: () => readItems(),
+      ids: () => readItems().map((item) => spec.identify(item)),
+      contains: (target: unknown) => locate(readItems(), target) >= 0,
+      indexOf: (target: unknown) => locate(readItems(), target),
+      before: (target: unknown) => {
+        const items = readItems()
+        const index = locate(items, target)
+        return index > 0
+          ? items[index - 1]
+          : undefined
+      },
+      after: (target: unknown) => {
+        const items = readItems()
+        const index = locate(items, target)
+        return index >= 0
+          ? items[index + 1]
+          : undefined
+      },
+      slot: (target: unknown) => {
+        const items = readItems()
+        const index = locate(items, target)
+        if (index < 0) {
+          return undefined
+        }
+        return {
+          prev: items[index - 1],
+          next: items[index + 1]
+        }
+      }
+    }
+  }
+
+  const createTreeSubtreeSnapshot = (
+    tree: MutationTreeSnapshot<unknown>,
+    nodeId: string
+  ): MutationTreeSubtreeSnapshot<unknown> | undefined => {
+    const node = tree.nodes[nodeId]
+    if (!node) {
+      return undefined
+    }
+
+    const ids: string[] = []
+    const visit = (currentId: string) => {
+      ids.push(currentId)
+      const current = tree.nodes[currentId]
+      current?.children.forEach((childId) => {
+        visit(childId)
+      })
+    }
+    visit(nodeId)
+
+    const siblings = node.parentId === undefined
+      ? tree.rootIds
+      : (tree.nodes[node.parentId]?.children ?? [])
+
+    return {
+      rootId: nodeId,
+      parentId: node.parentId,
+      index: siblings.indexOf(nodeId),
+      nodes: Object.fromEntries(ids.map((id) => [
+        id,
+        tree.nodes[id]!
+      ]))
+    }
+  }
+
+  const createTreeReaderApi = (
+    spec: MutationTreeFamilySpec<Doc, any, unknown, string>,
+    key?: string
+  ) => {
+    const readTree = () => key === undefined
+      ? (spec as MutationTreeFamilySpec<Doc, 'singleton', unknown, string>).read(readDocument())
+      : (spec as MutationTreeFamilySpec<Doc, 'map' | 'table', unknown, string>).read(readDocument(), key)
+
+    return {
+      snapshot: () => readTree(),
+      has: (nodeId: string) => readTree().nodes[nodeId] !== undefined,
+      node: (nodeId: string) => readTree().nodes[nodeId],
+      value: (nodeId: string) => readTree().nodes[nodeId]?.value,
+      parent: (nodeId: string) => readTree().nodes[nodeId]?.parentId,
+      children: (nodeId: string) => readTree().nodes[nodeId]?.children ?? [],
+      rootIds: () => readTree().rootIds,
+      isRoot: (nodeId: string) => readTree().rootIds.includes(nodeId),
+      subtree: (nodeId: string) => createTreeSubtreeSnapshot(readTree(), nodeId),
+      isDescendant: (nodeId: string, parentId: string) => {
+        const tree = readTree()
+        let currentId = tree.nodes[nodeId]?.parentId
+        while (currentId !== undefined) {
+          if (currentId === parentId) {
+            return true
+          }
+          currentId = tree.nodes[currentId]?.parentId
+        }
+        return false
+      }
+    }
+  }
+
+  const createEntityReaderApi = (
+    familyName: string,
+    family: MutationFamilySpec<Doc>,
+    readEntity: () => unknown,
+    entityId?: string
+  ) => {
+    const familyReader: Record<string, unknown> = {
+      value: () => readEntity(),
+      get: () => readEntity()
+    }
+
+    Object.entries(family.members).forEach(([name, member]) => {
+      if (member.kind === 'keyed') {
+        familyReader[name] = createKeyedReader(
+          readMemberValue(readEntity(), name, member)
+        )
+        return
+      }
+
+      familyReader[name] = () => readMemberValue(
+        readEntity(),
+        name,
+        member
+      )
+    })
+
+    Object.entries(family.sequence ?? {}).forEach(([name, spec]) => {
+      familyReader[name] = createOrderedReaderApi(
+        spec as MutationOrderedFamilySpec<Doc, any, unknown, string>,
+        family.kind === 'singleton'
+          ? undefined
+          : entityId
+      )
+    })
+
+    Object.entries(family.tree ?? {}).forEach(([name, spec]) => {
+      familyReader[name] = createTreeReaderApi(
+        spec as MutationTreeFamilySpec<Doc, any, unknown, string>,
+        family.kind === 'singleton'
+          ? undefined
+          : entityId
+      )
+    })
+
+    return familyReader
+  }
+
   forEachMutationFamily(model, (familyName, family) => {
-    const familyReader: Record<string, unknown> = {}
     const readFamily = () => readCollection(
       family.access.read(readDocument()),
       familyName
     )
 
-    if (family.kind === 'singleton') {
-      familyReader.get = () => family.access.read(readDocument()) as unknown
-    } else {
-      familyReader.ids = () => Object.keys(readFamily())
-      familyReader.list = () => Object.values(readFamily())
-      familyReader.get = (id: string) => readFamily()[id]
-      familyReader.require = (id: string) => {
-        const value = readFamily()[id]
-        if (value === undefined) {
-          throw new Error(`Mutation reader family "${familyName}" cannot find entity "${id}".`)
-        }
-        return value
-      }
-      familyReader.has = (id: string) => readFamily()[id] !== undefined
-    }
-
-    Object.entries(family.members).forEach(([name, member]) => {
-      if (member.kind !== 'keyed') {
-        return
-      }
-
-      const path = member.at ?? name
-      const createKeyedReader = (value: unknown) => {
-        const collection = readKeyedCollection(value, familyName, name)
-        return {
-          get: (key: string) => collection[key],
-          has: (key: string) => Object.prototype.hasOwnProperty.call(collection, key),
-          keys: () => Object.keys(collection),
-          entries: () => Object.entries(collection) as readonly (readonly [string, unknown])[]
-        }
-      }
-
-      familyReader[name] = family.kind === 'singleton'
-        ? () => createKeyedReader(
-            (family.access.read(readDocument()) as Record<string, unknown> | undefined)?.[path]
-          )
-        : (id: string) => createKeyedReader(
-            (readFamily()[id] as Record<string, unknown> | undefined)?.[path]
-          )
-    })
-
-    Object.entries(family.sequence ?? {}).forEach(([name, spec]) => {
-      familyReader[name] = family.kind === 'singleton'
-        ? () => ({
-            items: () => (
-              spec as MutationOrderedFamilySpec<Doc, 'singleton', unknown, string>
-            ).read(readDocument())
-          })
-        : (key: string) => ({
-            items: () => (
-              spec as MutationOrderedFamilySpec<Doc, 'map' | 'table', unknown, string>
-            ).read(readDocument(), key)
-          })
-    })
-
-    Object.entries(family.tree ?? {}).forEach(([name, spec]) => {
-      familyReader[name] = family.kind === 'singleton'
-        ? () => ({
-            snapshot: () => (
-              spec as MutationTreeFamilySpec<Doc, 'singleton', unknown, string>
-            ).read(readDocument())
-          })
-        : (key: string) => ({
-            snapshot: () => (
-              spec as MutationTreeFamilySpec<Doc, 'map' | 'table', unknown, string>
-            ).read(readDocument(), key)
-          })
-    })
+    const familyReader = family.kind === 'singleton'
+      ? createEntityReaderApi(
+          familyName,
+          family,
+          () => family.access.read(readDocument()),
+          familyName
+        )
+      : Object.assign(
+          (id: string) => createEntityReaderApi(
+            familyName,
+            family,
+            () => {
+              const value = readFamily()[id]
+              if (value === undefined) {
+                throw new Error(`Mutation reader family "${familyName}" cannot find entity "${id}".`)
+              }
+              return value
+            },
+            id
+          ),
+          {
+            ids: () => Object.keys(readFamily()),
+            list: () => Object.values(readFamily()),
+            get: (id: string) => readFamily()[id],
+            require: (id: string) => {
+              const value = readFamily()[id]
+              if (value === undefined) {
+                throw new Error(`Mutation reader family "${familyName}" cannot find entity "${id}".`)
+              }
+              return value
+            },
+            has: (id: string) => readFamily()[id] !== undefined
+          }
+        )
 
     assignNested(result, familyName, familyReader)
   })
@@ -1842,99 +3128,213 @@ export const createMutationDelta = <
     return cached as MutationDeltaOf<TModel>
   }
 
-  const compiled = compileMutationModel(model)
   const result: Record<string, unknown> = {
     ...(normalized as unknown as Record<string, unknown>),
     raw: normalized
   }
 
-  compiled.families.forEach((family) => {
+  const resolveSequenceItemId = (
+    identify: (item: unknown) => string,
+    value: unknown
+  ): string => typeof value === 'string'
+    ? value
+    : identify(value)
+
+  const createEntityDeltaView = (
+    familyName: string,
+    family: MutationFamilySpec<Doc>,
+    entityId: string | undefined,
+    changeKeys: readonly string[]
+  ) => {
+    const entityDelta: Record<string, unknown> = {
+      changed: () => normalized.reset === true || (
+        entityId === undefined
+          ? changeKeys.some((key) => normalized.has(key))
+          : changeKeys.some((key) => normalized.changed(key, entityId))
+      )
+    }
+
+    changeKeys.forEach((fullKey) => {
+      const memberName = fullKey.slice(familyName.length + 1)
+      const member = family.members[memberName]
+      if (!member) {
+        return
+      }
+
+      if (member.kind === 'keyed') {
+        const singletonView = entityId === undefined
+          ? createSingletonKeyedTouchedView(
+              normalized,
+              fullKey,
+              member.at ?? memberName
+            )
+          : undefined
+        const collectionView = entityId === undefined
+          ? undefined
+          : createCollectionKeyedTouchedView<string, string>(
+              normalized,
+              fullKey,
+              member.at ?? memberName
+            )
+
+        entityDelta[memberName] = {
+          changed: (key?: string) => entityId === undefined
+            ? singletonView!.changed(key)
+            : collectionView!.changed(entityId, key),
+          anyChanged: () => entityId === undefined
+            ? singletonView!.changed()
+            : collectionView!.changed(entityId),
+          touchedKeys: () => entityId === undefined
+            ? singletonView!.touchedKeys()
+            : collectionView!.touchedKeys(entityId),
+          contains: (key: string) => entityId === undefined
+            ? singletonView!.changed(key)
+            : collectionView!.changed(entityId, key)
+        }
+        return
+      }
+
+      entityDelta[memberName] = {
+        changed: () => normalized.reset === true || (
+          entityId === undefined
+            ? normalized.has(fullKey)
+            : normalized.changed(fullKey, entityId)
+        )
+      }
+    })
+
+    Object.entries(family.sequence ?? {}).forEach(([name, spec]) => {
+      const sequenceSpec = spec as MutationOrderedFamilySpec<Doc, any, unknown, string>
+      const fullKey = `${familyName}.${sequenceSpec.emits}`
+      entityDelta[name] = {
+        changed: () => normalized.reset === true || (
+          entityId === undefined
+            ? normalized.has(fullKey)
+            : normalized.changed(fullKey, entityId)
+        ),
+        orderChanged: () => normalized.reset === true || (
+          entityId === undefined
+            ? normalized.has(fullKey)
+            : normalized.changed(fullKey, entityId)
+        ),
+        contains: (value: unknown) => {
+          if (normalized.reset === true) {
+            return true
+          }
+          const ids = normalized.ids(fullKey)
+          if (ids === 'all') {
+            return true
+          }
+          return ids.has(resolveSequenceItemId(sequenceSpec.identify, value))
+        },
+        touched: () => readTouchedIds<string>(normalized, [fullKey])
+      }
+    })
+
+    Object.entries(family.tree ?? {}).forEach(([name, spec]) => {
+      const treeSpec = spec as MutationTreeFamilySpec<Doc, any, unknown, string>
+      const fullKey = `${familyName}.${treeSpec.emits}`
+      entityDelta[name] = {
+        changed: () => normalized.reset === true || (
+          entityId === undefined
+            ? normalized.has(fullKey)
+            : normalized.changed(fullKey, entityId)
+        ),
+        structureChanged: () => normalized.reset === true || (
+          entityId === undefined
+            ? normalized.has(fullKey)
+            : normalized.changed(fullKey, entityId)
+        ),
+        nodeChanged: (nodeId: string) => {
+          if (normalized.reset === true) {
+            return true
+          }
+          const ids = normalized.ids(fullKey)
+          if (ids === 'all') {
+            return true
+          }
+          return ids.has(nodeId)
+        }
+      }
+    })
+
+    return entityDelta
+  }
+
+  forEachMutationFamily(model, (familyName, family) => {
+    const changeMap = normalizeFamilyChanges(family)
+    const memberChangeKeys = Object.keys(changeMap).map((key) => `${familyName}.${key}`)
+
     if (family.kind === 'singleton') {
-      const familyKeys = [
-        ...family.changeKeys.map((key) => `${family.name}.${key}`),
-        ...Object.values(family.sequence).map((emits) => `${family.name}.${emits}`),
-        ...Object.values(family.tree).map((emits) => `${family.name}.${emits}`)
-      ]
-      const familyDelta = Object.fromEntries(
-        family.changeKeys.map((key) => {
-          const member = family.members[key]
-          return [
-            key,
-            member?.kind === 'keyed'
-              ? createSingletonKeyedTouchedView(
-                  normalized,
-                  `${family.name}.${key}`,
-                  member.at ?? key
-                )
-              : {
-                  changed: () => normalized.reset === true || normalized.changed(`${family.name}.${key}`)
-                }
+      assignNested(
+        result,
+        familyName,
+        createEntityDeltaView(
+          familyName,
+          family,
+          undefined,
+          [
+            ...memberChangeKeys,
+            ...Object.values(family.sequence ?? {}).map((spec) => `${familyName}.${(spec as MutationOrderedFamilySpec<Doc, any, unknown, string>).emits}`),
+            ...Object.values(family.tree ?? {}).map((spec) => `${familyName}.${(spec as MutationTreeFamilySpec<Doc, any, unknown, string>).emits}`)
           ]
-        })
-      ) as Record<string, unknown>
-
-      familyDelta.changed = () => normalized.reset === true || familyKeys.some((key) => normalized.has(key))
-
-      Object.entries(family.sequence).forEach(([name, emits]) => {
-        familyDelta[name] = {
-          changed: () => normalized.reset === true || normalized.has(`${family.name}.${emits}`)
-        }
-      })
-
-      Object.entries(family.tree).forEach(([name, emits]) => {
-        familyDelta[name] = {
-          changed: () => normalized.reset === true || normalized.has(`${family.name}.${emits}`)
-        }
-      })
-
-      assignNested(result, family.name, familyDelta)
+        )
+      )
       return
     }
 
     const familyKeys = [
-      `${family.name}.create`,
-      `${family.name}.delete`,
-      ...family.changeKeys.map((key) => `${family.name}.${key}`),
-      ...Object.values(family.sequence).map((emits) => `${family.name}.${emits}`),
-      ...Object.values(family.tree).map((emits) => `${family.name}.${emits}`)
+      `${familyName}.create`,
+      `${familyName}.delete`,
+      ...memberChangeKeys,
+      ...Object.values(family.sequence ?? {}).map((spec) => `${familyName}.${(spec as MutationOrderedFamilySpec<Doc, any, unknown, string>).emits}`),
+      ...Object.values(family.tree ?? {}).map((spec) => `${familyName}.${(spec as MutationTreeFamilySpec<Doc, any, unknown, string>).emits}`)
     ]
-    const familyDelta: Record<string, unknown> = {
-      create: createTouchedView(normalized, `${family.name}.create`),
-      delete: createTouchedView(normalized, `${family.name}.delete`),
-      changed: (id?: string) => {
-        if (normalized.reset === true) {
-          return true
-        }
+    const familyDelta = Object.assign(
+      (id: string) => createEntityDeltaView(
+        familyName,
+        family,
+        id,
+        familyKeys
+      ),
+      {
+        create: createTouchedView(normalized, `${familyName}.create`),
+        delete: createTouchedView(normalized, `${familyName}.delete`),
+        changed: (id?: string) => {
+          if (normalized.reset === true) {
+            return true
+          }
 
-        if (id === undefined) {
-          return familyKeys.some((key) => normalized.has(key))
-        }
+          if (id === undefined) {
+            return familyKeys.some((key) => normalized.has(key))
+          }
 
-        return familyKeys.some((key) => normalized.changed(key, id))
-      },
-      touchedIds: () => readTouchedIds(normalized, familyKeys)
-    }
+          return familyKeys.some((key) => normalized.changed(key, id))
+        },
+        touchedIds: () => readTouchedIds(normalized, familyKeys)
+      }
+    ) as unknown as Record<string, unknown>
 
-    family.changeKeys.forEach((key) => {
+    Object.keys(changeMap).forEach((key) => {
       const member = family.members[key]
       familyDelta[key] = member?.kind === 'keyed'
         ? createCollectionKeyedTouchedView(
             normalized,
-            `${family.name}.${key}`,
+            `${familyName}.${key}`,
             member.at ?? key
           )
-        : createTouchedView(normalized, `${family.name}.${key}`)
+        : createTouchedView(normalized, `${familyName}.${key}`)
     })
 
-    Object.entries(family.sequence).forEach(([name, emits]) => {
-      familyDelta[name] = createTouchedView(normalized, `${family.name}.${emits}`)
+    Object.entries(family.sequence ?? {}).forEach(([name, spec]) => {
+      familyDelta[name] = createTouchedView(normalized, `${familyName}.${(spec as MutationOrderedFamilySpec<Doc, any, unknown, string>).emits}`)
     })
 
-    Object.entries(family.tree).forEach(([name, emits]) => {
-      familyDelta[name] = createTouchedView(normalized, `${family.name}.${emits}`)
+    Object.entries(family.tree ?? {}).forEach(([name, spec]) => {
+      familyDelta[name] = createTouchedView(normalized, `${familyName}.${(spec as MutationTreeFamilySpec<Doc, any, unknown, string>).emits}`)
     })
 
-    assignNested(result, family.name, familyDelta)
+    assignNested(result, familyName, familyDelta)
   })
 
   const typed = freezeDeep(result) as MutationDeltaOf<TModel>
@@ -1944,4 +3344,24 @@ export const createMutationDelta = <
   }
   nextModelCache.set(normalized, typed as MutationDeltaOf<any>)
   return typed
+}
+
+export const createMutationQuery = <
+  Doc,
+  const TModel extends MutationModelDefinition<Doc>
+>(
+  model: TModel,
+  input: MutationReader<TModel> | (() => Doc)
+): MutationQuery<TModel> => {
+  const reader = typeof input === 'function'
+    ? createMutationReader(model, input)
+    : input
+
+  return {
+    ...(reader as unknown as Record<string, unknown>),
+    changes: (delta: MutationDelta | MutationDeltaInput) => createMutationDelta(
+      model,
+      delta
+    )
+  } as MutationQuery<TModel>
 }

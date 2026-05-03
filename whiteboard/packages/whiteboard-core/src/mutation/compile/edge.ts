@@ -231,7 +231,7 @@ const emitEdgeRouteDiffOps = (
         x: point.x,
         y: point.y
       }
-      ctx.writer.edge.route(edgeId).insert(
+      ctx.writer.edge(edgeId).route.insert(
         routePoint,
         toMutationOrderedAnchor(to)
       )
@@ -245,7 +245,7 @@ const emitEdgeRouteDiffOps = (
 
   if (nextMiddle.length === 0) {
     currentMiddle.forEach((point) => {
-      ctx.writer.edge.route(edgeId).delete(point.id)
+      ctx.writer.edge(edgeId).route.delete(point.id)
     })
     return
   }
@@ -261,14 +261,14 @@ const emitEdgeRouteDiffOps = (
         fields.y = nextPoint.y
       }
       if (Object.keys(fields).length) {
-        ctx.writer.edge.route(edgeId).patch(point.id, fields)
+        ctx.writer.edge(edgeId).route.patch(point.id, fields)
       }
     })
     return
   }
 
   currentPoints.forEach((point) => {
-    ctx.writer.edge.route(edgeId).delete(point.id)
+    ctx.writer.edge(edgeId).route.delete(point.id)
   })
 
   let to: EdgeRoutePointAnchor = { kind: 'start' }
@@ -278,7 +278,7 @@ const emitEdgeRouteDiffOps = (
       x: point.x,
       y: point.y
     }
-    ctx.writer.edge.route(edgeId).insert(
+    ctx.writer.edge(edgeId).route.insert(
       routePoint,
       toMutationOrderedAnchor(to)
     )
@@ -367,7 +367,7 @@ const compileEdgeRouteDelete = (
     return ctx.invalid(`Edge ${edge.id} route point not found.`)
   }
 
-  ctx.writer.edge.route(edge.id).delete(pointId)
+  ctx.writer.edge(edge.id).route.delete(pointId)
 }
 
 type EdgeIntentHandlers = Pick<
@@ -415,7 +415,7 @@ export const edgeIntentHandlers = {
     }
 
     ctx.writer.edge.create(built.data.edge)
-    ctx.writer.document.order().insert({
+    ctx.writer.document.order.insert({
       kind: 'edge',
       id: built.data.edgeId
     })
@@ -524,7 +524,7 @@ export const edgeIntentHandlers = {
 
     ctx.intent.ids.forEach((id) => {
       ctx.writer.edge.delete(id)
-      ctx.writer.document.order().delete(canvasRefKey({
+      ctx.writer.document.order.delete(canvasRefKey({
         kind: 'edge',
         id
       }))
@@ -545,7 +545,7 @@ export const edgeIntentHandlers = {
       ...(ctx.intent.label.style !== undefined ? { style: ctx.intent.label.style } : {}),
       ...(ctx.intent.label.data !== undefined ? { data: ctx.intent.label.data } : {})
     }
-    ctx.writer.edge.labels(edge.id).insert(
+    ctx.writer.edge(edge.id).labels.insert(
       label,
       ctx.intent.to
         ? toMutationOrderedAnchor(ctx.intent.to)
@@ -572,19 +572,19 @@ export const edgeIntentHandlers = {
       return
     }
 
-    ctx.writer.edge.labels(edge.id).patch(label.id, createEdgeLabelPatch({
+    ctx.writer.edge(edge.id).labels.patch(label.id, createEdgeLabelPatch({
       ...(fields ? { fields } : {}),
       ...(record ? { record } : {})
     }))
   },
   'edge.label.move': (ctx) => {
-    ctx.writer.edge.labels(ctx.intent.edgeId).move(
+    ctx.writer.edge(ctx.intent.edgeId).labels.move(
       ctx.intent.labelId,
       toMutationOrderedAnchor(ctx.intent.to)
     )
   },
   'edge.label.delete': (ctx) => {
-    ctx.writer.edge.labels(ctx.intent.edgeId).delete(ctx.intent.labelId)
+    ctx.writer.edge(ctx.intent.edgeId).labels.delete(ctx.intent.labelId)
   },
   'edge.route.insert': (ctx) => {
     const edge = ctx.expect.edge(ctx.intent.edgeId)
@@ -593,7 +593,7 @@ export const edgeIntentHandlers = {
     }
 
     const pointId = readCompileServices(ctx).ids.edgeRoutePoint()
-    ctx.writer.edge.route(edge.id).insert({
+    ctx.writer.edge(edge.id).route.insert({
       id: pointId,
       x: ctx.intent.point.x,
       y: ctx.intent.point.y
@@ -628,7 +628,7 @@ export const edgeIntentHandlers = {
       return
     }
 
-    ctx.writer.edge.route(edge.id).patch(point.id, fields)
+    ctx.writer.edge(edge.id).route.patch(point.id, fields)
   },
   'edge.route.set': (ctx) => {
     const edge = ctx.expect.edge(ctx.intent.edgeId)
@@ -643,7 +643,7 @@ export const edgeIntentHandlers = {
     )
   },
   'edge.route.move': (ctx) => {
-    ctx.writer.edge.route(ctx.intent.edgeId).move(
+    ctx.writer.edge(ctx.intent.edgeId).route.move(
       ctx.intent.pointId,
       toMutationOrderedAnchor(ctx.intent.to)
     )
@@ -664,7 +664,7 @@ export const edgeIntentHandlers = {
       return
     }
     edge.route.points.forEach((point) => {
-      ctx.writer.edge.route(edge.id).delete(point.id)
+      ctx.writer.edge(edge.id).route.delete(point.id)
     })
   }
 } satisfies EdgeIntentHandlers

@@ -124,7 +124,7 @@ describe('namespace mutation schema', () => {
       id: 'node_1',
       value: 2
     })
-    expect(reader.preview.selection.get()).toEqual({
+    expect(reader.preview.selection.value()).toEqual({
       marquee: 'active',
       guides: ['g1']
     })
@@ -162,7 +162,7 @@ describe('namespace mutation schema', () => {
     })
 
     expect(delta.preview.node.changed()).toBe(true)
-    expect(delta.preview.node.changed('node_1')).toBe(true)
+    expect(delta.preview.node('node_1').changed()).toBe(true)
     expect(delta.preview.selection.changed()).toBe(true)
     expect(delta.preview.selection.marquee.changed()).toBe(true)
     expect(delta.preview.selection.guides.changed()).toBe(true)

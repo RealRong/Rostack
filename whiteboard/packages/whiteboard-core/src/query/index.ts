@@ -63,7 +63,7 @@ const cloneCanvasRef = (
 export const createWhiteboardQuery = (
   reader: WhiteboardReader,
 ): WhiteboardQuery => {
-  const readDocument = () => reader.document.get()
+  const readDocument = () => reader.document.value()
   const readMindmapRecord = (id: MindmapId) => reader.mindmap.get(id)
 
   return {
@@ -100,7 +100,7 @@ export const createWhiteboardQuery = (
     },
     order: {
       slot: (ref) => {
-        const order = reader.document.order().items()
+        const order = reader.document.order.items()
         const index = order.findIndex((entry) => sameCanvasRef(entry, ref))
         if (index < 0) {
           return undefined
@@ -115,7 +115,7 @@ export const createWhiteboardQuery = (
     group: {
       refsInOrder: (groupId) => {
         const document = readDocument()
-        return reader.document.order().items().filter((ref) => (
+        return reader.document.order.items().filter((ref) => (
           ref.kind === 'node'
             ? document.nodes[ref.id]?.groupId === groupId
             : ref.kind === 'edge'

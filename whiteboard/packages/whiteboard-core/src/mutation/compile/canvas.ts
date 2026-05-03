@@ -305,7 +305,7 @@ export const canvasIntentHandlers = {
   },
   'canvas.selection.move': (ctx) => compileCanvasSelectionMove(ctx),
   'document.order.move': (ctx) => {
-    const currentOrder = ctx.reader.document.order().items()
+    const currentOrder = ctx.reader.document.order.items()
     const existingRefs = ctx.intent.refs.filter((ref) => (
       currentOrder.some((entry) => sameCanvasRef(entry, ref))
     ))
@@ -315,14 +315,14 @@ export const canvasIntentHandlers = {
 
     const anchor = toCanvasOrderAnchor(currentOrder, existingRefs, ctx.intent.to)
     if (existingRefs.length === 1) {
-      ctx.writer.document.order().move(
+      ctx.writer.document.order.move(
         canvasRefKey(existingRefs[0]!),
         anchor
       )
       return
     }
 
-    ctx.writer.document.order().splice(
+    ctx.writer.document.order.splice(
       existingRefs.map((ref) => canvasRefKey(ref)),
       anchor
     )

@@ -260,7 +260,7 @@ const lowerFieldDuplicate = (
       return
     }
 
-    input.writer.view.fields(view.id).insert(
+    input.writer.view(view.id).fields.insert(
       nextFieldId,
       toAnchor(viewFieldIds[sourceIndex + 1])
     )
@@ -300,7 +300,7 @@ const lowerFieldOptionCreate = (
     options: context.options,
     name: explicitName ?? createOptionName(context.options)
   })
-  input.writer.field.options(intent.field).insert(nextOption)
+  input.writer.field(intent.field).options.insert(nextOption)
   return { id: nextOption.id }
 }
 
@@ -343,13 +343,13 @@ const lowerFieldOptionMove = (
   if (context.field.kind === 'status' && intent.category !== undefined) {
     const category = fieldApi.status.category.get(context.field, optionId)
     if (category !== intent.category) {
-      input.writer.field.options(intent.field).patch(optionId, {
+      input.writer.field(intent.field).options.patch(optionId, {
         category: intent.category
       })
     }
   }
 
-  input.writer.field.options(intent.field).move(
+  input.writer.field(intent.field).options.move(
     optionId,
     before === undefined
       ? undefined
@@ -399,7 +399,7 @@ const lowerFieldOptionPatch = (
     return
   }
 
-  input.writer.field.options(intent.field).patch(optionId, intent.patch)
+  input.writer.field(intent.field).options.patch(optionId, intent.patch)
 }
 
 const lowerFieldOptionRemove = (
@@ -464,7 +464,7 @@ const lowerFieldOptionRemove = (
     })
   }
 
-  input.writer.field.options(intent.field).delete(optionId)
+  input.writer.field(intent.field).options.delete(optionId)
 }
 
 const lowerFieldRemove = (

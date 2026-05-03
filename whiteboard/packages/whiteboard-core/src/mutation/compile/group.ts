@@ -43,14 +43,14 @@ export const groupIntentHandlers = {
   },
   'group.order.move': (ctx) => {
     const refs = ctx.intent.ids.flatMap((groupId) => ctx.query.group.refsInOrder(groupId))
-    const currentOrder = ctx.reader.document.order().items()
+    const currentOrder = ctx.reader.document.order.items()
     const existingRefs = refs.filter((ref) => (
       currentOrder.some((entry) => entry.kind === ref.kind && entry.id === ref.id)
     ))
     if (existingRefs.length === 0) {
       return
     }
-    ctx.writer.document.order().splice(
+    ctx.writer.document.order.splice(
       existingRefs.map((ref) => canvasRefKey(ref)),
       toCanvasOrderAnchor(currentOrder, existingRefs, ctx.intent.to)
     )

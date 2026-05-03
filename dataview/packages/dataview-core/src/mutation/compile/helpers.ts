@@ -42,10 +42,10 @@ export const replaceViewFieldsInWriter = (
   nextFieldIds: readonly FieldId[]
 ) => {
   currentFieldIds.forEach((fieldId) => {
-    writer.view.fields(viewId).delete(fieldId)
+    writer.view(viewId).fields.delete(fieldId)
   })
   nextFieldIds.forEach((fieldId) => {
-    writer.view.fields(viewId).insert(fieldId, END_ANCHOR)
+    writer.view(viewId).fields.insert(fieldId, END_ANCHOR)
   })
 }
 
@@ -56,10 +56,10 @@ export const replaceViewOrderInWriter = (
   nextRecordIds: readonly RecordId[]
 ) => {
   currentRecordIds.forEach((recordId) => {
-    writer.view.order(viewId).delete(recordId)
+    writer.view(viewId).order.delete(recordId)
   })
   nextRecordIds.forEach((recordId) => {
-    writer.view.order(viewId).insert(recordId, END_ANCHOR)
+    writer.view(viewId).order.insert(recordId, END_ANCHOR)
   })
 }
 
@@ -80,7 +80,7 @@ export const writeRecordValues = (
         return
       }
 
-      writer.record.values(recordId).set(fieldId as FieldId, structuredClone(value))
+      writer.record(recordId).values.set(fieldId as FieldId, structuredClone(value))
     })
     ;(input.clear ?? []).forEach((fieldId) => {
       if (fieldId === TITLE_FIELD_ID) {
@@ -90,7 +90,7 @@ export const writeRecordValues = (
         return
       }
 
-      writer.record.values(recordId).remove(fieldId)
+      writer.record(recordId).values.remove(fieldId)
     })
   })
 }

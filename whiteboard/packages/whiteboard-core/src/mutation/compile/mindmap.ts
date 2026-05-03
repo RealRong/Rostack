@@ -99,7 +99,7 @@ const compileMindmapCreate = (
     ])
   ) as MindmapRecord['members']
 
-  ctx.writer.document.order().insert(
+  ctx.writer.document.order.insert(
     {
       kind: 'mindmap',
       id: mindmapId
@@ -138,12 +138,12 @@ export const emitMindmapDelete = (
   const nodeIds = [...new Set(ctx.query.mindmap.subtreeNodeIds(id, tree.rootNodeId))]
   const connectedEdges = ctx.query.edge.connectedToNodes(new Set(nodeIds))
 
-  ctx.writer.document.order().delete(canvasRefKey({
+  ctx.writer.document.order.delete(canvasRefKey({
     kind: 'mindmap',
     id
   }))
   connectedEdges.forEach((edge: Edge) => {
-    ctx.writer.document.order().delete(canvasRefKey({
+    ctx.writer.document.order.delete(canvasRefKey({
       kind: 'edge',
       id: edge.id
     }))
@@ -212,7 +212,7 @@ export const emitMindmapTopicInsert = (
   }
 
   ctx.writer.node.create(node)
-  const tree = ctx.writer.mindmap.structure(id)
+  const tree = ctx.writer.mindmap(id).structure
 
   switch (input.kind) {
     case 'child': {
@@ -223,15 +223,14 @@ export const emitMindmapTopicInsert = (
       const side = input.parentId === current.root
         ? (input.options?.side ?? 'right')
         : undefined
-      tree.insert(
-        node.id,
-        input.parentId,
-        input.options?.index,
-        {
+      tree.insert(node.id, {
+        parentId: input.parentId,
+        index: input.options?.index,
+        value: {
           ...(side === undefined ? {} : { side }),
           branchStyle: resolveInsertedMindmapBranchStyle(current, input.parentId, side)
         }
-      )
+      })
       return
     }
     case 'sibling': {
@@ -246,19 +245,18 @@ export const emitMindmapTopicInsert = (
       const side = parentId === current.root
         ? (target.side ?? 'right')
         : undefined
-      tree.insert(
-        node.id,
+      tree.insert(node.id, {
         parentId,
-        currentIndex < 0
+        index: currentIndex < 0
           ? undefined
           : input.position === 'before'
             ? currentIndex
             : currentIndex + 1,
-        {
+        value: {
           ...(side === undefined ? {} : { side }),
           branchStyle: resolveInsertedMindmapBranchStyle(current, parentId, target.side)
         }
-      )
+      })
       return
     }
     case 'parent': {
@@ -280,16 +278,18 @@ export const emitMindmapTopicInsert = (
       const side = parentId === current.root
         ? (target.side ?? input.options?.side ?? 'right')
         : undefined
-      tree.insert(
-        node.id,
+      tree.insert(node.id, {
         parentId,
-        siblingIndex,
-        {
+        index: siblingIndex,
+        value: {
           ...(side === undefined ? {} : { side }),
           branchStyle: resolveInsertedMindmapBranchStyle(current, parentId, target.side)
         }
-      )
-      tree.move(input.nodeId, node.id, 0)
+      })
+      tree.move(input.nodeId, {
+        parentId: node.id,
+        index: 0
+      })
       if (target.side !== undefined) {
         tree.patch(input.nodeId, {
           side: undefined
@@ -317,12 +317,11 @@ export const emitMindmapTopicMove = (
   const nextSide = input.parentId === current.root
     ? (input.side ?? member.side ?? 'right')
     : undefined
-  const tree = ctx.writer.mindmap.structure(id)
-  tree.move(
-    input.nodeId,
-    input.parentId,
-    input.index
-  )
+  const tree = ctx.writer.mindmap(id).structure
+  tree.move(input.nodeId, {
+    parentId: input.parentId,
+    index: input.index
+  })
   if (!same(member.side, nextSide)) {
     tree.patch(
       input.nodeId,
@@ -350,9 +349,9 @@ export const emitMindmapTopicDelete = (
   const nodeIds = [...new Set(ctx.query.mindmap.subtreeNodeIds(id, nodeId))]
   const connectedEdges = ctx.query.edge.connectedToNodes(new Set(nodeIds))
 
-  ctx.writer.mindmap.structure(id).delete(nodeId)
+  ctx.writer.mindmap(id).structure.delete(nodeId)
   connectedEdges.forEach((edge: Edge) => {
-    ctx.writer.document.order().delete(canvasRefKey({
+    ctx.writer.document.order.delete(canvasRefKey({
       kind: 'edge',
       id: edge.id
     }))
@@ -445,7 +444,7 @@ export const emitMindmapBranchPatch = (
     return
   }
 
-  ctx.writer.mindmap.structure(id).patch(topicId, {
+  ctx.writer.mindmap(id).structure.patch(topicId, {
     branchStyle: nextBranchStyle
   })
 }
@@ -471,7 +470,7 @@ export const emitMindmapTopicCollapse = (
     return
   }
 
-  ctx.writer.mindmap.structure(id).patch(topicId, {
+  ctx.writer.mindmap(id).structure.patch(topicId, {
     collapsed: nextCollapsed
   })
 }

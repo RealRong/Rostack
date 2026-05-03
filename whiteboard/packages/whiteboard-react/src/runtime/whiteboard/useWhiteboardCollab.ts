@@ -3,19 +3,34 @@ import {
   useEffectEvent,
   useRef
 } from 'react'
-import { collab as collabApi, type CollabSession } from '@whiteboard/collab'
-import type { WhiteboardCollabOptions } from '@whiteboard/react/types/common/collab'
+import type {
+  CollabStatus,
+  MutationCollabEngine
+} from '@shared/collab'
+import {
+  createYjsMutationCollabSession
+} from '@shared/collab-yjs'
+import {
+  document as documentApi
+} from '@whiteboard/core/document'
+import {
+  whiteboardMutationSchema
+} from '@whiteboard/core/mutation'
+import type {
+  WhiteboardCollabOptions,
+  WhiteboardCollabSession
+} from '@whiteboard/react/types/common/collab'
 import type { WhiteboardRuntimeServices } from '@whiteboard/react/runtime/whiteboard/services'
-
-type CollabStatus = ReturnType<CollabSession['status']['get']>
+import type { IntentResult } from '@whiteboard/engine'
+import type { MutationCommit, MutationDocument } from '@shared/mutation'
 
 export const useWhiteboardCollab = (input: {
   collab?: WhiteboardCollabOptions
   services: WhiteboardRuntimeServices
 }) => {
-  const collabSessionRef = useRef<CollabSession | null>(null)
+  const collabSessionRef = useRef<WhiteboardCollabSession | null>(null)
 
-  const notifyCollabSession = useEffectEvent((session: CollabSession | null) => {
+  const notifyCollabSession = useEffectEvent((session: WhiteboardCollabSession | null) => {
     input.collab?.onSession?.(session)
   })
   const notifyCollabStatus = useEffectEvent((status: CollabStatus) => {
@@ -28,13 +43,64 @@ export const useWhiteboardCollab = (input: {
       return
     }
 
-    const session = collabApi.yjs.session.create({
-      engine: input.services.engine,
+    const collabEngine = {
+      commits: {
+        subscribe: (listener) => (
+          input.services.engine.commits.subscribe((commit) => {
+            listener({
+              ...commit,
+              writes: commit.authored
+            } as unknown as MutationCommit<typeof whiteboardMutationSchema>)
+          })
+        )
+      },
+      doc: () => input.services.engine.doc() as unknown as MutationDocument<typeof whiteboardMutationSchema>,
+      replace: (document: MutationDocument<typeof whiteboardMutationSchema>, options?: {
+        origin?: 'user' | 'remote' | 'system'
+        history?: boolean
+      }) => input.services.engine.replace(document as unknown as ReturnType<typeof input.services.engine.doc>, options),
+      apply: (writes: Parameters<typeof input.services.engine.apply>[0], options?: {
+        origin?: 'user' | 'remote' | 'system'
+        history?: boolean
+      }) => input.services.engine.apply(writes, options)
+    } as MutationCollabEngine<
+      typeof whiteboardMutationSchema,
+      IntentResult
+    >
+
+    const session = createYjsMutationCollabSession({
+      schema: whiteboardMutationSchema,
+      engine: collabEngine,
       doc: collab.doc,
       actorId: collab.actorId,
-      provider: collab.provider
+      provider: collab.provider,
+      document: {
+        empty: () => documentApi.create(input.services.engine.doc().id),
+        decode: (value) => documentApi.normalize(value as ReturnType<typeof input.services.engine.doc>)
+      }
     })
-    input.services.setHistorySource(session.localHistory)
+    input.services.setHistorySource({
+      state: () => {
+        const state = session.localHistory.get()
+        return {
+          undoDepth: state.undoDepth,
+          redoDepth: state.redoDepth
+        }
+      },
+      canUndo: () => {
+        const state = session.localHistory.get()
+        return !state.isApplying && state.undoDepth > 0
+      },
+      canRedo: () => {
+        const state = session.localHistory.get()
+        return !state.isApplying && state.redoDepth > 0
+      },
+      undo: () => session.localHistory.undo(),
+      redo: () => session.localHistory.redo(),
+      clear: () => {
+        session.localHistory.clear()
+      }
+    })
     collabSessionRef.current = session
     notifyCollabSession(session)
     notifyCollabStatus(session.status.get())

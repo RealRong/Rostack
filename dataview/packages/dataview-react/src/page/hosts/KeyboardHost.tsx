@@ -46,21 +46,21 @@ export const PageKeyboardHost = () => {
 
       switch (action.kind) {
         case 'undo':
-          if (!history.get().canUndo) {
+          if (!history.canUndo()) {
             return
           }
 
-          if (history.undo().ok) {
+          if (history.undo()) {
             event.preventDefault()
             return true
           }
           return
         case 'redo':
-          if (!history.get().canRedo) {
+          if (!history.canRedo()) {
             return
           }
 
-          if (history.redo().ok) {
+          if (history.redo()) {
             event.preventDefault()
             return true
           }

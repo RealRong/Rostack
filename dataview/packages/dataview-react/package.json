@@ -12,12 +12,13 @@
     "test": "vitest run --config vitest.config.ts"
   },
   "dependencies": {
-    "@dataview/collab": "workspace:*",
     "@dataview/core": "workspace:*",
     "@dataview/engine": "workspace:*",
     "@dataview/meta": "workspace:*",
     "@dataview/runtime": "workspace:*",
     "@dataview/table": "workspace:*",
+    "@shared/collab": "workspace:*",
+    "@shared/collab-yjs": "workspace:*",
     "@shared/core": "workspace:*",
     "@shared/dom": "workspace:*",
     "@shared/i18n": "workspace:*",

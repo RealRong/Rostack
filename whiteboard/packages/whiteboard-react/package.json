@@ -12,11 +12,12 @@
   "dependencies": {
     "@shared/ui": "workspace:*",
     "@shared/core": "workspace:*",
+    "@shared/collab": "workspace:*",
+    "@shared/collab-yjs": "workspace:*",
     "@shared/draft": "workspace:*",
     "@shared/dom": "workspace:*",
     "@shared/mutation": "workspace:*",
     "@shared/react": "workspace:*",
-    "@whiteboard/collab": "workspace:*",
     "@whiteboard/core": "workspace:*",
     "@whiteboard/product": "workspace:*",
     "@whiteboard/editor": "workspace:*",

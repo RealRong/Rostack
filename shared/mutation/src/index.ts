@@ -33,6 +33,14 @@ export {
   createMutationWriter
 } from './writer/createWriter'
 export {
+  deserializeMutationWrites,
+  serializeMutationWrites
+} from './writer/serialize'
+export {
+  createMutationConflictScopes,
+  mutationConflictScopesIntersect
+} from './writer/conflict'
+export {
   createMutationDelta,
   createMutationResetDelta
 } from './delta/createDelta'
@@ -70,6 +78,13 @@ export type {
 export type {
   MutationWrite
 } from './writer/writes'
+export type {
+  SerializedMutationWrite
+} from './writer/serialize'
+export type {
+  MutationConflictEntityRef,
+  MutationConflictScope
+} from './writer/conflict'
 export type {
   MutationDelta
 } from './delta/createDelta'

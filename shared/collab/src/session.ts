@@ -1,18 +1,24 @@
 import { store } from '@shared/core'
+import type {
+  MutationCommit,
+  MutationDocument,
+  MutationOrigin,
+  MutationSchema,
+  MutationWrite,
+  SerializedMutationWrite,
+} from '@shared/mutation'
 import {
-  type ApplyCommit,
-  type HistoryPort,
-  type MutationCommitRecord,
-  type MutationDelta,
-  type MutationReplaceResult,
-  type MutationProgram,
-  type Origin
+  createMutationConflictScopes,
+  deserializeMutationWrites,
+  mutationConflictScopesIntersect,
+  serializeMutationWrites,
+  type MutationConflictScope,
 } from '@shared/mutation'
 import {
   createSyncCursor,
   normalizeSnapshot,
   planReplay,
-  type CollabSnapshot
+  type CollabSnapshot,
 } from './replay'
 
 export type CollabStatus =
@@ -52,133 +58,174 @@ export type CollabStore<
   clearChanges(): void
 }
 
-export type MutationCollabSessionOptions<
-  Doc,
-  Footprint,
-  Delta extends MutationDelta,
-  Commit extends ApplyCommit<Doc, Footprint, any, Delta>,
-  Change extends {
-    id: string
-  },
-  Checkpoint extends {
-    id: string
-  }
+export type MutationCollabChange = {
+  id: string
+  actorId: string
+  writes: readonly SerializedMutationWrite[]
+}
+
+export type MutationCollabCheckpoint<TDocument> = {
+  id: string
+  document: TDocument
+}
+
+export type MutationCollabHistoryState = {
+  undoDepth: number
+  redoDepth: number
+  invalidatedDepth: number
+  isApplying: boolean
+}
+
+export type MutationCollabLocalHistory<TApplyResult> = {
+  get(): MutationCollabHistoryState
+  subscribe(listener: () => void): () => void
+  undo(): TApplyResult | undefined
+  redo(): TApplyResult | undefined
+  clear(): void
+}
+
+export type MutationCollabEngine<
+  TSchema extends MutationSchema,
+  TApplyResult
 > = {
+  commits: {
+    subscribe(listener: (commit: MutationCommit<TSchema>) => void): () => void
+  }
+  doc(): MutationDocument<TSchema>
+  replace(
+    document: MutationDocument<TSchema>,
+    options?: {
+      origin?: MutationOrigin
+      history?: boolean
+    }
+  ): unknown
+  apply(
+    writes: readonly MutationWrite[],
+    options?: {
+      origin?: MutationOrigin
+      history?: boolean
+    }
+  ): TApplyResult
+}
+
+export type MutationCollabSessionOptions<
+  TSchema extends MutationSchema,
+  TApplyResult
+> = {
+  schema: TSchema
   actor: {
     id: string
     createChangeId(): string
   }
   transport: {
-    store: CollabStore<Change, Checkpoint>
+    store: CollabStore<
+      MutationCollabChange,
+      MutationCollabCheckpoint<MutationDocument<TSchema>>
+    >
     provider?: CollabProvider
   }
   document: {
-    empty(): Doc
+    empty(): MutationDocument<TSchema>
     checkpointEvery?: number
-    checkpoint: {
-      create(doc: Doc): Checkpoint
-      read(checkpoint: Checkpoint): Doc
-    }
-  }
-  change: {
-    create(
-      commit: Commit,
-      meta: {
-        actorId: string
-        changeId: string
-      }
-    ): Change | null
-    read(
-      change: Change
-    ):
-      | {
-          kind: 'apply'
-          program: MutationProgram
-        }
-      | {
-          kind: 'replace'
-          document: Doc
-        }
-    footprint(change: Change): readonly Footprint[]
   }
   policy?: {
-    canPublish?(commit: Commit): boolean
+    canPublish?(commit: MutationCommit<TSchema>): boolean
     canObserve?(): boolean
   }
 }
 
-export type MutationCollabEngine<
-  Doc,
-  Footprint,
-  Delta extends MutationDelta,
-  Result extends {
-    ok: boolean
-  },
-  Commit extends ApplyCommit<Doc, Footprint, any, Delta>
-> = {
-  commits: {
-    subscribe(
-      listener: (commit: MutationCommitRecord<Doc, Footprint, Delta>) => void
-    ): () => void
-  }
-  history: HistoryPort<Result, MutationProgram, Footprint, Commit>
-  doc(): Doc
-  replace(
-    document: Doc,
-    options?: {
-      origin?: Origin
-    }
-  ): MutationReplaceResult<Doc>
-  apply(
-    program: MutationProgram,
-    options?: {
-      origin?: Origin
-    }
-  ): Result
-}
-
-export type MutationCollabSession<
-  Result extends {
-    ok: boolean
-  },
-  Footprint = never,
-  Commit extends ApplyCommit<any, Footprint, any, any> = ApplyCommit<any, Footprint, any, any>
-> = {
+export type MutationCollabSession<TApplyResult> = {
   awareness?: unknown
   status: store.ReadStore<CollabStatus>
   diagnostics: store.ReadStore<CollabDiagnostics>
-  history: HistoryPort<Result, MutationProgram, Footprint, Commit>
+  localHistory: MutationCollabLocalHistory<TApplyResult>
   connect(): void
   disconnect(): void
   resync(): void
   destroy(): void
 }
 
-export const createMutationCollabSession = <
-  Doc,
-  Footprint,
-  Delta extends MutationDelta,
-  Result extends {
-    ok: boolean
-  },
-  Commit extends ApplyCommit<Doc, Footprint, any, Delta>,
-  Change extends {
-    id: string
-  },
-  Checkpoint extends {
-    id: string
+type MutationCollabHistoryEntry = {
+  changeId: string
+  writes: readonly MutationWrite[]
+  inverse: readonly MutationWrite[]
+  scopes: readonly MutationConflictScope[]
+  invalidated: boolean
+}
+
+type PendingHistoryAction =
+  | {
+      kind: 'undo'
+      entry: MutationCollabHistoryEntry
+    }
+  | {
+      kind: 'redo'
+      entry: MutationCollabHistoryEntry
+    }
+
+const isApplyFailure = (
+  value: unknown
+): value is {
+  ok: false
+} => Boolean(
+  value
+  && typeof value === 'object'
+  && 'ok' in (value as Record<string, unknown>)
+  && (value as Record<string, unknown>).ok === false
+)
+
+const isSameHistoryEntry = (
+  left: MutationCollabHistoryEntry,
+  right: MutationCollabHistoryEntry
+): boolean => left.changeId === right.changeId
+
+const countLiveEntries = (
+  entries: readonly MutationCollabHistoryEntry[]
+): number => entries.filter((entry) => !entry.invalidated).length
+
+const countInvalidatedEntries = (
+  entries: readonly MutationCollabHistoryEntry[]
+): number => entries.filter((entry) => entry.invalidated).length
+
+const findLatestLiveEntry = (
+  entries: readonly MutationCollabHistoryEntry[]
+): MutationCollabHistoryEntry | undefined => {
+  for (let index = entries.length - 1; index >= 0; index -= 1) {
+    const entry = entries[index]
+    if (entry && !entry.invalidated) {
+      return entry
+    }
   }
+  return undefined
+}
+
+const removeHistoryEntry = (
+  entries: readonly MutationCollabHistoryEntry[],
+  target: MutationCollabHistoryEntry
+): MutationCollabHistoryEntry[] => entries.filter((entry) => !isSameHistoryEntry(entry, target))
+
+const markInvalidatedEntries = (
+  entries: readonly MutationCollabHistoryEntry[],
+  scopes: readonly MutationConflictScope[]
+): MutationCollabHistoryEntry[] => entries.map((entry) => entry.invalidated
+  ? entry
+  : scopes.some((remoteScope) => entry.scopes.some((localScope) => (
+      mutationConflictScopesIntersect(localScope, remoteScope)
+    )))
+    ? {
+        ...entry,
+        invalidated: true
+      }
+    : entry
+)
+
+export const createMutationCollabSession = <
+  TSchema extends MutationSchema,
+  TApplyResult
 >(
-  engine: MutationCollabEngine<Doc, Footprint, Delta, Result, Commit>,
-  options: MutationCollabSessionOptions<
-    Doc,
-    Footprint,
-    Delta,
-    Commit,
-    Change,
-    Checkpoint
-  >
-): MutationCollabSession<Result, Footprint, Commit> => {
+  engine: MutationCollabEngine<TSchema, TApplyResult>,
+  options: MutationCollabSessionOptions<TSchema, TApplyResult>
+): MutationCollabSession<TApplyResult> => {
   if (options.actor.id.length === 0) {
     throw new Error('createMutationCollabSession requires a non-empty actor.id.')
   }
@@ -208,22 +255,86 @@ export const createMutationCollabSession = <
   const rejectedChangeIds = new Set<string>()
   const localChangeIds = new Set<string>()
 
+  let undoStack: MutationCollabHistoryEntry[] = []
+  let redoStack: MutationCollabHistoryEntry[] = []
+  let pendingHistoryAction: PendingHistoryAction | undefined
+  const historyState = store.value<MutationCollabHistoryState>({
+    undoDepth: 0,
+    redoDepth: 0,
+    invalidatedDepth: 0,
+    isApplying: false
+  })
+
+  const publishHistoryState = (isApplying = pendingHistoryAction !== undefined) => {
+    historyState.set({
+      undoDepth: countLiveEntries(undoStack),
+      redoDepth: countLiveEntries(redoStack),
+      invalidatedDepth: countInvalidatedEntries(undoStack) + countInvalidatedEntries(redoStack),
+      isApplying
+    })
+  }
+
+  const clearLocalHistory = () => {
+    undoStack = []
+    redoStack = []
+    pendingHistoryAction = undefined
+    publishHistoryState(false)
+  }
+
+  const localHistory: MutationCollabLocalHistory<TApplyResult> = {
+    get: historyState.get,
+    subscribe: historyState.subscribe,
+    undo: () => {
+      const entry = findLatestLiveEntry(undoStack)
+      if (!entry) {
+        return undefined
+      }
+
+      pendingHistoryAction = {
+        kind: 'undo',
+        entry
+      }
+      publishHistoryState(true)
+      const result = engine.apply(entry.inverse, {
+        origin: 'history',
+        history: false
+      })
+      if (isApplyFailure(result)) {
+        pendingHistoryAction = undefined
+        publishHistoryState(false)
+      }
+      return result
+    },
+    redo: () => {
+      const entry = findLatestLiveEntry(redoStack)
+      if (!entry) {
+        return undefined
+      }
+
+      pendingHistoryAction = {
+        kind: 'redo',
+        entry
+      }
+      publishHistoryState(true)
+      const result = engine.apply(entry.writes, {
+        origin: 'history',
+        history: false
+      })
+      if (isApplyFailure(result)) {
+        pendingHistoryAction = undefined
+        publishHistoryState(false)
+      }
+      return result
+    },
+    clear: clearLocalHistory
+  }
+
   const publishDiagnostics = () => {
     diagnostics.set({
       duplicateChangeIds: [...duplicateChangeIds],
       rejectedChangeIds: [...rejectedChangeIds]
     })
   }
-
-  const history = engine.history.withPolicy({
-    canRun: () => (
-      !destroyed
-      && bootstrapped
-      && (options.policy?.canObserve?.() ?? true)
-    ),
-    confirmOnSuccess: false,
-    cancelOnFailure: 'invalidate'
-  })
 
   const readSnapshot = () => normalizeSnapshot(
     options.transport.store.read()
@@ -251,9 +362,7 @@ export const createMutationCollabSession = <
     }
   }
 
-  const trackRejected = (
-    id: string
-  ) => {
+  const trackRejected = (id: string) => {
     if (rejectedChangeIds.has(id)) {
       return
     }
@@ -263,77 +372,85 @@ export const createMutationCollabSession = <
   }
 
   const reportError = () => {
+    pendingHistoryAction = undefined
+    publishHistoryState(false)
     status.set('error')
   }
 
-  const replayChanges = (
-    changes: readonly Change[]
+  const capturePublishedLocalCommit = (
+    changeId: string,
+    commit: MutationCommit<TSchema>
   ) => {
-    if (options.policy?.canObserve && !options.policy.canObserve()) {
+    if (pendingHistoryAction?.kind === 'undo') {
+      undoStack = removeHistoryEntry(undoStack, pendingHistoryAction.entry)
+      redoStack = [...redoStack, pendingHistoryAction.entry]
+      pendingHistoryAction = undefined
+      publishHistoryState(false)
       return
     }
 
-    changes.forEach((change) => {
-      if (localChangeIds.has(change.id)) {
-        return
+    if (pendingHistoryAction?.kind === 'redo') {
+      redoStack = removeHistoryEntry(redoStack, pendingHistoryAction.entry)
+      undoStack = [...undoStack, pendingHistoryAction.entry]
+      pendingHistoryAction = undefined
+      publishHistoryState(false)
+      return
+    }
+
+    undoStack = [
+      ...undoStack,
+      {
+        changeId,
+        writes: commit.writes,
+        inverse: commit.inverse,
+        scopes: createMutationConflictScopes(commit.writes),
+        invalidated: false
       }
+    ]
+    redoStack = []
+    publishHistoryState(false)
+  }
 
-      engine.history.sync.observeRemote(
-        change.id,
-        options.change.footprint(change)
-      )
-
-      try {
-        const effect = options.change.read(change)
-        if (effect.kind === 'replace') {
-          engine.replace(effect.document, {
-            origin: 'remote'
-          })
-          return
-        }
-
-        const applied = engine.apply(effect.program, {
-          origin: 'remote'
-        })
-        if (!applied.ok) {
-          trackRejected(change.id)
-        }
-      } catch {
-        trackRejected(change.id)
-      }
-    })
+  const invalidateWithRemoteWrites = (
+    writes: readonly MutationWrite[]
+  ) => {
+    const scopes = createMutationConflictScopes(writes)
+    if (scopes.length === 0) {
+      return
+    }
+    undoStack = markInvalidatedEntries(undoStack, scopes)
+    redoStack = markInvalidatedEntries(redoStack, scopes)
+    publishHistoryState(pendingHistoryAction !== undefined)
   }
 
   const publishCheckpoint = (
-    nextDocument: Doc
+    nextDocument: MutationDocument<TSchema>
   ) => {
     suppressStoreEvents = true
     try {
-      options.transport.store.checkpoint(
-        options.document.checkpoint.create(nextDocument)
-      )
+      options.transport.store.checkpoint({
+        id: options.actor.createChangeId(),
+        document: nextDocument
+      })
       options.transport.store.clearChanges()
     } finally {
       suppressStoreEvents = false
     }
 
+    clearLocalHistory()
     const snapshot = readSnapshot()
     trackDuplicates(snapshot.duplicateChangeIds)
-    if (snapshot.changes.length === 0) {
-      cursor = createSyncCursor(snapshot)
-      return
-    }
-
-    consumeSnapshot(true)
+    cursor = createSyncCursor(snapshot)
   }
 
   const maybeRotateCheckpoint = () => {
-    if (rotatingCheckpoint || (options.document.checkpointEvery ?? 0) <= 0) {
+    const threshold = options.document.checkpointEvery ?? 0
+    if (rotatingCheckpoint || threshold <= 0) {
       return
     }
 
     const snapshot = readSnapshot()
-    if (snapshot.changes.length < (options.document.checkpointEvery ?? 0)) {
+    if (snapshot.changes.length < threshold) {
       return
     }
 
@@ -345,8 +462,40 @@ export const createMutationCollabSession = <
     }
   }
 
+  const replayChanges = (
+    changes: readonly MutationCollabChange[]
+  ) => {
+    if (options.policy?.canObserve && !options.policy.canObserve()) {
+      return
+    }
+
+    changes.forEach((change) => {
+      if (localChangeIds.has(change.id)) {
+        return
+      }
+
+      try {
+        const writes = deserializeMutationWrites(
+          options.schema,
+          change.writes
+        )
+        const applied = engine.apply(writes, {
+          origin: 'remote',
+          history: false
+        })
+        if (isApplyFailure(applied)) {
+          trackRejected(change.id)
+          return
+        }
+        invalidateWithRemoteWrites(writes)
+      } catch {
+        trackRejected(change.id)
+      }
+    })
+  }
+
   const publishCommit = (
-    commit: MutationCommitRecord<Doc, Footprint, Delta>
+    commit: MutationCommit<TSchema>
   ) => {
     if (commit.origin === 'remote' || suppressLocalPublish) {
       return
@@ -354,26 +503,30 @@ export const createMutationCollabSession = <
 
     if (commit.kind === 'replace') {
       publishCheckpoint(commit.document)
-      history.clear()
       return
     }
 
-    if (commit.authored.steps.length === 0) {
-      return
-    }
-    if (options.policy?.canPublish && !options.policy.canPublish(commit as Commit)) {
+    if (commit.writes.length === 0) {
+      if (pendingHistoryAction) {
+        pendingHistoryAction = undefined
+        publishHistoryState(false)
+      }
       return
     }
 
-    const change = options.change.create(commit as Commit, {
+    if (options.policy?.canPublish && !options.policy.canPublish(commit)) {
+      if (pendingHistoryAction) {
+        pendingHistoryAction = undefined
+        publishHistoryState(false)
+      }
+      return
+    }
+
+    const changeId = options.actor.createChangeId()
+    const change: MutationCollabChange = {
+      id: changeId,
       actorId: options.actor.id,
-      changeId: options.actor.createChangeId()
-    })
-
-    if (!change) {
-      publishCheckpoint(engine.doc())
-      history.clear()
-      return
+      writes: serializeMutationWrites(commit.writes)
     }
 
     localChangeIds.add(change.id)
@@ -385,14 +538,7 @@ export const createMutationCollabSession = <
     }
 
     syncCursor()
-
-    if (history.get().isApplying) {
-      engine.history.sync.confirmPublished({
-        id: change.id,
-        footprint: options.change.footprint(change)
-      })
-    }
-
+    capturePublishedLocalCommit(changeId, commit)
     maybeRotateCheckpoint()
   }
 
@@ -421,14 +567,13 @@ export const createMutationCollabSession = <
       return
     }
 
+    clearLocalHistory()
     suppressLocalPublish = true
     try {
-      const baseDocument = plan.checkpoint
-        ? options.document.checkpoint.read(plan.checkpoint)
-        : options.document.empty()
-
+      const baseDocument = plan.checkpoint?.document ?? options.document.empty()
       engine.replace(baseDocument, {
-        origin: 'remote'
+        origin: 'remote',
+        history: false
       })
       replayChanges(plan.changes)
     } finally {
@@ -460,7 +605,6 @@ export const createMutationCollabSession = <
       try {
         publishCommit(commit)
       } catch {
-        engine.history.sync.cancel('invalidate')
         reportError()
       }
     })
@@ -600,6 +744,7 @@ export const createMutationCollabSession = <
     options.transport.provider?.destroy?.()
     stopCore()
     waitingForProviderSync = false
+    clearLocalHistory()
     status.set('disconnected')
   }
 
@@ -607,7 +752,7 @@ export const createMutationCollabSession = <
     awareness: options.transport.provider?.awareness,
     status,
     diagnostics,
-    history,
+    localHistory,
     connect,
     disconnect,
     resync,

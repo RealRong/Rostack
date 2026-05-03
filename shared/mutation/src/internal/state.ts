@@ -35,6 +35,16 @@ const splitTargetId = (
   ? []
   : targetId.split(TARGET_ID_SCOPE_SEPARATOR)
 
+export const targetIdToScope = (
+  targetId?: string
+): readonly string[] => splitTargetId(targetId)
+
+export const scopeToTargetId = (
+  scope?: readonly string[]
+): string | undefined => !scope?.length
+  ? undefined
+  : scope.join(TARGET_ID_SCOPE_SEPARATOR)
+
 export const scopeTargetId = (
   ownerTargetId: string | undefined,
   targetId: string

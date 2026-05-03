@@ -1,50 +1,63 @@
 import assert from 'node:assert/strict'
 import { test } from 'vitest'
-import type {
-  ApplyCommit,
-  MutationCommitRecord,
-  MutationReplaceCommit,
+import {
+  createMutationEngine,
+  createMutationWriter,
+  field,
+  schema,
+  type MutationCommit,
 } from '@shared/mutation'
 import { createMutationCollabSession } from '../src'
-import { createHistoryPort } from '../../mutation/src/localHistory'
 
-type TestOp =
-  | {
-      type: 'doc.set'
-      value: string
-    }
-  | {
-      type: 'doc.reset'
-      value: string
-    }
+const testSchema = schema({
+  title: field<string>(),
+})
 
-type TestWrite = {
-  rev: number
-  at: number
-  origin: 'user' | 'remote' | 'system' | 'history'
-  document: string
-  forward: readonly TestOp[]
-  inverse: readonly TestOp[]
-  footprint: readonly string[]
-  extra: {}
+type TestSchema = typeof testSchema
+type TestDocument = {
+  title: string
 }
 
-type TestChange = {
-  id: string
-  actorId: string
-  ops: readonly TestOp[]
-  footprint: readonly string[]
-}
+type TestEngine = ReturnType<typeof createTestEngine>
 
-type TestCheckpoint = {
-  id: string
-  doc: string
+const normalizeDocument = (document: TestDocument): TestDocument => ({
+  title: document.title
+})
+
+const createTestEngine = (document: TestDocument) => createMutationEngine({
+  schema: testSchema,
+  document,
+  normalize: normalizeDocument,
+  compile: {
+    handlers: {}
+  } as never,
+  services: undefined,
+  history: true
+})
+
+const createTitleWrites = (value: string) => {
+  const writer = createMutationWriter(testSchema)
+  writer.document.title.set(value)
+  return writer.writes()
 }
 
 const createMemoryStore = () => {
-  let checkpoint: TestCheckpoint | null = null
-  let changes: TestChange[] = []
+  let checkpoint: {
+    id: string
+    document: TestDocument
+  } | null = null
+  let changes: {
+    id: string
+    actorId: string
+    writes: ReturnType<typeof createTitleWrites>
+  }[] = []
   const listeners = new Set<() => void>()
+
+  const publish = () => {
+    listeners.forEach((listener) => {
+      listener()
+    })
+  }
 
   return {
     store: {
@@ -58,17 +71,24 @@ const createMemoryStore = () => {
           listeners.delete(listener)
         }
       },
-      append: (change: TestChange) => {
+      append: (change: {
+        id: string
+        actorId: string
+        writes: ReturnType<typeof createTitleWrites>
+      }) => {
         changes = [...changes, change]
-        listeners.forEach((listener) => listener())
+        publish()
       },
-      checkpoint: (nextCheckpoint: TestCheckpoint) => {
+      checkpoint: (nextCheckpoint: {
+        id: string
+        document: TestDocument
+      }) => {
         checkpoint = nextCheckpoint
-        listeners.forEach((listener) => listener())
+        publish()
       },
       clearChanges: () => {
         changes = []
-        listeners.forEach((listener) => listener())
+        publish()
       }
     },
     snapshot: () => ({
@@ -78,328 +98,132 @@ const createMemoryStore = () => {
   }
 }
 
-const createController = () => {
-  let undoDepth = 0
-
-  return {
-    state: () => ({
-      canUndo: undoDepth > 0,
-      canRedo: false,
-      undoDepth,
-      redoDepth: 0,
-      invalidatedDepth: 0,
-      isApplying: false
-    }),
-    capture: () => {
-      undoDepth += 1
-      return true
-    },
-    observe: () => false,
-    undo: () => undefined,
-    redo: () => undefined,
-    confirm: () => false,
-    cancel: () => false,
-    clear: () => {
-      if (undoDepth === 0) {
-        return false
-      }
-
-      undoDepth = 0
-      return true
-    }
-  }
-}
-
-const createEngine = (doc = 'base') => {
-  let current = doc
-  const controller = createController()
-  const commitListeners = new Set<(commit: MutationCommitRecord<string, TestOp, string>) => void>()
-  let nextRev = 1
-  const commits = {
-    subscribe: (listener: (commit: MutationCommitRecord<string, TestOp, string>) => void) => {
-      commitListeners.add(listener)
-      return () => {
-        commitListeners.delete(listener)
-      }
-    }
-  }
-
-  const emitCommit = (
-    commit: MutationCommitRecord<string, TestOp, string>
-  ) => {
-    current = commit.document
-    commitListeners.forEach((listener) => listener(commit))
-  }
-  const apply = (ops: readonly TestOp[], options?: {
-    origin?: TestWrite['origin']
-  }) => {
-    ops.forEach((op) => {
-      current = op.value
+const createSession = (
+  engine: TestEngine,
+  memory: ReturnType<typeof createMemoryStore>,
+  actorId: string
+) => createMutationCollabSession({
+  commits: {
+    subscribe: (listener) => engine.subscribe(listener)
+  },
+  doc: () => engine.document(),
+  replace: (document, options) => engine.replace(document, options),
+  apply: (writes, options) => engine.apply(writes, options)
+}, {
+  schema: testSchema,
+  actor: {
+    id: actorId,
+    createChangeId: () => `${actorId}_${memory.snapshot().changes.length + 1}`
+  },
+  transport: {
+    store: memory.store
+  },
+  document: {
+    empty: () => ({
+      title: ''
     })
-    const write: TestWrite = {
-      rev: 0,
-      at: 0,
-      origin: options?.origin ?? 'system',
-      document: current,
-      forward: ops,
-      inverse: [],
-      footprint: [],
-      extra: {}
-    }
-    const commit: ApplyCommit<string, TestOp, string, {}> = {
-      kind: 'apply',
-      ...write
-    }
-    emitCommit(commit)
-    return {
-      ok: true as const,
-      data: undefined,
-      commit
-    }
   }
-  const historyPort = createHistoryPort({
-    apply,
-    commits,
-    historyController: () => controller
-  })
+})
 
-  return {
-    engine: {
-      doc: () => current,
-      replace: (nextDoc: string, options?: {
-        origin?: TestWrite['origin']
-      }) => {
-        current = nextDoc
-        controller.clear()
-        emitCommit({
-          kind: 'replace',
-          rev: nextRev++,
-          at: 0,
-          origin: options?.origin ?? 'system',
-          document: nextDoc,
-          delta: {
-            reset: true
-          },
-          issues: [],
-          outputs: []
-        } satisfies MutationReplaceCommit<string>)
-        return {
-          kind: 'replace',
-          rev: nextRev - 1,
-          at: 0,
-          origin: options?.origin ?? 'system',
-          document: nextDoc,
-          delta: {
-            reset: true
-          },
-          issues: [],
-          outputs: []
-        }
-      },
-      apply,
-      commits,
-      history: historyPort
-    },
-    emit: (write: TestWrite) => {
-      emitCommit({
-        kind: 'apply',
-        ...write
-      })
-    },
-    doc: () => current,
-    history: historyPort,
-    controller
-  }
+const assertCommit = (
+  commit: MutationCommit<TestSchema> | undefined
+): MutationCommit<TestSchema> => {
+  assert.ok(commit)
+  return commit
 }
 
-test('collab bootstrap writes initial checkpoint', () => {
-  const memoryStore = createMemoryStore()
-  const engineRuntime = createEngine('doc_a')
-
-  const session = createMutationCollabSession(engineRuntime.engine, {
-    actor: {
-      id: 'actor_a',
-      createChangeId: () => 'id_bootstrap'
-    },
-    transport: {
-      store: memoryStore.store
-    },
-    document: {
-      empty: () => 'empty',
-      checkpoint: {
-        create: (doc) => ({
-          id: 'checkpoint_bootstrap',
-          doc
-        }),
-        read: (checkpoint) => checkpoint.doc
-      }
-    },
-    change: {
-      create: (write, meta) => ({
-        id: meta.changeId,
-        actorId: meta.actorId,
-        ops: write.forward,
-        footprint: write.footprint
-      }),
-      read: (change) => ({
-        kind: 'apply',
-        operations: change.ops
-      }),
-      footprint: (change) => change.footprint
-    }
+test('collab bootstrap writes initial checkpoint and leaves change log empty', () => {
+  const memory = createMemoryStore()
+  const engine = createTestEngine({
+    title: 'doc_a'
   })
+  const session = createSession(engine, memory, 'actor_a')
 
   session.connect()
 
-  assert.equal(memoryStore.snapshot().checkpoint?.doc, 'doc_a')
-  assert.equal(memoryStore.snapshot().changes.length, 0)
+  assert.deepEqual(memory.snapshot().checkpoint, {
+    id: 'actor_a_1',
+    document: {
+      title: 'doc_a'
+    }
+  })
+  assert.deepEqual(memory.snapshot().changes, [])
+  assert.equal(session.status.get(), 'connected')
+
+  session.destroy()
 })
 
-test('collab publishes local commits and replays remote changes', () => {
-  const memoryStore = createMemoryStore()
-  const engineRuntime = createEngine('doc_a')
-  let nextId = 1
-
-  const session = createMutationCollabSession(engineRuntime.engine, {
-    actor: {
-      id: 'actor_a',
-      createChangeId: () => `id_${nextId++}`
-    },
-    transport: {
-      store: memoryStore.store
-    },
-    document: {
-      empty: () => 'empty',
-      checkpoint: {
-        create: (doc) => ({
-          id: `checkpoint_${nextId++}`,
-          doc
-        }),
-        read: (checkpoint) => checkpoint.doc
-      }
-    },
-    change: {
-      create: (write, meta) => ({
-        id: meta.changeId,
-        actorId: meta.actorId,
-        ops: write.forward,
-        footprint: write.footprint
-      }),
-      read: (change) => ({
-        kind: 'apply',
-        operations: change.ops
-      }),
-      footprint: (change) => change.footprint
-    }
+test('collab publishes local commits and replays remote writes without capturing remote undo', () => {
+  const memory = createMemoryStore()
+  const engineA = createTestEngine({
+    title: 'base'
   })
-
-  session.connect()
-  engineRuntime.emit({
-    rev: 1,
-    at: 1,
-    origin: 'user',
-    document: 'doc_local',
-    forward: [{
-      type: 'doc.set',
-      value: 'doc_local'
-    }],
-    inverse: [{
-      type: 'doc.set',
-      value: 'doc_a'
-    }],
-    footprint: ['field.a'],
-    extra: {}
+  const engineB = createTestEngine({
+    title: 'base'
   })
+  const sessionA = createSession(engineA, memory, 'actor_a')
+  const sessionB = createSession(engineB, memory, 'actor_b')
 
-  assert.equal(memoryStore.snapshot().changes.length, 1)
-  assert.equal(memoryStore.snapshot().changes[0]?.actorId, 'actor_a')
+  sessionA.connect()
+  sessionB.connect()
 
-  memoryStore.store.append({
-    id: 'id_remote',
-    actorId: 'actor_b',
-    ops: [{
-      type: 'doc.set',
-      value: 'doc_remote'
-    }],
-    footprint: ['field.b']
-  })
+  engineA.apply(createTitleWrites('remote'))
 
-  assert.equal(engineRuntime.doc(), 'doc_remote')
+  assert.equal(engineB.document().title, 'remote')
+  assert.equal(sessionB.localHistory.get().undoDepth, 0)
+  assert.equal(memory.snapshot().changes.length, 1)
+
+  sessionA.destroy()
+  sessionB.destroy()
 })
 
-test('null change.create publishes checkpoint and clears history', () => {
-  const memoryStore = createMemoryStore()
-  const engineRuntime = createEngine('doc_a')
-  let nextId = 1
-
-  const session = createMutationCollabSession(engineRuntime.engine, {
-    actor: {
-      id: 'actor_a',
-      createChangeId: () => `id_${nextId++}`
-    },
-    transport: {
-      store: memoryStore.store
-    },
-    document: {
-      empty: () => 'empty',
-      checkpoint: {
-        create: (doc) => ({
-          id: `checkpoint_${nextId++}`,
-          doc
-        }),
-        read: (checkpoint) => checkpoint.doc
-      }
-    },
-    change: {
-      create: (write) => write.forward[0]?.type === 'doc.reset'
-        ? null
-        : {
-            id: `change_${nextId++}`,
-            actorId: 'actor_a',
-            ops: write.forward,
-            footprint: write.footprint
-          },
-      read: (change) => ({
-        kind: 'apply',
-        operations: change.ops
-      }),
-      footprint: (change) => change.footprint
-    }
+test('remote conflicting writes invalidate local collab history', () => {
+  const memory = createMemoryStore()
+  const engineA = createTestEngine({
+    title: 'base'
   })
+  const engineB = createTestEngine({
+    title: 'base'
+  })
+  const sessionA = createSession(engineA, memory, 'actor_a')
+  const sessionB = createSession(engineB, memory, 'actor_b')
+
+  sessionA.connect()
+  sessionB.connect()
+
+  engineB.apply(createTitleWrites('local'))
+  assert.equal(sessionB.localHistory.get().undoDepth, 1)
+  assert.equal(sessionB.localHistory.get().invalidatedDepth, 0)
+
+  engineA.apply(createTitleWrites('remote'))
+
+  assert.equal(engineB.document().title, 'remote')
+  assert.equal(sessionB.localHistory.get().undoDepth, 0)
+  assert.equal(sessionB.localHistory.get().invalidatedDepth, 1)
+  assert.equal(sessionB.localHistory.undo(), undefined)
+
+  sessionA.destroy()
+  sessionB.destroy()
+})
+
+test('collab local undo publishes inverse writes and redo republishes forward writes', () => {
+  const memory = createMemoryStore()
+  const engine = createTestEngine({
+    title: 'base'
+  })
+  const session = createSession(engine, memory, 'actor_a')
 
   session.connect()
-  engineRuntime.controller.capture({
-    rev: 1,
-    at: 1,
-    origin: 'user',
-    document: 'doc_local',
-    forward: [{
-      type: 'doc.set',
-      value: 'doc_local'
-    }],
-    inverse: [{
-      type: 'doc.set',
-      value: 'doc_a'
-    }],
-    footprint: ['field.a'],
-    extra: {}
-  })
+  engine.apply(createTitleWrites('next'))
 
-  engineRuntime.emit({
-    rev: 2,
-    at: 2,
-    origin: 'system',
-    document: 'doc_reset',
-    forward: [{
-      type: 'doc.reset',
-      value: 'doc_reset'
-    }],
-    inverse: [],
-    footprint: [],
-    extra: {}
-  })
+  const undone = session.localHistory.undo()
+  assertCommit(undone)
+  assert.equal(engine.document().title, 'base')
 
-  assert.equal(memoryStore.snapshot().checkpoint?.doc, 'doc_reset')
-  assert.equal(memoryStore.snapshot().changes.length, 0)
-  assert.equal(engineRuntime.history.get().undoDepth, 0)
+  const redone = session.localHistory.redo()
+  assertCommit(redone)
+  assert.equal(engine.document().title, 'next')
+  assert.equal(memory.snapshot().changes.length, 3)
+
+  session.destroy()
 })

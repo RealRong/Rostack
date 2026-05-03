@@ -48,6 +48,10 @@ const schemaChangeFactoryMap = new WeakMap<
   MutationSchema<MutationShape, MutationSchemaChangeSet>,
   MutationSchemaChangeFactory<MutationShape, MutationSchemaChangeSet>
 >()
+const schemaNodeRegistryMap = new WeakMap<
+  MutationSchema<MutationShape, MutationSchemaChangeSet>,
+  ReadonlyMap<string, MutationShapeNode>
+>()
 
 export const getNodeMeta = (
   node: MutationShapeNode
@@ -109,6 +113,41 @@ export const setSchemaChangeFactory = <
   schemaChangeFactoryMap.set(
     schema as MutationSchema<MutationShape, MutationSchemaChangeSet>,
     factory as MutationSchemaChangeFactory<MutationShape, MutationSchemaChangeSet>
+  )
+  return schema
+}
+
+export const getSchemaNodeId = (
+  node: MutationShapeNode
+): string => getNodeMeta(node).schemaId
+
+export const getSchemaNodeById = <TSchema extends MutationSchema>(
+  schema: TSchema,
+  schemaNodeId: string
+): MutationShapeNode => {
+  const registry = schemaNodeRegistryMap.get(
+    schema as MutationSchema<MutationShape, MutationSchemaChangeSet>
+  )
+  if (!registry) {
+    throw new Error('Mutation schema node registry is missing.')
+  }
+  const node = registry.get(schemaNodeId)
+  if (!node) {
+    throw new Error(`Unknown mutation schema node id "${schemaNodeId}".`)
+  }
+  return node
+}
+
+export const setSchemaNodeRegistry = <
+  TShape extends MutationShape,
+  TChanges extends MutationSchemaChangeSet
+>(
+  schema: MutationSchema<TShape, TChanges>,
+  registry: ReadonlyMap<string, MutationShapeNode>
+): MutationSchema<TShape, TChanges> => {
+  schemaNodeRegistryMap.set(
+    schema as MutationSchema<MutationShape, MutationSchemaChangeSet>,
+    registry
   )
   return schema
 }

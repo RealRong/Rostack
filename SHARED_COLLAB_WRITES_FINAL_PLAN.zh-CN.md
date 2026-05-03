@@ -77,17 +77,19 @@
 
 ### 2.3 业务封装层
 
-`whiteboard-collab` / `dataview-collab` 只保留薄封装：
+不再保留 `whiteboard-collab` / `dataview-collab` 两个产品 collab 包。
 
-- 选择 document empty / clone / assert
-- 接 Yjs transport
-- 暴露产品层 session 类型
+最终状态是：
 
-不再自定义：
+- `shared/collab` 提供标准 collab session
+- `shared/collab-yjs` 提供 Yjs transport 与 Yjs session 组合器
+- whiteboard / dataview 调用方直接接 `shared/collab-yjs`
 
-- shared change 结构
-- footprint 编码
-- program codec
+不再存在：
+
+- whiteboard 独立 collab 实现
+- dataview 独立 collab 实现
+- 产品层 shared change / checkpoint / codec 包壳
 
 ## 3. 最终共享协议
 
@@ -331,7 +333,152 @@ collab 对 engine 的依赖应收敛成以下最小面：
 
 它不是业务 API，而是内部正式基础设施。
 
-### 9.1 Scope 类型
+### 9.1 先明确：scope 相交是为了解决什么问题
+
+scope 相交不是拿来决定共享文档最终怎么收敛的。
+
+共享收敛的正式规则仍然只有：
+
+- canonical order replay
+- missing target rejects
+
+也就是说：
+
+- 所有副本只要拿到同一个 checkpoint
+- 再按同一个 shared change 顺序 replay
+
+最终 document 就会收敛。
+
+scope 相交只服务另一件事：
+
+- 本地协作 history 的 invalidation
+- 也就是判断“某个本地 undo / redo entry 现在还安不安全”
+
+原因是：
+
+- 本地 undo 不是重新 replay 共享日志
+- 本地 undo 是把旧 entry 的 `inverse` 再 apply 一次
+
+而这个 `inverse` 是基于旧世界生成的。
+
+如果远端 change 后来改动了相关语义面，那么：
+
+- 这个 inverse 可能已经不再可信
+- 或者虽然还能 apply，但语义已经不再正确
+
+所以需要一种统一机制来判断：
+
+- 远端 change 是否碰到了本地历史 entry 依赖的语义地基
+
+这个机制就是 scope，相交就是：
+
+- 远端 change 触碰到了同一个语义面
+- 或者破坏了本地 inverse 成立所依赖的宿主 / 结构 / 顺序前提
+
+一旦相交，本地 history entry 就必须失效。
+
+### 9.2 scope 不是 path，也不是“同一个 id 就算冲突”
+
+这里不能继续用 path 字符串，也不能只看 entity id。
+
+原因如下。
+
+#### 只看 entity id 太粗
+
+比如：
+
+- 本地改 `node.style.fill`
+- 远端改 `node.data.text`
+
+它们属于同一个 node，但并不一定要互相让 undo 失效。
+
+#### 只看 path 太脆
+
+比如：
+
+- 本地改 `node.style.fill`
+- 远端删除整个 node
+
+它们的 path 不同，但远端显然已经破坏了本地 field inverse 的宿主。
+
+所以 scope 要表达的不是：
+
+- 写了哪个 path
+
+而是：
+
+- 这次写入影响了哪个“可冲突语义面”
+
+### 9.3 scope 相交的判断直觉
+
+所有相交规则可以归纳成两条。
+
+#### 1. 同一个语义面，相交
+
+例如：
+
+- 同一个 field
+- 同一个 dictionary key
+- 同一个 collection order
+- 同一个 tree node
+
+#### 2. 破坏宿主或结构前提，也相交
+
+例如：
+
+- entity delete 和 entity 内部任意 field 相交
+- dictionary replace 和该 dictionary 下任意 key 相交
+- tree structure change 和任意 tree node change 相交
+- document reset 和所有 scope 相交
+
+第二条尤其重要。
+
+很多 change 看起来 path 不同，但真正危险点不是 path 一不一样，而是：
+
+- 旧 inverse 依赖的容器还在不在
+- 旧 inverse 依赖的 order 上下文还在不在
+- 旧 inverse 依赖的 tree 结构还成不成立
+
+### 9.4 scope 的用途边界
+
+scope 只用于：
+
+- local collab history invalidation
+- 可选的调试 / explain 输出
+
+scope 明确不用于：
+
+- shared log 收敛判定
+- remote write merge
+- transform
+- 业务侧自行拼接 delta 规则
+
+也就是说，长期 contract 是：
+
+- 收敛靠 canonical replay
+- 本地 undo 安全性靠 scope 相交
+
+### 9.5 scope 相交后的处理
+
+最终策略应当简单且保守：
+
+- 只要 remote change scopes 与本地 live history entry scopes 相交
+- 该 entry 立即标记为 `invalidated`
+
+不做：
+
+- 自动 salvage
+- 自动 partial rebase
+- 自动补偿
+- 自动把旧 inverse 改写成新 inverse
+
+这样做的原因是：
+
+- 复杂度最低
+- 规则最稳定
+- 不会把 collab 层再次膨胀成第二套 reducer / transform 系统
+
+### 9.6 Scope 类型
 
 最终 scope 只需要表达真实可冲突的 mutation 面。
 
@@ -347,7 +494,140 @@ collab 对 engine 的依赖应收敛成以下最小面：
 - `tree-structure`
 - `tree-node`
 
-### 9.2 从 write 到 scope 的映射
+### 9.7 每类 scope 的语义解释
+
+#### `document-reset`
+
+表示：
+
+- 整个 document base 被替换
+- 例如 resync、checkpoint reset、外部 replace
+
+这是最强 scope。
+
+规则：
+
+- 与任何其他 scope 相交
+
+原因：
+
+- reset 之后，旧 inverse 的整体世界观已经改变
+
+#### `entity-existence`
+
+表示某个实体“是否存在”这个语义面。
+
+它不代表 entity 内某个字段，而代表：
+
+- create / remove / replace 后，该实体是否仍然是同一个可操作宿主
+
+规则：
+
+- 同一实体的 `entity-existence` 彼此相交
+- 同一实体的 `entity-existence` 与该实体下所有 field / dictionary / sequence / tree scope 相交
+
+原因：
+
+- 一旦实体不存在了，内部字段 inverse 就不再可靠
+
+#### `collection-order`
+
+表示某个 collection 的排序面。
+
+典型例子：
+
+- `document.order`
+- `edge.labels.ids`
+- `view.fields.ids`
+- 任何 table 的 `ids`
+
+规则：
+
+- 同一 collection 的 `collection-order` 彼此相交
+- 与该 collection 上的 create / remove / move 产生的顺序语义相交
+
+原因：
+
+- 排序 inverse 依赖旧顺序上下文
+
+#### `field`
+
+表示某个实体上的某个固定字段。
+
+规则：
+
+- 同一 entity、同一 field 相交
+- 不同 field 默认不相交
+- 但若同一 entity 有 `entity-existence` scope，则与其相交
+
+这保证：
+
+- 改不同字段不会过度误伤本地 history
+- 删实体时又能正确失效
+
+#### `dictionary-entry`
+
+表示某个 dictionary 的某个 key。
+
+规则：
+
+- 同一 dictionary、同一 key 相交
+- 不同 key 默认不相交
+- 若出现 `dictionary-all`，则与之相交
+- 若宿主 entity 不存在，也与对应 `entity-existence` 相交
+
+#### `dictionary-all`
+
+表示整个 dictionary 被整体替换。
+
+规则：
+
+- 与该 dictionary 下任意 `dictionary-entry` 相交
+
+原因：
+
+- 整体替换意味着单 key 级别的 inverse 前提也被重建了
+
+#### `sequence`
+
+表示 sequence 整体内容面。
+
+规则：
+
+- 同一 sequence 上的改动彼此相交
+
+原因：
+
+- insert / move / remove / replace 都依赖整体序列状态
+
+#### `tree-structure`
+
+表示 tree 的结构面。
+
+包括：
+
+- insert / move / remove / replace
+
+规则：
+
+- 同一 tree 的 `tree-structure` 彼此相交
+- 同一 tree 的 `tree-structure` 与任意 `tree-node` 相交
+
+原因：
+
+- 结构变化会破坏很多 node value inverse 的宿主关系和拓扑前提
+
+#### `tree-node`
+
+表示 tree 内某个 node 的值面。
+
+规则：
+
+- 同一 tree、同一 node 的 `tree-node` 相交
+- 不同 node 默认不相交
+- 遇到同一 tree 的 `tree-structure` 时相交
+
+### 9.8 从 write 到 scope 的映射
 
 规则如下。
 
@@ -405,7 +685,7 @@ collab 对 engine 的依赖应收敛成以下最小面：
 
 - 对应 node 的 `tree-node`
 
-### 9.3 相交规则
+### 9.9 相交规则
 
 相交规则必须由 mutation 内部统一实现，而不是业务自己拼。
 
@@ -421,6 +701,92 @@ collab 对 engine 的依赖应收敛成以下最小面：
 8. 同一 `tree-node` 彼此相交
 
 这套规则已经足够支撑 local history invalidation，不需要再同步 footprint。
+
+### 9.10 典型例子
+
+#### 例子 1：同一实体不同字段，不应误伤
+
+本地 entry：
+
+- `field(node_1, style.fill)`
+
+远端 change：
+
+- `field(node_1, data.text)`
+
+结果：
+
+- 默认不相交
+
+这保证不同字段的本地 undo 不会被过度失效。
+
+#### 例子 2：实体删除，必须让字段 undo 失效
+
+本地 entry：
+
+- `field(node_1, style.fill)`
+
+远端 change：
+
+- `entity-existence(node_1)`
+
+结果：
+
+- 相交
+
+因为 field inverse 的宿主已经不再稳定存在。
+
+#### 例子 3：顺序变化，必须让旧 move undo 失效
+
+本地 entry：
+
+- `collection-order(document.order)`
+
+远端 change：
+
+- `collection-order(document.order)`
+
+结果：
+
+- 相交
+
+因为 order inverse 依赖旧顺序上下文。
+
+#### 例子 4：dictionary 单 key 更新可以彼此独立
+
+本地 entry：
+
+- `dictionary-entry(record_1.values, title)`
+
+远端 change：
+
+- `dictionary-entry(record_1.values, status)`
+
+结果：
+
+- 默认不相交
+
+但如果远端是：
+
+- `dictionary-all(record_1.values)`
+
+则相交。
+
+#### 例子 5：tree 结构变化会让 node value undo 失效
+
+本地 entry：
+
+- `tree-node(mindmap_1, node_7)`
+
+远端 change：
+
+- `tree-structure(mindmap_1)`
+
+结果：
+
+- 相交
+
+因为 node_7 所依赖的树结构已经改变。
 
 ## 10. Local Collab History 的最终形态
 
@@ -555,45 +921,96 @@ session 内部最终只做这几件事：
 - transport store 模型仍然可以是 `checkpoint + changes`
 - codec 只需 encode/decode `SerializedMutationWrite[]`
 
-白板和 dataview 两侧的 codec 会大幅收缩：
+切完之后不会再有 whiteboard/dataview 自己的 collab codec。
 
-- 不再 assert `MutationProgram`
-- 不再 assert `MutationFootprint`
-- 不再关心 checkpoint program 过滤
+统一规则：
 
-## 13. whiteboard/dataview 封装层的最终状态
+- 所有 write 编解码都走 `shared/mutation`
+- 所有 Yjs change / checkpoint 编解码都走 `shared/collab-yjs`
+- whiteboard/dataview 不再保留任何 collab 协议层
 
-两侧 collab 包最终都应该薄到接近同构。
+## 13. 包收敛的最终结论
 
-### whiteboard-collab
+最终必须直接删除：
 
-只保留：
+- `whiteboard/packages/whiteboard-collab`
+- `dataview/packages/dataview-collab`
 
-- `document.empty`
-- `checkpoint create/read`
-- Yjs transport 绑定
-- session 类型别名
+删除原因不是“这两个包代码重复”，而是它们在最终架构里已经没有合法职责。
 
-删除：
+一旦：
 
-- `readLiveProgram`
-- `program` codec
-- `footprint` codec
-- checkpoint-only 过滤逻辑
+- shared log 统一为 `SerializedMutationWrite[]`
+- conflict scope 统一由 `shared/mutation` 自动推导
+- local collab history 统一由 `shared/collab` 提供
+- Yjs 编解码统一由 `shared/collab-yjs` 提供
 
-### dataview-collab
+那么产品侧不再需要自己的 collab 协议层。
 
-同样只保留：
+继续保留这两个包只会带来三种坏处：
 
-- empty document / clone / normalize
-- Yjs transport 绑定
-- session 暴露
+1. 继续制造“whiteboard/dataview 各有一套 collab”的错觉
+2. 给将来的协议漂移留下入口
+3. 把本应是 shared 的标准能力继续伪装成产品能力
 
-删除：
+所以长期最优不是“把它们改薄”，而是：
 
-- `program` codec
-- `footprint` codec
-- 任何 program step 断言逻辑
+- 直接删除
+- 调用方改为直接依赖 `shared/collab` 和 `shared/collab-yjs`
+
+### 13.1 删除后调用关系
+
+最终调用关系应为：
+
+- whiteboard runtime / app
+  - 直接依赖 `shared/collab`
+  - 直接依赖 `shared/collab-yjs`
+  - 传入 whiteboard schema / engine / document helpers
+
+- dataview runtime / app
+  - 直接依赖 `shared/collab`
+  - 直接依赖 `shared/collab-yjs`
+  - 传入 dataview schema / engine / document helpers
+
+### 13.2 删除后 shared 层需要承担的正式职责
+
+为了支撑删除产品 collab 包，shared 层必须把职责承担完整：
+
+#### `shared/mutation`
+
+- write codec
+- schema node id
+- conflict scope 推导
+- scope 相交判断
+
+#### `shared/collab`
+
+- collab session
+- replay
+- diagnostics
+- local collab history
+
+#### `shared/collab-yjs`
+
+- Yjs store
+- shared change / checkpoint codec
+- provider sync 组合
+- 标准 `createYjsMutationCollabSession(...)`
+
+### 13.3 调用方允许保留的差异
+
+删除产品 collab 包不代表 whiteboard/dataview 完全没有差异。
+
+允许存在的差异只剩：
+
+- schema 不同
+- engine 类型不同
+- document empty / normalize / clone / assert 不同
+- checkpoint 文档类型不同
+
+这些差异都应作为调用 `shared/collab` / `shared/collab-yjs` 时传入的参数存在。
+
+它们不再构成独立包存在的理由。
 
 ## 14. 重构步骤
 
@@ -632,31 +1049,29 @@ session 内部最终只做这几件事：
 - local history invalidation
 - undo/redo 作为新 shared change 发布
 
-### Phase 4: 重写 `whiteboard-collab`
+### Phase 4: 删除 `whiteboard-collab`
 
 完成：
 
-- 删除 program/footprint 类型
-- 删除旧 codec
-- 切到标准 writes shared change
-- 跑通 yjs session tests
+- 把 whiteboard 调用方直接改到 `shared/collab` / `shared/collab-yjs`
+- 删除 whiteboard 专属 collab types / codec / session
+- 跑通 whiteboard 协作相关测试
 
-### Phase 5: 重写 `dataview-collab`
+### Phase 5: 删除 `dataview-collab`
 
 完成：
 
-- 删除 program/footprint 类型
-- 删除旧 codec
-- 切到标准 writes shared change
-- 跑通 yjs session tests
+- 把 dataview 调用方直接改到 `shared/collab` / `shared/collab-yjs`
+- 删除 dataview 专属 collab types / codec / session
+- 跑通 dataview 协作相关测试
 
 ### Phase 6: 收口调用方
 
 完成：
 
-- `whiteboard-react` 改用新的 `CollabLocalHistory`
+- `whiteboard-react` / dataview 上层改用新的 `CollabLocalHistory`
 - 删除 `setHistorySource(next: HistoryPort<...>)` 这类旧签名
-- 所有 collab session 暴露统一的新 history 面
+- 所有调用点直接依赖 shared 标准 collab API
 
 ## 15. 最终删除清单
 
@@ -671,6 +1086,8 @@ session 内部最终只做这几件事：
 - program step codec
 - footprint codec
 - 外部 `sync.observeRemote / confirmPublished / withPolicy`
+- `whiteboard-collab`
+- `dataview-collab`
 
 ## 16. 最终结论
 
@@ -684,6 +1101,7 @@ session 内部最终只做这几件事：
 
 - `shared/mutation` 负责 `write codec + conflict scopes`
 - `shared/collab` 负责 `log replay + checkpoint + local collab history`
-- `whiteboard/dataview collab` 退化成薄封装
+- `shared/collab-yjs` 负责 Yjs 组合与持久共享协议
+- `whiteboard-collab` / `dataview-collab` 直接删除
 
 这就是这条线最简单、最稳定、长期维护成本最低的终态。

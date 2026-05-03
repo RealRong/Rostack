@@ -1,10 +1,13 @@
 import type {
   CollabProvider,
-  CollabSession,
-  CollabStatus
-} from '@whiteboard/collab'
+  CollabStatus,
+  MutationCollabSession
+} from '@shared/collab'
 import type * as Y from 'yjs'
 import type { WhiteboardPresenceBinding } from '@whiteboard/react/types/common/presence'
+import type { IntentResult } from '@whiteboard/engine'
+
+export type WhiteboardCollabSession = MutationCollabSession<IntentResult>
 
 export type WhiteboardCollabPresenceOptions = {
   binding: WhiteboardPresenceBinding
@@ -16,6 +19,6 @@ export type WhiteboardCollabOptions = {
   provider?: CollabProvider
   autoConnect?: boolean
   presence?: WhiteboardCollabPresenceOptions
-  onSession?: (session: CollabSession | null) => void
+  onSession?: (session: WhiteboardCollabSession | null) => void
   onStatusChange?: (status: CollabStatus) => void
 }

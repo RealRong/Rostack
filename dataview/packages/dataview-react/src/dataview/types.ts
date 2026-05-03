@@ -3,9 +3,9 @@ import type {
 } from 'react'
 import type {
   CollabProvider,
-  CollabSession,
-  CollabStatus
-} from '@dataview/collab'
+  CollabStatus,
+  MutationCollabSession
+} from '@shared/collab'
 import type * as Y from 'yjs'
 import type {
   DataViewRuntime
@@ -19,6 +19,11 @@ import type {
 import type {
   MarqueeBridgeApi
 } from '@dataview/react/page/marqueeBridge'
+import type {
+  EngineApplyCommit
+} from '@dataview/engine/contracts/write'
+
+export type DataViewCollabSession = MutationCollabSession<EngineApplyCommit>
 
 export interface DataViewReactContextValue extends DataViewRuntime {
   react: {
@@ -36,7 +41,7 @@ export interface DataViewCollabOptions {
   actorId: string
   provider?: CollabProvider
   autoConnect?: boolean
-  onSession?(session: CollabSession | null): void
+  onSession?(session: DataViewCollabSession | null): void
   onStatusChange?(status: CollabStatus): void
 }
 

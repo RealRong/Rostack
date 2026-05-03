@@ -8,7 +8,8 @@ import {
   finalizeSchema
 } from './meta'
 import {
-  setSchemaChangeFactory
+  setSchemaChangeFactory,
+  setSchemaNodeRegistry
 } from './internals'
 
 const buildSchema = <
@@ -18,7 +19,11 @@ const buildSchema = <
   shape: TShape,
   factory?: MutationSchemaChangeFactory<TShape, TChanges>
 ): MutationSchema<TShape, TChanges> => {
-  const value = finalizeSchema(shape) as MutationSchema<TShape, TChanges>
+  const finalized = finalizeSchema(shape)
+  const value = setSchemaNodeRegistry(
+    finalized as unknown as MutationSchema<TShape, TChanges>,
+    finalized.registry
+  )
   const next = Object.assign(value, {
     changes<TNextChanges extends MutationSchemaChangeSet>(
       nextFactory: MutationSchemaChangeFactory<TShape, TNextChanges>

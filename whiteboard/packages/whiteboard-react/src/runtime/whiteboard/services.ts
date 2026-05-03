@@ -5,16 +5,9 @@ import type {
   Point
 } from '@whiteboard/core/types'
 import { createWhiteboardLayout } from '@whiteboard/core/layout'
-import {
-  store
-} from '@shared/core'
-import {
-  type HistoryPort
-} from '@shared/mutation'
-import { engine as engineApi } from '@whiteboard/engine'
+import { engine as engineApi, type Engine } from '@whiteboard/engine'
 import { editor as editorApi, type DrawState } from '@whiteboard/editor'
 import { compileNodeSpec } from '@whiteboard/editor/node/compile'
-import type { IntentResult } from '@whiteboard/engine'
 import { product } from '@whiteboard/product'
 import type { ResolvedConfig } from '@whiteboard/react/types/common/config'
 import { createClipboardHostAdapter } from '@whiteboard/react/dom/host/clipboard'
@@ -61,46 +54,32 @@ export const isMirroredDocumentFromEngine = (
 )
 
 export type WhiteboardRuntimeServices = WhiteboardServicesContextValue & {
-  history: HistoryPort<IntentResult>
+  history: Engine['history']
   dispose(): void
-  setHistorySource(next: HistoryPort<IntentResult>): void
+  setHistorySource(next: Engine['history']): void
   resetHistorySource(): void
 }
 
 const createSwitchableHistoryPort = (
-  initial: HistoryPort<IntentResult>
+  initial: Engine['history']
 ) => {
-  const state = store.value(initial.get())
   let current = initial
-  let unsubscribe = current.subscribe(() => {
-    state.set(current.get())
-  })
 
   const bind = (
-    next: HistoryPort<IntentResult>
+    next: Engine['history']
   ) => {
-    unsubscribe()
     current = next
-    state.set(current.get())
-    unsubscribe = current.subscribe(() => {
-      state.set(current.get())
-    })
   }
 
   return {
     port: {
-      get: state.get,
-      subscribe: state.subscribe,
-      sync: {
-        observeRemote: (changeId, footprint) => current.sync.observeRemote(changeId, footprint),
-        confirmPublished: (input) => current.sync.confirmPublished(input),
-        cancel: (mode) => current.sync.cancel(mode)
-      },
+      state: () => current.state(),
+      canUndo: () => current.canUndo(),
+      canRedo: () => current.canRedo(),
       undo: () => current.undo(),
       redo: () => current.redo(),
-      clear: () => current.clear(),
-      withPolicy: (policy) => current.withPolicy(policy)
-    } satisfies HistoryPort<IntentResult>,
+      clear: () => current.clear()
+    } satisfies Engine['history'],
     set: bind,
     reset: () => {
       bind(initial)

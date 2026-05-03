@@ -234,30 +234,6 @@ importers:
         specifier: ^7.3.1
         version: 7.3.1(@types/node@25.5.0)(jiti@1.21.7)(lightningcss@1.32.0)(tsx@4.21.0)
 
-  dataview/packages/dataview-collab:
-    dependencies:
-      '@dataview/core':
-        specifier: workspace:*
-        version: link:../dataview-core
-      '@dataview/engine':
-        specifier: workspace:*
-        version: link:../dataview-engine
-      '@shared/collab':
-        specifier: workspace:*
-        version: link:../../../shared/collab
-      '@shared/collab-yjs':
-        specifier: workspace:*
-        version: link:../../../shared/collab-yjs
-      '@shared/core':
-        specifier: workspace:*
-        version: link:../../../shared/core
-      '@shared/mutation':
-        specifier: workspace:*
-        version: link:../../../shared/mutation
-      yjs:
-        specifier: ^13.6.27
-        version: 13.6.30
-
   dataview/packages/dataview-core:
     dependencies:
       '@date-fns/tz':
@@ -302,9 +278,9 @@ importers:
       '@shared/mutation':
         specifier: workspace:*
         version: link:../../../shared/mutation
-      '@shared/projector':
+      '@shared/trace':
         specifier: workspace:*
-        version: link:../../../shared/projector
+        version: link:../../../shared/trace
 
   dataview/packages/dataview-meta:
     dependencies:
@@ -320,9 +296,6 @@ importers:
 
   dataview/packages/dataview-react:
     dependencies:
-      '@dataview/collab':
-        specifier: workspace:*
-        version: link:../dataview-collab
       '@dataview/core':
         specifier: workspace:*
         version: link:../dataview-core
@@ -347,6 +320,12 @@ importers:
       '@floating-ui/react':
         specifier: ^0.27.19
         version: 0.27.19(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@shared/collab':
+        specifier: workspace:*
+        version: link:../../../shared/collab
+      '@shared/collab-yjs':
+        specifier: workspace:*
+        version: link:../../../shared/collab-yjs
       '@shared/core':
         specifier: workspace:*
         version: link:../../../shared/core
@@ -389,12 +368,12 @@ importers:
       '@shared/core':
         specifier: workspace:*
         version: link:../../../shared/core
+      '@shared/delta':
+        specifier: workspace:*
+        version: link:../../../shared/delta
       '@shared/mutation':
         specifier: workspace:*
         version: link:../../../shared/mutation
-      '@shared/projector':
-        specifier: workspace:*
-        version: link:../../../shared/projector
 
   dataview/packages/dataview-table:
     dependencies:
@@ -422,6 +401,9 @@ importers:
       '@shared/collab':
         specifier: workspace:*
         version: link:../collab
+      '@shared/mutation':
+        specifier: workspace:*
+        version: link:../mutation
       yjs:
         specifier: ^13.6.27
         version: 13.6.30
@@ -441,6 +423,9 @@ importers:
       '@shared/core':
         specifier: workspace:*
         version: link:../core
+      '@shared/spec':
+        specifier: workspace:*
+        version: link:../spec
 
   shared/i18n:
     dependencies:
@@ -464,14 +449,17 @@ importers:
         specifier: workspace:*
         version: link:../core
 
-  shared/projector:
+  shared/projection:
     dependencies:
       '@shared/core':
         specifier: workspace:*
         version: link:../core
-      '@shared/delta':
+      '@shared/mutation':
         specifier: workspace:*
-        version: link:../delta
+        version: link:../mutation
+      '@shared/spec':
+        specifier: workspace:*
+        version: link:../spec
 
   shared/react:
     dependencies:
@@ -488,6 +476,10 @@ importers:
       '@types/react':
         specifier: ^19.1.12
         version: 19.2.14
+
+  shared/spec: {}
+
+  shared/trace: {}
 
   shared/ui:
     dependencies:
@@ -537,47 +529,32 @@ importers:
 
   whiteboard: {}
 
-  whiteboard/packages/whiteboard-collab:
-    dependencies:
-      '@shared/collab':
-        specifier: workspace:*
-        version: link:../../../shared/collab
-      '@shared/collab-yjs':
-        specifier: workspace:*
-        version: link:../../../shared/collab-yjs
-      '@shared/core':
-        specifier: workspace:*
-        version: link:../../../shared/core
-      '@whiteboard/core':
-        specifier: workspace:*
-        version: link:../whiteboard-core
-      '@whiteboard/engine':
-        specifier: workspace:*
-        version: link:../whiteboard-engine
-      yjs:
-        specifier: ^13.6.27
-        version: 13.6.30
-
   whiteboard/packages/whiteboard-core:
     dependencies:
       '@shared/core':
         specifier: workspace:*
         version: link:../../../shared/core
+      '@shared/delta':
+        specifier: workspace:*
+        version: link:../../../shared/delta
       '@shared/draft':
         specifier: workspace:*
         version: link:../../../shared/draft
       '@shared/mutation':
         specifier: workspace:*
         version: link:../../../shared/mutation
-      '@shared/projector':
+      '@shared/trace':
         specifier: workspace:*
-        version: link:../../../shared/projector
+        version: link:../../../shared/trace
 
   whiteboard/packages/whiteboard-editor:
     dependencies:
       '@shared/core':
         specifier: workspace:*
         version: link:../../../shared/core
+      '@shared/delta':
+        specifier: workspace:*
+        version: link:../../../shared/delta
       '@shared/dom':
         specifier: workspace:*
         version: link:../../../shared/dom
@@ -587,9 +564,6 @@ importers:
       '@shared/mutation':
         specifier: workspace:*
         version: link:../../../shared/mutation
-      '@shared/projector':
-        specifier: workspace:*
-        version: link:../../../shared/projector
       '@whiteboard/core':
         specifier: workspace:*
         version: link:../whiteboard-core
@@ -605,12 +579,15 @@ importers:
       '@shared/delta':
         specifier: workspace:*
         version: link:../../../shared/delta
-      '@shared/projector':
+      '@shared/projection':
         specifier: workspace:*
-        version: link:../../../shared/projector
+        version: link:../../../shared/projection
       '@whiteboard/core':
         specifier: workspace:*
         version: link:../whiteboard-core
+      '@whiteboard/editor':
+        specifier: workspace:*
+        version: link:../whiteboard-editor
       '@whiteboard/engine':
         specifier: workspace:*
         version: link:../whiteboard-engine
@@ -623,12 +600,12 @@ importers:
       '@shared/delta':
         specifier: workspace:*
         version: link:../../../shared/delta
+      '@shared/draft':
+        specifier: workspace:*
+        version: link:../../../shared/draft
       '@shared/mutation':
         specifier: workspace:*
         version: link:../../../shared/mutation
-      '@shared/projector':
-        specifier: workspace:*
-        version: link:../../../shared/projector
       '@whiteboard/core':
         specifier: workspace:*
         version: link:../whiteboard-core
@@ -644,12 +621,21 @@ importers:
 
   whiteboard/packages/whiteboard-react:
     dependencies:
+      '@shared/collab':
+        specifier: workspace:*
+        version: link:../../../shared/collab
+      '@shared/collab-yjs':
+        specifier: workspace:*
+        version: link:../../../shared/collab-yjs
       '@shared/core':
         specifier: workspace:*
         version: link:../../../shared/core
       '@shared/dom':
         specifier: workspace:*
         version: link:../../../shared/dom
+      '@shared/draft':
+        specifier: workspace:*
+        version: link:../../../shared/draft
       '@shared/mutation':
         specifier: workspace:*
         version: link:../../../shared/mutation
@@ -659,9 +645,6 @@ importers:
       '@shared/ui':
         specifier: workspace:*
         version: link:../../../shared/ui
-      '@whiteboard/collab':
-        specifier: workspace:*
-        version: link:../whiteboard-collab
       '@whiteboard/core':
         specifier: workspace:*
         version: link:../whiteboard-core

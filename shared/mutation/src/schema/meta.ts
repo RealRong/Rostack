@@ -42,6 +42,7 @@ export type MutationOwnerMeta =
     }
 
 export type MutationNodeMeta = {
+  readonly schemaId: string
   readonly key: string
   readonly path: readonly string[]
   readonly owner: MutationOwnerMeta
@@ -92,7 +93,8 @@ const attachShape = (
   shape: MutationShape,
   owner: MutationOwnerMeta,
   path: readonly string[],
-  relativePath: readonly string[]
+  relativePath: readonly string[],
+  registry: Map<string, MutationShapeNode>
 ): void => {
   Object.entries(shape).forEach(([key, value]) => {
     const nextPath = [...path, key]
@@ -104,6 +106,7 @@ const attachShape = (
         || value.kind === 'table'
         || value.kind === 'map'
       ) {
+        const schemaId = `${nextPath.join('.')}:${value.kind}`
         const familyOwner = {
           kind: value.kind,
           path: nextPath,
@@ -113,32 +116,40 @@ const attachShape = (
         } as MutationOwnerMeta
 
         setNodeMeta(value, {
+          schemaId,
           key,
           path: nextPath,
           owner,
           relativePath: nextRelativePath
         })
-        attachShape(value.shape, familyOwner, nextPath, [])
+        registry.set(schemaId, value)
+        attachShape(value.shape, familyOwner, nextPath, [], registry)
         return
       }
 
       if (value.kind === 'object') {
+        const schemaId = `${nextPath.join('.')}:${value.kind}`
         setNodeMeta(value, {
+          schemaId,
           key,
           path: nextPath,
           owner,
           relativePath: nextRelativePath
         })
-        attachShape(value.shape, owner, nextPath, nextRelativePath)
+        registry.set(schemaId, value)
+        attachShape(value.shape, owner, nextPath, nextRelativePath, registry)
         return
       }
 
+      const schemaId = `${nextPath.join('.')}:${value.kind}`
       setNodeMeta(value, {
+        schemaId,
         key,
         path: nextPath,
         owner,
         relativePath: nextRelativePath
       })
+      registry.set(schemaId, value)
       return
     }
 
@@ -147,7 +158,8 @@ const attachShape = (
         value,
         owner,
         nextPath,
-        nextRelativePath
+        nextRelativePath,
+        registry
       )
     }
   })
@@ -157,6 +169,7 @@ export const finalizeSchema = <TShape extends MutationShape>(
   shape: TShape
 ) => {
   const nextShape = cloneShape(shape)
+  const registry = new Map<string, MutationShapeNode>()
   attachShape(
     nextShape,
     {
@@ -164,11 +177,13 @@ export const finalizeSchema = <TShape extends MutationShape>(
       path: []
     },
     [],
-    []
+    [],
+    registry
   )
 
   return {
     [MUTATION_SCHEMA]: true,
-    shape: nextShape
+    shape: nextShape,
+    registry
   } as const
 }

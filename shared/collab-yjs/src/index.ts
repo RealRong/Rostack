@@ -4,6 +4,12 @@ export {
   isBinaryBytes
 } from './codec'
 export {
+  createMutationYjsCodec,
+  createYjsMutationCollabSession,
+  type CreateYjsMutationCollabSessionOptions,
+  type MutationYjsSyncCodec
+} from './session'
+export {
   createCollabLocalOrigin
 } from './localOrigin'
 export {

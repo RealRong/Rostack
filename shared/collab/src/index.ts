@@ -1,5 +1,9 @@
 export {
   createMutationCollabSession,
+  type MutationCollabChange,
+  type MutationCollabCheckpoint,
+  type MutationCollabHistoryState,
+  type MutationCollabLocalHistory,
   type CollabDiagnostics,
   type CollabProvider,
   type CollabStatus,

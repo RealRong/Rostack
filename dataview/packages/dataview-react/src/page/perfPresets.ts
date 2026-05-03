@@ -11,6 +11,7 @@ import type {
   GalleryOptions,
   KanbanOptions,
   Sort,
+  StatusOption,
   SortDirection,
   SortRule,
   TableOptions,
@@ -26,6 +27,9 @@ import {
 import {
   document
 } from '@dataview/core/document'
+import {
+  field
+} from '@dataview/core/field'
 import {
   view
 } from '@dataview/core/view'
@@ -83,14 +87,10 @@ interface RandomSource {
   weighted: <T>(items: readonly WeightedValue<T>[]) => T
 }
 
-type FlatOption = {
+type BasicOption = {
   id: string
   name: string
   color: string | null
-}
-
-type StatusOption = FlatOption & {
-  category: 'todo' | 'in_progress' | 'complete'
 }
 
 const formatCompactCount = (value: number) => (
@@ -178,7 +178,7 @@ const createSort = (
 const createTextField = (
   id: string,
   name: string
-): CustomField => ({
+): CustomField => field.create.default({
   id,
   name,
   kind: 'text'
@@ -194,9 +194,11 @@ const createNumberField = (
     useThousandsSeparator?: boolean
   } = {}
 ): CustomField => ({
-  id,
-  name,
-  kind: 'number',
+  ...field.create.default({
+    id,
+    name,
+    kind: 'number'
+  }),
   format: input.format ?? 'number',
   precision: input.precision ?? null,
   currency: input.currency ?? null,
@@ -206,44 +208,71 @@ const createNumberField = (
 const createSelectField = (
   id: string,
   name: string,
-  options: readonly FlatOption[]
+  options: readonly {
+    id: string
+    name: string
+    color: string | null
+  }[]
 ): CustomField => ({
-  id,
-  name,
-  kind: 'select',
-  options: options.map(option => ({ ...option }))
-})
+  ...field.create.default({
+    id,
+    name,
+    kind: 'select'
+  }),
+  options: createEntityTable(options.map(option => ({
+    ...option,
+    category: undefined
+  })))
+}) as Extract<CustomField, { kind: 'select' }>
 
 const createMultiSelectField = (
   id: string,
   name: string,
-  options: readonly FlatOption[]
+  options: readonly {
+    id: string
+    name: string
+    color: string | null
+  }[]
 ): CustomField => ({
-  id,
-  name,
-  kind: 'multiSelect',
-  options: options.map(option => ({ ...option }))
-})
+  ...field.create.default({
+    id,
+    name,
+    kind: 'multiSelect'
+  }),
+  options: createEntityTable(options.map(option => ({
+    ...option,
+    category: undefined
+  })))
+}) as Extract<CustomField, { kind: 'multiSelect' }>
 
 const createStatusField = (
   id: string,
   name: string,
-  options: readonly StatusOption[]
+  options: readonly {
+    id: string
+    name: string
+    color: string | null
+    category: StatusOption['category']
+  }[]
 ): CustomField => ({
-  id,
-  name,
-  kind: 'status',
+  ...field.create.default({
+    id,
+    name,
+    kind: 'status'
+  }),
   defaultOptionId: options[0]?.id ?? null,
-  options: options.map(option => ({ ...option }))
-})
+  options: createEntityTable(options.map(option => ({ ...option })))
+}) as Extract<CustomField, { kind: 'status' }>
 
 const createDateField = (
   id: string,
   name: string
 ): CustomField => ({
-  id,
-  name,
-  kind: 'date',
+  ...field.create.default({
+    id,
+    name,
+    kind: 'date'
+  }),
   displayDateFormat: 'short',
   displayTimeFormat: '24h',
   defaultValueKind: 'date',
@@ -355,26 +384,22 @@ const createView = (input: {
       return {
         ...base,
         type: 'table',
-        ...(input.group
+        group: input.group
           ? {
-              group: {
-                ...input.group
-              }
+              ...input.group
             }
-          : {}),
+          : undefined,
         options: patchViewOptions('table', input.schemaFields, input.options)
       }
     case 'gallery':
       return {
         ...base,
         type: 'gallery',
-        ...(input.group
+        group: input.group
           ? {
-              group: {
-                ...input.group
-              }
+              ...input.group
             }
-          : {}),
+          : undefined,
         options: patchViewOptions('gallery', input.schemaFields, input.options)
       }
     case 'kanban':
@@ -409,6 +434,13 @@ const putValue = (
     values[fieldId] = value
   }
 }
+
+const createRecord = (
+  input: Omit<DataRecord, 'meta'>
+): DataRecord => ({
+  ...input,
+  meta: undefined
+})
 
 const pickWeightedUnique = <T,>(
   random: RandomSource,
@@ -538,7 +570,7 @@ const PRIORITY_OPTIONS = [
     name: 'Low',
     color: 'gray'
   }
-] as const satisfies readonly FlatOption[]
+] as const satisfies readonly BasicOption[]
 
 const ROADMAP_INITIATIVE_OPTIONS = [
   {
@@ -566,7 +598,7 @@ const ROADMAP_INITIATIVE_OPTIONS = [
     name: 'Mobile Uplift',
     color: 'pink'
   }
-] as const satisfies readonly FlatOption[]
+] as const satisfies readonly BasicOption[]
 
 const TAG_OPTIONS = [
   {
@@ -609,7 +641,7 @@ const TAG_OPTIONS = [
     name: 'Localization',
     color: 'pink'
   }
-] as const satisfies readonly FlatOption[]
+] as const satisfies readonly BasicOption[]
 
 const SALES_STAGE_OPTIONS = [
   {
@@ -742,7 +774,7 @@ const CHANNEL_OPTIONS = [
     name: 'Paid',
     color: 'amber'
   }
-] as const satisfies readonly FlatOption[]
+] as const satisfies readonly BasicOption[]
 
 const SALES_REGION_OPTIONS = [
   {
@@ -760,7 +792,7 @@ const SALES_REGION_OPTIONS = [
     name: 'APAC',
     color: 'purple'
   }
-] as const satisfies readonly FlatOption[]
+] as const satisfies readonly BasicOption[]
 
 const SEGMENT_OPTIONS = [
   {
@@ -778,7 +810,7 @@ const SEGMENT_OPTIONS = [
     name: 'SMB',
     color: 'blue'
   }
-] as const satisfies readonly FlatOption[]
+] as const satisfies readonly BasicOption[]
 
 const CONTENT_CAMPAIGN_OPTIONS = [
   {
@@ -801,7 +833,7 @@ const CONTENT_CAMPAIGN_OPTIONS = [
     name: 'AI Week',
     color: 'purple'
   }
-] as const satisfies readonly FlatOption[]
+] as const satisfies readonly BasicOption[]
 
 const CONTENT_TYPE_OPTIONS = [
   {
@@ -824,7 +856,7 @@ const CONTENT_TYPE_OPTIONS = [
     name: 'Case Study',
     color: 'purple'
   }
-] as const satisfies readonly FlatOption[]
+] as const satisfies readonly BasicOption[]
 
 const ENGINEERING_COMPONENT_OPTIONS = [
   {
@@ -852,7 +884,7 @@ const ENGINEERING_COMPONENT_OPTIONS = [
     name: 'Auth',
     color: 'red'
   }
-] as const satisfies readonly FlatOption[]
+] as const satisfies readonly BasicOption[]
 
 const SPRINT_OPTIONS = [
   {
@@ -875,7 +907,7 @@ const SPRINT_OPTIONS = [
     name: 'Backlog',
     color: 'amber'
   }
-] as const satisfies readonly FlatOption[]
+] as const satisfies readonly BasicOption[]
 
 const SEVERITY_OPTIONS = [
   {
@@ -898,7 +930,7 @@ const SEVERITY_OPTIONS = [
     name: 'SEV-4',
     color: 'gray'
   }
-] as const satisfies readonly FlatOption[]
+] as const satisfies readonly BasicOption[]
 
 const DENSE_REGION_OPTIONS = [
   {
@@ -921,7 +953,7 @@ const DENSE_REGION_OPTIONS = [
     name: 'LATAM',
     color: 'pink'
   }
-] as const satisfies readonly FlatOption[]
+] as const satisfies readonly BasicOption[]
 
 const DENSE_SEGMENT_OPTIONS = [
   {
@@ -944,7 +976,7 @@ const DENSE_SEGMENT_OPTIONS = [
     name: 'Cohort D',
     color: 'amber'
   }
-] as const satisfies readonly FlatOption[]
+] as const satisfies readonly BasicOption[]
 
 const DENSE_SOURCE_OPTIONS = [
   {
@@ -967,7 +999,7 @@ const DENSE_SOURCE_OPTIONS = [
     name: 'Expansion',
     color: 'purple'
   }
-] as const satisfies readonly FlatOption[]
+] as const satisfies readonly BasicOption[]
 
 const ROADMAP_REPEATED_TITLES = [
   'Launch usage-based billing for enterprise workspaces',
@@ -1329,12 +1361,12 @@ const createRoadmapDocument = (recordCount: number, seed: number): DataDoc => {
       values.summary = buildRoadmapSummary(initiativeLabel, teamLabel)
     }
 
-    records.push({
+    records.push(createRecord({
       id: buildRecordId(index),
       title: buildRoadmapTitle(random),
       type: 'initiative',
       values
-    })
+    }))
   }
 
   const tableView = createView({
@@ -1561,12 +1593,12 @@ const createSalesDocument = (recordCount: number, seed: number): DataDoc => {
       values.nextStep = buildSalesSummary(company, ownerName)
     }
 
-    records.push({
+    records.push(createRecord({
       id: buildRecordId(index),
       title: buildSalesTitle(random, company),
       type: 'deal',
       values
-    })
+    }))
   }
 
   const tableView = createView({
@@ -1743,12 +1775,12 @@ const createContentDocument = (recordCount: number, seed: number): DataDoc => {
     const campaignName = CONTENT_CAMPAIGN_OPTIONS.find(option => option.id === campaign)?.name ?? 'Campaign'
     const channelName = CHANNEL_OPTIONS.find(option => option.id === channel)?.name ?? 'Channel'
 
-    records.push({
+    records.push(createRecord({
       id: buildRecordId(index),
       title: buildContentTitle(random, campaignName, channelName),
       type: 'content',
       values
-    })
+    }))
   }
 
   const galleryView = createView({
@@ -2009,12 +2041,12 @@ const createEngineeringDocument = (recordCount: number, seed: number): DataDoc =
 
     const componentName = ENGINEERING_COMPONENT_OPTIONS.find(option => option.id === component)?.name ?? 'Component'
 
-    records.push({
+    records.push(createRecord({
       id: buildRecordId(index),
       title: buildEngineeringTitle(random, componentName),
       type: 'task',
       values
-    })
+    }))
   }
 
   const tableView = createView({
@@ -2261,12 +2293,12 @@ const createDenseAnalyticsDocument = (recordCount: number, seed: number): DataDo
     const segmentName = DENSE_SEGMENT_OPTIONS.find(option => option.id === segment)?.name ?? 'Segment'
     const regionName = DENSE_REGION_OPTIONS.find(option => option.id === region)?.name ?? 'Region'
 
-    records.push({
+    records.push(createRecord({
       id: buildRecordId(index),
       title: buildDenseTitle(random, segmentName, regionName),
       type: 'analysis',
       values
-    })
+    }))
   }
 
   const tableView = createView({

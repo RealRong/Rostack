@@ -1,5 +1,5 @@
 import type { EdgeLabel } from '@whiteboard/core/types'
-import type { EditorActionContext } from '@whiteboard/editor/actions'
+import type { EditorActionContext } from '@whiteboard/editor/actions/context'
 import type {
   EditorEditActions,
   MindmapInsertBehavior

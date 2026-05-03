@@ -4,7 +4,7 @@ import type {
   EdgeRouteInput,
   Point
 } from '@whiteboard/core/types'
-import type { EditorActionContext } from '@whiteboard/editor/actions'
+import type { EditorActionContext } from '@whiteboard/editor/actions/context'
 import type { EdgeActions } from '@whiteboard/editor/actions/types'
 import type { EditSession } from '@whiteboard/editor/schema/edit'
 import type { EditController } from '@whiteboard/editor/actions/edit'

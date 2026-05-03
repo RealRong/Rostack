@@ -11,7 +11,7 @@ import type {
   MindmapActions,
   MindmapInsertBehavior
 } from '@whiteboard/editor/actions/types'
-import type { EditorActionContext } from '@whiteboard/editor/actions'
+import type { EditorActionContext } from '@whiteboard/editor/actions/context'
 import type { EditorTaskRuntime } from './runtime'
 import {
   isEditorTaskRuntimeDisposedError

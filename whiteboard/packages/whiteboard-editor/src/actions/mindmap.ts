@@ -4,7 +4,7 @@ import type {
   MindmapNodeId,
   NodeId
 } from '@whiteboard/core/types'
-import type { EditorActionContext } from '@whiteboard/editor/actions'
+import type { EditorActionContext } from '@whiteboard/editor/actions/context'
 import type { EditController } from '@whiteboard/editor/actions/edit'
 import type { MindmapActions } from '@whiteboard/editor/actions/types'
 import { createMindmapActions as createMindmapWorkflowActions } from '@whiteboard/editor/tasks/mindmap'

@@ -3,7 +3,7 @@ import type {
 } from '@whiteboard/core/document'
 import type { SelectionTarget } from '@whiteboard/core/selection'
 import type { Point } from '@whiteboard/core/types'
-import type { EditorActionContext } from '@whiteboard/editor/actions'
+import type { EditorActionContext } from '@whiteboard/editor/actions/context'
 import type {
   ClipboardActions,
   ClipboardTarget,

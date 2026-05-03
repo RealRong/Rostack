@@ -3,9 +3,13 @@ import { node as nodeApi } from '@whiteboard/core/node'
 import type {
   AppActions,
   ClipboardActions,
+  DrawActions,
   EditorActions,
   HistoryActions,
-  ToolActions
+  HoverSessionActions,
+  PreviewSessionActions,
+  ToolActions,
+  ViewportActions
 } from '@whiteboard/editor/actions/types'
 import {
   createClipboardActions
@@ -27,20 +31,10 @@ import type {
   PreviewInput
 } from '@whiteboard/editor-scene'
 import { json } from '@shared/core'
-import type {
-  EditorCommand,
-  EditorDispatchInput
-} from '@whiteboard/editor/state/intents'
 import {
   DEFAULT_DRAW_BRUSH,
   hasDrawBrush
 } from '@whiteboard/editor/schema/draw-mode'
-import {
-  patchDrawStyle,
-  setDrawSlot
-} from '@whiteboard/editor/schema/draw-state'
-import type { DrawState } from '@whiteboard/editor/schema/draw-state'
-import type { EditSession } from '@whiteboard/editor/schema/edit'
 import type { EditorViewport } from '@whiteboard/editor/state/viewport'
 import type { EditorTaskRuntime } from '@whiteboard/editor/tasks/runtime'
 import type { EditorDefaults } from '@whiteboard/editor/schema/defaults'
@@ -48,132 +42,83 @@ import type { Tool } from '@whiteboard/editor/schema/tool'
 import type { DocumentFrame } from '@whiteboard/editor-scene'
 import type { NodeTypeSupport } from '@whiteboard/editor/node'
 import type { EditorWrite } from '@whiteboard/editor/write'
+import type { EditorHoverState } from '@whiteboard/editor/state/document'
+import { EMPTY_HOVER_STATE } from '@whiteboard/editor/state/document'
+import type { EditorStateStoreFacade } from '@whiteboard/editor/state/runtime'
+import { EMPTY_PREVIEW_STATE } from '@whiteboard/editor/state/preview'
+import type { EditorStateStores } from '@whiteboard/editor/scene-ui/state'
 
 export type CreateEditorActionsApiDeps = {
   document: DocumentFrame
   projection: EditorScene
-  editor: {
-    tool: {
-      get: () => Tool
-    }
-    draw: {
-      get: () => DrawState
-    }
-    edit: {
-      get: () => EditSession | null
-    }
-    selection: {
-      get: () => import('@whiteboard/core/selection').SelectionTarget
-    }
-    preview: {
-      get: () => PreviewInput
-    }
-    state: Pick<import('@whiteboard/editor/api/editor').Editor['state'], 'write'>
-    dispatch: (command: EditorDispatchInput) => void
-    viewport: EditorViewport
-  }
+  state: Pick<EditorStateStoreFacade, 'read' | 'write'>
+  stores: Pick<EditorStateStores, 'tool' | 'draw' | 'selection' | 'edit' | 'preview'>
+  viewport: EditorViewport
   tasks: EditorTaskRuntime
   write: EditorWrite
   nodeType: NodeTypeSupport
   defaults: EditorDefaults['templates']
-  onViewportFrameChange?: () => void
+}
+
+const isSameTool = (
+  left: Tool,
+  right: Tool
+) => {
+  if (left.type !== right.type) {
+    return false
+  }
+
+  switch (left.type) {
+    case 'edge':
+    case 'insert':
+      return json.stableStringify(left.template) === json.stableStringify(
+        right.type === left.type
+          ? right.template
+          : undefined
+      )
+    case 'draw':
+      return right.type === 'draw' && left.mode === right.mode
+    default:
+      return true
+  }
 }
 
 export const createEditorActionsApi = ({
   document,
   projection,
-  editor,
+  state,
+  stores,
+  viewport,
   tasks,
   write,
   nodeType,
-  defaults,
-  onViewportFrameChange
+  defaults
 }: CreateEditorActionsApiDeps): EditorActions => {
-  const dispatchDraw = (
-    state: DrawState
-  ) => {
-    editor.dispatch({
-      type: 'draw.set',
-      state
-    } satisfies EditorCommand)
-  }
-
-  const readActiveDrawBrush = () => {
-    const tool = editor.tool.get()
-    return tool.type === 'draw' && hasDrawBrush(tool.mode)
-      ? tool.mode
-      : DEFAULT_DRAW_BRUSH
-  }
-
-  const stringifyToolPayload = (
-    tool: Tool
-  ) => {
-    switch (tool.type) {
-      case 'edge':
-      case 'insert':
-        return json.stableStringify(tool.template)
-      case 'draw':
-        return tool.mode
-      default:
-        return tool.type
-    }
-  }
-
-  const isSameTool = (
-    left: Tool,
-    right: Tool
-  ) => {
-    if (left.type !== right.type) {
-      return false
-    }
-
-    switch (left.type) {
-      case 'edge':
-        return right.type === 'edge'
-          && stringifyToolPayload(left) === stringifyToolPayload(right)
-      case 'insert':
-        return right.type === 'insert'
-          && stringifyToolPayload(left) === stringifyToolPayload(right)
-      case 'draw':
-        return right.type === 'draw' && left.mode === right.mode
-      default:
-        return true
-    }
-  }
-
   const setTool = (
     nextTool: Tool
   ) => {
-    const currentTool = editor.tool.get()
+    const currentTool = stores.tool.get()
     const toolChanged = !isSameTool(currentTool, nextTool)
-    const commands: EditorCommand[] = []
 
-    if (toolChanged || nextTool.type === 'draw') {
-      commands.push(
-        {
-          type: 'edit.set',
-          edit: null
-        },
-        {
-          type: 'selection.set',
-          selection: {
-            nodeIds: [],
-            edgeIds: []
-          }
-        }
-      )
-    }
+    state.write(({
+      writer
+    }) => {
+      if (toolChanged || nextTool.type === 'draw') {
+        writer.edit.clear()
+        writer.selection.clear()
+      }
 
-    if (toolChanged) {
-      commands.push({
-        type: 'tool.set',
-        tool: nextTool
-      })
-    }
+      if (toolChanged) {
+        writer.tool.set(nextTool)
+      }
+    })
+  }
 
-    if (commands.length > 0) {
-      editor.dispatch(commands)
-    }
+  const readActiveDrawBrush = () => {
+    const tool = stores.tool.get()
+    return tool.type === 'draw' && hasDrawBrush(tool.mode)
+      ? tool.mode
+      : DEFAULT_DRAW_BRUSH
   }
 
   const selection = createSelectionActions({
@@ -182,12 +127,13 @@ export const createEditorActionsApi = ({
     canvas: write.canvas,
     group: write.group,
     node: write.node,
-    selection: editor.selection,
-    dispatch: editor.dispatch,
+    selection: stores.selection,
+    state,
     defaults
   })
   const edit = createEditController({
-    editor,
+    edit: stores.edit,
+    state,
     document,
     nodeType,
     write
@@ -195,174 +141,236 @@ export const createEditorActionsApi = ({
   const edge = createEdgeActions({
     graph: projection,
     document,
-    editor,
+    editSession: stores.edit,
+    state,
     write,
     edit
   })
   const mindmap = createMindmapActionApi({
     graph: projection,
     document,
-    editor,
+    state,
     tasks,
     write,
     edit
   })
   const clipboard = createClipboardActions({
-    editor: {
-      documentSource: document,
-      document: write.document,
-      dispatch: editor.dispatch,
-      selection: {
-        delete: selection.delete
+    documentSource: document,
+    document: write.document,
+    selection,
+    selectionState: stores.selection,
+    state,
+    viewport
+  })
+
+  const sessionTool: ToolActions = {
+    set: setTool,
+    select: () => setTool({
+      type: 'select'
+    }),
+    draw: (mode) => setTool({
+      type: 'draw',
+      mode
+    }),
+    edge: (template) => setTool({
+      type: 'edge',
+      template
+    }),
+    insert: (template) => setTool({
+      type: 'insert',
+      template
+    }),
+    hand: () => setTool({
+      type: 'hand'
+    })
+  }
+
+  const sessionDraw: DrawActions = {
+    set: (drawState) => {
+      state.write(({
+        writer
+      }) => {
+        writer.draw.set(drawState)
+      })
+    },
+    slot: (slot) => {
+      state.write(({
+        writer
+      }) => {
+        writer.draw.slot(readActiveDrawBrush(), slot)
+      })
+    },
+    patch: (patch) => {
+      state.write(({
+        writer
+      }) => {
+        writer.draw.patch(patch)
+      })
+    }
+  }
+
+  const readHover = (): EditorHoverState => state.read().hover ?? EMPTY_HOVER_STATE
+  const readPreview = (): PreviewInput => stores.preview.get() ?? EMPTY_PREVIEW_STATE
+
+  const sessionHover: HoverSessionActions = {
+    get: readHover,
+    set: (hoverState) => {
+      state.write(({
+        writer
+      }) => {
+        writer.hover.set(hoverState)
+      })
+    },
+    clear: () => {
+      state.write(({
+        writer
+      }) => {
+        writer.hover.clear()
+      })
+    },
+    edgeGuide: {
+      get: () => readPreview().edgeGuide,
+      set: (value) => {
+        state.write(({
+          writer
+        }) => {
+          writer.preview.edgeGuide.set(value)
+        })
       },
-      selectionState: editor.selection,
-      viewport: {
-        get: editor.viewport.get
+      clear: () => {
+        state.write(({
+          writer
+        }) => {
+          writer.preview.edgeGuide.clear()
+        })
       }
     }
-  })
+  }
+
+  const sessionPreview: PreviewSessionActions = {
+    get: readPreview,
+    reset: () => {
+      state.write(({
+        writer
+      }) => {
+        writer.preview.reset()
+      })
+    },
+    clear: () => {
+      state.write(({
+        writer
+      }) => {
+        writer.preview.reset()
+      })
+    }
+  }
 
   return {
     app: {
       replace: (nextDocument) => write.document.replace(nextDocument)
     },
-    tool: {
-      set: (nextTool) => setTool(nextTool),
-      select: () => setTool({
-        type: 'select'
-      }),
-      draw: (mode) => setTool({
-        type: 'draw',
-        mode
-      }),
-      edge: (template) => setTool({
-        type: 'edge',
-        template
-      }),
-      insert: (template) => setTool({
-        type: 'insert',
-        template
-      }),
-      hand: () => setTool({
-        type: 'hand'
-      })
-    },
     viewport: {
-      set: (viewport) => {
-        editor.viewport.set(viewport)
+      set: (nextViewport) => {
+        viewport.set(nextViewport)
       },
       panBy: (delta) => {
-        editor.viewport.panBy(delta)
+        viewport.panBy(delta)
       },
       panScreenBy: (deltaScreen) => {
-        editor.viewport.panScreenBy(deltaScreen)
+        viewport.panScreenBy(deltaScreen)
       },
       zoomTo: (zoom, anchor) => {
-        editor.viewport.zoomTo(zoom, anchor)
+        viewport.zoomTo(zoom, anchor)
       },
       fit: (rect, options) => {
-        editor.viewport.fit(rect, options)
+        viewport.fit(rect, options)
       },
       reset: () => {
-        editor.viewport.reset()
+        viewport.reset()
       },
       wheel: (input, wheelSensitivity = 1) => {
-        editor.viewport.wheel(
+        viewport.wheel(
           input,
           wheelSensitivity
         )
       }
+    } satisfies ViewportActions,
+    session: {
+      tool: sessionTool,
+      draw: sessionDraw,
+      selection,
+      edit: edit.actions,
+      hover: sessionHover,
+      preview: sessionPreview
     },
-    draw: {
-      set: (nextState) => {
-        dispatchDraw(nextState)
-      },
-      slot: (slot) => {
-        dispatchDraw(setDrawSlot(
-          editor.draw.get(),
-          readActiveDrawBrush(),
-          slot
-        ))
-      },
-      patch: (patch) => {
-        const brush = readActiveDrawBrush()
-        const currentSlot = editor.draw.get()[brush].slot
-        dispatchDraw(patchDrawStyle(
-          editor.draw.get(),
-          brush,
-          currentSlot,
-          patch
-        ))
-      }
-    },
-    selection,
-    edit: edit.actions,
-    node: {
-      create: (input) => write.node.create(input),
-      patch: (ids, update, options) => {
-        if (nodeApi.update.isEmpty(update)) {
-          return undefined
-        }
+    document: {
+      node: {
+        create: (input) => write.node.create(input),
+        patch: (ids, update, options) => {
+          if (nodeApi.update.isEmpty(update)) {
+            return undefined
+          }
 
-        const updates = ids.flatMap((id) => document.node(id)
-          ? [{
-              id,
-              input: update
-            }]
-          : [])
-        if (!updates.length) {
-          return undefined
-        }
+          const updates = ids.flatMap((id) => document.node(id)
+            ? [{
+                id,
+                input: update
+              }]
+            : [])
+          if (!updates.length) {
+            return undefined
+          }
 
-        return write.node.updateMany(updates, {
-          origin: options?.origin
-        })
+          return write.node.updateMany(updates, {
+            origin: options?.origin
+          })
+        },
+        move: (input) => write.node.move(input),
+        align: (ids, mode) => write.node.align(ids, mode),
+        distribute: (ids, mode) => write.node.distribute(ids, mode),
+        delete: (ids) => write.node.delete(ids),
+        duplicate: (ids) => write.node.duplicate(ids),
+        lock: {
+          set: (nodeIds, locked) => write.node.lock.set(nodeIds, locked),
+          toggle: (nodeIds) => write.node.lock.toggle(nodeIds)
+        },
+        shape: {
+          set: (nodeIds, kind) => write.node.shape.set(nodeIds, kind)
+        },
+        style: {
+          fill: (nodeIds, value) => write.node.style.fill(nodeIds, value),
+          fillOpacity: (nodeIds, value) => write.node.style.fillOpacity(nodeIds, value),
+          stroke: (nodeIds, value) => write.node.style.stroke(nodeIds, value),
+          strokeWidth: (nodeIds, value) => write.node.style.strokeWidth(nodeIds, value),
+          strokeOpacity: (nodeIds, value) => write.node.style.strokeOpacity(nodeIds, value),
+          strokeDash: (nodeIds, value) => write.node.style.strokeDash(nodeIds, value),
+          opacity: (nodeIds, value) => write.node.style.opacity(nodeIds, value),
+          textColor: (nodeIds, value) => write.node.style.textColor(nodeIds, value)
+        },
+        text: {
+          commit: (input) => write.node.text.commit(input),
+          color: (nodeIds, color) => write.node.text.color(nodeIds, color),
+          size: (input) => write.node.text.size(input),
+          weight: (nodeIds, weight) => write.node.text.weight(nodeIds, weight),
+          italic: (nodeIds, italic) => write.node.text.italic(nodeIds, italic),
+          align: (nodeIds, align) => write.node.text.align(nodeIds, align)
+        }
       },
-      move: (input) => write.node.move(input),
-      align: (ids, mode) => write.node.align(ids, mode),
-      distribute: (ids, mode) => write.node.distribute(ids, mode),
-      delete: (ids) => write.node.delete(ids),
-      duplicate: (ids) => write.node.duplicate(ids),
-      lock: {
-        set: (nodeIds, locked) => write.node.lock.set(nodeIds, locked),
-        toggle: (nodeIds) => write.node.lock.toggle(nodeIds)
-      },
-      shape: {
-        set: (nodeIds, kind) => write.node.shape.set(nodeIds, kind)
-      },
-      style: {
-        fill: (nodeIds, value) => write.node.style.fill(nodeIds, value),
-        fillOpacity: (nodeIds, value) => write.node.style.fillOpacity(nodeIds, value),
-        stroke: (nodeIds, value) => write.node.style.stroke(nodeIds, value),
-        strokeWidth: (nodeIds, value) => write.node.style.strokeWidth(nodeIds, value),
-        strokeOpacity: (nodeIds, value) => write.node.style.strokeOpacity(nodeIds, value),
-        strokeDash: (nodeIds, value) => write.node.style.strokeDash(nodeIds, value),
-        opacity: (nodeIds, value) => write.node.style.opacity(nodeIds, value),
-        textColor: (nodeIds, value) => write.node.style.textColor(nodeIds, value)
-      },
-      text: {
-        commit: (input) => write.node.text.commit(input),
-        color: (nodeIds, color) => write.node.text.color(nodeIds, color),
-        size: (input) => write.node.text.size(input),
-        weight: (nodeIds, weight) => write.node.text.weight(nodeIds, weight),
-        italic: (nodeIds, italic) => write.node.text.italic(nodeIds, italic),
-        align: (nodeIds, align) => write.node.text.align(nodeIds, align)
-      }
-    },
-    edge,
-    mindmap,
-    clipboard,
-    history: {
-      undo: () => write.history.undo(),
-      redo: () => write.history.redo(),
-      clear: () => {
-        write.history.clear()
-      }
+      edge,
+      mindmap,
+      clipboard,
+      history: {
+        undo: () => write.history.undo(),
+        redo: () => write.history.redo(),
+        clear: () => {
+          write.history.clear()
+        }
+      } satisfies HistoryActions
     }
   } satisfies {
     app: AppActions
-    tool: ToolActions
-    clipboard: ClipboardActions
-    history: HistoryActions
-  } & EditorActions
+    viewport: ViewportActions
+    session: EditorActions['session']
+    document: EditorActions['document']
+  }
 }

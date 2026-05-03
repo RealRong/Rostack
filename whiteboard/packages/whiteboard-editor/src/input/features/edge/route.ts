@@ -274,7 +274,7 @@ export const removeEdgeRoutePoint = (
     throw new Error(`Edge route point ${edgeId}:${index} not found.`)
   }
 
-  editor.actions.edge.route.set(edgeId, patch.route ?? {
+  editor.actions.document.edge.route.set(edgeId, patch.route ?? {
     kind: 'auto'
   })
 }
@@ -465,7 +465,7 @@ const submitEdgeRouteCommit = (
   }
 
   if (commit.kind === 'update-route') {
-    editor.actions.edge.route.set(commit.edgeId, commit.route ?? {
+    editor.actions.document.edge.route.set(commit.edgeId, commit.route ?? {
       kind: 'auto'
     })
     return
@@ -476,7 +476,7 @@ const submitEdgeRouteCommit = (
     ? readRoutePointIdAtIndex(edge, commit.index)
     : undefined
   if (pointId) {
-    editor.actions.edge.route.movePoint(commit.edgeId, commit.index, commit.point)
+    editor.actions.document.edge.route.movePoint(commit.edgeId, commit.index, commit.point)
   }
 }
 

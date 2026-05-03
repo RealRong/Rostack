@@ -72,26 +72,28 @@ export const createInteractionRuntime = ({
   ) => pointerId === undefined || input.pointerId === pointerId
 
   const syncActive = (running: RunningSession | null) => {
-    const current = editor.read().state.interaction
+    const current = editor.state.read().state.interaction
     if (!running) {
-      editor.dispatch({
-        type: 'interaction.set',
-        interaction: {
+      editor.state.write(({
+        writer
+      }) => {
+        writer.interaction.set({
           mode: 'idle',
           chrome: true,
           space: current.space
-        }
+        })
       })
       return
     }
 
-    editor.dispatch({
-      type: 'interaction.set',
-      interaction: {
+    editor.state.write(({
+      writer
+    }) => {
+      writer.interaction.set({
         mode: running.session.mode,
         chrome: Boolean(running.session.chrome),
         space: current.space
-      }
+      })
     })
   }
 
@@ -297,15 +299,16 @@ export const createInteractionRuntime = ({
       let handled = false
 
       if (input.code === 'Space') {
-        if (!editor.read().state.interaction.space) {
-          const current = editor.read().state.interaction
-          editor.dispatch({
-            type: 'interaction.set',
-            interaction: {
+        if (!editor.state.read().state.interaction.space) {
+          const current = editor.state.read().state.interaction
+          editor.state.write(({
+            writer
+          }) => {
+            writer.interaction.set({
               mode: current.mode,
               chrome: current.chrome,
               space: true
-            }
+            })
           })
         }
         handled = true
@@ -328,15 +331,16 @@ export const createInteractionRuntime = ({
       let handled = false
 
       if (input.code === 'Space') {
-        if (editor.read().state.interaction.space) {
-          const current = editor.read().state.interaction
-          editor.dispatch({
-            type: 'interaction.set',
-            interaction: {
+        if (editor.state.read().state.interaction.space) {
+          const current = editor.state.read().state.interaction
+          editor.state.write(({
+            writer
+          }) => {
+            writer.interaction.set({
               mode: current.mode,
               chrome: current.chrome,
               space: false
-            }
+            })
           })
         }
         handled = true
@@ -351,15 +355,16 @@ export const createInteractionRuntime = ({
       return true
     },
     handleBlur: () => {
-      if (editor.read().state.interaction.space) {
-        const currentInteraction = editor.read().state.interaction
-        editor.dispatch({
-          type: 'interaction.set',
-          interaction: {
+      if (editor.state.read().state.interaction.space) {
+        const currentInteraction = editor.state.read().state.interaction
+        editor.state.write(({
+          writer
+        }) => {
+          writer.interaction.set({
             mode: currentInteraction.mode,
             chrome: currentInteraction.chrome,
             space: false
-          }
+          })
         })
       }
 

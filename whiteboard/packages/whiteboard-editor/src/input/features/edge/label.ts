@@ -15,8 +15,8 @@ import type {
   PointerDownInput
 } from '@whiteboard/editor/api/input'
 import { createPressDragSession } from '@whiteboard/editor/input/internals/press'
-import type { EditorCommand } from '@whiteboard/editor/state/intents'
 import type { Editor } from '@whiteboard/editor/api/editor'
+import type { EditSession } from '@whiteboard/editor/schema/edit'
 
 const startEdgeLabelEdit = (input: {
   editor: Editor
@@ -29,7 +29,7 @@ const startEdgeLabelEdit = (input: {
       y: number
     }
   }
-}) => {
+}): EditSession => {
   const edge = input.editor.document.edge(input.edgeId)
   const label = edge?.labels?.find((entry) => entry.id === input.labelId)
   if (!edge || !label) {
@@ -37,16 +37,13 @@ const startEdgeLabelEdit = (input: {
   }
 
   return {
-    type: 'edit.set',
-    edit: {
-      kind: 'edge-label',
-      edgeId: input.edgeId,
-      labelId: input.labelId,
-      text: typeof label.text === 'string' ? label.text : '',
-      composing: false,
-      caret: input.caret
-    }
-  } satisfies EditorCommand
+    kind: 'edge-label',
+    edgeId: input.edgeId,
+    labelId: input.labelId,
+    text: typeof label.text === 'string' ? label.text : '',
+    composing: false,
+    caret: input.caret
+  }
 }
 
 type EdgeLabelDragDraft = {
@@ -199,7 +196,7 @@ const createEdgeLabelDragSession = (
       step(input.world)
 
       if (state.draft) {
-        editor.actions.edge.label.patch(
+        editor.actions.document.edge.label.patch(
           state.edgeId,
           state.labelId,
           state.draft
@@ -299,26 +296,22 @@ export const createEdgeLabelPressSession = (
       }
     })
     if (!editCommand) {
-      editor.dispatch({
-        type: 'selection.set',
-        selection: {
-          nodeIds: [],
-          edgeIds: [input.edgeId]
-        }
+      editor.actions.session.selection.replace({
+        nodeIds: [],
+        edgeIds: [input.edgeId]
       })
       return
     }
 
-    editor.dispatch([
-      {
-        type: 'selection.set',
-        selection: {
-          nodeIds: [],
-          edgeIds: [input.edgeId]
-        }
-      },
-      editCommand
-    ])
+    editor.state.write(({
+      writer
+    }) => {
+      writer.selection.set({
+        nodeIds: [],
+        edgeIds: [input.edgeId]
+      })
+      writer.edit.set(editCommand)
+    })
   }
 })
 
@@ -340,12 +333,9 @@ export const startEdgeLabelPress = (
   }
 
   if (!isSingleSelectedEdge(editor, pointer.pick.id)) {
-    editor.dispatch({
-      type: 'selection.set',
-      selection: {
-        nodeIds: [],
-        edgeIds: [pointer.pick.id]
-      }
+    editor.actions.session.selection.replace({
+      nodeIds: [],
+      edgeIds: [pointer.pick.id]
     })
     return 'handled'
   }

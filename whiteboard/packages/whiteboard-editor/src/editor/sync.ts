@@ -30,42 +30,15 @@ const resetEditorState = (
     writer,
     snapshot
   }) => {
-    writer.state.patch({
-      edit: null,
-      selection: {
-        nodeIds: [],
-        edgeIds: []
-      },
-      interaction: {
-        mode: 'idle',
-        chrome: false,
-        space: false
-      }
-    })
+    writer.edit.clear()
+    writer.selection.clear()
+    writer.interaction.clear()
 
     if (!isEditorHoverStateEqual(snapshot.hover, EMPTY_HOVER_STATE)) {
-      writer.hover.patch(EMPTY_HOVER_STATE)
+      writer.hover.clear()
     }
 
-    Object.keys(snapshot.preview.node).forEach((id) => {
-      writer.preview.node.delete(id)
-    })
-    Object.keys(snapshot.preview.edge).forEach((id) => {
-      writer.preview.edge.delete(id)
-    })
-    Object.keys(snapshot.preview.mindmap).forEach((id) => {
-      writer.preview.mindmap.delete(id)
-    })
-    writer.preview.selection.patch({
-      marquee: undefined,
-      guides: []
-    })
-    writer.preview.draw.patch({
-      current: null
-    })
-    writer.preview.edgeGuide.patch({
-      current: undefined
-    })
+    writer.preview.reset()
   })
 }
 
@@ -88,11 +61,9 @@ const reconcileEditorState = (input: {
       !equal.sameOrder(nextNodeIds, snapshot.state.selection.nodeIds)
       || !equal.sameOrder(nextEdgeIds, snapshot.state.selection.edgeIds)
     ) {
-      writer.state.patch({
-        selection: {
-          nodeIds: nextNodeIds,
-          edgeIds: nextEdgeIds
-        }
+      writer.selection.set({
+        nodeIds: nextNodeIds,
+        edgeIds: nextEdgeIds
       })
     }
 
@@ -106,9 +77,7 @@ const reconcileEditorState = (input: {
     )
 
     if (shouldClearEdit) {
-      writer.state.patch({
-        edit: null
-      })
+      writer.edit.clear()
     }
   })
 }
@@ -136,7 +105,7 @@ const pushSceneUpdate = (input: {
       delta: input.documentDelta
     },
     editor: {
-      snapshot: input.state.snapshot(),
+      snapshot: input.state.read(),
       delta: input.editorDelta
     }
   })
@@ -165,7 +134,7 @@ export const attachEditorSync = (input: {
     return true
   }
 
-  const unsubscribeEditorCommits = input.state.commits.subscribe((commit) => {
+  const unsubscribeEditorCommits = input.state.subscribe((commit) => {
     if (bufferStateDelta(commit)) {
       return
     }
@@ -209,7 +178,7 @@ export const attachEditorSync = (input: {
     input.scene.update({
       document: current.document,
       editor: {
-        snapshot: input.state.snapshot(),
+        snapshot: input.state.read(),
         delta: current.editorDelta
       }
     })

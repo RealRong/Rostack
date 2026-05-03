@@ -266,8 +266,8 @@ describe('text wrap runtime', () => {
       height: 24
     })
 
-    editor.actions.edit.startNode('text-1', 'text')
-    editor.actions.edit.input('hello world!!!')
+    editor.actions.session.edit.startNode('text-1', 'text')
+    editor.actions.session.edit.input('hello world!!!')
 
     expect(editor.scene.ui.state.edit.get()).toMatchObject({
       kind: 'node',
@@ -286,7 +286,7 @@ describe('text wrap runtime', () => {
   it('preserves wrap width when entering edit after a text patch commit', async () => {
     const editor = createTextEditor()
 
-    editor.actions.node.patch(['text-1'], {
+    editor.actions.document.node.patch(['text-1'], {
       fields: {
         size: {
           width: 180,
@@ -308,8 +308,8 @@ describe('text wrap runtime', () => {
       height: 24
     })
 
-    editor.actions.edit.startNode('text-1', 'text')
-    editor.actions.edit.input('this stays wrapped at the committed width')
+    editor.actions.session.edit.startNode('text-1', 'text')
+    editor.actions.session.edit.input('this stays wrapped at the committed width')
 
     expect(editor.scene.ui.state.edit.get()).toMatchObject({
       kind: 'node',
@@ -324,7 +324,7 @@ describe('text wrap runtime', () => {
   it('recomputes wrap text size when font size changes via text command', () => {
     const editor = createTextEditor()
 
-    editor.actions.node.patch(['text-1'], {
+    editor.actions.document.node.patch(['text-1'], {
       fields: {
         size: {
           width: 180,
@@ -337,7 +337,7 @@ describe('text wrap runtime', () => {
       }
     })
 
-    editor.actions.node.text.size({
+    editor.actions.document.node.text.size({
       nodeIds: ['text-1'],
       value: 20
     })
@@ -354,7 +354,7 @@ describe('text wrap runtime', () => {
   it('recomputes wrap text size when font size changes via generic node patch', () => {
     const editor = createTextEditor()
 
-    editor.actions.node.patch(['text-1'], {
+    editor.actions.document.node.patch(['text-1'], {
       fields: {
         size: {
           width: 180,
@@ -367,7 +367,7 @@ describe('text wrap runtime', () => {
       }
     })
 
-    editor.actions.node.patch(
+    editor.actions.document.node.patch(
       ['text-1'],
       {
         record: {
@@ -390,7 +390,7 @@ describe('sticky fit runtime', () => {
   it('does not recompute auto font size when sticky only rotates', () => {
     const editor = createStickyEditor()
 
-    editor.actions.node.patch(
+    editor.actions.document.node.patch(
       ['sticky-1'],
       {
         fields: {
@@ -408,7 +408,7 @@ describe('sticky fit runtime', () => {
   it('recomputes auto font size when sticky size changes', () => {
     const editor = createStickyEditor()
 
-    editor.actions.node.patch(
+    editor.actions.document.node.patch(
       ['sticky-1'],
       {
         fields: {
@@ -432,7 +432,7 @@ describe('sticky fit runtime', () => {
   it('switches sticky to fixed mode when font size is manually set', () => {
     const editor = createStickyEditor()
 
-    editor.actions.node.patch(
+    editor.actions.document.node.patch(
       ['sticky-1'],
       {
         record: {

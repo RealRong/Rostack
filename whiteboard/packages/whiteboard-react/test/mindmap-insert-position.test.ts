@@ -136,7 +136,7 @@ describe('mindmap insert position', () => {
     }
     })
 
-    const created = editor.actions.mindmap.create({
+    const created = editor.actions.document.mindmap.create({
       template: product.mindmap.template.build({
         preset: 'mindmap.underline-split'
       })
@@ -150,7 +150,7 @@ describe('mindmap insert position', () => {
     const beforeRoot = editor.scene.nodes.get(created.data.rootId)?.geometry.rect
     expect(beforeRoot).toBeDefined()
 
-    editor.actions.node.patch([created.data.rootId], {
+    editor.actions.document.node.patch([created.data.rootId], {
       fields: {
         size: {
           width: 320,

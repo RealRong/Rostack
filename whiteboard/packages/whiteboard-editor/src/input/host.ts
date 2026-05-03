@@ -1,5 +1,4 @@
 import type { WhiteboardLayoutService } from '@whiteboard/core/layout'
-import type { EditorCommand } from '@whiteboard/editor/state/intents'
 import type { Editor, EditorInputHost } from '@whiteboard/editor/api/editor'
 import { createInteractionRuntime } from '@whiteboard/editor/input/core/runtime'
 import { createDrawBinding } from '@whiteboard/editor/input/features/draw'
@@ -43,11 +42,11 @@ export const createEditorInputHost = ({
 
   const edgeHover = createEdgeHoverService(
     {
-      readTool: () => editor.read().state.tool,
+      readTool: () => editor.state.read().state.tool,
       snap: editor.runtime.snap
     },
     {
-      read: () => editor.read().preview.edgeGuide,
+      read: () => editor.state.read().preview.edgeGuide,
       write: (nextEdgeGuide) => {
         editor.state.write(({
           writer,
@@ -60,9 +59,7 @@ export const createEditorInputHost = ({
             return
           }
 
-          writer.preview.edgeGuide.patch({
-            current: nextEdgeGuide
-          })
+          writer.preview.edgeGuide.set(nextEdgeGuide)
         })
       }
     }
@@ -74,31 +71,20 @@ export const createEditorInputHost = ({
       edgeIds?: readonly string[]
     }
   ) => {
-    editor.dispatch({
-      type: 'selection.set',
-      selection: {
-        nodeIds: selection.nodeIds ? [...selection.nodeIds] : [],
-        edgeIds: selection.edgeIds ? [...selection.edgeIds] : []
-      }
-    } satisfies EditorCommand)
+    editor.actions.session.selection.replace({
+      nodeIds: selection.nodeIds ? [...selection.nodeIds] : [],
+      edgeIds: selection.edgeIds ? [...selection.edgeIds] : []
+    })
   }
 
   const updateInteraction = (
-    update: (
-      current: ReturnType<typeof editor.read>['hover']
-    ) => ReturnType<typeof editor.read>['hover']
+    update: (current: ReturnType<typeof editor.state.read>['hover']) => ReturnType<typeof editor.state.read>['hover']
   ) => {
-    editor.dispatch({
-      type: 'hover.set',
-      hover: update(editor.read().hover)
-    } satisfies EditorCommand)
+    editor.actions.session.hover.set(update(editor.state.read().hover))
   }
 
   const clearTransientState = () => {
-    editor.dispatch({
-      type: 'hover.set',
-      hover: EMPTY_HOVER_STATE
-    } satisfies EditorCommand)
+    editor.actions.session.hover.set(EMPTY_HOVER_STATE)
     edgeHover.clear()
   }
 

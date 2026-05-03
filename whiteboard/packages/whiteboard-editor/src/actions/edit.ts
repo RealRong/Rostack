@@ -5,11 +5,9 @@ import type {
 } from '@whiteboard/editor/actions/types'
 import type { DocumentFrame } from '@whiteboard/editor-scene'
 import type { EditField, EditSession } from '@whiteboard/editor/schema/edit'
-import type {
-  EditorCommand,
-  EditorDispatchInput
-} from '@whiteboard/editor/state/intents'
 import type { NodeTypeSupport } from '@whiteboard/editor/node'
+import type { EditorStateStores } from '@whiteboard/editor/scene-ui/state'
+import type { EditorStateStoreFacade } from '@whiteboard/editor/state/runtime'
 import type { EditorWrite } from '@whiteboard/editor/write'
 
 const resolveNodeCommitValue = (input: {
@@ -61,21 +59,18 @@ export interface EditController {
 }
 
 export const createEditController = (input: {
-  editor: {
-    edit: {
-      get: () => EditSession
-    }
-    dispatch: (command: EditorDispatchInput) => void
-  }
+  edit: Pick<EditorStateStores['edit'], 'get'>
+  state: Pick<EditorStateStoreFacade, 'read' | 'write'>
   document: Pick<DocumentFrame, 'node' | 'edge'>
   nodeType: Pick<NodeTypeSupport, 'edit'>
   write: Pick<EditorWrite, 'node' | 'edge'>
 }): EditController => {
   const clearEdit = () => {
-    input.editor.dispatch({
-      type: 'edit.set',
-      edit: null
-    } satisfies EditorCommand)
+    input.state.write(({
+      writer
+    }) => {
+      writer.edit.clear()
+    })
   }
 
   const replaceSelection = (
@@ -83,27 +78,30 @@ export const createEditController = (input: {
       nodeIds?: readonly string[]
       edgeIds?: readonly string[]
     }
-  ): EditorCommand => ({
-    type: 'selection.set',
-    selection: {
-      nodeIds: selection.nodeIds ? [...selection.nodeIds] : [],
-      edgeIds: selection.edgeIds ? [...selection.edgeIds] : []
-    }
-  })
+  ) => {
+    input.state.write(({
+      writer
+    }) => {
+      writer.selection.set({
+        nodeIds: selection.nodeIds ? [...selection.nodeIds] : [],
+        edgeIds: selection.edgeIds ? [...selection.edgeIds] : []
+      })
+    })
+  }
 
   const updateEdit = (
-    patch: (current: NonNullable<ReturnType<typeof input.editor.edit.get>>) => NonNullable<ReturnType<typeof input.editor.edit.get>>
+    patch: (current: NonNullable<ReturnType<typeof input.edit.get>>) => NonNullable<ReturnType<typeof input.edit.get>>
   ) => {
-    input.editor.dispatch((state) => {
-      const current = state.state.edit
+    input.state.write(({
+      writer,
+      snapshot
+    }) => {
+      const current = snapshot.state.edit
       if (!current) {
-        return null
+        return
       }
 
-      return {
-        type: 'edit.set',
-        edit: patch(current)
-      } satisfies EditorCommand
+      writer.edit.set(patch(current))
     })
   }
 
@@ -111,7 +109,7 @@ export const createEditController = (input: {
     nodeId,
     field,
     caret
-  }: StartNodeEditInput): EditorCommand | null => {
+  }: StartNodeEditInput): EditSession => {
     const committed = input.document.node(nodeId)
     if (!committed) {
       return null
@@ -124,25 +122,22 @@ export const createEditController = (input: {
 
     const value = committed.data?.[field]
     return {
-      type: 'edit.set',
-      edit: {
-        kind: 'node',
-        nodeId,
-        field,
-        text: typeof value === 'string' ? value : '',
-        composing: false,
-        caret: caret ?? {
-          kind: 'end'
-        }
+      kind: 'node',
+      nodeId,
+      field,
+      text: typeof value === 'string' ? value : '',
+      composing: false,
+      caret: caret ?? {
+        kind: 'end'
       }
-    } satisfies EditorCommand
+    }
   }
 
   const startEdgeLabel = ({
     edgeId,
     labelId,
     caret
-  }: StartEdgeLabelEditInput): EditorCommand | null => {
+  }: StartEdgeLabelEditInput): EditSession => {
     const edge = input.document.edge(edgeId)
     const label = edge?.labels?.find((entry: EdgeLabel) => entry.id === labelId)
     if (!edge || !label) {
@@ -150,18 +145,15 @@ export const createEditController = (input: {
     }
 
     return {
-      type: 'edit.set',
-      edit: {
-        kind: 'edge-label',
-        edgeId,
-        labelId,
-        text: typeof label.text === 'string' ? label.text : '',
-        composing: false,
-        caret: caret ?? {
-          kind: 'end'
-        }
+      kind: 'edge-label',
+      edgeId,
+      labelId,
+      text: typeof label.text === 'string' ? label.text : '',
+      composing: false,
+      caret: caret ?? {
+        kind: 'end'
       }
-    } satisfies EditorCommand
+    }
   }
 
   const clearEditingEdgeLabel = ({
@@ -171,7 +163,7 @@ export const createEditController = (input: {
     edgeId: string
     labelId: string
   }) => {
-    const currentEdit = input.editor.edit.get()
+    const currentEdit = input.edit.get()
     if (
       currentEdit
       && currentEdit.kind === 'edge-label'
@@ -200,19 +192,22 @@ export const createEditController = (input: {
         field: 'text'
       })
       if (startEdit) {
-        input.editor.dispatch([
-          replaceSelection({
-            nodeIds: [nodeId]
-          }),
-          startEdit
-        ])
+        input.state.write(({
+          writer
+        }) => {
+          writer.selection.set({
+            nodeIds: [nodeId],
+            edgeIds: []
+          })
+          writer.edit.set(startEdit)
+        })
       }
       return
     }
 
-    input.editor.dispatch(replaceSelection({
+    replaceSelection({
       nodeIds: [nodeId]
-    }))
+    })
   }
 
   const focusMindmapRoot = ({
@@ -232,23 +227,26 @@ export const createEditController = (input: {
         field: 'text'
       })
       if (startEdit) {
-        input.editor.dispatch([
-          replaceSelection({
-            nodeIds: [nodeId]
-          }),
-          startEdit
-        ])
+        input.state.write(({
+          writer
+        }) => {
+          writer.selection.set({
+            nodeIds: [nodeId],
+            edgeIds: []
+          })
+          writer.edit.set(startEdit)
+        })
       }
       return
     }
 
-    input.editor.dispatch(replaceSelection({
+    replaceSelection({
       nodeIds: [nodeId]
-    }))
+    })
   }
 
   const cancel = () => {
-    const currentEdit = input.editor.edit.get()
+    const currentEdit = input.edit.get()
     if (!currentEdit) {
       return
     }
@@ -270,7 +268,7 @@ export const createEditController = (input: {
   }
 
   const commit = () => {
-    const currentEdit = input.editor.edit.get()
+    const currentEdit = input.edit.get()
     if (!currentEdit) {
       return
     }
@@ -325,23 +323,31 @@ export const createEditController = (input: {
   return {
     actions: {
       startNode: (nodeId, field, options) => {
-        const command = startNode({
+        const nextEdit = startNode({
           nodeId,
           field,
           caret: options?.caret
         })
-        if (command) {
-          input.editor.dispatch(command)
+        if (nextEdit) {
+          input.state.write(({
+            writer
+          }) => {
+            writer.edit.set(nextEdit)
+          })
         }
       },
       startEdgeLabel: (edgeId, labelId, options) => {
-        const command = startEdgeLabel({
+        const nextEdit = startEdgeLabel({
           edgeId,
           labelId,
           caret: options?.caret
         })
-        if (command) {
-          input.editor.dispatch(command)
+        if (nextEdit) {
+          input.state.write(({
+            writer
+          }) => {
+            writer.edit.set(nextEdit)
+          })
         }
       },
       input: (text) => updateEdit((current) => ({

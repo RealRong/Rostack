@@ -48,11 +48,13 @@ const createEditor = (input: {
     }
   },
   actions: {
-    edit: {
-      commit: input.commit
-    },
-    selection: {
-      clear: input.clear
+    session: {
+      edit: {
+        commit: input.commit
+      },
+      selection: {
+        clear: input.clear
+      }
     }
   }
 })

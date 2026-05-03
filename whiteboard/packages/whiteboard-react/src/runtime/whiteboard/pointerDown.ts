@@ -11,8 +11,10 @@ type BackgroundDismissEditor = {
     }
   }
   actions: {
-    edit: Pick<WhiteboardRuntime['actions']['edit'], 'commit'>
-    selection: Pick<WhiteboardRuntime['actions']['selection'], 'clear'>
+    session: {
+      edit: Pick<WhiteboardRuntime['actions']['session']['edit'], 'commit'>
+      selection: Pick<WhiteboardRuntime['actions']['session']['selection'], 'clear'>
+    }
   }
 }
 
@@ -37,7 +39,7 @@ export const dismissBackgroundEditSelection = ({
     return
   }
 
-  editor.actions.edit.commit()
+  editor.actions.session.edit.commit()
 
   const selection = editor.scene.ui.state.selection.get()
   if (
@@ -47,5 +49,5 @@ export const dismissBackgroundEditSelection = ({
     return
   }
 
-  editor.actions.selection.clear()
+  editor.actions.session.selection.clear()
 }

@@ -138,7 +138,7 @@ describe('transactional create layout', () => {
   it('measures text nodes before node.create commits', () => {
     const editor = createTestEditor()
 
-    const result = editor.actions.node.create({
+    const result = editor.actions.document.node.create({
       position: {
         x: 40,
         y: 24
@@ -165,7 +165,7 @@ describe('transactional create layout', () => {
   it('measures sticky auto font before node.create commits', () => {
     const editor = createTestEditor()
 
-    const result = editor.actions.node.create({
+    const result = editor.actions.document.node.create({
       position: {
         x: 0,
         y: 0
@@ -193,7 +193,7 @@ describe('transactional create layout', () => {
   it('measures mindmap root and inserted child before commit', () => {
     const editor = createTestEditor()
 
-    const created = editor.actions.mindmap.create({
+    const created = editor.actions.document.mindmap.create({
       template: product.mindmap.template.build({
         preset: 'mindmap.underline-split'
       })
@@ -209,7 +209,7 @@ describe('transactional create layout', () => {
       height: 44
     })
 
-    const inserted = editor.actions.mindmap.insertRelative({
+    const inserted = editor.actions.document.mindmap.insertRelative({
       id: created.data.mindmapId,
       targetNodeId: created.data.rootId,
       relation: 'child',

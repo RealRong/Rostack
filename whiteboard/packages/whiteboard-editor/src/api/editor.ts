@@ -4,11 +4,14 @@ import type {
   DocumentFrame,
   EditorScene
 } from '@whiteboard/editor-scene'
-import type { EditorActions as EditorWrite } from '@whiteboard/editor/actions/types'
+import type { EditorActions } from '@whiteboard/editor/actions/types'
 import type { SnapRuntime } from '@whiteboard/editor/input/core/snap'
-import type { EditorStateDocument } from '@whiteboard/editor/state/document'
-import type { EditorStateRuntime } from '@whiteboard/editor/state/runtime'
-import type { EditorDispatchInput } from '@whiteboard/editor/state/intents'
+import type {
+  EditorStateStoreFacade
+} from '@whiteboard/editor/state/runtime'
+import type {
+  EditorStateStores
+} from '@whiteboard/editor/scene-ui/state'
 import type { EditorViewport } from '@whiteboard/editor/state/viewport'
 import type { PointerMode } from '@whiteboard/editor/input/core/types'
 import type {
@@ -24,7 +27,7 @@ import type {
   EditorSceneUi,
 } from '@whiteboard/editor/scene-ui/types'
 import type { NodeTypeSupport } from '@whiteboard/editor/node'
-import type { EditorWrite as EditorMutationWrite } from '@whiteboard/editor/write'
+import type { EditorWrite } from '@whiteboard/editor/write'
 import type { BoardConfig } from '@whiteboard/engine/config'
 
 export type { EditorScene } from '@whiteboard/editor-scene'
@@ -66,13 +69,13 @@ export type Editor = {
   scene: EditorSceneFacade
   document: DocumentFrame
   input: EditorInputHost
-  actions: EditorWrite
-  write: EditorMutationWrite
-  state: Pick<EditorStateRuntime, 'snapshot' | 'reader' | 'write' | 'commits'>
+  actions: EditorActions
+  write: EditorWrite
+  state: EditorStateStoreFacade & {
+    stores: EditorStateStores
+  }
   viewport: EditorViewport
-  read: () => EditorStateDocument
   runtime: EditorRuntime
-  dispatch: (command: EditorDispatchInput | readonly EditorDispatchInput[]) => void
   dispose: () => void
 }
 

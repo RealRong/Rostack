@@ -76,11 +76,13 @@ const createDeps = () => {
       },
       runtime: {},
       actions: {
-        edge: {
-          route: {
-            set: setRoute,
-            insertPoint: insertRoute,
-            movePoint: updateRoute
+        document: {
+          edge: {
+            route: {
+              set: setRoute,
+              insertPoint: insertRoute,
+              movePoint: updateRoute
+            }
           }
         }
       }

@@ -140,29 +140,29 @@ export const runShortcut = (
 
   switch (action) {
     case 'selection.selectAll':
-      editor.actions.selection.selectAll()
+      editor.actions.session.selection.selectAll()
       return true
     case 'selection.clear':
       if (!editor.scene.ui.state.tool.is('select')) {
-        editor.actions.tool.select()
+        editor.actions.session.tool.select()
       }
-      editor.actions.selection.clear()
+      editor.actions.session.selection.clear()
       return true
     case 'selection.delete':
-      return editor.actions.selection.delete(selection)
+      return editor.actions.session.selection.delete(selection)
     case 'selection.duplicate': {
-      return editor.actions.selection.duplicate(selection)
+      return editor.actions.session.selection.duplicate(selection)
     }
     case 'group.merge': {
-      return editor.actions.selection.group(selection)
+      return editor.actions.session.selection.group(selection)
     }
     case 'group.ungroup': {
-      return editor.actions.selection.ungroup(selection)
+      return editor.actions.session.selection.ungroup(selection)
     }
     case 'history.undo':
-      return editor.actions.history.undo().ok
+      return editor.actions.document.history.undo().ok
     case 'history.redo':
-      return editor.actions.history.redo().ok
+      return editor.actions.document.history.redo().ok
     case 'mindmap.navigate.parent':
     case 'mindmap.navigate.first-child':
     case 'mindmap.navigate.prev-sibling':
@@ -189,7 +189,7 @@ export const runShortcut = (
         return false
       }
 
-      editor.actions.selection.replace({
+      editor.actions.session.selection.replace({
         nodeIds: [target]
       })
       return true
@@ -201,7 +201,7 @@ export const runShortcut = (
         return false
       }
 
-      return Boolean(editor.actions.mindmap.insertRelative({
+      return Boolean(editor.actions.document.mindmap.insertRelative({
         id: activeMindmap.treeId,
         targetNodeId: activeMindmap.nodeId,
         relation: action === 'mindmap.insert.child'

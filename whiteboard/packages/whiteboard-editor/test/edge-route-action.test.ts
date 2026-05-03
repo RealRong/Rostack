@@ -89,6 +89,103 @@ const createActions = (edge = createEdge()) => {
       target: vi.fn(() => undefined)
     }
   } as never
+  const state = {
+    read: vi.fn(() => ({
+      state: {
+        tool: { type: 'select' },
+        draw: DEFAULT_DRAW_STATE,
+        selection: {
+          nodeIds: [],
+          edgeIds: []
+        },
+        edit: null
+      },
+      hover: {
+        target: null,
+        anchor: null
+      },
+      preview: EMPTY_PREVIEW_STATE
+    })),
+    write: vi.fn((run: (context: {
+      writer: {
+        selection: {
+          set: (selection: {
+            nodeIds: readonly string[]
+            edgeIds: readonly string[]
+          }) => void
+        }
+        edit: {
+          clear: () => void
+          set: (edit: unknown) => void
+        }
+        tool: {
+          set: (tool: unknown) => void
+        }
+        draw: {
+          set: (draw: unknown) => void
+          slot: (brush: unknown, slot: unknown) => void
+          patch: (patch: unknown) => void
+        }
+        hover: {
+          set: (hover: unknown) => void
+          clear: () => void
+        }
+        preview: {
+          reset: () => void
+          edgeGuide: {
+            set: (value: unknown) => void
+            clear: () => void
+          }
+        }
+      }
+      snapshot: ReturnType<typeof state.read>
+    }) => void) => {
+      run({
+        writer: {
+          selection: {
+            set: vi.fn()
+          },
+          edit: {
+            clear: vi.fn(),
+            set: vi.fn()
+          },
+          tool: {
+            set: vi.fn()
+          },
+          draw: {
+            set: vi.fn(),
+            slot: vi.fn(),
+            patch: vi.fn()
+          },
+          hover: {
+            set: vi.fn(),
+            clear: vi.fn()
+          },
+          preview: {
+            reset: vi.fn(),
+            edgeGuide: {
+              set: vi.fn(),
+              clear: vi.fn()
+            }
+          }
+        },
+        snapshot: state.read()
+      })
+    })
+  } as never
+  const viewport = {
+    get: vi.fn(() => ({
+      center: { x: 0, y: 0 },
+      zoom: 1
+    })),
+    set: vi.fn(),
+    panBy: vi.fn(),
+    panScreenBy: vi.fn(),
+    zoomTo: vi.fn(),
+    fit: vi.fn(),
+    reset: vi.fn(),
+    wheel: vi.fn()
+  } as never
   const editor = {
     tool: {
       get: vi.fn(() => ({ type: 'select' }))
@@ -108,30 +205,8 @@ const createActions = (edge = createEdge()) => {
     preview: {
       get: vi.fn(() => EMPTY_PREVIEW_STATE)
     },
-    dispatch: vi.fn(),
-    viewport: {
-      read: {
-        get: vi.fn(() => ({
-          center: { x: 0, y: 0 },
-          zoom: 1
-        }))
-      },
-      resolve: {
-        set: vi.fn((viewport) => viewport),
-        panBy: vi.fn(() => undefined),
-        zoomTo: vi.fn(() => undefined),
-        fit: vi.fn(() => ({
-          center: { x: 0, y: 0 },
-          zoom: 1
-        })),
-        reset: vi.fn(() => ({
-          center: { x: 0, y: 0 },
-          zoom: 1
-        }))
-      },
-      setRect: vi.fn(),
-      setLimits: vi.fn()
-    }
+    state,
+    viewport
   } as never
   const layout = {
     draft: {
@@ -265,7 +340,15 @@ const createActions = (edge = createEdge()) => {
   const actions = createEditorActionsApi({
     document,
     projection: graph,
-    editor,
+    state,
+    stores: {
+      tool: editor.tool,
+      draw: editor.draw,
+      selection: editor.selection,
+      edit: editor.edit,
+      preview: editor.preview
+    },
+    viewport,
     tasks,
     write,
     nodeType: {
@@ -299,7 +382,7 @@ describe('edge route actions', () => {
       deleteRoute
     } = createActions()
 
-    actions.edge.route.insertPoint('edge-1', 1, {
+    actions.document.edge.route.insertPoint('edge-1', 1, {
       x: 50,
       y: 10
     })
@@ -327,7 +410,7 @@ describe('edge route actions', () => {
       clearRoute
     } = createActions()
 
-    actions.edge.route.movePoint('edge-1', 0, {
+    actions.document.edge.route.movePoint('edge-1', 0, {
       x: 60,
       y: 12
     })
@@ -356,7 +439,7 @@ describe('edge route actions', () => {
       clearRoute
     } = createActions()
 
-    actions.edge.route.removePoint('edge-1', 0)
+    actions.document.edge.route.removePoint('edge-1', 0)
 
     expect(setRoute).toHaveBeenCalledTimes(1)
     expect(setRoute).toHaveBeenCalledWith('edge-1', {

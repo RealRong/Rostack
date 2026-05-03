@@ -10,8 +10,8 @@ import type {
 } from '@whiteboard/core/selection'
 import type { SelectionMode } from '@whiteboard/core/node'
 import type { GroupId, Node, NodeId } from '@whiteboard/core/types'
-import type { EditorCommand } from '@whiteboard/editor/state/intents'
 import type { Editor } from '@whiteboard/editor/api/editor'
+import type { EditSession } from '@whiteboard/editor/schema/edit'
 
 type EditorDeps = {
   editor: Editor
@@ -28,7 +28,7 @@ const startNodeEdit = (input: {
       y: number
     }
   }
-}) => {
+}): EditSession => {
   const committed = input.ctx.editor.document.node(input.nodeId)
   if (!committed) {
     return null
@@ -41,16 +41,13 @@ const startNodeEdit = (input: {
 
   const value = committed.data?.[input.field]
   return {
-    type: 'edit.set',
-    edit: {
-      kind: 'node',
-      nodeId: input.nodeId,
-      field: input.field,
-      text: typeof value === 'string' ? value : '',
-      composing: false,
-      caret: input.caret
-    }
-  } satisfies EditorCommand
+    kind: 'node',
+    nodeId: input.nodeId,
+    field: input.field,
+    text: typeof value === 'string' ? value : '',
+    composing: false,
+    caret: input.caret
+  }
 }
 
 export type SelectionPressTarget<TField extends string = string> =
@@ -675,19 +672,10 @@ const applySelectionTap = (
 ) => {
   switch (tap.kind) {
     case 'clear':
-      ctx.editor.dispatch({
-        type: 'selection.set',
-        selection: {
-          nodeIds: [],
-          edgeIds: []
-        }
-      })
+      ctx.editor.actions.session.selection.clear()
       return
     case 'select':
-      ctx.editor.dispatch({
-        type: 'selection.set',
-        selection: tap.target
-      })
+      ctx.editor.actions.session.selection.replace(tap.target)
       return
     case 'edit-node': {
       const field = resolveSelectionEditField(
@@ -707,19 +695,15 @@ const applySelectionTap = (
         }
       })
       if (command) {
-        ctx.editor.dispatch(command)
+        ctx.editor.state.write(({
+          writer
+        }) => {
+          writer.edit.set(command)
+        })
       }
       return
     }
     case 'edit-field': {
-      const commands: EditorCommand[] = []
-      if (!selectionApi.target.equal(ctx.editor.scene.ui.selection.summary.get().target, tap.selection)) {
-        commands.push({
-          type: 'selection.set',
-          selection: tap.selection
-        })
-      }
-
       const editCommand = startNodeEdit({
         ctx,
         nodeId: tap.nodeId,
@@ -729,15 +713,16 @@ const applySelectionTap = (
           client: input.client
         }
       })
-      if (editCommand) {
-        commands.push(editCommand)
-      }
-
-      if (commands.length === 1) {
-        ctx.editor.dispatch(commands[0])
-      } else if (commands.length > 1) {
-        ctx.editor.dispatch(commands)
-      }
+      ctx.editor.state.write(({
+        writer
+      }) => {
+        if (!selectionApi.target.equal(ctx.editor.scene.ui.selection.summary.get().target, tap.selection)) {
+          writer.selection.set(tap.selection)
+        }
+        if (editCommand) {
+          writer.edit.set(editCommand)
+        }
+      })
     }
   }
 }

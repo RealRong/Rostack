@@ -95,7 +95,7 @@ export const SelectionActionMenu = ({
       label: 'Duplicate',
       disabled: !selectionCan.duplicate,
       onSelect: () => {
-        editor.actions.selection.duplicate(target)
+        editor.actions.session.selection.duplicate(target)
       }
     },
     {
@@ -112,7 +112,7 @@ export const SelectionActionMenu = ({
         key: item.key,
         label: item.label,
         onSelect: () => {
-          editor.actions.selection.order(target, item.mode)
+          editor.actions.session.selection.order(target, item.mode)
         }
       }))
     },
@@ -124,7 +124,7 @@ export const SelectionActionMenu = ({
             label: 'Group',
             disabled: !selectionCan.makeGroup,
             onSelect: () => {
-              editor.actions.selection.group(target)
+              editor.actions.session.selection.group(target)
             }
           }
         ]
@@ -137,7 +137,7 @@ export const SelectionActionMenu = ({
             label: 'Ungroup',
             disabled: !selectionCan.ungroup,
             onSelect: () => {
-              editor.actions.selection.ungroup(target)
+              editor.actions.session.selection.ungroup(target)
             }
           }
         ]
@@ -149,7 +149,7 @@ export const SelectionActionMenu = ({
             key: 'state.lock',
             label: readLockLabel(nodeStats.lock),
             onSelect: () => {
-              editor.actions.node.lock.set(
+              editor.actions.document.node.lock.set(
                 [...nodeIds],
                 nodeStats.lock !== 'all'
               )
@@ -164,7 +164,7 @@ export const SelectionActionMenu = ({
             key: 'structure.frame',
             label: 'Create frame',
             onSelect: () => {
-              editor.actions.selection.frame(summary.box!)
+              editor.actions.session.selection.frame(summary.box!)
             }
           }
         ]
@@ -192,7 +192,7 @@ export const SelectionActionMenu = ({
       tone: 'destructive' as const,
       disabled: !selectionCan.delete,
       onSelect: () => {
-        editor.actions.selection.delete(target)
+        editor.actions.session.selection.delete(target)
       }
     }
   ])

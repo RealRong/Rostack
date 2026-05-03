@@ -102,7 +102,7 @@ describe('mindmap drag gesture runtime', () => {
     })
 
     try {
-      const created = editor.actions.mindmap.create({
+      const created = editor.actions.document.mindmap.create({
         template: product.mindmap.template.build({
           preset: 'mindmap.underline-split'
         })
@@ -113,7 +113,7 @@ describe('mindmap drag gesture runtime', () => {
         return
       }
 
-      editor.actions.selection.replace({
+      editor.actions.session.selection.replace({
         nodeIds: [created.data.rootId]
       })
 

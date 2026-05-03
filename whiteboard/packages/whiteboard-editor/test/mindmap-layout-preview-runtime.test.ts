@@ -102,7 +102,7 @@ describe('mindmap layout preview runtime', () => {
     })
 
     try {
-      const created = editor.actions.mindmap.create({
+      const created = editor.actions.document.mindmap.create({
         template: product.mindmap.template.build({
           preset: 'mindmap.underline-split'
         })
@@ -113,7 +113,7 @@ describe('mindmap layout preview runtime', () => {
         return
       }
 
-      const inserted = editor.actions.mindmap.insertRelative({
+      const inserted = editor.actions.document.mindmap.insertRelative({
         id: created.data.mindmapId,
         targetNodeId: created.data.rootId,
         relation: 'child',
@@ -129,7 +129,7 @@ describe('mindmap layout preview runtime', () => {
         return
       }
 
-      editor.actions.selection.replace({
+      editor.actions.session.selection.replace({
         nodeIds: [created.data.rootId]
       })
 

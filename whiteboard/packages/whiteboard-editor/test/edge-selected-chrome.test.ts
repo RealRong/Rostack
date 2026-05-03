@@ -183,7 +183,7 @@ describe('edge.selectedChrome', () => {
   it('shows edit handles for a selected edge outside label editing', async () => {
     const editor = createEdgeEditor()
 
-    editor.actions.selection.replace({
+    editor.actions.session.selection.replace({
       edgeIds: ['edge-1']
     })
 
@@ -199,10 +199,10 @@ describe('edge.selectedChrome', () => {
   it('hides edit handles when editing the selected edge label', async () => {
     const editor = createEdgeEditor()
 
-    editor.actions.selection.replace({
+    editor.actions.session.selection.replace({
       edgeIds: ['edge-1']
     })
-    editor.actions.edit.startEdgeLabel('edge-1', 'label-1')
+    editor.actions.session.edit.startEdgeLabel('edge-1', 'label-1')
 
     expect(editor.scene.ui.selection.edge.chrome.get()).toMatchObject({
       edgeId: 'edge-1',
@@ -213,10 +213,10 @@ describe('edge.selectedChrome', () => {
   it('keeps edit handles visible when another edge is being edited', async () => {
     const editor = createEdgeEditor()
 
-    editor.actions.selection.replace({
+    editor.actions.session.selection.replace({
       edgeIds: ['edge-1']
     })
-    editor.actions.edit.startEdgeLabel('edge-2', 'label-2')
+    editor.actions.session.edit.startEdgeLabel('edge-2', 'label-2')
 
     expect(editor.scene.ui.selection.edge.chrome.get()).toMatchObject({
       edgeId: 'edge-1',

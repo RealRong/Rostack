@@ -45,6 +45,12 @@ import type {
   Tool
 } from '@whiteboard/editor/schema/tool'
 import type {
+  PreviewInput
+} from '@whiteboard/editor-scene'
+import type {
+  EditorHoverState
+} from '@whiteboard/editor/state/document'
+import type {
   EdgeLabelPatch,
   MindmapBorderPatch,
   MindmapBranchPatch
@@ -395,18 +401,45 @@ export type HistoryActions = {
   clear: () => void
 }
 
-export type EditorActions = {
-  app: AppActions
+export type HoverSessionActions = {
+  get: () => EditorHoverState
+  set: (state: EditorHoverState) => void
+  clear: () => void
+  edgeGuide: {
+    get: () => PreviewInput['edgeGuide'] | undefined
+    set: (value: PreviewInput['edgeGuide'] | undefined) => void
+    clear: () => void
+  }
+}
+
+export type PreviewSessionActions = {
+  get: () => PreviewInput
+  reset: () => void
+  clear: () => void
+}
+
+export type EditorSessionActions = {
   tool: ToolActions
-  viewport: ViewportActions
   draw: DrawActions
   selection: SelectionActions
   edit: EditActions
+  hover: HoverSessionActions
+  preview: PreviewSessionActions
+}
+
+export type EditorDocumentActions = {
   node: NodeActions
   edge: EdgeActions
   mindmap: MindmapActions
   clipboard: ClipboardActions
   history: HistoryActions
+}
+
+export type EditorActions = {
+  app: AppActions
+  viewport: ViewportActions
+  session: EditorSessionActions
+  document: EditorDocumentActions
 }
 
 export type EditorSelectionActions = SelectionActions

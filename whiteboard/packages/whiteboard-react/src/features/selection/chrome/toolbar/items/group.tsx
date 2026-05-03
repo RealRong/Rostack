@@ -20,12 +20,12 @@ export const groupItem: ToolbarItemSpec = {
         active={!canGroup && canUngroup}
         onClick={() => {
           if (canGroup) {
-            editor.actions.selection.group(context.target)
+            editor.actions.session.selection.group(context.target)
             return
           }
 
           if (canUngroup) {
-            editor.actions.selection.ungroup(context.target)
+            editor.actions.session.selection.ungroup(context.target)
           }
         }}
         title={label}

@@ -18,12 +18,9 @@ const selectEdge = (
   editor: Editor,
   edgeId: string
 ) => {
-  editor.dispatch({
-    type: 'selection.set',
-    selection: {
-      nodeIds: [],
-      edgeIds: [edgeId]
-    }
+  editor.actions.session.selection.replace({
+    nodeIds: [],
+    edgeIds: [edgeId]
   })
 }
 

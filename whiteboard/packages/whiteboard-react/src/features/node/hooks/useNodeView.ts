@@ -119,7 +119,7 @@ const resolveNodeViewState = (
   const rect = resolveDisplayRect(baseView)
   const write: NodeWrite = {
     patch: (update: NodeUpdateInput) => {
-      editor.actions.node.patch([baseView.node.id], update)
+      editor.actions.document.node.patch([baseView.node.id], update)
     }
   }
   const renderProps: NodeRenderProps = {

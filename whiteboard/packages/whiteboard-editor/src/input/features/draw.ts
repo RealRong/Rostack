@@ -337,7 +337,7 @@ const createDrawStrokeSession = (
           position,
           ...template
         } = commit
-        editor.actions.node.create({
+        editor.actions.document.node.create({
           position,
           template
         })
@@ -475,7 +475,7 @@ const createEraseSession = (
     up: (input) => {
       step(input)
       if (state.ids.length > 0) {
-        editor.actions.node.delete([...state.ids])
+        editor.actions.document.node.delete([...state.ids])
       }
       return FINISH
     },

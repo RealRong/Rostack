@@ -92,7 +92,7 @@ describe('mindmap root move', () => {
       }
     }))
 
-    const created = editor.actions.mindmap.create({
+    const created = editor.actions.document.mindmap.create({
       template: product.mindmap.template.build({
         preset: 'mindmap.underline-split'
       })
@@ -110,8 +110,8 @@ describe('mindmap root move', () => {
     expect(beforeTree).toBeDefined()
     expect(beforeRoot).toBeDefined()
 
-    editor.actions.mindmap.moveRoot({
-      nodeId: mindmapId,
+    editor.actions.document.mindmap.moveRoot({
+      nodeId: rootId,
       position: {
         x: beforeRoot!.x + 120,
         y: beforeRoot!.y + 80
@@ -145,9 +145,11 @@ describe('mindmap root move', () => {
     const session = createMindmapDragSession({
       state,
       actions: {
-        mindmap: {
-          moveRoot,
-          moveByDrop
+        document: {
+          mindmap: {
+            moveRoot,
+            moveByDrop
+          }
         },
       },
       scene: {
@@ -188,7 +190,7 @@ describe('mindmap root move', () => {
       position: { x: 100, y: 0 }
     })
 
-    expect(state.snapshot().preview.mindmap).toEqual({
+    expect(state.read().preview.mindmap).toEqual({
       mindmap_1: {
         rootMove: {
         delta: { x: 50, y: 0 }

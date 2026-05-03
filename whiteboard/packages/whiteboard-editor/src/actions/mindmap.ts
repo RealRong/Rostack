@@ -64,16 +64,14 @@ const readBranchScopeIds = (input: {
 export const createMindmapActionApi = (input: {
   graph: EditorScene
   document: Pick<DocumentFrame, 'node'>
-  editor: {
-    state: Pick<import('@whiteboard/editor/api/editor').Editor['state'], 'write'>
-  }
+  state: Pick<import('@whiteboard/editor/state/runtime').EditorStateStoreFacade, 'write'>
   tasks: EditorTaskRuntime
   write: Pick<EditorWrite, 'mindmap'>
   edit: Pick<EditController, 'focusMindmapNode' | 'focusMindmapRoot'>
 }): MindmapActions => {
   const workflow = createMindmapWorkflowActions({
     graph: input.graph,
-    editor: input.editor,
+    state: input.state,
     tasks: input.tasks,
     write: input.write,
     focusNode: input.edit.focusMindmapNode,

@@ -100,7 +100,7 @@ describe('mindmap enter animation', () => {
     const editor = createEditor()
 
     try {
-      const created = editor.actions.mindmap.create({
+      const created = editor.actions.document.mindmap.create({
         template: product.mindmap.template.build({
           preset: 'mindmap.underline-split'
         })
@@ -111,7 +111,7 @@ describe('mindmap enter animation', () => {
         return
       }
 
-      const inserted = editor.actions.mindmap.insertRelative({
+      const inserted = editor.actions.document.mindmap.insertRelative({
         id: created.data.mindmapId,
         targetNodeId: created.data.rootId,
         relation: 'child',

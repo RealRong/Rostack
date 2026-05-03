@@ -24,9 +24,7 @@ const DEFAULT_MINDMAP_ENTER_DURATION_MS = 220
 
 type MindmapActionDeps = {
   graph: EditorScene
-  editor: {
-    state: Pick<import('@whiteboard/editor/api/editor').Editor['state'], 'write'>
-  }
+  state: Pick<import('@whiteboard/editor/state/runtime').EditorStateStoreFacade, 'write'>
   tasks: EditorTaskRuntime
   write: Pick<EditorWrite, 'mindmap'>
   focusNode: (input: {
@@ -74,11 +72,11 @@ const readProgress = (
 }
 
 const withNodePresentation = (
-  editor: MindmapActionDeps['editor'],
+  state: MindmapActionDeps['state'],
   nodeId: MindmapNodeId,
   position?: Point
 ) => {
-  editor.state.write(({
+  state.write(({
     writer,
     snapshot
   }) => {
@@ -202,11 +200,11 @@ const resolveEnterJob = async (input: {
 }
 
 const animateEnter = async (input: {
-  editor: MindmapActionDeps['editor']
+  state: MindmapActionDeps['state']
   tasks: EditorTaskRuntime
   job: MindmapEnterJob
 }) => {
-  withNodePresentation(input.editor, input.job.nodeId, input.job.from)
+  withNodePresentation(input.state, input.job.nodeId, input.job.from)
 
   try {
     while (true) {
@@ -229,14 +227,14 @@ const animateEnter = async (input: {
       }
 
       withNodePresentation(
-        input.editor,
+        input.state,
         input.job.nodeId,
         interpolatePoint(input.job.from, input.job.to, nextProgress)
       )
     }
   } finally {
     withNodePresentation(
-      input.editor,
+      input.state,
       input.job.nodeId
     )
   }
@@ -256,7 +254,7 @@ const runTask = (
 
 export const createMindmapActions = ({
   graph,
-  editor,
+  state,
   tasks,
   write,
   focusNode,
@@ -281,7 +279,7 @@ export const createMindmapActions = ({
 
     if (job) {
       await animateEnter({
-        editor,
+        state,
         tasks,
         job
       })

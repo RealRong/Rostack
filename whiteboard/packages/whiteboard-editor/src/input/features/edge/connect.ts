@@ -385,7 +385,7 @@ const commitConnectState = (
       state,
       draftPatch: reconnectDraftPatch
     })
-    editor.actions.edge.reconnectCommit({
+    editor.actions.document.edge.reconnectCommit({
       edgeId: commit.edgeId,
       end: commit.end,
       target: commit.target,
@@ -407,7 +407,7 @@ const commitConnectState = (
     return
   }
 
-  const result = editor.actions.edge.create({
+  const result = editor.actions.document.edge.create({
     from: commit.input.source,
     to: commit.input.target,
     template: {
@@ -420,13 +420,10 @@ const commitConnectState = (
     return
   }
 
-  editor.actions.tool.select()
-  editor.dispatch({
-    type: 'selection.set',
-    selection: {
-      nodeIds: [],
-      edgeIds: [result.data.edgeId]
-    }
+  editor.actions.session.tool.select()
+  editor.actions.session.selection.replace({
+    nodeIds: [],
+    edgeIds: [result.data.edgeId]
   })
 }
 

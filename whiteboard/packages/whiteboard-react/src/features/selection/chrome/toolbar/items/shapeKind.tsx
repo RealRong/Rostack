@@ -55,7 +55,7 @@ export const shapeKindItem: ToolbarItemSpec = {
       <ShapePickerPanel
         value={node.shapeKindValue ?? node.shapeKind}
         onChange={(value) => {
-          editor.actions.node.shape.set(node.nodeIds, value)
+          editor.actions.document.node.shape.set(node.nodeIds, value)
         }}
       />
     )

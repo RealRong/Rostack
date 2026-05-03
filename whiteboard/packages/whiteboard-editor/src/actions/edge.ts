@@ -6,12 +6,10 @@ import type {
 } from '@whiteboard/core/types'
 import type { EdgeActions } from '@whiteboard/editor/actions/types'
 import type { EditorScene } from '@whiteboard/editor-scene'
-import type {
-  EditorCommand,
-  EditorDispatchInput
-} from '@whiteboard/editor/state/intents'
 import type { EditSession } from '@whiteboard/editor/schema/edit'
 import type { DocumentFrame } from '@whiteboard/editor-scene'
+import type { EditorStateStores } from '@whiteboard/editor/scene-ui/state'
+import type { EditorStateStoreFacade } from '@whiteboard/editor/state/runtime'
 import type { EditorWrite } from '@whiteboard/editor/write'
 
 const readEdgeOrThrow = (
@@ -47,11 +45,11 @@ const writeRouteFromPoint = (input: {
   )
 }
 
-const createStartEdgeLabelCommand = (input: {
+const createStartEdgeLabelSession = (input: {
   document: Pick<DocumentFrame, 'edge'>
   edgeId: string
   labelId: string
-}): EditorCommand | null => {
+}): EditSession => {
   const edge = input.document.edge(input.edgeId)
   const label = edge?.labels?.find((entry) => entry.id === input.labelId)
   if (!edge || !label) {
@@ -59,29 +57,40 @@ const createStartEdgeLabelCommand = (input: {
   }
 
   return {
-    type: 'edit.set',
-    edit: {
-      kind: 'edge-label',
-      edgeId: input.edgeId,
-      labelId: input.labelId,
-      text: typeof label.text === 'string' ? label.text : '',
-      composing: false,
-      caret: {
-        kind: 'end'
-      }
+    kind: 'edge-label',
+    edgeId: input.edgeId,
+    labelId: input.labelId,
+    text: typeof label.text === 'string' ? label.text : '',
+    composing: false,
+    caret: {
+      kind: 'end'
     }
   }
+}
+
+const setEdgeLabelSelection = (input: {
+  state: Pick<EditorStateStoreFacade, 'write'>
+  edgeId: string
+  edit: EditSession
+}) => {
+  input.state.write(({
+    writer
+  }) => {
+    writer.selection.set({
+      nodeIds: [],
+      edgeIds: [input.edgeId]
+    })
+    if (input.edit) {
+      writer.edit.set(input.edit)
+    }
+  })
 }
 
 export const createEdgeActions = (input: {
   graph: EditorScene
   document: Pick<DocumentFrame, 'edge'>
-  editor: {
-    edit: {
-      get: () => EditSession
-    }
-    dispatch: (command: EditorDispatchInput) => void
-  }
+  editSession: Pick<EditorStateStores['edit'], 'get'>
+  state: Pick<EditorStateStoreFacade, 'write'>
   write: Pick<EditorWrite, 'edge'>
   edit: {
     clearEditingEdgeLabel: (input: {
@@ -138,7 +147,7 @@ export const createEdgeActions = (input: {
   },
   label: {
     add: (edgeId) => {
-      const currentEdit = input.editor.edit.get()
+      const currentEdit = input.editSession.get()
       if (
         currentEdit
         && currentEdit.kind === 'edge-label'
@@ -152,31 +161,20 @@ export const createEdgeActions = (input: {
         return undefined
       }
 
-      const editCommand = createStartEdgeLabelCommand({
+      const nextEdit = createStartEdgeLabelSession({
         document: input.document,
         edgeId,
         labelId: inserted.data.labelId
       })
-      if (editCommand) {
-        input.editor.dispatch([
-          {
-            type: 'selection.set',
-            selection: {
-              nodeIds: [],
-              edgeIds: [edgeId]
-            }
-          },
-          editCommand
-        ])
-      } else {
-        input.editor.dispatch({
-          type: 'selection.set',
-          selection: {
-            nodeIds: [],
-            edgeIds: [edgeId]
-          }
-        } satisfies EditorCommand)
+
+      if (nextEdit) {
+        setEdgeLabelSelection({
+          state: input.state,
+          edgeId,
+          edit: nextEdit
+        })
       }
+
       return inserted.data.labelId
     },
     patch: (edgeId, labelId, patch) => input.write.edge.label.update(

@@ -24,9 +24,6 @@ import {
   EMPTY_GUIDES
 } from '@whiteboard/editor/state/preview-selection'
 import type {
-  EditorCommand
-} from '@whiteboard/editor/state/intents'
-import type {
   EdgeFeedbackEntry,
   EdgeGuide,
   NodePreviewEntry
@@ -416,54 +413,6 @@ export const isPreviewMindmapRecordEqual = (
   left: PreviewInput['mindmap'],
   right: PreviewInput['mindmap']
 ): boolean => isPreviewRecordEqual(left, right, isMindmapPreviewEntryEqual)
-
-export const diffPreviewCommands = (
-  current: PreviewInput,
-  next: PreviewInput
-): readonly EditorCommand[] | null => {
-  const commands: EditorCommand[] = []
-
-  if (!isPreviewNodeRecordEqual(current.node, next.node)) {
-    commands.push({
-      type: 'preview.node.set',
-      node: next.node
-    })
-  }
-  if (!isPreviewEdgeRecordEqual(current.edge, next.edge)) {
-    commands.push({
-      type: 'preview.edge.set',
-      edge: next.edge
-    })
-  }
-  if (!isPreviewMindmapRecordEqual(current.mindmap, next.mindmap)) {
-    commands.push({
-      type: 'preview.mindmap.set',
-      mindmap: next.mindmap
-    })
-  }
-  if (!isSelectionPreviewEqual(current.selection, next.selection)) {
-    commands.push({
-      type: 'preview.selection.set',
-      selection: next.selection
-    })
-  }
-  if (!isDrawPreviewEqual(current.draw, next.draw)) {
-    commands.push({
-      type: 'preview.draw.set',
-      draw: next.draw
-    })
-  }
-  if (!isEdgeGuideEqual(current.edgeGuide ?? EMPTY_EDGE_GUIDE, next.edgeGuide ?? EMPTY_EDGE_GUIDE)) {
-    commands.push({
-      type: 'preview.edgeGuide.set',
-      edgeGuide: next.edgeGuide
-    })
-  }
-
-  return commands.length > 0
-    ? commands
-    : null
-}
 
 export const replacePreviewNodeInteraction = (
   state: PreviewInput,

@@ -171,7 +171,7 @@ export const createEdgeMoveSession = (
 
       const commit = commitEdgeMove(state)
       if (commit) {
-        editor.actions.edge.move({
+        editor.actions.document.edge.move({
           ids: [commit.edgeId],
           delta: commit.delta
         })

@@ -4,10 +4,10 @@ import type {
   CanvasItemRef,
   GroupId
 } from '@whiteboard/core/types'
-import type { EditorDispatchInput } from '@whiteboard/editor/state/intents'
 import type { EditorScene } from '@whiteboard/editor-scene'
 import type { EditorDefaults } from '@whiteboard/editor/schema/defaults'
-import type { EditorState } from '@whiteboard/editor/scene-ui/types'
+import type { EditorStateStoreFacade } from '@whiteboard/editor/state/runtime'
+import type { EditorStateStores } from '@whiteboard/editor/scene-ui/state'
 import type {
   CanvasWrite,
   GroupWrite,
@@ -29,9 +29,20 @@ type SelectionActionHelpersHost = {
   canvas: CanvasWrite
   group: GroupWrite
   node: Pick<NodeWrite, 'create'>
-  selection: Pick<EditorState['selection'], 'get'>
-  dispatch: (command: EditorDispatchInput) => void
+  selection: Pick<EditorStateStores['selection'], 'get'>
+  state: Pick<EditorStateStoreFacade, 'write'>
   defaults: EditorDefaults['templates']
+}
+
+const replaceSelection = (
+  state: Pick<EditorStateStoreFacade, 'write'>,
+  selection: SelectionTarget
+) => {
+  state.write(({
+    writer
+  }) => {
+    writer.selection.set(selection)
+  })
 }
 
 const orderRefs = (
@@ -69,7 +80,7 @@ const toCanvasRefs = (
 
 const createFrame = (
   node: Pick<NodeWrite, 'create'>,
-  dispatch: SelectionActionHelpersHost['dispatch'],
+  state: SelectionActionHelpersHost['state'],
   defaults: EditorDefaults['templates'],
   bounds: {
     x: number
@@ -93,12 +104,9 @@ const createFrame = (
     return false
   }
 
-  dispatch({
-    type: 'selection.set',
-    selection: {
-      nodeIds: [result.data.nodeId],
-      edgeIds: []
-    }
+  replaceSelection(state, {
+    nodeIds: [result.data.nodeId],
+    edgeIds: []
   })
   return true
 }
@@ -109,8 +117,8 @@ export const createSelectionActions = (input: {
   canvas: CanvasWrite
   group: GroupWrite
   node: Pick<NodeWrite, 'create'>
-  selection: Pick<EditorState['selection'], 'get'>
-  dispatch: SelectionActionHelpersHost['dispatch']
+  selection: Pick<EditorStateStores['selection'], 'get'>
+  state: Pick<EditorStateStoreFacade, 'write'>
   defaults: EditorDefaults['templates']
 }): SelectionActions => {
   const applySelection = (
@@ -125,10 +133,7 @@ export const createSelectionActions = (input: {
           mode
         )
 
-    input.dispatch({
-      type: 'selection.set',
-      selection
-    })
+    replaceSelection(input.state, selection)
   }
 
   return {
@@ -169,16 +174,13 @@ export const createSelectionActions = (input: {
       }
 
       if (options?.selectInserted !== false) {
-        input.dispatch({
-          type: 'selection.set',
-          selection: {
-            nodeIds: result.data.roots.nodeIds.length > 0
-              ? result.data.roots.nodeIds
-              : result.data.allNodeIds,
-            edgeIds: result.data.roots.edgeIds.length > 0
-              ? result.data.roots.edgeIds
-              : result.data.allEdgeIds
-          }
+        replaceSelection(input.state, {
+          nodeIds: result.data.roots.nodeIds.length > 0
+            ? result.data.roots.nodeIds
+            : result.data.allNodeIds,
+          edgeIds: result.data.roots.edgeIds.length > 0
+            ? result.data.roots.edgeIds
+            : result.data.allEdgeIds
         })
       }
 
@@ -197,12 +199,9 @@ export const createSelectionActions = (input: {
       }
 
       if (options?.clearSelection !== false) {
-        input.dispatch({
-          type: 'selection.set',
-          selection: {
-            nodeIds: [],
-            edgeIds: []
-          }
+        replaceSelection(input.state, {
+          nodeIds: [],
+          edgeIds: []
         })
       }
 
@@ -234,10 +233,7 @@ export const createSelectionActions = (input: {
         return true
       }
 
-      input.dispatch({
-        type: 'selection.set',
-        selection: target
-      })
+      replaceSelection(input.state, target)
       return true
     },
     ungroup: (value, options) => {
@@ -253,28 +249,22 @@ export const createSelectionActions = (input: {
       }
 
       if (options?.fallbackSelection === 'none') {
-        input.dispatch({
-          type: 'selection.set',
-          selection: {
-            nodeIds: [],
-            edgeIds: []
-          }
+        replaceSelection(input.state, {
+          nodeIds: [],
+          edgeIds: []
         })
         return true
       }
 
-      input.dispatch({
-        type: 'selection.set',
-        selection: {
-          nodeIds: result.data.nodeIds,
-          edgeIds: result.data.edgeIds
-        }
+      replaceSelection(input.state, {
+        nodeIds: result.data.nodeIds,
+        edgeIds: result.data.edgeIds
       })
       return true
     },
     frame: (bounds, options) => createFrame(
       input.node,
-      input.dispatch,
+      input.state,
       input.defaults,
       bounds,
       options?.padding ?? DEFAULT_FRAME_PADDING

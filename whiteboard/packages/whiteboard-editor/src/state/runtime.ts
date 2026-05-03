@@ -1,13 +1,9 @@
 import { record as draftRecord } from '@shared/draft'
-import {
-  MutationEngine,
-  type MutationCompileHandlerTable,
-  type MutationResult
-} from '@shared/mutation'
+import { MutationEngine, type MutationResult } from '@shared/mutation'
 import type {
-  MutationFootprint,
   MutationCommitRecord,
   MutationDeltaOf,
+  MutationFootprint,
   MutationReader,
   MutationWriter
 } from '@shared/mutation'
@@ -15,37 +11,161 @@ import {
   createMutationProgramWriter,
   createMutationWriter
 } from '@shared/mutation'
-import {
-  EMPTY_HOVER_STATE,
-  type EditorHoverState
-} from '@whiteboard/editor/state/document'
-import {
-  EMPTY_PREVIEW_STATE
-} from '@whiteboard/editor/state/preview'
 import type {
-  DrawState
+  SelectionTarget
+} from '@whiteboard/core/selection'
+import {
+  patchDrawStyle,
+  setDrawSlot,
+  type BrushStylePatch,
+  type DrawState
 } from '@whiteboard/editor/schema/draw-state'
+import type {
+  DrawBrush,
+  DrawSlot
+} from '@whiteboard/editor/schema/draw-mode'
+import {
+  DEFAULT_DRAW_BRUSH,
+  hasDrawBrush
+} from '@whiteboard/editor/schema/draw-mode'
+import type {
+  EditSession
+} from '@whiteboard/editor/schema/edit'
 import type { Tool } from '@whiteboard/editor/schema/tool'
 import {
   buildEditorStateDocument,
   normalizeEditorStateDocument,
+  type EditorHoverState,
+  type EditorStableInteractionState,
   type EditorStateDocument
 } from './document'
 import {
   editorStateMutationSchema
 } from './model'
-import type {
-  EditorCommand,
-  EditorDispatchInput,
-  EditorDispatchUpdater,
-  EditorStateIntent
-} from './intents'
+import {
+  EMPTY_PREVIEW_STATE,
+  isDrawPreviewEqual,
+  isPreviewEdgeRecordEqual,
+  isPreviewMindmapRecordEqual,
+  isPreviewNodeRecordEqual,
+  isSelectionPreviewEqual
+} from './preview'
+import type { PreviewInput } from '@whiteboard/editor-scene'
 
+type InternalEditorStateWriter = MutationWriter<typeof editorStateMutationSchema>
+type EdgeGuideValue = PreviewInput['edgeGuide'] | undefined
+
+export type EditorStateSnapshot = EditorStateDocument
 export type EditorStateReader = MutationReader<typeof editorStateMutationSchema>
-export type EditorStateProgram = MutationWriter<typeof editorStateMutationSchema>
+export type EditorStateProgram = InternalEditorStateWriter
 export type EditorStateMutationDelta = MutationDeltaOf<typeof editorStateMutationSchema>
+export type EditorStateCommit = MutationCommitRecord<
+  EditorStateDocument,
+  MutationFootprint,
+  EditorStateMutationDelta
+>
 
-const applyCollectionDiff = <TId extends string, TValue>(
+export interface EditorStateWriter {
+  tool: {
+    set: (tool: Tool) => void
+  }
+  draw: {
+    set: (state: DrawState) => void
+    patch: (patch: BrushStylePatch) => void
+    slot: (brush: DrawBrush, slot: DrawSlot) => void
+  }
+  selection: {
+    set: (selection: SelectionTarget) => void
+    clear: () => void
+  }
+  edit: {
+    set: (edit: EditSession) => void
+    clear: () => void
+  }
+  interaction: {
+    set: (interaction: EditorStableInteractionState) => void
+    clear: () => void
+  }
+  hover: {
+    set: (hover: EditorHoverState) => void
+    clear: () => void
+  }
+  preview: {
+    node: {
+      create: (input: { id: string } & NonNullable<PreviewInput['node'][string]>) => void
+      patch: (id: string, writes: Readonly<Record<string, unknown>>) => void
+      delete: (id: string) => void
+      replace: (next: PreviewInput['node']) => void
+      clear: () => void
+    }
+    edge: {
+      create: (input: { id: string } & NonNullable<PreviewInput['edge'][string]>) => void
+      patch: (id: string, writes: Readonly<Record<string, unknown>>) => void
+      delete: (id: string) => void
+      replace: (next: PreviewInput['edge']) => void
+      clear: () => void
+    }
+    mindmap: {
+      create: (input: { id: string } & NonNullable<PreviewInput['mindmap'][string]>) => void
+      patch: (id: string, writes: Readonly<Record<string, unknown>>) => void
+      delete: (id: string) => void
+      replace: (next: PreviewInput['mindmap']) => void
+      clear: () => void
+    }
+    selection: {
+      patch: (patch: Partial<PreviewInput['selection']>) => void
+      set: (selection: PreviewInput['selection']) => void
+      clear: () => void
+    }
+    draw: {
+      patch: (patch: { current: PreviewInput['draw'] }) => void
+      set: (draw: PreviewInput['draw']) => void
+      clear: () => void
+    }
+    edgeGuide: {
+      patch: (patch: { current: EdgeGuideValue }) => void
+      set: (edgeGuide: EdgeGuideValue) => void
+      clear: () => void
+    }
+    reset: () => void
+  }
+}
+
+export interface EditorStateStoreFacade {
+  read(): EditorStateSnapshot
+  write(
+    run: (context: {
+      writer: EditorStateWriter
+      snapshot: EditorStateSnapshot
+    }) => void
+  ): void
+  subscribe(listener: (commit: EditorStateCommit) => void): () => void
+}
+
+export interface EditorStateRuntime extends EditorStateStoreFacade {
+  engine: MutationEngine<
+    EditorStateDocument,
+    never,
+    EditorStateReader,
+    void,
+    string,
+    EditorStateProgram,
+    EditorStateMutationDelta
+  >
+  dispose(): void
+}
+
+const assertEditorStateCommit = <T,>(
+  result: MutationResult<T, unknown>
+): T => {
+  if (!result.ok) {
+    throw new Error(result.error.message)
+  }
+
+  return result.data
+}
+
+const applyCollectionReplace = <TId extends string, TValue>(
   input: {
     current: Readonly<Record<TId, TValue | undefined>>
     next: Readonly<Record<TId, TValue | undefined>>
@@ -75,7 +195,10 @@ const applyCollectionDiff = <TId extends string, TValue>(
       return
     }
 
-    const writes = draftRecord.diff(currentValue, nextValue) as Readonly<Record<string, unknown>>
+    const writes = draftRecord.diff(
+      currentValue,
+      nextValue
+    ) as Readonly<Record<string, unknown>>
     if (Object.keys(writes).length === 0) {
       return
     }
@@ -84,357 +207,306 @@ const applyCollectionDiff = <TId extends string, TValue>(
   })
 }
 
-const compileHandlers = {
-  'tool.set': ({ document, intent, writer }) => {
-    writer.state.patch(draftRecord.diff(
-      {
-        tool: document.state.tool
-      },
-      {
-        tool: intent.tool
-      }
-    ))
+const createEditorStateWriter = (
+  writer: InternalEditorStateWriter,
+  readSnapshot: () => EditorStateSnapshot
+): EditorStateWriter => ({
+  tool: {
+    set: (tool) => {
+      writer.state.patch({
+        tool
+      })
+    }
   },
-  'draw.set': ({ document, intent, writer }) => {
-    writer.state.patch(draftRecord.diff(
-      {
-        draw: document.state.draw
-      },
-      {
-        draw: intent.state
-      }
-    ))
+  draw: {
+    set: (state) => {
+      writer.state.patch({
+        draw: state
+      })
+    },
+    patch: (patch) => {
+      const snapshot = readSnapshot()
+      const tool = snapshot.state.tool
+      const brush = tool.type === 'draw' && hasDrawBrush(tool.mode)
+        ? tool.mode
+        : DEFAULT_DRAW_BRUSH
+      const slot = snapshot.state.draw[brush].slot
+      writer.state.patch({
+        draw: patchDrawStyle(
+          snapshot.state.draw,
+          brush,
+          slot,
+          patch
+        )
+      })
+    },
+    slot: (brush, slot) => {
+      const snapshot = readSnapshot()
+      writer.state.patch({
+        draw: setDrawSlot(
+          snapshot.state.draw,
+          brush,
+          slot
+        )
+      })
+    }
   },
-  'selection.set': ({ document, intent, writer }) => {
-    writer.state.patch(draftRecord.diff(
-      {
-        selection: document.state.selection
-      },
-      {
-        selection: intent.selection
-      }
-    ))
+  selection: {
+    set: (selection) => {
+      writer.state.patch({
+        selection
+      })
+    },
+    clear: () => {
+      writer.state.patch({
+        selection: {
+          nodeIds: [],
+          edgeIds: []
+        }
+      })
+    }
   },
-  'edit.set': ({ document, intent, writer }) => {
-    writer.state.patch(draftRecord.diff(
-      {
-        edit: document.state.edit
-      },
-      {
-        edit: intent.edit
-      }
-    ))
+  edit: {
+    set: (edit) => {
+      writer.state.patch({
+        edit
+      })
+    },
+    clear: () => {
+      writer.state.patch({
+        edit: null
+      })
+    }
   },
-  'interaction.set': ({ document, intent, writer }) => {
-    writer.state.patch(draftRecord.diff(
-      {
-        interaction: document.state.interaction
-      },
-      {
-        interaction: intent.interaction
-      }
-    ))
+  interaction: {
+    set: (interaction) => {
+      writer.state.patch({
+        interaction
+      })
+    },
+    clear: () => {
+      writer.state.patch({
+        interaction: {
+          mode: 'idle',
+          chrome: false,
+          space: false
+        }
+      })
+    }
   },
-  'hover.set': ({ document, intent, writer }) => {
-    writer.hover.patch(draftRecord.diff(
-      document.hover,
-      intent.hover
-    ))
+  hover: {
+    set: (hover) => {
+      writer.hover.patch(hover)
+    },
+    clear: () => {
+      writer.hover.patch({
+        node: null,
+        edge: null,
+        mindmap: null,
+        group: null,
+        selectionBox: false
+      })
+    }
   },
-  'preview.node.set': ({ document, intent, writer }) => {
-    applyCollectionDiff({
-      current: document.preview.node,
-      next: intent.node,
-      create: (id, value) => {
-        writer.preview.node.create({
-          id,
-          ...value
-        })
+  preview: {
+    node: {
+      create: (input) => {
+        writer.preview.node.create(input as any)
       },
       patch: (id, writes) => {
         writer.preview.node.patch(id, writes)
       },
-      remove: (id) => {
+      delete: (id) => {
         writer.preview.node.delete(id)
-      }
-    })
-  },
-  'preview.edge.set': ({ document, intent, writer }) => {
-    applyCollectionDiff({
-      current: document.preview.edge,
-      next: intent.edge,
-      create: (id, value) => {
-        writer.preview.edge.create({
-          id,
-          ...value
+      },
+      replace: (next) => {
+        const current = readSnapshot().preview.node
+        if (isPreviewNodeRecordEqual(current, next)) {
+          return
+        }
+
+        applyCollectionReplace({
+          current,
+          next,
+          create: (id, value) => {
+            writer.preview.node.create({
+              id,
+              ...value
+            })
+          },
+          patch: (id, writes) => {
+            writer.preview.node.patch(id, writes)
+          },
+          remove: (id) => {
+            writer.preview.node.delete(id)
+          }
         })
+      },
+      clear: () => {
+        Object.keys(readSnapshot().preview.node).forEach((id) => {
+          writer.preview.node.delete(id)
+        })
+      }
+    },
+    edge: {
+      create: (input) => {
+        writer.preview.edge.create(input as any)
       },
       patch: (id, writes) => {
         writer.preview.edge.patch(id, writes)
       },
-      remove: (id) => {
+      delete: (id) => {
         writer.preview.edge.delete(id)
-      }
-    })
-  },
-  'preview.mindmap.set': ({ document, intent, writer }) => {
-    applyCollectionDiff({
-      current: document.preview.mindmap,
-      next: intent.mindmap,
-      create: (id, value) => {
-        writer.preview.mindmap.create({
-          id,
-          ...value
+      },
+      replace: (next) => {
+        const current = readSnapshot().preview.edge
+        if (isPreviewEdgeRecordEqual(current, next)) {
+          return
+        }
+
+        applyCollectionReplace({
+          current,
+          next,
+          create: (id, value) => {
+            writer.preview.edge.create({
+              id,
+              ...value
+            })
+          },
+          patch: (id, writes) => {
+            writer.preview.edge.patch(id, writes)
+          },
+          remove: (id) => {
+            writer.preview.edge.delete(id)
+          }
         })
+      },
+      clear: () => {
+        Object.keys(readSnapshot().preview.edge).forEach((id) => {
+          writer.preview.edge.delete(id)
+        })
+      }
+    },
+    mindmap: {
+      create: (input) => {
+        writer.preview.mindmap.create(input as any)
       },
       patch: (id, writes) => {
         writer.preview.mindmap.patch(id, writes)
       },
-      remove: (id) => {
+      delete: (id) => {
         writer.preview.mindmap.delete(id)
-      }
-    })
-  },
-  'preview.selection.set': ({ document, intent, writer }) => {
-    writer.preview.selection.patch(draftRecord.diff(
-      document.preview.selection,
-      intent.selection
-    ))
-  },
-  'preview.draw.set': ({ document, intent, writer }) => {
-    writer.preview.draw.patch(draftRecord.diff(
-      {
-        current: document.preview.draw
       },
-      {
-        current: intent.draw
-      }
-    ))
-  },
-  'preview.edgeGuide.set': ({ document, intent, writer }) => {
-    writer.preview.edgeGuide.patch(draftRecord.diff(
-      {
-        current: document.preview.edgeGuide
-      },
-      {
-        current: intent.edgeGuide
-      }
-    ))
-  },
-  'preview.reset': ({ document, writer }) => {
-    if (document.preview.node !== EMPTY_PREVIEW_STATE.node) {
-      Object.keys(document.preview.node).forEach((id) => {
-        writer.preview.node.delete(id)
-      })
-    }
-    if (document.preview.edge !== EMPTY_PREVIEW_STATE.edge) {
-      Object.keys(document.preview.edge).forEach((id) => {
-        writer.preview.edge.delete(id)
-      })
-    }
-    if (document.preview.mindmap !== EMPTY_PREVIEW_STATE.mindmap) {
-      Object.keys(document.preview.mindmap).forEach((id) => {
-        writer.preview.mindmap.delete(id)
-      })
-    }
-    writer.preview.selection.patch(draftRecord.diff(
-      document.preview.selection,
-      EMPTY_PREVIEW_STATE.selection
-    ))
-    writer.preview.draw.patch(draftRecord.diff(
-      {
-        current: document.preview.draw
-      },
-      {
-        current: EMPTY_PREVIEW_STATE.draw
-      }
-    ))
-    writer.preview.edgeGuide.patch(draftRecord.diff(
-      {
-        current: document.preview.edgeGuide
-      },
-      {
-        current: EMPTY_PREVIEW_STATE.edgeGuide
-      }
-    ))
-  }
-} satisfies MutationCompileHandlerTable<
-  EditorStateDocument,
-  EditorStateIntent,
-  EditorStateProgram,
-  EditorStateReader
->
+      replace: (next) => {
+        const current = readSnapshot().preview.mindmap
+        if (isPreviewMindmapRecordEqual(current, next)) {
+          return
+        }
 
-const assertEditorStateCommit = <T,>(
-  result: MutationResult<T, unknown>
-): T => {
-  if (!result.ok) {
-    throw new Error(result.error.message)
-  }
-
-  return result.data
-}
-
-const toCommandList = (
-  command: EditorCommand | readonly EditorCommand[]
-): readonly EditorCommand[] => Array.isArray(command)
-  ? command as readonly EditorCommand[]
-  : [command as EditorCommand]
-
-const applyPreviewReset = (
-  document: EditorStateDocument
-): EditorStateDocument => normalizeEditorStateDocument({
-  ...document,
-  preview: EMPTY_PREVIEW_STATE
-})
-
-const applyCommand = (
-  document: EditorStateDocument,
-  command: EditorCommand
-): EditorStateDocument => {
-  switch (command.type) {
-    case 'tool.set':
-      return normalizeEditorStateDocument({
-        ...document,
-        state: {
-          ...document.state,
-          tool: command.tool
-        }
-      })
-    case 'draw.set':
-      return normalizeEditorStateDocument({
-        ...document,
-        state: {
-          ...document.state,
-          draw: command.state
-        }
-      })
-    case 'selection.set':
-      return normalizeEditorStateDocument({
-        ...document,
-        state: {
-          ...document.state,
-          selection: command.selection
-        }
-      })
-    case 'edit.set':
-      return normalizeEditorStateDocument({
-        ...document,
-        state: {
-          ...document.state,
-          edit: command.edit
-        }
-      })
-    case 'interaction.set':
-      return normalizeEditorStateDocument({
-        ...document,
-        state: {
-          ...document.state,
-          interaction: command.interaction
-        }
-      })
-    case 'hover.set':
-      return normalizeEditorStateDocument({
-        ...document,
-        hover: command.hover
-      })
-    case 'preview.node.set':
-      return normalizeEditorStateDocument({
-        ...document,
-        preview: {
-          ...document.preview,
-          node: command.node
-        }
-      })
-    case 'preview.edge.set':
-      return normalizeEditorStateDocument({
-        ...document,
-        preview: {
-          ...document.preview,
-          edge: command.edge
-        }
-      })
-    case 'preview.mindmap.set':
-      return normalizeEditorStateDocument({
-        ...document,
-        preview: {
-          ...document.preview,
-          mindmap: command.mindmap
-        }
-      })
-    case 'preview.selection.set':
-      return normalizeEditorStateDocument({
-        ...document,
-        preview: {
-          ...document.preview,
-          selection: command.selection
-        }
-      })
-    case 'preview.draw.set':
-      return normalizeEditorStateDocument({
-        ...document,
-        preview: {
-          ...document.preview,
-          draw: command.draw
-        }
-      })
-    case 'preview.edgeGuide.set':
-      if (command.edgeGuide) {
-        return normalizeEditorStateDocument({
-          ...document,
-          preview: {
-            ...document.preview,
-            edgeGuide: command.edgeGuide
+        applyCollectionReplace({
+          current,
+          next,
+          create: (id, value) => {
+            writer.preview.mindmap.create({
+              id,
+              ...value
+            })
+          },
+          patch: (id, writes) => {
+            writer.preview.mindmap.patch(id, writes)
+          },
+          remove: (id) => {
+            writer.preview.mindmap.delete(id)
           }
         })
+      },
+      clear: () => {
+        Object.keys(readSnapshot().preview.mindmap).forEach((id) => {
+          writer.preview.mindmap.delete(id)
+        })
       }
-      return normalizeEditorStateDocument({
-        ...document,
-        preview: (() => {
-          const {
-            edgeGuide: _edgeGuide,
-            ...preview
-          } = document.preview
-          return preview
-        })()
+    },
+    selection: {
+      patch: (patch) => {
+        writer.preview.selection.patch(patch)
+      },
+      set: (selection) => {
+        const current = readSnapshot().preview.selection
+        if (isSelectionPreviewEqual(current, selection)) {
+          return
+        }
+        writer.preview.selection.patch(
+          draftRecord.diff(current, selection)
+        )
+      },
+      clear: () => {
+        writer.preview.selection.patch(
+          draftRecord.diff(
+            readSnapshot().preview.selection,
+            EMPTY_PREVIEW_STATE.selection
+          )
+        )
+      }
+    },
+    draw: {
+      patch: (patch) => {
+        writer.preview.draw.patch(patch)
+      },
+      set: (draw) => {
+        const current = readSnapshot().preview.draw
+        if (isDrawPreviewEqual(current, draw)) {
+          return
+        }
+        writer.preview.draw.patch({
+          current: draw
+        })
+      },
+      clear: () => {
+        writer.preview.draw.patch({
+          current: null
+        })
+      }
+    },
+    edgeGuide: {
+      patch: (patch) => {
+        writer.preview.edgeGuide.patch(patch)
+      },
+      set: (edgeGuide) => {
+        writer.preview.edgeGuide.patch({
+          current: edgeGuide
+        })
+      },
+      clear: () => {
+        writer.preview.edgeGuide.patch({
+          current: undefined
+        })
+      }
+    },
+    reset: () => {
+      Object.keys(readSnapshot().preview.node).forEach((id) => {
+        writer.preview.node.delete(id)
       })
-    case 'preview.reset':
-      return applyPreviewReset(document)
-    default:
-      return document
+      Object.keys(readSnapshot().preview.edge).forEach((id) => {
+        writer.preview.edge.delete(id)
+      })
+      Object.keys(readSnapshot().preview.mindmap).forEach((id) => {
+        writer.preview.mindmap.delete(id)
+      })
+      writer.preview.selection.patch(
+        draftRecord.diff(
+          readSnapshot().preview.selection,
+          EMPTY_PREVIEW_STATE.selection
+        )
+      )
+      writer.preview.draw.patch({
+        current: EMPTY_PREVIEW_STATE.draw
+      })
+      writer.preview.edgeGuide.patch({
+        current: EMPTY_PREVIEW_STATE.edgeGuide
+      })
+    }
   }
-}
-
-export interface EditorStateRuntime {
-  engine: MutationEngine<
-    EditorStateDocument,
-    EditorStateIntent,
-    EditorStateReader,
-    void,
-    string,
-    EditorStateProgram,
-    EditorStateMutationDelta
-  >
-  snapshot(): EditorStateDocument
-  reader(): EditorStateReader
-  write: (
-    run: (context: {
-      writer: EditorStateProgram
-      reader: EditorStateReader
-      snapshot: EditorStateDocument
-    }) => void
-  ) => void
-  dispatch: (
-    command: EditorDispatchInput
-  ) => void
-  commits: {
-    subscribe: (
-      listener: (commit: MutationCommitRecord<EditorStateDocument, MutationFootprint, EditorStateMutationDelta>) => void
-    ) => () => void
-  }
-  flush(): void
-  dispose(): void
-}
+})
 
 export const createEditorStateRuntime = (input: {
   initialTool: Tool
@@ -442,7 +514,7 @@ export const createEditorStateRuntime = (input: {
 }): EditorStateRuntime => {
   const engine = new MutationEngine<
     EditorStateDocument,
-    EditorStateIntent,
+    never,
     EditorStateReader,
     void,
     string,
@@ -455,120 +527,56 @@ export const createEditorStateRuntime = (input: {
       draw: input.initialDrawState
     }),
     normalize: normalizeEditorStateDocument,
-    compile: {
-      handlers: compileHandlers
-    },
     history: false
   })
 
-  let stagedDocument = engine.document()
-  let pendingCommands: EditorCommand[] = []
-  const commitListeners = new Set<(
-    commit: MutationCommitRecord<EditorStateDocument, MutationFootprint, EditorStateMutationDelta>
-  ) => void>()
+  let currentDocument = engine.document()
+  const listeners = new Set<(commit: EditorStateCommit) => void>()
 
   engine.subscribe((commit) => {
-    stagedDocument = commit.document
-    commitListeners.forEach((listener) => {
+    currentDocument = commit.document
+    listeners.forEach((listener) => {
       listener(commit)
     })
   })
 
-  const flush = () => {
-    if (pendingCommands.length === 0) {
-      return
-    }
-
-    const commands = pendingCommands
-    pendingCommands = []
-    stagedDocument = normalizeEditorStateDocument(stagedDocument)
-    assertEditorStateCommit(engine.execute(commands))
-    stagedDocument = engine.document()
-  }
-
-  const dispatch = (
-    command: EditorDispatchInput
-  ) => {
-    const resolved = typeof command === 'function'
-      ? (command as EditorDispatchUpdater)(stagedDocument)
-      : command
-    if (!resolved) {
-      return
-    }
-
-    toCommandList(resolved).forEach((entry) => {
-      stagedDocument = applyCommand(stagedDocument, entry)
-      pendingCommands.push(entry)
-    })
-
-    flush()
-  }
+  const read = () => currentDocument
 
   const write: EditorStateRuntime['write'] = (run) => {
     const program = createMutationProgramWriter()
-    const writer = createMutationWriter(
+    const rawWriter = createMutationWriter(
       editorStateMutationSchema,
       program
     )
+    const writer = createEditorStateWriter(
+      rawWriter,
+      read
+    )
+
     run({
       writer,
-      reader: engine.reader(),
-      snapshot: stagedDocument
+      snapshot: currentDocument
     })
+
     const built = program.build()
     if (built.steps.length === 0) {
       return
     }
+
     assertEditorStateCommit(engine.apply(built))
-    stagedDocument = engine.document()
+    currentDocument = engine.document()
   }
 
   return {
     engine,
-    snapshot: () => stagedDocument,
-    reader: () => engine.reader(),
+    read,
     write,
-    dispatch,
-    commits: {
-      subscribe: (listener) => {
-        commitListeners.add(listener)
-        return () => {
-          commitListeners.delete(listener)
-        }
+    subscribe: (listener) => {
+      listeners.add(listener)
+      return () => {
+        listeners.delete(listener)
       }
     },
-    flush,
     dispose: () => {}
   }
 }
-
-export const createResetEditorCommands = (
-  hover: EditorHoverState = EMPTY_HOVER_STATE
-): readonly EditorCommand[] => ([
-  {
-    type: 'edit.set',
-    edit: null
-  },
-  {
-    type: 'selection.set',
-    selection: {
-      nodeIds: [],
-      edgeIds: []
-    }
-  },
-  {
-    type: 'interaction.set',
-    interaction: {
-      mode: 'idle',
-      chrome: false,
-      space: false
-    }
-  },
-  {
-    type: 'hover.set',
-    hover
-  },
-  {
-    type: 'preview.reset'
-  }
-])

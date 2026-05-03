@@ -59,7 +59,7 @@ export const ViewportDock = () => {
             type="button"
             className={iconButtonClassName}
             onClick={() => {
-              editor.actions.history.undo()
+              editor.actions.document.history.undo()
             }}
             title="Undo"
           >
@@ -69,7 +69,7 @@ export const ViewportDock = () => {
             type="button"
             className={iconButtonClassName}
             onClick={() => {
-              editor.actions.history.redo()
+              editor.actions.document.history.redo()
             }}
             title="Redo"
           >

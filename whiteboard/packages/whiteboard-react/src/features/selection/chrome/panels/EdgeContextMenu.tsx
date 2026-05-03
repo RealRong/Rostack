@@ -103,23 +103,23 @@ export const EdgeContextMenu = ({
           })
         },
         () => {
-          editor.actions.selection.replace({
+          editor.actions.session.selection.replace({
             edgeIds: [edgeId]
           })
-          editor.actions.selection.duplicate({
+          editor.actions.session.selection.duplicate({
             edgeIds: [edgeId]
           })
         },
         () => {
-          editor.actions.selection.replace({
+          editor.actions.session.selection.replace({
             edgeIds: [edgeId]
           })
-          editor.actions.selection.delete({
+          editor.actions.session.selection.delete({
             edgeIds: [edgeId]
           })
         },
         (mode) => {
-          editor.actions.selection.order({
+          editor.actions.session.selection.order({
             edgeIds: [edgeId]
           }, mode)
         }

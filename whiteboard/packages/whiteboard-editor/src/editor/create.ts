@@ -22,9 +22,6 @@ import {
 import {
   createEditorStateRuntime
 } from '@whiteboard/editor/state/runtime'
-import type {
-  EditorDispatchInput
-} from '@whiteboard/editor/state/intents'
 import {
   createEditorViewport
 } from '@whiteboard/editor/state/viewport'
@@ -120,7 +117,7 @@ export const createEditor = (input: {
       delta: BOOTSTRAP_DOCUMENT_DELTA
     },
     editor: {
-      snapshot: state.snapshot(),
+      snapshot: state.read(),
       delta: BOOTSTRAP_EDITOR_DELTA
     }
   })
@@ -159,28 +156,9 @@ export const createEditor = (input: {
   const actions = createEditorActionsApi({
     document,
     projection,
-    editor: {
-      tool: {
-        get: () => state.snapshot().state.tool
-      },
-      draw: {
-        get: () => state.snapshot().state.draw
-      },
-      edit: {
-        get: () => state.snapshot().state.edit
-      },
-      selection: {
-        get: () => state.snapshot().state.selection
-      },
-      preview: {
-        get: () => state.snapshot().preview
-      },
-      state: {
-        write: state.write
-      },
-      dispatch: state.dispatch,
-      viewport
-    },
+    state,
+    stores: stateStores,
+    viewport,
     tasks,
     write,
     nodeType,
@@ -193,25 +171,17 @@ export const createEditor = (input: {
     snap
   }
 
-  const dispatch: Editor['dispatch'] = (command) => {
-    state.dispatch(command as EditorDispatchInput)
-  }
-
   const editorBase = {
     scene,
     document,
     actions,
     write,
     state: {
-      snapshot: state.snapshot,
-      reader: state.reader,
-      write: state.write,
-      commits: state.commits
+      ...state,
+      stores: stateStores
     },
     viewport,
-    read: state.snapshot,
     runtime,
-    dispatch
   }
   const host = createEditorInputHost({
     editor: {

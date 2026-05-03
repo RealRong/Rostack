@@ -55,7 +55,7 @@ describe('mindmap preview state', () => {
       position: { x: 60, y: 40 }
     })
 
-    expect(state.snapshot().preview.mindmap).toEqual({
+    expect(state.read().preview.mindmap).toEqual({
       'mind-1': {
         rootMove: {
           delta: {

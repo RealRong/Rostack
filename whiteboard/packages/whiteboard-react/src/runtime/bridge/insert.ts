@@ -25,13 +25,13 @@ const applyInsertEffect = ({
   editor: WhiteboardRuntime
   result: InsertResult
 }) => {
-  editor.actions.tool.select()
-  editor.actions.selection.replace({
+  editor.actions.session.tool.select()
+  editor.actions.session.selection.replace({
     nodeIds: [result.nodeId]
   })
 
   if (result.edit) {
-    editor.actions.edit.startNode(result.edit.nodeId, result.edit.field)
+    editor.actions.session.edit.startNode(result.edit.nodeId, result.edit.field)
   }
 }
 
@@ -135,7 +135,7 @@ const recenterNode = ({
     return
   }
 
-  editor.actions.node.patch([nodeId], {
+  editor.actions.document.node.patch([nodeId], {
     fields: {
       position: nextPosition
     }
@@ -151,7 +151,7 @@ const insertNodePreset = ({
   preset: WhiteboardNodeInsertPreset
   world: Point
 }): InsertResult | undefined => {
-  const result = editor.actions.node.create(
+  const result = editor.actions.document.node.create(
     placeNode({
       world,
       template: preset.template.template,
@@ -185,7 +185,7 @@ const insertMindmapPreset = ({
   preset: WhiteboardMindmapInsertPreset
   world: Point
 }): InsertResult | undefined => {
-  const result = editor.actions.mindmap.create({
+  const result = editor.actions.document.mindmap.create({
     position: {
       x: 0,
       y: 0
@@ -206,7 +206,7 @@ const insertMindmapPreset = ({
     ? bbox.y + bbox.height / 2
     : 0
 
-  editor.actions.mindmap.moveRoot({
+  editor.actions.document.mindmap.moveRoot({
     nodeId: result.data.mindmapId,
     position: {
       x: world.x - anchorX,

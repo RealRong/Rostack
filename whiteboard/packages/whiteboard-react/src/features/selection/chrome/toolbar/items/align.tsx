@@ -84,7 +84,7 @@ export const alignItem: ToolbarItemSpec = {
               aria-label={option.title}
               onClick={() => {
                 closePanel()
-                editor.actions.node.align(activeScope.target.nodeIds, option.key)
+                editor.actions.document.node.align(activeScope.target.nodeIds, option.key)
               }}
             >
               <Icon size={20} strokeWidth={1.8} />
@@ -112,7 +112,7 @@ export const alignItem: ToolbarItemSpec = {
               aria-label={option.title}
               onClick={() => {
                 closePanel()
-                editor.actions.node.distribute(activeScope.target.nodeIds, option.key)
+                editor.actions.document.node.distribute(activeScope.target.nodeIds, option.key)
               }}
             >
               <Icon size={20} strokeWidth={1.8} />

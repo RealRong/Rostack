@@ -80,10 +80,10 @@ describe('createEdgeMoveSession', () => {
     )
 
     session.move?.(createMoveInput({ x: 15, y: 25 }))
-    expect(state.snapshot().preview.edge['edge-1']?.patch).toBeDefined()
+    expect(state.read().preview.edge['edge-1']?.patch).toBeDefined()
 
     session.move?.(createMoveInput({ x: 0, y: 0 }))
-    expect(state.snapshot().preview.edge['edge-1']).toBeUndefined()
+    expect(state.read().preview.edge['edge-1']).toBeUndefined()
     expect(move).not.toHaveBeenCalled()
   })
 })

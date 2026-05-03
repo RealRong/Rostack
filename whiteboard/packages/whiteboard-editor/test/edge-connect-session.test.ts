@@ -18,7 +18,7 @@ const createInteractionDeps = () => {
 
   return {
     reconnectCommit,
-    readPatch: (): EdgePatch | undefined => state.snapshot().preview.edge['edge-1']?.patch,
+    readPatch: (): EdgePatch | undefined => state.read().preview.edge['edge-1']?.patch,
     ctx: {
       state,
       scene: {
@@ -87,14 +87,21 @@ const createInteractionDeps = () => {
         }
       },
       actions: {
-        edge: {
-          reconnectCommit,
-          create: vi.fn(),
-          type: {},
-          route: {}
+        document: {
+          edge: {
+            reconnectCommit,
+            create: vi.fn(),
+            type: {},
+            route: {}
+          }
         },
-        tool: {
-          select: vi.fn()
+        session: {
+          tool: {
+            select: vi.fn()
+          },
+          selection: {
+            replace: vi.fn()
+          }
         }
       }
     } as any

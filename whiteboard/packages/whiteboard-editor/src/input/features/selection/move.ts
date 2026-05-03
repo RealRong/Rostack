@@ -64,10 +64,7 @@ export const createMoveInteraction = (
     input.visibility.kind === 'show'
     || input.visibility.kind === 'temporary'
   ) {
-    editor.dispatch({
-      type: 'selection.set',
-      selection: input.visibility.selection
-    })
+    editor.actions.session.selection.replace(input.visibility.selection)
   }
 
   if (pickedNodeId) {
@@ -87,10 +84,7 @@ export const createMoveInteraction = (
       session.cleanup = () => {
         cleanup?.()
         if (restoreSelection) {
-          editor.dispatch({
-            type: 'selection.set',
-            selection: restoreSelection
-          })
+          editor.actions.session.selection.replace(restoreSelection)
         }
       }
 
@@ -270,10 +264,7 @@ export const createMoveInteraction = (
     },
     cleanup: () => {
       if (restoreSelection) {
-        editor.dispatch({
-          type: 'selection.set',
-          selection: restoreSelection
-        })
+        editor.actions.session.selection.replace(restoreSelection)
       }
 
       editor.state.write(({

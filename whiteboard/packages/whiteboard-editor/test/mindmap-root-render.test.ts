@@ -114,7 +114,7 @@ const createEditor = () => {
 describe('mindmap root render', () => {
   it('treats the root as a normal node and exposes both root add buttons through chrome', async () => {
     const editor = createEditor()
-    const created = editor.actions.mindmap.create({
+    const created = editor.actions.document.mindmap.create({
       template: product.mindmap.template.build({
         preset: 'mindmap.underline-split'
       })
@@ -125,7 +125,7 @@ describe('mindmap root render', () => {
       return
     }
 
-    editor.actions.selection.replace({
+    editor.actions.session.selection.replace({
       nodeIds: [created.data.rootId]
     })
 

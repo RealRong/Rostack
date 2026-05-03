@@ -98,19 +98,19 @@ export const TextSlot = ({
 
     if (isEscapeEditingKey(event)) {
       event.preventDefault()
-      editor.actions.edit.cancel()
+      editor.actions.session.edit.cancel()
       return
     }
 
     if (!multiline && event.key === 'Enter') {
       event.preventDefault()
-      editor.actions.edit.commit()
+      editor.actions.session.edit.commit()
       return
     }
 
     if (isSubmitEditingKey(event)) {
       event.preventDefault()
-      editor.actions.edit.commit()
+      editor.actions.session.edit.commit()
     }
   }
 
@@ -132,30 +132,30 @@ export const TextSlot = ({
       onCompositionStart={editable
         ? () => {
             composingRef.current = true
-            editor.actions.edit.composing(true)
+            editor.actions.session.edit.composing(true)
           }
         : undefined}
       onCompositionUpdate={editable
         ? (event) => {
-            editor.actions.edit.input(readEditableText(event.currentTarget))
-            editor.actions.edit.composing(true)
+            editor.actions.session.edit.input(readEditableText(event.currentTarget))
+            editor.actions.session.edit.composing(true)
           }
         : undefined}
       onCompositionEnd={editable
         ? (event) => {
             composingRef.current = false
-            editor.actions.edit.input(readEditableText(event.currentTarget))
-            editor.actions.edit.composing(false)
+            editor.actions.session.edit.input(readEditableText(event.currentTarget))
+            editor.actions.session.edit.composing(false)
           }
         : undefined}
       onInput={editable
         ? (event) => {
-            editor.actions.edit.input(readEditableText(event.currentTarget))
+            editor.actions.session.edit.input(readEditableText(event.currentTarget))
           }
         : undefined}
       onBlur={editable
         ? () => {
-            editor.actions.edit.commit()
+            editor.actions.session.edit.commit()
           }
         : undefined}
       onKeyDown={onKeyDown}

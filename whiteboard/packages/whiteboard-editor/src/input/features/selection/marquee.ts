@@ -181,10 +181,7 @@ const syncMarqueeInteraction = (
   next: MarqueeSelectionState
 ) => {
   if (!selectionApi.target.equal(previous.selection, next.selection)) {
-    editor.dispatch({
-      type: 'selection.set',
-      selection: next.selection
-    })
+    editor.actions.session.selection.replace(next.selection)
   }
 
   editor.state.write(({
@@ -224,13 +221,7 @@ export const createMarqueeSession = (
   })
 
   if (input.action.clearOnStart) {
-    editor.dispatch({
-      type: 'selection.set',
-      selection: {
-        nodeIds: [],
-        edgeIds: []
-      }
-    })
+    editor.actions.session.selection.clear()
   }
 
   const dispatch = (

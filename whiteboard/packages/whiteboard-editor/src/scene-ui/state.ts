@@ -12,6 +12,7 @@ import {
   type EditorStateDocument
 } from '@whiteboard/editor/state/document'
 import type { EditorStateRuntime } from '@whiteboard/editor/state/runtime'
+import type { EditorStateStoreFacade } from '@whiteboard/editor/state/runtime'
 import type { EditorViewport } from '@whiteboard/editor/state/viewport'
 import type { EditorState, ToolRead } from '@whiteboard/editor/scene-ui/types'
 
@@ -35,32 +36,32 @@ export type EditorStateStores = {
 }
 
 export const createEditorStateStores = (input: {
-  state: EditorStateRuntime
+  state: EditorStateStoreFacade
   viewport: EditorViewport
 }): EditorStateStores => ({
   tool: store.value({
-    get: () => input.state.snapshot().state.tool,
-    subscribe: input.state.commits.subscribe,
+    get: () => input.state.read().state.tool,
+    subscribe: input.state.subscribe,
     isEqual: isToolEqual
   }),
   draw: store.value({
-    get: () => input.state.snapshot().state.draw,
-    subscribe: input.state.commits.subscribe,
+    get: () => input.state.read().state.draw,
+    subscribe: input.state.subscribe,
     isEqual: isDrawEqual
   }),
   selection: store.value({
-    get: () => input.state.snapshot().state.selection,
-    subscribe: input.state.commits.subscribe,
+    get: () => input.state.read().state.selection,
+    subscribe: input.state.subscribe,
     isEqual: isSelectionEqual
   }),
   edit: store.value({
-    get: () => input.state.snapshot().state.edit,
-    subscribe: input.state.commits.subscribe,
+    get: () => input.state.read().state.edit,
+    subscribe: input.state.subscribe,
     isEqual: isEditSessionEqual
   }),
   interaction: store.value({
     get: () => {
-      const snapshot = input.state.snapshot()
+      const snapshot = input.state.read()
       return {
         mode: snapshot.state.interaction.mode,
         chrome: snapshot.state.interaction.chrome,
@@ -68,15 +69,15 @@ export const createEditorStateStores = (input: {
         hover: snapshot.hover
       }
     },
-    subscribe: input.state.commits.subscribe,
+    subscribe: input.state.subscribe,
     isEqual: (left, right) => (
       isInteractionStateEqual(left, right)
       && isHoverStateEqual(left.hover, right.hover)
     )
   }),
   preview: store.value({
-    get: () => input.state.snapshot().preview,
-    subscribe: input.state.commits.subscribe,
+    get: () => input.state.read().preview,
+    subscribe: input.state.subscribe,
     isEqual: isPreviewEqual
   }),
   viewport: input.viewport.value

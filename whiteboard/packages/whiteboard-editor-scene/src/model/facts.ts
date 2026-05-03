@@ -1,9 +1,3 @@
-import type {
-  EdgeId,
-  GroupId,
-  MindmapId,
-  NodeId
-} from '@whiteboard/core/types'
 import type { SceneItemKey } from '../contracts/delta'
 import type { Input } from '../contracts/editor'
 import type {
@@ -190,10 +184,10 @@ export const createGraphFacts = (input: {
 
   const editingNode = input.current.editor.snapshot.state.edit?.kind === 'node'
     ? sceneScopeFromValues([input.current.editor.snapshot.state.edit.nodeId])
-    : new Set<NodeId>()
+    : new Set<string>()
   const editingEdge = input.current.editor.snapshot.state.edit?.kind === 'edge-label'
     ? sceneScopeFromValues([input.current.editor.snapshot.state.edit.edgeId])
-    : new Set<EdgeId>()
+    : new Set<string>()
 
   return {
     node: {
@@ -253,17 +247,17 @@ export const createUiTargets = (input: {
 
   const runtimeFacts = input.working.runtime.editor.facts
   const graphFacts = input.working.facts.graph
-  const node = new Set<NodeId>()
-  const edge = new Set<EdgeId>()
+  const node = new Set<string>()
+  const edge = new Set<string>()
   let chrome = runtimeFacts.uiChanged
 
-  appendIds(node, graphFacts.node.entity as ReadonlySet<NodeId>)
-  appendIds(node, graphFacts.node.geometry as ReadonlySet<NodeId>)
-  appendIds(node, graphFacts.node.content as ReadonlySet<NodeId>)
-  appendIds(node, graphFacts.node.owner as ReadonlySet<NodeId>)
-  appendIds(edge, graphFacts.edge.entity as ReadonlySet<EdgeId>)
-  appendIds(edge, graphFacts.edge.geometry as ReadonlySet<EdgeId>)
-  appendIds(edge, graphFacts.edge.content as ReadonlySet<EdgeId>)
+  if (graphFacts.node.entity !== 'all') appendIds(node, graphFacts.node.entity)
+  if (graphFacts.node.geometry !== 'all') appendIds(node, graphFacts.node.geometry)
+  if (graphFacts.node.content !== 'all') appendIds(node, graphFacts.node.content)
+  if (graphFacts.node.owner !== 'all') appendIds(node, graphFacts.node.owner)
+  if (graphFacts.edge.entity !== 'all') appendIds(edge, graphFacts.edge.entity)
+  if (graphFacts.edge.geometry !== 'all') appendIds(edge, graphFacts.edge.geometry)
+  if (graphFacts.edge.content !== 'all') appendIds(edge, graphFacts.edge.content)
   appendMindmapNodeScope({
     target: node,
     scope: graphFacts.mindmap.entity,
@@ -339,19 +333,19 @@ export const createRenderFacts = (input: {
   const graphFacts = input.working.facts.graph
   const runtimeFacts = input.working.runtime.editor.facts
   const uiFacts = input.working.facts.ui
-  const node = new Set<NodeId>()
-  const edgeStatics = new Set<EdgeId>()
-  const edgeLabels = new Set<EdgeId>()
-  const edgeMasks = new Set<EdgeId>()
-  const edgeActive = new Set<EdgeId>([
+  const node = new Set<string>()
+  const edgeStatics = new Set<string>()
+  const edgeLabels = new Set<string>()
+  const edgeMasks = new Set<string>()
+  const edgeActive = new Set<string>([
     ...runtimeFacts.activeEdgeIds,
     ...input.working.render.active.keys()
   ])
 
-  appendIds(node, graphFacts.node.entity as ReadonlySet<NodeId>)
-  appendIds(node, graphFacts.node.geometry as ReadonlySet<NodeId>)
-  appendIds(node, graphFacts.node.content as ReadonlySet<NodeId>)
-  appendIds(node, graphFacts.node.owner as ReadonlySet<NodeId>)
+  if (graphFacts.node.entity !== 'all') appendIds(node, graphFacts.node.entity)
+  if (graphFacts.node.geometry !== 'all') appendIds(node, graphFacts.node.geometry)
+  if (graphFacts.node.content !== 'all') appendIds(node, graphFacts.node.content)
+  if (graphFacts.node.owner !== 'all') appendIds(node, graphFacts.node.owner)
   if (uiFacts.node !== 'all') {
     appendIds(node, uiFacts.node)
   }
@@ -372,29 +366,29 @@ export const createRenderFacts = (input: {
   })
   appendIds(node, runtimeFacts.touchedNodeIds)
 
-  appendIds(edgeStatics, graphFacts.edge.entity as ReadonlySet<EdgeId>)
-  appendIds(edgeStatics, graphFacts.edge.geometry as ReadonlySet<EdgeId>)
-  appendIds(edgeStatics, graphFacts.edge.content as ReadonlySet<EdgeId>)
+  if (graphFacts.edge.entity !== 'all') appendIds(edgeStatics, graphFacts.edge.entity)
+  if (graphFacts.edge.geometry !== 'all') appendIds(edgeStatics, graphFacts.edge.geometry)
+  if (graphFacts.edge.content !== 'all') appendIds(edgeStatics, graphFacts.edge.content)
   appendEdgeItemScope({
     target: edgeStatics,
     scope: input.working.facts.items.touched,
     working: input.working
   })
 
-  appendIds(edgeLabels, graphFacts.edge.entity as ReadonlySet<EdgeId>)
-  appendIds(edgeLabels, graphFacts.edge.geometry as ReadonlySet<EdgeId>)
-  appendIds(edgeLabels, graphFacts.edge.content as ReadonlySet<EdgeId>)
+  if (graphFacts.edge.entity !== 'all') appendIds(edgeLabels, graphFacts.edge.entity)
+  if (graphFacts.edge.geometry !== 'all') appendIds(edgeLabels, graphFacts.edge.geometry)
+  if (graphFacts.edge.content !== 'all') appendIds(edgeLabels, graphFacts.edge.content)
   if (uiFacts.edge !== 'all') {
     appendIds(edgeLabels, uiFacts.edge)
   }
 
-  appendIds(edgeMasks, graphFacts.edge.entity as ReadonlySet<EdgeId>)
-  appendIds(edgeMasks, graphFacts.edge.geometry as ReadonlySet<EdgeId>)
-  appendIds(edgeMasks, graphFacts.edge.content as ReadonlySet<EdgeId>)
+  if (graphFacts.edge.entity !== 'all') appendIds(edgeMasks, graphFacts.edge.entity)
+  if (graphFacts.edge.geometry !== 'all') appendIds(edgeMasks, graphFacts.edge.geometry)
+  if (graphFacts.edge.content !== 'all') appendIds(edgeMasks, graphFacts.edge.content)
 
-  appendIds(edgeActive, graphFacts.edge.entity as ReadonlySet<EdgeId>)
-  appendIds(edgeActive, graphFacts.edge.geometry as ReadonlySet<EdgeId>)
-  appendIds(edgeActive, graphFacts.edge.content as ReadonlySet<EdgeId>)
+  if (graphFacts.edge.entity !== 'all') appendIds(edgeActive, graphFacts.edge.entity)
+  if (graphFacts.edge.geometry !== 'all') appendIds(edgeActive, graphFacts.edge.geometry)
+  if (graphFacts.edge.content !== 'all') appendIds(edgeActive, graphFacts.edge.content)
   if (uiFacts.edge !== 'all') {
     appendIds(edgeActive, uiFacts.edge)
   }

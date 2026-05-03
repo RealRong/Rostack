@@ -1,9 +1,4 @@
 import { geometry as geometryApi } from '@whiteboard/core/geometry'
-import type {
-  EdgeId,
-  MindmapId,
-  NodeId
-} from '@whiteboard/core/types'
 import { json } from '@shared/core'
 import type {
   EdgePreviewRecord,
@@ -50,15 +45,15 @@ const readRecordIds = <TId extends string, TValue>(
 
 export const readNodePreviewIds = (
   value: NodePreviewRecord
-): readonly NodeId[] => readRecordIds(value)
+): readonly string[] => readRecordIds(value)
 
 export const readEdgePreviewIds = (
   value: EdgePreviewRecord
-): readonly EdgeId[] => readRecordIds(value)
+): readonly string[] => readRecordIds(value)
 
 export const readMindmapPreviewIds = (
   value: MindmapPreview
-): readonly MindmapId[] => readRecordIds(value)
+): readonly string[] => readRecordIds(value)
 
 const isNodePreviewPatchEqual = (
   left: NodePreview['patch'],
@@ -284,7 +279,7 @@ const normalizeNodePreviewRecord = (
     return EMPTY_NODE_PREVIEWS
   }
 
-  const next: Record<NodeId, NodePreview | undefined> = {}
+  const next: Record<string, NodePreview | undefined> = {}
   for (let index = 0; index < ids.length; index += 1) {
     const id = ids[index]!
     const preview = value[id]
@@ -317,7 +312,7 @@ const normalizeEdgePreviewRecord = (
     return EMPTY_EDGE_PREVIEWS
   }
 
-  const next: Record<EdgeId, EdgePreview | undefined> = {}
+  const next: Record<string, EdgePreview | undefined> = {}
   for (let index = 0; index < ids.length; index += 1) {
     const id = ids[index]!
     const preview = value[id]
@@ -429,10 +424,10 @@ export const replacePreviewNodeInteraction = (
   state: EditorPreviewState,
   input: {
     patches?: readonly NodePreviewEntry[]
-    hiddenNodeIds?: readonly NodeId[]
+    hiddenNodeIds?: readonly string[]
   }
 ): EditorPreviewState => {
-  const next: Record<NodeId, NodePreview | undefined> = {}
+  const next: Record<string, NodePreview | undefined> = {}
 
   readNodePreviewIds(state.node).forEach((nodeId) => {
     const current = state.node[nodeId]
@@ -471,7 +466,7 @@ export const replacePreviewEdgeInteraction = (
   state: EditorPreviewState,
   entries: readonly EdgeFeedbackEntry[]
 ): EditorPreviewState => {
-  const next: Record<EdgeId, EdgePreview | undefined> = {}
+  const next: Record<string, EdgePreview | undefined> = {}
 
   entries.forEach((entry) => {
     next[entry.id] = mergeEdgePreview(next[entry.id], {
@@ -530,7 +525,7 @@ export const setPreviewMindmap = (
 
 export const updatePreviewNodePresentation = (
   state: EditorPreviewState,
-  nodeId: NodeId,
+  nodeId: string,
   position?: {
     x: number
     y: number
@@ -547,7 +542,7 @@ export const updatePreviewNodePresentation = (
     return state
   }
 
-  const node: Record<NodeId, NodePreview | undefined> = {
+  const node: Record<string, NodePreview | undefined> = {
     ...state.node
   }
   const nextNode = nextPresentation

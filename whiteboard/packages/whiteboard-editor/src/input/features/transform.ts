@@ -4,7 +4,7 @@ import { node as nodeApi,
   type TransformSelectionMember,
   type TransformSpec
 } from '@whiteboard/core/node'
-import type { EdgeId, Node, NodeId } from '@whiteboard/core/types'
+import type { Node } from '@whiteboard/core/types'
 import type { InteractionBinding, InteractionSession } from '@whiteboard/editor/input/core/types'
 import { FINISH } from '@whiteboard/editor/input/internals/result'
 import type { PointerDownInput } from '@whiteboard/editor/api/input'
@@ -164,7 +164,7 @@ export const createTransformSession = (
       writer,
       snapshot
     }) => {
-      const nextNodeById = new Map<NodeId, ReturnType<typeof toTransformNodePatches>[number]['patch']>(
+      const nextNodeById = new Map<string, ReturnType<typeof toTransformNodePatches>[number]['patch']>(
         toTransformNodePatches(nextPatches).map((entry) => [
           entry.id,
           entry.patch

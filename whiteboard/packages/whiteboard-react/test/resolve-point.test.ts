@@ -29,7 +29,10 @@ const targetMocks = vi.hoisted(() => ({
 vi.mock('@shared/dom', () => domMocks)
 vi.mock('@whiteboard/react/dom/host/targets', () => targetMocks)
 
-import { resolvePoint } from '../src/dom/host/input'
+import {
+  resolveInteractionPointerInput,
+  resolvePoint
+} from '../src/dom/host/input'
 
 type ResolvePointInput = Parameters<typeof resolvePoint>[0]
 type ResolvePointEditor = ResolvePointInput['editor']
@@ -75,6 +78,12 @@ describe('resolvePoint', () => {
                 nodeIds: [],
                 edgeIds: []
               })
+            },
+            viewport: {
+              get: () => ({
+                center: { x: 0, y: 0 },
+                zoom: 1
+              })
             }
           }
         },
@@ -83,13 +92,15 @@ describe('resolvePoint', () => {
         }
       },
       viewport: {
-        get: () => ({
-          center: { x: 0, y: 0 },
-          zoom: 1
-        }),
-        screenPoint: vi.fn((x: number, y: number) => ({
-          x,
-          y
+        pointer: vi.fn((input: { clientX: number, clientY: number }) => ({
+          screen: {
+            x: input.clientX,
+            y: input.clientY
+          },
+          world: {
+            x: input.clientX,
+            y: input.clientY
+          }
         }))
       }
     }
@@ -157,13 +168,15 @@ describe('resolvePoint', () => {
         }
       },
       viewport: {
-        get: () => ({
-          center: { x: 0, y: 0 },
-          zoom: 1
-        }),
-        screenPoint: vi.fn((x: number, y: number) => ({
-          x,
-          y
+        pointer: vi.fn((input: { clientX: number, clientY: number }) => ({
+          screen: {
+            x: input.clientX,
+            y: input.clientY
+          },
+          world: {
+            x: input.clientX,
+            y: input.clientY
+          }
         }))
       }
     }
@@ -187,5 +200,81 @@ describe('resolvePoint', () => {
       part: 'body'
     })
     expect(domMocks.elementsFromPointWithin).toHaveBeenCalledTimes(1)
+  })
+
+  it('uses viewport.pointer so world coordinates stay correct while the viewport center changes', () => {
+    const pointer = vi
+      .fn()
+      .mockReturnValueOnce({
+        screen: { x: 400, y: 300 },
+        world: { x: 100, y: 50 }
+      })
+      .mockReturnValueOnce({
+        screen: { x: 400, y: 300 },
+        world: { x: 120, y: 80 }
+      })
+    const editor = {
+      scene: {
+        ui: {
+          state: {
+            selection: {
+              get: () => ({
+                nodeIds: [],
+                edgeIds: []
+              })
+            },
+            viewport: {
+              get: () => ({
+                center: { x: 0, y: 0 },
+                zoom: 1
+              })
+            }
+          }
+        },
+        hit: {
+          edge: vi.fn(() => undefined)
+        }
+      },
+      viewport: {
+        pointer
+      }
+    } satisfies ResolvePointEditor
+
+    const point = resolvePoint({
+      editor,
+      pick: {
+        element: vi.fn(() => undefined)
+      },
+      container: {} as Element,
+      event: {
+        clientX: 400,
+        clientY: 300,
+        target: null
+      } as MouseEvent
+    })
+
+    const interaction = resolveInteractionPointerInput({
+      phase: 'move',
+      editor: editor as never,
+      event: {
+        clientX: 400,
+        clientY: 300,
+        pointerId: 1,
+        button: 0,
+        buttons: 1,
+        detail: 1
+      } as PointerEvent
+    })
+
+    expect(point.world).toEqual({ x: 100, y: 50 })
+    expect(interaction.world).toEqual({ x: 120, y: 80 })
+    expect(pointer).toHaveBeenNthCalledWith(1, {
+      clientX: 400,
+      clientY: 300
+    })
+    expect(pointer).toHaveBeenNthCalledWith(2, {
+      clientX: 400,
+      clientY: 300
+    })
   })
 })

@@ -1,4 +1,3 @@
-import type { NodeId } from '@whiteboard/core/types'
 import type { NodeTypeSupport } from '@whiteboard/editor/node'
 import type { SelectionSummary } from '@whiteboard/core/selection'
 import type {
@@ -23,7 +22,7 @@ export const createSelectionNodeStats = (input: {
     family: SelectionNodeTypeInfo['family']
     icon: string
     count: number
-    nodeIds: NodeId[]
+    nodeIds: string[]
   }>()
 
   nodes.forEach((node) => {

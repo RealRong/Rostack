@@ -9,7 +9,7 @@ import type {
   SelectionSummary
 } from '@whiteboard/core/selection'
 import type { SelectionMode } from '@whiteboard/core/node'
-import type { GroupId, Node, NodeId } from '@whiteboard/core/types'
+import type { Node } from '@whiteboard/core/types'
 import type { Editor } from '@whiteboard/editor/api/editor'
 import type { EditSession } from '@whiteboard/editor/schema/edit'
 
@@ -19,7 +19,7 @@ type EditorDeps = {
 
 const startNodeEdit = (input: {
   ctx: EditorDeps
-  nodeId: NodeId
+  nodeId: string
   field: 'text' | 'title'
   caret: {
     kind: 'point'
@@ -54,12 +54,12 @@ export type SelectionPressTarget<TField extends string = string> =
   | { kind: 'background' }
   | {
       kind: 'group'
-      groupId: GroupId
+      groupId: string
     }
   | { kind: 'selection-box' }
   | {
       kind: 'node'
-      nodeId: NodeId
+      nodeId: string
       field?: TField
     }
 
@@ -71,11 +71,11 @@ type SelectionTapAction<TField extends string = string> =
     }
   | {
       kind: 'edit-node'
-      nodeId: NodeId
+      nodeId: string
     }
   | {
       kind: 'edit-field'
-      nodeId: NodeId
+      nodeId: string
       field: TField
       selection: SelectionTarget
     }
@@ -120,12 +120,12 @@ type SelectionPressBehavior<TField extends string = string> = {
 
 type SelectionPressDeps = {
   node: {
-    get: (nodeId: NodeId) => Node | undefined
-    canEnter: (nodeId: NodeId) => boolean
-    groupId: (nodeId: NodeId) => GroupId | undefined
+    get: (nodeId: string) => Node | undefined
+    canEnter: (nodeId: string) => boolean
+    groupId: (nodeId: string) => string | undefined
   }
   group: {
-    target: (groupId: GroupId) => SelectionTarget | undefined
+    target: (groupId: string) => SelectionTarget | undefined
   }
 }
 
@@ -159,7 +159,7 @@ export type SelectionPressSubject<TField extends string = string> =
       selected: boolean
       repeat: boolean
       canEnter: boolean
-      groupId?: GroupId
+      groupId?: string
       groupSelection?: SelectionTarget
       groupSelected: boolean
       promoteToGroup: boolean
@@ -194,16 +194,16 @@ const resolveSelectionEditField = (
 }
 
 const isSingleSelectedNode = (
-  nodeId: NodeId,
-  selectedNodeIds: readonly NodeId[]
+  nodeId: string,
+  selectedNodeIds: readonly string[]
 ) => (
   selectedNodeIds.length === 1
   && selectedNodeIds[0] === nodeId
 )
 
 const isSelectedNode = (
-  nodeId: NodeId,
-  selectedNodeIds: readonly NodeId[]
+  nodeId: string,
+  selectedNodeIds: readonly string[]
 ) => selectedNodeIds.includes(nodeId)
 
 const canDragSelectionBox = (
@@ -268,7 +268,7 @@ const resolveSelectionPressTarget = <TField extends string>(
 
 const isGroupSelected = (
   deps: SelectionPressDeps,
-  groupId: GroupId,
+  groupId: string,
   target: SelectionTarget
 ) => {
   const selection = deps.group.target(groupId)

@@ -2,7 +2,6 @@ import { geometry as geometryApi } from '@whiteboard/core/geometry'
 import { edge as edgeApi } from '@whiteboard/core/edge'
 import type {
   Edge,
-  EdgeId,
   Point
 } from '@whiteboard/core/types'
 import type {
@@ -16,7 +15,7 @@ import type { Editor } from '@whiteboard/editor/api/editor'
 import { readEdgePreviewIds } from '@whiteboard/editor/state/preview'
 
 export type EdgeMoveState = {
-  edgeId: EdgeId
+  edgeId: string
   pointerId: number
   edge?: Edge
   start: Point
@@ -36,7 +35,7 @@ const readEdgeMovePatch = (
 
 const readMovableEdge = (
   projection: Editor['scene'],
-  edgeId: EdgeId
+  edgeId: string
 ) => {
   const current = projection.edges.get(edgeId)?.base.edge
 
@@ -47,7 +46,7 @@ const readMovableEdge = (
 
 export const startEdgeMove = (input: {
   edge: Editor['scene']
-  edgeId: EdgeId
+  edgeId: string
   pointerId: number
   start: Point
 }): EdgeMoveState => ({
@@ -98,7 +97,7 @@ export const stepEdgeMove = (
 const commitEdgeMove = (
   state: EdgeMoveState
 ): {
-  edgeId: EdgeId
+  edgeId: string
   delta: Point
 } | undefined => (
   !geometryApi.equal.point(state.delta, ZERO_POINT)

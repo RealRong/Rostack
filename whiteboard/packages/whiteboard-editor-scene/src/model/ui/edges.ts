@@ -1,9 +1,6 @@
 import { family } from '@shared/core'
 import { idDelta } from '@shared/delta'
 import type {
-  EdgeId
-} from '@whiteboard/core/types'
-import type {
   EdgeUiView
 } from '../../contracts/editor'
 import type { UiContext } from './context'
@@ -14,7 +11,7 @@ import {
 
 const buildCurrentEdgeUiView = (input: {
   context: UiContext
-  edgeId: EdgeId
+  edgeId: string
   previous: EdgeUiView | undefined
 }): EdgeUiView | undefined => {
   const view = input.context.working.graph.edges.get(input.edgeId)
@@ -43,7 +40,7 @@ const buildCurrentEdgeUiView = (input: {
 
 const writeEdgeDelta = (input: {
   context: UiContext
-  edgeId: EdgeId
+  edgeId: string
   previous: EdgeUiView | undefined
   next: EdgeUiView | undefined
 }) => {
@@ -72,7 +69,7 @@ export const patchUiEdges = (
 
   const previous = context.working.ui.edges
   if (context.reset) {
-    const next = family.createMutableState<EdgeId, EdgeUiView>()
+    const next = family.createMutableState<string, EdgeUiView>()
     let count = 0
 
     context.working.graph.edges.forEach((_view, edgeId) => {

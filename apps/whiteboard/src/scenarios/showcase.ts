@@ -230,19 +230,23 @@ const createMindmapDocument = (): Document => {
     mindmaps: {
       [mindmapId]: {
         id: mindmapId,
-        root: rootId,
-        members: Object.fromEntries(
-          Object.entries(instantiated.tree.nodes).map(([nodeId, member]) => [
-            nodeId,
-            {
-              parentId: member.parentId,
-              side: member.side,
-              collapsed: member.collapsed,
-              branchStyle: member.branch
-            }
-          ])
-        ),
-        children: instantiated.tree.children,
+        tree: {
+          rootId,
+          nodes: Object.fromEntries(
+            Object.entries(instantiated.tree.nodes).map(([nodeId, member]) => [
+              nodeId,
+              {
+                parentId: member.parentId,
+                children: [...(instantiated.tree.children[nodeId] ?? [])],
+                value: {
+                  ...(member.side === undefined ? {} : { side: member.side }),
+                  ...(member.collapsed === undefined ? {} : { collapsed: member.collapsed }),
+                  branchStyle: member.branch
+                }
+              }
+            ])
+          )
+        },
         layout: instantiated.tree.layout
       }
     }

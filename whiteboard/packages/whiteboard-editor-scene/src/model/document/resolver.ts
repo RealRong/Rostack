@@ -2,27 +2,25 @@ import { document as documentApi } from '@whiteboard/core/document'
 import type { SliceExportResult } from '@whiteboard/core/document'
 import type {
   Edge,
-  EdgeId,
   Node,
-  NodeId
 } from '@whiteboard/core/types'
 import type { Revision } from '@shared/projection'
 import type { WorkingState } from '../../contracts/working'
 
 type ResolverCache = {
   revision: Revision | null
-  nodeIds: readonly NodeId[] | null
-  edgeIds: readonly EdgeId[] | null
+  nodeIds: readonly string[] | null
+  edgeIds: readonly string[] | null
 }
 
 export interface DocumentResolver {
-  node(id: NodeId): Node | undefined
-  edge(id: EdgeId): Edge | undefined
-  nodeIds(): readonly NodeId[]
-  edgeIds(): readonly EdgeId[]
+  node(id: string): Node | undefined
+  edge(id: string): Edge | undefined
+  nodeIds(): readonly string[]
+  edgeIds(): readonly string[]
   slice(input: {
-    nodeIds?: readonly NodeId[]
-    edgeIds?: readonly EdgeId[]
+    nodeIds?: readonly string[]
+    edgeIds?: readonly string[]
   }): SliceExportResult | undefined
 }
 
@@ -56,14 +54,14 @@ export const createDocumentResolver = (input: {
     nodeIds: () => {
       ensureCache()
       if (!cache.nodeIds) {
-        cache.nodeIds = Object.keys(readSnapshot().nodes) as readonly NodeId[]
+        cache.nodeIds = Object.keys(readSnapshot().nodes)
       }
       return cache.nodeIds
     },
     edgeIds: () => {
       ensureCache()
       if (!cache.edgeIds) {
-        cache.edgeIds = Object.keys(readSnapshot().edges) as readonly EdgeId[]
+        cache.edgeIds = Object.keys(readSnapshot().edges)
       }
       return cache.edgeIds
     },

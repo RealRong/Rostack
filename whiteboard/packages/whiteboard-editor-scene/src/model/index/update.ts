@@ -2,11 +2,7 @@ import { mindmap as mindmapApi } from '@whiteboard/core/mindmap'
 import type {
   Document,
   Edge,
-  EdgeId,
-  GroupId,
-  MindmapId,
   Node,
-  NodeId
 } from '@whiteboard/core/types'
 import type {
   EdgeNodes,
@@ -32,8 +28,8 @@ const clearEdgeAdjacency = (
 
 const addEdgeAdjacency = (
   state: IndexState,
-  edgeId: EdgeId,
-  nodeId: NodeId
+  edgeId: string,
+  nodeId: string
 ) => {
   const current = state.edgeIdsByNode.get(nodeId)
   if (current) {
@@ -46,8 +42,8 @@ const addEdgeAdjacency = (
 
 const removeEdgeAdjacency = (
   state: IndexState,
-  edgeId: EdgeId,
-  nodeId: NodeId
+  edgeId: string,
+  nodeId: string
 ) => {
   const current = state.edgeIdsByNode.get(nodeId)
   if (!current) {
@@ -103,7 +99,7 @@ const readEdgeNodes = (
 
 const removeSignatureEntry = (
   state: IndexState,
-  groupId: GroupId,
+  groupId: string,
   signature: string | undefined
 ) => {
   if (!signature) {
@@ -126,7 +122,7 @@ const removeSignatureEntry = (
 
 const addSignatureEntry = (
   state: IndexState,
-  groupId: GroupId,
+  groupId: string,
   signature: string
 ) => {
   const current = state.groupIdsBySignature.get(signature)
@@ -144,9 +140,9 @@ const addSignatureEntry = (
 
 const rebuildGroupItems = (
   document: Document,
-  groupIds: ReadonlySet<GroupId>
-): ReadonlyMap<GroupId, readonly GroupItemRef[]> => {
-  const items = new Map<GroupId, GroupItemRef[]>()
+  groupIds: ReadonlySet<string>
+): ReadonlyMap<string, readonly GroupItemRef[]> => {
+  const items = new Map<string, GroupItemRef[]>()
 
   groupIds.forEach((groupId) => {
     if (document.groups[groupId]) {
@@ -179,7 +175,7 @@ const rebuildGroupItems = (
 
 const setGroupItems = (
   state: IndexState,
-  groupId: GroupId,
+  groupId: string,
   items: readonly GroupItemRef[] | undefined
 ) => {
   const previousSignature = state.groupSignature.get(groupId)
@@ -199,9 +195,9 @@ const setGroupItems = (
 
 const collectMindmapNodes = (
   document: Document | undefined,
-  mindmapIds: ReadonlySet<MindmapId>
-): ReadonlySet<NodeId> => {
-  const nodeIds = new Set<NodeId>()
+  mindmapIds: ReadonlySet<string>
+): ReadonlySet<string> => {
+  const nodeIds = new Set<string>()
 
   if (!document) {
     return nodeIds
@@ -234,8 +230,8 @@ const clearMindmapEntries = (
 
 const patchMindmapEntries = (
   state: IndexState,
-  mindmapId: MindmapId,
-  record: Document['mindmaps'][MindmapId] | undefined
+  mindmapId: string,
+  record: Document['mindmaps'][string] | undefined
 ) => {
   if (!record) {
     state.mindmapNodes.delete(mindmapId)
@@ -312,10 +308,10 @@ export const patchIndexState = (input: {
   scope: {
     reset: boolean
     order: boolean
-    nodes: ReadonlySet<NodeId>
-    edges: ReadonlySet<EdgeId>
-    mindmaps: ReadonlySet<MindmapId>
-    groups: ReadonlySet<GroupId>
+    nodes: ReadonlySet<string>
+    edges: ReadonlySet<string>
+    mindmaps: ReadonlySet<string>
+    groups: ReadonlySet<string>
   }
 }) => {
   if (!input.previous || input.scope.reset) {
@@ -328,7 +324,7 @@ export const patchIndexState = (input: {
 
   const previous = input.previous
   const touchedMindmaps = input.scope.mindmaps
-  const touchedNodes = new Set<NodeId>([
+  const touchedNodes = new Set<string>([
     ...input.scope.nodes,
     ...collectMindmapNodes(previous, touchedMindmaps),
     ...collectMindmapNodes(input.next, touchedMindmaps)
@@ -377,7 +373,7 @@ export const patchIndexState = (input: {
     input.state.groupByEdge.set(edgeId, nextEdge.groupId)
   })
 
-  const affectedGroupIds = new Set<GroupId>([
+  const affectedGroupIds = new Set<string>([
     ...input.scope.groups
   ])
   input.scope.nodes.forEach((nodeId) => {

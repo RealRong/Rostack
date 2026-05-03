@@ -1,9 +1,6 @@
 import { mindmap as mindmapApi } from '@whiteboard/core/mindmap'
 import type {
   Document,
-  EdgeId,
-  MindmapId,
-  NodeId
 } from '@whiteboard/core/types'
 import type {
   MindmapTree
@@ -16,9 +13,9 @@ import {
 
 export const readRelatedEdgeIds = (
   state: Pick<IndexState, 'edgeIdsByNode'>,
-  nodeIds: Iterable<NodeId>
-): readonly EdgeId[] => {
-  const related = new Set<EdgeId>()
+  nodeIds: Iterable<string>
+): readonly string[] => {
+  const related = new Set<string>()
   for (const nodeId of nodeIds) {
     state.edgeIdsByNode.get(nodeId)?.forEach((edgeId) => {
       related.add(edgeId)
@@ -31,7 +28,7 @@ export const readMindmapId = (input: {
   document: Document
   indexes: Pick<IndexState, 'ownerByNode'>
   value: string
-}): MindmapId | undefined => {
+}): string | undefined => {
   const resolved = mindmapApi.tree.resolveId(input.document, input.value)
   if (resolved) {
     return resolved
@@ -44,11 +41,11 @@ export const readMindmapId = (input: {
 export const readMindmapStructure = (input: {
   document: Document
   indexes: Pick<IndexState, 'ownerByNode' | 'mindmapNodes'>
-  value: MindmapId | NodeId
+  value: string
 }): {
-  id: MindmapId
-  rootId: NodeId
-  nodeIds: readonly NodeId[]
+  id: string
+  rootId: string
+  nodeIds: readonly string[]
   tree: MindmapTree
 } | undefined => {
   const id = readMindmapId({
@@ -76,10 +73,10 @@ export const readMindmapStructure = (input: {
 
 export const readTreeDescendants = (
   state: Pick<IndexState, 'childrenByNode'>,
-  rootIds: readonly NodeId[]
-): readonly NodeId[] => {
-  const result: NodeId[] = []
-  const visited = new Set<NodeId>()
+  rootIds: readonly string[]
+): readonly string[] => {
+  const result: string[] = []
+  const visited = new Set<string>()
   const stack = [...rootIds].reverse()
 
   while (stack.length > 0) {

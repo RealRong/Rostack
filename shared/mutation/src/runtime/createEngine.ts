@@ -148,7 +148,7 @@ export const createMutationEngine = <
     trackHistory: boolean
   ) => {
     const applied = applyMutationWritesWithInverse(document, writes)
-    document = options.normalize(applied.document)
+    document = applied.document
     const delta = createMutationDelta(options.schema, writes)
     const commit = publish({
       kind: 'apply',

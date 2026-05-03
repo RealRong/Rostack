@@ -159,4 +159,51 @@ describe('scene pick', () => {
       id: 'edge-1'
     })
   })
+
+  it('updates node hit targets after moving a node', () => {
+    const editor = createPickEditor()
+
+    expect(editor.scene.hit.item({
+      point: { x: 60, y: 40 },
+      threshold: 8,
+      kinds: ['node']
+    })).toEqual({
+      kind: 'node',
+      id: 'node-1'
+    })
+
+    const result = editor.write.canvas.selection.move({
+      nodeIds: ['node-1'],
+      edgeIds: [],
+      delta: {
+        x: 400,
+        y: 0
+      }
+    })
+
+    expect(result.ok).toBe(true)
+    expect(editor.document.node('node-1')?.position).toEqual({
+      x: 400,
+      y: 0
+    })
+    expect(editor.scene.stores.render.node.byId.get('node-1')?.rect).toMatchObject({
+      x: 400,
+      y: 0
+    })
+
+    expect(editor.scene.hit.item({
+      point: { x: 60, y: 40 },
+      threshold: 8,
+      kinds: ['node']
+    })).toBeUndefined()
+
+    expect(editor.scene.hit.item({
+      point: { x: 460, y: 40 },
+      threshold: 8,
+      kinds: ['node']
+    })).toEqual({
+      kind: 'node',
+      id: 'node-1'
+    })
+  })
 })

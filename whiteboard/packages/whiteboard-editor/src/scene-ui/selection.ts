@@ -1,7 +1,6 @@
 import { edge as edgeApi } from '@whiteboard/core/edge';
 import { geometry as geometryApi } from '@whiteboard/core/geometry';
 import { selection as selectionApi } from '@whiteboard/core/selection';
-import type { NodeId } from '@whiteboard/core/types';
 import { equal, store } from '@shared/core';
 import type { EditorScene } from '@whiteboard/editor-scene';
 import { createSelectionNodeStats } from '@whiteboard/editor/scene-ui/selection-node-stats';
@@ -93,7 +92,7 @@ export const createEditorSelectionUi = (input: {
     const nodeSelected = store.projectedKeyed({
         source: input.state.selection,
         select: (target) => {
-            const byId = new Map<NodeId, boolean>();
+            const byId = new Map<string, boolean>();
             target.nodeIds.forEach((nodeId) => {
                 byId.set(nodeId, true);
             });

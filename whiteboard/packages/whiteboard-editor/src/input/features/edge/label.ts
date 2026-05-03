@@ -3,7 +3,6 @@ import { selection as selectionApi } from '@whiteboard/core/selection'
 import { entityTable } from '@shared/core'
 import type {
   Edge,
-  EdgeId,
   Point,
   Size
 } from '@whiteboard/core/types'
@@ -22,7 +21,7 @@ import { readEdgePreviewIds } from '@whiteboard/editor/state/preview'
 
 const startEdgeLabelEdit = (input: {
   editor: Editor
-  edgeId: EdgeId
+  edgeId: string
   labelId: string
   caret: {
     kind: 'point'
@@ -60,7 +59,7 @@ type EdgeLabelDragDraft = {
 
 type EdgeLabelDragState = {
   edge: Edge
-  edgeId: EdgeId
+  edgeId: string
   labelId: string
   pointerId: number
   path: EdgePathResult
@@ -71,20 +70,20 @@ type EdgeLabelDragState = {
 
 const isSingleSelectedEdge = (
   editor: Editor,
-  edgeId: EdgeId
+  edgeId: string
 ) => selectionApi.members.singleEdge(
   editor.scene.ui.selection.summary.get().target
 ) === edgeId
 
 const canEditEdgeLabel = (
   projection: Editor['scene'],
-  edgeId: EdgeId
+  edgeId: string
 ) => projection.edges.capability(edgeId)?.editLabel ?? false
 
 const readEdgeLabelMetrics = (
   projection: Editor['scene'],
   ref: {
-    edgeId: EdgeId
+    edgeId: string
     labelId: string
   }
 ) => projection.edges.get(ref.edgeId)?.route.labels
@@ -229,7 +228,7 @@ const createEdgeLabelDragSession = (
 const createEdgeLabelDragState = (
   editor: Editor,
   input: {
-    edgeId: EdgeId
+    edgeId: string
     labelId: string
     pointerId: number
   }
@@ -272,7 +271,7 @@ export const createEdgeLabelPressSession = (
   editor: Editor,
   start: PointerDownInput,
   input: {
-    edgeId: EdgeId
+    edgeId: string
     labelId: string
   }
 ): InteractionSession => createPressDragSession({
@@ -327,7 +326,7 @@ export const startEdgeLabelPress = (
   editor: Editor,
   pointer: PointerDownInput
 ): {
-  edgeId: EdgeId
+  edgeId: string
   labelId: string
 } | 'handled' | undefined => {
   if (

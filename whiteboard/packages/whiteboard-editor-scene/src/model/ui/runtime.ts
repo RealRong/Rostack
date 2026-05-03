@@ -1,39 +1,35 @@
-import type {
-  EdgeId,
-  NodeId
-} from '@whiteboard/core/types'
 import type { Input } from '../../contracts/editor'
 import type { WorkingState } from '../../contracts/working'
 import { appendIds } from '../scope'
 
 const readHoveredNodeId = (
   hover: WorkingState['ui']['chrome']['hover'] | WorkingState['runtime']['editor']['interaction']['hover']
-): NodeId | undefined => hover.kind === 'node'
+): string | undefined => hover.kind === 'node'
   ? hover.nodeId
   : undefined
 
 const readHoveredEdgeId = (
   hover: WorkingState['ui']['chrome']['hover'] | WorkingState['runtime']['editor']['interaction']['hover']
-): EdgeId | undefined => hover.kind === 'edge'
+): string | undefined => hover.kind === 'edge'
   ? hover.edgeId
   : undefined
 
 const readEditingEdgeId = (
   edit: WorkingState['runtime']['editor']['snapshot']['state']['edit'] | WorkingState['ui']['chrome']['edit']
-): EdgeId | undefined => edit?.kind === 'edge-label'
+): string | undefined => edit?.kind === 'edge-label'
   ? edit.edgeId
   : undefined
 
 const readEditingNodeId = (
   edit: WorkingState['runtime']['editor']['snapshot']['state']['edit'] | WorkingState['ui']['chrome']['edit']
-): NodeId | undefined => edit?.kind === 'node'
+): string | undefined => edit?.kind === 'node'
   ? edit.nodeId
   : undefined
 
 const collectSelectedNodeIds = (
   state: WorkingState
-): ReadonlySet<NodeId> => {
-  const ids = new Set<NodeId>()
+): ReadonlySet<string> => {
+  const ids = new Set<string>()
   state.ui.nodes.forEach((view, nodeId) => {
     if (view.selected) {
       ids.add(nodeId)
@@ -44,8 +40,8 @@ const collectSelectedNodeIds = (
 
 const collectSelectedEdgeIds = (
   state: WorkingState
-): ReadonlySet<EdgeId> => {
-  const ids = new Set<EdgeId>()
+): ReadonlySet<string> => {
+  const ids = new Set<string>()
   state.ui.edges.forEach((view, edgeId) => {
     if (view.selected) {
       ids.add(edgeId)
@@ -71,8 +67,8 @@ const hasSelection = (
 }
 
 export interface UiRuntimeTouch {
-  node: ReadonlySet<NodeId>
-  edge: ReadonlySet<EdgeId>
+  node: ReadonlySet<string>
+  edge: ReadonlySet<string>
   chrome: boolean
 }
 
@@ -80,8 +76,8 @@ export const collectUiRuntimeTouch = (input: {
   current: Input
   working: WorkingState
 }): UiRuntimeTouch => {
-  const node = new Set<NodeId>()
-  const edge = new Set<EdgeId>()
+  const node = new Set<string>()
+  const edge = new Set<string>()
 
   appendIds(node, collectSelectedNodeIds(input.working))
   appendIds(edge, collectSelectedEdgeIds(input.working))

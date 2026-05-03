@@ -1,6 +1,5 @@
 import { node as nodeApi, type Guide, type MoveStepResult } from '@whiteboard/core/node'
 import type { SelectionTarget } from '@whiteboard/core/selection'
-import type { EdgeId, NodeId } from '@whiteboard/core/types'
 import {
   FINISH
 } from '@whiteboard/editor/input/internals/result'
@@ -139,7 +138,7 @@ export const createMoveInteraction = (
       writer,
       snapshot
     }) => {
-      const nextNodeById = new Map<NodeId, {
+      const nextNodeById = new Map<string, {
         position: {
           x: number
           y: number
@@ -150,7 +149,7 @@ export const createMoveInteraction = (
           entry.patch
         ])
       )
-      const nextEdgeById = new Map<EdgeId, typeof result.preview.edges[number]['patch']>(
+      const nextEdgeById = new Map<string, typeof result.preview.edges[number]['patch']>(
         toMoveEdgePatches(result).map((entry) => [
           entry.id,
           entry.patch

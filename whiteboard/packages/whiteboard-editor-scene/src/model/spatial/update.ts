@@ -2,11 +2,6 @@ import { idDelta } from '@shared/delta'
 import type { Document } from '@whiteboard/core/types'
 import type { Revision } from '@shared/projection'
 import type {
-  EdgeId,
-  MindmapId,
-  NodeId
-} from '@whiteboard/core/types'
-import type {
   GraphPhaseDelta,
   IdDelta,
   SpatialDelta
@@ -59,7 +54,7 @@ const patchNodeRecord = (input: {
   readOrder: ReturnType<typeof createSceneOrderRead>
   state: SpatialIndexState
   delta: IdDelta<SpatialKey>
-  nodeId: NodeId
+  nodeId: string
 }) => patchSpatialRecord({
   state: input.state,
   key: spatialKey.write({
@@ -79,7 +74,7 @@ const patchEdgeRecord = (input: {
   readOrder: ReturnType<typeof createSceneOrderRead>
   state: SpatialIndexState
   delta: IdDelta<SpatialKey>
-  edgeId: EdgeId
+  edgeId: string
 }) => patchSpatialRecord({
   state: input.state,
   key: spatialKey.write({
@@ -99,7 +94,7 @@ const patchMindmapRecord = (input: {
   readOrder: ReturnType<typeof createSceneOrderRead>
   state: SpatialIndexState
   delta: IdDelta<SpatialKey>
-  mindmapId: MindmapId
+  mindmapId: string
 }) => patchSpatialRecord({
   state: input.state,
   key: spatialKey.write({

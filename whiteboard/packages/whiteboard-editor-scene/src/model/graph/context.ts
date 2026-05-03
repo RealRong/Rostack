@@ -1,9 +1,3 @@
-import type {
-  EdgeId,
-  GroupId,
-  MindmapId,
-  NodeId
-} from '@whiteboard/core/types'
 import type { Input } from '../../contracts/editor'
 import type {
   EditorSceneInputFacts
@@ -20,10 +14,10 @@ export interface GraphContext {
   reset: boolean
   previousDocument?: WorkingState['document']['snapshot']
   target: {
-    node: ReadonlySet<NodeId>
-    edge: ReadonlySet<EdgeId>
-    mindmap: ReadonlySet<MindmapId>
-    group: ReadonlySet<GroupId>
+    node: ReadonlySet<string>
+    edge: ReadonlySet<string>
+    mindmap: ReadonlySet<string>
+    group: ReadonlySet<string>
     order: boolean
   }
   queue: GraphQueue
@@ -44,7 +38,7 @@ export const createGraphContext = (input: {
         ? 'all'
         : input.facts.graph.node,
       () => [
-        ...(Object.keys(input.working.document.snapshot.nodes) as readonly NodeId[]),
+        ...Object.keys(input.working.document.snapshot.nodes),
         ...input.working.graph.nodes.keys()
       ]
     ),
@@ -53,7 +47,7 @@ export const createGraphContext = (input: {
         ? 'all'
         : input.facts.graph.edge,
       () => [
-        ...(Object.keys(input.working.document.snapshot.edges) as readonly EdgeId[]),
+        ...Object.keys(input.working.document.snapshot.edges),
         ...input.working.graph.edges.keys()
       ]
     ),
@@ -62,7 +56,7 @@ export const createGraphContext = (input: {
         ? 'all'
         : input.facts.graph.mindmap,
       () => [
-        ...(Object.keys(input.working.document.snapshot.mindmaps) as readonly MindmapId[]),
+        ...Object.keys(input.working.document.snapshot.mindmaps),
         ...input.working.graph.owners.mindmaps.keys()
       ]
     ),
@@ -71,7 +65,7 @@ export const createGraphContext = (input: {
         ? 'all'
         : input.facts.graph.group,
       () => [
-        ...(Object.keys(input.working.document.snapshot.groups) as readonly GroupId[]),
+        ...Object.keys(input.working.document.snapshot.groups),
         ...input.working.graph.owners.groups.keys()
       ]
     ),

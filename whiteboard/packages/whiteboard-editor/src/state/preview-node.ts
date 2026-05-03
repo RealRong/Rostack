@@ -1,5 +1,4 @@
 import { geometry as geometryApi } from '@whiteboard/core/geometry'
-import type { NodeId } from '@whiteboard/core/types'
 import type {
   NodePresentation,
   NodePresentationEntry,
@@ -14,7 +13,7 @@ import type {
 export const EMPTY_NODE_PATCHES: readonly NodePreviewEntry[] = []
 const EMPTY_TEXT_PREVIEW_PATCHES: readonly TextPreviewEntry[] = []
 const EMPTY_NODE_PRESENTATIONS: readonly NodePresentationEntry[] = []
-export const EMPTY_NODE_HIDDEN: readonly NodeId[] = []
+export const EMPTY_NODE_HIDDEN: readonly string[] = []
 
 export const EMPTY_NODE_SELECTION_FEEDBACK: NodeSelectionPreviewState = {
   patches: EMPTY_NODE_PATCHES
@@ -47,11 +46,11 @@ const isTextPreviewPatchEqual = (
 )
 
 const readEntryPatch = <TPatch, TEntry extends {
-  id: NodeId
+  id: string
   patch: TPatch
 }>(
   patches: readonly TEntry[],
-  nodeId: NodeId
+  nodeId: string
 ): TPatch | undefined => {
   for (let index = 0; index < patches.length; index += 1) {
     const entry = patches[index]!
@@ -64,7 +63,7 @@ const readEntryPatch = <TPatch, TEntry extends {
 }
 
 const replaceEntryPatch = <TPatch, TEntry extends {
-  id: NodeId
+  id: string
   patch: TPatch
 }>({
   patches,
@@ -74,10 +73,10 @@ const replaceEntryPatch = <TPatch, TEntry extends {
   createEntry
 }: {
   patches: readonly TEntry[]
-  nodeId: NodeId
+  nodeId: string
   patch: TPatch | undefined
   isEqual: (left: TPatch, right: TPatch) => boolean
-  createEntry: (nodeId: NodeId, patch: TPatch) => TEntry
+  createEntry: (nodeId: string, patch: TPatch) => TEntry
 }): readonly TEntry[] => {
   let changed = false
   const next: TEntry[] = []
@@ -124,12 +123,12 @@ const replaceEntryPatch = <TPatch, TEntry extends {
 
 const readTextPreviewEntry = (
   patches: readonly TextPreviewEntry[],
-  nodeId: NodeId
+  nodeId: string
 ): TextPreviewPatch | undefined => readEntryPatch(patches, nodeId)
 
 const replaceTextPreviewEntry = (
   patches: readonly TextPreviewEntry[],
-  nodeId: NodeId,
+  nodeId: string,
   patch: TextPreviewPatch | undefined
 ): readonly TextPreviewEntry[] => replaceEntryPatch({
   patches,
@@ -185,7 +184,7 @@ const mergeTextPreviewPatch = (
 
 export const updateNodeTextPreview = (
   state: NodeTextPreviewState,
-  nodeId: NodeId,
+  nodeId: string,
   patch: TextPreviewPatch | undefined
 ): NodeTextPreviewState => {
   const currentPatch = readTextPreviewEntry(state.patches, nodeId)
@@ -201,7 +200,7 @@ export const updateNodeTextPreview = (
 
 export const clearNodeTextPreviewSize = (
   state: NodeTextPreviewState,
-  nodeId: NodeId
+  nodeId: string
 ): NodeTextPreviewState => {
   const patch = readTextPreviewEntry(state.patches, nodeId)
   if (!patch?.size && !patch?.position) {
@@ -259,7 +258,7 @@ const normalizeNodeFeedbackState = (
 
 const updateNodePresentation = (
   state: NodePreviewState,
-  nodeId: NodeId,
+  nodeId: string,
   presentation: NodePresentation | undefined
 ): NodePreviewState => {
   const current = state.presentation.find((entry) => entry.id === nodeId)?.presentation

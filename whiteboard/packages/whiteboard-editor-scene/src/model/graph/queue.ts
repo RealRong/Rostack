@@ -1,19 +1,13 @@
-import type {
-  EdgeId,
-  GroupId,
-  MindmapId,
-  NodeId
-} from '@whiteboard/core/types'
 import type { WorkingState } from '../../contracts/working'
 import { readRelatedEdgeIds } from '../index/read'
 import { appendIds } from '../scope'
 import type { GraphContext } from './context'
 
 export interface GraphQueue {
-  node: Set<NodeId>
-  edge: Set<EdgeId>
-  mindmap: Set<MindmapId>
-  group: Set<GroupId>
+  node: Set<string>
+  edge: Set<string>
+  mindmap: Set<string>
+  group: Set<string>
 }
 
 export const createGraphQueue = (): GraphQueue => ({
@@ -38,7 +32,7 @@ export const fanoutNodeGeometry = (input: {
     id: string
   }
   queue: GraphQueue
-  nodeId: NodeId
+  nodeId: string
 }) => {
   appendIds(
     input.queue.edge,

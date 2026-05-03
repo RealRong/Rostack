@@ -4,7 +4,7 @@ import { mindmap as mindmapApi,
   type MindmapNodeId
 } from '@whiteboard/core/mindmap'
 import type { SelectionSummary } from '@whiteboard/core/selection'
-import type { NodeId, Point } from '@whiteboard/core/types'
+import type { Point } from '@whiteboard/core/types'
 import { store } from '@shared/core'
 import type { InteractionSession } from '@whiteboard/editor/input/core/types'
 import { FINISH } from '@whiteboard/editor/input/internals/result'
@@ -21,13 +21,13 @@ export type MindmapDragState = CoreMindmapDragState
 export type MindmapDragCommit =
   | {
       kind: 'root'
-      nodeId: NodeId
+      nodeId: string
       position: Point
       origin?: Point
     }
   | {
       kind: 'subtree'
-      id: NodeId
+      id: string
       nodeId: MindmapNodeId
       drop: {
         parentId: MindmapNodeId
@@ -83,7 +83,7 @@ export const tryStartMindmapDrag = (input: {
   mindmap: {
     tree: Editor['scene']['mindmaps']['tree']
   }
-  node: (nodeId: NodeId) => Node | undefined
+  node: (nodeId: string) => Node | undefined
   selection: Pick<store.ReadStore<SelectionSummary>, 'get'>
 }): MindmapDragState | undefined => {
   const pick = input.pointer.pick
@@ -153,13 +153,13 @@ export const tryStartMindmapDrag = (input: {
 }
 
 export const tryStartMindmapDragForNode = (input: {
-  nodeId: NodeId
+  nodeId: string
   pointerId: number
   world: Point
   mindmap: {
     tree: Editor['scene']['mindmaps']['tree']
   }
-  node: (nodeId: NodeId) => Node | undefined
+  node: (nodeId: string) => Node | undefined
 }): MindmapDragState | undefined => {
   const pickedNode = input.node(input.nodeId)
   const treeId = pickedNode?.owner?.kind === 'mindmap'

@@ -1,8 +1,5 @@
 import type {
   Document,
-  EdgeId,
-  MindmapId,
-  NodeId
 } from '@whiteboard/core/types'
 import type { Revision } from '@shared/projection'
 import type { GraphState } from '../../contracts/working'
@@ -46,7 +43,7 @@ export const createSceneOrderRead = (
 export const readNodeSpatialRecord = (input: {
   graph: GraphState
   readOrder: SceneOrderRead
-  nodeId: NodeId
+  nodeId: string
 }): SpatialRecord | undefined => {
   const node = input.graph.nodes.get(input.nodeId)
   const bounds = node?.geometry.bounds
@@ -71,7 +68,7 @@ export const readNodeSpatialRecord = (input: {
 export const readEdgeSpatialRecord = (input: {
   graph: GraphState
   readOrder: SceneOrderRead
-  edgeId: EdgeId
+  edgeId: string
 }): SpatialRecord | undefined => {
   const edge = input.graph.edges.get(input.edgeId)
   const bounds = edge?.route.bounds
@@ -96,7 +93,7 @@ export const readEdgeSpatialRecord = (input: {
 export const readMindmapSpatialRecord = (input: {
   graph: GraphState
   readOrder: SceneOrderRead
-  mindmapId: MindmapId
+  mindmapId: string
 }): SpatialRecord | undefined => {
   const mindmap = input.graph.owners.mindmaps.get(input.mindmapId)
   const bounds = mindmap?.tree.bbox

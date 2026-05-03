@@ -1,11 +1,5 @@
 import { geometry as geometryApi } from '@whiteboard/core/geometry'
 import { selection as selectionApi, type SelectionTarget } from '@whiteboard/core/selection'
-import type {
-  EdgeId,
-  GroupId,
-  MindmapId,
-  NodeId
-} from '@whiteboard/core/types'
 import { json } from '@shared/core'
 import type {
   HoverState,
@@ -38,10 +32,10 @@ export interface EditorStableInteractionState {
 }
 
 export interface EditorHoverState {
-  node: NodeId | null
-  edge: EdgeId | null
-  mindmap: MindmapId | null
-  group: GroupId | null
+  node: string | null
+  edge: string | null
+  mindmap: string | null
+  group: string | null
   selectionBox: boolean
 }
 

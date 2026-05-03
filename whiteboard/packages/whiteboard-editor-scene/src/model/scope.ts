@@ -1,8 +1,3 @@
-import type {
-  EdgeId,
-  MindmapId,
-  NodeId
-} from '@whiteboard/core/types'
 import type { SceneItemKey } from '../contracts/delta'
 import { sceneItemKey } from '../contracts/delta'
 import type { SceneScope } from '../contracts/facts'
@@ -38,8 +33,8 @@ export const appendScopeIds = <TId extends string>(
 }
 
 export const appendMindmapNodeIds = (input: {
-  target: Set<NodeId>
-  mindmapIds: Iterable<MindmapId>
+  target: Set<string>
+  mindmapIds: Iterable<string>
   working: WorkingState
 }) => {
   for (const mindmapId of input.mindmapIds) {
@@ -53,8 +48,8 @@ export const appendMindmapNodeIds = (input: {
 }
 
 export const appendMindmapNodeScope = (input: {
-  target: Set<NodeId>
-  scope: SceneScope<MindmapId>
+  target: Set<string>
+  scope: SceneScope<string>
   working: WorkingState
 }) => {
   if (input.scope === 'all') {
@@ -70,7 +65,7 @@ export const appendMindmapNodeScope = (input: {
 }
 
 export const appendEdgeItemScope = (input: {
-  target: Set<EdgeId>
+  target: Set<string>
   scope: SceneScope<SceneItemKey>
   working: WorkingState
 }) => {

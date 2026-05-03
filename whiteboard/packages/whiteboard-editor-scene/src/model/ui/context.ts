@@ -1,7 +1,3 @@
-import type {
-  EdgeId,
-  NodeId
-} from '@whiteboard/core/types'
 import type { Input } from '../../contracts/editor'
 import type {
   EditorSceneUiFacts
@@ -17,8 +13,8 @@ export interface UiContext {
   reset: boolean
   working: WorkingState
   touched: {
-    node: ReadonlySet<NodeId>
-    edge: ReadonlySet<EdgeId>
+    node: ReadonlySet<string>
+    edge: ReadonlySet<string>
     chrome: boolean
   }
 }
@@ -35,8 +31,8 @@ export const createUiContext = (input: {
     reset: input.reset,
     working: input.working,
     touched: {
-      node: resolveScope(input.facts.node, () => input.working.graph.nodes.keys()) as ReadonlySet<NodeId>,
-      edge: resolveScope(input.facts.edge, () => input.working.graph.edges.keys()) as ReadonlySet<EdgeId>,
+      node: resolveScope(input.facts.node, () => input.working.graph.nodes.keys()),
+      edge: resolveScope(input.facts.edge, () => input.working.graph.edges.keys()),
       chrome: input.facts.chrome
     }
   }

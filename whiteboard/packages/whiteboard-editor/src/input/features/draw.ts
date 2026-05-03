@@ -1,7 +1,6 @@
 import { geometry as geometryApi } from '@whiteboard/core/geometry'
 import { node as nodeApi } from '@whiteboard/core/node'
 import type {
-  NodeId,
   NodeInput,
   Point,
   Rect
@@ -48,7 +47,7 @@ type DrawStrokeState = {
 }
 
 type EraseState = {
-  ids: readonly NodeId[]
+  ids: readonly string[]
   lastWorld: Point
 }
 
@@ -203,7 +202,7 @@ const commitDrawStroke = (
 const queryDrawNodeIdsInRect = (
   editor: Editor,
   rect: Rect
-): readonly NodeId[] => editor.scene.nodes.idsInRect(rect, {
+): readonly string[] => editor.scene.nodes.idsInRect(rect, {
   match: 'touch'
 }).filter((nodeId) => (
   editor.document.node(nodeId)?.type === 'draw'

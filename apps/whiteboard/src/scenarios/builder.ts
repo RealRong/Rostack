@@ -182,12 +182,10 @@ export const createDocumentFromParts = (
   ...documentApi.create(id),
   nodes: toRecord(nodes),
   edges: toRecord(edges),
-  canvas: {
-    order: [
-      ...nodes.map((node) => ({ kind: 'node' as const, id: node.id })),
-      ...edges.map((edge) => ({ kind: 'edge' as const, id: edge.id }))
-    ]
-  }
+  order: [
+    ...nodes.map((node) => ({ kind: 'node' as const, id: node.id })),
+    ...edges.map((edge) => ({ kind: 'edge' as const, id: edge.id }))
+  ]
 })
 
 export type ScenarioDocumentBuilder = ReturnType<typeof createScenarioDocumentBuilder>

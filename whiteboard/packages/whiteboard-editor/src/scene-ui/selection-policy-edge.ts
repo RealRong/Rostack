@@ -1,4 +1,4 @@
-import type { Edge, EdgeId } from '@whiteboard/core/types'
+import type { Edge } from '@whiteboard/core/types'
 import { collection, entityTable } from '@shared/core'
 import type { EditorDefaults } from '@whiteboard/editor/schema/defaults'
 import type { SelectionToolbarEdgeScope } from '@whiteboard/editor/scene-ui/schema'
@@ -10,7 +10,7 @@ export const readEdgeScope = ({
   defaults
 }: {
   edges: readonly Edge[]
-  edgeIds: readonly EdgeId[]
+  edgeIds: readonly string[]
   primaryEdge?: Edge
   defaults: EditorDefaults['selection']
 }): SelectionToolbarEdgeScope => ({

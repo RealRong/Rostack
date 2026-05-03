@@ -1,6 +1,6 @@
 import type { MindmapStructure } from '@whiteboard/core/mindmap'
 import { node as nodeApi } from '@whiteboard/core/node'
-import type { MindmapId, MindmapNodeId, NodeId, NodeModel } from '@whiteboard/core/types'
+import type { MindmapNodeId, NodeModel } from '@whiteboard/core/types'
 import { collection, equal } from '@shared/core'
 import type { EditorDefaults, EditorNodePaintDefaults } from '@whiteboard/editor/schema/defaults'
 import type {
@@ -174,11 +174,11 @@ export const readNodeScope = ({
   defaults
 }: {
   nodes: readonly NodeModel[]
-  nodeIds: readonly NodeId[]
+  nodeIds: readonly string[]
   primaryNode?: NodeModel
   nodeType: Pick<NodeTypeSupport, 'hasControl' | 'supportsStyle'>
   nodeStats: SelectionNodeStats
-  readMindmapStructure: (id: MindmapId) => MindmapStructure | undefined
+  readMindmapStructure: (id: string) => MindmapStructure | undefined
   defaults: EditorDefaults['selection']
 }): SelectionToolbarNodeScope => {
   const readPaintDefaults = defaults.node.readPaint

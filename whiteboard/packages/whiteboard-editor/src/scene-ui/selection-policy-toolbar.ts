@@ -4,7 +4,7 @@ import type {
   SelectionSummary,
   SelectionTarget
 } from '@whiteboard/core/selection'
-import type { Edge, EdgeId, MindmapId, NodeId, NodeModel } from '@whiteboard/core/types'
+import type { Edge, NodeModel } from '@whiteboard/core/types'
 import type { EditorDefaults } from '@whiteboard/editor/schema/defaults'
 import type { EditSession } from '@whiteboard/editor/schema/edit'
 import type {
@@ -34,8 +34,8 @@ const createSelectionTarget = ({
   nodeIds = [],
   edgeIds = []
 }: {
-  nodeIds?: readonly NodeId[]
-  edgeIds?: readonly EdgeId[]
+  nodeIds?: readonly string[]
+  edgeIds?: readonly string[]
 }): SelectionTarget => ({
   nodeIds,
   edgeIds
@@ -57,16 +57,16 @@ const readSelectionToolbarLockState = (
 }
 
 const collectNodesByIds = (
-  nodeById: ReadonlyMap<NodeId, NodeModel>,
-  ids: readonly NodeId[]
+  nodeById: ReadonlyMap<string, NodeModel>,
+  ids: readonly string[]
 ): NodeModel[] => ids.flatMap((id) => {
   const node = nodeById.get(id)
   return node ? [node] : []
 })
 
 const collectEdgesByIds = (
-  edgeById: ReadonlyMap<EdgeId, Edge>,
-  ids: readonly EdgeId[]
+  edgeById: ReadonlyMap<string, Edge>,
+  ids: readonly string[]
 ): Edge[] => ids.flatMap((id) => {
   const edge = edgeById.get(id)
   return edge ? [edge] : []
@@ -96,7 +96,7 @@ export const resolveSelectionToolbar = ({
   nodeScope: SelectionToolbarNodeScope | undefined
   edgeScope: SelectionToolbarEdgeScope | undefined
   nodeType: Pick<NodeTypeSupport, 'hasControl' | 'supportsStyle'>
-  readMindmapStructure: (id: MindmapId) => MindmapStructure | undefined
+  readMindmapStructure: (id: string) => MindmapStructure | undefined
   tool: Tool
   edit: EditSession
   interactionChrome: boolean
@@ -119,11 +119,11 @@ export const resolveSelectionToolbar = ({
   }
 
   const scopes: SelectionToolbarScope[] = []
-  const nodeById = new Map<NodeId, NodeModel>()
+  const nodeById = new Map<string, NodeModel>()
   members.nodes.forEach((node) => {
     nodeById.set(node.id, node)
   })
-  const edgeById = new Map<EdgeId, Edge>()
+  const edgeById = new Map<string, Edge>()
   members.edges.forEach((edge) => {
     edgeById.set(edge.id, edge)
   })

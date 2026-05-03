@@ -27,33 +27,50 @@ const readScenarioPresetFromUrl = () => {
   })
 }
 
+const readExplicitRoomIdFromUrl = () => {
+  if (typeof window === 'undefined') {
+    return null
+  }
+
+  const params = new URLSearchParams(window.location.search)
+  const room = params.get('room')
+  return room && room.trim().length > 0
+    ? room
+    : null
+}
+
 export const App = () => {
   const [preset] = useState(() => readScenarioPresetFromUrl())
   const [user] = useState(() => createDemoUser())
+  const explicitRoomId = readExplicitRoomIdFromUrl()
   const roomId = readRoomIdFromUrl(buildScenarioRoomId(preset))
   const [doc, setDoc] = useState<Document>(() => preset.create())
   const instanceRef = useRef<WhiteboardInstance | null>(null)
   const collabBinding = useMemo(
-    () => createBroadcastChannelCollab({
-      roomId,
-      user
-    }),
-    [roomId, user]
+    () => explicitRoomId
+      ? createBroadcastChannelCollab({
+          roomId,
+          user
+        })
+      : null,
+    [explicitRoomId, roomId, user]
   )
 
   const onDocumentChange = useCallback((next: Document) => {
     setDoc(next)
   }, [])
 
-  const collab = useMemo(() => ({
-    doc: collabBinding.doc,
-    actorId: user.id,
-    provider: collabBinding.provider,
-    autoConnect: true,
-    presence: {
-      binding: collabBinding.awareness
-    }
-  }), [collabBinding])
+  const collab = useMemo(() => collabBinding
+    ? {
+        doc: collabBinding.doc,
+        actorId: user.id,
+        provider: collabBinding.provider,
+        autoConnect: true,
+        presence: {
+          binding: collabBinding.awareness
+        }
+      }
+    : undefined, [collabBinding, user.id])
 
   const options = useMemo(() => ({
     style: { width: '100%', height: '100%' },
@@ -63,7 +80,7 @@ export const App = () => {
 
   useEffect(() => {
     return () => {
-      collabBinding.destroy()
+      collabBinding?.destroy()
     }
   }, [collabBinding])
 

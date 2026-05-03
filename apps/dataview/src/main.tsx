@@ -40,15 +40,36 @@ const STATUS_OPTIONS = [
   }
 ] as const
 
+const createFieldBase = () => ({
+  displayFullUrl: undefined,
+  format: undefined,
+  precision: undefined,
+  currency: undefined,
+  useThousandsSeparator: undefined,
+  defaultOptionId: undefined,
+  displayDateFormat: undefined,
+  displayTimeFormat: undefined,
+  defaultValueKind: undefined,
+  defaultTimezone: undefined,
+  multiple: undefined,
+  accept: undefined,
+  options: entityTable.normalize.list([]),
+  meta: undefined
+} as const)
+
 const createFields = (): CustomField[] => ([
   {
+    ...createFieldBase(),
     id: FIELD_STATUS,
     name: 'Status',
     kind: 'status',
     defaultOptionId: 'todo',
-    options: STATUS_OPTIONS.map(option => ({ ...option }))
+    options: entityTable.normalize.list(
+      STATUS_OPTIONS.map(option => ({ ...option }))
+    )
   },
   {
+    ...createFieldBase(),
     id: FIELD_POINTS,
     name: 'Points',
     kind: 'number',
@@ -61,18 +82,7 @@ const createFields = (): CustomField[] => ([
 
 const createFieldTable = (
   fields: readonly CustomField[]
-): DataDoc['fields'] => {
-  const byId = {} as DataDoc['fields']['byId']
-
-  fields.forEach(field => {
-    byId[field.id] = field
-  })
-
-  return {
-    byId,
-    ids: fields.map(field => field.id)
-  }
-}
+): DataDoc['fields'] => entityTable.normalize.list(fields)
 
 const createDefaultDocument = (): DataDoc => {
   const count = 180
@@ -90,6 +100,7 @@ const createDefaultDocument = (): DataDoc => {
       id,
       title: `Task ${String(index + 1).padStart(5, '0')}`,
       type: 'task',
+      meta: undefined,
       values: {
         [FIELD_STATUS]: STATUS_OPTIONS[Math.floor(Math.random() * STATUS_OPTIONS.length)]?.id ?? 'todo',
         [FIELD_POINTS]: Math.floor(Math.random() * 13) + 1
@@ -99,6 +110,7 @@ const createDefaultDocument = (): DataDoc => {
   }
 
   return {
+    activeViewId: VIEW_TABLE,
     fields: fieldTable,
     views: {
       byId: {
@@ -113,6 +125,7 @@ const createDefaultDocument = (): DataDoc => {
           search: {
             query: ''
           },
+          group: undefined,
           sort: {
             rules: []
           },

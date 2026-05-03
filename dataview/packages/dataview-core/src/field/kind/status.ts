@@ -66,7 +66,7 @@ const getStatusOptions = (
   field?: StatusFieldInput
 ) => field?.kind === 'status'
   ? readFieldOptions(field).flatMap((option) => (
-      'category' in option
+      option.category !== undefined
         ? [option]
         : []
     ))

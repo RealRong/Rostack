@@ -33,11 +33,7 @@ const cloneDocument = (document: DataDoc): DataDoc => ({
   fields: sharedEntityTable.clone.table(document.fields),
   views: sharedEntityTable.clone.table(document.views),
   activeViewId: documentViews.activeId.resolve(document),
-  ...(Object.prototype.hasOwnProperty.call(document, 'meta')
-    ? {
-        meta: document.meta ? structuredClone(document.meta) : document.meta
-      }
-    : {})
+  meta: document.meta ? structuredClone(document.meta) : document.meta
 })
 
 export const documentDocument = {

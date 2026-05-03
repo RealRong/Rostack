@@ -75,13 +75,17 @@ export type CustomFieldKind =
   | 'phone'
   | 'asset'
 
-export interface FlatOption {
+export interface FieldOptionBase {
   id: string
   name: string
   color: string | null
 }
 
-export interface StatusOption extends FlatOption {
+export interface FlatOption extends FieldOptionBase {
+  category: undefined
+}
+
+export interface StatusOption extends FieldOptionBase {
   category: StatusCategory
 }
 
@@ -116,9 +120,25 @@ export type ViewCalc = Partial<Record<FieldId, CalculationMetric>>
 export interface DataRecord {
   id: RecordId
   title: string
-  type?: string
+  type: string | undefined
   values: Partial<Record<CustomFieldId, unknown>>
-  meta?: Record<string, unknown>
+  meta: Record<string, unknown> | undefined
+}
+
+export interface CustomFieldSchemaSurface {
+  displayFullUrl: boolean | undefined
+  format: NumberFormat | undefined
+  precision: number | null | undefined
+  currency: string | null | undefined
+  useThousandsSeparator: boolean | undefined
+  defaultOptionId: string | null | undefined
+  displayDateFormat: DateDisplayFormat | undefined
+  displayTimeFormat: TimeDisplayFormat | undefined
+  defaultValueKind: DateValueKind | undefined
+  defaultTimezone: string | null | undefined
+  multiple: boolean | undefined
+  accept: AssetAccept | undefined
+  options: EntityTable<FieldOptionId, FieldOption>
 }
 
 export interface TitleField {
@@ -126,39 +146,39 @@ export interface TitleField {
   name: string
   kind: 'title'
   system: true
-  meta?: Record<string, unknown>
+  meta: Record<string, unknown> | undefined
 }
 
-export interface TextField {
+export interface TextField extends CustomFieldSchemaSurface {
   id: CustomFieldId
   name: string
   kind: 'text'
-  meta?: Record<string, unknown>
+  meta: Record<string, unknown> | undefined
 }
 
-export interface UrlField {
+export interface UrlField extends CustomFieldSchemaSurface {
   id: CustomFieldId
   name: string
   kind: 'url'
   displayFullUrl: boolean
-  meta?: Record<string, unknown>
+  meta: Record<string, unknown> | undefined
 }
 
-export interface EmailField {
+export interface EmailField extends CustomFieldSchemaSurface {
   id: CustomFieldId
   name: string
   kind: 'email'
-  meta?: Record<string, unknown>
+  meta: Record<string, unknown> | undefined
 }
 
-export interface PhoneField {
+export interface PhoneField extends CustomFieldSchemaSurface {
   id: CustomFieldId
   name: string
   kind: 'phone'
-  meta?: Record<string, unknown>
+  meta: Record<string, unknown> | undefined
 }
 
-export interface NumberField {
+export interface NumberField extends CustomFieldSchemaSurface {
   id: CustomFieldId
   name: string
   kind: 'number'
@@ -166,35 +186,35 @@ export interface NumberField {
   precision: number | null
   currency: string | null
   useThousandsSeparator: boolean
-  meta?: Record<string, unknown>
+  meta: Record<string, unknown> | undefined
 }
 
-export interface SelectField {
+export interface SelectField extends CustomFieldSchemaSurface {
   id: CustomFieldId
   name: string
   kind: 'select'
-  options: FlatOption[]
-  meta?: Record<string, unknown>
+  options: EntityTable<FieldOptionId, FlatOption>
+  meta: Record<string, unknown> | undefined
 }
 
-export interface MultiSelectField {
+export interface MultiSelectField extends CustomFieldSchemaSurface {
   id: CustomFieldId
   name: string
   kind: 'multiSelect'
-  options: FlatOption[]
-  meta?: Record<string, unknown>
+  options: EntityTable<FieldOptionId, FlatOption>
+  meta: Record<string, unknown> | undefined
 }
 
-export interface StatusField {
+export interface StatusField extends CustomFieldSchemaSurface {
   id: CustomFieldId
   name: string
   kind: 'status'
-  options: StatusOption[]
+  options: EntityTable<FieldOptionId, StatusOption>
   defaultOptionId: string | null
-  meta?: Record<string, unknown>
+  meta: Record<string, unknown> | undefined
 }
 
-export interface DateField {
+export interface DateField extends CustomFieldSchemaSurface {
   id: CustomFieldId
   name: string
   kind: 'date'
@@ -202,23 +222,23 @@ export interface DateField {
   displayTimeFormat: TimeDisplayFormat
   defaultValueKind: DateValueKind
   defaultTimezone: string | null
-  meta?: Record<string, unknown>
+  meta: Record<string, unknown> | undefined
 }
 
-export interface BooleanField {
+export interface BooleanField extends CustomFieldSchemaSurface {
   id: CustomFieldId
   name: string
   kind: 'boolean'
-  meta?: Record<string, unknown>
+  meta: Record<string, unknown> | undefined
 }
 
-export interface AssetField {
+export interface AssetField extends CustomFieldSchemaSurface {
   id: CustomFieldId
   name: string
   kind: 'asset'
   multiple: boolean
   accept: AssetAccept
-  meta?: Record<string, unknown>
+  meta: Record<string, unknown> | undefined
 }
 
 export type CustomField =
@@ -321,6 +341,7 @@ export interface ViewBase {
   search: Search
   filter: Filter
   sort: Sort
+  group: ViewGroup | undefined
   calc: ViewCalc
   fields: FieldId[]
   order: RecordId[]
@@ -328,13 +349,11 @@ export interface ViewBase {
 
 export interface TableView extends ViewBase {
   type: 'table'
-  group?: ViewGroup
   options: TableOptions
 }
 
 export interface GalleryView extends ViewBase {
   type: 'gallery'
-  group?: ViewGroup
   options: ViewOptionsByType['gallery']
 }
 
@@ -354,6 +373,6 @@ export interface DataDoc {
   records: EntityTable<RecordId, DataRecord>
   fields: EntityTable<CustomFieldId, CustomField>
   views: EntityTable<ViewId, View>
-  activeViewId?: ViewId
-  meta?: Record<string, unknown>
+  activeViewId: ViewId | undefined
+  meta: Record<string, unknown> | undefined
 }

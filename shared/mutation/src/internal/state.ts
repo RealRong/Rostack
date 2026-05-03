@@ -27,6 +27,40 @@ type AnyCollectionNode =
   | MutationTableNode<string, MutationShape>
   | MutationMapNode<string, MutationShape>
 
+const TARGET_ID_SCOPE_SEPARATOR = '\u001f'
+
+const splitTargetId = (
+  targetId?: string
+): readonly string[] => targetId === undefined
+  ? []
+  : targetId.split(TARGET_ID_SCOPE_SEPARATOR)
+
+export const scopeTargetId = (
+  ownerTargetId: string | undefined,
+  targetId: string
+): string => ownerTargetId === undefined
+  ? targetId
+  : `${ownerTargetId}${TARGET_ID_SCOPE_SEPARATOR}${targetId}`
+
+export const readCurrentTargetId = (
+  targetId?: string
+): string | undefined => {
+  const parts = splitTargetId(targetId)
+  return parts.length
+    ? parts[parts.length - 1]
+    : undefined
+}
+
+export const readOwnerTargetId = (
+  targetId?: string
+): string | undefined => {
+  const parts = splitTargetId(targetId)
+  if (parts.length <= 1) {
+    return undefined
+  }
+  return parts.slice(0, -1).join(TARGET_ID_SCOPE_SEPARATOR)
+}
+
 export const readAtPath = (
   value: unknown,
   path: readonly string[]
@@ -76,18 +110,43 @@ export const updateAtPath = <TValue,>(
 
 const readFamilyValue = (
   node: AnyCollectionNode,
-  document: unknown
-): unknown => getNodeAccess(node)
-  ? getNodeAccess(node)!.read(document)
-  : readAtPath(document, getNodeMeta(node).path)
+  document: unknown,
+  targetId?: string
+): unknown => {
+  const access = getNodeAccess(node)
+  if (access) {
+    return access.read(document, targetId)
+  }
+
+  const meta = getNodeMeta(node)
+  if (meta.owner.kind === 'document') {
+    return readAtPath(document, meta.path)
+  }
+
+  const ownerValue = readOwnerValue(meta.owner, document, targetId)
+  return readAtPath(ownerValue, meta.relativePath)
+}
 
 const writeFamilyValue = (
   node: AnyCollectionNode,
   document: unknown,
-  nextValue: unknown
-): unknown => getNodeAccess(node)
-  ? getNodeAccess(node)!.write(document, nextValue as never)
-  : writeAtPath(document, getNodeMeta(node).path, nextValue)
+  nextValue: unknown,
+  targetId?: string
+): unknown => {
+  const access = getNodeAccess(node)
+  if (access) {
+    return access.write(document, nextValue as never, targetId)
+  }
+
+  const meta = getNodeMeta(node)
+  if (meta.owner.kind === 'document') {
+    return writeAtPath(document, meta.path, nextValue)
+  }
+
+  const ownerValue = readOwnerValue(meta.owner, document, targetId)
+  const nextOwnerValue = writeAtPath(ownerValue, meta.relativePath, nextValue)
+  return writeOwnerValue(meta.owner, document, targetId, nextOwnerValue)
+}
 
 export const readOwnerValue = (
   owner: MutationOwnerMeta,
@@ -98,19 +157,21 @@ export const readOwnerValue = (
     case 'document':
       return document
     case 'singleton':
-      return readFamilyValue(owner.node, document)
+      return readFamilyValue(owner.node, document, readOwnerTargetId(targetId))
     case 'table': {
-      const table = readFamilyValue(owner.node, document) as {
+      const table = readFamilyValue(owner.node, document, readOwnerTargetId(targetId)) as {
         byId?: Record<string, unknown>
       } | undefined
-      return targetId
-        ? table?.byId?.[targetId]
+      const currentTargetId = readCurrentTargetId(targetId)
+      return currentTargetId
+        ? table?.byId?.[currentTargetId]
         : undefined
     }
     case 'map': {
-      const value = readFamilyValue(owner.node, document) as Record<string, unknown> | undefined
-      return targetId
-        ? value?.[targetId]
+      const value = readFamilyValue(owner.node, document, readOwnerTargetId(targetId)) as Record<string, unknown> | undefined
+      const currentTargetId = readCurrentTargetId(targetId)
+      return currentTargetId
+        ? value?.[currentTargetId]
         : undefined
     }
   }
@@ -126,12 +187,13 @@ export const writeOwnerValue = (
     case 'document':
       return nextValue
     case 'singleton':
-      return writeFamilyValue(owner.node, document, nextValue)
+      return writeFamilyValue(owner.node, document, nextValue, readOwnerTargetId(targetId))
     case 'table': {
-      if (!targetId) {
+      const currentTargetId = readCurrentTargetId(targetId)
+      if (!currentTargetId) {
         throw new Error('Mutation write is missing a table target id.')
       }
-      const table = readFamilyValue(owner.node, document) as {
+      const table = readFamilyValue(owner.node, document, readOwnerTargetId(targetId)) as {
         ids?: readonly string[]
         byId?: Record<string, unknown>
       } | undefined
@@ -140,19 +202,20 @@ export const writeOwnerValue = (
         ids,
         byId: {
           ...(table?.byId ?? {}),
-          [targetId]: nextValue
+          [currentTargetId]: nextValue
         }
-      })
+      }, readOwnerTargetId(targetId))
     }
     case 'map': {
-      if (!targetId) {
+      const currentTargetId = readCurrentTargetId(targetId)
+      if (!currentTargetId) {
         throw new Error('Mutation write is missing a map target id.')
       }
-      const value = readFamilyValue(owner.node, document) as Record<string, unknown> | undefined
+      const value = readFamilyValue(owner.node, document, readOwnerTargetId(targetId)) as Record<string, unknown> | undefined
       return writeFamilyValue(owner.node, document, {
         ...(value ?? {}),
-        [targetId]: nextValue
-      })
+        [currentTargetId]: nextValue
+      }, readOwnerTargetId(targetId))
     }
   }
 }
@@ -167,7 +230,7 @@ export const readNodeValue = (
     || node.kind === 'table'
     || node.kind === 'map'
   ) {
-    return readFamilyValue(node, document)
+    return readFamilyValue(node, document, targetId)
   }
 
   if (
@@ -193,7 +256,7 @@ export const writeNodeValue = (
     || node.kind === 'table'
     || node.kind === 'map'
   ) {
-    return writeFamilyValue(node, document, nextValue)
+    return writeFamilyValue(node, document, nextValue, targetId)
   }
 
   if (

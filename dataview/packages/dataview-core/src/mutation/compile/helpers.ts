@@ -10,11 +10,11 @@ import {
   equal,
 } from '@shared/core'
 import type {
-  MutationOrderedAnchor,
+  MutationSequenceAnchor,
 } from '@shared/mutation'
 import type {
   DataviewMutationWriter,
-} from '../model'
+} from '../schema'
 import {
   readViewFieldIds,
 } from '../../view/fields'
@@ -22,46 +22,17 @@ import {
   readViewOrderIds,
 } from '../../view/order'
 
-export const END_ANCHOR: MutationOrderedAnchor = {
-  kind: 'end'
+export const END_ANCHOR: MutationSequenceAnchor = {
+  at: 'end'
 }
 
 export const toAnchor = (
   before?: string
-): MutationOrderedAnchor => before === undefined
+): MutationSequenceAnchor => before === undefined
   ? END_ANCHOR
   : {
-      kind: 'before',
-      itemId: before
+      before
     }
-
-export const replaceViewFieldsInWriter = (
-  writer: DataviewMutationWriter,
-  viewId: string,
-  currentFieldIds: readonly FieldId[],
-  nextFieldIds: readonly FieldId[]
-) => {
-  currentFieldIds.forEach((fieldId) => {
-    writer.view(viewId).fields.delete(fieldId)
-  })
-  nextFieldIds.forEach((fieldId) => {
-    writer.view(viewId).fields.insert(fieldId, END_ANCHOR)
-  })
-}
-
-export const replaceViewOrderInWriter = (
-  writer: DataviewMutationWriter,
-  viewId: string,
-  currentRecordIds: readonly RecordId[],
-  nextRecordIds: readonly RecordId[]
-) => {
-  currentRecordIds.forEach((recordId) => {
-    writer.view(viewId).order.delete(recordId)
-  })
-  nextRecordIds.forEach((recordId) => {
-    writer.view(viewId).order.insert(recordId, END_ANCHOR)
-  })
-}
 
 export const writeRecordValues = (
   writer: DataviewMutationWriter,
@@ -74,23 +45,23 @@ export const writeRecordValues = (
   recordIds.forEach((recordId) => {
     Object.entries(input.set ?? {}).forEach(([fieldId, value]) => {
       if (fieldId === TITLE_FIELD_ID) {
-        writer.record.patch(recordId, {
+        writer.records(recordId).patch({
           title: structuredClone(value) as string
         })
         return
       }
 
-      writer.record(recordId).values.set(fieldId as FieldId, structuredClone(value))
+      writer.records(recordId).values.set(fieldId as FieldId, structuredClone(value))
     })
     ;(input.clear ?? []).forEach((fieldId) => {
       if (fieldId === TITLE_FIELD_ID) {
-        writer.record.patch(recordId, {
+        writer.records(recordId).patch({
           title: ''
         })
         return
       }
 
-      writer.record(recordId).values.remove(fieldId)
+      writer.records(recordId).values.delete(fieldId)
     })
   })
 }
@@ -128,28 +99,18 @@ export const writeViewUpdate = (
     patch.options = structuredClone(next.options)
   }
   if (Object.keys(patch).length > 0) {
-    writer.view.patch(current.id, patch)
+    writer.views(current.id).patch(patch)
   }
 
   const currentFieldIds = readViewFieldIds(current)
   const nextFieldIds = readViewFieldIds(next)
   if (!equal.sameOrder(currentFieldIds, nextFieldIds)) {
-    replaceViewFieldsInWriter(
-      writer,
-      current.id,
-      currentFieldIds,
-      nextFieldIds
-    )
+    writer.views(current.id).fields.replace(nextFieldIds)
   }
 
   const currentOrderIds = readViewOrderIds(current)
   const nextOrderIds = readViewOrderIds(next)
   if (!equal.sameOrder(currentOrderIds, nextOrderIds)) {
-    replaceViewOrderInWriter(
-      writer,
-      current.id,
-      currentOrderIds,
-      nextOrderIds
-    )
+    writer.views(current.id).order.replace(nextOrderIds)
   }
 }

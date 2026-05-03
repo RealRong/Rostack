@@ -21,6 +21,7 @@ export type MutationWrite =
       node: MutationTableNode<string, MutationShape> | MutationMapNode<string, MutationShape>
       targetId: string
       value: unknown
+      anchor?: MutationSequenceAnchor
     }
   | {
       kind: 'entity.replace'
@@ -32,6 +33,12 @@ export type MutationWrite =
       kind: 'entity.remove'
       node: MutationTableNode<string, MutationShape> | MutationMapNode<string, MutationShape>
       targetId: string
+    }
+  | {
+      kind: 'entity.move'
+      node: MutationTableNode<string, MutationShape>
+      targetId: string
+      anchor?: MutationSequenceAnchor
     }
   | {
       kind: 'field.set'

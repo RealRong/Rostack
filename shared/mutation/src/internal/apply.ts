@@ -6,6 +6,7 @@ import {
   getNodeMeta
 } from '../schema/meta'
 import {
+  readCurrentTargetId,
   readNodeValue,
   readSequenceItems,
   readTreeValue,
@@ -30,25 +31,31 @@ const applyEntityCreate = (
   }>
 ): unknown => {
   if (write.node.kind === 'table') {
-    const current = readNodeValue(write.node, document) as MutationTableValue<string, any> | undefined
+    const current = readNodeValue(write.node, document, write.targetId) as MutationTableValue<string, any> | undefined
+    const currentTargetId = readCurrentTargetId(write.targetId)
+    if (!currentTargetId) {
+      throw new Error('Mutation entity.create on table requires targetId.')
+    }
     const ids = current?.ids ?? []
     const byId = current?.byId ?? {}
     return writeNodeValue(write.node, document, {
-      ids: ids.includes(write.targetId)
-        ? ids
-        : [...ids, write.targetId],
+      ids: insertSequenceItem(ids, currentTargetId, write.anchor),
       byId: {
         ...byId,
-        [write.targetId]: write.value
+        [currentTargetId]: write.value
       }
-    })
+    }, write.targetId)
   }
 
-  const current = readNodeValue(write.node, document) as MutationMapValue<string, any> | undefined
+  const current = readNodeValue(write.node, document, write.targetId) as MutationMapValue<string, any> | undefined
+  const currentTargetId = readCurrentTargetId(write.targetId)
+  if (!currentTargetId) {
+    throw new Error('Mutation entity.create on map requires targetId.')
+  }
   return writeNodeValue(write.node, document, {
     ...(current ?? {}),
-    [write.targetId]: write.value
-  })
+    [currentTargetId]: write.value
+  }, write.targetId)
 }
 
 const applyEntityReplace = (
@@ -65,27 +72,35 @@ const applyEntityReplace = (
     if (!write.targetId) {
       throw new Error('Mutation entity.replace on table requires targetId.')
     }
-    const current = readNodeValue(write.node, document) as MutationTableValue<string, any> | undefined
+    const current = readNodeValue(write.node, document, write.targetId) as MutationTableValue<string, any> | undefined
+    const currentTargetId = readCurrentTargetId(write.targetId)
+    if (!currentTargetId) {
+      throw new Error('Mutation entity.replace on table requires targetId.')
+    }
     const ids = current?.ids ?? []
     return writeNodeValue(write.node, document, {
-      ids: ids.includes(write.targetId)
+      ids: ids.includes(currentTargetId)
         ? ids
-        : [...ids, write.targetId],
+        : [...ids, currentTargetId],
       byId: {
         ...(current?.byId ?? {}),
-        [write.targetId]: write.value
+        [currentTargetId]: write.value
       }
-    })
+    }, write.targetId)
   }
 
   if (!write.targetId) {
     throw new Error('Mutation entity.replace on map requires targetId.')
   }
-  const current = readNodeValue(write.node, document) as MutationMapValue<string, any> | undefined
+  const current = readNodeValue(write.node, document, write.targetId) as MutationMapValue<string, any> | undefined
+  const currentTargetId = readCurrentTargetId(write.targetId)
+  if (!currentTargetId) {
+    throw new Error('Mutation entity.replace on map requires targetId.')
+  }
   return writeNodeValue(write.node, document, {
     ...(current ?? {}),
-    [write.targetId]: write.value
-  })
+    [currentTargetId]: write.value
+  }, write.targetId)
 }
 
 const applyEntityRemove = (
@@ -95,24 +110,49 @@ const applyEntityRemove = (
   }>
 ): unknown => {
   if (write.node.kind === 'table') {
-    const current = readNodeValue(write.node, document) as MutationTableValue<string, any> | undefined
-    const ids = (current?.ids ?? []).filter((id) => id !== write.targetId)
+    const current = readNodeValue(write.node, document, write.targetId) as MutationTableValue<string, any> | undefined
+    const currentTargetId = readCurrentTargetId(write.targetId)
+    if (!currentTargetId) {
+      throw new Error('Mutation entity.remove on table requires targetId.')
+    }
+    const ids = (current?.ids ?? []).filter((id) => id !== currentTargetId)
     const byId = {
       ...(current?.byId ?? {})
     }
-    delete byId[write.targetId]
+    delete byId[currentTargetId]
     return writeNodeValue(write.node, document, {
       ids,
       byId
-    })
+    }, write.targetId)
   }
 
-  const current = readNodeValue(write.node, document) as MutationMapValue<string, any> | undefined
+  const current = readNodeValue(write.node, document, write.targetId) as MutationMapValue<string, any> | undefined
+  const currentTargetId = readCurrentTargetId(write.targetId)
+  if (!currentTargetId) {
+    throw new Error('Mutation entity.remove on map requires targetId.')
+  }
   const next = {
     ...(current ?? {})
   }
-  delete next[write.targetId]
-  return writeNodeValue(write.node, document, next)
+  delete next[currentTargetId]
+  return writeNodeValue(write.node, document, next, write.targetId)
+}
+
+const applyEntityMove = (
+  document: unknown,
+  write: Extract<MutationWrite, {
+    kind: 'entity.move'
+  }>
+): unknown => {
+  const current = readNodeValue(write.node, document, write.targetId) as MutationTableValue<string, any> | undefined
+  const currentTargetId = readCurrentTargetId(write.targetId)
+  if (!currentTargetId) {
+    throw new Error('Mutation entity.move on table requires targetId.')
+  }
+  return writeNodeValue(write.node, document, {
+    ids: moveSequenceItem(current?.ids ?? [], currentTargetId, write.anchor),
+    byId: current?.byId ?? {}
+  }, write.targetId)
 }
 
 const applyFieldSet = (
@@ -213,6 +253,8 @@ export const applyMutationWrite = (
       return applyEntityReplace(document, write)
     case 'entity.remove':
       return applyEntityRemove(document, write)
+    case 'entity.move':
+      return applyEntityMove(document, write)
     case 'field.set':
       return applyFieldSet(document, write)
     case 'dictionary.set':
@@ -302,6 +344,7 @@ export const describeMutationWrite = (
     case 'entity.create':
     case 'entity.replace':
     case 'entity.remove':
+    case 'entity.move':
       return {
         nodeKey: meta.key,
         path: meta.path,

@@ -17,7 +17,8 @@ const TITLE_FIELD: Extract<Field, { kind: 'title' }> = {
   id: TITLE_FIELD_ID,
   name: 'Title',
   kind: 'title',
-  system: true
+  system: true,
+  meta: undefined
 }
 
 const isTitleFieldId = (

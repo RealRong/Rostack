@@ -44,10 +44,9 @@ const requireCustomField = (
   fieldId: string,
   path = 'fieldId'
 ): CustomField | undefined => {
-  const field = input.expect!.field(fieldId, path)
+  const field = input.query.fields.get(fieldId)
   if (!fieldApi.kind.isCustom(field)) {
     input.issue({
-      source: input.source,
       code: 'field.notFound',
       message: `Unknown field: ${fieldId}`,
       path,
@@ -69,7 +68,6 @@ const requireOptionField = (
   }
   if (!fieldApi.kind.hasOptions(field)) {
     input.issue({
-      source: input.source,
       code: 'field.invalid',
       message: 'Field does not support options',
       path: 'fieldId',
@@ -108,7 +106,6 @@ const lowerFieldCreate = (
 
   if (intent.input.id !== undefined && !explicitFieldId) {
     input.issue({
-      source: input.source,
       code: 'field.invalid',
       message: 'Field id must be a non-empty string',
       path: 'input.id',
@@ -117,7 +114,6 @@ const lowerFieldCreate = (
   }
   if (explicitFieldId && reader.fields.has(explicitFieldId)) {
     input.issue({
-      source: input.source,
       code: 'field.invalid',
       message: `Field already exists: ${explicitFieldId}`,
       path: 'input.id',
@@ -135,7 +131,7 @@ const lowerFieldCreate = (
     meta: intent.input.meta
   })
 
-  input.writer.field.create(field)
+  input.write.fields.create(field)
   return { id: field.id }
 }
 
@@ -150,7 +146,6 @@ const lowerFieldPatch = (
 
   if (!Object.keys(intent.patch).length) {
     input.issue({
-      source: input.source,
       code: 'field.invalid',
       message: 'field.patch patch cannot be empty',
       path: 'patch',
@@ -163,7 +158,12 @@ const lowerFieldPatch = (
   if (equal.sameJsonValue(field, nextField)) {
     return
   }
-  input.writer.field.patch(intent.id, intent.patch)
+  input.write.fields(intent.id).patch(
+    json.diff(
+      field,
+      nextField
+    )
+  )
 }
 
 const lowerFieldReplace = (
@@ -184,7 +184,12 @@ const lowerFieldReplace = (
     return
   }
 
-  input.writer.field.patch(intent.id, json.diff(current, field))
+  input.write.fields(intent.id).patch(
+    json.diff(
+      current,
+      field
+    )
+  )
 }
 
 const lowerFieldSetKind = (
@@ -199,16 +204,21 @@ const lowerFieldSetKind = (
   }
 
   const nextField = fieldApi.kind.convert(field, intent.kind)
-  const patch = json.diff(field, nextField)
-  if (!Object.keys(patch).length) {
+  const nextPatch = json.diff(field, nextField)
+  if (!Object.keys(nextPatch).length) {
     return
   }
 
-  input.writer.field.patch(intent.id, patch)
+  input.write.fields(intent.id).patch(
+    json.diff(
+      field,
+      nextField
+    )
+  )
   views.forEach((view) => {
     const nextView = viewApi.repair.field.converted(view, nextField)
     if (nextView !== view) {
-      writeViewUpdate(input.writer, view, nextView)
+      writeViewUpdate(input.write, view, nextView)
     }
   })
 }
@@ -235,14 +245,14 @@ const lowerFieldDuplicate = (
     )
   } satisfies CustomField
 
-  input.writer.field.create(nextField)
+  input.write.fields.create(nextField)
 
   records.forEach((record) => {
     if (!Object.prototype.hasOwnProperty.call(record.values, sourceField.id)) {
       return
     }
 
-    writeRecordValues(input.writer, [record.id], {
+    writeRecordValues(input.write, [record.id], {
       set: {
         [nextFieldId]: structuredClone(record.values[sourceField.id])
       }
@@ -260,7 +270,7 @@ const lowerFieldDuplicate = (
       return
     }
 
-    input.writer.view(view.id).fields.insert(
+    input.write.views(view.id).fields.insert(
       nextFieldId,
       toAnchor(viewFieldIds[sourceIndex + 1])
     )
@@ -283,7 +293,6 @@ const lowerFieldOptionCreate = (
   const explicitName = string.trimToUndefined(intent.name)
   if (intent.name !== undefined && !explicitName) {
     input.issue({
-      source: input.source,
       code: 'field.invalid',
       message: 'Field option name must be a non-empty string',
       path: 'name',
@@ -300,7 +309,7 @@ const lowerFieldOptionCreate = (
     options: context.options,
     name: explicitName ?? createOptionName(context.options)
   })
-  input.writer.field(intent.field).options.insert(nextOption)
+  input.write.fields(intent.field).options.create(nextOption)
   return { id: nextOption.id }
 }
 
@@ -316,7 +325,6 @@ const lowerFieldOptionMove = (
   const optionId = string.trimToUndefined(intent.option)
   if (!optionId) {
     input.issue({
-      source: input.source,
       code: 'field.invalid',
       message: 'Field option id must be a non-empty string',
       path: 'option',
@@ -327,7 +335,6 @@ const lowerFieldOptionMove = (
   const currentOption = context.options.find((option) => option.id === optionId)
   if (!currentOption) {
     input.issue({
-      source: input.source,
       code: 'field.invalid',
       message: `Unknown field option: ${optionId}`,
       path: 'option',
@@ -343,13 +350,13 @@ const lowerFieldOptionMove = (
   if (context.field.kind === 'status' && intent.category !== undefined) {
     const category = fieldApi.status.category.get(context.field, optionId)
     if (category !== intent.category) {
-      input.writer.field(intent.field).options.patch(optionId, {
+      input.write.fields(intent.field).options(optionId).patch({
         category: intent.category
       })
     }
   }
 
-  input.writer.field(intent.field).options.move(
+  input.write.fields(intent.field).options.move(
     optionId,
     before === undefined
       ? undefined
@@ -369,7 +376,6 @@ const lowerFieldOptionPatch = (
   const optionId = string.trimToUndefined(intent.option)
   if (!optionId) {
     input.issue({
-      source: input.source,
       code: 'field.invalid',
       message: 'Field option id must be a non-empty string',
       path: 'option',
@@ -381,7 +387,6 @@ const lowerFieldOptionPatch = (
   const currentOption = context.options.find((option) => option.id === optionId)
   if (!currentOption) {
     input.issue({
-      source: input.source,
       code: 'field.invalid',
       message: `Unknown field option: ${optionId}`,
       path: 'option',
@@ -399,7 +404,12 @@ const lowerFieldOptionPatch = (
     return
   }
 
-  input.writer.field(intent.field).options.patch(optionId, intent.patch)
+  input.write.fields(intent.field).options(optionId).patch(
+    json.diff(
+      currentOption,
+      nextOption
+    )
+  )
 }
 
 const lowerFieldOptionRemove = (
@@ -415,7 +425,6 @@ const lowerFieldOptionRemove = (
   const optionId = string.trimToUndefined(intent.option)
   if (!optionId) {
     input.issue({
-      source: input.source,
       code: 'field.invalid',
       message: 'Field option id must be a non-empty string',
       path: 'option',
@@ -425,7 +434,6 @@ const lowerFieldOptionRemove = (
   }
   if (!context.options.some((option) => option.id === optionId)) {
     input.issue({
-      source: input.source,
       code: 'field.invalid',
       message: `Unknown field option: ${optionId}`,
       path: 'option',
@@ -445,7 +453,7 @@ const lowerFieldOptionRemove = (
       return
     }
 
-    writeRecordValues(input.writer, [record.id], (
+    writeRecordValues(input.write, [record.id], (
       nextValue.kind === 'clear'
         ? {
             clear: [context.field.id]
@@ -459,12 +467,12 @@ const lowerFieldOptionRemove = (
   })
 
   if (context.field.kind === 'status' && context.field.defaultOptionId === optionId) {
-    input.writer.field.patch(context.field.id, {
+    input.write.fields(context.field.id).patch({
       defaultOptionId: null
     })
   }
 
-  input.writer.field(intent.field).options.delete(optionId)
+  input.write.fields(intent.field).options.remove(optionId)
 }
 
 const lowerFieldRemove = (
@@ -483,7 +491,7 @@ const lowerFieldRemove = (
       return
     }
 
-    writeRecordValues(input.writer, [record.id], {
+    writeRecordValues(input.write, [record.id], {
       clear: [field.id]
     })
   })
@@ -491,11 +499,11 @@ const lowerFieldRemove = (
   views.forEach((view) => {
     const nextView = viewApi.repair.field.removed(view, intent.id)
     if (nextView !== view) {
-      writeViewUpdate(input.writer, view, nextView)
+      writeViewUpdate(input.write, view, nextView)
     }
   })
 
-  input.writer.field.delete(intent.id)
+  input.write.fields.remove(intent.id)
 }
 
 export const dataviewFieldIntentHandlers = {

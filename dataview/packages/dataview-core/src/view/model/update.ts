@@ -62,22 +62,18 @@ export const setViewType = (input: {
       return {
         ...shared,
         type: 'table',
-        ...(current.group
-          ? {
-              group: viewApi.group.state.clone(current.group)
-            }
-          : {}),
+        group: current.group
+          ? viewApi.group.state.clone(current.group)
+          : undefined,
         options: viewApi.options.defaults('table', input.fields)
       }
     case 'gallery':
       return {
         ...shared,
         type: 'gallery',
-        ...(current.group
-          ? {
-              group: viewApi.group.state.clone(current.group)
-            }
-          : {}),
+        group: current.group
+          ? viewApi.group.state.clone(current.group)
+          : undefined,
         options: viewApi.options.defaults('gallery', input.fields)
       }
     case 'kanban': {

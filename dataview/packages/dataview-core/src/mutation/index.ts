@@ -9,31 +9,20 @@ export {
   createDataviewQueryContext
 } from './query'
 export type {
-  DataviewDeltaQuery,
   DataviewQuery,
   DataviewQueryContext
 } from './query'
 export {
   dataviewMutationSchema,
-  dataviewTitleField,
-} from './model'
+} from './schema'
 export type {
   DataviewMutationDelta,
+  DataviewMutationQuery,
   DataviewMutationSchema,
   DataviewMutationReader,
   DataviewMutationWriter,
-} from './model'
+} from './schema'
 export type {
-  DataviewMutationProgram,
-  DataviewMutationProgramStep,
-} from './program'
-export {
-  createDataviewMutationWriter
-} from './writer'
-
-export type DataviewQueryAspect =
-  | 'search'
-  | 'filter'
-  | 'sort'
-  | 'group'
-  | 'order'
+  DataviewMutationChanges,
+  DataviewQueryAspect
+} from './change'

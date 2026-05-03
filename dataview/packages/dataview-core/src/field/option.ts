@@ -1,5 +1,6 @@
 import type {
   CustomField,
+  EntityTable,
   FieldOptionId,
   FieldOption,
   MultiSelectField,
@@ -7,7 +8,7 @@ import type {
   StatusField,
   StatusOption
 } from '@dataview/core/types'
-import { string } from '@shared/core'
+import { entityTable, string } from '@shared/core'
 
 const EMPTY_OPTION_IDS: string[] = []
 const EMPTY_OPTIONS: FieldOption[] = []
@@ -15,6 +16,8 @@ const EMPTY_OPTIONS: FieldOption[] = []
 export type OptionField = Extract<CustomField, {
   kind: 'select' | 'multiSelect' | 'status'
 }>
+
+type OptionEntityTable<TOption extends FieldOption = FieldOption> = EntityTable<FieldOptionId, TOption>
 
 export const isOptionField = (
   field?: CustomField
@@ -27,13 +30,18 @@ export const isOptionField = (
 export const readFieldOptions = (
   field?: CustomField
 ): FieldOption[] => isOptionField(field)
-  ? field.options.map((option) => structuredClone(option))
+  ? field.options.ids.flatMap((optionId) => {
+      const option = field.options.byId[optionId]
+      return option
+        ? [structuredClone(option)]
+        : []
+    })
   : EMPTY_OPTIONS
 
 export const readFieldOptionIds = (
   field?: CustomField
 ): readonly FieldOptionId[] => isOptionField(field)
-  ? field.options.map((option) => option.id)
+  ? field.options.ids
   : EMPTY_OPTION_IDS
 
 export const normalizeOptionToken = (
@@ -171,27 +179,35 @@ export const replaceFieldOptions = (
   field: OptionField,
   options: readonly FieldOption[]
 ): Pick<SelectField, 'options'> | Pick<MultiSelectField, 'options'> | Pick<StatusField, 'options'> => {
+  const toTable = <TOption extends FieldOption>(
+    list: readonly TOption[]
+  ): OptionEntityTable<TOption> => entityTable.normalize.list(
+    list.map((option) => structuredClone(option))
+  )
+
   switch (field.kind) {
     case 'select':
       return {
-        options: options.map(option => ({
+        options: toTable(options.map(option => ({
           id: option.id,
           name: option.name,
-          color: option.color ?? null
-        }))
+          color: option.color ?? null,
+          category: undefined
+        })))
       }
     case 'multiSelect':
       return {
-        options: options.map(option => ({
+        options: toTable(options.map(option => ({
           id: option.id,
           name: option.name,
-          color: option.color ?? null
-        }))
+          color: option.color ?? null,
+          category: undefined
+        })))
       }
     case 'status':
       return {
-        options: options.flatMap(option => (
-          'category' in option
+        options: toTable(options.flatMap(option => (
+          option.category !== undefined
             ? [{
                 id: option.id,
                 name: option.name,
@@ -199,7 +215,7 @@ export const replaceFieldOptions = (
                 category: option.category
               } satisfies StatusOption]
             : []
-        ))
+        )))
       }
   }
 }

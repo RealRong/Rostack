@@ -12,11 +12,16 @@ import type {
   MutationTreeNode
 } from '../schema/node'
 import {
+  readCurrentTargetId,
+  scopeTargetId
+} from '../internal/state'
+import {
   isMutationGroup,
   isMutationNode
 } from '../schema/node'
 import type {
   MutationDeltaBaseOfShape,
+  MutationDeltaShape,
   MutationDeltaControls
 } from './facadeTypes'
 import type {
@@ -240,6 +245,18 @@ const createDocumentDelta = (
     ])
 )
 
+const createShapeDelta = (
+  shape: MutationShape,
+  writes: readonly MutationWrite[],
+  targetId?: string
+): Record<string, unknown> => Object.fromEntries(
+  Object.entries(shape)
+    .map(([key, value]) => [
+      key,
+      createNodeDelta(value as MutationShapeNode | MutationShape, writes, targetId)
+    ])
+)
+
 const createObjectDelta = (
   node: MutationObjectNode<MutationShape>,
   writes: readonly MutationWrite[],
@@ -247,19 +264,20 @@ const createObjectDelta = (
 ) => {
   const pathKey = getNodeMeta(node).path.join('.')
   return {
-    ...createDocumentDelta(node.shape, writes, targetId),
+    ...createShapeDelta(node.shape, writes, targetId),
     changed: () => descendantChanged(pathKey, writes, targetId)
   }
 }
 
 const createCollectionDelta = (
   node: MutationTableNode<string, MutationShape> | MutationMapNode<string, MutationShape>,
-  writes: readonly MutationWrite[]
+  writes: readonly MutationWrite[],
+  ownerTargetId?: string
 ) => Object.assign(
   (id: string) => ({
-    ...createDocumentDelta(node.shape, writes, id),
+    ...createShapeDelta(node.shape, writes, scopeTargetId(ownerTargetId, id)),
     changed: () => writes.some((write) => (
-      (write.targetId === id)
+      (write.targetId === scopeTargetId(ownerTargetId, id))
       && (
         write.node === node
         || ownerNode(getNodeMeta(write.node).owner) === node
@@ -270,16 +288,23 @@ const createCollectionDelta = (
     changed: (id?: string) => writes.some((write) => (
       write.node === node
       || ownerNode(getNodeMeta(write.node).owner) === node
-    ) && (id === undefined || write.targetId === id)),
+    ) && (id === undefined || write.targetId === scopeTargetId(ownerTargetId, id))),
     created: (id: string) => writes.some((write) => (
       write.kind === 'entity.create'
       && write.node === node
-      && write.targetId === id
+      && write.targetId === scopeTargetId(ownerTargetId, id)
     )),
     removed: (id: string) => writes.some((write) => (
       write.kind === 'entity.remove'
       && write.node === node
-      && write.targetId === id
+      && write.targetId === scopeTargetId(ownerTargetId, id)
+    )),
+    contains: (id: string) => writes.some((write) => (
+      write.targetId === scopeTargetId(ownerTargetId, id)
+      && (
+        write.node === node
+        || ownerNode(getNodeMeta(write.node).owner) === node
+      )
     ))
   }
 )
@@ -319,7 +344,7 @@ const createNodeDelta = (
       return createObjectDelta(entry, writes, targetId)
     case 'singleton':
       return {
-        ...createDocumentDelta(entry.shape, writes, targetId),
+        ...createShapeDelta(entry.shape, writes, targetId),
         changed: () => writes.some((write) => (
           write.node === entry
           || ownerNode(getNodeMeta(write.node).owner) === entry
@@ -327,7 +352,7 @@ const createNodeDelta = (
       }
     case 'table':
     case 'map':
-      return createCollectionDelta(entry, writes)
+      return createCollectionDelta(entry, writes, targetId)
   }
 }
 
@@ -377,7 +402,7 @@ export const createMutationDeltaFromState = <TSchema extends MutationSchema>(
   const base = Object.assign(
     createNamespaceDelta(schema.shape, writes),
     controls
-  ) as MutationDeltaBaseOfShape<typeof schema.shape>
+  ) as MutationDeltaBaseOfShape<typeof schema.shape> & MutationDeltaShape<typeof schema.shape>
   const aggregates = getSchemaChangeFactory(schema)?.(base)
   const delta = Object.assign(base, aggregates ?? {}) as MutationDelta<TSchema>
 

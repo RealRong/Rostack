@@ -1,5 +1,6 @@
 import {
   readNodeValue,
+  scopeTargetId,
   readTreeValue
 } from '../internal/state'
 import type {
@@ -33,7 +34,8 @@ import type {
 import type {
   MutationDocumentKeys,
   MutationHasDocumentMembers,
-  MutationNamespaceKeys
+  MutationNamespaceKeys,
+  MutationShapeKeys
 } from '../schema/facadeTypes'
 
 type MutationReaderField<TValue> = () => TValue
@@ -61,7 +63,11 @@ type MutationReaderTree<TNodeId extends string, TValue> = {
   isRoot(nodeId: TNodeId): boolean
 }
 
-type MutationReaderObject<TShape extends MutationShape> = MutationReaderDocument<TShape> & {
+type MutationReaderShape<TShape extends MutationShape> = {
+  readonly [K in MutationShapeKeys<TShape>]: MutationReaderNode<TShape[K]>
+}
+
+type MutationReaderObject<TShape extends MutationShape> = MutationReaderShape<TShape> & {
   value(): MutationValueOfShape<TShape>
 }
 
@@ -164,6 +170,18 @@ const hasDocumentMembers = (
   )
 ))
 
+const createShapeReader = (
+  shape: MutationShape,
+  readDocument: () => unknown,
+  targetId?: string
+): Record<string, unknown> => Object.fromEntries(
+  Object.entries(shape)
+    .map(([key, value]) => [
+      key,
+      createNodeReader(value as MutationShapeNode | MutationShape, readDocument, targetId)
+    ])
+)
+
 const createDocumentReader = (
   shape: MutationShape,
   readDocument: () => unknown,
@@ -193,7 +211,7 @@ const createObjectReader = (
   readDocument: () => unknown,
   targetId?: string
 ) => Object.assign(
-  createDocumentReader(shape, readDocument, targetId),
+  createShapeReader(shape, readDocument, targetId),
   {
     value: readValue
   }
@@ -201,36 +219,37 @@ const createObjectReader = (
 
 const createCollectionReader = (
   node: MutationTableNode<string, MutationShape> | MutationMapNode<string, MutationShape>,
-  readDocument: () => unknown
+  readDocument: () => unknown,
+  ownerTargetId?: string
 ) => Object.assign(
   (id: string) => createObjectReader(
     node.shape,
     () => {
-      const source = readNodeValue(node, readDocument()) as MutationTableValue<string, MutationShape> | MutationMapValue<string, MutationShape> | undefined
+      const source = readNodeValue(node, readDocument(), ownerTargetId) as MutationTableValue<string, MutationShape> | MutationMapValue<string, MutationShape> | undefined
       if (node.kind === 'table') {
         return (source as MutationTableValue<string, MutationShape> | undefined)?.byId?.[id]
       }
       return (source as MutationMapValue<string, MutationShape> | undefined)?.[id]
     },
     readDocument,
-    id
+    scopeTargetId(ownerTargetId, id)
   ),
   {
-    value: () => readNodeValue(node, readDocument()) as MutationTableValue<string, MutationShape> | MutationMapValue<string, MutationShape>,
+    value: () => readNodeValue(node, readDocument(), ownerTargetId) as MutationTableValue<string, MutationShape> | MutationMapValue<string, MutationShape>,
     ids: () => {
-      const source = readNodeValue(node, readDocument()) as MutationTableValue<string, MutationShape> | MutationMapValue<string, MutationShape> | undefined
+      const source = readNodeValue(node, readDocument(), ownerTargetId) as MutationTableValue<string, MutationShape> | MutationMapValue<string, MutationShape> | undefined
       return node.kind === 'table'
         ? [...((source as MutationTableValue<string, MutationShape> | undefined)?.ids ?? [])]
         : Object.keys((source ?? {}) as Record<string, unknown>)
     },
     has: (id: string) => {
-      const source = readNodeValue(node, readDocument()) as MutationTableValue<string, MutationShape> | MutationMapValue<string, MutationShape> | undefined
+      const source = readNodeValue(node, readDocument(), ownerTargetId) as MutationTableValue<string, MutationShape> | MutationMapValue<string, MutationShape> | undefined
       return node.kind === 'table'
         ? Boolean((source as MutationTableValue<string, MutationShape> | undefined)?.byId?.[id])
         : Boolean((source as MutationMapValue<string, MutationShape> | undefined)?.[id])
     },
     get: (id: string) => {
-      const source = readNodeValue(node, readDocument()) as MutationTableValue<string, MutationShape> | MutationMapValue<string, MutationShape> | undefined
+      const source = readNodeValue(node, readDocument(), ownerTargetId) as MutationTableValue<string, MutationShape> | MutationMapValue<string, MutationShape> | undefined
       return node.kind === 'table'
         ? (source as MutationTableValue<string, MutationShape> | undefined)?.byId?.[id]
         : (source as MutationMapValue<string, MutationShape> | undefined)?.[id]
@@ -272,7 +291,7 @@ const createNodeReader = (
       )
     case 'table':
     case 'map':
-      return createCollectionReader(entry, readDocument)
+      return createCollectionReader(entry, readDocument, targetId)
   }
 }
 

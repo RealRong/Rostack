@@ -1,4 +1,6 @@
 import type {
+  CustomField,
+  CustomFieldId,
   DataDoc,
   DataRecord,
   Field,
@@ -11,148 +13,35 @@ import {
   TITLE_FIELD_ID
 } from '@dataview/core/types'
 import {
-  createMutationReader
+  entityTable,
+} from '@shared/core'
+import {
+  createMutationQuery,
+  type MutationDocument,
 } from '@shared/mutation'
 import {
-  documentValues
-} from '@dataview/core/document/values'
-import {
-  documentViews
-} from '@dataview/core/document/views'
-import {
-  normalizeRecordOrderIds
-} from '@dataview/core/view/order'
-import {
   dataviewMutationSchema,
-  dataviewTitleField,
-  type DataviewMutationDelta,
-  type DataviewMutationReader,
-} from './model'
+  type DataviewMutationQuery,
+} from './schema'
+import {
+  createDataviewChanges,
+  type DataviewMutationChanges,
+} from './change'
 
 type RecordIdSource = readonly RecordId[] | ReadonlySet<RecordId>
 
-const toRecordIdSet = (
-  validIds: RecordIdSource | undefined,
-  fallback: () => readonly RecordId[]
-): ReadonlySet<RecordId> => {
-  if (validIds instanceof Set) {
-    return validIds
-  }
-
-  return new Set(validIds ?? fallback())
-}
-
-const FIELD_SCHEMA_KEYS = [
-  'name',
-  'kind',
-  'system',
-  'displayFullUrl',
-  'format',
-  'precision',
-  'currency',
-  'useThousandsSeparator',
-  'defaultOptionId',
-  'displayDateFormat',
-  'displayTimeFormat',
-  'defaultValueKind',
-  'defaultTimezone',
-  'multiple',
-  'accept',
-  'options'
-] as const
-
-type FieldSchemaKey = (typeof FIELD_SCHEMA_KEYS)[number]
-
-const unionTouched = <T extends string>(
-  values: readonly (ReadonlySet<T> | 'all')[]
-): ReadonlySet<T> | 'all' => {
-  const result = new Set<T>()
-
-  for (let index = 0; index < values.length; index += 1) {
-    const value = values[index]!
-    if (value === 'all') {
-      return 'all'
-    }
-
-    value.forEach((entry) => {
-      result.add(entry)
-    })
-  }
-
-  return result
-}
-
-const touchedIdsFor = <T extends string>(
-  delta: DataviewMutationDelta,
-  key: string
-): ReadonlySet<T> | 'all' => delta.reset === true
-  ? 'all'
-  : delta.ids(key) as ReadonlySet<T> | 'all'
-
-const changedFor = (
-  delta: DataviewMutationDelta,
-  key: string,
-  id?: string
-): boolean => delta.reset === true || delta.changed(key, id)
-
-const readChangedPathKeys = <TKey extends string>(
-  delta: DataviewMutationDelta,
-  changeKey: string,
-  base: string
-): ReadonlySet<TKey> | 'all' => {
-  if (delta.reset === true) {
-    return 'all'
-  }
-
-  const paths = delta.changes[changeKey]?.paths
-  if (paths === 'all') {
-    return 'all'
-  }
-
-  const keys = new Set<TKey>()
-  for (const value of Object.values(paths ?? {})) {
-    if (value === 'all') {
-      return 'all'
-    }
-
-    value.forEach((path) => {
-      if (!path.startsWith(`${base}.`)) {
-        return
-      }
-
-      const suffix = path.slice(base.length + 1)
-      const nextKey = suffix.split('.')[0]
-      if (nextKey) {
-        keys.add(nextKey as TKey)
-      }
-    })
-  }
-
-  return keys
-}
-
-const emptyRecord = Object.freeze({}) as Readonly<Record<string, unknown>>
-
-export interface DataviewDeltaQuery {
-  raw: DataviewMutationDelta
-  recordSetChanged(): boolean
-  touchedRecords(): ReadonlySet<RecordId> | 'all'
-  touchedViews(): ReadonlySet<ViewId> | 'all'
-  touchedValueFields(): ReadonlySet<FieldId> | 'all'
-  touchedFields(): ReadonlySet<FieldId> | 'all'
-  fieldSchemaTouchedIds(): ReadonlySet<FieldId> | 'all'
-  fieldSchemaChanged(fieldId?: FieldId): boolean
-  viewQueryChanged(
-    viewId: ViewId,
-    aspect?: 'search' | 'filter' | 'sort' | 'group' | 'order'
-  ): boolean
-  viewLayoutChanged(viewId: ViewId): boolean
+const dataviewTitleField: Extract<Field, { kind: 'title' }> = {
+  id: TITLE_FIELD_ID,
+  name: 'Title',
+  kind: 'title',
+  system: true,
+  meta: undefined
 }
 
 export interface DataviewQuery {
-  model: typeof dataviewMutationSchema
-  reader: DataviewMutationReader
+  raw: DataviewMutationQuery
   document(): DataDoc
+  changes(delta: import('./schema').DataviewMutationDelta): DataviewMutationChanges
   records: {
     ids(): readonly RecordId[]
     list(): readonly DataRecord[]
@@ -178,12 +67,10 @@ export interface DataviewQuery {
     activeId(): ViewId | undefined
     active(): View | undefined
   }
-  changes(delta: DataviewMutationDelta): DataviewDeltaQuery
 }
 
 export interface DataviewQueryContext {
   document: DataDoc
-  reader: DataviewMutationReader
   query: DataviewQuery
   fieldIds: readonly FieldId[]
   fieldIdSet: ReadonlySet<FieldId>
@@ -192,232 +79,154 @@ export interface DataviewQueryContext {
   activeView?: View
 }
 
-export const createDataviewQuery = (
-  reader: DataviewMutationReader
-): DataviewQuery => {
-  const readDocument = () => reader.document.value()
-  const recordIds = () => reader.record.ids() as readonly RecordId[]
-  const recordList = () => reader.record.list() as readonly DataRecord[]
-  const fieldIds = () => [
-    TITLE_FIELD_ID,
-    ...(reader.field.ids() as readonly FieldId[])
-  ]
-  const fieldList = () => [
-    dataviewTitleField,
-    ...(reader.field.list() as readonly Field[])
-  ]
-  const getField = (id: FieldId): Field | undefined => id === TITLE_FIELD_ID
-    ? dataviewTitleField
-    : reader.field.get(id)
-  const getViewActiveId = () => documentViews.activeId.resolve(readDocument())
-
-  const changes = (
-    delta: DataviewMutationDelta
-  ): DataviewDeltaQuery => {
-    const api: DataviewDeltaQuery = {
-      raw: delta,
-      recordSetChanged: () => delta.reset === true
-      || delta.record.create.changed()
-      || delta.record.delete.changed(),
-      touchedRecords: () => unionTouched<RecordId>([
-      delta.record.create.touchedIds(),
-      delta.record.delete.touchedIds(),
-      delta.record.title.touchedIds(),
-      delta.record.type.touchedIds(),
-      delta.record.meta.touchedIds(),
-      delta.record.values.touchedIds()
-    ]),
-      touchedViews: () => unionTouched<ViewId>([
-      delta.view.create.touchedIds(),
-      delta.view.delete.touchedIds(),
-      touchedIdsFor<ViewId>(delta, 'view.name'),
-      touchedIdsFor<ViewId>(delta, 'view.type'),
-      touchedIdsFor<ViewId>(delta, 'view.search'),
-      touchedIdsFor<ViewId>(delta, 'view.filter'),
-      touchedIdsFor<ViewId>(delta, 'view.sort'),
-      touchedIdsFor<ViewId>(delta, 'view.group'),
-      touchedIdsFor<ViewId>(delta, 'view.fields'),
-      touchedIdsFor<ViewId>(delta, 'view.calc'),
-      touchedIdsFor<ViewId>(delta, 'view.options'),
-      touchedIdsFor<ViewId>(delta, 'view.order')
-    ]),
-      touchedValueFields: () => {
-      const touched = readChangedPathKeys<FieldId>(delta, 'record.values', 'values')
-      if (touched === 'all') {
-        return 'all'
-      }
-
-      return new Set<FieldId>(touched)
-    },
-      touchedFields: () => {
-      const schemaTouched = api.fieldSchemaTouchedIds()
-      const valueTouched = api.touchedValueFields()
-      if (schemaTouched === 'all' || valueTouched === 'all') {
-        return 'all'
-      }
-
-      const result = new Set<FieldId>()
-      schemaTouched.forEach((fieldId) => result.add(fieldId))
-      valueTouched.forEach((fieldId) => result.add(fieldId))
-      if (delta.record.title.changed()) {
-        result.add(TITLE_FIELD_ID)
-      }
-      return result
-    },
-      fieldSchemaTouchedIds: () => unionTouched<FieldId>([
-      touchedIdsFor<FieldId>(delta, 'field.name'),
-      touchedIdsFor<FieldId>(delta, 'field.kind'),
-      touchedIdsFor<FieldId>(delta, 'field.system'),
-      touchedIdsFor<FieldId>(delta, 'field.displayFullUrl'),
-      touchedIdsFor<FieldId>(delta, 'field.format'),
-      touchedIdsFor<FieldId>(delta, 'field.precision'),
-      touchedIdsFor<FieldId>(delta, 'field.currency'),
-      touchedIdsFor<FieldId>(delta, 'field.useThousandsSeparator'),
-      touchedIdsFor<FieldId>(delta, 'field.defaultOptionId'),
-      touchedIdsFor<FieldId>(delta, 'field.displayDateFormat'),
-      touchedIdsFor<FieldId>(delta, 'field.displayTimeFormat'),
-      touchedIdsFor<FieldId>(delta, 'field.defaultValueKind'),
-      touchedIdsFor<FieldId>(delta, 'field.defaultTimezone'),
-      touchedIdsFor<FieldId>(delta, 'field.multiple'),
-      touchedIdsFor<FieldId>(delta, 'field.accept'),
-      touchedIdsFor<FieldId>(delta, 'field.options')
-    ]),
-      fieldSchemaChanged: (fieldId) => {
-      if (fieldId === TITLE_FIELD_ID) {
-        return delta.record.title.changed()
-      }
-
-      if (fieldId === undefined) {
-        return FIELD_SCHEMA_KEYS.some((key) => changedFor(delta, `field.${key}`))
-      }
-
-      return FIELD_SCHEMA_KEYS.some((key) => changedFor(
-        delta,
-        `field.${key}`,
-        fieldId as Exclude<FieldId, typeof TITLE_FIELD_ID>
-      ))
-    },
-      viewQueryChanged: (viewId, aspect) => {
-      if (aspect === undefined) {
-        return delta.view.search.changed(viewId)
-          || delta.view.filter.changed(viewId)
-          || delta.view.sort.changed(viewId)
-          || delta.view.group.changed(viewId)
-          || delta.view.order.changed(viewId)
-      }
-
-      switch (aspect) {
-        case 'search':
-          return delta.view.search.changed(viewId)
-        case 'filter':
-          return delta.view.filter.changed(viewId)
-        case 'sort':
-          return delta.view.sort.changed(viewId)
-        case 'group':
-          return delta.view.group.changed(viewId)
-        case 'order':
-          return delta.view.order.changed(viewId)
-      }
-    },
-      viewLayoutChanged: (viewId) => (
-      changedFor(delta, 'view.name', viewId)
-      || changedFor(delta, 'view.type', viewId)
-      || changedFor(delta, 'view.fields', viewId)
-      || changedFor(delta, 'view.options', viewId)
-    )
-    }
-
-    return api
+const toRecordIdSet = (
+  validIds: RecordIdSource | undefined,
+  fallback: () => readonly RecordId[]
+): ReadonlySet<RecordId> => {
+  if (validIds instanceof Set) {
+    return validIds
   }
 
-  return {
-    model: dataviewMutationSchema,
-    reader,
+  return new Set(validIds ?? fallback())
+}
+
+export const createDataviewQuery = (
+  raw: DataviewMutationQuery
+): DataviewQuery => {
+  const recordIds = () => raw.records.ids() as readonly RecordId[]
+  const fieldIds = (): readonly FieldId[] => [
+    TITLE_FIELD_ID,
+    ...(raw.fields.ids() as readonly CustomFieldId[])
+  ]
+  const viewIds = () => raw.views.ids() as readonly ViewId[]
+  const getRecord = (recordId: RecordId): DataRecord | undefined =>
+    raw.records.get(recordId) as DataRecord | undefined
+  const getField = (fieldId: FieldId): Field | undefined => {
+    if (fieldId === TITLE_FIELD_ID) {
+      return dataviewTitleField
+    }
+    return raw.fields.get(fieldId as CustomFieldId) as Field | undefined
+  }
+  const getView = (viewId: ViewId): View | undefined =>
+    raw.views.get(viewId) as View | undefined
+
+  const readDocument = (): DataDoc => {
+    const activeViewId = raw.document.activeViewId() as ViewId | undefined
+    const meta = raw.document.meta() as DataDoc['meta']
+
+    return {
+      schemaVersion: raw.document.schemaVersion() as DataDoc['schemaVersion'],
+      records: entityTable.normalize.list(recordIds().flatMap((recordId) => {
+        const record = getRecord(recordId)
+        return record ? [record] : []
+      })),
+      fields: entityTable.normalize.list((raw.fields.ids() as readonly CustomFieldId[]).flatMap((fieldId) => {
+        const field = getField(fieldId)
+        return field && field.kind !== 'title'
+          ? [field] : []
+      })),
+      views: entityTable.normalize.list(viewIds().flatMap((viewId) => {
+        const view = getView(viewId)
+        return view ? [view] : []
+      })),
+      activeViewId,
+      meta
+    }
+  }
+
+  const getActiveViewId = (): ViewId | undefined => {
+    const activeViewId = raw.document.activeViewId() as ViewId | undefined
+    if (activeViewId && raw.views.has(activeViewId)) {
+      return activeViewId as ViewId
+    }
+
+    return viewIds()[0]
+  }
+
+  const query: DataviewQuery = {
+    raw,
     document: readDocument,
+    changes: (delta) => createDataviewChanges(query, delta),
     records: {
       ids: recordIds,
-      list: recordList,
-      get: (id) => reader.record.get(id),
-      has: (id) => reader.record.has(id),
-      normalize: (recordIdsValue, validIds) => normalizeRecordOrderIds(
-        recordIdsValue,
-        toRecordIdSet(validIds, recordIds)
-      )
+      list: () => recordIds().flatMap((recordId) => {
+        const record = getRecord(recordId)
+        return record ? [record] : []
+      }),
+      get: getRecord,
+      has: (id) => raw.records.has(id),
+      normalize: (recordIdsInput, validIds) => {
+        const validIdSet = toRecordIdSet(validIds, recordIds)
+        const source = recordIdsInput ?? recordIds()
+        return source.filter((recordId) => validIdSet.has(recordId))
+      }
     },
     values: {
       get: (recordId, fieldId) => {
-        const record = reader.record.get(recordId)
-        if (!record) {
+        if (!raw.records.has(recordId)) {
           return undefined
         }
+        if (fieldId === TITLE_FIELD_ID) {
+          return raw.records(recordId).title()
+        }
 
-        return fieldId === TITLE_FIELD_ID
-          ? record.title
-          : reader.record(recordId).values.get(fieldId as Exclude<FieldId, typeof TITLE_FIELD_ID>)
+        return raw.records(recordId).values.get(fieldId as CustomFieldId)
       }
     },
     fields: {
       ids: fieldIds,
-      list: fieldList,
+      list: () => fieldIds().flatMap((fieldId) => {
+        const field = getField(fieldId)
+        return field ? [field] : []
+      }),
       get: getField,
-      has: (id) => getField(id) !== undefined,
-      known: (id) => id === TITLE_FIELD_ID || reader.field.has(id)
+      has: (id) => id === TITLE_FIELD_ID || raw.fields.has(id as CustomFieldId),
+      known: (id) => id === TITLE_FIELD_ID || raw.fields.has(id as CustomFieldId)
     },
     views: {
-      ids: () => reader.view.ids() as readonly ViewId[],
-      list: () => reader.view.list() as readonly View[],
-      get: (id) => reader.view.get(id),
-      has: (id) => reader.view.has(id),
-      activeId: getViewActiveId,
+      ids: viewIds,
+      list: () => viewIds().flatMap((viewId) => {
+        const view = getView(viewId)
+        return view ? [view] : []
+      }),
+      get: getView,
+      has: (id) => raw.views.has(id),
+      activeId: getActiveViewId,
       active: () => {
-        const activeId = getViewActiveId()
-        return activeId
-          ? reader.view.get(activeId)
+        const activeViewId = getActiveViewId()
+        return activeViewId
+          ? getView(activeViewId)
           : undefined
       }
-    },
-    changes
+    }
   }
+
+  return query
 }
 
 export const createDataviewQueryContext = (
   document: DataDoc
 ): DataviewQueryContext => {
-  const reader = createMutationReader(
+  const raw = createMutationQuery(
     dataviewMutationSchema,
-    () => document
+    document as MutationDocument<typeof dataviewMutationSchema>
   )
-  const query = createDataviewQuery(reader)
-  const fieldIds = query.fields.ids()
+  const query = createDataviewQuery(raw)
+  const ids = query.fields.ids()
+  const fieldIdSet = new Set(ids)
   const fieldsById = new Map<FieldId, Field>()
+
   query.fields.list().forEach((field) => {
     fieldsById.set(field.id, field)
   })
-  const activeView = query.views.active()
 
   return {
     document,
-    reader,
     query,
-    fieldIds,
-    fieldIdSet: new Set(fieldIds),
+    fieldIds: ids,
+    fieldIdSet,
     fieldsById,
-    ...(activeView
-      ? {
-          activeViewId: activeView.id,
-          activeView
-        }
-      : {})
+    activeViewId: query.views.activeId(),
+    activeView: query.views.active()
   }
 }
-
-export const resolveRecordValueMap = (
-  record: DataRecord | undefined
-): Readonly<Record<string, unknown>> => record?.values ?? emptyRecord
-
-export const readRecordFieldValue = (
-  record: DataRecord | undefined,
-  fieldId: FieldId
-): unknown | undefined => record
-  ? documentValues.get(record, fieldId)
-  : undefined

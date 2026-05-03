@@ -1,7 +1,8 @@
 import type {
   MutationDocumentKeys,
   MutationHasDocumentMembers,
-  MutationNamespaceKeys
+  MutationNamespaceKeys,
+  MutationShapeKeys
 } from '../schema/facadeTypes'
 import type {
   MutationDictionaryNode,
@@ -45,7 +46,7 @@ export type MutationTreeDelta<TNodeId extends string> = {
   nodeChanged(nodeId: TNodeId): boolean
 }
 
-export type MutationObjectDelta<TShape extends MutationShape> = MutationDeltaDocument<TShape> & {
+export type MutationObjectDelta<TShape extends MutationShape> = MutationDeltaShape<TShape> & {
   changed(): boolean
 }
 
@@ -53,6 +54,7 @@ export type MutationCollectionDelta<TId extends string, TShape extends MutationS
   changed(id?: TId): boolean
   created(id: TId): boolean
   removed(id: TId): boolean
+  contains(id: TId): boolean
 }
 
 export type MutationDeltaNode<TNode> =
@@ -76,6 +78,10 @@ export type MutationDeltaNode<TNode> =
 
 export type MutationDeltaDocument<TShape extends MutationShape> = {
   readonly [K in MutationDocumentKeys<TShape>]: MutationDeltaNode<TShape[K]>
+}
+
+export type MutationDeltaShape<TShape extends MutationShape> = {
+  readonly [K in MutationShapeKeys<TShape>]: MutationDeltaNode<TShape[K]>
 }
 
 export type MutationDeltaNamespace<TShape extends MutationShape> = {

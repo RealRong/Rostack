@@ -72,9 +72,8 @@ const requireRecordIds = (
   const nextRecordIds = Array.from(new Set(recordIds))
   if (!nextRecordIds.length) {
     input.issue({
-      source: input.source,
       code: 'batch.emptyCollection',
-      message: `${input.source.type} requires at least one item`,
+      message: `${input.intent.type} requires at least one item`,
       path,
       severity: 'error'
     })
@@ -85,7 +84,6 @@ const requireRecordIds = (
   nextRecordIds.forEach((recordId, index) => {
     if (!input.query.records.has(recordId)) {
       input.issue({
-        source: input.source,
         code: 'record.notFound',
         message: `Unknown record: ${recordId}`,
         path: `${path}.${index}`,
@@ -109,7 +107,6 @@ const validateWritableField = (
 ): fieldId is FieldId => {
   if (!string.isNonEmptyString(fieldId)) {
     input.issue({
-      source: input.source,
       code: 'record.fields.invalidField',
       message: 'record.fields.writeMany requires non-empty field ids',
       path,
@@ -120,7 +117,6 @@ const validateWritableField = (
 
   if (fieldId !== TITLE_FIELD_ID && !input.query.fields.has(fieldId)) {
     input.issue({
-      source: input.source,
       code: 'field.notFound',
       message: `Unknown field: ${fieldId}`,
       path,
@@ -140,7 +136,6 @@ const lowerRecordCreate = (
 
   if (intent.input.id !== undefined && !explicitRecordId) {
     input.issue({
-      source: input.source,
       code: 'record.invalidId',
       message: 'Record id must be a non-empty string',
       path: 'input.id',
@@ -149,7 +144,6 @@ const lowerRecordCreate = (
   }
   if (explicitRecordId && input.query.records.has(explicitRecordId)) {
     input.issue({
-      source: input.source,
       code: 'record.duplicateId',
       message: `Record already exists: ${explicitRecordId}`,
       path: 'input.id',
@@ -168,7 +162,7 @@ const lowerRecordCreate = (
     meta: intent.input.meta
   } satisfies DataRecord
 
-  input.writer.record.create(record)
+  input.write.records.create(record)
   return {
     id: record.id
   }
@@ -191,14 +185,14 @@ const lowerRecordRemove = (
       return
     }
 
-    writeViewUpdate(input.writer, view, {
+    writeViewUpdate(input.write, view, {
       ...view,
       order: replaceViewOrder(nextOrders)
     })
   })
 
   recordIds.forEach((recordId) => {
-    input.writer.record.delete(recordId)
+    input.write.records.remove(recordId)
   })
 }
 
@@ -237,7 +231,6 @@ const lowerRecordFieldsWriteMany = (
 
   if (!Object.keys(nextSet).length && nextClear.size === 0) {
     input.issue({
-      source: input.source,
       code: 'record.fields.emptyWrite',
       message: 'record.fields.writeMany requires at least one set or clear entry',
       severity: 'error'
@@ -245,7 +238,7 @@ const lowerRecordFieldsWriteMany = (
     return
   }
 
-  writeRecordValues(input.writer, recordIds, {
+  writeRecordValues(input.write, recordIds, {
     ...(Object.keys(nextSet).length
       ? {
           set: nextSet

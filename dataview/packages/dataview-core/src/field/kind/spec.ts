@@ -191,9 +191,47 @@ const cloneBase = (
 ) => ({
   id: field.id,
   name: field.name,
-  ...(field.meta !== undefined
-    ? { meta: structuredClone(field.meta) }
-    : {})
+  displayFullUrl: undefined,
+  format: undefined,
+  precision: undefined,
+  currency: undefined,
+  useThousandsSeparator: undefined,
+  defaultOptionId: undefined,
+  displayDateFormat: undefined,
+  displayTimeFormat: undefined,
+  defaultValueKind: undefined,
+  defaultTimezone: undefined,
+  multiple: undefined,
+  accept: undefined,
+  options: entityTable.normalize.list([]),
+  meta: field.meta === undefined
+    ? undefined
+    : structuredClone(field.meta)
+})
+
+const createBase = (input: {
+  id: CustomField['id']
+  name: CustomField['name']
+  meta?: CustomField['meta']
+}) => ({
+  id: input.id,
+  name: input.name,
+  displayFullUrl: undefined,
+  format: undefined,
+  precision: undefined,
+  currency: undefined,
+  useThousandsSeparator: undefined,
+  defaultOptionId: undefined,
+  displayDateFormat: undefined,
+  displayTimeFormat: undefined,
+  defaultValueKind: undefined,
+  defaultTimezone: undefined,
+  multiple: undefined,
+  accept: undefined,
+  options: entityTable.normalize.list([]),
+  meta: input.meta === undefined
+    ? undefined
+    : structuredClone(input.meta)
 })
 
 const readSingleBucketKeys = (
@@ -422,7 +460,7 @@ const normalizeOptionColor = (
 }
 
 const normalizeFlatOption = (
-  option: FlatOption
+  option: FlatOption | StatusOption
 ): FlatOption | undefined => {
   const id = option.id?.trim()
   const name = option.name?.trim()
@@ -433,7 +471,8 @@ const normalizeFlatOption = (
   return {
     id,
     name,
-    color: normalizeOptionColor(option.color)
+    color: normalizeOptionColor(option.color),
+    category: undefined
   }
 }
 
@@ -472,7 +511,7 @@ const normalizeStatusDefaultOptionId = (
 }
 
 const validateBaseOptions = (
-  options: readonly FlatOption[],
+  options: readonly (FlatOption | StatusOption)[],
   path: string
 ): FieldSchemaValidationIssue[] => {
   const issues: FieldSchemaValidationIssue[] = []
@@ -532,25 +571,31 @@ const cloneFlatOptions = (
 ) => readFieldOptions(field).map(option => ({
   id: option.id,
   name: option.name,
-  color: option.color ?? null
+  color: option.color ?? null,
+  category: undefined
 }))
 
 const toFlatOptions = (
   options: readonly FlatOption[]
-): FlatOption[] => options.map(option => ({
-  id: option.id,
-  name: option.name,
-  color: option.color ?? null
-}))
+): SelectField['options'] => entityTable.normalize.list(
+  options.map(option => ({
+    id: option.id,
+    name: option.name,
+    color: option.color ?? null,
+    category: undefined
+  }))
+)
 
 const toStatusOptions = (
   options: readonly StatusOption[]
-): StatusOption[] => options.map(option => ({
-  id: option.id,
-  name: option.name,
-  color: option.color ?? null,
-  category: option.category
-}))
+): StatusField['options'] => entityTable.normalize.list(
+  options.map(option => ({
+    id: option.id,
+    name: option.name,
+    color: option.color ?? null,
+    category: option.category
+  }))
+)
 
 const cloneStatusOptions = (
   field: CustomField
@@ -1364,7 +1409,7 @@ export const fieldKindSpec = {
   text: {
     create: {
       default: input => ({
-        ...input,
+        ...createBase(input),
         kind: 'text'
       }),
       convert: field => ({
@@ -1406,7 +1451,7 @@ export const fieldKindSpec = {
   number: {
     create: {
       default: input => ({
-        ...input,
+        ...createBase(input),
         kind: 'number',
         format: 'number',
         precision: null,
@@ -1513,7 +1558,7 @@ export const fieldKindSpec = {
   select: {
     create: {
       default: input => ({
-        ...input,
+        ...createBase(input),
         kind: 'select',
         options: toFlatOptions([])
       }),
@@ -1567,7 +1612,7 @@ export const fieldKindSpec = {
   multiSelect: {
     create: {
       default: input => ({
-        ...input,
+        ...createBase(input),
         kind: 'multiSelect',
         options: toFlatOptions([])
       }),
@@ -1631,7 +1676,7 @@ export const fieldKindSpec = {
       default: input => {
         const options = createDefaultStatusOptions()
         return {
-          ...input,
+          ...createBase(input),
           kind: 'status',
           options: toStatusOptions(options),
           defaultOptionId: options[0]?.id ?? null
@@ -1655,7 +1700,7 @@ export const fieldKindSpec = {
       normalize: field => {
         const current = field as StatusField
         const options = readFieldOptions(current)
-          .flatMap((option) => ('category' in option ? [option] : []))
+          .flatMap((option) => (option.category !== undefined ? [option] : []))
           .map(normalizeStatusOption)
           .filter((option): option is StatusOption => Boolean(option))
         const nextOptions = options.length
@@ -1672,7 +1717,7 @@ export const fieldKindSpec = {
       validate: (field, path) => {
         const current = field as StatusField
         const options = readFieldOptions(current).flatMap((option) => (
-          'category' in option
+          option.category !== undefined
             ? [option]
             : []
         ))
@@ -1735,7 +1780,7 @@ export const fieldKindSpec = {
   date: {
     create: {
       default: input => ({
-        ...input,
+        ...createBase(input),
         kind: 'date',
         ...fieldDate.config.create()
       }),
@@ -1838,7 +1883,7 @@ export const fieldKindSpec = {
   boolean: {
     create: {
       default: input => ({
-        ...input,
+        ...createBase(input),
         kind: 'boolean'
       }),
       convert: field => ({
@@ -1887,7 +1932,7 @@ export const fieldKindSpec = {
   url: {
     create: {
       default: input => ({
-        ...input,
+        ...createBase(input),
         kind: 'url',
         ...createDefaultUrlFieldConfig()
       }),
@@ -1954,7 +1999,7 @@ export const fieldKindSpec = {
   email: {
     create: {
       default: input => ({
-        ...input,
+        ...createBase(input),
         kind: 'email'
       }),
       convert: field => ({
@@ -1996,7 +2041,7 @@ export const fieldKindSpec = {
   phone: {
     create: {
       default: input => ({
-        ...input,
+        ...createBase(input),
         kind: 'phone'
       }),
       convert: field => ({
@@ -2038,7 +2083,7 @@ export const fieldKindSpec = {
   asset: {
     create: {
       default: input => ({
-        ...input,
+        ...createBase(input),
         kind: 'asset',
         multiple: true,
         accept: 'any'

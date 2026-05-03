@@ -22,6 +22,10 @@ export type MutationNamespaceMemberNode =
   | MutationTableNode<any, any>
   | MutationMapNode<any, any>
 
+export type MutationShapeMemberNode =
+  | MutationDocumentMemberNode
+  | MutationNamespaceMemberNode
+
 export type MutationDocumentKeys<TShape extends MutationShape> = keyof {
   readonly [K in keyof TShape as TShape[K] extends MutationDocumentMemberNode
     ? K
@@ -30,6 +34,12 @@ export type MutationDocumentKeys<TShape extends MutationShape> = keyof {
 
 export type MutationNamespaceKeys<TShape extends MutationShape> = keyof {
   readonly [K in keyof TShape as TShape[K] extends MutationNamespaceMemberNode | MutationShape
+    ? K
+    : never]: true
+}
+
+export type MutationShapeKeys<TShape extends MutationShape> = keyof {
+  readonly [K in keyof TShape as TShape[K] extends MutationShapeMemberNode | MutationShape
     ? K
     : never]: true
 }

@@ -11,9 +11,8 @@ export const createDocument = (input?: {
   records: entityTable.normalize.list([]),
   fields: entityTable.normalize.list([]),
   views: entityTable.normalize.list([]),
-  ...(Object.prototype.hasOwnProperty.call(input ?? {}, 'meta')
-    ? {
-        meta: input?.meta ? structuredClone(input.meta) : input?.meta
-      }
-    : {})
+  activeViewId: undefined,
+  meta: Object.prototype.hasOwnProperty.call(input ?? {}, 'meta')
+    ? (input?.meta ? structuredClone(input.meta) : input?.meta)
+    : undefined
 })

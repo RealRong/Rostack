@@ -19,7 +19,6 @@ import type {
   ValidationCode
 } from './contracts'
 import {
-  replaceViewOrderInWriter,
   toAnchor,
 } from './helpers'
 import {
@@ -33,6 +32,7 @@ import {
   spliceRecordIds
 } from '../../view/order'
 import {
+  moveViewFields,
   readViewFieldIds,
 } from '../../view/fields'
 import {
@@ -61,7 +61,6 @@ const reportSemanticError = (
   path: string
 ) => {
   input.issue({
-    source: input.source,
     code: 'view.invalidProjection',
     message: readErrorMessage(error, 'Invalid view operation.'),
     path,
@@ -76,7 +75,6 @@ const emitProblem = (
   path?: string
 ) => {
   input.issue({
-    source: input.source,
     code,
     message,
     ...(path === undefined ? {} : { path }),
@@ -87,13 +85,13 @@ const emitProblem = (
 const requireView = (
   input: DataviewCompileInput,
   viewId: ViewId
-) => input.expect!.view(viewId, 'id')
+) => input.query.views.get(viewId)
 
 const requireField = (
   input: DataviewCompileInput,
   fieldId: FieldId,
   path = 'fieldId'
-): Field | undefined => input.expect!.field(fieldId, path)
+): Field | undefined => input.query.fields.get(fieldId)
 
 const requireGroupedField = (
   input: DataviewCompileInput,
@@ -161,7 +159,9 @@ const lowerViewCreate = (
       created = {
         ...base,
         type: 'table',
-        ...(intent.input.group ? { group: viewApi.group.state.clone(intent.input.group) } : {}),
+        group: intent.input.group
+          ? viewApi.group.state.clone(intent.input.group)
+          : undefined,
         options: intent.input.options
           ? viewApi.options.clone('table', intent.input.options)
           : viewApi.options.defaults('table', fields)
@@ -171,7 +171,9 @@ const lowerViewCreate = (
       created = {
         ...base,
         type: 'gallery',
-        ...(intent.input.group ? { group: viewApi.group.state.clone(intent.input.group) } : {}),
+        group: intent.input.group
+          ? viewApi.group.state.clone(intent.input.group)
+          : undefined,
         options: intent.input.options
           ? viewApi.options.clone('gallery', intent.input.options)
           : viewApi.options.defaults('gallery', fields)
@@ -196,9 +198,9 @@ const lowerViewCreate = (
     }
   }
 
-  input.writer.view.create(created)
+  input.write.views.create(created)
   if (input.document.activeViewId === undefined) {
-    input.writer.document.patch({
+    input.write.document.patch({
       activeViewId: created.id
     })
   }
@@ -221,7 +223,7 @@ const handleViewRename: DataviewViewIntentHandlers['view.rename'] = (
     return
   }
 
-  input.writer.view.patch(view.id, {
+  input.write.views(view.id).patch({
     name
   })
 }
@@ -257,7 +259,7 @@ const handleViewTypeSet: DataviewViewIntentHandlers['view.type.set'] = (
       : undefined
   }
 
-  input.writer.view.patch(view.id, patch)
+  input.write.views(view.id).patch(patch)
 }
 
 const handleViewSearchSet: DataviewViewIntentHandlers['view.search.set'] = (
@@ -273,7 +275,7 @@ const handleViewSearchSet: DataviewViewIntentHandlers['view.search.set'] = (
     return
   }
 
-  input.writer.view.patch(view.id, {
+  input.write.views(view.id).patch({
     search: nextSearch
   })
 }
@@ -291,7 +293,7 @@ const handleViewFilterModeSet: DataviewViewIntentHandlers['view.filter.mode.set'
     return
   }
 
-  input.writer.view.patch(view.id, {
+  input.write.views(view.id).patch({
     filter: structuredClone(nextFilter)
   })
 }
@@ -309,7 +311,7 @@ const handleViewFilterClear: DataviewViewIntentHandlers['view.filter.clear'] = (
     return
   }
 
-  input.writer.view.patch(view.id, {
+  input.write.views(view.id).patch({
     filter: structuredClone(nextFilter)
   })
 }
@@ -327,7 +329,7 @@ const handleViewSortClear: DataviewViewIntentHandlers['view.sort.clear'] = (
     return
   }
 
-  input.writer.view.patch(view.id, {
+  input.write.views(view.id).patch({
     sort: structuredClone(nextSort)
   })
 }
@@ -345,7 +347,7 @@ const handleViewGroupSet: DataviewViewIntentHandlers['view.group.set'] = (
     return
   }
 
-  input.writer.view.patch(view.id, {
+  input.write.views(view.id).patch({
     group: nextGroup
   })
 }
@@ -363,7 +365,7 @@ const handleViewGroupClear: DataviewViewIntentHandlers['view.group.clear'] = (
     return
   }
 
-  input.writer.view.patch(view.id, {
+  input.write.views(view.id).patch({
     group: nextGroup
   })
 }
@@ -382,7 +384,7 @@ const handleViewGroupToggle: DataviewViewIntentHandlers['view.group.toggle'] = (
     return
   }
 
-  input.writer.view.patch(view.id, {
+  input.write.views(view.id).patch({
     group: nextGroup
   })
 }
@@ -410,7 +412,7 @@ const handleViewGroupModeSet: DataviewViewIntentHandlers['view.group.mode.set'] 
     return
   }
 
-  input.writer.view.patch(view.id, {
+  input.write.views(view.id).patch({
     group: nextGroup
   })
 }
@@ -438,7 +440,7 @@ const handleViewGroupSortSet: DataviewViewIntentHandlers['view.group.sort.set'] 
     return
   }
 
-  input.writer.view.patch(view.id, {
+  input.write.views(view.id).patch({
     group: nextGroup
   })
 }
@@ -466,7 +468,7 @@ const handleViewGroupIntervalSet: DataviewViewIntentHandlers['view.group.interva
     return
   }
 
-  input.writer.view.patch(view.id, {
+  input.write.views(view.id).patch({
     group: nextGroup
   })
 }
@@ -494,7 +496,7 @@ const handleViewGroupShowEmptySet: DataviewViewIntentHandlers['view.group.showEm
     return
   }
 
-  input.writer.view.patch(view.id, {
+  input.write.views(view.id).patch({
     group: nextGroup
   })
 }
@@ -527,7 +529,7 @@ const handleViewSectionShow: DataviewViewIntentHandlers['view.section.show'] = (
     return
   }
 
-  input.writer.view.patch(view.id, {
+  input.write.views(view.id).patch({
     group: nextGroup
   })
 }
@@ -560,7 +562,7 @@ const handleViewSectionHide: DataviewViewIntentHandlers['view.section.hide'] = (
     return
   }
 
-  input.writer.view.patch(view.id, {
+  input.write.views(view.id).patch({
     group: nextGroup
   })
 }
@@ -593,7 +595,7 @@ const handleViewSectionCollapse: DataviewViewIntentHandlers['view.section.collap
     return
   }
 
-  input.writer.view.patch(view.id, {
+  input.write.views(view.id).patch({
     group: nextGroup
   })
 }
@@ -626,7 +628,7 @@ const handleViewSectionExpand: DataviewViewIntentHandlers['view.section.expand']
     return
   }
 
-  input.writer.view.patch(view.id, {
+  input.write.views(view.id).patch({
     group: nextGroup
   })
 }
@@ -644,7 +646,7 @@ const handleViewCalcSet: DataviewViewIntentHandlers['view.calc.set'] = (
     return
   }
 
-  input.writer.view.patch(view.id, {
+  input.write.views(view.id).patch({
     calc: structuredClone(nextCalc)
   })
 }
@@ -668,7 +670,7 @@ const handleViewTableWidthsSet: DataviewViewIntentHandlers['view.table.widths.se
     return
   }
 
-  input.writer.view.patch(view.id, {
+  input.write.views(view.id).patch({
     options: nextOptions
   })
 }
@@ -692,7 +694,7 @@ const handleViewTableVerticalLinesSet: DataviewViewIntentHandlers['view.table.ve
     return
   }
 
-  input.writer.view.patch(view.id, {
+  input.write.views(view.id).patch({
     options: nextOptions
   })
 }
@@ -716,7 +718,7 @@ const handleViewTableWrapSet: DataviewViewIntentHandlers['view.table.wrap.set'] 
     return
   }
 
-  input.writer.view.patch(view.id, {
+  input.write.views(view.id).patch({
     options: nextOptions
   })
 }
@@ -742,7 +744,7 @@ const handleViewGalleryWrapSet: DataviewViewIntentHandlers['view.gallery.wrap.se
     return
   }
 
-  input.writer.view.patch(view.id, {
+  input.write.views(view.id).patch({
     options: nextOptions
   })
 }
@@ -768,7 +770,7 @@ const handleViewGallerySizeSet: DataviewViewIntentHandlers['view.gallery.size.se
     return
   }
 
-  input.writer.view.patch(view.id, {
+  input.write.views(view.id).patch({
     options: nextOptions
   })
 }
@@ -794,7 +796,7 @@ const handleViewGalleryLayoutSet: DataviewViewIntentHandlers['view.gallery.layou
     return
   }
 
-  input.writer.view.patch(view.id, {
+  input.write.views(view.id).patch({
     options: nextOptions
   })
 }
@@ -820,7 +822,7 @@ const handleViewKanbanWrapSet: DataviewViewIntentHandlers['view.kanban.wrap.set'
     return
   }
 
-  input.writer.view.patch(view.id, {
+  input.write.views(view.id).patch({
     options: nextOptions
   })
 }
@@ -846,7 +848,7 @@ const handleViewKanbanSizeSet: DataviewViewIntentHandlers['view.kanban.size.set'
     return
   }
 
-  input.writer.view.patch(view.id, {
+  input.write.views(view.id).patch({
     options: nextOptions
   })
 }
@@ -872,7 +874,7 @@ const handleViewKanbanLayoutSet: DataviewViewIntentHandlers['view.kanban.layout.
     return
   }
 
-  input.writer.view.patch(view.id, {
+  input.write.views(view.id).patch({
     options: nextOptions
   })
 }
@@ -896,7 +898,7 @@ const handleViewKanbanFillColorSet: DataviewViewIntentHandlers['view.kanban.fill
     return
   }
 
-  input.writer.view.patch(view.id, {
+  input.write.views(view.id).patch({
     options: nextOptions
   })
 }
@@ -920,7 +922,7 @@ const handleViewKanbanCardsPerColumnSet: DataviewViewIntentHandlers['view.kanban
     return
   }
 
-  input.writer.view.patch(view.id, {
+  input.write.views(view.id).patch({
     options: nextOptions
   })
 }
@@ -956,7 +958,7 @@ const lowerViewFilterCreate = (
       return
     }
 
-    input.writer.view.patch(view.id, {
+    input.write.views(view.id).patch({
       filter: structuredClone(created.filter)
     })
     return {
@@ -999,7 +1001,7 @@ const lowerViewFilterPatch = (
       return
     }
 
-    input.writer.view.patch(view.id, {
+    input.write.views(view.id).patch({
       filter: structuredClone(nextFilter)
     })
   } catch (error) {
@@ -1026,7 +1028,7 @@ const lowerViewFilterMove = (
       return
     }
 
-    input.writer.view.patch(view.id, {
+    input.write.views(view.id).patch({
       filter: structuredClone(nextFilter)
     })
   } catch (error) {
@@ -1049,7 +1051,7 @@ const lowerViewFilterRemove = (
       return
     }
 
-    input.writer.view.patch(view.id, {
+    input.write.views(view.id).patch({
       filter: structuredClone(nextFilter)
     })
   } catch (error) {
@@ -1088,7 +1090,7 @@ const lowerViewSortCreate = (
       return
     }
 
-    input.writer.view.patch(view.id, {
+    input.write.views(view.id).patch({
       sort: structuredClone(created.sort)
     })
     return {
@@ -1121,7 +1123,7 @@ const lowerViewSortPatch = (
       return
     }
 
-    input.writer.view.patch(view.id, {
+    input.write.views(view.id).patch({
       sort: structuredClone(nextSort)
     })
   } catch (error) {
@@ -1148,7 +1150,7 @@ const lowerViewSortMove = (
       return
     }
 
-    input.writer.view.patch(view.id, {
+    input.write.views(view.id).patch({
       sort: structuredClone(nextSort)
     })
   } catch (error) {
@@ -1171,7 +1173,7 @@ const lowerViewSortRemove = (
       return
     }
 
-    input.writer.view.patch(view.id, {
+    input.write.views(view.id).patch({
       sort: structuredClone(nextSort)
     })
   } catch (error) {
@@ -1187,7 +1189,7 @@ const lowerViewOpen = (
     return
   }
 
-  input.writer.document.patch({
+  input.write.document.patch({
     activeViewId: view.id
   })
 }
@@ -1231,12 +1233,7 @@ const lowerViewOrderMove = (
     return
   }
 
-  replaceViewOrderInWriter(
-    input.writer,
-    view.id,
-    readViewOrderIds(view),
-    nextOrder
-  )
+  input.write.views(view.id).order.replace(nextOrder)
 }
 
 const lowerViewOrderSplice = (
@@ -1281,12 +1278,7 @@ const lowerViewOrderSplice = (
     return
   }
 
-  replaceViewOrderInWriter(
-    input.writer,
-    view.id,
-    readViewOrderIds(view),
-    nextOrder
-  )
+  input.write.views(view.id).order.replace(nextOrder)
 }
 
 const lowerViewFieldsMove = (
@@ -1297,7 +1289,7 @@ const lowerViewFieldsMove = (
     return
   }
 
-  input.writer.view(intent.id).fields.move(
+  input.write.views(intent.id).fields.move(
     intent.field,
     toAnchor(intent.before !== undefined && intent.before !== intent.field
       ? intent.before
@@ -1325,10 +1317,14 @@ const lowerViewFieldsSplice = (
     return
   }
 
-  input.writer.view(intent.id).fields.splice(
+  const currentFieldIds = readViewFieldIds(reader.views.get(intent.id)!)
+  const nextFieldIds = moveViewFields(
+    currentFieldIds,
     fieldIds,
-    toAnchor(intent.before)
+    intent.before
   )
+
+  input.write.views(intent.id).fields.replace(nextFieldIds)
 }
 
 const lowerViewFieldsShow = (
@@ -1344,11 +1340,11 @@ const lowerViewFieldsShow = (
     ? intent.before
     : undefined
   if (readViewFieldIds(view).includes(intent.field)) {
-    input.writer.view(intent.id).fields.move(intent.field, toAnchor(before))
+    input.write.views(intent.id).fields.move(intent.field, toAnchor(before))
     return
   }
 
-  input.writer.view(intent.id).fields.insert(intent.field, toAnchor(before))
+  input.write.views(intent.id).fields.insert(intent.field, toAnchor(before))
 }
 
 const lowerViewFieldsHide = (
@@ -1359,7 +1355,7 @@ const lowerViewFieldsHide = (
     return
   }
 
-  input.writer.view(intent.id).fields.delete(intent.field)
+  input.write.views(intent.id).fields.remove(intent.field)
 }
 
 const lowerViewFieldsClear = (
@@ -1370,9 +1366,7 @@ const lowerViewFieldsClear = (
     return
   }
 
-  readViewFieldIds(view).forEach((fieldId) => {
-    input.writer.view(view.id).fields.delete(fieldId)
-  })
+  input.write.views(view.id).fields.replace([])
 }
 
 const lowerViewRemove = (
@@ -1384,9 +1378,9 @@ const lowerViewRemove = (
   }
 
   const nextDocument = documentViews.remove(input.document, view.id)
-  input.writer.view.delete(view.id)
+  input.write.views.remove(view.id)
   if (input.document.activeViewId !== nextDocument.activeViewId) {
-    input.writer.document.patch({
+    input.write.document.patch({
       activeViewId: nextDocument.activeViewId
     })
   }

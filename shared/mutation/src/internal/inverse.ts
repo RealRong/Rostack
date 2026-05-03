@@ -1,4 +1,5 @@
 import {
+  readCurrentTargetId,
   readNodeValue,
   readSequenceItems,
   readTreeValue
@@ -13,6 +14,9 @@ import type {
   MutationMapValue,
   MutationTableValue
 } from '../schema/value'
+import type {
+  MutationSequenceAnchor
+} from '../schema/constants'
 
 const readEntityValue = (
   document: unknown,
@@ -25,10 +29,37 @@ const readEntityValue = (
   }
 
   if (write.node.kind === 'table') {
-    return (readNodeValue(write.node, document) as MutationTableValue<string, any> | undefined)?.byId?.[write.targetId]
+    const currentTargetId = readCurrentTargetId(write.targetId)
+    return currentTargetId
+      ? (readNodeValue(write.node, document, write.targetId) as MutationTableValue<string, any> | undefined)?.byId?.[currentTargetId]
+      : undefined
   }
 
-  return (readNodeValue(write.node, document) as MutationMapValue<string, any> | undefined)?.[write.targetId]
+  const currentTargetId = readCurrentTargetId(write.targetId)
+  return currentTargetId
+    ? (readNodeValue(write.node, document, write.targetId) as MutationMapValue<string, any> | undefined)?.[currentTargetId]
+    : undefined
+}
+
+const anchorForEntityId = (
+  ids: readonly string[],
+  targetId: string
+): MutationSequenceAnchor | undefined => {
+  const index = ids.indexOf(targetId)
+  if (index < 0) {
+    return undefined
+  }
+
+  const before = ids[index + 1]
+  if (before !== undefined) {
+    return {
+      before
+    }
+  }
+
+  return {
+    at: 'end'
+  }
 }
 
 export const invertMutationWrite = (
@@ -74,9 +105,31 @@ export const invertMutationWrite = (
             kind: 'entity.create',
             node: write.node,
             targetId: write.targetId,
-            value: current
+            value: current,
+            ...(write.node.kind === 'table'
+              ? {
+                  anchor: anchorForEntityId(
+                    (readNodeValue(write.node, document, write.targetId) as MutationTableValue<string, any> | undefined)?.ids ?? [],
+                    readCurrentTargetId(write.targetId) ?? write.targetId
+                  )
+                }
+              : {})
           }]
     }
+    case 'entity.move':
+      const currentIds = (readNodeValue(write.node, document, write.targetId) as MutationTableValue<string, any> | undefined)?.ids ?? []
+      const currentTargetId = readCurrentTargetId(write.targetId) ?? write.targetId
+      const previousAnchor = anchorForEntityId(currentIds, currentTargetId)
+      return [{
+        kind: 'entity.move',
+        node: write.node,
+        targetId: write.targetId,
+        ...(previousAnchor === undefined
+          ? {}
+          : {
+              anchor: previousAnchor
+            })
+      }]
     case 'field.set':
       return [{
         kind: 'field.set',

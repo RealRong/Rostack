@@ -1,19 +1,19 @@
 import type {
-  MutationCompileIssue,
-  MutationCompileHandlerInput,
-  MutationCompileSource
+  MutationIssue,
 } from '@shared/mutation'
 import type {
   DataDoc,
-  Intent
+  Intent,
 } from '@dataview/core/types'
 import type {
+  DataviewMutationDelta,
   DataviewMutationReader,
-  DataviewMutationWriter
-} from '../model'
+  DataviewMutationWriter,
+} from '../schema'
 import type {
   DataviewQuery
 } from '../query'
+
 export type ValidationSeverity =
   | 'error'
   | 'warning'
@@ -39,27 +39,23 @@ export type ValidationCode =
   | 'field.invalid'
   | 'external.invalidSource'
 
-export type IssueSource = MutationCompileSource<string>
-
-export type ValidationIssue =
-  MutationCompileIssue<ValidationCode, string>
-
-export interface DataviewCompileExpect {
-  record(id: string, path?: string): import('@dataview/core/types').DataRecord | undefined
-  field(id: string, path?: string): import('@dataview/core/types').Field | undefined
-  view(id: string, path?: string): import('@dataview/core/types').View | undefined
+export type ValidationIssue = MutationIssue & {
+  code: ValidationCode
 }
 
-export type DataviewCompileContext<
+export interface DataviewCompileContext<
   TIntent extends Intent = Intent
-> = MutationCompileHandlerInput<
-  DataDoc,
-  TIntent,
-  DataviewMutationWriter,
-  DataviewMutationReader,
-  void,
-  string
-> & {
+> {
+  intent: TIntent
+  document: DataDoc
+  read: DataviewMutationReader
+  write: DataviewMutationWriter
   query: DataviewQuery
-  expect?: DataviewCompileExpect
+  change: DataviewMutationDelta
+  issue: ((issue: ValidationIssue & Record<string, unknown>) => void) & {
+    add(issue: ValidationIssue): void
+    all(): readonly MutationIssue[]
+    hasErrors(): boolean
+  }
+  services: void
 }

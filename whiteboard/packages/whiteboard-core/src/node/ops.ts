@@ -50,7 +50,7 @@ const readLayoutEntries = ({
 }: NodeLayoutOpsInput): Result<{
   entries: NodeLayoutEntry[]
 }, 'invalid'> => {
-  const nodes = Object.values(doc.nodes)
+  const nodes = Object.values(doc.nodes).filter((node): node is Node => node !== undefined)
   const rootIds = Array.from(new Set(ids))
   if (!rootIds.length) {
     return err('invalid', 'No node ids provided.')

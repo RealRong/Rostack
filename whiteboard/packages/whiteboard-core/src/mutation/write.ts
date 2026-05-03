@@ -23,10 +23,6 @@ import type {
   NodeId,
 } from '@whiteboard/core/types'
 import type {
-  WhiteboardMutationEdgeValue,
-  WhiteboardMutationGroupValue,
-  WhiteboardMutationMindmapValue,
-  WhiteboardMutationNodeValue,
   WhiteboardMutationWriterBase,
 } from './model'
 import {
@@ -34,61 +30,6 @@ import {
   parseCanvasRefKey,
   type WhiteboardMindmapTreeValue,
 } from './support'
-
-const toNodeValue = (
-  node: Node
-): WhiteboardMutationNodeValue => ({
-  type: node.type,
-  position: node.position,
-  size: node.size,
-  rotation: node.rotation,
-  groupId: node.groupId,
-  owner: node.owner,
-  locked: node.locked,
-  data: node.data,
-  style: node.style,
-})
-
-const toEdgeValue = (
-  edge: Edge
-): WhiteboardMutationEdgeValue => ({
-  source: edge.source,
-  target: edge.target,
-  type: edge.type,
-  locked: edge.locked,
-  groupId: edge.groupId,
-  textMode: edge.textMode,
-  style: edge.style,
-  data: edge.data,
-  labels: edge.labels,
-  points: edge.points
-})
-
-const toEdgePoints = (
-  points: EdgePatch['points'] | Edge['points']
-): Edge['points'] | undefined => Array.isArray(points)
-  ? entityTable.normalize.list(points.map((point, index) => ({
-      id: `route-point-${index}`,
-      x: point.x,
-      y: point.y
-    })))
-  : points
-    ? entityTable.normalize.table(points)
-    : undefined
-
-const toGroupValue = (
-  group: Group
-): WhiteboardMutationGroupValue => ({
-  locked: group.locked,
-  name: group.name,
-})
-
-const toMindmapValue = (
-  mindmap: MindmapRecord
-): WhiteboardMutationMindmapValue => ({
-  layout: mindmap.layout,
-  tree: mindmap.tree
-})
 
 const moveItems = (input: {
   order: readonly CanvasItemRef[]
@@ -488,7 +429,7 @@ export const createWhiteboardWriter = (
     (id: EdgeId) => edgeItem(id),
     {
       create(next: Edge) {
-        write.edges.create(next.id, toEdgeValue(next))
+        write.edges.create(next.id, next)
       },
       delete(id: EdgeId) {
         write.edges.remove(id)
@@ -514,12 +455,12 @@ export const createWhiteboardWriter = (
           ...(points === undefined
             ? {}
             : {
-                points: toEdgePoints(points)
+                points
               })
         }
-        write.edges.replace(id, toEdgeValue({
+        write.edges.replace(id, {
           ...next
-        }))
+        })
       }
     }
   )
@@ -528,7 +469,7 @@ export const createWhiteboardWriter = (
     (id: MindmapId) => mindmapItem(id),
     {
       create(next: MindmapRecord) {
-        write.mindmaps.create(next.id, toMindmapValue(next))
+        write.mindmaps.create(next.id, next)
       },
       delete(id: MindmapId) {
         write.mindmaps.remove(id)
@@ -555,12 +496,12 @@ export const createWhiteboardWriter = (
             write.nodes.remove(id)
           }
         })
-        Object.values(next.nodes).forEach((node) => {
+        Object.values(next.nodes).filter((node): node is Node => node !== undefined).forEach((node) => {
           if (current.nodes[node.id]) {
-            write.nodes.replace(node.id, toNodeValue(node))
+            write.nodes.replace(node.id, node)
             return
           }
-          write.nodes.create(node.id, toNodeValue(node))
+          write.nodes.create(node.id, node)
         })
 
         Object.keys(current.edges).forEach((id) => {
@@ -568,12 +509,12 @@ export const createWhiteboardWriter = (
             write.edges.remove(id)
           }
         })
-        Object.values(next.edges).forEach((entry) => {
+        Object.values(next.edges).filter((entry): entry is Edge => entry !== undefined).forEach((entry) => {
           if (current.edges[entry.id]) {
-            write.edges.replace(entry.id, toEdgeValue(entry))
+            write.edges.replace(entry.id, entry)
             return
           }
-          write.edges.create(entry.id, toEdgeValue(entry))
+          write.edges.create(entry.id, entry)
         })
 
         Object.keys(current.groups).forEach((id) => {
@@ -581,12 +522,12 @@ export const createWhiteboardWriter = (
             write.groups.remove(id)
           }
         })
-        Object.values(next.groups).forEach((entry) => {
+        Object.values(next.groups).filter((entry): entry is Group => entry !== undefined).forEach((entry) => {
           if (current.groups[entry.id]) {
-            write.groups.replace(entry.id, toGroupValue(entry))
+            write.groups.replace(entry.id, entry)
             return
           }
-          write.groups.create(entry.id, toGroupValue(entry))
+          write.groups.create(entry.id, entry)
         })
 
         Object.keys(current.mindmaps).forEach((id) => {
@@ -594,12 +535,12 @@ export const createWhiteboardWriter = (
             write.mindmaps.remove(id)
           }
         })
-        Object.values(next.mindmaps).forEach((entry) => {
+        Object.values(next.mindmaps).filter((entry): entry is MindmapRecord => entry !== undefined).forEach((entry) => {
           if (current.mindmaps[entry.id]) {
-            write.mindmaps.replace(entry.id, toMindmapValue(entry))
+            write.mindmaps.replace(entry.id, entry)
             return
           }
-          write.mindmaps.create(entry.id, toMindmapValue(entry))
+          write.mindmaps.create(entry.id, entry)
         })
       },
       patch(patch: DocumentPatch) {
@@ -619,7 +560,7 @@ export const createWhiteboardWriter = (
     order: documentOrder,
     node: {
       create(next) {
-        write.nodes.create(next.id, toNodeValue(next))
+        write.nodes.create(next.id, next)
       },
       delete(id) {
         write.nodes.remove(id)
@@ -631,7 +572,7 @@ export const createWhiteboardWriter = (
     edge,
     group: {
       create(next) {
-        write.groups.create(next.id, toGroupValue(next))
+        write.groups.create(next.id, next)
       },
       delete(id) {
         write.groups.remove(id)

@@ -1,10 +1,4 @@
 import { idDelta, type IdDelta } from '@shared/delta'
-import type {
-  EdgeId,
-  GroupId,
-  MindmapId,
-  NodeId
-} from '@whiteboard/core/types'
 import type { SceneItemKey } from './delta'
 
 export type SceneScope<TId extends string> = ReadonlySet<TId> | 'all'
@@ -13,34 +7,34 @@ export interface EditorSceneInputFacts {
   reset: boolean
   order: boolean
   graph: {
-    node: SceneScope<NodeId>
-    edge: SceneScope<EdgeId>
-    mindmap: SceneScope<MindmapId>
-    group: SceneScope<GroupId>
+    node: SceneScope<string>
+    edge: SceneScope<string>
+    mindmap: SceneScope<string>
+    group: SceneScope<string>
   }
 }
 
 export interface EditorSceneGraphFacts {
   node: {
-    entity: SceneScope<NodeId>
-    geometry: SceneScope<NodeId>
-    content: SceneScope<NodeId>
-    owner: SceneScope<NodeId>
+    entity: SceneScope<string>
+    geometry: SceneScope<string>
+    content: SceneScope<string>
+    owner: SceneScope<string>
   }
   edge: {
-    entity: SceneScope<EdgeId>
-    geometry: SceneScope<EdgeId>
-    content: SceneScope<EdgeId>
+    entity: SceneScope<string>
+    geometry: SceneScope<string>
+    content: SceneScope<string>
   }
   mindmap: {
-    entity: SceneScope<MindmapId>
-    geometry: SceneScope<MindmapId>
-    owner: SceneScope<MindmapId>
+    entity: SceneScope<string>
+    geometry: SceneScope<string>
+    owner: SceneScope<string>
   }
   group: {
-    entity: SceneScope<GroupId>
-    geometry: SceneScope<GroupId>
-    owner: SceneScope<GroupId>
+    entity: SceneScope<string>
+    geometry: SceneScope<string>
+    owner: SceneScope<string>
   }
   hasLifecycleChange: boolean
 }
@@ -50,17 +44,17 @@ export interface EditorSceneItemsFacts {
 }
 
 export interface EditorSceneUiFacts {
-  node: SceneScope<NodeId>
-  edge: SceneScope<EdgeId>
+  node: SceneScope<string>
+  edge: SceneScope<string>
   chrome: boolean
 }
 
 export interface EditorSceneRenderFacts {
-  node: SceneScope<NodeId>
-  edgeStatics: SceneScope<EdgeId>
-  edgeActive: SceneScope<EdgeId>
-  edgeLabels: SceneScope<EdgeId>
-  edgeMasks: SceneScope<EdgeId>
+  node: SceneScope<string>
+  edgeStatics: SceneScope<string>
+  edgeActive: SceneScope<string>
+  edgeLabels: SceneScope<string>
+  edgeMasks: SceneScope<string>
   chromeScene: boolean
   chromeEdge: boolean
 }
@@ -79,33 +73,33 @@ export const createEmptyEditorSceneFacts = (): EditorSceneFacts => ({
     reset: false,
     order: false,
     graph: {
-      node: createEmptyScope<NodeId>(),
-      edge: createEmptyScope<EdgeId>(),
-      mindmap: createEmptyScope<MindmapId>(),
-      group: createEmptyScope<GroupId>()
+      node: createEmptyScope<string>(),
+      edge: createEmptyScope<string>(),
+      mindmap: createEmptyScope<string>(),
+      group: createEmptyScope<string>()
     }
   },
   graph: {
     node: {
-      entity: createEmptyScope<NodeId>(),
-      geometry: createEmptyScope<NodeId>(),
-      content: createEmptyScope<NodeId>(),
-      owner: createEmptyScope<NodeId>()
+      entity: createEmptyScope<string>(),
+      geometry: createEmptyScope<string>(),
+      content: createEmptyScope<string>(),
+      owner: createEmptyScope<string>()
     },
     edge: {
-      entity: createEmptyScope<EdgeId>(),
-      geometry: createEmptyScope<EdgeId>(),
-      content: createEmptyScope<EdgeId>()
+      entity: createEmptyScope<string>(),
+      geometry: createEmptyScope<string>(),
+      content: createEmptyScope<string>()
     },
     mindmap: {
-      entity: createEmptyScope<MindmapId>(),
-      geometry: createEmptyScope<MindmapId>(),
-      owner: createEmptyScope<MindmapId>()
+      entity: createEmptyScope<string>(),
+      geometry: createEmptyScope<string>(),
+      owner: createEmptyScope<string>()
     },
     group: {
-      entity: createEmptyScope<GroupId>(),
-      geometry: createEmptyScope<GroupId>(),
-      owner: createEmptyScope<GroupId>()
+      entity: createEmptyScope<string>(),
+      geometry: createEmptyScope<string>(),
+      owner: createEmptyScope<string>()
     },
     hasLifecycleChange: false
   },
@@ -113,8 +107,8 @@ export const createEmptyEditorSceneFacts = (): EditorSceneFacts => ({
     touched: createEmptyScope<SceneItemKey>()
   },
   ui: {
-    node: createEmptyScope<NodeId>(),
-    edge: createEmptyScope<EdgeId>(),
+    node: createEmptyScope<string>(),
+    edge: createEmptyScope<string>(),
     chrome: false
   }
 })

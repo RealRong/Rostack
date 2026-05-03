@@ -1,11 +1,5 @@
 import type { Revision } from '@shared/projection'
 import type {
-  EdgeId,
-  GroupId,
-  MindmapId,
-  NodeId
-} from '@whiteboard/core/types'
-import type {
   EdgeView,
   EdgeUiView,
   GroupView,
@@ -41,26 +35,26 @@ export interface Capture {
 }
 
 export interface GraphCapture {
-  nodes: EntityFamily<NodeId, NodeView>
-  edges: EntityFamily<EdgeId, EdgeView>
+  nodes: EntityFamily<string, NodeView>
+  edges: EntityFamily<string, EdgeView>
   owners: {
-    mindmaps: EntityFamily<MindmapId, MindmapView>
-    groups: EntityFamily<GroupId, GroupView>
+    mindmaps: EntityFamily<string, MindmapView>
+    groups: EntityFamily<string, GroupView>
   }
 }
 
 export interface RenderCapture {
   edge: {
     statics: EntityFamily<EdgeStaticId, EdgeStaticView>
-    active: EntityFamily<EdgeId, EdgeActiveView>
+    active: EntityFamily<string, EdgeActiveView>
     labels: EntityFamily<EdgeLabelKey, EdgeLabelView>
-    masks: EntityFamily<EdgeId, EdgeMaskView>
+    masks: EntityFamily<string, EdgeMaskView>
     overlay: EdgeOverlayView
   }
 }
 
 export interface UiCapture {
   chrome: ChromeView
-  nodes: EntityFamily<NodeId, NodeUiView>
-  edges: EntityFamily<EdgeId, EdgeUiView>
+  nodes: EntityFamily<string, NodeUiView>
+  edges: EntityFamily<string, EdgeUiView>
 }

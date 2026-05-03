@@ -6,11 +6,7 @@ import type {
 import type {
   Document as WhiteboardDocument,
   Edge,
-  EdgeId,
-  GroupId,
-  MindmapId,
   Node,
-  NodeId
 } from '@whiteboard/core/types'
 import type { Revision } from '@shared/projection'
 import type {
@@ -82,58 +78,58 @@ export interface DocumentState {
 }
 
 export interface GraphState {
-  nodes: MutableFamilyState<NodeId, NodeView>
-  edges: MutableFamilyState<EdgeId, EdgeView>
+  nodes: MutableFamilyState<string, NodeView>
+  edges: MutableFamilyState<string, EdgeView>
   owners: {
-    mindmaps: MutableFamilyState<MindmapId, MindmapView>
-    groups: MutableFamilyState<GroupId, GroupView>
+    mindmaps: MutableFamilyState<string, MindmapView>
+    groups: MutableFamilyState<string, GroupView>
   }
   state: {
-    node: MutableFamilyState<NodeId, NodeStateView>
-    edge: MutableFamilyState<EdgeId, EdgeStateView>
+    node: MutableFamilyState<string, NodeStateView>
+    edge: MutableFamilyState<string, EdgeStateView>
     chrome: ChromeStateView
   }
 }
 
 export interface IndexState {
-  ownerByNode: Map<NodeId, OwnerRef | undefined>
-  mindmapNodes: Map<MindmapId, readonly NodeId[]>
-  parentByNode: Map<NodeId, NodeId | undefined>
-  childrenByNode: Map<NodeId, readonly NodeId[]>
-  edgeNodesByEdge: Map<EdgeId, EdgeNodes>
-  edgeIdsByNode: Map<NodeId, Set<EdgeId>>
-  groupItems: Map<GroupId, readonly GroupItemRef[]>
-  groupSignature: Map<GroupId, string>
-  groupIdsBySignature: Map<string, readonly GroupId[]>
-  groupByEdge: Map<EdgeId, GroupId | undefined>
+  ownerByNode: Map<string, OwnerRef | undefined>
+  mindmapNodes: Map<string, readonly string[]>
+  parentByNode: Map<string, string | undefined>
+  childrenByNode: Map<string, readonly string[]>
+  edgeNodesByEdge: Map<string, EdgeNodes>
+  edgeIdsByNode: Map<string, Set<string>>
+  groupItems: Map<string, readonly GroupItemRef[]>
+  groupSignature: Map<string, string>
+  groupIdsBySignature: Map<string, readonly string[]>
+  groupByEdge: Map<string, string | undefined>
 }
 
 export interface UiState {
   chrome: ChromeView
-  nodes: MutableFamilyState<NodeId, NodeUiView>
-  edges: MutableFamilyState<EdgeId, EdgeUiView>
+  nodes: MutableFamilyState<string, NodeUiView>
+  edges: MutableFamilyState<string, EdgeUiView>
 }
 
 export interface RenderState {
-  node: MutableFamilyState<NodeId, NodeRenderView>
+  node: MutableFamilyState<string, NodeRenderView>
   statics: {
     ids: readonly EdgeStaticId[]
     byId: Map<EdgeStaticId, EdgeStaticView>
-    styleKeyByEdge: Map<EdgeId, string>
-    edgeIdsByStyleKey: Map<string, readonly EdgeId[]>
-    staticIdByEdge: Map<EdgeId, EdgeStaticId>
+    styleKeyByEdge: Map<string, string>
+    edgeIdsByStyleKey: Map<string, readonly string[]>
+    staticIdByEdge: Map<string, EdgeStaticId>
     staticIdsByStyleKey: Map<string, readonly EdgeStaticId[]>
   }
   labels: {
     ids: readonly EdgeLabelKey[]
     byId: Map<EdgeLabelKey, EdgeLabelView>
-    keysByEdge: Map<EdgeId, readonly EdgeLabelKey[]>
+    keysByEdge: Map<string, readonly EdgeLabelKey[]>
   }
   masks: {
-    ids: readonly EdgeId[]
-    byId: Map<EdgeId, EdgeMaskView>
+    ids: readonly string[]
+    byId: Map<string, EdgeMaskView>
   }
-  active: MutableFamilyState<EdgeId, EdgeActiveView>
+  active: MutableFamilyState<string, EdgeActiveView>
   overlay: EdgeOverlayView
   chrome: ChromeRenderView
 }
@@ -156,8 +152,8 @@ export interface GraphEdgeEntry {
 
 export interface GraphMindmapEntry {
   base: MindmapView['base']
-  rootId: NodeId
-  nodeIds: readonly NodeId[]
+  rootId: string
+  nodeIds: readonly string[]
   structure: MindmapView['structure']['tree']
   tree: {
     layout?: MindmapLayout

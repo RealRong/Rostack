@@ -163,7 +163,7 @@ export const attachEditorSync = (input: {
       editorDelta: EMPTY_EDITOR_DELTA
     }
 
-    if (commit.kind === 'replace' || isCheckpointProgram(commit.authored)) {
+    if (commit.kind === 'replace' || isCheckpointProgram(commit.writes)) {
       input.cancelInput()
       resetEditorState(input.state)
     } else {

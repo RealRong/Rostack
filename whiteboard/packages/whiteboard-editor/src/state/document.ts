@@ -275,16 +275,16 @@ export const normalizeEditorHoverState = (
   value: Partial<EditorHoverState> | null | undefined
 ): EditorHoverState => ({
   node: typeof value?.node === 'string' && value.node.length > 0
-    ? value.node as NodeId
+    ? value.node
     : null,
   edge: typeof value?.edge === 'string' && value.edge.length > 0
     ? value.edge
     : null,
   mindmap: typeof value?.mindmap === 'string' && value.mindmap.length > 0
-    ? value.mindmap as MindmapId
+    ? value.mindmap
     : null,
   group: typeof value?.group === 'string' && value.group.length > 0
-    ? value.group as GroupId
+    ? value.group
     : null,
   selectionBox: Boolean(value?.selectionBox)
 })

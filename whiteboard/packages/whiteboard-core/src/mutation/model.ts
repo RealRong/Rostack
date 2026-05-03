@@ -27,6 +27,7 @@ import type {
   Document,
   Edge,
   EdgeId,
+  Group,
   GroupId,
   Node,
   NodeId,
@@ -37,6 +38,7 @@ import {
 } from './support'
 
 const nodeShape = {
+  id: field<NodeId>(),
   type: field<Node['type']>(),
   position: field<Node['position']>(),
   size: field<Node['size']>(),
@@ -48,9 +50,8 @@ const nodeShape = {
   style: optional(field<Node['style']>()),
 } as const
 
-export type WhiteboardMutationNodeValue = Omit<Node, 'id'>
-
 const edgeShape = {
+  id: field<EdgeId>(),
   source: field<Edge['source']>(),
   target: field<Edge['target']>(),
   type: field<Edge['type']>(),
@@ -63,21 +64,17 @@ const edgeShape = {
   points: optional(field<Edge['points']>()),
 } as const
 
-export type WhiteboardMutationEdgeValue = Omit<Edge, 'id'>
-
 const groupShape = {
+  id: field<GroupId>(),
   locked: optional(field<boolean>()),
   name: optional(field<string>()),
 } as const
 
-export type WhiteboardMutationGroupValue = Omit<import('@whiteboard/core/types').Group, 'id'>
-
 const mindmapShape = {
+  id: field<MindmapId>(),
   layout: field<MindmapLayoutSpec>(),
   tree: tree<MindmapNodeId, WhiteboardMindmapTreeValue>(),
 } as const
-
-export type WhiteboardMutationMindmapValue = Omit<MindmapRecord, 'id'>
 
 type ScopeIds<TId extends string> = ReadonlySet<TId> | 'all'
 
@@ -416,22 +413,22 @@ export type WhiteboardMutationWriterBase = {
   nodes: ((id: NodeId) => {
     patch(value: Partial<Node>): void
   }) & {
-    create(id: NodeId, value: WhiteboardMutationNodeValue): void
-    replace(id: NodeId, value: WhiteboardMutationNodeValue): void
+    create(id: NodeId, value: Node): void
+    replace(id: NodeId, value: Node): void
     remove(id: NodeId): void
   }
   edges: ((id: EdgeId) => {
     patch(value: Partial<Edge>): void
   }) & {
-    create(id: EdgeId, value: WhiteboardMutationEdgeValue): void
-    replace(id: EdgeId, value: WhiteboardMutationEdgeValue): void
+    create(id: EdgeId, value: Edge): void
+    replace(id: EdgeId, value: Edge): void
     remove(id: EdgeId): void
   }
   groups: ((id: GroupId) => {
-    patch(value: Partial<Pick<import('@whiteboard/core/types').Group, 'locked' | 'name'>>): void
+    patch(value: Partial<Pick<Group, 'locked' | 'name'>>): void
   }) & {
-    create(id: GroupId, value: WhiteboardMutationGroupValue): void
-    replace(id: GroupId, value: WhiteboardMutationGroupValue): void
+    create(id: GroupId, value: Group): void
+    replace(id: GroupId, value: Group): void
     remove(id: GroupId): void
   }
   mindmaps: ((id: MindmapId) => {
@@ -443,8 +440,8 @@ export type WhiteboardMutationWriterBase = {
       remove(nodeId: string): void
     }
   }) & {
-    create(id: MindmapId, value: WhiteboardMutationMindmapValue): void
-    replace(id: MindmapId, value: WhiteboardMutationMindmapValue): void
+    create(id: MindmapId, value: MindmapRecord): void
+    replace(id: MindmapId, value: MindmapRecord): void
     remove(id: MindmapId): void
   }
 }

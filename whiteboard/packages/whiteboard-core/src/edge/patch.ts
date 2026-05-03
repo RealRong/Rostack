@@ -1,7 +1,8 @@
-import { entityTable } from '@shared/core'
+import { entityTable, type EntityTable } from '@shared/core'
 import type {
   Edge,
   EdgeLabel,
+  EdgeRoutePoint,
   EdgePatch
 } from '@whiteboard/core/types'
 import { sameEdgeEnd } from '@whiteboard/core/edge/equality'
@@ -13,7 +14,7 @@ const hasOwn = (
 
 const cloneEdgeLabels = (
   labels: readonly EdgeLabel[]
-): import('@shared/core').EntityTable<string, EdgeLabel> => entityTable.normalize.list(labels.map((label) => ({
+): EntityTable<string, EdgeLabel> => entityTable.normalize.list(labels.map((label) => ({
   id: label.id,
   text: label.text,
   t: label.t,
@@ -21,6 +22,16 @@ const cloneEdgeLabels = (
   style: label.style ? { ...label.style } : undefined,
   data: label.data ? { ...label.data } : undefined
 })))
+
+const cloneEdgeRoutePoints = (
+  points: EntityTable<string, EdgeRoutePoint>
+): EntityTable<string, EdgeRoutePoint> => entityTable.normalize.list(
+  entityTable.read.list(points).map((point) => ({
+    id: point.id,
+    x: point.x,
+    y: point.y
+  }))
+)
 
 export const isEdgePatchEqual = (
   left?: EdgePatch,
@@ -68,16 +79,9 @@ export const applyEdgePatch = (
   }
 
   if (hasOwn(patch, 'points') && patch.points !== undefined) {
-    const currentPoints = next.points
-      ? entityTable.read.list(next.points)
-      : []
     next = {
       ...next,
-      points: entityTable.normalize.list(patch.points.map((point, index) => ({
-        id: currentPoints[index]?.id ?? `preview:${index}`,
-        x: point.x,
-        y: point.y
-      })))
+      points: cloneEdgeRoutePoints(patch.points)
     }
   }
 

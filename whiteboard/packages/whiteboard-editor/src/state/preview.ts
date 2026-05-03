@@ -1,6 +1,7 @@
 import { geometry as geometryApi } from '@whiteboard/core/geometry'
 import type {
   EdgeId,
+  MindmapId,
   NodeId
 } from '@whiteboard/core/types'
 import { json } from '@shared/core'
@@ -37,17 +38,27 @@ const EMPTY_NODE_PREVIEWS = Object.freeze({}) as NodePreviewRecord
 const EMPTY_EDGE_PREVIEWS = Object.freeze({}) as EdgePreviewRecord
 const EMPTY_MINDMAP_PREVIEWS = Object.freeze({}) as MindmapPreview
 
-const readNodePreviewIds = (
+const readRecordIds = <TId extends string, TValue>(
+  value: Readonly<Record<TId, TValue | undefined>>
+): readonly TId[] => {
+  const ids: TId[] = []
+  for (const id in value) {
+    ids.push(id as TId)
+  }
+  return ids
+}
+
+export const readNodePreviewIds = (
   value: NodePreviewRecord
-): readonly NodeId[] => Object.keys(value) as readonly NodeId[]
+): readonly NodeId[] => readRecordIds(value)
 
-const readEdgePreviewIds = (
+export const readEdgePreviewIds = (
   value: EdgePreviewRecord
-): readonly EdgeId[] => Object.keys(value) as readonly EdgeId[]
+): readonly EdgeId[] => readRecordIds(value)
 
-const readMindmapPreviewIds = (
+export const readMindmapPreviewIds = (
   value: MindmapPreview
-): readonly string[] => Object.keys(value)
+): readonly MindmapId[] => readRecordIds(value)
 
 const isNodePreviewPatchEqual = (
   left: NodePreview['patch'],
@@ -90,8 +101,8 @@ const isPreviewRecordEqual = <TId extends string, TValue>(
     return true
   }
 
-  const leftKeys = Object.keys(left) as TId[]
-  const rightKeys = Object.keys(right) as TId[]
+  const leftKeys = readRecordIds(left)
+  const rightKeys = readRecordIds(right)
   if (leftKeys.length !== rightKeys.length) {
     return false
   }
@@ -423,13 +434,13 @@ export const replacePreviewNodeInteraction = (
 ): EditorPreviewState => {
   const next: Record<NodeId, NodePreview | undefined> = {}
 
-  Object.keys(state.node).forEach((nodeId) => {
-    const current = state.node[nodeId as NodeId]
+  readNodePreviewIds(state.node).forEach((nodeId) => {
+    const current = state.node[nodeId]
     if (!current?.presentation) {
       return
     }
 
-    next[nodeId as NodeId] = {
+    next[nodeId] = {
       presentation: current.presentation,
       hovered: false,
       hidden: false

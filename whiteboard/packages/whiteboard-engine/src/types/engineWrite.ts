@@ -19,12 +19,12 @@ type EngineCommitBase = {
 
 export type EngineApplyCommit = EngineCommitBase & {
   kind: 'apply'
-  authored: readonly MutationWrite[]
+  writes: readonly MutationWrite[]
 }
 
 export type EngineReplaceCommit = EngineCommitBase & {
   kind: 'replace'
-  authored: readonly MutationWrite[]
+  writes: readonly MutationWrite[]
   previousDocument: Document
 }
 

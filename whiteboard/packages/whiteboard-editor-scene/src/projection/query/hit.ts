@@ -1,13 +1,7 @@
 import { edge as edgeApi } from '@whiteboard/core/edge'
 import { geometry as geometryApi } from '@whiteboard/core/geometry'
 import { node as nodeApi } from '@whiteboard/core/node'
-import type {
-  EdgeId,
-  GroupId,
-  MindmapId,
-  NodeId,
-  Point
-} from '@whiteboard/core/types'
+import type { Point } from '@whiteboard/core/types'
 import type {
   SceneHit,
   SceneHitItem,
@@ -25,7 +19,7 @@ type HitWinner = {
 
 const readNodeDistance = (input: {
   state: WorkingState
-  nodeId: NodeId
+  nodeId: string
   point: Point
 }): number | undefined => {
   const graph = input.state.graph.nodes.get(input.nodeId)
@@ -44,7 +38,7 @@ const readNodeDistance = (input: {
 
 const readEdgeDistance = (input: {
   state: WorkingState
-  edgeId: EdgeId
+  edgeId: string
   point: Point
 }): number | undefined => {
   const edge = input.state.graph.edges.get(input.edgeId)
@@ -56,7 +50,7 @@ const readEdgeDistance = (input: {
 
 const readMindmapDistance = (input: {
   state: WorkingState
-  mindmapId: MindmapId
+  mindmapId: string
   point: Point
 }): number | undefined => {
   const bounds = input.state.graph.owners.mindmaps.get(input.mindmapId)?.tree.bbox
@@ -71,7 +65,7 @@ const readMindmapDistance = (input: {
 
 const readGroupDistance = (input: {
   state: WorkingState
-  groupId: GroupId
+  groupId: string
   point: Point
 }): number | undefined => {
   const bounds = input.state.graph.owners.groups.get(input.groupId)?.frame.bounds
@@ -95,14 +89,14 @@ export const createHitRead = (input: {
   }: {
     point: Point
     threshold?: number
-    excludeIds?: readonly NodeId[]
+    excludeIds?: readonly string[]
   }) => {
     const radius = threshold ?? DEFAULT_HIT_THRESHOLD
     const exclude = excludeIds?.length
       ? new Set(excludeIds)
       : undefined
     let winner: {
-      id: NodeId
+      id: string
       distance: number
       order: number
     } | undefined
@@ -144,14 +138,14 @@ export const createHitRead = (input: {
   }: {
     point: Point
     threshold?: number
-    excludeIds?: readonly EdgeId[]
+    excludeIds?: readonly string[]
   }) => {
     const radius = threshold ?? DEFAULT_HIT_THRESHOLD
     const exclude = excludeIds?.length
       ? new Set(excludeIds)
       : undefined
     let winner: {
-      id: EdgeId
+      id: string
       distance: number
       order: number
     } | undefined
@@ -196,10 +190,10 @@ export const createHitRead = (input: {
     threshold?: number
     kinds?: readonly ('node' | 'edge' | 'mindmap' | 'group')[]
     exclude?: Partial<{
-      node: readonly NodeId[]
-      edge: readonly EdgeId[]
-      mindmap: readonly MindmapId[]
-      group: readonly GroupId[]
+      node: readonly string[]
+      edge: readonly string[]
+      mindmap: readonly string[]
+      group: readonly string[]
     }>
   }) => {
     const radius = threshold ?? DEFAULT_HIT_THRESHOLD

@@ -149,7 +149,7 @@ export const createRoutePatchFromPathPoints = (
   const routePoints = geometryApi.polyline.normalize(pathPoints).slice(1, -1)
 
   return routePoints.length > 0
-    ? setRoutePoints(routePoints)
+    ? setRoutePoints(edge, routePoints)
     : clearRoute(edge)
 }
 

@@ -6,12 +6,6 @@ import {
   singleton,
 } from '@shared/mutation'
 import type {
-  EdgeId,
-  GroupId,
-  MindmapId,
-  NodeId,
-} from '@whiteboard/core/types'
-import type {
   PreviewInput,
 } from '@whiteboard/editor-scene'
 import type {
@@ -37,28 +31,28 @@ const stateShape = {
 } as const
 
 const hoverShape = {
-  node: field<NodeId | null>(),
-  edge: field<EdgeId | null>(),
-  mindmap: field<MindmapId | null>(),
-  group: field<GroupId | null>(),
+  node: field<string | null>(),
+  edge: field<string | null>(),
+  mindmap: field<string | null>(),
+  group: field<string | null>(),
   selectionBox: field<boolean>(),
 } as const
 
 const previewNodeShape = {
-  patch: optional(field<NonNullable<EditorStateDocument['preview']['node'][NodeId]>['patch']>()),
-  presentation: optional(field<NonNullable<EditorStateDocument['preview']['node'][NodeId]>['presentation']>()),
+  patch: optional(field<NonNullable<EditorStateDocument['preview']['node'][string]>['patch']>()),
+  presentation: optional(field<NonNullable<EditorStateDocument['preview']['node'][string]>['presentation']>()),
   hovered: field<boolean>(),
   hidden: field<boolean>(),
 } as const
 
 const previewEdgeShape = {
-  patch: optional(field<NonNullable<EditorStateDocument['preview']['edge'][EdgeId]>['patch']>()),
+  patch: optional(field<NonNullable<EditorStateDocument['preview']['edge'][string]>['patch']>()),
   activeRouteIndex: optional(field<number>()),
 } as const
 
 const previewMindmapShape = {
-  rootMove: optional(field<NonNullable<EditorStateDocument['preview']['mindmap'][MindmapId]>['rootMove']>()),
-  subtreeMove: optional(field<NonNullable<EditorStateDocument['preview']['mindmap'][MindmapId]>['subtreeMove']>()),
+  rootMove: optional(field<NonNullable<EditorStateDocument['preview']['mindmap'][string]>['rootMove']>()),
+  subtreeMove: optional(field<NonNullable<EditorStateDocument['preview']['mindmap'][string]>['subtreeMove']>()),
 } as const
 
 const selectionPreviewShape = {
@@ -70,9 +64,9 @@ export const editorStateMutationSchema = schema({
   state: singleton(stateShape),
   hover: singleton(hoverShape),
   preview: {
-    node: map<NodeId, typeof previewNodeShape>(previewNodeShape),
-    edge: map<EdgeId, typeof previewEdgeShape>(previewEdgeShape),
-    mindmap: map<MindmapId, typeof previewMindmapShape>(previewMindmapShape),
+    node: map<string, typeof previewNodeShape>(previewNodeShape),
+    edge: map<string, typeof previewEdgeShape>(previewEdgeShape),
+    mindmap: map<string, typeof previewMindmapShape>(previewMindmapShape),
     selection: singleton(selectionPreviewShape),
     draw: field<PreviewInput['draw']>(),
     edgeGuide: optional(field<PreviewInput['edgeGuide']>()),

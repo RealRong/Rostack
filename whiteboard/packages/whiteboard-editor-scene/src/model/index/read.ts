@@ -37,7 +37,7 @@ export const readMindmapId = (input: {
     return resolved
   }
 
-  const owner = input.indexes.ownerByNode.get(input.value as NodeId)
+  const owner = input.indexes.ownerByNode.get(input.value)
   return owner?.kind === 'mindmap' ? owner.id : undefined
 }
 

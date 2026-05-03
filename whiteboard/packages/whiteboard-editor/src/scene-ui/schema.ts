@@ -13,16 +13,12 @@ import type {
 import type {
   Edge,
   EdgeDash,
-  EdgeId,
-  GroupId,
   EdgeMarker,
   EdgeTextMode,
   EdgeType,
-  MindmapId,
   MindmapNodeFrameKind,
   MindmapNodeId,
   NodeModel,
-  NodeId,
   Rect
 } from '@whiteboard/core/types'
 import type {
@@ -37,14 +33,14 @@ export type SelectionNodeTypeInfo = {
   family: NodeFamily
   icon: string
   count: number
-  nodeIds: readonly NodeId[]
+  nodeIds: readonly string[]
 }
 
 export type SelectionEdgeTypeInfo = {
   key: string
   name: string
   count: number
-  edgeIds: readonly EdgeId[]
+  edgeIds: readonly string[]
   edgeType?: EdgeType
 }
 
@@ -58,7 +54,7 @@ export type SelectionMembers = {
 }
 
 export type SelectionNodeStats = {
-  ids: readonly NodeId[]
+  ids: readonly string[]
   count: number
   hasGroup: boolean
   lock: 'none' | 'mixed' | 'all'
@@ -66,7 +62,7 @@ export type SelectionNodeStats = {
 }
 
 export type SelectionEdgeStats = {
-  ids: readonly EdgeId[]
+  ids: readonly string[]
   count: number
   types: readonly SelectionEdgeTypeInfo[]
 }
@@ -82,12 +78,12 @@ export type EditorSelectionSummaryView = {
   count: number
   nodeCount: number
   edgeCount: number
-  groupIds: readonly GroupId[]
+  groupIds: readonly string[]
 }
 
 export type EditorSelectionAffordanceView = {
   owner: SelectionAffordanceOwner
-  ownerNodeId?: NodeId
+  ownerNodeId?: string
   displayBox?: Rect
   moveHit: SelectionAffordanceMoveHit
   canMove: boolean
@@ -124,7 +120,7 @@ export type SelectionToolbarLockState =
   | 'all'
 
 export type SelectionToolbarMindmapScope = {
-  treeId?: MindmapId
+  treeId?: string
   nodeIds: readonly MindmapNodeId[]
   primaryNodeId?: MindmapNodeId
   canEditBranch: boolean
@@ -138,7 +134,7 @@ export type SelectionToolbarMindmapScope = {
 
 export type SelectionToolbarNodeScope = {
   kind: SelectionToolbarNodeKind
-  nodeIds: readonly NodeId[]
+  nodeIds: readonly string[]
   nodes: readonly NodeModel[]
   primaryNode?: NodeModel
   canChangeShapeKind: boolean
@@ -171,9 +167,9 @@ export type SelectionToolbarNodeScope = {
 }
 
 export type SelectionToolbarEdgeScope = {
-  edgeIds: readonly EdgeId[]
+  edgeIds: readonly string[]
   edges: readonly Edge[]
-  primaryEdgeId?: EdgeId
+  primaryEdgeId?: string
   single: boolean
   lock: SelectionToolbarLockState
   type?: EdgeType
@@ -214,7 +210,7 @@ export type SelectionToolbarContext = {
 export type SelectionOverlay =
   | {
       kind: 'node'
-      nodeId: NodeId
+      nodeId: string
       handles: boolean
     }
   | {

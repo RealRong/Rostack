@@ -6,8 +6,6 @@ import type {
   SelectionTarget
 } from '@whiteboard/core/selection'
 import type {
-  MindmapId,
-  NodeId,
   Point,
   Rect,
   Viewport
@@ -94,7 +92,7 @@ export type EditorState = {
 }
 
 export type EditorSelectionNodeRead = {
-  selected: store.KeyedReadStore<NodeId, boolean>
+  selected: store.KeyedReadStore<string, boolean>
   stats: store.ReadStore<SelectionNodeStats>
   scope: store.ReadStore<SelectionToolbarNodeScope | undefined>
 }
@@ -141,7 +139,7 @@ export type EditorSceneUiChrome = {
 }
 
 export type EditorSceneUiMindmap = {
-  addChildTargets: store.KeyedReadStore<MindmapId, MindmapChrome | undefined>
+  addChildTargets: store.KeyedReadStore<string, MindmapChrome | undefined>
 }
 
 export type EditorSceneUi = {

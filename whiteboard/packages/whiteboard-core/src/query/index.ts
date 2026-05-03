@@ -92,12 +92,18 @@ const cloneCanvasRef = (
 )
 
 const createEntityReader = <TId extends string, TValue>(input: {
-  readMap(): Readonly<Record<TId, TValue>>
+  readMap(): Partial<Record<TId, TValue>>
 }): EntityReader<TId, TValue> => ({
-  ids: () => Object.keys(input.readMap()) as unknown as readonly TId[],
+  ids: () => {
+    const ids: TId[] = []
+    for (const id in input.readMap()) {
+      ids.push(id as TId)
+    }
+    return ids
+  },
   has: (id) => input.readMap()[id] !== undefined,
   get: (id) => input.readMap()[id],
-  list: () => Object.values(input.readMap()),
+  list: () => Object.values(input.readMap()).filter((value): value is TValue => value !== undefined),
 })
 
 export const createWhiteboardReader = (

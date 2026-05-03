@@ -1,7 +1,6 @@
 import {
   createMutationEngine,
   type MutationCommit,
-  type MutationDocument,
   type MutationOrigin,
   type MutationResult,
   type MutationWrite,
@@ -40,7 +39,6 @@ import type {
 } from '../types/engineWrite'
 
 type CoreCommit = MutationCommit<typeof whiteboardMutationSchema>
-type WhiteboardMutationDocument = MutationDocument<typeof whiteboardMutationSchema>
 
 const resolveIntentOrigin = (
   intent: Intent,
@@ -87,7 +85,7 @@ const mapExecuteFailure = (
 const toEngineCommit = (
   rev: number,
   commit: CoreCommit & {
-    previousDocument?: unknown
+    previousDocument?: Document
   }
 ): EngineCommit => {
   if (commit.kind === 'replace') {
@@ -95,11 +93,11 @@ const toEngineCommit = (
       kind: 'replace',
       rev,
       origin: commit.origin,
-      document: commit.document as unknown as Document,
-      delta: commit.delta as WhiteboardMutationDelta,
+      document: commit.document,
+      delta: commit.delta,
       inverse: commit.inverse,
-      authored: commit.writes,
-      previousDocument: (commit.previousDocument ?? commit.document) as unknown as Document
+      writes: commit.writes,
+      previousDocument: commit.previousDocument ?? commit.document
     }
   }
 
@@ -107,10 +105,10 @@ const toEngineCommit = (
     kind: 'apply',
     rev,
     origin: commit.origin,
-    document: commit.document as unknown as Document,
-    delta: commit.delta as WhiteboardMutationDelta,
+    document: commit.document,
+    delta: commit.delta,
     inverse: commit.inverse,
-    authored: commit.writes
+    writes: commit.writes
   }
 }
 
@@ -170,8 +168,8 @@ export const createEngine = ({
 
   const core = createMutationEngine({
     schema: whiteboardMutationSchema,
-    document: document as unknown as WhiteboardMutationDocument,
-    normalize: (next) => normalizeDocument(next as unknown as Document) as unknown as WhiteboardMutationDocument,
+    document,
+    normalize: normalizeDocument,
     services,
     compile: whiteboardCompile,
     history: true
@@ -179,14 +177,14 @@ export const createEngine = ({
 
   core.subscribe((commit) => {
     if (onDocumentChange) {
-      onDocumentChange(commit.document as unknown as Document)
+      onDocumentChange(commit.document)
     }
   })
 
   const subscribeCurrent: Engine['subscribe'] = (listener) => core.subscribe((commit) => {
     listener({
       rev: core.current().rev,
-      doc: commit.document as unknown as Document
+      doc: commit.document
     })
   })
 
@@ -225,7 +223,7 @@ export const createEngine = ({
       })
     },
     history,
-    doc: () => core.document() as unknown as Document,
+    doc: () => core.document(),
     rev: () => core.current().rev,
     subscribe: subscribeCurrent,
     execute: <TIntent extends Intent>(
@@ -239,7 +237,7 @@ export const createEngine = ({
     ),
     replace: (document, options) => toEngineCommit(
       core.current().rev + 1,
-      core.replace(document as unknown as WhiteboardMutationDocument, {
+      core.replace(document, {
         origin: options?.origin ?? 'system',
         history: options?.history
       })

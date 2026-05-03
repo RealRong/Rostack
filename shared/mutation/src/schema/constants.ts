@@ -5,13 +5,13 @@ export const MUTATION_TYPE = Symbol('mutation.type')
 
 export type MutationTreeNodeSnapshot<TValue = unknown> = {
   parentId?: string
-  children: readonly string[]
+  children: string[]
   value?: TValue
 }
 
 export type MutationTreeSnapshot<TValue = unknown> = {
   rootId?: string
-  nodes: Readonly<Record<string, MutationTreeNodeSnapshot<TValue>>>
+  nodes: Record<string, MutationTreeNodeSnapshot<TValue>>
 }
 
 export type MutationSequenceAnchor =

@@ -585,7 +585,7 @@ export const exportSliceFromNodes = ({
     return err('invalid', 'No nodes selected.')
   }
 
-  const orderedNodes = Object.values(doc.nodes)
+  const orderedNodes = Object.values(doc.nodes).filter((node): node is Node => node !== undefined)
   const expandedIds = collectExpandedNodeIds(orderedNodes, selectedIds)
   const rawNodes = orderedNodes
     .filter((node) => expandedIds.has(node.id))
@@ -598,6 +598,7 @@ export const exportSliceFromNodes = ({
   const nodeIdSet = new Set(rawNodes.map((node) => node.id))
   const nodes = rawNodes
   const edges = Object.values(doc.edges)
+    .filter((edge): edge is Edge => edge !== undefined)
     .filter((edge) => isEdgeInsideNodeSlice(edge, nodeIdSet))
     .map((edge) => cloneEdge(edge))
 
@@ -672,7 +673,7 @@ export const exportSliceFromSelection = ({
     return err('invalid', 'No selection provided.')
   }
 
-  const orderedNodes = Object.values(doc.nodes)
+  const orderedNodes = Object.values(doc.nodes).filter((node): node is Node => node !== undefined)
   const expandedNodeIds = collectExpandedNodeIds(orderedNodes, selectedNodeIds)
   const rawNodes = orderedNodes
     .filter((node) => expandedNodeIds.has(node.id))
@@ -683,7 +684,7 @@ export const exportSliceFromSelection = ({
   const edges: Edge[] = []
   const includedEdgeIds = new Set<EdgeId>()
 
-  Object.values(doc.edges).forEach((edge) => {
+  Object.values(doc.edges).filter((edge): edge is Edge => edge !== undefined).forEach((edge) => {
     if (isEdgeInsideNodeSlice(edge, nodeIdSet)) {
       edges.push(cloneEdge(edge))
       includedEdgeIds.add(edge.id)

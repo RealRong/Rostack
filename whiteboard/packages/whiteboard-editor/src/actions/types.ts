@@ -8,19 +8,16 @@ import type {
   EdgeTemplate,
   EdgeDash,
   EdgeEnd,
-  EdgeId,
   EdgeMarker,
   EdgePatch,
   EdgeTextMode,
   EdgeType,
   MindmapCreateInput,
-  MindmapId,
   MindmapInsertInput,
   MindmapLayoutSpec,
   MindmapNodeId,
   MindmapTopicData,
   NodeTemplate,
-  NodeId,
   NodeUpdateInput,
   Origin,
   Point
@@ -58,8 +55,8 @@ import type {
 export type ClipboardTarget =
   | 'selection'
   | {
-      nodeIds?: readonly NodeId[]
-      edgeIds?: readonly EdgeId[]
+      nodeIds?: readonly string[]
+      edgeIds?: readonly string[]
     }
 
 export type ClipboardOptions = {
@@ -159,14 +156,14 @@ export type SelectionActions = {
 
 export type EditActions = {
   startNode: (
-    nodeId: NodeId,
+    nodeId: string,
     field: EditField,
     options?: {
       caret?: EditCaret
     }
   ) => void
   startEdgeLabel: (
-    edgeId: EdgeId,
+    edgeId: string,
     labelId: string,
     options?: {
       caret?: EditCaret
@@ -183,63 +180,63 @@ export type NodeActions = {
   create: (input: {
     position: Point
     template: NodeTemplate
-  }) => IntentResult<{ nodeId: NodeId }>
+  }) => IntentResult<{ nodeId: string }>
   patch: (
-    ids: readonly NodeId[],
+    ids: readonly string[],
     update: NodeUpdateInput,
     options?: {
       origin?: Origin
     }
   ) => IntentResult | undefined
   move: (input: {
-    ids: readonly NodeId[]
+    ids: readonly string[]
     delta: Point
   }) => IntentResult
   align: (
-    ids: readonly NodeId[],
+    ids: readonly string[],
     mode: import('@whiteboard/core/node').NodeAlignMode
   ) => IntentResult
   distribute: (
-    ids: readonly NodeId[],
+    ids: readonly string[],
     mode: import('@whiteboard/core/node').NodeDistributeMode
   ) => IntentResult
-  delete: (ids: NodeId[]) => IntentResult
-  duplicate: (ids: NodeId[]) => IntentResult<{
-    nodeIds: readonly NodeId[]
-    edgeIds: readonly EdgeId[]
+  delete: (ids: string[]) => IntentResult
+  duplicate: (ids: string[]) => IntentResult<{
+    nodeIds: readonly string[]
+    edgeIds: readonly string[]
   }>
   lock: {
-    set: (nodeIds: readonly NodeId[], locked: boolean) => IntentResult
-    toggle: (nodeIds: readonly NodeId[]) => IntentResult
+    set: (nodeIds: readonly string[], locked: boolean) => IntentResult
+    toggle: (nodeIds: readonly string[]) => IntentResult
   }
   shape: {
-    set: (nodeIds: readonly NodeId[], kind: string) => IntentResult
+    set: (nodeIds: readonly string[], kind: string) => IntentResult
   }
   style: {
-    fill: (nodeIds: readonly NodeId[], value: string) => IntentResult
-    fillOpacity: (nodeIds: readonly NodeId[], value?: number) => IntentResult
-    stroke: (nodeIds: readonly NodeId[], value: string) => IntentResult
-    strokeWidth: (nodeIds: readonly NodeId[], value: number) => IntentResult
-    strokeOpacity: (nodeIds: readonly NodeId[], value?: number) => IntentResult
-    strokeDash: (nodeIds: readonly NodeId[], value?: readonly number[]) => IntentResult
-    opacity: (nodeIds: readonly NodeId[], value: number) => IntentResult
-    textColor: (nodeIds: readonly NodeId[], value: string) => IntentResult
+    fill: (nodeIds: readonly string[], value: string) => IntentResult
+    fillOpacity: (nodeIds: readonly string[], value?: number) => IntentResult
+    stroke: (nodeIds: readonly string[], value: string) => IntentResult
+    strokeWidth: (nodeIds: readonly string[], value: number) => IntentResult
+    strokeOpacity: (nodeIds: readonly string[], value?: number) => IntentResult
+    strokeDash: (nodeIds: readonly string[], value?: readonly number[]) => IntentResult
+    opacity: (nodeIds: readonly string[], value: number) => IntentResult
+    textColor: (nodeIds: readonly string[], value: string) => IntentResult
   }
   text: {
     commit: (input: {
-      nodeId: NodeId
+      nodeId: string
       field: 'text' | 'title'
       value: string
     }) => IntentResult | undefined
-    color: (nodeIds: readonly NodeId[], color: string) => IntentResult
+    color: (nodeIds: readonly string[], color: string) => IntentResult
     size: (input: {
-      nodeIds: readonly NodeId[]
+      nodeIds: readonly string[]
       value?: number
     }) => IntentResult
-    weight: (nodeIds: readonly NodeId[], weight?: number) => IntentResult
-    italic: (nodeIds: readonly NodeId[], italic: boolean) => IntentResult
+    weight: (nodeIds: readonly string[], weight?: number) => IntentResult
+    italic: (nodeIds: readonly string[], italic: boolean) => IntentResult
     align: (
-      nodeIds: readonly NodeId[],
+      nodeIds: readonly string[],
       align?: 'left' | 'center' | 'right'
     ) => IntentResult
   }
@@ -250,59 +247,59 @@ export type EdgeActions = {
     from: EdgeEnd
     to: EdgeEnd
     template: EdgeTemplate
-  }) => IntentResult<{ edgeId: EdgeId }>
+  }) => IntentResult<{ edgeId: string }>
   patch: (
-    edgeIds: readonly EdgeId[],
+    edgeIds: readonly string[],
     patch: EdgePatch
   ) => IntentResult | undefined
   move: (input: {
-    ids: readonly EdgeId[]
+    ids: readonly string[]
     delta: Point
   }) => IntentResult
   reconnectCommit: (input: {
-    edgeId: EdgeId
+    edgeId: string
     end: 'source' | 'target'
     target: EdgeEnd
     patch?: {
       type?: EdgeType
-      points?: Point[]
+      points?: EdgePatch['points']
     }
   }) => IntentResult
-  delete: (ids: EdgeId[]) => IntentResult
+  delete: (ids: string[]) => IntentResult
   points: {
-    set: (edgeId: EdgeId, points?: Point[]) => IntentResult
-    insertPoint: (edgeId: EdgeId, index: number, point: Point) => IntentResult
-    movePoint: (edgeId: EdgeId, index: number, point: Point) => IntentResult
-    removePoint: (edgeId: EdgeId, index: number) => IntentResult
-    clear: (edgeId: EdgeId) => IntentResult
+    set: (edgeId: string, points?: EdgePatch['points']) => IntentResult
+    insertPoint: (edgeId: string, index: number, point: Point) => IntentResult
+    movePoint: (edgeId: string, index: number, point: Point) => IntentResult
+    removePoint: (edgeId: string, index: number) => IntentResult
+    clear: (edgeId: string) => IntentResult
   }
   label: {
-    add: (edgeId: EdgeId) => string | undefined
+    add: (edgeId: string) => string | undefined
     patch: (
-      edgeId: EdgeId,
+      edgeId: string,
       labelId: string,
       patch: EdgeLabelPatch
     ) => IntentResult | undefined
-    remove: (edgeId: EdgeId, labelId: string) => IntentResult | undefined
+    remove: (edgeId: string, labelId: string) => IntentResult | undefined
   }
   style: {
-    color: (edgeIds: readonly EdgeId[], value?: string) => IntentResult | undefined
-    opacity: (edgeIds: readonly EdgeId[], value?: number) => IntentResult | undefined
-    width: (edgeIds: readonly EdgeId[], value?: number) => IntentResult | undefined
-    dash: (edgeIds: readonly EdgeId[], value?: EdgeDash) => IntentResult | undefined
-    start: (edgeIds: readonly EdgeId[], value?: EdgeMarker) => IntentResult | undefined
-    end: (edgeIds: readonly EdgeId[], value?: EdgeMarker) => IntentResult | undefined
-    swapMarkers: (edgeIds: readonly EdgeId[]) => IntentResult | undefined
+    color: (edgeIds: readonly string[], value?: string) => IntentResult | undefined
+    opacity: (edgeIds: readonly string[], value?: number) => IntentResult | undefined
+    width: (edgeIds: readonly string[], value?: number) => IntentResult | undefined
+    dash: (edgeIds: readonly string[], value?: EdgeDash) => IntentResult | undefined
+    start: (edgeIds: readonly string[], value?: EdgeMarker) => IntentResult | undefined
+    end: (edgeIds: readonly string[], value?: EdgeMarker) => IntentResult | undefined
+    swapMarkers: (edgeIds: readonly string[]) => IntentResult | undefined
   }
   type: {
-    set: (edgeIds: readonly EdgeId[], value: EdgeType) => IntentResult | undefined
+    set: (edgeIds: readonly string[], value: EdgeType) => IntentResult | undefined
   }
   lock: {
-    set: (edgeIds: readonly EdgeId[], locked: boolean) => IntentResult | undefined
-    toggle: (edgeIds: readonly EdgeId[]) => IntentResult | undefined
+    set: (edgeIds: readonly string[], locked: boolean) => IntentResult | undefined
+    toggle: (edgeIds: readonly string[]) => IntentResult | undefined
   }
   textMode: {
-    set: (edgeIds: readonly EdgeId[], value?: EdgeTextMode) => IntentResult | undefined
+    set: (edgeIds: readonly string[], value?: EdgeTextMode) => IntentResult | undefined
   }
 }
 
@@ -313,38 +310,38 @@ export type MindmapActions = {
       focus?: 'edit-root' | 'select-root' | 'none'
     }
   ) => IntentResult<{
-    mindmapId: MindmapId
+    mindmapId: string
     rootId: MindmapNodeId
   }>
-  delete: (ids: MindmapId[]) => IntentResult
+  delete: (ids: string[]) => IntentResult
   patch: (
-    id: MindmapId,
+    id: string,
     input: import('@whiteboard/core/types').MindmapTreePatch
   ) => IntentResult
   insert: (
-    id: MindmapId,
+    id: string,
     input: MindmapInsertInput,
     options?: {
       behavior?: MindmapInsertBehavior
     }
   ) => IntentResult<{ nodeId: MindmapNodeId }>
   moveSubtree: (
-    id: MindmapId,
+    id: string,
     input: import('@whiteboard/core/types').MindmapMoveSubtreeInput
   ) => IntentResult
   removeSubtree: (
-    id: MindmapId,
+    id: string,
     input: import('@whiteboard/core/types').MindmapRemoveSubtreeInput
   ) => IntentResult
   cloneSubtree: (
-    id: MindmapId,
+    id: string,
     input: import('@whiteboard/core/types').MindmapCloneSubtreeInput
   ) => IntentResult<{
     nodeId: MindmapNodeId
     map: Record<MindmapNodeId, MindmapNodeId>
   }>
   insertRelative: (input: {
-    id: MindmapId
+    id: string
     targetNodeId: MindmapNodeId
     relation: MindmapInsertRelation
     side?: 'left' | 'right'
@@ -352,7 +349,7 @@ export type MindmapActions = {
     behavior?: MindmapInsertBehavior
   }) => IntentResult<{ nodeId: MindmapNodeId }> | undefined
   moveByDrop: (input: {
-    id: NodeId
+    id: string
     nodeId: MindmapNodeId
     drop: {
       parentId: MindmapNodeId
@@ -366,20 +363,20 @@ export type MindmapActions = {
     layout: MindmapLayoutSpec
   }) => IntentResult | undefined
   moveRoot: (input: {
-    nodeId: NodeId
+    nodeId: string
     position: Point
     origin?: Point
     threshold?: number
   }) => IntentResult | undefined
   style: {
     branch: (input: {
-      id: MindmapId
+      id: string
       nodeIds: readonly MindmapNodeId[]
       patch: MindmapBranchPatch
       scope?: 'node' | 'subtree'
     }) => IntentResult | undefined
     topic: (input: {
-      nodeIds: readonly NodeId[]
+      nodeIds: readonly string[]
       patch: MindmapBorderPatch
     }) => IntentResult | undefined
   }

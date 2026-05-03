@@ -19,6 +19,7 @@ import type { Tool } from '@whiteboard/editor/schema/tool'
 import type { InteractionSession } from '@whiteboard/editor/input/core/types'
 import { FINISH } from '@whiteboard/editor/input/internals/result'
 import type { Editor } from '@whiteboard/editor/api/editor'
+import { readEdgePreviewIds } from '@whiteboard/editor/state/preview'
 
 type EdgeConnectStartInput = {
   tool: Tool
@@ -516,8 +517,7 @@ export const createEdgeConnectSession = (
           : [])
       )
 
-      Object.keys(snapshot.preview.edge).forEach((edgeId) => {
-        const id = edgeId as EdgeId
+      readEdgePreviewIds(snapshot.preview.edge).forEach((id) => {
         const nextPatch = nextEdgeById.get(id)
         nextEdgeById.delete(id)
 
@@ -593,8 +593,8 @@ export const createEdgeConnectSession = (
         writer,
         snapshot
       }) => {
-        Object.keys(snapshot.preview.edge).forEach((edgeId) => {
-          writer.preview.edge.delete(edgeId as EdgeId)
+        readEdgePreviewIds(snapshot.preview.edge).forEach((edgeId) => {
+          writer.preview.edge.delete(edgeId)
         })
         writer.preview.edgeGuide.clear()
       })

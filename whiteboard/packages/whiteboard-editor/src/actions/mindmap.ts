@@ -1,8 +1,6 @@
 import { mindmap as mindmapApi } from '@whiteboard/core/mindmap'
 import type {
-  MindmapId,
   MindmapNodeId,
-  NodeId
 } from '@whiteboard/core/types'
 import type { EditorActionContext } from '@whiteboard/editor/actions/context'
 import type { EditController } from '@whiteboard/editor/actions/edit'
@@ -11,7 +9,7 @@ import { createMindmapActions as createMindmapWorkflowActions } from '@whiteboar
 
 const readMindmapRootMove = (input: {
   context: EditorActionContext
-  nodeId: NodeId
+  nodeId: string
 }) => {
   const directNode = input.context.projection.nodes.get(input.nodeId)
   const tree = input.context.projection.mindmaps.tree(input.nodeId)
@@ -40,7 +38,7 @@ const readMindmapRootMove = (input: {
 
 const readBranchScopeIds = (input: {
   context: EditorActionContext
-  id: MindmapId
+  id: string
   nodeIds: readonly MindmapNodeId[]
   scope?: 'node' | 'subtree'
 }) => {

@@ -1,8 +1,7 @@
 import { selection as selectionApi, type SelectionInput, type SelectionTarget } from '@whiteboard/core/selection'
 import type {
   CanvasOrderAnchor,
-  CanvasItemRef,
-  GroupId
+  CanvasItemRef
 } from '@whiteboard/core/types'
 import type { EditorActionContext } from '@whiteboard/editor/actions/context'
 import type {
@@ -39,7 +38,7 @@ const orderRefs = (
 
 const orderGroups = (
   group: Pick<GroupWrite, 'order'>,
-  groupIds: readonly GroupId[],
+  groupIds: readonly string[],
   mode: 'front' | 'back' | 'forward' | 'backward'
 ) => mode === 'forward' || mode === 'backward'
   ? group.order.step(groupIds, mode)

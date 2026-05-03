@@ -199,10 +199,10 @@ export interface Document {
   name?: string
   background?: Background
   order: CanvasItemRef[]
-  nodes: Record<NodeId, NodeRecord>
-  edges: Record<EdgeId, EdgeRecord>
-  groups: Record<GroupId, GroupRecord>
-  mindmaps: Record<MindmapId, MindmapRecord>
+  nodes: Partial<Record<NodeId, NodeRecord>>
+  edges: Partial<Record<EdgeId, EdgeRecord>>
+  groups: Partial<Record<GroupId, GroupRecord>>
+  mindmaps: Partial<Record<MindmapId, MindmapRecord>>
 }
 
 export interface Snapshot {

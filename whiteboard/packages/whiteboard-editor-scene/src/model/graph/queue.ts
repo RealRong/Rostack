@@ -45,7 +45,7 @@ export const fanoutNodeGeometry = (input: {
     readRelatedEdgeIds(input.working.indexes, [input.nodeId])
   )
   if (input.owner?.kind === 'group') {
-    input.queue.group.add(input.owner.id as GroupId)
+    input.queue.group.add(input.owner.id)
   }
 }
 

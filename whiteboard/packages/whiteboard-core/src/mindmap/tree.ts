@@ -235,11 +235,11 @@ export const resolveMindmapId = (
   document: Pick<Document, 'nodes' | 'mindmaps'>,
   value: string
 ): MindmapId | undefined => (
-  document.mindmaps[value as MindmapId]
-    ? value as MindmapId
+  document.mindmaps[value]
+    ? value
     : getMindmapIdByNode(
-        document.nodes[value as NodeId]
-      ) as MindmapId | undefined
+        document.nodes[value]
+      )
 )
 
 export const getMindmapRecordByNodeId = (

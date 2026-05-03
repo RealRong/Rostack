@@ -164,7 +164,7 @@ type TidyNode = {
   mod: number
   shift: number
   change: number
-  ancestor: TidyNode
+  ancestor?: TidyNode
   thread?: TidyNode
   height: number
 }
@@ -197,7 +197,9 @@ const executeShifts = (node: TidyNode) => {
 }
 
 const ancestor = (vil: TidyNode, v: TidyNode, defaultAncestor: TidyNode) =>
-  vil.ancestor.parent === v.parent ? vil.ancestor : defaultAncestor
+  vil.ancestor?.parent === v.parent
+    ? (vil.ancestor ?? defaultAncestor)
+    : defaultAncestor
 
 const apportion = (
   v: TidyNode,
@@ -295,7 +297,6 @@ const buildTidyTree = (
     mod: 0,
     shift: 0,
     change: 0,
-    ancestor: undefined as unknown as TidyNode,
     height: size.height
   }
   tidyNode.ancestor = tidyNode

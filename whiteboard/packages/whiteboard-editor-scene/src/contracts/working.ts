@@ -11,7 +11,6 @@ import type {
   RenderPhaseDelta,
   UiPhaseDelta
 } from './delta'
-import type { NodeId } from '@whiteboard/core/types'
 import type {
   EditorSceneLayout,
   NodeDraftMeasure,
@@ -34,7 +33,7 @@ export interface WorkingState extends State {
   layout?: EditorSceneLayout
   facts: EditorSceneFacts
   draft: {
-    node: Map<NodeId, NodeDraftMeasure>
+    node: Map<string, NodeDraftMeasure>
   }
   delta: DeltaState
   phase: {

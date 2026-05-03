@@ -1,7 +1,7 @@
 import { geometry as geometryApi } from '@whiteboard/core/geometry'
 import { node as nodeApi } from '@whiteboard/core/node'
 import { selection as selectionApi, type SelectionTarget } from '@whiteboard/core/selection'
-import type { Edge, NodeId } from '@whiteboard/core/types'
+import type { Edge } from '@whiteboard/core/types'
 import type {
   NodeCapabilityInput,
   SceneSelection,

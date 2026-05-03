@@ -10,6 +10,10 @@ import { FINISH } from '@whiteboard/editor/input/internals/result'
 import type { PointerDownInput } from '@whiteboard/editor/api/input'
 import type { WhiteboardLayoutService } from '@whiteboard/core/layout'
 import type { Editor } from '@whiteboard/editor/api/editor'
+import {
+  readEdgePreviewIds,
+  readNodePreviewIds
+} from '@whiteboard/editor/state/preview'
 
 export type TransformTarget = TransformSelectionMember<Node>
 export type RuntimeTransformSpec = TransformSpec<Node>
@@ -167,8 +171,7 @@ export const createTransformSession = (
         ])
       )
 
-      Object.keys(snapshot.preview.node).forEach((nodeId) => {
-        const id = nodeId as NodeId
+      readNodePreviewIds(snapshot.preview.node).forEach((id) => {
         const current = snapshot.preview.node[id]
         const nextPatch = nextNodeById.get(id)
         nextNodeById.delete(id)
@@ -212,8 +215,8 @@ export const createTransformSession = (
         })
       })
 
-      Object.keys(snapshot.preview.edge).forEach((edgeId) => {
-        writer.preview.edge.delete(edgeId as EdgeId)
+      readEdgePreviewIds(snapshot.preview.edge).forEach((edgeId) => {
+        writer.preview.edge.delete(edgeId)
       })
       writer.preview.selection.patch(
         {
@@ -262,8 +265,7 @@ export const createTransformSession = (
         writer,
         snapshot
       }) => {
-        Object.keys(snapshot.preview.node).forEach((nodeId) => {
-          const id = nodeId as NodeId
+        readNodePreviewIds(snapshot.preview.node).forEach((id) => {
           const current = snapshot.preview.node[id]
           if (!current?.presentation) {
             writer.preview.node.delete(id)
@@ -277,8 +279,8 @@ export const createTransformSession = (
             hidden: false
           })
         })
-        Object.keys(snapshot.preview.edge).forEach((edgeId) => {
-          writer.preview.edge.delete(edgeId as EdgeId)
+        readEdgePreviewIds(snapshot.preview.edge).forEach((edgeId) => {
+          writer.preview.edge.delete(edgeId)
         })
         writer.preview.selection.patch(
           {

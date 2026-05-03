@@ -209,7 +209,7 @@ test('edge.reconnect.commit applies endpoint, type, and points in one command', 
   assert.equal(result.commit.document.edges.edge_1?.type, 'straight')
   assert.equal(result.commit.document.edges.edge_1?.points, undefined)
   assert.deepEqual(
-    result.commit.authored.steps.map((step) => step.type),
+    result.commit.writes.steps.map((step) => step.type),
     [
       'entity.patch',
       'ordered.delete'

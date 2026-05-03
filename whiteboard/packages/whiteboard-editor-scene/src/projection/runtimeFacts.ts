@@ -1,9 +1,4 @@
 import type {
-  EdgeId,
-  MindmapId,
-  NodeId
-} from '@whiteboard/core/types'
-import type {
   EditSession
 } from '@whiteboard/editor/schema/edit'
 import type {
@@ -18,13 +13,13 @@ import type {
 
 const readEditedEdgeIds = (
   edit: EditSession | null
-): ReadonlySet<EdgeId> => edit?.kind === 'edge-label'
+): ReadonlySet<string> => edit?.kind === 'edge-label'
   ? new Set([edit.edgeId])
   : new Set()
 
 const readEditedNodeIds = (
   edit: EditSession | null
-): ReadonlySet<NodeId> => edit?.kind === 'node'
+): ReadonlySet<string> => edit?.kind === 'node'
   ? new Set([edit.nodeId])
   : new Set()
 
@@ -32,9 +27,9 @@ const readHoverNodeIds = (
   previous: EditorSnapshot,
   next: EditorSnapshot,
   delta: EditorStateMutationDelta
-): ReadonlySet<NodeId> => delta.hover.node.changed()
+): ReadonlySet<string> => delta.hover.node.changed()
   ? new Set(
-      [previous.hover.node, next.hover.node].filter((id): id is NodeId => id !== null)
+      [previous.hover.node, next.hover.node].filter((id): id is string => id !== null)
     )
   : new Set()
 
@@ -42,9 +37,9 @@ const readHoverEdgeIds = (
   previous: EditorSnapshot,
   next: EditorSnapshot,
   delta: EditorStateMutationDelta
-): ReadonlySet<EdgeId> => delta.hover.edge.changed()
+): ReadonlySet<string> => delta.hover.edge.changed()
   ? new Set(
-      [previous.hover.edge, next.hover.edge].filter((id): id is EdgeId => id !== null)
+      [previous.hover.edge, next.hover.edge].filter((id): id is string => id !== null)
     )
   : new Set()
 
@@ -52,9 +47,9 @@ const readHoverMindmapIds = (
   previous: EditorSnapshot,
   next: EditorSnapshot,
   delta: EditorStateMutationDelta
-): ReadonlySet<MindmapId> => delta.hover.mindmap.changed()
+): ReadonlySet<string> => delta.hover.mindmap.changed()
   ? new Set(
-      [previous.hover.mindmap, next.hover.mindmap].filter((id): id is MindmapId => id !== null)
+      [previous.hover.mindmap, next.hover.mindmap].filter((id): id is string => id !== null)
     )
   : new Set()
 
@@ -70,40 +65,40 @@ export const createRuntimeFacts = (input: {
   next: EditorSnapshot
   interaction: {
     selection: {
-      edgeIds: readonly EdgeId[]
+      edgeIds: readonly string[]
     }
     hover: {
       kind: string
-      edgeId?: EdgeId
+      edgeId?: string
     }
   }
   delta: EditorStateMutationDelta
 }): SceneRuntimeFacts => {
-  const touchedNodeIds = new Set<NodeId>([
+  const touchedNodeIds = new Set<string>([
     ...toTouchedSet(
       input.delta.preview.node.touchedIds(),
-      Object.keys(input.next.preview.node) as readonly NodeId[]
+      Object.keys(input.next.preview.node)
     ),
     ...readHoverNodeIds(input.previous, input.next, input.delta),
     ...readEditedNodeIds(input.next.state.edit)
   ])
-  const touchedEdgeIds = new Set<EdgeId>([
+  const touchedEdgeIds = new Set<string>([
     ...toTouchedSet(
       input.delta.preview.edge.touchedIds(),
-      Object.keys(input.next.preview.edge) as readonly EdgeId[]
+      Object.keys(input.next.preview.edge)
     ),
     ...readHoverEdgeIds(input.previous, input.next, input.delta),
     ...readEditedEdgeIds(input.next.state.edit)
   ])
-  const touchedMindmapIds = new Set<MindmapId>([
+  const touchedMindmapIds = new Set<string>([
     ...toTouchedSet(
       input.delta.preview.mindmap.touchedIds(),
-      Object.keys(input.next.preview.mindmap) as readonly MindmapId[]
+      Object.keys(input.next.preview.mindmap)
     ),
     ...readHoverMindmapIds(input.previous, input.next, input.delta)
   ])
 
-  const activeEdgeIds = new Set<EdgeId>([
+  const activeEdgeIds = new Set<string>([
     ...input.interaction.selection.edgeIds,
     ...readEditedEdgeIds(input.next.state.edit)
   ])

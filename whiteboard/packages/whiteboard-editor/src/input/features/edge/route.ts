@@ -19,6 +19,7 @@ import {
 import type { InteractionSession } from '@whiteboard/editor/input/core/types'
 import { createPressDragSession } from '@whiteboard/editor/input/internals/press'
 import type { Editor } from '@whiteboard/editor/api/editor'
+import { readEdgePreviewIds } from '@whiteboard/editor/state/preview'
 
 export type EdgeRouteHandleState =
   | {
@@ -88,7 +89,7 @@ export type EdgeRouteCommit =
   | {
       kind: 'update-route'
       edgeId: EdgeId
-      points: EdgePatch['points']
+      points: readonly Point[] | undefined
     }
 
 type EdgeRoutePick = Extract<PointerDownInput['pick'], {
@@ -335,11 +336,13 @@ export const stepEdgeRoute = (input: {
     }
 
     return {
-      state: {
-        ...input.state,
-        routePoints:
-          patch.points ?? []
-      },
+        state: {
+          ...input.state,
+          routePoints:
+            patch.points
+              ? entityTable.read.list(patch.points)
+              : []
+        },
       draft: {
         patch,
         activeRouteIndex: input.state.index
@@ -412,6 +415,8 @@ const commitEdgeRoute = (
       kind: 'update-route',
       edgeId: state.edgeId,
       points: inserted.data.patch.points
+        ? entityTable.read.list(inserted.data.patch.points)
+        : undefined
     }
   }
 
@@ -456,7 +461,14 @@ const submitEdgeRouteCommit = (
   }
 
   if (commit.kind === 'update-route') {
-    editor.actions.document.edge.points.set(commit.edgeId, commit.points)
+    const edge = editor.scene.edges.get(commit.edgeId)?.base.edge
+    if (!edge) {
+      return
+    }
+    editor.actions.document.edge.points.set(
+      commit.edgeId,
+      edgeApi.points.set(edge, commit.points).points
+    )
     return
   }
 
@@ -480,8 +492,7 @@ const createEdgeRouteSession = (
     writer,
     snapshot
   }) => {
-    Object.keys(snapshot.preview.edge).forEach((edgeId) => {
-      const id = edgeId as EdgeId
+    readEdgePreviewIds(snapshot.preview.edge).forEach((id) => {
       if (id !== state.edgeId) {
         writer.preview.edge.delete(id)
         return
@@ -521,8 +532,7 @@ const createEdgeRouteSession = (
       writer,
       snapshot
     }) => {
-      Object.keys(snapshot.preview.edge).forEach((edgeId) => {
-        const id = edgeId as EdgeId
+      readEdgePreviewIds(snapshot.preview.edge).forEach((id) => {
         if (id !== state.edgeId) {
           writer.preview.edge.delete(id)
           return
@@ -580,8 +590,8 @@ const createEdgeRouteSession = (
         writer,
         snapshot
       }) => {
-        Object.keys(snapshot.preview.edge).forEach((edgeId) => {
-          writer.preview.edge.delete(edgeId as EdgeId)
+        readEdgePreviewIds(snapshot.preview.edge).forEach((edgeId) => {
+          writer.preview.edge.delete(edgeId)
         })
       })
     }

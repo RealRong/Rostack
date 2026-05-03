@@ -1,6 +1,4 @@
 import type {
-  EdgeId,
-  NodeId,
   Point
 } from '@whiteboard/core/types'
 
@@ -31,13 +29,13 @@ type EditSessionBase = {
 
 export type NodeEditSession = EditSessionBase & {
   kind: 'node'
-  nodeId: NodeId
+  nodeId: string
   field: EditField
 }
 
 export type EdgeLabelEditSession = EditSessionBase & {
   kind: 'edge-label'
-  edgeId: EdgeId
+  edgeId: string
   labelId: string
 }
 

@@ -6,11 +6,9 @@ import type { ConnectResolution } from '@whiteboard/core/edge'
 import type { MindmapDragDropTarget } from '@whiteboard/core/mindmap'
 import type {
   Edge,
-  EdgeId,
   EdgePatch,
   MindmapNodeId,
   NodeFieldPatch,
-  NodeId,
   Point,
   Rect
 } from '@whiteboard/core/types'
@@ -28,7 +26,7 @@ export type NodePatch = Pick<
 export type NodePreviewPatch = Omit<TransformPreviewPatch, 'id'>
 
 export type NodePreviewEntry = {
-  id: NodeId
+  id: string
   patch: NodePreviewPatch
 }
 
@@ -37,7 +35,7 @@ export type NodePresentation = {
 }
 
 export type NodePresentationEntry = {
-  id: NodeId
+  id: string
   presentation: NodePresentation
 }
 
@@ -53,13 +51,13 @@ export type TextLayoutPreview = {
 export type TextPreviewPatch = TextLayoutPreview & Pick<NodePreviewPatch, 'position' | 'size'>
 
 export type TextPreviewEntry = {
-  id: NodeId
+  id: string
   patch: TextPreviewPatch
 }
 
 export type NodeSelectionPreviewState = {
   patches: readonly NodePreviewEntry[]
-  frameHoverId?: NodeId
+  frameHoverId?: string
 }
 
 export type NodeTextPreviewState = {
@@ -72,13 +70,13 @@ export type NodePreviewState = {
 }
 
 export type EdgeFeedbackEntry = {
-  id: EdgeId
+  id: string
   patch?: EdgePatch
   activeRouteIndex?: number
 }
 
 export type EdgeConnectFeedback = {
-  focusedNodeId?: NodeId
+  focusedNodeId?: string
   resolution: ConnectResolution
 }
 
@@ -101,14 +99,14 @@ export type MarqueePreviewState = {
 }
 
 type MindmapSubtreeMovePreview = {
-  treeId: NodeId
+  treeId: string
   nodeId: MindmapNodeId
   ghost: Rect
   drop?: MindmapDragDropTarget
 }
 
 export type MindmapRootMovePreview = {
-  treeId: NodeId
+  treeId: string
   delta: Point
 }
 

@@ -10,9 +10,6 @@ import {
 } from '@whiteboard/core/query'
 import { selection as selectionApi, type SelectionTarget } from '@whiteboard/core/selection'
 import type {
-  EdgeId,
-  MindmapId,
-  NodeId,
   Rect
 } from '@whiteboard/core/types'
 import type { Revision } from '@shared/projection'
@@ -69,12 +66,12 @@ export interface ProjectionScene extends Omit<EditorScene, 'stores' | 'pick'> {
 const resolveMindmapId = (
   state: WorkingState,
   value: string
-): MindmapId | undefined => {
-  if (state.graph.owners.mindmaps.has(value as MindmapId)) {
-    return value as MindmapId
+): string | undefined => {
+  if (state.graph.owners.mindmaps.has(value)) {
+    return value
   }
 
-  const owner = state.indexes.ownerByNode.get(value as NodeId)
+  const owner = state.indexes.ownerByNode.get(value)
   return owner?.kind === 'mindmap'
     ? owner.id
     : undefined
@@ -87,10 +84,10 @@ const toGroupTarget = (
   }[]
 ): SelectionTarget => selectionApi.target.normalize({
   nodeIds: items.flatMap((item) => item.kind === 'node'
-    ? [item.id as NodeId]
+    ? [item.id]
     : []),
   edgeIds: items.flatMap((item) => item.kind === 'edge'
-    ? [item.id as EdgeId]
+    ? [item.id]
     : [])
 })
 
@@ -169,7 +166,7 @@ export const createProjectionRead = (runtime: {
     state: runtime.state
   })
   const readMindmapStructureByValue = (
-    value: MindmapId | NodeId | string
+    value: string
   ) => {
     const structure = readMindmapStructure({
       document: runtime.state().document.snapshot,
@@ -181,7 +178,7 @@ export const createProjectionRead = (runtime: {
       : undefined
   }
   const readMindmapTreeByValue = (
-    value: MindmapId | NodeId | string
+    value: string
   ) => {
     const structure = readMindmapStructure({
       document: runtime.state().document.snapshot,
@@ -417,14 +414,14 @@ export const createProjectionRead = (runtime: {
         }
 
         const projectedNode = runtime.state().graph.nodes.get(nodeId)?.base.node as
-          | (Record<string, unknown> & { mindmapId?: MindmapId })
+          | (Record<string, unknown> & { mindmapId?: string })
           | undefined
         if (typeof projectedNode?.mindmapId === 'string') {
           return [projectedNode.mindmapId]
         }
 
         const committedNode = runtime.state().document.snapshot.nodes[nodeId] as
-          | (Record<string, unknown> & { mindmapId?: MindmapId })
+          | (Record<string, unknown> & { mindmapId?: string })
           | undefined
 
         return typeof committedNode?.mindmapId === 'string'

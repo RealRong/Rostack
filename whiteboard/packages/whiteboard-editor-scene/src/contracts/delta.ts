@@ -12,10 +12,6 @@ import type {
 } from '@shared/projection'
 import type {
   Document as WhiteboardDocument,
-  EdgeId,
-  GroupId,
-  MindmapId,
-  NodeId
 } from '@whiteboard/core/types'
 import type {
   ChromeStateView,
@@ -45,23 +41,23 @@ export interface GraphPhaseDelta {
   revision: Revision
   order: boolean
   entities: {
-    nodes: IdDelta<NodeId>
-    edges: IdDelta<EdgeId>
-    mindmaps: IdDelta<MindmapId>
-    groups: IdDelta<GroupId>
+    nodes: IdDelta<string>
+    edges: IdDelta<string>
+    mindmaps: IdDelta<string>
+    groups: IdDelta<string>
   }
   geometry: {
-    nodes: Set<NodeId>
-    edges: Set<EdgeId>
-    mindmaps: Set<MindmapId>
-    groups: Set<GroupId>
+    nodes: Set<string>
+    edges: Set<string>
+    mindmaps: Set<string>
+    groups: Set<string>
   }
 }
 
 export type SceneItemKey =
-  | `mindmap:${MindmapId}`
-  | `node:${NodeId}`
-  | `edge:${EdgeId}`
+  | `mindmap:${string}`
+  | `node:${string}`
+  | `edge:${string}`
 
 export const sceneItemKey = key.tagged(['mindmap', 'node', 'edge'] as const)
 
@@ -70,24 +66,24 @@ export type SceneItemEntry = SceneItem & {
 }
 
 export interface UiPhaseDelta {
-  node: IdDelta<NodeId>
-  edge: IdDelta<EdgeId>
+  node: IdDelta<string>
+  edge: IdDelta<string>
   chrome: boolean
 }
 
 const createUiPhaseDelta = (): UiPhaseDelta => ({
-  node: idDelta.create<NodeId>(),
-  edge: idDelta.create<EdgeId>(),
+  node: idDelta.create<string>(),
+  edge: idDelta.create<string>(),
   chrome: false
 })
 
 export interface RenderPhaseDelta {
-  node: IdDelta<NodeId>
+  node: IdDelta<string>
   edge: {
     statics: IdDelta<EdgeStaticId>
-    active: IdDelta<EdgeId>
+    active: IdDelta<string>
     labels: IdDelta<EdgeLabelKey>
-    masks: IdDelta<EdgeId>
+    masks: IdDelta<string>
     staticsIds: boolean
     activeIds: boolean
     labelsIds: boolean
@@ -100,12 +96,12 @@ export interface RenderPhaseDelta {
 }
 
 const createRenderPhaseDelta = (): RenderPhaseDelta => ({
-  node: idDelta.create<NodeId>(),
+  node: idDelta.create<string>(),
   edge: {
     statics: idDelta.create<EdgeStaticId>(),
-    active: idDelta.create<EdgeId>(),
+    active: idDelta.create<string>(),
     labels: idDelta.create<EdgeLabelKey>(),
-    masks: idDelta.create<EdgeId>(),
+    masks: idDelta.create<string>(),
     staticsIds: false,
     activeIds: false,
     labelsIds: false,
@@ -129,24 +125,24 @@ export interface DocumentDelta {
 }
 
 export interface GraphDelta {
-  node: ProjectionFamilyChange<NodeId, NodeView>
-  edge: ProjectionFamilyChange<EdgeId, EdgeView>
-  mindmap: ProjectionFamilyChange<MindmapId, MindmapView>
-  group: ProjectionFamilyChange<GroupId, GroupView>
+  node: ProjectionFamilyChange<string, NodeView>
+  edge: ProjectionFamilyChange<string, EdgeView>
+  mindmap: ProjectionFamilyChange<string, MindmapView>
+  group: ProjectionFamilyChange<string, GroupView>
   state: {
-    node: ProjectionFamilyChange<NodeId, NodeStateView>
-    edge: ProjectionFamilyChange<EdgeId, EdgeStateView>
+    node: ProjectionFamilyChange<string, NodeStateView>
+    edge: ProjectionFamilyChange<string, EdgeStateView>
     chrome: ProjectionValueChange<ChromeStateView>
   }
 }
 
 export interface RenderDelta {
-  node: ProjectionFamilyChange<NodeId, NodeRenderView>
+  node: ProjectionFamilyChange<string, NodeRenderView>
   edge: {
     statics: ProjectionFamilyChange<EdgeStaticId, EdgeStaticView>
-    active: ProjectionFamilyChange<EdgeId, EdgeActiveView>
+    active: ProjectionFamilyChange<string, EdgeActiveView>
     labels: ProjectionFamilyChange<EdgeLabelKey, EdgeLabelView>
-    masks: ProjectionFamilyChange<EdgeId, EdgeMaskView>
+    masks: ProjectionFamilyChange<string, EdgeMaskView>
   }
   chrome: {
     scene: ProjectionValueChange<ChromeRenderView>
@@ -165,10 +161,10 @@ export const createGraphPhaseDelta = (): GraphPhaseDelta => ({
   revision: 0,
   order: false,
   entities: {
-    nodes: idDelta.create<NodeId>(),
-    edges: idDelta.create<EdgeId>(),
-    mindmaps: idDelta.create<MindmapId>(),
-    groups: idDelta.create<GroupId>()
+    nodes: idDelta.create<string>(),
+    edges: idDelta.create<string>(),
+    mindmaps: idDelta.create<string>(),
+    groups: idDelta.create<string>()
   },
   geometry: {
     nodes: new Set(),

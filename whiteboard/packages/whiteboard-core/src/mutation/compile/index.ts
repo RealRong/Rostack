@@ -24,7 +24,7 @@ import {
 import type { Document } from '@whiteboard/core/types'
 import type { WhiteboardCompileServices } from './helpers'
 import type { WhiteboardIntent } from '@whiteboard/core/mutation/intents'
-const authoredWhiteboardCompileHandlers = {
+const whiteboardCompileHandlers = {
   'document.replace': documentIntentHandlers['document.replace'],
   'document.insert': documentIntentHandlers['document.insert'],
   'document.background.set': documentIntentHandlers['document.background.set'],
@@ -72,143 +72,173 @@ const authoredWhiteboardCompileHandlers = {
   'mindmap.branch.update': mindmapIntentHandlers['mindmap.branch.update'],
 } satisfies WhiteboardCompileHandlerTable
 
+const createCompileIssue = (input: {
+  intent: WhiteboardIntent
+  issue: {
+    add(issue: MutationIssue): void
+    all(): readonly MutationIssue[]
+    hasErrors(): boolean
+  }
+}): WhiteboardCompileContext['issue'] => Object.assign(
+  (next: {
+    code: WhiteboardCompileCode
+    message: string
+    details?: unknown
+  } & Record<string, unknown>) => {
+    const issue = {
+      ...next,
+      source: {
+        type: input.intent.type
+      }
+    }
+    input.issue.add(issue)
+  },
+  {
+    add: (next: {
+      code: WhiteboardCompileCode
+      message: string
+      details?: unknown
+    }) => {
+      const issue = {
+        ...next,
+        source: {
+          type: input.intent.type
+        }
+      }
+      input.issue.add(issue)
+    },
+    all: () => input.issue.all(),
+    hasErrors: () => input.issue.hasErrors()
+  }
+)
+
+const createCompileContext = <TIntent extends WhiteboardIntent>(input: {
+  intent: TIntent
+  document: Document
+  write: import('@whiteboard/core/mutation/model').WhiteboardMutationWriterBase
+  change: import('@whiteboard/core/mutation/model').WhiteboardMutationDelta
+  issue: {
+    add(issue: MutationIssue): void
+    all(): readonly MutationIssue[]
+    hasErrors(): boolean
+  }
+  services: WhiteboardCompileServices
+}): WhiteboardCompileContext<TIntent> => {
+  const reader = createWhiteboardReader(() => input.document)
+  const writer = createWhiteboardWriter(input.write, () => input.document)
+  const query = createWhiteboardQuery(() => input.document)
+  const issue = createCompileIssue({
+    intent: input.intent,
+    issue: input.issue
+  })
+
+  const invalid = (
+    message: string,
+    details?: unknown
+  ) => {
+    issue.add({
+      code: 'invalid',
+      message,
+      details
+    })
+    return {
+      kind: 'invalid'
+    } as const
+  }
+
+  const cancelled = (
+    message: string,
+    details?: unknown
+  ) => {
+    issue.add({
+      code: 'cancelled',
+      message,
+      details
+    })
+    return {
+      kind: 'cancelled'
+    } as const
+  }
+
+  return {
+    ...input,
+    reader,
+    writer,
+    query,
+    issue,
+    invalid,
+    cancelled,
+    expect: {
+      node: (id) => {
+        const node = reader.node.get(id)
+        if (node) {
+          return node
+        }
+        invalid(`Node ${id} not found.`)
+        return undefined
+      },
+      edge: (id) => {
+        const edge = reader.edge.get(id)
+        if (edge) {
+          return edge
+        }
+        invalid(`Edge ${id} not found.`)
+        return undefined
+      },
+      group: (id) => {
+        const group = reader.group.get(id)
+        if (group) {
+          return group
+        }
+        invalid(`Group ${id} not found.`)
+        return undefined
+      },
+      mindmap: (id) => {
+        const mindmap = reader.mindmap.get(id)
+        if (mindmap) {
+          return mindmap
+        }
+        invalid(`Mindmap ${id} not found.`)
+        return undefined
+      }
+    }
+  }
+}
+
+const wrapCompileHandler = (
+  handler: WhiteboardCompileHandlerTable[keyof WhiteboardCompileHandlerTable]
+) => (input: {
+  intent: WhiteboardIntent
+  document: Document
+  write: import('@whiteboard/core/mutation/model').WhiteboardMutationWriterBase
+  change: import('@whiteboard/core/mutation/model').WhiteboardMutationDelta
+  issue: {
+    add(issue: MutationIssue): void
+    all(): readonly MutationIssue[]
+    hasErrors(): boolean
+  }
+  services: WhiteboardCompileServices
+}) => {
+  const compileHandler = handler as (input: WhiteboardCompileContext) => unknown
+  return compileHandler(createCompileContext(input))
+}
+
 export const whiteboardCompile: MutationCompile<
   typeof whiteboardMutationSchema,
   WhiteboardIntent,
   WhiteboardCompileServices
 > = {
   handlers: Object.fromEntries(
-    Object.entries(authoredWhiteboardCompileHandlers).map(([type, handler]) => [
+    Object.entries(whiteboardCompileHandlers).map(([type, handler]) => [
       type,
-      (input: {
-        intent: WhiteboardIntent
-        document: Document
-        write: import('@whiteboard/core/mutation/model').WhiteboardMutationWriterBase
-        change: import('@whiteboard/core/mutation/model').WhiteboardMutationDelta
-        issue: {
-          add(issue: MutationIssue): void
-          all(): readonly MutationIssue[]
-          hasErrors(): boolean
-        }
-        services: WhiteboardCompileServices
-      }) => {
-        const compileHandler = handler as (
-          input: WhiteboardCompileContext
-        ) => unknown
-        const reader = createWhiteboardReader(() => input.document)
-        const writer = createWhiteboardWriter(input.write, () => input.document)
-        const query = createWhiteboardQuery(() => input.document)
-        const issue = Object.assign(
-          (next: {
-            code: WhiteboardCompileCode
-            message: string
-            details?: unknown
-          } & Record<string, unknown>) => {
-            input.issue.add({
-              ...next,
-              source: {
-                type: input.intent.type
-              }
-            } as MutationIssue)
-          },
-          {
-            add: (next: {
-              code: WhiteboardCompileCode
-              message: string
-              details?: unknown
-            }) => {
-              input.issue.add({
-                ...next,
-                source: {
-                  type: input.intent.type
-                }
-              } as MutationIssue)
-            },
-            all: () => input.issue.all(),
-            hasErrors: () => input.issue.hasErrors()
-          }
-        )
-
-        const invalid = (
-          message: string,
-          details?: unknown
-        ) => {
-          issue.add({
-            code: 'invalid',
-            message,
-            details
-          })
-          return {
-            kind: 'invalid'
-          } as const
-        }
-
-        const cancelled = (
-          message: string,
-          details?: unknown
-        ) => {
-          issue.add({
-            code: 'cancelled',
-            message,
-            details
-          })
-          return {
-            kind: 'cancelled'
-          } as const
-        }
-
-        const context = {
-          ...input,
-          reader,
-          writer,
-          query,
-          issue,
-          invalid,
-          cancelled,
-        } as unknown as WhiteboardCompileContext
-
-        context.expect = {
-          node: (id) => {
-            const node = reader.node.get(id)
-            if (node) {
-              return node
-            }
-            invalid(`Node ${id} not found.`)
-            return undefined
-          },
-          edge: (id) => {
-            const edge = reader.edge.get(id)
-            if (edge) {
-              return edge
-            }
-            invalid(`Edge ${id} not found.`)
-            return undefined
-          },
-          group: (id) => {
-            const group = reader.group.get(id)
-            if (group) {
-              return group
-            }
-            invalid(`Group ${id} not found.`)
-            return undefined
-          },
-          mindmap: (id) => {
-            const mindmap = reader.mindmap.get(id)
-            if (mindmap) {
-              return mindmap
-            }
-            invalid(`Mindmap ${id} not found.`)
-            return undefined
-          }
-        }
-
-        return compileHandler(context)
-      }
+      wrapCompileHandler(handler)
     ])
-  ) as unknown as MutationCompile<typeof whiteboardMutationSchema, WhiteboardIntent, WhiteboardCompileServices>['handlers']
+  ) as MutationCompile<typeof whiteboardMutationSchema, WhiteboardIntent, WhiteboardCompileServices>['handlers']
 }
 
-export const whiteboardCompileHandlers = authoredWhiteboardCompileHandlers
+export {
+  whiteboardCompileHandlers
+}
 
 export type {
   WhiteboardCompileAbort,

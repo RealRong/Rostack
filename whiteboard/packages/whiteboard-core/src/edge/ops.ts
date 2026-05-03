@@ -1,4 +1,4 @@
-import { entityTable } from '@shared/core'
+import { createId, entityTable } from '@shared/core'
 import { schema as schemaApi } from '@whiteboard/core/registry/schema'
 import { err, ok } from '@whiteboard/core/utils/result'
 import type {
@@ -26,20 +26,29 @@ type CreateEdgeOpInput = {
 }
 
 const createPointsPatch = (
-  points?: Point[]
+  points?: readonly EdgeRoutePoint[]
 ): EdgePatch => ({
   points: points && points.length > 0
-    ? points
+    ? entityTable.normalize.list(points)
     : undefined
 })
 
 export const setRoutePoints = (
+  edge: Edge,
   points?: readonly Point[]
-): EdgePatch => createPointsPatch(
-  points
-    ? [...points]
-    : undefined
-)
+): EdgePatch => {
+  const currentPoints = edge.points
+    ? entityTable.read.list(edge.points)
+    : []
+
+  return createPointsPatch(
+    points?.map((point, index) => ({
+      id: currentPoints[index]?.id ?? createId('edge_point'),
+      x: point.x,
+      y: point.y
+    }))
+  )
+}
 
 const validateEdgeEnd = (
   doc: Document,
@@ -120,14 +129,15 @@ export const insertRoutePoint = (
   pointWorld: Point
 ): InsertRoutePointResult => {
   const basePoints = edge.points
-    ? entityTable.read.list(edge.points).map((point) => ({
-        x: point.x,
-        y: point.y
-      }))
+    ? entityTable.read.list(edge.points)
     : []
   const nextInsertIndex = Math.max(0, Math.min(insertIndex, basePoints.length))
   const nextPoints = [...basePoints]
-  nextPoints.splice(nextInsertIndex, 0, pointWorld)
+  nextPoints.splice(nextInsertIndex, 0, {
+    id: createId('edge_point'),
+    x: pointWorld.x,
+    y: pointWorld.y
+  })
   return ok({
     index: nextInsertIndex,
     point: pointWorld,
@@ -144,7 +154,15 @@ export const moveRoutePoint = (
     ? entityTable.read.list(edge.points)
     : []
   if (index < 0 || index >= points.length) return undefined
-  const nextPoints = points.map((point, idx) => (idx === index ? pointWorld : point))
+  const nextPoints = points.map((point, idx) => (
+    idx === index
+      ? {
+          ...point,
+          x: pointWorld.x,
+          y: pointWorld.y
+        }
+      : point
+  ))
   return createPointsPatch(nextPoints)
 }
 
@@ -174,9 +192,10 @@ export const moveEdgeRoute = (
 
   const routePoints = edge.points
     ? entityTable.read.list(edge.points).map((point) => ({
-    x: point.x + delta.x,
-    y: point.y + delta.y
-    }))
+        ...point,
+        x: point.x + delta.x,
+        y: point.y + delta.y
+      }))
     : undefined
 
   if (!routePoints?.length) {

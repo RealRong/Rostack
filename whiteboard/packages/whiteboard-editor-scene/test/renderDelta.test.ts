@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type {
   Edge,
-  EdgeId,
   Point,
   Rect,
   Size
@@ -66,43 +65,47 @@ const createEdgeLabel = (input: {
 })
 
 const createEdgeView = (input: {
-  edgeId: EdgeId
+  edgeId: string
   color: string
   svgPath: string
   labels?: readonly GraphEdgeLabelView[]
-}): EdgeView => ({
-  base: {
-    edge: {
-      id: input.edgeId,
-      type: 'straight',
-      style: {
-        color: input.color
-      },
-      source: {
-        kind: 'point',
-        point: POINT
-      },
-      target: {
-        kind: 'point',
-        point: {
-          x: 100,
-          y: 0
-        }
+}): EdgeView => {
+  const edge: Edge = {
+    id: input.edgeId,
+    type: 'straight',
+    style: {
+      color: input.color
+    },
+    source: {
+      kind: 'point',
+      point: POINT
+    },
+    target: {
+      kind: 'point',
+      point: {
+        x: 100,
+        y: 0
       }
-    } as unknown as Edge,
-    nodes: {}
-  },
-  route: {
-    points: [],
-    segments: [],
-    svgPath: input.svgPath,
-    handles: [],
-    labels: input.labels ?? []
+    }
   }
-})
+
+  return {
+    base: {
+      edge,
+      nodes: {}
+    },
+    route: {
+      points: [],
+      segments: [],
+      svgPath: input.svgPath,
+      handles: [],
+      labels: input.labels ?? []
+    }
+  }
+}
 
 const setEdgeItems = (
-  edgeIds: readonly EdgeId[]
+  edgeIds: readonly string[]
 ) => {
   const ids = edgeIds.map((edgeId) => sceneItemKey.write({
     kind: 'edge',
@@ -136,7 +139,7 @@ const resetPhaseDeltas = (
 
 const markRenderEdges = (
   working: ReturnType<typeof createWorking>,
-  ...edgeIds: readonly EdgeId[]
+  ...edgeIds: readonly string[]
 ) => {
   const touched = new Set(edgeIds)
   working.facts.graph.edge.entity = new Set(touched)
@@ -144,11 +147,11 @@ const markRenderEdges = (
 
 const markUiEdge = (
   working: ReturnType<typeof createWorking>,
-  ...edgeIds: readonly EdgeId[]
+  ...edgeIds: readonly string[]
 ) => {
   const touched = new Set(edgeIds)
   working.facts.ui.edge = new Set([
-    ...working.facts.ui.edge as ReadonlySet<EdgeId>,
+    ...working.facts.ui.edge,
     ...touched
   ])
 }
@@ -156,9 +159,9 @@ const markUiEdge = (
 describe('render delta patching', () => {
   it('patches only the touched static bucket', () => {
     const working = createWorking()
-    const edgeA = 'edge_a' as EdgeId
-    const edgeB = 'edge_b' as EdgeId
-    const edgeC = 'edge_c' as EdgeId
+    const edgeA = 'edge_a'
+    const edgeB = 'edge_b'
+    const edgeC = 'edge_c'
 
     working.graph.edges.set(edgeA, createEdgeView({
       edgeId: edgeA,
@@ -211,8 +214,8 @@ describe('render delta patching', () => {
 
   it('marks statics ids only when bucket order changes', () => {
     const working = createWorking()
-    const edgeA = 'edge_order_a' as EdgeId
-    const edgeB = 'edge_order_b' as EdgeId
+    const edgeA = 'edge_order_a'
+    const edgeB = 'edge_order_b'
 
     working.graph.edges.set(edgeA, createEdgeView({
       edgeId: edgeA,
@@ -257,8 +260,8 @@ describe('render delta patching', () => {
 
   it('patches labels only for touched edges', () => {
     const working = createWorking()
-    const edgeA = 'edge_label_a' as EdgeId
-    const edgeB = 'edge_label_b' as EdgeId
+    const edgeA = 'edge_label_a'
+    const edgeB = 'edge_label_b'
 
     working.graph.edges.set(edgeA, createEdgeView({
       edgeId: edgeA,
@@ -328,8 +331,8 @@ describe('render delta patching', () => {
 
   it('patches masks only for touched edges', () => {
     const working = createWorking()
-    const edgeA = 'edge_mask_a' as EdgeId
-    const edgeB = 'edge_mask_b' as EdgeId
+    const edgeA = 'edge_mask_a'
+    const edgeB = 'edge_mask_b'
 
     working.graph.edges.set(edgeA, createEdgeView({
       edgeId: edgeA,

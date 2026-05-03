@@ -24,7 +24,7 @@ const readEdgeOrThrow = (
 const writeRouteFromPoint = (input: {
   context: EditorActionContext
   edgeId: string
-  resolve: (edge: ReturnType<typeof readEdgeOrThrow>) => { points?: Point[] } | undefined
+  resolve: (edge: ReturnType<typeof readEdgeOrThrow>) => EdgePatch | undefined
 }) => {
   const patch = input.resolve(
     readEdgeOrThrow(input.context, input.edgeId)

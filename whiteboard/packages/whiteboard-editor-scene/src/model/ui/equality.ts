@@ -251,8 +251,8 @@ const isMindmapPreviewEqual = (
     return true
   }
 
-  const leftIds = Object.keys(left) as MindmapId[]
-  const rightIds = Object.keys(right) as MindmapId[]
+  const leftIds = Object.keys(left)
+  const rightIds = Object.keys(right)
   if (!equal.sameOrder(leftIds, rightIds)) {
     return false
   }

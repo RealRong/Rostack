@@ -1,11 +1,10 @@
-import { record as draftRecord } from '@shared/draft'
 import {
   createMutationEngine,
   createMutationWriter,
   type MutationCommit,
   type MutationDelta,
-  type MutationDocument,
   type MutationReader,
+  type MutationWriter,
   type MutationWrite,
 } from '@shared/mutation'
 import type {
@@ -61,48 +60,7 @@ type EdgeGuideValue = PreviewInput['edgeGuide'] | undefined
 type NodePreviewPatchValue = Partial<NodePreviewValue>
 type EdgePreviewPatchValue = Partial<EdgePreviewValue>
 type MindmapPreviewPatchValue = Partial<MindmapPreviewValue>
-type EditorStateMutationDocument = MutationDocument<typeof editorStateMutationSchema>
-
-type InternalEditorStateWriter = {
-  state: {
-    patch(value: Partial<EditorStateDocument['state']>): void
-  }
-  hover: {
-    patch(value: Partial<EditorHoverState>): void
-  }
-  preview: {
-    node: ((id: string) => {
-      patch(value: NodePreviewPatchValue): void
-      remove(): void
-    }) & {
-      create(id: string, value: NodePreviewValue): void
-      remove(id: string): void
-    }
-    edge: ((id: string) => {
-      patch(value: EdgePreviewPatchValue): void
-      remove(): void
-    }) & {
-      create(id: string, value: EdgePreviewValue): void
-      remove(id: string): void
-    }
-    mindmap: ((id: string) => {
-      patch(value: MindmapPreviewPatchValue): void
-      remove(): void
-    }) & {
-      create(id: string, value: MindmapPreviewValue): void
-      remove(id: string): void
-    }
-    selection: {
-      patch(value: Partial<PreviewInput['selection']>): void
-    }
-    draw: {
-      set(value: PreviewInput['draw']): void
-    }
-    edgeGuide: {
-      set(value: EdgeGuideValue): void
-    }
-  }
-}
+type EditorStateMutationWriter = MutationWriter<typeof editorStateMutationSchema>
 
 export type EditorStateSnapshot = EditorStateDocument
 export type EditorStateReader = MutationReader<typeof editorStateMutationSchema>
@@ -137,21 +95,21 @@ export interface EditorStateWriter {
   preview: {
     node: {
       create: (id: string, value: NodePreviewValue) => void
-      patch: (id: string, writes: Readonly<Record<string, unknown>>) => void
+      patch: (id: string, value: NodePreviewPatchValue) => void
       delete: (id: string) => void
       replace: (next: PreviewInput['node']) => void
       clear: () => void
     }
     edge: {
       create: (id: string, value: EdgePreviewValue) => void
-      patch: (id: string, writes: Readonly<Record<string, unknown>>) => void
+      patch: (id: string, value: EdgePreviewPatchValue) => void
       delete: (id: string) => void
       replace: (next: PreviewInput['edge']) => void
       clear: () => void
     }
     mindmap: {
       create: (id: string, value: MindmapPreviewValue) => void
-      patch: (id: string, writes: Readonly<Record<string, unknown>>) => void
+      patch: (id: string, value: MindmapPreviewPatchValue) => void
       delete: (id: string) => void
       replace: (next: PreviewInput['mindmap']) => void
       clear: () => void
@@ -192,10 +150,8 @@ const createEditorStateEngine = (input: {
   document: buildEditorStateDocument({
     tool: input.initialTool,
     draw: input.initialDrawState
-  }) as unknown as EditorStateMutationDocument,
-  normalize: (document) => normalizeEditorStateDocument(
-    document as unknown as EditorStateDocument
-  ) as unknown as EditorStateMutationDocument,
+  }),
+  normalize: normalizeEditorStateDocument,
   compile: {
     handlers: {}
   },
@@ -208,12 +164,31 @@ export interface EditorStateRuntime extends EditorStateStoreFacade {
   dispose(): void
 }
 
+const createObjectPatch = <TValue extends object>(
+  current: TValue,
+  next: TValue
+): Partial<TValue> => {
+  const patch: Partial<TValue> = {}
+  const keys = new Set<keyof TValue>([
+    ...(Object.keys(current) as Array<keyof TValue>),
+    ...(Object.keys(next) as Array<keyof TValue>)
+  ])
+
+  keys.forEach((key) => {
+    if (!Object.is(current[key], next[key])) {
+      patch[key] = next[key]
+    }
+  })
+
+  return patch
+}
+
 const applyCollectionReplace = <TId extends string, TValue>(
   input: {
     current: Readonly<Record<TId, TValue | undefined>>
     next: Readonly<Record<TId, TValue | undefined>>
     create: (id: TId, value: TValue) => void
-    patch: (id: TId, writes: Readonly<Record<string, unknown>>) => void
+    patch: (id: TId, value: Partial<TValue>) => void
     remove: (id: TId) => void
   }
 ) => {
@@ -238,20 +213,17 @@ const applyCollectionReplace = <TId extends string, TValue>(
       return
     }
 
-    const writes = draftRecord.diff(
-      currentValue,
-      nextValue
-    ) as Readonly<Record<string, unknown>>
-    if (Object.keys(writes).length === 0) {
+    const patch = createObjectPatch(currentValue, nextValue)
+    if (Object.keys(patch).length === 0) {
       return
     }
 
-    input.patch(id, writes)
+    input.patch(id, patch)
   })
 }
 
 const createEditorStateWriter = (
-  writer: InternalEditorStateWriter,
+  writer: EditorStateMutationWriter,
   readSnapshot: () => EditorStateSnapshot
 ): EditorStateWriter => ({
   tool: {
@@ -356,10 +328,8 @@ const createEditorStateWriter = (
       create: (id, value) => {
         writer.preview.node.create(id, value)
       },
-      patch: (id, writes) => {
-        writer.preview.node(id).patch(
-          writes as NodePreviewPatchValue
-        )
+      patch: (id, value) => {
+        writer.preview.node(id).patch(value)
       },
       delete: (id) => {
         writer.preview.node.remove(id)
@@ -376,10 +346,8 @@ const createEditorStateWriter = (
           create: (id, value) => {
             writer.preview.node.create(id, value)
           },
-          patch: (id, writes) => {
-            writer.preview.node(id).patch(
-              writes as NodePreviewPatchValue
-            )
+          patch: (id, value) => {
+            writer.preview.node(id).patch(value)
           },
           remove: (id) => {
             writer.preview.node.remove(id)
@@ -396,10 +364,8 @@ const createEditorStateWriter = (
       create: (id, value) => {
         writer.preview.edge.create(id, value)
       },
-      patch: (id, writes) => {
-        writer.preview.edge(id).patch(
-          writes as EdgePreviewPatchValue
-        )
+      patch: (id, value) => {
+        writer.preview.edge(id).patch(value)
       },
       delete: (id) => {
         writer.preview.edge.remove(id)
@@ -416,10 +382,8 @@ const createEditorStateWriter = (
           create: (id, value) => {
             writer.preview.edge.create(id, value)
           },
-          patch: (id, writes) => {
-            writer.preview.edge(id).patch(
-              writes as EdgePreviewPatchValue
-            )
+          patch: (id, value) => {
+            writer.preview.edge(id).patch(value)
           },
           remove: (id) => {
             writer.preview.edge.remove(id)
@@ -436,10 +400,8 @@ const createEditorStateWriter = (
       create: (id, value) => {
         writer.preview.mindmap.create(id, value)
       },
-      patch: (id, writes) => {
-        writer.preview.mindmap(id).patch(
-          writes as MindmapPreviewPatchValue
-        )
+      patch: (id, value) => {
+        writer.preview.mindmap(id).patch(value)
       },
       delete: (id) => {
         writer.preview.mindmap.remove(id)
@@ -456,10 +418,8 @@ const createEditorStateWriter = (
           create: (id, value) => {
             writer.preview.mindmap.create(id, value)
           },
-          patch: (id, writes) => {
-            writer.preview.mindmap(id).patch(
-              writes as MindmapPreviewPatchValue
-            )
+          patch: (id, value) => {
+            writer.preview.mindmap(id).patch(value)
           },
           remove: (id) => {
             writer.preview.mindmap.remove(id)
@@ -481,13 +441,11 @@ const createEditorStateWriter = (
         if (isSelectionPreviewEqual(current, selection)) {
           return
         }
-        writer.preview.selection.patch(
-          draftRecord.diff(current, selection)
-        )
+        writer.preview.selection.patch(createObjectPatch(current, selection))
       },
       clear: () => {
         writer.preview.selection.patch(
-          draftRecord.diff(
+          createObjectPatch(
             readSnapshot().preview.selection,
             EMPTY_PREVIEW_STATE.selection
           )
@@ -525,7 +483,7 @@ const createEditorStateWriter = (
         writer.preview.mindmap.remove(id)
       })
       writer.preview.selection.patch(
-        draftRecord.diff(
+        createObjectPatch(
           readSnapshot().preview.selection,
           EMPTY_PREVIEW_STATE.selection
         )
@@ -542,11 +500,11 @@ export const createEditorStateRuntime = (input: {
 }): EditorStateRuntime => {
   const engine = createEditorStateEngine(input)
 
-  let currentDocument = engine.document() as unknown as EditorStateDocument
+  let currentDocument = engine.document()
   const listeners = new Set<(commit: EditorStateCommit) => void>()
 
   engine.subscribe((commit) => {
-    currentDocument = commit.document as unknown as EditorStateDocument
+    currentDocument = commit.document
     listeners.forEach((listener) => {
       listener(commit)
     })
@@ -556,12 +514,11 @@ export const createEditorStateRuntime = (input: {
 
   const write: EditorStateRuntime['write'] = (run) => {
     const writes: MutationWrite[] = []
-    const rawWriter = createMutationWriter(
-      editorStateMutationSchema,
-      writes
-    ) as unknown as InternalEditorStateWriter
     const writer = createEditorStateWriter(
-      rawWriter,
+      createMutationWriter(
+        editorStateMutationSchema,
+        writes
+      ),
       read
     )
 
@@ -577,7 +534,7 @@ export const createEditorStateRuntime = (input: {
     engine.apply(writes, {
       history: false
     })
-    currentDocument = engine.document() as unknown as EditorStateDocument
+    currentDocument = engine.document()
   }
 
   return {

@@ -393,8 +393,8 @@ export const readMindmapLayoutChangedNodeIds = (input: {
   ) ?? {}
   const excluded = new Set(input.exclude ?? [])
   const nodeIds = new Set<NodeId>([
-    ...Object.keys(beforeRects) as NodeId[],
-    ...Object.keys(afterRects) as NodeId[]
+    ...Object.keys(beforeRects),
+    ...Object.keys(afterRects)
   ])
 
   return uniqueSorted(

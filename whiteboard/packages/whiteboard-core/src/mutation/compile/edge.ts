@@ -178,7 +178,7 @@ const buildEdgeLabelFieldPatch = (
 const emitEdgeRouteDiffOps = (
   edgeId: EdgeId,
   currentPoints: readonly EdgeRoutePoint[],
-  nextPoints: readonly Point[],
+  nextPoints: readonly EdgeRoutePoint[],
   ctx: WhiteboardCompileContext
 ) => {
   const samePoint = (left: Point | undefined, right: Point | undefined) => (
@@ -345,7 +345,7 @@ export const emitEdgeMovePatchOps = (
     emitEdgeRouteDiffOps(
       edge.id,
       edge.points ? entityTable.read.list(edge.points) : [],
-      patch.points ?? [],
+      patch.points ? entityTable.read.list(patch.points) : [],
       ctx
     )
   }
@@ -636,7 +636,7 @@ export const edgeIntentHandlers = {
     emitEdgeRouteDiffOps(
       edge.id,
       edge.points ? entityTable.read.list(edge.points) : [],
-      ctx.intent.points ?? [],
+      ctx.intent.points ? entityTable.read.list(ctx.intent.points) : [],
       ctx
     )
   },

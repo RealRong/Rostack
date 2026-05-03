@@ -25,7 +25,10 @@ import { FINISH } from '@whiteboard/editor/input/internals/result'
 import type { PointerDownInput, PointerSample } from '@whiteboard/editor/api/input'
 import type { Tool } from '@whiteboard/editor/schema/tool'
 import type { Editor } from '@whiteboard/editor/api/editor'
-import { isDrawPreviewEqual } from '@whiteboard/editor/state/preview'
+import {
+  isDrawPreviewEqual,
+  readNodePreviewIds
+} from '@whiteboard/editor/state/preview'
 
 const DRAW_MIN_LENGTH_SCREEN = 4
 const SAMPLE_DISTANCE_SCREEN = 1
@@ -369,8 +372,7 @@ const createEraseSession = (
   }) => {
     const hidden = new Set(state.ids)
 
-    Object.keys(snapshot.preview.node).forEach((nodeId) => {
-      const id = nodeId as NodeId
+    readNodePreviewIds(snapshot.preview.node).forEach((id) => {
       const current = snapshot.preview.node[id]
       const nextHidden = hidden.has(id)
       hidden.delete(id)
@@ -419,8 +421,7 @@ const createEraseSession = (
     }) => {
       const hidden = new Set(state.ids)
 
-      Object.keys(snapshot.preview.node).forEach((nodeId) => {
-        const id = nodeId as NodeId
+      readNodePreviewIds(snapshot.preview.node).forEach((id) => {
         const current = snapshot.preview.node[id]
         const nextHidden = hidden.has(id)
         hidden.delete(id)
@@ -476,8 +477,7 @@ const createEraseSession = (
         writer,
         snapshot
       }) => {
-        Object.keys(snapshot.preview.node).forEach((nodeId) => {
-          const id = nodeId as NodeId
+        readNodePreviewIds(snapshot.preview.node).forEach((id) => {
           const current = snapshot.preview.node[id]
           if (!current?.presentation) {
             writer.preview.node.delete(id)

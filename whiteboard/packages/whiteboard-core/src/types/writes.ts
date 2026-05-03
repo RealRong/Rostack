@@ -1,3 +1,4 @@
+import type { EntityTable } from '@shared/core'
 import type { IdDelta as SharedIdDelta } from '@shared/delta'
 import type { RecordWrite } from '@shared/draft'
 import type {
@@ -81,7 +82,7 @@ export type EdgePatch = Partial<{
   type: EdgeType
   locked: boolean
   groupId: GroupId
-  points: Point[]
+  points: EntityTable<string, EdgeRoutePoint>
   style: EdgeStyle
   textMode: EdgeTextMode
   labels: readonly EdgeLabel[]

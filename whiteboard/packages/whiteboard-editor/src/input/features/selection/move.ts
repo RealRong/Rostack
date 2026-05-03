@@ -13,6 +13,10 @@ import type {
 } from '@whiteboard/editor/api/input'
 import type { SelectionMoveVisibility } from '@whiteboard/editor/input/features/selection/press'
 import type { Editor } from '@whiteboard/editor/api/editor'
+import {
+  readEdgePreviewIds,
+  readNodePreviewIds
+} from '@whiteboard/editor/state/preview'
 
 const toMoveNodePatches = (
   result: MoveStepResult
@@ -153,8 +157,7 @@ export const createMoveInteraction = (
         ])
       )
 
-      Object.keys(snapshot.preview.node).forEach((nodeId) => {
-        const id = nodeId as NodeId
+      readNodePreviewIds(snapshot.preview.node).forEach((id) => {
         const current = snapshot.preview.node[id]
         const nextPatch = nextNodeById.get(id)
         nextNodeById.delete(id)
@@ -198,8 +201,7 @@ export const createMoveInteraction = (
         })
       })
 
-      Object.keys(snapshot.preview.edge).forEach((edgeId) => {
-        const id = edgeId as EdgeId
+      readEdgePreviewIds(snapshot.preview.edge).forEach((id) => {
         const nextPatch = nextEdgeById.get(id)
         nextEdgeById.delete(id)
 
@@ -268,8 +270,7 @@ export const createMoveInteraction = (
         writer,
         snapshot
       }) => {
-        Object.keys(snapshot.preview.node).forEach((nodeId) => {
-          const id = nodeId as NodeId
+        readNodePreviewIds(snapshot.preview.node).forEach((id) => {
           const current = snapshot.preview.node[id]
           if (!current?.presentation) {
             writer.preview.node.delete(id)
@@ -283,8 +284,8 @@ export const createMoveInteraction = (
             hidden: false
           })
         })
-        Object.keys(snapshot.preview.edge).forEach((edgeId) => {
-          writer.preview.edge.delete(edgeId as EdgeId)
+        readEdgePreviewIds(snapshot.preview.edge).forEach((edgeId) => {
+          writer.preview.edge.delete(edgeId)
         })
         writer.preview.selection.patch(
           {

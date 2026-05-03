@@ -1,17 +1,17 @@
 import { geometry as geometryApi } from '@whiteboard/core/geometry'
 import { node as nodeApi } from '@whiteboard/core/node'
-import type { NodeId, Rect } from '@whiteboard/core/types'
+import type { Rect } from '@whiteboard/core/types'
 import type { SceneFrame, SceneSpatial } from '../../contracts/editor'
 import type { WorkingState } from '../../contracts/working'
 
 const isFrameView = (
   state: WorkingState,
-  nodeId: NodeId
+  nodeId: string
 ) => state.graph.nodes.get(nodeId)?.base.node.type === 'frame'
 
 const readFrameRect = (
   state: WorkingState,
-  nodeId: NodeId
+  nodeId: string
 ) => {
   const view = state.graph.nodes.get(nodeId)
   return view?.base.node.type === 'frame'
@@ -23,7 +23,7 @@ const readFrameCandidates = (input: {
   state: WorkingState
   records: ReturnType<SceneSpatial['point']> | ReturnType<SceneSpatial['rect']>
 }): readonly {
-  id: NodeId
+  id: string
   rect: Rect
   order: number
 }[] => input.records.flatMap((record) => {

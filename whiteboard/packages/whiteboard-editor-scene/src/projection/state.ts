@@ -1,11 +1,5 @@
 import { document as documentApi } from '@whiteboard/core/document'
-import type {
-  Document,
-  EdgeId,
-  GroupId,
-  MindmapId,
-  NodeId
-} from '@whiteboard/core/types'
+import type { Document } from '@whiteboard/core/types'
 import type { Revision } from '@shared/projection'
 import { family } from '@shared/core'
 import {
@@ -75,12 +69,12 @@ export const createWorking = (input: {
   layout?: EditorSceneLayout
 } = {}): WorkingState => {
   const snapshot = createEmptyDocumentSnapshot()
-  const graphNodes = family.createMutableState<NodeId, NodeView>()
-  const graphEdges = family.createMutableState<EdgeId, EdgeView>()
-  const graphMindmaps = family.createMutableState<MindmapId, MindmapView>()
-  const graphGroups = family.createMutableState<GroupId, GroupView>()
-  const nodeState = family.createMutableState<NodeId, NodeStateView>()
-  const edgeState = family.createMutableState<EdgeId, EdgeStateView>()
+  const graphNodes = family.createMutableState<string, NodeView>()
+  const graphEdges = family.createMutableState<string, EdgeView>()
+  const graphMindmaps = family.createMutableState<string, MindmapView>()
+  const graphGroups = family.createMutableState<string, GroupView>()
+  const nodeState = family.createMutableState<string, NodeStateView>()
+  const edgeState = family.createMutableState<string, EdgeStateView>()
   const chromeState = {
     overlays: [],
     hover: {
@@ -207,7 +201,7 @@ export const createWorking = (input: {
       edges: edgeState
     },
     render: {
-      node: family.createMutableState<NodeId, NodeRenderView>(),
+      node: family.createMutableState<string, NodeRenderView>(),
       statics: {
         ids: [],
         byId: new Map(),
@@ -225,7 +219,7 @@ export const createWorking = (input: {
         ids: [],
         byId: new Map()
       },
-      active: family.createMutableState<EdgeId, EdgeActiveView>(),
+      active: family.createMutableState<string, EdgeActiveView>(),
       overlay: renderEdgeOverlay,
       chrome: {
         guides: [],

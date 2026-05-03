@@ -1,6 +1,7 @@
 import type {
   CanvasItemRef,
   Document,
+  Edge,
   EdgeEnd,
   EdgeId,
   EdgeInput,
@@ -176,7 +177,7 @@ export type EdgeIntent =
       target: EdgeEnd
       patch?: {
         type?: EdgeType
-        points?: Point[]
+        points?: Edge['points']
       }
     }
   | {
@@ -233,7 +234,7 @@ export type EdgeIntent =
   | {
       type: 'edge.points.set'
       edgeId: EdgeId
-      points?: Point[]
+      points?: Edge['points']
     }
   | {
       type: 'edge.points.move'

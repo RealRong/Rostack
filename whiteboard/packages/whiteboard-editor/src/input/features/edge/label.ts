@@ -18,6 +18,7 @@ import type {
 import { createPressDragSession } from '@whiteboard/editor/input/internals/press'
 import type { Editor } from '@whiteboard/editor/api/editor'
 import type { EditSession } from '@whiteboard/editor/schema/edit'
+import { readEdgePreviewIds } from '@whiteboard/editor/state/preview'
 
 const startEdgeLabelEdit = (input: {
   editor: Editor
@@ -167,8 +168,7 @@ const createEdgeLabelDragSession = (
       writer,
       snapshot
     }) => {
-      Object.keys(snapshot.preview.edge).forEach((edgeId) => {
-        const id = edgeId as EdgeId
+      readEdgePreviewIds(snapshot.preview.edge).forEach((id) => {
         if (!patch || id !== state.edgeId) {
           writer.preview.edge.delete(id)
           return
@@ -218,8 +218,8 @@ const createEdgeLabelDragSession = (
         writer,
         snapshot
       }) => {
-        Object.keys(snapshot.preview.edge).forEach((edgeId) => {
-          writer.preview.edge.delete(edgeId as EdgeId)
+        readEdgePreviewIds(snapshot.preview.edge).forEach((edgeId) => {
+          writer.preview.edge.delete(edgeId)
         })
       })
     }

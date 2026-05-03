@@ -22,7 +22,6 @@ import type {
 } from '@whiteboard/react/types/common/collab'
 import type { WhiteboardRuntimeServices } from '@whiteboard/react/runtime/whiteboard/services'
 import type { IntentResult } from '@whiteboard/engine'
-import type { MutationCommit, MutationDocument } from '@shared/mutation'
 
 export const useWhiteboardCollab = (input: {
   collab?: WhiteboardCollabOptions
@@ -43,30 +42,10 @@ export const useWhiteboardCollab = (input: {
       return
     }
 
-    const collabEngine = {
-      commits: {
-        subscribe: (listener) => (
-          input.services.engine.commits.subscribe((commit) => {
-            listener({
-              ...commit,
-              writes: commit.authored
-            } as unknown as MutationCommit<typeof whiteboardMutationSchema>)
-          })
-        )
-      },
-      doc: () => input.services.engine.doc() as unknown as MutationDocument<typeof whiteboardMutationSchema>,
-      replace: (document: MutationDocument<typeof whiteboardMutationSchema>, options?: {
-        origin?: 'user' | 'remote' | 'system'
-        history?: boolean
-      }) => input.services.engine.replace(document as unknown as ReturnType<typeof input.services.engine.doc>, options),
-      apply: (writes: Parameters<typeof input.services.engine.apply>[0], options?: {
-        origin?: 'user' | 'remote' | 'system'
-        history?: boolean
-      }) => input.services.engine.apply(writes, options)
-    } as MutationCollabEngine<
+    const collabEngine: MutationCollabEngine<
       typeof whiteboardMutationSchema,
       IntentResult
-    >
+    > = input.services.engine
 
     const session = createYjsMutationCollabSession({
       schema: whiteboardMutationSchema,
@@ -76,7 +55,7 @@ export const useWhiteboardCollab = (input: {
       provider: collab.provider,
       document: {
         empty: () => documentApi.create(input.services.engine.doc().id),
-        decode: (value) => documentApi.normalize(value as ReturnType<typeof input.services.engine.doc>)
+        decode: (value) => documentApi.normalize(value)
       }
     })
     input.services.setHistorySource({

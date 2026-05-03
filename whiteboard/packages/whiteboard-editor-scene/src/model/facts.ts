@@ -141,7 +141,7 @@ export const createInputFacts = (
   appendIds(nodeTargetIds, Object.keys(current.editor.snapshot.preview.node))
   appendIds(edgeTargetIds, Object.keys(current.editor.snapshot.preview.edge))
   Object.keys(current.editor.snapshot.preview.mindmap).forEach((mindmapId) => {
-    mindmapTargetIds.add(mindmapId as MindmapId)
+    mindmapTargetIds.add(mindmapId)
   })
 
   return {

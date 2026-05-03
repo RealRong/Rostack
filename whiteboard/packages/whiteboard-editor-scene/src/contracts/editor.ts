@@ -33,19 +33,15 @@ import type {
   Document as WhiteboardDocument,
   Edge,
   EdgeLabel,
-  EdgeId,
   EdgePatch,
   Group,
-  GroupId,
   MindmapDragDropTarget,
-  MindmapId,
   MindmapLayout,
   MindmapRecord,
   Node,
   NodeGeometry,
   NodeModel,
   NodeFieldPatch,
-  NodeId,
   Point,
   Rect,
   Size,
@@ -131,26 +127,26 @@ export interface SceneUpdateInput {
 export type OwnerRef =
   | {
       kind: 'mindmap'
-      id: MindmapId
+      id: string
     }
   | {
       kind: 'group'
-      id: GroupId
+      id: string
     }
 
 export interface EdgeNodes {
-  source?: NodeId
-  target?: NodeId
+  source?: string
+  target?: string
 }
 
 export type GroupItemRef =
   | {
       kind: 'node'
-      id: NodeId
+      id: string
     }
   | {
       kind: 'edge'
-      id: EdgeId
+      id: string
     }
 
 export interface EditorStateInput {
@@ -160,11 +156,11 @@ export interface EditorStateInput {
 }
 
 export type NodePreviewValue = NodePreview
-export type NodePreviewRecord = Readonly<Record<NodeId, NodePreview | undefined>>
+export type NodePreviewRecord = Readonly<Record<string, NodePreview | undefined>>
 export type EdgePreviewValue = EdgePreview
-export type EdgePreviewRecord = Readonly<Record<EdgeId, EdgePreview | undefined>>
+export type EdgePreviewRecord = Readonly<Record<string, EdgePreview | undefined>>
 export type MindmapPreviewValue = MindmapPreviewEntry
-export type MindmapPreview = Readonly<Record<MindmapId, MindmapPreviewEntry | undefined>>
+export type MindmapPreview = Readonly<Record<string, MindmapPreviewEntry | undefined>>
 
 export interface PreviewInput {
   node: NodePreviewRecord
@@ -181,7 +177,7 @@ export interface EdgeGuidePreview {
     style?: Edge['style']
   }
   connect?: {
-    focusedNodeId?: NodeId
+    focusedNodeId?: string
     resolution: ConnectResolution
   }
 }
@@ -219,7 +215,7 @@ export interface DrawPreview {
   style: DrawStyle
   points: readonly Point[]
   bounds?: Rect
-  hiddenNodeIds: readonly NodeId[]
+  hiddenNodeIds: readonly string[]
 }
 
 export interface SelectionPreview {
@@ -235,7 +231,7 @@ export interface MindmapPreviewEntry {
     delta: Point
   }
   subtreeMove?: {
-    nodeId: NodeId
+    nodeId: string
     ghost: Rect
     drop?: MindmapDragDropTarget
   }
@@ -279,18 +275,18 @@ export interface InteractionInput {
 }
 
 export interface SceneRuntimeFacts {
-  touchedNodeIds: ReadonlySet<NodeId>
-  touchedEdgeIds: ReadonlySet<EdgeId>
-  touchedMindmapIds: ReadonlySet<MindmapId>
-  activeEdgeIds: ReadonlySet<EdgeId>
+  touchedNodeIds: ReadonlySet<string>
+  touchedEdgeIds: ReadonlySet<string>
+  touchedMindmapIds: ReadonlySet<string>
+  activeEdgeIds: ReadonlySet<string>
   uiChanged: boolean
   overlayChanged: boolean
   chromeChanged: boolean
 }
 
 export interface SelectionState {
-  nodeIds: readonly NodeId[]
-  edgeIds: readonly EdgeId[]
+  nodeIds: readonly string[]
+  edgeIds: readonly string[]
 }
 
 export type HoverState =
@@ -299,19 +295,19 @@ export type HoverState =
     }
   | {
       kind: 'node'
-      nodeId: NodeId
+      nodeId: string
     }
   | {
       kind: 'edge'
-      edgeId: EdgeId
+      edgeId: string
     }
   | {
       kind: 'mindmap'
-      mindmapId: MindmapId
+      mindmapId: string
     }
   | {
       kind: 'group'
-      groupId: GroupId
+      groupId: string
     }
   | {
       kind: 'selection-box'
@@ -323,8 +319,8 @@ export type DragState =
     }
   | {
       kind: 'selection-move'
-      nodeIds: readonly NodeId[]
-      edgeIds: readonly EdgeId[]
+      nodeIds: readonly string[]
+      edgeIds: readonly string[]
     }
   | {
       kind: 'selection-marquee'
@@ -333,33 +329,33 @@ export type DragState =
     }
   | {
       kind: 'selection-transform'
-      nodeIds: readonly NodeId[]
+      nodeIds: readonly string[]
     }
   | {
       kind: 'edge-connect'
-      edgeId?: EdgeId
+      edgeId?: string
       resolution?: ConnectResolution
     }
   | {
       kind: 'edge-move'
-      edgeId: EdgeId
+      edgeId: string
     }
   | {
       kind: 'edge-label'
-      edgeId: EdgeId
+      edgeId: string
       labelId: string
     }
   | {
       kind: 'edge-route'
-      edgeId: EdgeId
+      edgeId: string
     }
   | {
       kind: 'draw'
     }
   | {
       kind: 'mindmap-drag'
-      mindmapId: MindmapId
-      nodeId: NodeId
+      mindmapId: string
+      nodeId: string
     }
 
 export interface NodeView {
@@ -459,9 +455,9 @@ export interface MindmapView {
 }
 
 export interface SceneMindmapTree {
-  id: MindmapId
-  rootId: NodeId
-  nodeIds: readonly NodeId[]
+  id: string
+  rootId: string
+  nodeIds: readonly string[]
   tree: MindmapTree
   layout: MindmapLayoutSpec
   computed: MindmapLayout
@@ -472,8 +468,8 @@ export interface MindmapBaseView {
 }
 
 export interface MindmapStructureView {
-  rootId: NodeId
-  nodeIds: readonly NodeId[]
+  rootId: string
+  nodeIds: readonly string[]
   tree: MindmapTree
 }
 
@@ -507,15 +503,15 @@ export interface GroupFrameView {
 export type SceneItem =
   | {
       kind: 'mindmap'
-      id: MindmapId
+      id: string
     }
   | {
       kind: 'node'
-      id: NodeId
+      id: string
     }
   | {
       kind: 'edge'
-      id: EdgeId
+      id: string
     }
 
 export interface ChromeView {
@@ -555,23 +551,23 @@ export interface RuntimeStores {
     background: store.ReadStore<WhiteboardDocument['background'] | undefined>
   }
   graph: {
-    node: FamilyReadStore<NodeId, NodeView>
-    edge: FamilyReadStore<EdgeId, EdgeView>
-    mindmap: FamilyReadStore<MindmapId, MindmapView>
-    group: FamilyReadStore<GroupId, GroupView>
+    node: FamilyReadStore<string, NodeView>
+    edge: FamilyReadStore<string, EdgeView>
+    mindmap: FamilyReadStore<string, MindmapView>
+    group: FamilyReadStore<string, GroupView>
     state: {
-      node: FamilyReadStore<NodeId, NodeStateView>
-      edge: FamilyReadStore<EdgeId, EdgeStateView>
+      node: FamilyReadStore<string, NodeStateView>
+      edge: FamilyReadStore<string, EdgeStateView>
       chrome: store.ReadStore<ChromeStateView>
     }
   }
   render: {
-    node: FamilyReadStore<NodeId, NodeRenderView>
+    node: FamilyReadStore<string, NodeRenderView>
     edge: {
       statics: FamilyReadStore<EdgeStaticId, EdgeStaticView>
-      active: FamilyReadStore<EdgeId, EdgeActiveView>
+      active: FamilyReadStore<string, EdgeActiveView>
       labels: FamilyReadStore<EdgeLabelKey, EdgeRenderLabelView>
-      masks: FamilyReadStore<EdgeId, EdgeMaskView>
+      masks: FamilyReadStore<string, EdgeMaskView>
     }
     chrome: {
       scene: store.ReadStore<ChromeRenderView>
@@ -589,25 +585,25 @@ export interface Result {
 export interface DocumentFrame {
   snapshot(): WhiteboardDocument
   background(): WhiteboardDocument['background'] | undefined
-  node(id: NodeId): Node | undefined
-  edge(id: EdgeId): Edge | undefined
-  group(id: GroupId): Group | undefined
-  mindmap(id: MindmapId): MindmapRecord | undefined
-  nodeIds(): readonly NodeId[]
-  edgeIds(): readonly EdgeId[]
-  groupIds(): readonly GroupId[]
-  mindmapIds(): readonly MindmapId[]
+  node(id: string): Node | undefined
+  edge(id: string): Edge | undefined
+  group(id: string): Group | undefined
+  mindmap(id: string): MindmapRecord | undefined
+  nodeIds(): readonly string[]
+  edgeIds(): readonly string[]
+  groupIds(): readonly string[]
+  mindmapIds(): readonly string[]
   order: {
     order(): readonly import('@whiteboard/core/types').CanvasItemRef[]
     slot(ref: import('@whiteboard/core/types').CanvasItemRef): {
       prev?: import('@whiteboard/core/types').CanvasItemRef
       next?: import('@whiteboard/core/types').CanvasItemRef
     } | undefined
-    groupRefs(groupId: GroupId): readonly import('@whiteboard/core/types').CanvasItemRef[]
+    groupRefs(groupId: string): readonly import('@whiteboard/core/types').CanvasItemRef[]
   }
   slice(input: {
-    nodeIds?: readonly NodeId[]
-    edgeIds?: readonly EdgeId[]
+    nodeIds?: readonly string[]
+    edgeIds?: readonly string[]
   }): SliceExportResult | undefined
 }
 
@@ -622,10 +618,10 @@ export interface RuntimeFrame {
     preview(): PreviewInput
   }
   facts: {
-    touchedNodeIds(): ReadonlySet<NodeId>
-    touchedEdgeIds(): ReadonlySet<EdgeId>
-    touchedMindmapIds(): ReadonlySet<MindmapId>
-    activeEdgeIds(): ReadonlySet<EdgeId>
+    touchedNodeIds(): ReadonlySet<string>
+    touchedEdgeIds(): ReadonlySet<string>
+    touchedMindmapIds(): ReadonlySet<string>
+    activeEdgeIds(): ReadonlySet<string>
     uiChanged(): boolean
     overlayChanged(): boolean
     chromeChanged(): boolean
@@ -633,7 +629,7 @@ export interface RuntimeFrame {
 }
 
 export type EdgeChromeView = {
-  edgeId: EdgeId
+  edgeId: string
   ends: ResolvedEdgeEnds
   canReconnectSource: boolean
   canReconnectTarget: boolean
@@ -645,19 +641,19 @@ export type EdgeChromeView = {
 export type SceneHitItem =
   | {
       kind: 'node'
-      id: NodeId
+      id: string
     }
   | {
       kind: 'edge'
-      id: EdgeId
+      id: string
     }
   | {
       kind: 'mindmap'
-      id: MindmapId
+      id: string
     }
   | {
       kind: 'group'
-      id: GroupId
+      id: string
     }
 
 export type SceneViewportPick = {
@@ -683,19 +679,19 @@ export type ScenePickRequest = {
 export type ScenePickTarget =
   | {
       kind: 'node'
-      id: NodeId
+      id: string
     }
   | {
       kind: 'edge'
-      id: EdgeId
+      id: string
     }
   | {
       kind: 'mindmap'
-      id: MindmapId
+      id: string
     }
   | {
       kind: 'group'
-      id: GroupId
+      id: string
     }
 
 export type ScenePickResult = {
@@ -718,30 +714,30 @@ export type ScenePickRuntime = {
 }
 
 export interface SceneNodes {
-  get(id: NodeId): NodeView | undefined
-  entries(): IterableIterator<[NodeId, NodeView]>
-  idsInRect(rect: Rect, options?: NodeRectHitOptions): readonly NodeId[]
-  descendants(nodeIds: readonly NodeId[]): readonly NodeId[]
-  relatedEdgeIds(nodeIds: Iterable<NodeId>): readonly EdgeId[]
-  owner(id: NodeId): OwnerRef | undefined
+  get(id: string): NodeView | undefined
+  entries(): IterableIterator<[string, NodeView]>
+  idsInRect(rect: Rect, options?: NodeRectHitOptions): readonly string[]
+  descendants(nodeIds: readonly string[]): readonly string[]
+  relatedEdgeIds(nodeIds: Iterable<string>): readonly string[]
+  owner(id: string): OwnerRef | undefined
 }
 
 export interface SceneEdges {
-  get(id: EdgeId): EdgeView | undefined
-  edit(id: EdgeId): EdgeView | undefined
-  entries(): IterableIterator<[EdgeId, EdgeView]>
+  get(id: string): EdgeView | undefined
+  edit(id: string): EdgeView | undefined
+  entries(): IterableIterator<[string, EdgeView]>
   idsInRect(rect: Rect, options?: {
     match?: 'touch' | 'contain'
-  }): readonly EdgeId[]
+  }): readonly string[]
   connectCandidates(rect: Rect): readonly EdgeConnectCandidate[]
-  capability(id: EdgeId): import('@whiteboard/core/edge').EdgeCapability | undefined
+  capability(id: string): import('@whiteboard/core/edge').EdgeCapability | undefined
   routePoints(input: {
-    edgeId: EdgeId
+    edgeId: string
     activeRouteIndex?: number
   }): readonly import('@whiteboard/core/edge').EdgeRoutePoint[]
-  box(id: EdgeId): import('@whiteboard/core/edge').EdgeBox | undefined
+  box(id: string): import('@whiteboard/core/edge').EdgeBox | undefined
   chrome(input: {
-    edgeId: EdgeId
+    edgeId: string
     activeRouteIndex?: number
     tool: {
       type: string
@@ -755,36 +751,36 @@ export interface SceneEdges {
 }
 
 export interface SceneMindmaps {
-  get(id: MindmapId): MindmapView | undefined
-  tree(value: MindmapId | NodeId | string): SceneMindmapTree | undefined
-  entries(): IterableIterator<[MindmapId, MindmapView]>
-  id(value: MindmapId | NodeId | string): MindmapId | undefined
-  structure(value: MindmapId | NodeId | string): MindmapView['structure'] | undefined
-  ofNodes(nodeIds: readonly NodeId[]): MindmapId | undefined
+  get(id: string): MindmapView | undefined
+  tree(value: string): SceneMindmapTree | undefined
+  entries(): IterableIterator<[string, MindmapView]>
+  id(value: string): string | undefined
+  structure(value: string): MindmapView['structure'] | undefined
+  ofNodes(nodeIds: readonly string[]): string | undefined
   addChildTargets(input: {
-    mindmapId: MindmapId
+    mindmapId: string
     selection: SelectionTarget
     edit: EditSession | null
   }): readonly {
-    targetNodeId: NodeId
+    targetNodeId: string
     x: number
     y: number
     placement: 'left' | 'right'
   }[]
   navigate(input: {
-    id: MindmapId
-    fromNodeId: NodeId
+    id: string
+    fromNodeId: string
     direction: 'parent' | 'first-child' | 'prev-sibling' | 'next-sibling'
-  }): NodeId | undefined
+  }): string | undefined
 }
 
 export interface SceneGroups {
-  get(id: GroupId): GroupView | undefined
-  entries(): IterableIterator<[GroupId, GroupView]>
-  ofNode(nodeId: NodeId): GroupId | undefined
-  ofEdge(edgeId: EdgeId): GroupId | undefined
-  target(groupId: GroupId): SelectionTarget | undefined
-  exact(target: SelectionTarget): readonly GroupId[]
+  get(id: string): GroupView | undefined
+  entries(): IterableIterator<[string, GroupView]>
+  ofNode(nodeId: string): string | undefined
+  ofEdge(edgeId: string): string | undefined
+  target(groupId: string): SelectionTarget | undefined
+  exact(target: SelectionTarget): readonly string[]
 }
 
 export interface SceneSelection {
@@ -792,8 +788,8 @@ export interface SceneSelection {
   summary(target: SelectionTarget): SelectionSummary
   affordance(target: SelectionTarget): SelectionAffordance
   selected: {
-    node(target: SelectionTarget, nodeId: NodeId): boolean
-    edge(target: SelectionTarget, edgeId: EdgeId): boolean
+    node(target: SelectionTarget, nodeId: string): boolean
+    edge(target: SelectionTarget, edgeId: string): boolean
   }
   move(target: SelectionTarget): {
     nodes: readonly Node[]
@@ -803,36 +799,36 @@ export interface SceneSelection {
 }
 
 export interface SceneFrame {
-  point(point: Point): readonly NodeId[]
-  rect(rect: Rect): readonly NodeId[]
+  point(point: Point): readonly string[]
+  rect(rect: Rect): readonly string[]
   pick(point: Point, options?: {
-    excludeIds?: readonly NodeId[]
-  }): NodeId | undefined
-  parent(nodeId: NodeId, options?: {
-    excludeIds?: readonly NodeId[]
-  }): NodeId | undefined
+    excludeIds?: readonly string[]
+  }): string | undefined
+  parent(nodeId: string, options?: {
+    excludeIds?: readonly string[]
+  }): string | undefined
 }
 
 export interface SceneHit {
   node(input: {
     point: Point
     threshold?: number
-    excludeIds?: readonly NodeId[]
-  }): NodeId | undefined
+    excludeIds?: readonly string[]
+  }): string | undefined
   edge(input: {
     point: Point
     threshold?: number
-    excludeIds?: readonly EdgeId[]
-  }): EdgeId | undefined
+    excludeIds?: readonly string[]
+  }): string | undefined
   item(input: {
     point: Point
     threshold?: number
     kinds?: readonly ('node' | 'edge' | 'mindmap' | 'group')[]
     exclude?: Partial<{
-      node: readonly NodeId[]
-      edge: readonly EdgeId[]
-      mindmap: readonly MindmapId[]
-      group: readonly GroupId[]
+      node: readonly string[]
+      edge: readonly string[]
+      mindmap: readonly string[]
+      group: readonly string[]
     }>
   }): SceneHitItem | undefined
 }
@@ -851,10 +847,10 @@ export interface ProjectionViewRead {
     radius?: number
     kinds?: readonly ('node' | 'edge' | 'mindmap' | 'group')[]
     exclude?: Partial<{
-      node: readonly NodeId[]
-      edge: readonly EdgeId[]
-      mindmap: readonly MindmapId[]
-      group: readonly GroupId[]
+      node: readonly string[]
+      edge: readonly string[]
+      mindmap: readonly string[]
+      group: readonly string[]
     }>
   }): SceneViewportPick
 }

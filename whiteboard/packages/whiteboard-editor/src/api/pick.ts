@@ -1,10 +1,7 @@
 import type { TransformHandle } from '@whiteboard/core/node'
 import type {
   EdgeAnchor,
-  EdgeId,
-  GroupId,
   MindmapNodeId,
-  NodeId
 } from '@whiteboard/core/types'
 
 export type TransformPickHandle = {
@@ -17,7 +14,7 @@ export type EditorPick =
   | { kind: 'background' }
   | {
       kind: 'group'
-      id: GroupId
+      id: string
       part: 'shell'
     }
   | {
@@ -27,20 +24,20 @@ export type EditorPick =
     }
   | {
       kind: 'node'
-      id: NodeId
+      id: string
       part: 'body' | 'transform' | 'connect'
       handle?: TransformPickHandle
       side?: EdgeAnchor['side']
     }
   | {
       kind: 'node'
-      id: NodeId
+      id: string
       part: 'field'
       field: 'text' | 'title'
     }
   | {
       kind: 'edge'
-      id: EdgeId
+      id: string
       part: 'body' | 'end' | 'path' | 'label'
       labelId?: string
       end?: 'source' | 'target'
@@ -50,6 +47,6 @@ export type EditorPick =
     }
   | {
       kind: 'mindmap'
-      treeId: NodeId
+      treeId: string
       nodeId: MindmapNodeId
     }

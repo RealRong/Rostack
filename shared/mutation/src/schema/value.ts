@@ -20,9 +20,9 @@ export type MutationValueOfNode<TNode> =
     ? (TOptional extends true ? TValue | undefined : TValue)
   : TNode extends MutationObjectNode<infer TShape> ? MutationValueOfShape<TShape>
   : TNode extends MutationDictionaryNode<infer TKey extends string, infer TValue>
-    ? Readonly<Partial<Record<TKey, TValue>>>
+    ? Partial<Record<TKey, TValue>>
   : TNode extends MutationSequenceNode<infer TItem>
-    ? readonly TItem[]
+    ? TItem[]
   : TNode extends MutationTreeNode<string, infer TValue>
     ? MutationTreeSnapshot<TValue>
   : TNode extends MutationSingletonNode<infer TShape>
@@ -48,18 +48,18 @@ type MutationOptionalKeys<TShape extends MutationShape> = keyof {
 }
 
 export type MutationValueOfShape<TShape extends MutationShape> = {
-  readonly [K in MutationRequiredKeys<TShape>]: MutationValueOfNode<TShape[K]>
+  [K in MutationRequiredKeys<TShape>]: MutationValueOfNode<TShape[K]>
 } & {
-  readonly [K in MutationOptionalKeys<TShape>]?: MutationValueOfNode<TShape[K]>
+  [K in MutationOptionalKeys<TShape>]?: MutationValueOfNode<TShape[K]>
 }
 
 export type MutationTableValue<TId extends string, TShape extends MutationShape> = {
-  readonly ids: readonly TId[]
-  readonly byId: Readonly<Partial<Record<TId, MutationValueOfShape<TShape>>>>
+  ids: TId[]
+  byId: Partial<Record<TId, MutationValueOfShape<TShape>>>
 }
 
-export type MutationMapValue<TId extends string, TShape extends MutationShape> = Readonly<
-  Partial<Record<TId, MutationValueOfShape<TShape>>>
+export type MutationMapValue<TId extends string, TShape extends MutationShape> = Partial<
+  Record<TId, MutationValueOfShape<TShape>>
 >
 
 export type MutationDocument<TSchema extends MutationSchema> =

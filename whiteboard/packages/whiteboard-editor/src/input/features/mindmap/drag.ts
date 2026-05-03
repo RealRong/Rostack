@@ -14,6 +14,7 @@ import type { MindmapPreviewState } from '@whiteboard/editor/state/preview-types
 import type { Node } from '@whiteboard/core/types'
 import type { Editor } from '@whiteboard/editor/api/editor'
 import type { PreviewInput } from '@whiteboard/editor-scene'
+import { readMindmapPreviewIds } from '@whiteboard/editor/state/preview'
 
 export type MindmapDragState = CoreMindmapDragState
 
@@ -267,7 +268,7 @@ export const createMindmapDragSession = (
       return
     }
 
-    Object.keys(snapshot.preview.mindmap).forEach((id) => {
+    readMindmapPreviewIds(snapshot.preview.mindmap).forEach((id) => {
       writer.preview.mindmap.delete(id)
     })
     Object.entries(previewMindmapDrag(editor, state)).forEach(([id, preview]) => {
@@ -301,7 +302,7 @@ export const createMindmapDragSession = (
     }) => {
       const nextMindmap = previewMindmapDrag(editor, state)
 
-      Object.keys(snapshot.preview.mindmap).forEach((id) => {
+      readMindmapPreviewIds(snapshot.preview.mindmap).forEach((id) => {
         writer.preview.mindmap.delete(id)
       })
       Object.entries(nextMindmap).forEach(([id, preview]) => {
@@ -359,11 +360,11 @@ export const createMindmapDragSession = (
         writer,
         snapshot
       }) => {
-        if (Object.keys(snapshot.preview.mindmap).length === 0) {
+        if (readMindmapPreviewIds(snapshot.preview.mindmap).length === 0) {
           return
         }
 
-        Object.keys(snapshot.preview.mindmap).forEach((id) => {
+        readMindmapPreviewIds(snapshot.preview.mindmap).forEach((id) => {
           writer.preview.mindmap.delete(id)
         })
       })

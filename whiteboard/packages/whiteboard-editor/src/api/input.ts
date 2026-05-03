@@ -1,4 +1,4 @@
-import type { EdgeId, Point } from '@whiteboard/core/types'
+import type { Point } from '@whiteboard/core/types'
 import { store } from '@shared/core'
 import type { EditorPick } from '@whiteboard/editor/api/pick'
 
@@ -71,7 +71,7 @@ export type ContextMenuIntent =
   | {
       kind: 'edge'
       screen: Point
-      edgeId: EdgeId
+      edgeId: string
     }
 
 export type WheelInput = {

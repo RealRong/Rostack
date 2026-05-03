@@ -1,31 +1,25 @@
 import { key } from '@shared/spec'
-import type {
-  EdgeId,
-  MindmapId,
-  NodeId,
-  Point,
-  Rect
-} from '@whiteboard/core/types'
+import type { Point, Rect } from '@whiteboard/core/types'
 
 export type SpatialKey =
-  | `node:${NodeId}`
-  | `edge:${EdgeId}`
-  | `mindmap:${MindmapId}`
+  | `node:${string}`
+  | `edge:${string}`
+  | `mindmap:${string}`
 
 export const spatialKey = key.tagged(['node', 'edge', 'mindmap'] as const)
 
 export type SpatialItemRef =
   | {
       kind: 'node'
-      id: NodeId
+      id: string
     }
   | {
       kind: 'edge'
-      id: EdgeId
+      id: string
     }
   | {
       kind: 'mindmap'
-      id: MindmapId
+      id: string
     }
 
 export type SpatialKind = SpatialItemRef['kind']

@@ -19,6 +19,10 @@ import {
   readMindmapNodeIds
 } from '../graph/mindmap'
 
+const readRecordKeys = <TValue>(
+  value: Readonly<Record<string, TValue | undefined>>
+): readonly string[] => Object.keys(value)
+
 const clearEdgeAdjacency = (
   state: IndexState
 ) => {
@@ -268,7 +272,10 @@ export const rebuildIndexState = (input: {
 }) => {
   clearIndexState(input.state)
 
-  ;(Object.entries(input.document.nodes) as readonly (readonly [NodeId, Node])[]).forEach(([nodeId, node]) => {
+  Object.entries(input.document.nodes).forEach(([nodeId, node]) => {
+    if (!node) {
+      return
+    }
     input.state.ownerByNode.set(nodeId, readNodeOwner(node))
   })
 
@@ -276,7 +283,10 @@ export const rebuildIndexState = (input: {
     patchMindmapEntries(input.state, mindmapId, record)
   })
 
-  ;(Object.entries(input.document.edges) as readonly (readonly [EdgeId, Edge])[]).forEach(([edgeId, edge]) => {
+  Object.entries(input.document.edges).forEach(([edgeId, edge]) => {
+    if (!edge) {
+      return
+    }
     const nodes = readEdgeNodes(edge)
     input.state.edgeNodesByEdge.set(edgeId, nodes)
     if (nodes.source) {
@@ -288,7 +298,7 @@ export const rebuildIndexState = (input: {
     input.state.groupByEdge.set(edgeId, edge.groupId)
   })
 
-  const groupIds = new Set(Object.keys(input.document.groups) as GroupId[])
+  const groupIds = new Set(readRecordKeys(input.document.groups))
   const groupItems = rebuildGroupItems(input.document, groupIds)
   groupIds.forEach((groupId) => {
     setGroupItems(input.state, groupId, groupItems.get(groupId))
@@ -392,11 +402,11 @@ export const patchIndexState = (input: {
   })
 
   if (input.scope.order) {
-    Object.keys(previous.groups).forEach((groupId) => {
-      affectedGroupIds.add(groupId as GroupId)
+    readRecordKeys(previous.groups).forEach((groupId) => {
+      affectedGroupIds.add(groupId)
     })
-    Object.keys(input.next.groups).forEach((groupId) => {
-      affectedGroupIds.add(groupId as GroupId)
+    readRecordKeys(input.next.groups).forEach((groupId) => {
+      affectedGroupIds.add(groupId)
     })
   }
 

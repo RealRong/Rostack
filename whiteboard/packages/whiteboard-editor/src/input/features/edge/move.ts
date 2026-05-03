@@ -13,6 +13,7 @@ import {
   FINISH
 } from '@whiteboard/editor/input/internals/result'
 import type { Editor } from '@whiteboard/editor/api/editor'
+import { readEdgePreviewIds } from '@whiteboard/editor/state/preview'
 
 export type EdgeMoveState = {
   edgeId: EdgeId
@@ -128,8 +129,7 @@ export const createEdgeMoveSession = (
       writer,
       snapshot
     }) => {
-      Object.keys(snapshot.preview.edge).forEach((edgeId) => {
-        const id = edgeId as EdgeId
+      readEdgePreviewIds(snapshot.preview.edge).forEach((id) => {
         if (!result.patch || id !== state.edgeId) {
           writer.preview.edge.delete(id)
           return
@@ -183,8 +183,8 @@ export const createEdgeMoveSession = (
         writer,
         snapshot
       }) => {
-        Object.keys(snapshot.preview.edge).forEach((edgeId) => {
-          writer.preview.edge.delete(edgeId as EdgeId)
+        readEdgePreviewIds(snapshot.preview.edge).forEach((edgeId) => {
+          writer.preview.edge.delete(edgeId)
         })
       })
     }

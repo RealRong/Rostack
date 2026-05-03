@@ -75,9 +75,7 @@ test('node.text.commit deletes empty text nodes through engine semantics', () =>
       kind: 'node',
       nodeId: 'text_2'
     },
-    route: {
-      kind: 'auto'
-    }
+    points: undefined
   }
   document.order = [
     { kind: 'node', id: 'text_1' },

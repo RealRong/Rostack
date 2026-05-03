@@ -6,7 +6,6 @@ import type {
   EdgeInput,
   EdgeLabelAnchor,
   EdgeLabelUpdateInput,
-  EdgeRouteInput,
   EdgeRoutePointAnchor,
   EdgeType,
   EdgeUpdateInput,
@@ -177,7 +176,7 @@ export type EdgeIntent =
       target: EdgeEnd
       patch?: {
         type?: EdgeType
-        route?: EdgeRouteInput
+        points?: Point[]
       }
     }
   | {
@@ -214,7 +213,7 @@ export type EdgeIntent =
       labelId: string
     }
   | {
-      type: 'edge.route.insert'
+      type: 'edge.points.insert'
       edgeId: EdgeId
       point: {
         x: number
@@ -223,7 +222,7 @@ export type EdgeIntent =
       to?: EdgeRoutePointAnchor
     }
   | {
-      type: 'edge.route.update'
+      type: 'edge.points.update'
       edgeId: EdgeId
       pointId: string
       fields: {
@@ -232,23 +231,23 @@ export type EdgeIntent =
       }
     }
   | {
-      type: 'edge.route.set'
+      type: 'edge.points.set'
       edgeId: EdgeId
-      route: EdgeRouteInput
+      points?: Point[]
     }
   | {
-      type: 'edge.route.move'
+      type: 'edge.points.move'
       edgeId: EdgeId
       pointId: string
       to: EdgeRoutePointAnchor
     }
   | {
-      type: 'edge.route.delete'
+      type: 'edge.points.delete'
       edgeId: EdgeId
       pointId: string
     }
   | {
-      type: 'edge.route.clear'
+      type: 'edge.points.clear'
       edgeId: EdgeId
     }
 

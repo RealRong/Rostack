@@ -90,14 +90,14 @@ export const createEdgePatch = (
   update: EdgeUpdateInput
 ): EdgePatch => applyScopedRecordWriteToPatch({
   ...(update.fields ? cloneEdgeFieldPatch(update.fields) : {})
-}, update.record, ['route', 'style', 'labels', 'data'])
+}, update.record, ['points', 'style', 'labels', 'data'])
 
 export const readEdgeUpdateFromPatch = (
   patch: EdgePatch
 ): EdgeUpdateInput => {
   const {
     record
-  } = splitScopedPatch(patch, ['route', 'style', 'labels', 'data'])
+  } = splitScopedPatch(patch, ['points', 'style', 'labels', 'data'])
   const fields: EdgeFieldPatch = {}
 
   if (hasOwn(patch, 'source')) {

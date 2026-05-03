@@ -13,7 +13,6 @@ import type {
   EdgeLabelUpdateInput,
   EdgeMarker,
   EdgeRoutePointAnchor,
-  EdgeRouteInput,
   EdgeTemplate,
   EdgeTextMode,
   EdgeType,
@@ -190,7 +189,7 @@ export type GroupWrite = {
   }>
 }
 
-export type EdgeRouteWrite = {
+export type EdgePointsWrite = {
   insert: (
     edgeId: EdgeId,
     point: Point,
@@ -198,7 +197,7 @@ export type EdgeRouteWrite = {
   ) => IntentResult<{ pointId: string }>
   set: (
     edgeId: EdgeId,
-    route: EdgeRouteInput
+    points?: Point[]
   ) => IntentResult
   update: (
     edgeId: EdgeId,
@@ -293,12 +292,12 @@ export type EdgeWrite = {
     target: EdgeEnd
     patch?: {
       type?: EdgeType
-      route?: EdgeRouteInput
+      points?: Point[]
     }
   }) => IntentResult
   delete: (ids: readonly EdgeId[]) => IntentResult
   label: EdgeLabelWrite
-  route: EdgeRouteWrite
+  points: EdgePointsWrite
   style: EdgeStyleWrite
   type: EdgeTypeWrite
   lock: EdgeLockWrite

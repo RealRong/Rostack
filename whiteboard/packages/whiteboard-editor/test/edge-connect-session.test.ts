@@ -92,7 +92,7 @@ const createInteractionDeps = () => {
             reconnectCommit,
             create: vi.fn(),
             type: {},
-            route: {}
+            points: {}
           }
         },
         session: {
@@ -148,10 +148,10 @@ describe('createEdgeConnectSession', () => {
     const patch = readPatch()
 
     expect(patch?.type).toBeUndefined()
-    expect(patch?.route).toBeUndefined()
+    expect(patch?.points).toBeUndefined()
   })
 
-  it('keeps straight auto-route latched after shift is released', () => {
+  it('keeps straight auto-points mode latched after shift is released', () => {
     const {
       session,
       reconnectCommit,
@@ -173,9 +173,7 @@ describe('createEdgeConnectSession', () => {
     const constrainedTarget = constrainedPatch?.target
 
     expect(constrainedPatch?.type).toBe('straight')
-    expect(constrainedPatch?.route).toEqual({
-      kind: 'auto'
-    })
+    expect(constrainedPatch?.points).toBeUndefined()
     expect(constrainedTarget?.kind).toBe('point')
     if (constrainedTarget?.kind === 'point') {
       expect(constrainedTarget.point.x).toBeCloseTo(15.8113883008)
@@ -197,9 +195,7 @@ describe('createEdgeConnectSession', () => {
     const releasedPatch = readPatch()
 
     expect(releasedPatch?.type).toBe('straight')
-    expect(releasedPatch?.route).toEqual({
-      kind: 'auto'
-    })
+    expect(releasedPatch?.points).toBeUndefined()
     expect(releasedPatch?.target).toEqual({
       kind: 'point',
       point: { x: 20, y: 10 }
@@ -216,9 +212,7 @@ describe('createEdgeConnectSession', () => {
       },
       patch: {
         type: 'straight',
-        route: {
-          kind: 'auto'
-        }
+        points: undefined
       }
     })
   })

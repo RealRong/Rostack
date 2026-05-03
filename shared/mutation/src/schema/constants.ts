@@ -1,6 +1,7 @@
 export const MUTATION_NODE = Symbol('mutation.node')
 export const MUTATION_SCHEMA = Symbol('mutation.schema')
 export const MUTATION_OPTIONAL = Symbol('mutation.optional')
+export const MUTATION_TYPE = Symbol('mutation.type')
 
 export type MutationTreeNodeSnapshot<TValue = unknown> = {
   parentId?: string
@@ -9,7 +10,7 @@ export type MutationTreeNodeSnapshot<TValue = unknown> = {
 }
 
 export type MutationTreeSnapshot<TValue = unknown> = {
-  rootIds: readonly string[]
+  rootId?: string
   nodes: Readonly<Record<string, MutationTreeNodeSnapshot<TValue>>>
 }
 

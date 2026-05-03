@@ -1,3 +1,4 @@
+import { entityTable } from '@shared/core'
 import type { EdgeLabel } from '@whiteboard/core/types'
 import type { EditorActionContext } from '@whiteboard/editor/actions/context'
 import type {
@@ -129,7 +130,12 @@ export const createEditController = (context: EditorActionContext): EditControll
     caret
   }: StartEdgeLabelEditInput): EditSession => {
     const edge = context.document.edge(edgeId)
-    const label = edge?.labels?.find((entry: EdgeLabel) => entry.id === labelId)
+    const label = edge
+      ? entityTable.read.list(edge.labels ?? {
+          ids: [],
+          byId: {}
+        }).find((entry: EdgeLabel) => entry.id === labelId)
+      : undefined
     if (!edge || !label) {
       return null
     }
@@ -247,9 +253,13 @@ export const createEditController = (context: EditorActionContext): EditControll
       return
     }
 
-    const committedLabel = context.document.edge(currentEdit.edgeId)?.labels?.find(
-      (label: EdgeLabel) => label.id === currentEdit.labelId
-    )
+    const committedEdge = context.document.edge(currentEdit.edgeId)
+    const committedLabel = committedEdge
+      ? entityTable.read.list(committedEdge.labels ?? {
+          ids: [],
+          byId: {}
+        }).find((label: EdgeLabel) => label.id === currentEdit.labelId)
+      : undefined
     if (!committedLabel || committedLabel.text?.trim()) {
       return
     }

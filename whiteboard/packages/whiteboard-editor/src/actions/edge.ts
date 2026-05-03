@@ -1,7 +1,7 @@
 import { edge as edgeApi } from '@whiteboard/core/edge'
+import { entityTable } from '@shared/core'
 import type {
   EdgePatch,
-  EdgeRouteInput,
   Point
 } from '@whiteboard/core/types'
 import type { EditorActionContext } from '@whiteboard/editor/actions/context'
@@ -24,7 +24,7 @@ const readEdgeOrThrow = (
 const writeRouteFromPoint = (input: {
   context: EditorActionContext
   edgeId: string
-  resolve: (edge: ReturnType<typeof readEdgeOrThrow>) => { route?: EdgeRouteInput } | undefined
+  resolve: (edge: ReturnType<typeof readEdgeOrThrow>) => { points?: Point[] } | undefined
 }) => {
   const patch = input.resolve(
     readEdgeOrThrow(input.context, input.edgeId)
@@ -33,11 +33,9 @@ const writeRouteFromPoint = (input: {
     throw new Error(`Edge route point ${input.edgeId} not found.`)
   }
 
-  return input.context.write.edge.route.set(
+  return input.context.write.edge.points.set(
     input.edgeId,
-    patch.route ?? {
-      kind: 'auto'
-    }
+    patch.points
   )
 }
 
@@ -47,7 +45,12 @@ const createStartEdgeLabelSession = (input: {
   labelId: string
 }): EditSession => {
   const edge = input.context.document.edge(input.edgeId)
-  const label = edge?.labels?.find((entry) => entry.id === input.labelId)
+  const label = edge
+    ? entityTable.read.list(edge.labels ?? {
+        ids: [],
+        byId: {}
+      }).find((entry) => entry.id === input.labelId)
+    : undefined
   if (!edge || !label) {
     return null
   }
@@ -105,30 +108,28 @@ export const createEdgeActions = (
   move: (value) => context.write.edge.move(value),
   reconnectCommit: (value) => context.write.edge.reconnectCommit(value),
   delete: (ids) => context.write.edge.delete(ids),
-  route: {
-    set: (edgeId, route) => context.write.edge.route.set(edgeId, route),
+  points: {
+    set: (edgeId, points) => context.write.edge.points.set(edgeId, points),
     insertPoint: (edgeId, index, point) => {
       const edge = readEdgeOrThrow(context, edgeId)
-      const inserted = edgeApi.route.insert(edge, index, point)
+      const inserted = edgeApi.points.insert(edge, index, point)
       if (!inserted.ok) {
         throw new Error(inserted.error.message)
       }
 
-      return context.write.edge.route.set(edgeId, inserted.data.patch.route ?? {
-        kind: 'auto'
-      })
+      return context.write.edge.points.set(edgeId, inserted.data.patch.points)
     },
     movePoint: (edgeId, index, point) => writeRouteFromPoint({
       context,
       edgeId,
-      resolve: (edge) => edgeApi.route.move(edge, index, point)
+      resolve: (edge) => edgeApi.points.move(edge, index, point)
     }),
     removePoint: (edgeId, index) => writeRouteFromPoint({
       context,
       edgeId,
-      resolve: (edge) => edgeApi.route.remove(edge, index)
+      resolve: (edge) => edgeApi.points.remove(edge, index)
     }),
-    clear: (edgeId) => context.write.edge.route.clear(edgeId)
+    clear: (edgeId) => context.write.edge.points.clear(edgeId)
   },
   label: {
     add: (edgeId) => {

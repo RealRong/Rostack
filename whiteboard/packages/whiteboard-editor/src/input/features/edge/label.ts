@@ -1,5 +1,6 @@
 import { edge as edgeApi } from '@whiteboard/core/edge'
 import { selection as selectionApi } from '@whiteboard/core/selection'
+import { entityTable } from '@shared/core'
 import type {
   Edge,
   EdgeId,
@@ -31,7 +32,12 @@ const startEdgeLabelEdit = (input: {
   }
 }): EditSession => {
   const edge = input.editor.document.edge(input.edgeId)
-  const label = edge?.labels?.find((entry) => entry.id === input.labelId)
+  const label = edge
+    ? entityTable.read.list(edge.labels ?? {
+        ids: [],
+        byId: {}
+      }).find((entry) => entry.id === input.labelId)
+    : undefined
   if (!edge || !label) {
     return null
   }
@@ -89,7 +95,10 @@ const readEdgeLabelPatch = (
   draft: EdgeLabelDragDraft
 ) => {
   let changed = false
-  const nextLabels = edge.labels?.map((label) => {
+  const nextLabels = entityTable.read.list(edge.labels ?? {
+    ids: [],
+    byId: {}
+  }).map((label) => {
     if (label.id !== labelId) {
       return label
     }
@@ -172,8 +181,7 @@ const createEdgeLabelDragSession = (
       })
 
       if (patch && !snapshot.preview.edge[state.edgeId]) {
-        writer.preview.edge.create({
-          id: state.edgeId,
+        writer.preview.edge.create(state.edgeId, {
           patch
         })
       }

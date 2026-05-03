@@ -11,7 +11,6 @@ import type {
   EdgeId,
   EdgeMarker,
   EdgePatch,
-  EdgeRouteInput,
   EdgeTextMode,
   EdgeType,
   MindmapCreateInput,
@@ -266,12 +265,12 @@ export type EdgeActions = {
     target: EdgeEnd
     patch?: {
       type?: EdgeType
-      route?: import('@whiteboard/core/types').EdgeRouteInput
+      points?: Point[]
     }
   }) => IntentResult
   delete: (ids: EdgeId[]) => IntentResult
-  route: {
-    set: (edgeId: EdgeId, route: EdgeRouteInput) => IntentResult
+  points: {
+    set: (edgeId: EdgeId, points?: Point[]) => IntentResult
     insertPoint: (edgeId: EdgeId, index: number, point: Point) => IntentResult
     movePoint: (edgeId: EdgeId, index: number, point: Point) => IntentResult
     removePoint: (edgeId: EdgeId, index: number) => IntentResult

@@ -97,7 +97,7 @@ const readSelectedEdgeRoutePoints = (input: {
 }): readonly EdgeOverlayRoutePoint[] => {
   const isStepManual =
     (input.edge.type === 'elbow' || input.edge.type === 'fillet')
-    && input.edge.route?.kind === 'manual'
+    && Boolean(input.edge.points?.ids.length)
 
   return input.handles.flatMap<EdgeOverlayRoutePoint>((handle) => {
     if (handle.kind === 'anchor') {

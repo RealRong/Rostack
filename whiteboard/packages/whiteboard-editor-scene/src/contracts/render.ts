@@ -85,7 +85,7 @@ export interface EdgeLabelView {
   angle: number
   text: string
   displayText: string
-  style: NonNullable<Edge['labels']>[number]['style']
+  style: import('@whiteboard/core/types').EdgeLabel['style']
   editing: boolean
   selected: boolean
   caret?: EditCaret

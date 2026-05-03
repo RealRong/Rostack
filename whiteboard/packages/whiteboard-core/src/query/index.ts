@@ -1,11 +1,12 @@
 import type {
-  MutationWrite,
+  MutationDeltaSource,
 } from '@shared/mutation'
 import {
   createMutationDelta,
 } from '@shared/mutation'
 import {
   getMindmapRecordByNodeId,
+  readMindmapRootId,
   getSubtreeIds,
   resolveMindmapId,
   toMindmapTree,
@@ -38,14 +39,12 @@ type EntityReader<TId extends string, TValue> = {
 }
 
 export interface WhiteboardReader {
-  document: {
-    value(): Document
-    order: {
-      ids(): readonly string[]
-      items(): readonly CanvasItemRef[]
-      contains(ref: CanvasItemRef): boolean
-      indexOf(ref: CanvasItemRef): number
-    }
+  value(): Document
+  order: {
+    ids(): readonly string[]
+    items(): readonly CanvasItemRef[]
+    contains(ref: CanvasItemRef): boolean
+    indexOf(ref: CanvasItemRef): number
   }
   node: EntityReader<NodeId, Node>
   edge: EntityReader<string, Edge>
@@ -54,9 +53,7 @@ export interface WhiteboardReader {
 }
 
 export interface WhiteboardQuery {
-  changes(input?: WhiteboardMutationDelta | readonly MutationWrite[] | {
-    delta: WhiteboardMutationDelta
-  }): WhiteboardMutationDelta
+  changes(input?: MutationDeltaSource<typeof whiteboardMutationSchema>): WhiteboardMutationDelta
   edge: {
     connectedToNodes(nodeIds: ReadonlySet<NodeId>): readonly Edge[]
   }
@@ -104,21 +101,15 @@ const createEntityReader = <TId extends string, TValue>(input: {
 })
 
 export const createWhiteboardReader = (
-  input: Document | (() => Document)
+  readDocument: () => Document
 ): WhiteboardReader => {
-  const readDocument = typeof input === 'function'
-    ? input
-    : () => input
-
   return {
-    document: {
-      value: readDocument,
-      order: {
-        ids: () => readDocument().order.map(canvasRefKey),
-        items: () => readDocument().order.map((ref) => cloneCanvasRef(ref)!),
-        contains: (ref) => readDocument().order.some((entry) => sameCanvasRef(entry, ref)),
-        indexOf: (ref) => readDocument().order.findIndex((entry) => sameCanvasRef(entry, ref)),
-      }
+    value: readDocument,
+    order: {
+      ids: () => readDocument().order.map(canvasRefKey),
+      items: () => readDocument().order.map((ref) => cloneCanvasRef(ref)!),
+      contains: (ref) => readDocument().order.some((entry) => sameCanvasRef(entry, ref)),
+      indexOf: (ref) => readDocument().order.findIndex((entry) => sameCanvasRef(entry, ref)),
     },
     node: createEntityReader({
       readMap: () => readDocument().nodes
@@ -136,22 +127,12 @@ export const createWhiteboardReader = (
 }
 
 export const createWhiteboardQuery = (
-  input: WhiteboardReader | Document | (() => Document),
-): WhiteboardQuery & {
-  read: WhiteboardReader
-} => {
-  const readDocument = (
-    typeof input === 'function'
-      ? input
-      : typeof input === 'object' && input !== null && 'document' in input && 'node' in input && 'edge' in input
-        ? (() => (input as WhiteboardReader).document.value())
-        : (() => input as Document)
-  )
+  readDocument: () => Document,
+): WhiteboardQuery => {
   const read = createWhiteboardReader(readDocument)
 
   return {
-    read,
-    changes: (changeInput) => createMutationDelta(whiteboardMutationSchema, changeInput as never),
+    changes: (changeInput) => createMutationDelta(whiteboardMutationSchema, changeInput),
     edge: {
       connectedToNodes: (nodeIds) => read.edge.list().filter((edge) => (
         (edge.source.kind === 'node' && nodeIds.has(edge.source.nodeId))
@@ -173,19 +154,19 @@ export const createWhiteboardQuery = (
 
         return getSubtreeIds(
           toMindmapTree(record),
-          rootId ?? record.root,
+          rootId ?? readMindmapRootId(record)!,
         )
       },
       byNode: (nodeId) => getMindmapRecordByNodeId(readDocument(), nodeId),
       resolveId: (value) => resolveMindmapId(readDocument(), value),
       isRoot: (nodeId) => {
         const record = getMindmapRecordByNodeId(readDocument(), nodeId)
-        return record?.root === nodeId
+        return readMindmapRootId(record) === nodeId
       },
     },
     order: {
       slot: (ref) => {
-        const order = read.document.order.items()
+        const order = read.order.items()
         const index = order.findIndex((entry) => sameCanvasRef(entry, ref))
         if (index < 0) {
           return undefined
@@ -200,7 +181,7 @@ export const createWhiteboardQuery = (
     group: {
       refsInOrder: (groupId) => {
         const document = readDocument()
-        return read.document.order.items().filter((ref) => (
+        return read.order.items().filter((ref) => (
           ref.kind === 'node'
             ? document.nodes[ref.id]?.groupId === groupId
             : ref.kind === 'edge'

@@ -70,7 +70,7 @@ export const isMindmapRoot = (
   if (!mindmapId || !node) {
     return false
   }
-  return document.mindmaps[mindmapId]?.root === node.id
+  return document.mindmaps[mindmapId]?.tree.rootId === node.id
 }
 
 const createTopicData = (

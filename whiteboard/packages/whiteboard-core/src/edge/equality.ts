@@ -1,3 +1,4 @@
+import { entityTable } from '@shared/core'
 import { geometry as geometryApi } from '@whiteboard/core/geometry'
 import type {
   Edge,
@@ -53,20 +54,22 @@ export const sameResolvedEdgeEnd = (
   && sameEdgeAnchor(left.anchor, right.anchor)
 )
 
-const sameManualRoutePoints = (
-  left: Extract<Edge['route'], { kind: 'manual' }>['points'] | undefined,
-  right: Extract<Edge['route'], { kind: 'manual' }>['points'] | undefined
+const sameEdgePoints = (
+  left: Edge['points'] | undefined,
+  right: Edge['points'] | undefined
 ) => {
+  const leftPoints = left ? entityTable.read.list(left) : undefined
+  const rightPoints = right ? entityTable.read.list(right) : undefined
   if (left === right) {
     return true
   }
 
-  if (!left || !right || left.length !== right.length) {
+  if (!leftPoints || !rightPoints || leftPoints.length !== rightPoints.length) {
     return false
   }
 
-  for (let index = 0; index < left.length; index += 1) {
-    if (!geometryApi.equal.point(left[index], right[index])) {
+  for (let index = 0; index < leftPoints.length; index += 1) {
+    if (!geometryApi.equal.point(leftPoints[index], rightPoints[index])) {
       return false
     }
   }
@@ -74,16 +77,10 @@ const sameManualRoutePoints = (
   return true
 }
 
-export const sameEdgeRoute = (
-  left: Edge['route'] | undefined,
-  right: Edge['route'] | undefined
-) => (
-  left?.kind === right?.kind
-  && sameManualRoutePoints(
-    left?.kind === 'manual' ? left.points : undefined,
-    right?.kind === 'manual' ? right.points : undefined
-  )
-)
+export const sameEdgePointsValue = (
+  left: Edge['points'] | undefined,
+  right: Edge['points'] | undefined
+) => sameEdgePoints(left, right)
 
 export const sameEdgeLabel = (
   left: EdgeLabel | undefined,
@@ -101,19 +98,21 @@ export const sameEdgeLabel = (
 )
 
 export const sameEdgeLabels = (
-  left: readonly EdgeLabel[] | undefined,
-  right: readonly EdgeLabel[] | undefined
+  left: import('@shared/core').EntityTable<string, EdgeLabel> | undefined,
+  right: import('@shared/core').EntityTable<string, EdgeLabel> | undefined
 ) => {
+  const leftLabels = left ? entityTable.read.list(left) : undefined
+  const rightLabels = right ? entityTable.read.list(right) : undefined
   if (left === right) {
     return true
   }
 
-  if (!left || !right || left.length !== right.length) {
+  if (!leftLabels || !rightLabels || leftLabels.length !== rightLabels.length) {
     return false
   }
 
-  for (let index = 0; index < left.length; index += 1) {
-    if (!sameEdgeLabel(left[index], right[index])) {
+  for (let index = 0; index < leftLabels.length; index += 1) {
+    if (!sameEdgeLabel(leftLabels[index], rightLabels[index])) {
       return false
     }
   }

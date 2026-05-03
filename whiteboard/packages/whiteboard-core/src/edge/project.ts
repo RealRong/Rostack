@@ -1,3 +1,4 @@
+import { entityTable } from '@shared/core'
 import { geometry as geometryApi } from '@whiteboard/core/geometry'
 import { getEdgePathBounds } from '@whiteboard/core/edge/hitTest'
 import {
@@ -100,8 +101,8 @@ export const resolveProjectedEdgeNodes = (
 
 export const readManualRoutePoints = (
   edge: Edge
-): readonly Point[] => edge.route?.kind === 'manual'
-  ? edge.route.points
+): readonly Point[] => edge.points
+  ? entityTable.read.list(edge.points)
   : []
 
 export const readEdgeLabelDisplayText = (
@@ -139,7 +140,7 @@ export const resolveProjectedEdgeRoute = (input: {
   measureLabel?: (label: EdgeLabel & { text: string }) => Size | undefined
 }): ProjectedEdgeRoute => {
   const textMode = input.edge.textMode ?? 'horizontal'
-  const labels = (input.edge.labels ?? []).flatMap((label) => {
+  const labels = (input.edge.labels ? entityTable.read.list(input.edge.labels) : []).flatMap((label) => {
     const resolved = input.readLabelText?.(label)
     const text = resolved?.text ?? label.text ?? ''
     const displayText = readEdgeLabelDisplayText(text, Boolean(resolved?.editing))

@@ -54,7 +54,7 @@ export const runQueryStep = (input: {
   const state = action === 'reuse'
     ? previous
       : buildQueryState({
-        reader: input.frame.reader,
+        reader: input.frame.query,
         view: input.active.view,
         index: input.index.index.state,
         plan: input.active.query,

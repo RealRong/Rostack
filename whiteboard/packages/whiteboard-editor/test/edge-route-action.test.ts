@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
+import { entityTable } from '@shared/core'
 import type { Edge } from '@whiteboard/core/types'
 import {
   createEditorActionsApi
@@ -20,22 +21,19 @@ const createEdge = (): Edge => ({
     kind: 'point',
     point: { x: 100, y: 20 }
   },
-  route: {
-    kind: 'manual',
-    points: [{
+  points: entityTable.normalize.list([{
       id: 'point-1',
       x: 20,
       y: 20
-    }]
-  }
+    }])
 })
 
 const createActions = (edge = createEdge()) => {
-  const setRoute = vi.fn(() => okResult())
-  const insertRoute = vi.fn(() => ({ ok: true, data: { pointId: 'unused' } }))
-  const updateRoute = vi.fn(() => okResult())
-  const deleteRoute = vi.fn(() => okResult())
-  const clearRoute = vi.fn(() => okResult())
+  const setPoints = vi.fn(() => okResult())
+  const insertPoints = vi.fn(() => ({ ok: true, data: { pointId: 'unused' } }))
+  const updatePoints = vi.fn(() => okResult())
+  const deletePoints = vi.fn(() => okResult())
+  const clearPoints = vi.fn(() => okResult())
 
   const document = {
     nodes: {
@@ -279,10 +277,10 @@ const createActions = (edge = createEdge()) => {
       updateMany: vi.fn(),
       reconnectCommit: vi.fn(),
       delete: vi.fn(),
-      route: {
-        set: setRoute,
-        update: updateRoute,
-        clear: clearRoute
+      points: {
+        set: setPoints,
+        update: updatePoints,
+        clear: clearPoints
       },
       label: {
         insert: vi.fn(),
@@ -364,90 +362,82 @@ const createActions = (edge = createEdge()) => {
     dispose: () => {
       tasks.dispose()
     },
-    setRoute,
-    insertRoute,
-    updateRoute,
-    deleteRoute,
-    clearRoute
+    setPoints,
+    insertPoints,
+    updatePoints,
+    deletePoints,
+    clearPoints
   }
 }
 
-describe('edge route actions', () => {
-  it('inserts a route point through route.set semantics', () => {
+describe('edge points actions', () => {
+  it('inserts a point through points.set semantics', () => {
     const {
       actions,
-      setRoute,
-      insertRoute,
-      updateRoute,
-      deleteRoute
+      setPoints,
+      insertPoints,
+      updatePoints,
+      deletePoints
     } = createActions()
 
-    actions.document.edge.route.insertPoint('edge-1', 1, {
+    actions.document.edge.points.insertPoint('edge-1', 1, {
       x: 50,
       y: 10
     })
 
-    expect(setRoute).toHaveBeenCalledTimes(1)
-    expect(setRoute).toHaveBeenCalledWith('edge-1', {
-      kind: 'manual',
-      points: [
-        { x: 20, y: 20 },
-        { x: 50, y: 10 }
-      ]
-    })
-    expect(insertRoute).not.toHaveBeenCalled()
-    expect(updateRoute).not.toHaveBeenCalled()
-    expect(deleteRoute).not.toHaveBeenCalled()
+    expect(setPoints).toHaveBeenCalledTimes(1)
+    expect(setPoints).toHaveBeenCalledWith('edge-1', [
+      { x: 20, y: 20 },
+      { x: 50, y: 10 }
+    ])
+    expect(insertPoints).not.toHaveBeenCalled()
+    expect(updatePoints).not.toHaveBeenCalled()
+    expect(deletePoints).not.toHaveBeenCalled()
   })
 
-  it('moves a route point through route.set semantics', () => {
+  it('moves a point through points.set semantics', () => {
     const {
       actions,
-      setRoute,
-      insertRoute,
-      updateRoute,
-      deleteRoute,
-      clearRoute
+      setPoints,
+      insertPoints,
+      updatePoints,
+      deletePoints,
+      clearPoints
     } = createActions()
 
-    actions.document.edge.route.movePoint('edge-1', 0, {
+    actions.document.edge.points.movePoint('edge-1', 0, {
       x: 60,
       y: 12
     })
 
-    expect(setRoute).toHaveBeenCalledTimes(1)
-    expect(setRoute).toHaveBeenCalledWith('edge-1', {
-      kind: 'manual',
-      points: [{
+    expect(setPoints).toHaveBeenCalledTimes(1)
+    expect(setPoints).toHaveBeenCalledWith('edge-1', [{
         x: 60,
         y: 12
-      }]
-    })
-    expect(insertRoute).not.toHaveBeenCalled()
-    expect(updateRoute).not.toHaveBeenCalled()
-    expect(deleteRoute).not.toHaveBeenCalled()
-    expect(clearRoute).not.toHaveBeenCalled()
+      }])
+    expect(insertPoints).not.toHaveBeenCalled()
+    expect(updatePoints).not.toHaveBeenCalled()
+    expect(deletePoints).not.toHaveBeenCalled()
+    expect(clearPoints).not.toHaveBeenCalled()
   })
 
-  it('removes a route point through route.set semantics', () => {
+  it('removes a point through points.set semantics', () => {
     const {
       actions,
-      setRoute,
-      insertRoute,
-      updateRoute,
-      deleteRoute,
-      clearRoute
+      setPoints,
+      insertPoints,
+      updatePoints,
+      deletePoints,
+      clearPoints
     } = createActions()
 
-    actions.document.edge.route.removePoint('edge-1', 0)
+    actions.document.edge.points.removePoint('edge-1', 0)
 
-    expect(setRoute).toHaveBeenCalledTimes(1)
-    expect(setRoute).toHaveBeenCalledWith('edge-1', {
-      kind: 'auto'
-    })
-    expect(insertRoute).not.toHaveBeenCalled()
-    expect(updateRoute).not.toHaveBeenCalled()
-    expect(deleteRoute).not.toHaveBeenCalled()
-    expect(clearRoute).not.toHaveBeenCalled()
+    expect(setPoints).toHaveBeenCalledTimes(1)
+    expect(setPoints).toHaveBeenCalledWith('edge-1', undefined)
+    expect(insertPoints).not.toHaveBeenCalled()
+    expect(updatePoints).not.toHaveBeenCalled()
+    expect(deletePoints).not.toHaveBeenCalled()
+    expect(clearPoints).not.toHaveBeenCalled()
   })
 })

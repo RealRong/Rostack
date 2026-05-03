@@ -181,7 +181,7 @@ const collectFollowEdgePatches = (options: {
       return
     }
 
-    const patch = edgeApi.route.moveAll(edge, options.delta)
+    const patch = edgeApi.points.moveAll(edge, options.delta)
     if (!patch) {
       return
     }

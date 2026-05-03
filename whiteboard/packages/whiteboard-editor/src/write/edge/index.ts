@@ -16,8 +16,8 @@ import {
   createEdgeLabelWrite
 } from '@whiteboard/editor/write/edge/label'
 import {
-  createEdgeRouteWrite
-} from '@whiteboard/editor/write/edge/route'
+  createEdgePointsWrite
+} from '@whiteboard/editor/write/edge/points'
 
 const readEdge = (
   read: (edgeId: EdgeId) => Edge | undefined,
@@ -146,7 +146,7 @@ export const createEdgeWrite = ({
     ids
   }),
   label: createEdgeLabelWrite(engine),
-  route: createEdgeRouteWrite(engine),
+  points: createEdgePointsWrite(engine),
   style: {
     color: (edgeIds, value) => updateEdgeStyle(edgeIds, read.readEdge, engine, 'color', value),
     opacity: (edgeIds, value) => updateEdgeStyle(edgeIds, read.readEdge, engine, 'opacity', value),

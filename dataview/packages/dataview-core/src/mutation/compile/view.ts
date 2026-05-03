@@ -198,11 +198,10 @@ const lowerViewCreate = (
     }
   }
 
-  input.write.views.create(created)
+  const { id: createdViewId, ...createdViewValue } = created
+  input.write.views.create(createdViewId, createdViewValue)
   if (input.document.activeViewId === undefined) {
-    input.write.document.patch({
-      activeViewId: created.id
-    })
+    input.write.activeViewId.set(created.id)
   }
   return {
     id: created.id
@@ -1189,9 +1188,7 @@ const lowerViewOpen = (
     return
   }
 
-  input.write.document.patch({
-    activeViewId: view.id
-  })
+  input.write.activeViewId.set(view.id)
 }
 
 const lowerViewOrderMove = (
@@ -1380,9 +1377,7 @@ const lowerViewRemove = (
   const nextDocument = documentViews.remove(input.document, view.id)
   input.write.views.remove(view.id)
   if (input.document.activeViewId !== nextDocument.activeViewId) {
-    input.write.document.patch({
-      activeViewId: nextDocument.activeViewId
-    })
+    input.write.activeViewId.set(nextDocument.activeViewId)
   }
 }
 

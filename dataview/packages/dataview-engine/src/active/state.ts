@@ -8,9 +8,9 @@ import type {
   FieldId,
   RecordId
 } from '@dataview/core/types'
-import type { DataviewQueryContext } from '@dataview/core/mutation'
 import type {
-  DataviewActiveSpec
+  DataviewActiveSpec,
+  DataviewResolvedContext
 } from '@dataview/engine/active/frame'
 import type {
   DataviewActiveIndex
@@ -159,7 +159,7 @@ export interface DataviewState {
   revision: Revision
   document?: {
     current: DataDoc
-    query: DataviewQueryContext
+    query: DataviewResolvedContext
   }
   active: DataviewActiveState
 }

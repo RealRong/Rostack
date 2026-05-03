@@ -11,9 +11,6 @@ import type {
   WhiteboardCompileContext,
   WhiteboardCompileHandlerTable
 } from '@whiteboard/core/mutation/compile/helpers'
-import {
-  createCompileExpect,
-} from '@whiteboard/core/mutation/compile/helpers'
 import { mindmapIntentHandlers } from '@whiteboard/core/mutation/compile/mindmap'
 import { nodeIntentHandlers } from '@whiteboard/core/mutation/compile/node'
 import { whiteboardMutationSchema } from '@whiteboard/core/mutation/model'
@@ -56,12 +53,12 @@ const authoredWhiteboardCompileHandlers = {
   'edge.label.update': edgeIntentHandlers['edge.label.update'],
   'edge.label.move': edgeIntentHandlers['edge.label.move'],
   'edge.label.delete': edgeIntentHandlers['edge.label.delete'],
-  'edge.route.insert': edgeIntentHandlers['edge.route.insert'],
-  'edge.route.update': edgeIntentHandlers['edge.route.update'],
-  'edge.route.set': edgeIntentHandlers['edge.route.set'],
-  'edge.route.move': edgeIntentHandlers['edge.route.move'],
-  'edge.route.delete': edgeIntentHandlers['edge.route.delete'],
-  'edge.route.clear': edgeIntentHandlers['edge.route.clear'],
+  'edge.points.insert': edgeIntentHandlers['edge.points.insert'],
+  'edge.points.update': edgeIntentHandlers['edge.points.update'],
+  'edge.points.set': edgeIntentHandlers['edge.points.set'],
+  'edge.points.move': edgeIntentHandlers['edge.points.move'],
+  'edge.points.delete': edgeIntentHandlers['edge.points.delete'],
+  'edge.points.clear': edgeIntentHandlers['edge.points.clear'],
   'mindmap.create': mindmapIntentHandlers['mindmap.create'],
   'mindmap.delete': mindmapIntentHandlers['mindmap.delete'],
   'mindmap.layout.set': mindmapIntentHandlers['mindmap.layout.set'],
@@ -170,7 +167,40 @@ export const whiteboardCompile: MutationCompile<
           cancelled,
         } as unknown as WhiteboardCompileContext
 
-        context.expect = createCompileExpect(context)
+        context.expect = {
+          node: (id) => {
+            const node = reader.node.get(id)
+            if (node) {
+              return node
+            }
+            invalid(`Node ${id} not found.`)
+            return undefined
+          },
+          edge: (id) => {
+            const edge = reader.edge.get(id)
+            if (edge) {
+              return edge
+            }
+            invalid(`Edge ${id} not found.`)
+            return undefined
+          },
+          group: (id) => {
+            const group = reader.group.get(id)
+            if (group) {
+              return group
+            }
+            invalid(`Group ${id} not found.`)
+            return undefined
+          },
+          mindmap: (id) => {
+            const mindmap = reader.mindmap.get(id)
+            if (mindmap) {
+              return mindmap
+            }
+            invalid(`Mindmap ${id} not found.`)
+            return undefined
+          }
+        }
 
         return compileHandler(context)
       }

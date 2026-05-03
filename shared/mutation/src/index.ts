@@ -5,6 +5,9 @@ export {
   field
 } from './schema/field'
 export {
+  optional
+} from './schema/optional'
+export {
   object
 } from './schema/object'
 export {
@@ -86,7 +89,8 @@ export type {
   MutationConflictScope
 } from './writer/conflict'
 export type {
-  MutationDelta
+  MutationDelta,
+  MutationDeltaSource
 } from './delta/createDelta'
 export type {
   MutationQuery

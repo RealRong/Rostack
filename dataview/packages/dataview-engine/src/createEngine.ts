@@ -8,7 +8,6 @@ import {
   compile
 } from '@dataview/core/mutation'
 import {
-  createDataviewQueryContext,
   dataviewMutationSchema,
   type DataviewMutationDelta,
 } from '@dataview/core/mutation'
@@ -38,6 +37,9 @@ import {
 import {
   createDataviewProjection
 } from '@dataview/engine/projection'
+import {
+  createDataviewResolvedContext
+} from '@dataview/engine/active/frame'
 import {
   createEngineSource
 } from '@dataview/engine/source/createEngineSource'
@@ -94,7 +96,7 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
   const readCurrent = (): DataviewCurrent => {
     const current = mutationEngine.current()
     const document = asDataDoc(current.document)
-    const context = createDataviewQueryContext(document)
+    const context = createDataviewResolvedContext(document)
     return {
       rev: current.rev,
       doc: document,

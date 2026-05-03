@@ -14,9 +14,9 @@ import type {
 } from '@whiteboard/core/types'
 import type {
   DrawPreview,
-  EditorScene,
-  PreviewInput
+  EditorScene
 } from '@whiteboard/editor-scene'
+import type { EditorPreviewState } from '@whiteboard/editor/state/preview'
 import type { EdgeGuide } from '@whiteboard/editor/state/preview-types'
 import type { DrawState } from '@whiteboard/editor/schema/draw-state'
 import type { EditSession } from '@whiteboard/editor/schema/edit'
@@ -89,7 +89,7 @@ export type EditorState = {
   edit: store.ReadStore<EditSession | null>
   selection: store.ReadStore<SelectionTarget>
   interaction: store.ReadStore<EditorInteractionState>
-  preview: store.ReadStore<PreviewInput>
+  preview: store.ReadStore<EditorPreviewState>
   viewport: EditorViewportStateRead
 }
 

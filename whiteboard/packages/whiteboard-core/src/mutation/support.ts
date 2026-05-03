@@ -1,6 +1,6 @@
+import { entityTable } from '@shared/core'
 import type {
   MutationSequenceAnchor,
-  MutationTreeSnapshot,
 } from '@shared/mutation'
 import {
   draft
@@ -40,7 +40,7 @@ import {
 export type WhiteboardMindmapTreeValue = {
   side?: 'left' | 'right'
   collapsed?: boolean
-  branchStyle: MindmapRecord['members'][NodeId]['branchStyle']
+  branchStyle: NonNullable<MindmapRecord['tree']['nodes'][NodeId]['value']>['branchStyle']
 }
 
 const CANVAS_REF_SEPARATOR = '\u0000'
@@ -198,20 +198,8 @@ export const toCanvasOrderAnchor = (
       }
 }
 
-export const getLabels = (
-  edge: Edge
-): readonly EdgeLabel[] => edge.labels ?? []
-
-export const getManualRoutePoints = (
-  edge: Edge
-): readonly EdgeRoutePoint[] => (
-  edge.route?.kind === 'manual'
-    ? edge.route.points
-    : []
-)
-
 const createMindmapStructureValue = (
-  member: MindmapRecord['members'][NodeId] | undefined,
+  member: NonNullable<MindmapRecord['tree']['nodes'][NodeId]['value']> | undefined,
   nodeId: NodeId
 ): WhiteboardMindmapTreeValue => {
   if (!member) {
@@ -225,75 +213,6 @@ const createMindmapStructureValue = (
   }
 }
 
-export const createMindmapTreeSnapshot = (
-  record: MindmapRecord
-): MutationTreeSnapshot<WhiteboardMindmapTreeValue> => ({
-  rootIds: [record.root],
-  nodes: Object.fromEntries(
-    Object.entries(record.members).map(([nodeId, member]) => [
-      nodeId,
-      {
-        ...(member.parentId === undefined ? {} : { parentId: member.parentId }),
-        children: [...(record.children[nodeId as NodeId] ?? [])],
-        value: createMindmapStructureValue(member, nodeId as NodeId)
-      }
-    ])
-  )
-})
-
-export const writeMindmapTreeSnapshot = (
-  document: Document,
-  id: MindmapId,
-  tree: MutationTreeSnapshot<WhiteboardMindmapTreeValue>
-): Document => {
-  const current = document.mindmaps[id]
-  if (!current) {
-    throw new Error(`Mindmap ${id} not found.`)
-  }
-  if (tree.rootIds.length !== 1) {
-    throw new Error(`Mindmap ${id} must contain exactly one root.`)
-  }
-
-  const rootId = tree.rootIds[0] as NodeId
-  if (!tree.nodes[rootId]) {
-    throw new Error(`Mindmap ${id} root ${rootId} not found in tree snapshot.`)
-  }
-
-  const members = Object.fromEntries(
-    Object.entries(tree.nodes).map(([nodeId, node]) => {
-      const value = node.value
-      if (!value) {
-        throw new Error(`Mindmap node ${nodeId} is missing structural value.`)
-      }
-
-      return [nodeId, {
-        ...(node.parentId === undefined ? {} : { parentId: node.parentId }),
-        ...(value.side === undefined ? {} : { side: value.side }),
-        ...(value.collapsed === undefined ? {} : { collapsed: value.collapsed }),
-        branchStyle: clone(value.branchStyle)!
-      }]
-    })
-  ) as MindmapRecord['members']
-
-  return {
-    ...document,
-    mindmaps: {
-      ...document.mindmaps,
-      [id]: {
-        ...current,
-        root: rootId,
-        members,
-        children: Object.fromEntries(
-          Object.entries(tree.nodes).map(([nodeId, node]) => [
-            nodeId,
-            [...node.children]
-          ])
-        )
-      }
-    }
-  }
-}
-
 export const writeMindmapMemberSide = (
   document: Document,
   id: MindmapId,
@@ -301,7 +220,8 @@ export const writeMindmapMemberSide = (
   side: 'left' | 'right' | undefined
 ): Document => {
   const current = document.mindmaps[id]
-  const member = current?.members[nodeId]
+  const snapshot = current?.tree.nodes[nodeId]
+  const member = snapshot?.value
   if (!current || !member) {
     throw new Error(`Mindmap topic ${nodeId} not found in ${id}.`)
   }
@@ -329,9 +249,15 @@ export const writeMindmapMemberSide = (
       ...document.mindmaps,
       [id]: {
         ...current,
-        members: {
-          ...current.members,
-          [nodeId]: nextMember
+        tree: {
+          ...current.tree,
+          nodes: {
+            ...current.tree.nodes,
+            [nodeId]: {
+              ...snapshot,
+              value: nextMember
+            }
+          }
         }
       }
     }
@@ -342,14 +268,14 @@ export const resolveInsertedMindmapBranchStyle = (
   record: MindmapRecord,
   parentId: NodeId,
   side?: 'left' | 'right'
-): MindmapRecord['members'][NodeId]['branchStyle'] => {
-  const siblings = record.children[parentId] ?? []
+): NonNullable<MindmapRecord['tree']['nodes'][NodeId]['value']>['branchStyle'] => {
+  const siblings = record.tree.nodes[parentId]?.children ?? []
   const siblingId = side
-    ? siblings.find((childId) => record.members[childId]?.side === side)
+    ? siblings.find((childId) => record.tree.nodes[childId]?.value?.side === side)
     : siblings[0]
   const branch = siblingId
-    ? record.members[siblingId]?.branchStyle
-    : record.members[parentId]?.branchStyle
+    ? record.tree.nodes[siblingId]?.value?.branchStyle
+    : record.tree.nodes[parentId]?.value?.branchStyle
 
   return clone(
     branch ?? mindmapApi.template.defaultBranchStyle
@@ -383,13 +309,13 @@ export const writeEdgeLabels = (
       ...document.edges,
       [edgeId]: {
         ...edge,
-        labels: items.map((item) => clone(item)!)
+        labels: entityTable.normalize.list(items.map((item) => clone(item)!))
       }
     }
   }
 }
 
-export const writeEdgeRoute = (
+export const writeEdgePoints = (
   document: Document,
   edgeId: EdgeId,
   items: readonly EdgeRoutePoint[]
@@ -405,14 +331,9 @@ export const writeEdgeRoute = (
       ...document.edges,
       [edgeId]: {
         ...edge,
-        route: items.length > 0
-          ? {
-              kind: 'manual',
-              points: items.map((item) => clone(item)!)
-            }
-          : {
-              kind: 'auto'
-            }
+        points: items.length > 0
+          ? entityTable.normalize.list(items.map((item) => clone(item)!))
+          : undefined
       }
     }
   }
@@ -430,7 +351,10 @@ const readMindmapLayoutRects = (
     return undefined
   }
 
-  const root = document.nodes[record.root]
+  const rootId = record.tree.rootId
+  const root = rootId
+    ? document.nodes[rootId]
+    : undefined
   if (!root) {
     return undefined
   }

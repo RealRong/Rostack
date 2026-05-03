@@ -183,8 +183,7 @@ export const createTransformSession = (
             return
           }
 
-          writer.preview.node.create({
-            id,
+          writer.preview.node.create(id, {
             patch: nextPatch,
             hovered: false,
             hidden: false
@@ -206,8 +205,7 @@ export const createTransformSession = (
       })
 
       nextNodeById.forEach((patch, id) => {
-        writer.preview.node.create({
-          id,
+        writer.preview.node.create(id, {
           patch,
           hovered: false,
           hidden: false

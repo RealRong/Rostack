@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'vitest'
+import { entityTable } from '@shared/core'
 import { edge as edgeApi } from '@whiteboard/core/edge'
 import { geometry } from '@whiteboard/core/geometry'
 
@@ -14,9 +15,7 @@ const createEdge = (overrides = {}) => ({
     kind: 'point',
     point: { x: 100, y: 100 }
   },
-  route: {
-    kind: 'auto'
-  },
+  points: undefined,
   ...overrides
 })
 
@@ -91,7 +90,7 @@ test('resolveEdgeRouteHandleTarget 解析 anchor 与 segment handle', () => {
   )
 })
 
-test('createRoutePatchFromPathPoints 会把无中间 route 的 path 归一成 auto route', () => {
+test('createRoutePatchFromPathPoints 会把无中间 points 的 path 归一成 undefined points', () => {
   assert.deepEqual(
     edgeApi.edit.routePatchFromPathPoints(
       createEdge(),
@@ -102,9 +101,7 @@ test('createRoutePatchFromPathPoints 会把无中间 route 的 path 归一成 au
       ]
     ),
     {
-      route: {
-        kind: 'auto'
-      }
+      points: undefined
     }
   )
 })
@@ -129,17 +126,14 @@ test('moveElbowRouteSegmentPoints 会把两点 path 扩展为可编辑折线', (
   )
 })
 
-test('moveElbowRouteSegment 会把拖拽后的 elbow segment 转成 manual route patch', () => {
+test('moveElbowRouteSegment 会把拖拽后的 elbow segment 转成 manual points patch', () => {
   assert.deepEqual(
     edgeApi.edit.moveElbowRouteSegment({
       edge: createEdge({
-        route: {
-          kind: 'manual',
-          points: [
-            { x: 0, y: 50 },
-            { x: 100, y: 50 }
-          ]
-        }
+        points: entityTable.normalize.list([
+          { id: 'point-1', x: 0, y: 50 },
+          { id: 'point-2', x: 100, y: 50 }
+        ])
       }),
       pathPoints: [
         { x: 0, y: 0 },
@@ -152,13 +146,10 @@ test('moveElbowRouteSegment 会把拖拽后的 elbow segment 转成 manual route
       delta: 20
     }),
     {
-      route: {
-        kind: 'manual',
-        points: [
-          { x: 0, y: 70 },
-          { x: 100, y: 70 }
-        ]
-      }
+      points: [
+        { x: 0, y: 70 },
+        { x: 100, y: 70 }
+      ]
     }
   )
 })

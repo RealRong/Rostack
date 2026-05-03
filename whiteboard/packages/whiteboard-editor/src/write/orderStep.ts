@@ -91,7 +91,7 @@ export const planCanvasOrderStep = (input: {
   direction: 'forward' | 'backward'
 }): readonly Extract<Intent, { type: 'document.order.move' }>[] => {
   const reader = createWhiteboardReader(() => input.document)
-  const current = reader.document.order.items()
+  const current = reader.order.items()
   const target = reorderCanvasRefs(current, input.refs, input.direction)
   return createCanvasOrderMoveIntents(current, target)
 }

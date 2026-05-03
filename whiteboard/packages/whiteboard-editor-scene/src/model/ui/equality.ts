@@ -326,7 +326,10 @@ export const buildEdgeUiView = (input: {
 }): EdgeUiView => {
   const labelIds = new Set<string>()
 
-  input.entry.base.edge.labels?.forEach((label) => {
+  entityTable.read.list(input.entry.base.edge.labels ?? {
+    ids: [],
+    byId: {}
+  }).forEach((label) => {
     labelIds.add(label.id)
   })
   input.view.route.labels.forEach((label) => {
@@ -471,3 +474,4 @@ export const isEdgeUiViewEqual = (
   && left.editingLabelId === right.editingLabelId
   && equal.sameMap(left.labels, right.labels, isEdgeLabelUiViewEqual)
 )
+import { entityTable } from '@shared/core'

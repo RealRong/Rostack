@@ -8,10 +8,14 @@ import type {
   DataviewQuery
 } from '@dataview/core/mutation'
 import {
-  createDataviewQueryContext
+  createDataviewQuery
 } from '@dataview/core/mutation'
 import type {
-  DataviewFrame
+  DataviewFrame,
+  DataviewResolvedContext
+} from '@dataview/engine/active/frame'
+import {
+  createDataviewResolvedContext,
 } from '@dataview/engine/active/frame'
 import type {
   IndexTrace
@@ -90,7 +94,7 @@ export interface DataviewIndexResult {
 const createIndexReadContext = (
   document: DataDoc
 ): IndexReadContext => {
-  const context = createDataviewQueryContext(document)
+  const context: DataviewResolvedContext = createDataviewResolvedContext(document)
 
   return {
     document: context.document,
@@ -208,9 +212,10 @@ export const deriveIndex = (input: {
   const previous = input.previous
   const nextDemand = input.demand ?? input.previousDemand
   const demandDelta = diffNormalizedIndexDemand(input.previousDemand, nextDemand)
+  const query = createDataviewQuery(input.document)
   const contentDelta = createContentDelta(
-    createDataviewQueryContext(input.document).query,
-    createDataviewQueryContext(input.document).query.changes(input.delta),
+    query,
+    query.changes(input.delta),
     input.delta.reset()
   )
   const context = createIndexDeriveContext(input.document, contentDelta)

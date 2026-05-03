@@ -3,9 +3,7 @@ import type {
   ViewId
 } from '@dataview/core/types'
 import {
-  createDataviewQueryContext,
   type DataviewMutationDelta,
-  type DataviewQueryContext
 } from '@dataview/core/mutation'
 import {
   createProjection,
@@ -15,7 +13,9 @@ import type {
   ProjectionPhaseTable
 } from '@shared/projection/createProjection'
 import {
-  createDataviewFrame
+  createDataviewFrame,
+  createDataviewResolvedContext,
+  type DataviewResolvedContext
 } from '@dataview/engine/active/frame'
 import {
   createDataviewActivePlan
@@ -54,7 +54,7 @@ export interface DataviewProjectionOutput {
 export interface DataviewProjectionRead {
   document: {
     current(): DataDoc | undefined
-    query(): DataviewQueryContext | undefined
+    query(): DataviewResolvedContext | undefined
   }
   active: {
     id(): ViewId | undefined
@@ -229,7 +229,7 @@ export const createDataviewProjection = () => createProjection({
   }),
   phases: ({
     active: (ctx) => {
-      const query = createDataviewQueryContext(ctx.input.document)
+      const query = createDataviewResolvedContext(ctx.input.document)
       ctx.state.document = {
         current: ctx.input.document,
         query

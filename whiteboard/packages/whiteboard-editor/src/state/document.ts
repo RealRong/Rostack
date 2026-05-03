@@ -26,6 +26,7 @@ import type {
 } from '@whiteboard/editor/schema/edit'
 import {
   EMPTY_PREVIEW_STATE,
+  type EditorPreviewState,
   isEditorPreviewStateEqual,
   normalizeEditorPreviewState
 } from '@whiteboard/editor/state/preview'
@@ -59,7 +60,7 @@ export interface EditorStableState {
 export interface EditorStateDocument {
   state: EditorStableState
   hover: EditorHoverState
-  preview: PreviewInput
+  preview: EditorPreviewState
 }
 
 const EMPTY_EDITOR_HOVER_STATE: EditorHoverState = Object.freeze({
@@ -371,7 +372,9 @@ export const buildEditorStateDocument = (input: {
 })
 
 export const normalizeEditorStateDocument = (
-  value: EditorStateDocument
+  value: Omit<EditorStateDocument, 'preview'> & {
+    preview: PreviewInput
+  }
 ): EditorStateDocument => ({
   state: normalizeEditorStableState(value.state),
   hover: normalizeEditorHoverState(value.hover),

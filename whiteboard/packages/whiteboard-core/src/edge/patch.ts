@@ -1,3 +1,4 @@
+import { entityTable } from '@shared/core'
 import type {
   Edge,
   EdgeLabel,
@@ -12,13 +13,14 @@ const hasOwn = (
 
 const cloneEdgeLabels = (
   labels: readonly EdgeLabel[]
-): EdgeLabel[] => labels.map((label) => ({
+): import('@shared/core').EntityTable<string, EdgeLabel> => entityTable.normalize.list(labels.map((label) => ({
   id: label.id,
   text: label.text,
   t: label.t,
   offset: label.offset,
-  style: label.style ? { ...label.style } : undefined
-}))
+  style: label.style ? { ...label.style } : undefined,
+  data: label.data ? { ...label.data } : undefined
+})))
 
 export const isEdgePatchEqual = (
   left?: EdgePatch,
@@ -27,7 +29,7 @@ export const isEdgePatchEqual = (
   left?.type === right?.type
   && sameEdgeEnd(left?.source, right?.source)
   && sameEdgeEnd(left?.target, right?.target)
-  && left?.route === right?.route
+  && left?.points === right?.points
   && left?.style === right?.style
   && left?.textMode === right?.textMode
   && left?.labels === right?.labels
@@ -65,25 +67,24 @@ export const applyEdgePatch = (
     }
   }
 
-  if (patch.route && patch.route !== next.route) {
-    const currentPoints = next.route?.kind === 'manual'
-      ? next.route.points
+  if (hasOwn(patch, 'points') && patch.points !== undefined) {
+    const currentPoints = next.points
+      ? entityTable.read.list(next.points)
       : []
     next = {
       ...next,
-      route:
-        patch.route.kind === 'manual'
-          ? {
-              kind: 'manual',
-              points: patch.route.points.map((point, index) => ({
-                id: currentPoints[index]?.id ?? `preview:${index}`,
-                x: point.x,
-                y: point.y
-              }))
-            }
-          : {
-              kind: 'auto'
-            }
+      points: entityTable.normalize.list(patch.points.map((point, index) => ({
+        id: currentPoints[index]?.id ?? `preview:${index}`,
+        x: point.x,
+        y: point.y
+      })))
+    }
+  }
+
+  if (hasOwn(patch, 'points') && patch.points === undefined && next.points !== undefined) {
+    next = {
+      ...next,
+      points: undefined
     }
   }
 
@@ -103,7 +104,7 @@ export const applyEdgePatch = (
     }
   }
 
-  if (patch.labels && patch.labels !== next.labels) {
+  if (patch.labels) {
     next = {
       ...next,
       labels: cloneEdgeLabels(patch.labels)

@@ -11,7 +11,6 @@ import type {
   MutationTreeNode
 } from '../schema/node'
 import {
-  isMutationGroup,
   isMutationNode
 } from '../schema/node'
 import type {
@@ -158,16 +157,3 @@ export const emitShapePatch = (
     emitNodePatch(entry, value, targetId, writes)
   })
 }
-
-export const hasWritableDocumentMembers = (
-  shape: MutationShape
-): boolean => Object.values(shape).some((value) => (
-  isMutationNode(value)
-  && (
-    value.kind === 'field'
-    || value.kind === 'object'
-    || value.kind === 'dictionary'
-    || value.kind === 'sequence'
-    || value.kind === 'tree'
-  )
-))

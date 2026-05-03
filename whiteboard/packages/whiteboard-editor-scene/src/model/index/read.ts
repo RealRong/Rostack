@@ -62,13 +62,13 @@ export const readMindmapStructure = (input: {
 
   const record = input.document.mindmaps[id]
   const tree = readMindmapTree(record)
-  if (!record || !tree) {
+  if (!record || !tree || !record.tree.rootId) {
     return undefined
   }
 
   return {
     id,
-    rootId: record.root,
+    rootId: record.tree.rootId,
     nodeIds: input.indexes.mindmapNodes.get(id) ?? readMindmapNodeIds(record),
     tree
   }

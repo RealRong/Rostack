@@ -1,4 +1,5 @@
 import type {
+  DataDoc,
   Field,
   FieldId,
   FilterRule,
@@ -10,7 +11,6 @@ import type {
   DataviewMutationChanges,
   DataviewMutationDelta,
   DataviewQuery,
-  DataviewQueryContext
 } from '@dataview/core/mutation'
 import type {
   CalculationDemand
@@ -29,7 +29,8 @@ import {
 } from '@dataview/core/view/order'
 import type {
   DataviewActiveSpec,
-  DataviewFrame
+  DataviewFrame,
+  DataviewResolvedContext
 } from '@dataview/engine/active/frame'
 import type {
   DataviewIndexResult
@@ -101,13 +102,14 @@ const isKnownFieldId = (
 ): boolean => fieldId === 'title' || reader.fields.has(fieldId)
 
 const resolveSearchFieldIds = (
+  document: DataDoc,
   reader: DataviewQuery,
   view: View
 ): readonly FieldId[] => (
   view.search.fields?.length
     ? collection.uniqueSorted(view.search.fields.filter(fieldId => isKnownFieldId(reader, fieldId)))
     : resolveDefaultSearchFieldIds({
-      document: reader.document(),
+      document,
       reader
     })
 )
@@ -165,10 +167,11 @@ const resolveIndexedFilterRules = (
 }
 
 const createQueryPlan = (
+  document: DataDoc,
   reader: DataviewQuery,
   view: View
 ): QueryPlan => {
-  const searchFieldIds = resolveSearchFieldIds(reader, view)
+  const searchFieldIds = resolveSearchFieldIds(document, reader, view)
   const searchQuery = string.trimLowercase(view.search.query)
   const filters = resolveEffectiveFilterRules(reader, view)
   const search = searchQuery
@@ -222,10 +225,11 @@ const readCalculationDemands = (
 }
 
 export const compileDataviewResolvedActive = (
+  document: DataDoc,
   reader: DataviewQuery,
   view: View
 ): DataviewActiveSpec => {
-  const query = createQueryPlan(reader, view)
+  const query = createQueryPlan(document, reader, view)
   const indexedFilters = resolveIndexedFilterRules(reader, view)
   const fields = viewApi.fields.read.ids(view).length
     ? [...viewApi.demand.fields(view)]
@@ -268,11 +272,11 @@ export const compileDataviewResolvedActive = (
   ])
   const { calcFields, calculations } = readCalculationDemands(view)
   const demand = normalizeIndexDemand({
-    document: reader.document(),
+    document,
     reader
   }, {
     search: {
-      fieldIds: query.search?.fieldIds ?? resolveSearchFieldIds(reader, view)
+      fieldIds: query.search?.fieldIds ?? resolveSearchFieldIds(document, reader, view)
     },
     ...(buckets.length ? { buckets } : {}),
     ...(fields.length ? { fields } : {}),
@@ -291,7 +295,7 @@ export const compileDataviewResolvedActive = (
 }
 
 export const resolveDataviewActive = (
-  context: DataviewQueryContext,
+  context: DataviewResolvedContext,
   activeViewId?: ViewId
 ): DataviewActiveSpec | undefined => {
   const view = activeViewId === context.activeViewId
@@ -301,7 +305,7 @@ export const resolveDataviewActive = (
       : undefined
 
   return view
-    ? compileDataviewResolvedActive(context.query, view)
+    ? compileDataviewResolvedActive(context.document, context.query, view)
     : undefined
 }
 
@@ -601,7 +605,7 @@ export const createDataviewActivePlan = (input: {
 
   const previousSpec = input.previous.spec
   const previousSnapshot = input.previous.snapshot
-  const activeViewChanged = input.frame.delta.document.activeViewId.changed()
+  const activeViewChanged = input.frame.delta.activeViewId.changed()
   const sectionChanged = !sameSection(previousSpec?.section, active.section)
   const calcFieldsChanged = !sameCalcFields(previousSpec?.calcFields, active.calcFields)
   const phaseRebuild = (

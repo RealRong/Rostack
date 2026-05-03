@@ -99,7 +99,7 @@ export const readEdgeRoutePoints = (input: {
 }): readonly EdgeRoutePoint[] => {
   const isStepManual =
     (input.edge.type === 'elbow' || input.edge.type === 'fillet')
-    && input.edge.route?.kind === 'manual'
+    && Boolean(input.edge.points?.ids.length)
 
   return input.handles.flatMap<EdgeRoutePoint>((handle) => {
     if (handle.kind === 'anchor') {
@@ -149,7 +149,7 @@ export const createRoutePatchFromPathPoints = (
   const routePoints = geometryApi.polyline.normalize(pathPoints).slice(1, -1)
 
   return routePoints.length > 0
-    ? setRoutePoints(edge, routePoints)
+    ? setRoutePoints(routePoints)
     : clearRoute(edge)
 }
 

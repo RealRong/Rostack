@@ -6,11 +6,9 @@ export type {
 } from './compile'
 export {
   createDataviewQuery,
-  createDataviewQueryContext
 } from './query'
 export type {
   DataviewQuery,
-  DataviewQueryContext
 } from './query'
 export {
   dataviewMutationSchema,

@@ -21,9 +21,7 @@ const createEdge = (
       y: 80
     }
   },
-  route: {
-    kind: 'auto'
-  }
+  points: undefined
 })
 
 describe('getEdgePath', () => {

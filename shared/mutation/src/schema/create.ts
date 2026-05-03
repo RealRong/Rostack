@@ -42,13 +42,9 @@ export const createFieldNode = <TValue, TOptional extends boolean = false>(
 ): MutationFieldNode<TValue, TOptional> => createNode({
   kind: 'field',
   [MUTATION_OPTIONAL]: optional,
-  optional() {
-    return createFieldNode<TValue, true>(true)
-  }
 } as {
   kind: 'field'
   [MUTATION_OPTIONAL]: TOptional
-  optional(): MutationFieldNode<TValue, true>
 }) as MutationFieldNode<TValue, TOptional>
 
 export const createObjectNode = <TShape extends MutationShape>(
@@ -84,15 +80,21 @@ export const createSequenceNode = <TItem,>(
 export const createTreeNode = <TNodeId extends string, TValue,>(
   access?: MutationAccessOverride<MutationTreeSnapshot<TValue>>
 ): MutationTreeNode<TNodeId, TValue> => {
-  const node = createNode({
+  const node = createNode<{
+    kind: 'tree'
+    from(nextAccess: MutationAccessOverride<MutationTreeSnapshot<TValue>>): MutationTreeNode<TNodeId, TValue>
+  }>({
     kind: 'tree',
     from(nextAccess: MutationAccessOverride<MutationTreeSnapshot<TValue>>) {
-      return createTreeNode(nextAccess)
+      return createTreeNode(nextAccess) as MutationTreeNode<TNodeId, TValue>
     }
-  })
+  }) as MutationTreeNode<TNodeId, TValue>
 
   if (access) {
-    setNodeAccess(node, access)
+    setNodeAccess(
+      node as MutationTreeNode<string, TValue>,
+      access as MutationAccessOverride<MutationTreeSnapshot<TValue>>
+    )
   }
 
   return node

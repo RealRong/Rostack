@@ -81,7 +81,7 @@ const patchNodeIdOrder = (
 export const readMindmapNodeIds = (
   record: MindmapRecord | undefined
 ): readonly NodeId[] => record
-  ? Object.keys(record.members) as readonly NodeId[]
+  ? Object.keys(record.tree.nodes) as readonly NodeId[]
   : []
 
 export const readMindmapTree = (

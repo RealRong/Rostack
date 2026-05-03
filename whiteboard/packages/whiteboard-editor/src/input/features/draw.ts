@@ -316,9 +316,7 @@ const createDrawStrokeSession = (
         return
       }
 
-      writer.preview.draw.patch({
-        current: nextDraw
-      })
+      writer.preview.draw.set(nextDraw)
     })
   }
 
@@ -353,9 +351,7 @@ const createDrawStrokeSession = (
           return
         }
 
-        writer.preview.draw.patch({
-          current: null
-        })
+        writer.preview.draw.clear()
       })
     }
   }
@@ -389,8 +385,7 @@ const createEraseSession = (
           return
         }
 
-        writer.preview.node.create({
-          id,
+        writer.preview.node.create(id, {
           hovered: false,
           hidden: true
         })
@@ -406,8 +401,7 @@ const createEraseSession = (
     })
 
     hidden.forEach((id) => {
-      writer.preview.node.create({
-        id,
+      writer.preview.node.create(id, {
         hovered: false,
         hidden: true
       })
@@ -441,8 +435,7 @@ const createEraseSession = (
             return
           }
 
-          writer.preview.node.create({
-            id,
+          writer.preview.node.create(id, {
             hovered: false,
             hidden: true
           })
@@ -458,8 +451,7 @@ const createEraseSession = (
       })
 
       hidden.forEach((id) => {
-        writer.preview.node.create({
-          id,
+        writer.preview.node.create(id, {
           hovered: false,
           hidden: true
         })

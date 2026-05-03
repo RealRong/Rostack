@@ -1,6 +1,5 @@
 import type {
   EdgeEnd,
-  EdgeRoute,
   NodeEdgeEnd,
   PointEdgeEnd
 } from '@whiteboard/core/types'
@@ -13,7 +12,8 @@ export const isPointEdgeEnd = (
   value: EdgeEnd
 ): value is PointEdgeEnd => value.kind === 'point'
 
-export const isManualEdgeRoute = (
-  route: EdgeRoute | undefined
-): route is Extract<EdgeRoute, { kind: 'manual' }> =>
-  route?.kind === 'manual'
+export const hasManualEdgePoints = <T>(
+  points: T[] | { ids: readonly string[] } | undefined
+): boolean => Array.isArray(points)
+  ? points.length > 0
+  : Boolean(points?.ids.length)

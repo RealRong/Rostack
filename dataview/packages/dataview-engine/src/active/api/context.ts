@@ -10,7 +10,7 @@ import type {
   Engine
 } from '@dataview/engine/contracts/api'
 import {
-  createDataviewQueryContext,
+  createDataviewQuery,
   type DataviewQuery
 } from '@dataview/core/mutation'
 
@@ -27,7 +27,7 @@ export const createActiveContext = (
   engine: Pick<Engine, 'current' | 'doc' | 'execute'>
 ): ActiveViewContext => {
   const state = (): ViewState | undefined => engine.current().active
-  const reader = createDataviewQueryContext(engine.doc()).query
+  const reader = createDataviewQuery(engine.doc())
   const view = () => engine.current().docActiveView
   const resolveGroupField = (
     currentView = view()

@@ -99,18 +99,26 @@ export type MindmapLayoutSpec = {
 }
 
 export type MindmapMemberRecord = {
-  parentId?: MindmapNodeId
   side?: 'left' | 'right'
   collapsed?: boolean
   branchStyle: MindmapBranchStyle
 }
 
+export type MindmapTreeNodeSnapshot = {
+  parentId?: MindmapNodeId
+  children: MindmapNodeId[]
+  value?: MindmapMemberRecord
+}
+
+export type MindmapTreeSnapshot = {
+  rootId?: MindmapNodeId
+  nodes: Record<MindmapNodeId, MindmapTreeNodeSnapshot>
+}
+
 export type MindmapRecord = {
   id: MindmapId
-  root: MindmapNodeId
-  members: Record<MindmapNodeId, MindmapMemberRecord>
-  children: Record<MindmapNodeId, MindmapNodeId[]>
   layout: MindmapLayoutSpec
+  tree: MindmapTreeSnapshot
 }
 
 export interface MindmapTree {

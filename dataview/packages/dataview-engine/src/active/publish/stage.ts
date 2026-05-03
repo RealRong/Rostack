@@ -227,11 +227,11 @@ export const publishActiveView = (input: {
     previous: canReusePublished
       ? previous?.summaries
       : undefined,
-    reader: input.frame.reader,
+    reader: input.frame.query,
     view: input.active.view
   })
   const base = publishViewBase({
-    reader: input.frame.reader,
+    reader: input.frame.query,
     viewId: input.active.id,
     previous: canReusePublished && previous
       ? {

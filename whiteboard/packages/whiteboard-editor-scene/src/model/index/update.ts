@@ -225,9 +225,6 @@ const clearMindmapEntries = (
     state.parentByNode.delete(nodeId)
     state.childrenByNode.delete(nodeId)
   })
-  Object.keys(record.children).forEach((nodeId) => {
-    state.childrenByNode.delete(nodeId as NodeId)
-  })
   state.childrenByNode.delete(tree.rootNodeId)
 }
 
@@ -245,8 +242,9 @@ const patchMindmapEntries = (
   state.mindmapNodes.set(mindmapId, nodeIds)
 
   nodeIds.forEach((nodeId) => {
-    state.parentByNode.set(nodeId, record.members[nodeId]?.parentId)
-    state.childrenByNode.set(nodeId, [...(record.children[nodeId] ?? [])])
+    const node = record.tree.nodes[nodeId]
+    state.parentByNode.set(nodeId, node?.parentId)
+    state.childrenByNode.set(nodeId, [...(node?.children ?? [])])
   })
 }
 

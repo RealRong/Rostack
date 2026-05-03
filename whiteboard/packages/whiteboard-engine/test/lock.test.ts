@@ -53,9 +53,7 @@ const createEdge = ({
     kind: 'node' as const,
     nodeId: targetId
   },
-  route: {
-    kind: 'auto' as const
-  }
+  points: undefined
 })
 
 const createLockedDocument = () => {

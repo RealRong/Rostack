@@ -1,6 +1,6 @@
 import { metrics } from '@shared/core'
 import {
-  createDataviewQueryContext,
+  createDataviewQuery,
   dataviewMutationSchema,
   type DataviewMutationDelta
 } from '@dataview/core/mutation'
@@ -49,7 +49,7 @@ const summarizeTypedDelta = (
   commit: EngineCommit
 ): TraceDeltaSummary => {
   const delta = commit.delta as DataviewMutationDelta
-  const query = createDataviewQueryContext(commit.document).query
+  const query = createDataviewQuery(commit.document)
   const changes = query.changes(delta)
   const nodes = dataviewMutationSchema.shape
   const facts: Array<{
@@ -133,7 +133,7 @@ const summarizeTypedDelta = (
     delta,
     match: (write) => write.kind === 'entity.remove' && write.node === nodes.views
   }))
-  pushFact('activeView.set', delta.document.activeViewId.changed() ? 1 : undefined)
+  pushFact('activeView.set', delta.activeViewId.changed() ? 1 : undefined)
   pushFact('reset', delta.reset() ? 1 : undefined)
 
   return {
@@ -141,7 +141,7 @@ const summarizeTypedDelta = (
       records: touchedRecords === 'all' || touchedRecords.size > 0,
       fields: touchedFields === 'all' || touchedFields.size > 0,
       views: touchedViews === 'all' || touchedViews.size > 0,
-      activeView: delta.document.activeViewId.changed(),
+      activeView: delta.activeViewId.changed(),
       external: false,
       indexes: touchedRecords === 'all'
         || touchedRecords.size > 0

@@ -8,7 +8,7 @@ import type {
   ResolveEdgePathFromRectsInput,
   ResolvedEdgePathFromRects
 } from '@whiteboard/core/types/edge'
-import { readEdgeRoutePoints } from '@whiteboard/core/edge/route'
+import { readEdgePoints } from '@whiteboard/core/edge/route'
 import { resolveEdgeEnds } from '@whiteboard/core/edge/endpoints'
 
 const DEFAULT_ORTHO_OFFSET = 50
@@ -51,7 +51,7 @@ const getPathPoints = (
   input: EdgePathInput
 ) => [
   input.source.point,
-  ...readEdgeRoutePoints(input.edge.route),
+  ...readEdgePoints(input.edge.points),
   input.target.point
 ]
 
@@ -954,7 +954,7 @@ const linearRouter: EdgeRouter = (input) => {
 }
 
 const stepRouter: EdgeRouter = ({ edge, source, target }) => {
-  if (readEdgeRoutePoints(edge.route).length > 0) {
+  if (readEdgePoints(edge.points).length > 0) {
     const points = geometryApi.polyline.normalize(getPathPoints({
       edge,
       source,

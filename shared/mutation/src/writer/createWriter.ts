@@ -17,17 +17,12 @@ import type {
   MutationTreeNode
 } from '../schema/node'
 import {
-  isMutationGroup,
   isMutationNode
 } from '../schema/node'
 import type {
-  MutationEntityValue,
   MutationValueOfShape
 } from '../schema/value'
 import type {
-  MutationDocumentKeys,
-  MutationHasDocumentMembers,
-  MutationNamespaceKeys,
   MutationShapeKeys
 } from '../schema/facadeTypes'
 import type {
@@ -37,8 +32,7 @@ import {
   scopeTargetId
 } from '../internal/state'
 import {
-  emitShapePatch,
-  hasWritableDocumentMembers
+  emitShapePatch
 } from './patch'
 
 type MutationWriterField<TValue> = {
@@ -72,26 +66,24 @@ type MutationWriterShape<TShape extends MutationShape> = {
   patch(patch: Partial<MutationValueOfShape<TShape>>): void
 }
 
-type MutationWriterObject<TShape extends MutationShape> = MutationWriterShape<TShape> & {
-  patch(patch: Partial<MutationValueOfShape<TShape>>): void
-}
+type MutationWriterObject<TShape extends MutationShape> = MutationWriterShape<TShape>
 
-type MutationWriterCollectionItem<TId extends string, TShape extends MutationShape> = MutationWriterObject<TShape> & {
-  replace(value: MutationEntityValue<TId, TShape>): void
+type MutationWriterCollectionItem<TShape extends MutationShape> = MutationWriterObject<TShape> & {
+  replace(value: MutationValueOfShape<TShape>): void
   remove(): void
 }
 
-type MutationWriterTableCollection<TId extends string, TShape extends MutationShape> = ((id: TId) => MutationWriterCollectionItem<TId, TShape>) & {
-  create(value: MutationEntityValue<TId, TShape>, anchor?: MutationSequenceAnchor): void
+type MutationWriterTableCollection<TId extends string, TShape extends MutationShape> = ((id: TId) => MutationWriterCollectionItem<TShape>) & {
+  create(id: TId, value: MutationValueOfShape<TShape>, anchor?: MutationSequenceAnchor): void
   move(id: TId, anchor?: MutationSequenceAnchor): void
   remove(id: TId): void
-  replace(id: TId, value: MutationEntityValue<TId, TShape>): void
+  replace(id: TId, value: MutationValueOfShape<TShape>): void
 }
 
-type MutationWriterMapCollection<TId extends string, TShape extends MutationShape> = ((id: TId) => MutationWriterCollectionItem<TId, TShape>) & {
-  create(value: MutationEntityValue<TId, TShape>): void
+type MutationWriterMapCollection<TId extends string, TShape extends MutationShape> = ((id: TId) => MutationWriterCollectionItem<TShape>) & {
+  create(id: TId, value: MutationValueOfShape<TShape>): void
   remove(id: TId): void
-  replace(id: TId, value: MutationEntityValue<TId, TShape>): void
+  replace(id: TId, value: MutationValueOfShape<TShape>): void
 }
 
 type MutationWriterNode<TNode> =
@@ -113,28 +105,12 @@ type MutationWriterNode<TNode> =
   : TNode extends MutationMapNode<infer TId extends string, infer TShape>
     ? MutationWriterMapCollection<TId, TShape>
   : TNode extends MutationShape
-    ? MutationWriterNamespace<TNode>
+    ? MutationWriterShape<TNode>
   : never
-
-type MutationWriterDocument<TShape extends MutationShape> = {
-  readonly [K in MutationDocumentKeys<TShape>]: MutationWriterNode<TShape[K]>
-} & {
-  patch(patch: Partial<MutationValueOfShape<TShape>>): void
-}
-
-type MutationWriterNamespace<TShape extends MutationShape> = {
-  readonly [K in MutationNamespaceKeys<TShape>]: MutationWriterNode<TShape[K]>
-} & (
-  MutationHasDocumentMembers<TShape> extends false
-    ? {}
-    : {
-        document: MutationWriterDocument<TShape>
-      }
-)
 
 export type MutationWriter<TSchema extends MutationSchema = MutationSchema> =
   TSchema extends MutationSchema<infer TShape>
-    ? MutationWriterNamespace<TShape> & {
+    ? MutationWriterShape<TShape> & {
         writes(): readonly MutationWrite[]
       }
     : never
@@ -310,39 +286,6 @@ const createShapeWriter = (
   }
 }
 
-const createDocumentWriter = (
-  shape: MutationShape,
-  writes: MutationWrite[],
-  targetId?: string
-): Record<string, unknown> => {
-  const base = Object.fromEntries(
-    Object.entries(shape)
-      .filter(([, value]) => isMutationNode(value) && (
-        value.kind === 'field'
-        || value.kind === 'object'
-        || value.kind === 'dictionary'
-        || value.kind === 'sequence'
-        || value.kind === 'tree'
-      ))
-      .map(([key, value]) => [
-        key,
-        createNodeWriter(value as MutationShapeNode, writes, targetId)
-      ])
-  )
-
-  return {
-    ...base,
-    patch(patch: Partial<MutationValueOfShape<typeof shape>>) {
-      emitShapePatch(
-        shape,
-        patch as Record<string, unknown>,
-        targetId,
-        writes
-      )
-    }
-  }
-}
-
 const createObjectWriter = (
   node: MutationObjectNode<MutationShape>,
   writes: MutationWrite[],
@@ -372,7 +315,7 @@ const createCollectionItemWriter = (
   ownerTargetId?: string
 ) => ({
   ...createShapeWriter(node.shape, writes, scopeTargetId(ownerTargetId, id)),
-  replace(value: MutationEntityValue<string, MutationShape>) {
+  replace(value: MutationValueOfShape<MutationShape>) {
     pushWrite(writes, {
       kind: 'entity.replace',
       node,
@@ -396,11 +339,11 @@ const createTableWriter = (
 ) => Object.assign(
   (id: string) => createCollectionItemWriter(node, writes, id, ownerTargetId),
   {
-    create(value: MutationEntityValue<string, MutationShape>, anchor?: MutationSequenceAnchor) {
+    create(id: string, value: MutationValueOfShape<MutationShape>, anchor?: MutationSequenceAnchor) {
       pushWrite(writes, {
         kind: 'entity.create',
         node,
-        targetId: scopeTargetId(ownerTargetId, value.id),
+        targetId: scopeTargetId(ownerTargetId, id),
         value,
         ...(anchor === undefined ? {} : { anchor })
       })
@@ -420,7 +363,7 @@ const createTableWriter = (
         targetId: scopeTargetId(ownerTargetId, id)
       })
     },
-    replace(id: string, value: MutationEntityValue<string, MutationShape>) {
+    replace(id: string, value: MutationValueOfShape<MutationShape>) {
       pushWrite(writes, {
         kind: 'entity.replace',
         node,
@@ -438,11 +381,11 @@ const createMapWriter = (
 ) => Object.assign(
   (id: string) => createCollectionItemWriter(node, writes, id, ownerTargetId),
   {
-    create(value: MutationEntityValue<string, MutationShape>) {
+    create(id: string, value: MutationValueOfShape<MutationShape>) {
       pushWrite(writes, {
         kind: 'entity.create',
         node,
-        targetId: scopeTargetId(ownerTargetId, value.id),
+        targetId: scopeTargetId(ownerTargetId, id),
         value
       })
     },
@@ -453,7 +396,7 @@ const createMapWriter = (
         targetId: scopeTargetId(ownerTargetId, id)
       })
     },
-    replace(id: string, value: MutationEntityValue<string, MutationShape>) {
+    replace(id: string, value: MutationValueOfShape<MutationShape>) {
       pushWrite(writes, {
         kind: 'entity.replace',
         node,
@@ -470,7 +413,7 @@ const createNodeWriter = (
   targetId?: string
 ): unknown => {
   if (!isMutationNode(entry)) {
-    return createNamespaceWriter(entry, writes, targetId)
+    return createShapeWriter(entry, writes, targetId)
   }
 
   switch (entry.kind) {
@@ -493,46 +436,14 @@ const createNodeWriter = (
   }
 }
 
-const createNamespaceWriter = (
-  shape: MutationShape,
-  writes: MutationWrite[],
-  targetId?: string
-): Record<string, unknown> => {
-  const namespace = Object.fromEntries(
-    Object.entries(shape)
-      .filter(([, value]) => (
-        isMutationGroup(value)
-        || (
-          isMutationNode(value)
-          && (
-            value.kind === 'singleton'
-            || value.kind === 'table'
-            || value.kind === 'map'
-          )
-        )
-      ))
-      .map(([key, value]) => [
-        key,
-        createNodeWriter(value, writes, targetId)
-      ])
-  )
-
-  if (!hasWritableDocumentMembers(shape)) {
-    return namespace
-  }
-
-  return {
-    ...namespace,
-    document: createDocumentWriter(shape, writes, targetId)
-  }
-}
-
 export const createMutationWriter = <TSchema extends MutationSchema>(
   schema: TSchema,
   writes: MutationWrite[] = []
 ): MutationWriter<TSchema> => {
-  const writer = createNamespaceWriter(schema.shape, writes) as MutationWriter<TSchema>
-  return Object.assign(writer, {
-    writes: () => [...writes]
-  })
+  return Object.assign(
+    createShapeWriter(schema.shape, writes),
+    {
+      writes: () => [...writes]
+    }
+  ) as unknown as MutationWriter<TSchema>
 }

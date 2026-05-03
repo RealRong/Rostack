@@ -1,9 +1,11 @@
-import type { EdgeRoute, Point } from '@whiteboard/core/types'
+import { entityTable } from '@shared/core'
+import type { EdgeRoutePoint, Point } from '@whiteboard/core/types'
+import type { EntityTable } from '@shared/core'
 
-export const readEdgeRoutePoints = (
-  route: EdgeRoute | undefined
+export const readEdgePoints = (
+  points: EntityTable<string, EdgeRoutePoint> | undefined
 ): readonly Point[] => (
-  route?.kind === 'manual'
-    ? route.points
+  points
+    ? entityTable.read.list(points)
     : []
 )

@@ -142,8 +142,7 @@ export const createEdgeMoveSession = (
       })
 
       if (result.patch && !snapshot.preview.edge[state.edgeId]) {
-        writer.preview.edge.create({
-          id: state.edgeId,
+        writer.preview.edge.create(state.edgeId, {
           patch: result.patch
         })
       }

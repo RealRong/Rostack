@@ -9,10 +9,9 @@ import type {
   DataviewMutationChanges,
   DataviewMutationDelta,
   DataviewQuery,
-  DataviewQueryContext
 } from '@dataview/core/mutation'
 import {
-  createDataviewQueryContext
+  createDataviewQuery
 } from '@dataview/core/mutation'
 import type {
   QueryPlan
@@ -42,14 +41,42 @@ export interface DataviewActiveSpec {
   calcFields: readonly FieldId[]
 }
 
+export interface DataviewResolvedContext {
+  document: DataDoc
+  query: DataviewQuery
+  fieldIds: readonly FieldId[]
+  fieldIdSet: ReadonlySet<FieldId>
+  activeViewId?: ViewId
+  activeView?: View
+}
+
 export interface DataviewFrame {
   revision: Revision
-  context: DataviewQueryContext
-  reader: DataviewQuery
+  context: DataviewResolvedContext
   query: DataviewQuery
   delta: DataviewMutationDelta
   changes: DataviewMutationChanges
   active?: DataviewActiveSpec
+}
+
+export const createDataviewResolvedContext = (
+  document: DataDoc
+): DataviewResolvedContext => {
+  const query = createDataviewQuery(document)
+  const fieldIds = query.fields.ids()
+  const activeViewId = query.views.activeId()
+  const activeView = activeViewId
+    ? query.views.get(activeViewId)
+    : undefined
+
+  return {
+    document,
+    query,
+    fieldIds,
+    fieldIdSet: new Set<FieldId>(fieldIds),
+    activeViewId,
+    activeView
+  }
 }
 
 export const createDataviewFrame = (input: {
@@ -57,12 +84,11 @@ export const createDataviewFrame = (input: {
   document: DataDoc
   delta: DataviewMutationDelta
 }): DataviewFrame => {
-  const context = createDataviewQueryContext(input.document)
+  const context = createDataviewResolvedContext(input.document)
 
   return {
     revision: input.revision,
     context,
-    reader: context.query,
     query: context.query,
     delta: input.delta,
     changes: context.query.changes(input.delta),

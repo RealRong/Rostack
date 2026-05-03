@@ -54,12 +54,16 @@ export interface DataviewMutationChanges {
 }
 
 interface DataviewChangeQuery {
-  raw: DataviewMutationQuery
   records: {
     ids(): readonly RecordId[]
+    has(id: RecordId): boolean
   }
   fields: {
     ids(): readonly FieldId[]
+    has(id: FieldId): boolean
+  }
+  views: {
+    has(id: ViewId): boolean
   }
 }
 
@@ -105,11 +109,12 @@ const collectTouchedIds = <TId extends string>(
 }
 
 export const createDataviewChanges = (
+  raw: DataviewMutationQuery,
   query: DataviewChangeQuery,
   delta: DataviewMutationDelta
 ): DataviewMutationChanges => {
   const nodes = dataviewMutationSchema.shape
-  const base = query.raw.changes(delta)
+  const base = raw.changes(delta)
   const reset = base.reset()
   const writes = base.writes()
 
@@ -132,7 +137,7 @@ export const createDataviewChanges = (
   const recordTitleChanged = (recordId?: RecordId): boolean => (
     recordId === undefined
       ? query.records.ids().some((currentRecordId) => base.records(currentRecordId).title.changed())
-      : query.raw.records.has(recordId)
+      : query.records.has(recordId)
         ? base.records(recordId).title.changed()
         : writes.some((write) => (
             write.node === nodes.records.shape.title
@@ -205,7 +210,7 @@ export const createDataviewChanges = (
     if (fieldId === TITLE_FIELD_ID) {
       return recordTitleChanged()
     }
-    if (!query.raw.fields.has(fieldId)) {
+    if (!query.fields.has(fieldId)) {
       return base.fields.created(fieldId) || base.fields.removed(fieldId)
     }
 
@@ -286,7 +291,7 @@ export const createDataviewChanges = (
     viewId: ViewId,
     aspect?: DataviewQueryAspect
   ): boolean => {
-    if (!query.raw.views.has(viewId)) {
+    if (!query.views.has(viewId)) {
       return base.views.created(viewId) || base.views.removed(viewId)
     }
 
@@ -316,7 +321,7 @@ export const createDataviewChanges = (
   const viewLayoutChanged = (
     viewId: ViewId
   ): boolean => {
-    if (!query.raw.views.has(viewId)) {
+    if (!query.views.has(viewId)) {
       return base.views.created(viewId) || base.views.removed(viewId)
     }
 

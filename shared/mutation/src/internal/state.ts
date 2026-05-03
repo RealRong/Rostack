@@ -368,21 +368,19 @@ const detachTreeNode = <TValue,>(
     return tree
   }
 
-  const rootIds = [...tree.rootIds]
   if (current.parentId) {
     const parent = nodes[current.parentId]
     if (parent) {
       parent.children = parent.children.filter((childId) => childId !== nodeId)
     }
   } else {
-    const index = rootIds.indexOf(nodeId)
-    if (index >= 0) {
-      rootIds.splice(index, 1)
+    if (tree.rootId !== nodeId) {
+      return tree
     }
   }
 
   return {
-    rootIds,
+    ...(tree.rootId === nodeId ? {} : { rootId: tree.rootId }),
     nodes
   }
 }
@@ -394,7 +392,6 @@ const attachTreeNode = <TValue,>(
   index: number | undefined
 ): MutationTreeSnapshot<TValue> => {
   const nodes = cloneTreeNodes(tree.nodes)
-  const rootIds = [...tree.rootIds]
   const nextIndex = Math.max(0, index ?? Number.MAX_SAFE_INTEGER)
 
   if (parentId) {
@@ -411,19 +408,20 @@ const attachTreeNode = <TValue,>(
       current.parentId = parentId
     }
     return {
-      rootIds,
+      ...(tree.rootId === undefined ? {} : { rootId: tree.rootId }),
       nodes
     }
   }
 
-  const insertAt = Math.min(nextIndex, rootIds.length)
-  rootIds.splice(insertAt, 0, nodeId)
+  if (tree.rootId && tree.rootId !== nodeId) {
+    throw new Error(`Mutation tree already has root "${tree.rootId}".`)
+  }
   const current = nodes[nodeId]
   if (current) {
     delete current.parentId
   }
   return {
-    rootIds,
+    rootId: nodeId,
     nodes
   }
 }
@@ -445,7 +443,7 @@ export const insertTreeNode = <TValue,>(
   }
 
   return attachTreeNode({
-    rootIds: [...tree.rootIds],
+    ...(tree.rootId === undefined ? {} : { rootId: tree.rootId }),
     nodes
   }, nodeId, input.parentId, input.index)
 }
@@ -499,7 +497,7 @@ export const removeTreeNode = <TValue,>(
   })
 
   return {
-    rootIds: [...detached.rootIds],
+    ...(detached.rootId === undefined ? {} : { rootId: detached.rootId }),
     nodes
   }
 }
@@ -528,7 +526,7 @@ export const patchTreeNodeValue = <TValue,>(
   } as TValue
 
   return {
-    rootIds: [...tree.rootIds],
+    ...(tree.rootId === undefined ? {} : { rootId: tree.rootId }),
     nodes
   }
 }
@@ -544,6 +542,5 @@ export const readTreeValue = <TNodeId extends string, TValue,>(
   document: unknown,
   targetId?: string
 ): MutationTreeSnapshot<TValue> => (readNodeValue(node, document, targetId) as MutationTreeSnapshot<TValue> | undefined) ?? {
-  rootIds: [],
   nodes: {}
 }

@@ -275,8 +275,7 @@ export const createMindmapDragSession = (
         return
       }
 
-      writer.preview.mindmap.create({
-        id,
+      writer.preview.mindmap.create(id, {
         rootMove: preview.rootMove,
         subtreeMove: preview.subtreeMove
       })
@@ -310,8 +309,7 @@ export const createMindmapDragSession = (
           return
         }
 
-        writer.preview.mindmap.create({
-          id,
+        writer.preview.mindmap.create(id, {
           rootMove: preview.rootMove,
           subtreeMove: preview.subtreeMove
         })

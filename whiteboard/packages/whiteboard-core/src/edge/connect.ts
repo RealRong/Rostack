@@ -680,9 +680,7 @@ const mergeEdgePatch = (
 
 const STRAIGHT_RECONNECT_PATCH: EdgePatch = {
   type: 'straight',
-  route: {
-    kind: 'auto'
-  }
+  points: undefined
 }
 
 const toPreviewEdgeEnd = (
@@ -713,10 +711,7 @@ const createPreviewEdge = (
     target: toPreviewEdgeEnd(state.to),
     type: state.edgeType,
     style: state.style,
-    textMode: state.textMode,
-    route: {
-      kind: 'auto'
-    }
+    textMode: state.textMode
   }
 }
 
@@ -779,7 +774,7 @@ export const resolveReconnectWorld = (input: {
   input.state.kind === 'reconnect'
   && input.shift
   && input.draftPatch?.type === 'straight'
-  && input.draftPatch.route?.kind === 'auto'
+  && input.draftPatch.points === undefined
   && input.fixedPoint
 )
   ? quantizePointToOctilinear({

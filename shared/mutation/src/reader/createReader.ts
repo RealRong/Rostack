@@ -21,20 +21,15 @@ import type {
   MutationTreeNode
 } from '../schema/node'
 import {
-  isMutationGroup,
   isMutationNode
 } from '../schema/node'
 import type {
-  MutationEntityValue,
   MutationDocument,
   MutationMapValue,
   MutationTableValue,
   MutationValueOfShape
 } from '../schema/value'
 import type {
-  MutationDocumentKeys,
-  MutationHasDocumentMembers,
-  MutationNamespaceKeys,
   MutationShapeKeys
 } from '../schema/facadeTypes'
 
@@ -75,7 +70,7 @@ type MutationReaderCollection<TId extends string, TShape extends MutationShape> 
   value(): MutationTableValue<TId, TShape> | MutationMapValue<TId, TShape>
   ids(): readonly TId[]
   has(id: TId): boolean
-  get(id: TId): MutationEntityValue<TId, TShape> | undefined
+  get(id: TId): MutationValueOfShape<TShape> | undefined
 }
 
 type MutationReaderNode<TNode> =
@@ -95,26 +90,12 @@ type MutationReaderNode<TNode> =
   : TNode extends MutationMapNode<infer TId extends string, infer TShape>
     ? MutationReaderCollection<TId, TShape>
   : TNode extends MutationShape
-    ? MutationReaderNamespace<TNode>
+    ? MutationReaderShape<TNode>
   : never
-
-type MutationReaderDocument<TShape extends MutationShape> = {
-  readonly [K in MutationDocumentKeys<TShape>]: MutationReaderNode<TShape[K]>
-}
-
-type MutationReaderNamespace<TShape extends MutationShape> = {
-  readonly [K in MutationNamespaceKeys<TShape>]: MutationReaderNode<TShape[K]>
-} & (
-  MutationHasDocumentMembers<TShape> extends false
-    ? {}
-    : {
-        document: MutationReaderDocument<TShape>
-      }
-)
 
 export type MutationReader<TSchema extends MutationSchema = MutationSchema> =
   TSchema extends MutationSchema<infer TShape>
-    ? MutationReaderNamespace<TShape>
+    ? MutationReaderShape<TShape>
     : never
 
 const createFieldReader = (
@@ -155,21 +136,8 @@ const createTreeReader = (
   node: (nodeId: string) => readTreeValue(node, readDocument(), targetId).nodes[nodeId],
   parent: (nodeId: string) => readTreeValue(node, readDocument(), targetId).nodes[nodeId]?.parentId,
   children: (nodeId: string) => readTreeValue(node, readDocument(), targetId).nodes[nodeId]?.children ?? [],
-  isRoot: (nodeId: string) => readTreeValue(node, readDocument(), targetId).rootIds.includes(nodeId)
+  isRoot: (nodeId: string) => readTreeValue(node, readDocument(), targetId).rootId === nodeId
 })
-
-const hasDocumentMembers = (
-  shape: MutationShape
-): boolean => Object.values(shape).some((value) => (
-  isMutationNode(value)
-  && (
-    value.kind === 'field'
-    || value.kind === 'object'
-    || value.kind === 'dictionary'
-    || value.kind === 'sequence'
-    || value.kind === 'tree'
-  )
-))
 
 const createShapeReader = (
   shape: MutationShape,
@@ -180,29 +148,6 @@ const createShapeReader = (
     .map(([key, value]) => [
       key,
       createNodeReader(value as MutationShapeNode | MutationShape, readDocument, targetId)
-    ])
-)
-
-const createDocumentReader = (
-  shape: MutationShape,
-  readDocument: () => unknown,
-  targetId?: string
-): Record<string, unknown> => Object.fromEntries(
-  Object.entries(shape)
-    .filter(([, value]) => isMutationNode(value) && (
-      value.kind === 'field'
-      || value.kind === 'object'
-      || value.kind === 'dictionary'
-      || value.kind === 'sequence'
-      || value.kind === 'tree'
-    ))
-    .map(([key, value]) => [
-      key,
-      createNodeReader(
-        value as MutationShapeNode,
-        readDocument,
-        targetId
-      )
     ])
 )
 
@@ -264,7 +209,7 @@ const createNodeReader = (
   targetId?: string
 ): unknown => {
   if (!isMutationNode(entry)) {
-    return createNamespaceReader(entry, readDocument, targetId)
+    return createShapeReader(entry, readDocument, targetId)
   }
 
   switch (entry.kind) {
@@ -296,40 +241,6 @@ const createNodeReader = (
   }
 }
 
-const createNamespaceReader = (
-  shape: MutationShape,
-  readDocument: () => unknown,
-  targetId?: string
-): Record<string, unknown> => {
-  const namespace = Object.fromEntries(
-    Object.entries(shape)
-      .filter(([, value]) => (
-        isMutationGroup(value)
-        || (
-          isMutationNode(value)
-          && (
-            value.kind === 'singleton'
-            || value.kind === 'table'
-            || value.kind === 'map'
-          )
-        )
-      ))
-      .map(([key, value]) => [
-        key,
-        createNodeReader(value, readDocument, targetId)
-      ])
-  )
-
-  if (!hasDocumentMembers(shape)) {
-    return namespace
-  }
-
-  return {
-    ...namespace,
-    document: createDocumentReader(shape, readDocument, targetId)
-  }
-}
-
 export const createMutationReader = <TSchema extends MutationSchema>(
   schema: TSchema,
   input: MutationDocument<TSchema> | (() => MutationDocument<TSchema>)
@@ -338,5 +249,5 @@ export const createMutationReader = <TSchema extends MutationSchema>(
     ? input as () => unknown
     : () => input as unknown
 
-  return createNamespaceReader(schema.shape, readDocument) as MutationReader<TSchema>
+  return createShapeReader(schema.shape, readDocument) as MutationReader<TSchema>
 }

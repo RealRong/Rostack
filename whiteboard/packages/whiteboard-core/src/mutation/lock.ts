@@ -1,29 +1,16 @@
 import { edge as edgeApi } from '@whiteboard/core/edge'
-import { createMutationReader } from '@shared/mutation'
 import {
   createWhiteboardQuery,
   type WhiteboardQuery,
   type WhiteboardReader,
 } from '@whiteboard/core/query'
-import {
-  whiteboardMutationSchema,
-} from '@whiteboard/core/mutation/model'
 import type {
   CanvasItemRef,
-  Document,
-  Edge,
   EdgeEnd,
   EdgeId,
   GroupId,
-  MindmapId,
   NodeId,
-  Origin
 } from '@whiteboard/core/types'
-
-const hasOwn = <T extends object>(
-  target: T,
-  key: PropertyKey
-) => Object.prototype.hasOwnProperty.call(target, key)
 
 export type LockDecisionReason =
   | 'locked-node'
@@ -119,7 +106,7 @@ export const resolveLockDecision = ({
   reader: WhiteboardReader
   target: LockTarget
 }): LockDecision => {
-  const query = createWhiteboardQuery(reader)
+  const query = createWhiteboardQuery(reader.value)
 
   switch (target.kind) {
     case 'nodes': {

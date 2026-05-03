@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { entityTable } from '@shared/core'
 import { edge as edgeApi } from '@whiteboard/core/edge'
 import type { Edge } from '@whiteboard/core/types'
 import {
@@ -17,14 +18,11 @@ const createManualRouteEdge = (): Edge => ({
     kind: 'point',
     point: { x: 100, y: 100 }
   },
-  route: {
-    kind: 'manual',
-    points: [{
+  points: entityTable.normalize.list([{
       id: 'point-1',
       x: 20,
       y: 20
-    }]
-  }
+    }])
 })
 
 describe('stepEdgeRoute', () => {
@@ -50,14 +48,13 @@ describe('stepEdgeRoute', () => {
 
     expect(first.draft?.patch).toBeDefined()
     expect(second.draft?.patch).toBeDefined()
-    expect(edgeApi.patch.apply(edge, second.draft?.patch).route).toEqual({
-      kind: 'manual',
-      points: [{
+    expect(edgeApi.patch.apply(edge, second.draft?.patch).points).toEqual(
+      entityTable.normalize.list([{
         id: 'point-1',
         x: 30,
         y: 35
-      }]
-    })
+      }])
+    )
   })
 
   it('does not emit a preview patch when the anchor stays at its origin', () => {

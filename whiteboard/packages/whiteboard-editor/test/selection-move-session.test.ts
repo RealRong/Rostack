@@ -70,9 +70,7 @@ describe('createMoveInteraction', () => {
                 kind: 'point',
                 point: { x: 200, y: 140 }
               },
-              route: {
-                kind: 'auto'
-              }
+              points: undefined
             }]
           })
         },

@@ -5,10 +5,12 @@ import type {
 } from '@whiteboard/core/types'
 import { json } from '@shared/core'
 import type {
+  EdgePreviewRecord,
   EdgeGuidePreview,
   EdgePreview,
   MindmapPreviewEntry,
   MindmapPreview,
+  NodePreviewRecord,
   NodePreview,
   PreviewInput
 } from '@whiteboard/editor-scene'
@@ -29,16 +31,14 @@ import type {
   NodePreviewEntry
 } from '@whiteboard/editor/state/preview-types'
 
-type NodePreviewRecord = PreviewInput['node']
-type EdgePreviewRecord = PreviewInput['edge']
-type MindmapPreviewRecord = PreviewInput['mindmap']
+export type EditorPreviewState = PreviewInput
 
-const EMPTY_NODE_PREVIEWS = Object.freeze({}) as PreviewInput['node']
+const EMPTY_NODE_PREVIEWS = Object.freeze({}) as NodePreviewRecord
 const EMPTY_EDGE_PREVIEWS = Object.freeze({}) as EdgePreviewRecord
-const EMPTY_MINDMAP_PREVIEWS = Object.freeze({}) as MindmapPreviewRecord
+const EMPTY_MINDMAP_PREVIEWS = Object.freeze({}) as MindmapPreview
 
 const readNodePreviewIds = (
-  value: PreviewInput['node']
+  value: NodePreviewRecord
 ): readonly NodeId[] => Object.keys(value) as readonly NodeId[]
 
 const readEdgePreviewIds = (
@@ -46,7 +46,7 @@ const readEdgePreviewIds = (
 ): readonly EdgeId[] => Object.keys(value) as readonly EdgeId[]
 
 const readMindmapPreviewIds = (
-  value: MindmapPreviewRecord
+  value: MindmapPreview
 ): readonly string[] => Object.keys(value)
 
 const isNodePreviewPatchEqual = (
@@ -190,8 +190,8 @@ export const isMindmapPreviewEntryEqual = (
 )
 
 const normalizeMindmapPreviewRecord = (
-  value: MindmapPreviewRecord
-): MindmapPreviewRecord => {
+  value: MindmapPreview
+): MindmapPreview => {
   const ids = readMindmapPreviewIds(value)
   if (ids.length === 0) {
     return EMPTY_MINDMAP_PREVIEWS
@@ -212,7 +212,7 @@ const normalizeMindmapPreviewRecord = (
 
   return Object.keys(next).length === 0
     ? EMPTY_MINDMAP_PREVIEWS
-    : next as MindmapPreviewRecord
+    : next
 }
 
 const mergeNodePreviewPatch = (
@@ -329,7 +329,7 @@ const normalizeEdgePreviewRecord = (
     : EMPTY_EDGE_PREVIEWS
 }
 
-export const EMPTY_PREVIEW_STATE: PreviewInput = {
+export const EMPTY_PREVIEW_STATE: EditorPreviewState = {
   node: EMPTY_NODE_PREVIEWS,
   edge: EMPTY_EDGE_PREVIEWS,
   mindmap: EMPTY_MINDMAP_PREVIEWS,
@@ -341,7 +341,7 @@ export const EMPTY_PREVIEW_STATE: PreviewInput = {
 
 export const normalizeEditorPreviewState = (
   state: PreviewInput
-): PreviewInput => {
+): EditorPreviewState => {
   const node = normalizeNodePreviewRecord(state.node)
   const edge = normalizeEdgePreviewRecord(state.edge)
   const mindmap = normalizeMindmapPreviewRecord(state.mindmap)
@@ -400,27 +400,27 @@ export const isEditorPreviewStateEqual = (
 export const isPreviewEqual = isEditorPreviewStateEqual
 
 export const isPreviewNodeRecordEqual = (
-  left: PreviewInput['node'],
-  right: PreviewInput['node']
+  left: NodePreviewRecord,
+  right: NodePreviewRecord
 ): boolean => isPreviewRecordEqual(left, right, isNodePreviewEqual)
 
 export const isPreviewEdgeRecordEqual = (
-  left: PreviewInput['edge'],
-  right: PreviewInput['edge']
+  left: EdgePreviewRecord,
+  right: EdgePreviewRecord
 ): boolean => isPreviewRecordEqual(left, right, isEdgePreviewEqual)
 
 export const isPreviewMindmapRecordEqual = (
-  left: PreviewInput['mindmap'],
-  right: PreviewInput['mindmap']
+  left: MindmapPreview,
+  right: MindmapPreview
 ): boolean => isPreviewRecordEqual(left, right, isMindmapPreviewEntryEqual)
 
 export const replacePreviewNodeInteraction = (
-  state: PreviewInput,
+  state: EditorPreviewState,
   input: {
     patches?: readonly NodePreviewEntry[]
     hiddenNodeIds?: readonly NodeId[]
   }
-): PreviewInput => {
+): EditorPreviewState => {
   const next: Record<NodeId, NodePreview | undefined> = {}
 
   Object.keys(state.node).forEach((nodeId) => {
@@ -457,9 +457,9 @@ export const replacePreviewNodeInteraction = (
 }
 
 export const replacePreviewEdgeInteraction = (
-  state: PreviewInput,
+  state: EditorPreviewState,
   entries: readonly EdgeFeedbackEntry[]
-): PreviewInput => {
+): EditorPreviewState => {
   const next: Record<EdgeId, EdgePreview | undefined> = {}
 
   entries.forEach((entry) => {
@@ -476,9 +476,9 @@ export const replacePreviewEdgeInteraction = (
 }
 
 export const setPreviewEdgeGuide = (
-  state: PreviewInput,
+  state: EditorPreviewState,
   edgeGuide: EdgeGuidePreview | EdgeGuide | undefined
-): PreviewInput => {
+): EditorPreviewState => {
   if (!edgeGuide) {
     const {
       edgeGuide: _edgeGuide,
@@ -494,37 +494,37 @@ export const setPreviewEdgeGuide = (
 }
 
 export const setPreviewDraw = (
-  state: PreviewInput,
+  state: EditorPreviewState,
   draw: PreviewInput['draw']
-): PreviewInput => normalizeEditorPreviewState({
+): EditorPreviewState => normalizeEditorPreviewState({
   ...state,
   draw
 })
 
 export const setPreviewSelection = (
-  state: PreviewInput,
+  state: EditorPreviewState,
   selection: PreviewInput['selection']
-): PreviewInput => normalizeEditorPreviewState({
+): EditorPreviewState => normalizeEditorPreviewState({
   ...state,
   selection
 })
 
 export const setPreviewMindmap = (
-  state: PreviewInput,
-  mindmap: PreviewInput['mindmap']
-): PreviewInput => normalizeEditorPreviewState({
+  state: EditorPreviewState,
+  mindmap: MindmapPreview
+): EditorPreviewState => normalizeEditorPreviewState({
   ...state,
   mindmap
 })
 
 export const updatePreviewNodePresentation = (
-  state: PreviewInput,
+  state: EditorPreviewState,
   nodeId: NodeId,
   position?: {
     x: number
     y: number
   }
-): PreviewInput => {
+): EditorPreviewState => {
   const current = state.node[nodeId]
   const nextPresentation = position
     ? {

@@ -389,16 +389,16 @@ const commitConnectState = (
       edgeId: commit.edgeId,
       end: commit.end,
       target: commit.target,
-      patch: patch?.type || patch?.route
+      patch: patch?.type || patch?.points
         ? {
             ...(patch?.type
               ? {
                   type: patch.type
                 }
               : {}),
-            ...(patch?.route
+            ...(patch?.points
               ? {
-                  route: patch.route
+                  points: patch.points
                 }
               : {})
           }
@@ -533,15 +533,12 @@ export const createEdgeConnectSession = (
       })
 
       nextEdgeById.forEach((patch, id) => {
-        writer.preview.edge.create({
-          id,
+        writer.preview.edge.create(id, {
           patch
         })
       })
 
-      writer.preview.edgeGuide.patch({
-        current: preview.edgeGuide
-      })
+      writer.preview.edgeGuide.set(preview.edgeGuide)
     })
   }
 
@@ -599,9 +596,7 @@ export const createEdgeConnectSession = (
         Object.keys(snapshot.preview.edge).forEach((edgeId) => {
           writer.preview.edge.delete(edgeId as EdgeId)
         })
-        writer.preview.edgeGuide.patch({
-          current: undefined
-        })
+        writer.preview.edgeGuide.clear()
       })
     }
   }

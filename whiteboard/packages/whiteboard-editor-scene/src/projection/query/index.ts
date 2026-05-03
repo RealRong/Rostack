@@ -110,7 +110,7 @@ const createDocumentRead = (input: {
   groupIds: input.reader.group.ids,
   mindmapIds: input.reader.mindmap.ids,
   order: {
-    order: input.reader.document.order.items,
+    order: input.reader.order.items,
     slot: input.query.order.slot,
     groupRefs: input.query.group.refsInOrder
   },
@@ -164,7 +164,7 @@ export const createProjectionRead = (runtime: {
   const reader = createWhiteboardReader(
     () => runtime.state().document.snapshot
   )
-  const query = createWhiteboardQuery(reader)
+  const query = createWhiteboardQuery(reader.value)
   const bounds = createBoundsRead({
     state: runtime.state
   })

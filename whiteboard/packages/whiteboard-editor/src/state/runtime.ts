@@ -7,7 +7,6 @@ import {
   type MutationDocument,
   type MutationReader,
   type MutationWrite,
-  type MutationWriter,
 } from '@shared/mutation'
 import type {
   SelectionTarget,
@@ -48,19 +47,67 @@ import {
   isPreviewNodeRecordEqual,
   isSelectionPreviewEqual,
 } from './preview'
-import type { PreviewInput } from '@whiteboard/editor-scene'
+import type {
+  EdgePreviewValue,
+  MindmapPreviewValue,
+  NodePreviewValue,
+  PreviewInput,
+} from '@whiteboard/editor-scene'
 
-type InternalEditorStateWriter = MutationWriter<typeof editorStateMutationSchema>
 type EditorStateEngineIntent = {
   type: '__editor_state__'
 }
 type EdgeGuideValue = PreviewInput['edgeGuide'] | undefined
+type NodePreviewPatchValue = Partial<NodePreviewValue>
+type EdgePreviewPatchValue = Partial<EdgePreviewValue>
+type MindmapPreviewPatchValue = Partial<MindmapPreviewValue>
+type EditorStateMutationDocument = MutationDocument<typeof editorStateMutationSchema>
+
+type InternalEditorStateWriter = {
+  state: {
+    patch(value: Partial<EditorStateDocument['state']>): void
+  }
+  hover: {
+    patch(value: Partial<EditorHoverState>): void
+  }
+  preview: {
+    node: ((id: string) => {
+      patch(value: NodePreviewPatchValue): void
+      remove(): void
+    }) & {
+      create(id: string, value: NodePreviewValue): void
+      remove(id: string): void
+    }
+    edge: ((id: string) => {
+      patch(value: EdgePreviewPatchValue): void
+      remove(): void
+    }) & {
+      create(id: string, value: EdgePreviewValue): void
+      remove(id: string): void
+    }
+    mindmap: ((id: string) => {
+      patch(value: MindmapPreviewPatchValue): void
+      remove(): void
+    }) & {
+      create(id: string, value: MindmapPreviewValue): void
+      remove(id: string): void
+    }
+    selection: {
+      patch(value: Partial<PreviewInput['selection']>): void
+    }
+    draw: {
+      set(value: PreviewInput['draw']): void
+    }
+    edgeGuide: {
+      set(value: EdgeGuideValue): void
+    }
+  }
+}
 
 export type EditorStateSnapshot = EditorStateDocument
 export type EditorStateReader = MutationReader<typeof editorStateMutationSchema>
 export type EditorStateMutationDelta = MutationDelta<typeof editorStateMutationSchema>
 export type EditorStateCommit = MutationCommit<typeof editorStateMutationSchema>
-type EditorStateMutationDocument = MutationDocument<typeof editorStateMutationSchema>
 
 export interface EditorStateWriter {
   tool: {
@@ -89,21 +136,21 @@ export interface EditorStateWriter {
   }
   preview: {
     node: {
-      create: (input: { id: string } & NonNullable<PreviewInput['node'][string]>) => void
+      create: (id: string, value: NodePreviewValue) => void
       patch: (id: string, writes: Readonly<Record<string, unknown>>) => void
       delete: (id: string) => void
       replace: (next: PreviewInput['node']) => void
       clear: () => void
     }
     edge: {
-      create: (input: { id: string } & NonNullable<PreviewInput['edge'][string]>) => void
+      create: (id: string, value: EdgePreviewValue) => void
       patch: (id: string, writes: Readonly<Record<string, unknown>>) => void
       delete: (id: string) => void
       replace: (next: PreviewInput['edge']) => void
       clear: () => void
     }
     mindmap: {
-      create: (input: { id: string } & NonNullable<PreviewInput['mindmap'][string]>) => void
+      create: (id: string, value: MindmapPreviewValue) => void
       patch: (id: string, writes: Readonly<Record<string, unknown>>) => void
       delete: (id: string) => void
       replace: (next: PreviewInput['mindmap']) => void
@@ -115,12 +162,10 @@ export interface EditorStateWriter {
       clear: () => void
     }
     draw: {
-      patch: (patch: { current: PreviewInput['draw'] }) => void
       set: (draw: PreviewInput['draw']) => void
       clear: () => void
     }
     edgeGuide: {
-      patch: (patch: { current: EdgeGuideValue }) => void
       set: (edgeGuide: EdgeGuideValue) => void
       clear: () => void
     }
@@ -142,11 +187,7 @@ export interface EditorStateStoreFacade {
 const createEditorStateEngine = (input: {
   initialTool: Tool
   initialDrawState: DrawState
-}) => createMutationEngine<
-  typeof editorStateMutationSchema,
-  EditorStateEngineIntent,
-  undefined
->({
+}) => createMutationEngine({
   schema: editorStateMutationSchema,
   document: buildEditorStateDocument({
     tool: input.initialTool,
@@ -312,12 +353,12 @@ const createEditorStateWriter = (
   },
   preview: {
     node: {
-      create: (input) => {
-        writer.preview.node.create(input)
+      create: (id, value) => {
+        writer.preview.node.create(id, value)
       },
       patch: (id, writes) => {
         writer.preview.node(id).patch(
-          writes as Partial<NonNullable<PreviewInput['node'][string]>>
+          writes as NodePreviewPatchValue
         )
       },
       delete: (id) => {
@@ -333,14 +374,11 @@ const createEditorStateWriter = (
           current,
           next,
           create: (id, value) => {
-            writer.preview.node.create({
-              id,
-              ...value
-            })
+            writer.preview.node.create(id, value)
           },
           patch: (id, writes) => {
             writer.preview.node(id).patch(
-              writes as Partial<NonNullable<PreviewInput['node'][string]>>
+              writes as NodePreviewPatchValue
             )
           },
           remove: (id) => {
@@ -355,12 +393,12 @@ const createEditorStateWriter = (
       }
     },
     edge: {
-      create: (input) => {
-        writer.preview.edge.create(input)
+      create: (id, value) => {
+        writer.preview.edge.create(id, value)
       },
       patch: (id, writes) => {
         writer.preview.edge(id).patch(
-          writes as Partial<NonNullable<PreviewInput['edge'][string]>>
+          writes as EdgePreviewPatchValue
         )
       },
       delete: (id) => {
@@ -376,14 +414,11 @@ const createEditorStateWriter = (
           current,
           next,
           create: (id, value) => {
-            writer.preview.edge.create({
-              id,
-              ...value
-            })
+            writer.preview.edge.create(id, value)
           },
           patch: (id, writes) => {
             writer.preview.edge(id).patch(
-              writes as Partial<NonNullable<PreviewInput['edge'][string]>>
+              writes as EdgePreviewPatchValue
             )
           },
           remove: (id) => {
@@ -398,12 +433,12 @@ const createEditorStateWriter = (
       }
     },
     mindmap: {
-      create: (input) => {
-        writer.preview.mindmap.create(input)
+      create: (id, value) => {
+        writer.preview.mindmap.create(id, value)
       },
       patch: (id, writes) => {
         writer.preview.mindmap(id).patch(
-          writes as Partial<NonNullable<PreviewInput['mindmap'][string]>>
+          writes as MindmapPreviewPatchValue
         )
       },
       delete: (id) => {
@@ -419,14 +454,11 @@ const createEditorStateWriter = (
           current,
           next,
           create: (id, value) => {
-            writer.preview.mindmap.create({
-              id,
-              ...value
-            })
+            writer.preview.mindmap.create(id, value)
           },
           patch: (id, writes) => {
             writer.preview.mindmap(id).patch(
-              writes as Partial<NonNullable<PreviewInput['mindmap'][string]>>
+              writes as MindmapPreviewPatchValue
             )
           },
           remove: (id) => {
@@ -463,37 +495,23 @@ const createEditorStateWriter = (
       }
     },
     draw: {
-      patch: (patch) => {
-        writer.preview.draw.patch(patch)
-      },
       set: (draw) => {
         const current = readSnapshot().preview.draw
         if (isDrawPreviewEqual(current, draw)) {
           return
         }
-        writer.preview.draw.patch({
-          current: draw
-        })
+        writer.preview.draw.set(draw)
       },
       clear: () => {
-        writer.preview.draw.patch({
-          current: null
-        })
+        writer.preview.draw.set(null)
       }
     },
     edgeGuide: {
-      patch: (patch) => {
-        writer.preview.edgeGuide.patch(patch)
-      },
       set: (edgeGuide) => {
-        writer.preview.edgeGuide.patch({
-          current: edgeGuide
-        })
+        writer.preview.edgeGuide.set(edgeGuide)
       },
       clear: () => {
-        writer.preview.edgeGuide.patch({
-          current: undefined
-        })
+        writer.preview.edgeGuide.set(undefined)
       }
     },
     reset: () => {
@@ -512,12 +530,8 @@ const createEditorStateWriter = (
           EMPTY_PREVIEW_STATE.selection
         )
       )
-      writer.preview.draw.patch({
-        current: EMPTY_PREVIEW_STATE.draw
-      })
-      writer.preview.edgeGuide.patch({
-        current: EMPTY_PREVIEW_STATE.edgeGuide
-      })
+      writer.preview.draw.set(EMPTY_PREVIEW_STATE.draw)
+      writer.preview.edgeGuide.set(EMPTY_PREVIEW_STATE.edgeGuide)
     }
   }
 })
@@ -545,7 +559,7 @@ export const createEditorStateRuntime = (input: {
     const rawWriter = createMutationWriter(
       editorStateMutationSchema,
       writes
-    )
+    ) as unknown as InternalEditorStateWriter
     const writer = createEditorStateWriter(
       rawWriter,
       read

@@ -123,7 +123,7 @@ export const runMembershipStep = (input: {
   const synced = syncMembershipState({
     previous: input.previous.membership,
     view: input.active.view,
-    reader: input.frame.reader,
+    reader: input.frame.query,
     changes: input.frame.changes,
     query: input.query,
     queryDelta: input.queryDelta,

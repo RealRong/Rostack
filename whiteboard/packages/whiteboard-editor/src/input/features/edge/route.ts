@@ -2,6 +2,7 @@ import {
   edge as edgeApi,
   type EdgeRouteHandleTarget
 } from '@whiteboard/core/edge'
+import { entityTable } from '@shared/core'
 import { geometry as geometryApi } from '@whiteboard/core/geometry'
 import type {
   Edge,
@@ -87,7 +88,7 @@ export type EdgeRouteCommit =
   | {
       kind: 'update-route'
       edgeId: EdgeId
-      route: EdgePatch['route']
+      points: EdgePatch['points']
     }
 
 type EdgeRoutePick = Extract<PointerDownInput['pick'], {
@@ -130,8 +131,8 @@ const resolveEdgeRoutePickTarget = (
 const readRoutePointIdAtIndex = (
   edge: Edge,
   index: number
-) => edge.route?.kind === 'manual'
-  ? edge.route.points[index]?.id
+) => edge.points
+  ? entityTable.read.list(edge.points)[index]?.id
   : undefined
 
 export const startEdgeRoutePoint = (input: {
@@ -241,8 +242,8 @@ export const tryStartEdgeRoute = (input: {
         origin: target.point,
         pathPoints: view.route.points,
         baseRoutePoints:
-          edge.route?.kind === 'manual'
-            ? edge.route.points
+          edge.points
+            ? entityTable.read.list(edge.points)
             : []
       })
     }
@@ -269,14 +270,12 @@ export const removeEdgeRoutePoint = (
     throw new Error(`Edge ${edgeId} not found.`)
   }
 
-  const patch = edgeApi.route.remove(edge, index)
+  const patch = edgeApi.points.remove(edge, index)
   if (!patch) {
     throw new Error(`Edge route point ${edgeId}:${index} not found.`)
   }
 
-  editor.actions.document.edge.route.set(edgeId, patch.route ?? {
-    kind: 'auto'
-  })
+  editor.actions.document.edge.points.set(edgeId, patch.points)
 }
 
 const readProjectedRoutePoint = (
@@ -292,7 +291,7 @@ const readInsertedRouteDraft = (
   index: number,
   point: Point
 ): EdgeRouteHandleDraft | undefined => {
-  const inserted = edgeApi.route.insert(edge, index, point)
+  const inserted = edgeApi.points.insert(edge, index, point)
   if (!inserted.ok) {
     return undefined
   }
@@ -339,9 +338,7 @@ export const stepEdgeRoute = (input: {
       state: {
         ...input.state,
         routePoints:
-          patch.route?.kind === 'manual'
-            ? patch.route.points
-            : []
+          patch.points ?? []
       },
       draft: {
         patch,
@@ -383,7 +380,7 @@ export const stepEdgeRoute = (input: {
       draft: geometryApi.equal.point(input.state.point, input.state.origin)
         ? undefined
         : {
-            patch: edgeApi.route.move(input.edge, input.state.index, input.state.point),
+            patch: edgeApi.points.move(input.edge, input.state.index, input.state.point),
             activeRouteIndex: input.state.index
           }
     }
@@ -395,7 +392,7 @@ export const stepEdgeRoute = (input: {
       point
     },
     draft: {
-      patch: edgeApi.route.move(input.edge, input.state.index, point),
+      patch: edgeApi.points.move(input.edge, input.state.index, point),
       activeRouteIndex: input.state.index
     }
   }
@@ -406,7 +403,7 @@ const commitEdgeRoute = (
   edge: Edge
 ): EdgeRouteCommit | undefined => {
   if (state.kind === 'insert') {
-    const inserted = edgeApi.route.insert(edge, state.index, state.point)
+    const inserted = edgeApi.points.insert(edge, state.index, state.point)
     if (!inserted.ok) {
       return undefined
     }
@@ -414,7 +411,7 @@ const commitEdgeRoute = (
     return {
       kind: 'update-route',
       edgeId: state.edgeId,
-      route: inserted.data.patch.route
+      points: inserted.data.patch.points
     }
   }
 
@@ -434,17 +431,11 @@ const commitEdgeRoute = (
   }
 
   return {
-    kind: 'update-route',
-    edgeId: state.edgeId,
-    route:
-      state.routePoints.length > 0
-        ? {
-            kind: 'manual',
-            points: [...state.routePoints]
-          }
-        : {
-            kind: 'auto'
-          }
+      kind: 'update-route',
+      edgeId: state.edgeId,
+      points: state.routePoints.length > 0
+        ? [...state.routePoints]
+        : undefined
   }
 }
 
@@ -465,9 +456,7 @@ const submitEdgeRouteCommit = (
   }
 
   if (commit.kind === 'update-route') {
-    editor.actions.document.edge.route.set(commit.edgeId, commit.route ?? {
-      kind: 'auto'
-    })
+    editor.actions.document.edge.points.set(commit.edgeId, commit.points)
     return
   }
 
@@ -476,7 +465,7 @@ const submitEdgeRouteCommit = (
     ? readRoutePointIdAtIndex(edge, commit.index)
     : undefined
   if (pointId) {
-    editor.actions.document.edge.route.movePoint(commit.edgeId, commit.index, commit.point)
+    editor.actions.document.edge.points.movePoint(commit.edgeId, commit.index, commit.point)
   }
 }
 
@@ -505,8 +494,7 @@ const createEdgeRouteSession = (
     })
 
     if (!snapshot.preview.edge[state.edgeId]) {
-      writer.preview.edge.create({
-        id: state.edgeId,
+      writer.preview.edge.create(state.edgeId, {
         activeRouteIndex: state.index
       })
     }
@@ -547,8 +535,7 @@ const createEdgeRouteSession = (
       })
 
       if (!snapshot.preview.edge[state.edgeId]) {
-        writer.preview.edge.create({
-          id: state.edgeId,
+        writer.preview.edge.create(state.edgeId, {
           patch: result.draft?.patch,
           activeRouteIndex: state.index
         })

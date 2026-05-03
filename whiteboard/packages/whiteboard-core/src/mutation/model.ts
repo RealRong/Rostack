@@ -1,19 +1,19 @@
 import type {
   MutationSequenceAnchor,
+  MutationTreeInsertInput,
+  MutationTreeMoveInput,
   MutationWrite,
-  MutationTreeSnapshot,
 } from '@shared/mutation'
 import {
   field,
   map,
+  optional,
   schema,
   sequence,
-  table,
   tree,
   type MutationDelta,
   type MutationQuery,
   type MutationReader,
-  type MutationWriter,
 } from '@shared/mutation'
 import type {
   MindmapId,
@@ -27,189 +27,57 @@ import type {
   Document,
   Edge,
   EdgeId,
-  EdgeLabel,
-  EdgeRoutePoint,
-  Group,
   GroupId,
   Node,
   NodeId,
 } from '@whiteboard/core/types'
 import {
   canvasRefKey,
-  createMindmapTreeSnapshot,
-  getLabels,
-  getManualRoutePoints,
   type WhiteboardMindmapTreeValue,
-  writeEdgeLabels,
-  writeEdgeRoute,
-  writeMindmapTreeSnapshot,
 } from './support'
-
-type TableValue<T extends {
-  id: string
-}> = {
-  ids: readonly string[]
-  byId: Readonly<Partial<Record<string, T>>>
-}
-
-type MutationEdgeLabel = {
-  id: string
-  text: EdgeLabel['text']
-  t: EdgeLabel['t']
-  offset: EdgeLabel['offset']
-  style: EdgeLabel['style']
-  data: EdgeLabel['data']
-}
-
-type MutationEdgeRoutePoint = {
-  id: string
-  x: EdgeRoutePoint['x']
-  y: EdgeRoutePoint['y']
-}
-
-const toLabelTableValue = (
-  items: readonly EdgeLabel[]
-): TableValue<MutationEdgeLabel> => ({
-  ids: items.map((item) => item.id),
-  byId: Object.fromEntries(
-    items.map((item) => [item.id, {
-      id: item.id,
-      text: structuredClone(item.text),
-      t: structuredClone(item.t),
-      offset: structuredClone(item.offset),
-      style: structuredClone(item.style),
-      data: structuredClone(item.data)
-    } satisfies MutationEdgeLabel])
-  )
-})
-
-const fromLabelTableValue = (
-  value: TableValue<MutationEdgeLabel> | undefined
-): readonly EdgeLabel[] => {
-  const source = value
-  return (source?.ids ?? []).flatMap((id) => {
-    const item = source?.byId[id]
-    return item
-      ? [structuredClone(item)]
-      : []
-  })
-}
-
-const toRouteTableValue = (
-  items: readonly EdgeRoutePoint[]
-): TableValue<MutationEdgeRoutePoint> => ({
-  ids: items.map((item) => item.id),
-  byId: Object.fromEntries(
-    items.map((item) => [item.id, {
-      id: item.id,
-      x: item.x,
-      y: item.y
-    } satisfies MutationEdgeRoutePoint])
-  )
-})
-
-const fromRouteTableValue = (
-  value: TableValue<MutationEdgeRoutePoint> | undefined
-): readonly EdgeRoutePoint[] => {
-  const source = value
-  return (source?.ids ?? []).flatMap((id) => {
-    const item = source?.byId[id]
-    return item
-      ? [structuredClone(item)]
-      : []
-  })
-}
 
 const nodeShape = {
   type: field<Node['type']>(),
   position: field<Node['position']>(),
   size: field<Node['size']>(),
-  rotation: field<number>().optional(),
-  groupId: field<GroupId>().optional(),
-  owner: field<Node['owner']>().optional(),
-  locked: field<boolean>().optional(),
-  data: field<Node['data']>().optional(),
-  style: field<Node['style']>().optional(),
+  rotation: optional(field<number>()),
+  groupId: optional(field<GroupId>()),
+  owner: optional(field<Node['owner']>()),
+  locked: optional(field<boolean>()),
+  data: optional(field<Node['data']>()),
+  style: optional(field<Node['style']>()),
 } as const
 
-const edgeLabelShape = {
-  text: field<string>().optional(),
-  t: field<number>().optional(),
-  offset: field<number>().optional(),
-  style: field<EdgeLabel['style']>().optional(),
-  data: field<EdgeLabel['data']>().optional(),
-} as const
-
-const edgeRoutePointShape = {
-  x: field<EdgeRoutePoint['x']>(),
-  y: field<EdgeRoutePoint['y']>(),
-} as const
+export type WhiteboardMutationNodeValue = Omit<Node, 'id'>
 
 const edgeShape = {
   source: field<Edge['source']>(),
   target: field<Edge['target']>(),
   type: field<Edge['type']>(),
-  locked: field<boolean>().optional(),
-  groupId: field<GroupId>().optional(),
-  textMode: field<Edge['textMode']>().optional(),
-  style: field<Edge['style']>().optional(),
-  data: field<Edge['data']>().optional(),
-  labels: table<string, typeof edgeLabelShape>(edgeLabelShape).from({
-    read(document, targetId) {
-      const edge = (document as Document).edges[targetId as EdgeId]
-      return toLabelTableValue(getLabels(edge ?? ({ id: targetId } as Edge)))
-    },
-    write(document, value, targetId) {
-      return writeEdgeLabels(
-        document as Document,
-        targetId as EdgeId,
-        fromLabelTableValue(value as TableValue<MutationEdgeLabel>)
-      )
-    }
-  }),
-  route: table<string, typeof edgeRoutePointShape>(edgeRoutePointShape).from({
-    read(document, targetId) {
-      const edge = (document as Document).edges[targetId as EdgeId]
-      return toRouteTableValue(getManualRoutePoints(edge ?? ({ id: targetId } as Edge)))
-    },
-    write(document, value, targetId) {
-      return writeEdgeRoute(
-        document as Document,
-        targetId as EdgeId,
-        fromRouteTableValue(value as TableValue<MutationEdgeRoutePoint>)
-      )
-    }
-  }),
+  locked: optional(field<boolean>()),
+  groupId: optional(field<GroupId>()),
+  textMode: optional(field<Edge['textMode']>()),
+  style: optional(field<Edge['style']>()),
+  data: optional(field<Edge['data']>()),
+  labels: optional(field<Edge['labels']>()),
+  points: optional(field<Edge['points']>()),
 } as const
+
+export type WhiteboardMutationEdgeValue = Omit<Edge, 'id'>
 
 const groupShape = {
-  locked: field<boolean>().optional(),
-  name: field<string>().optional(),
+  locked: optional(field<boolean>()),
+  name: optional(field<string>()),
 } as const
 
+export type WhiteboardMutationGroupValue = Omit<import('@whiteboard/core/types').Group, 'id'>
+
 const mindmapShape = {
-  root: field<MindmapRecord['root']>(),
   layout: field<MindmapLayoutSpec>(),
-  structure: tree<MindmapNodeId, WhiteboardMindmapTreeValue>().from({
-    read(document, targetId) {
-      const record = (document as Document).mindmaps[targetId as MindmapId]
-      if (!record) {
-        return {
-          rootIds: [],
-          nodes: {}
-        } satisfies MutationTreeSnapshot<WhiteboardMindmapTreeValue>
-      }
-      return createMindmapTreeSnapshot(record)
-    },
-    write(document, value, targetId) {
-      return writeMindmapTreeSnapshot(
-        document as Document,
-        targetId as MindmapId,
-        value as MutationTreeSnapshot<WhiteboardMindmapTreeValue>
-      )
-    }
-  }),
+  tree: tree<MindmapNodeId, WhiteboardMindmapTreeValue>(),
 } as const
+
+export type WhiteboardMutationMindmapValue = Omit<MindmapRecord, 'id'>
 
 type ScopeIds<TId extends string> = ReadonlySet<TId> | 'all'
 
@@ -226,13 +94,13 @@ type WhiteboardFlatChangeKey =
   | 'edge.create'
   | 'edge.delete'
   | 'edge.endpoints'
-  | 'edge.route'
+  | 'edge.points'
   | 'edge.style'
   | 'edge.labels'
   | 'edge.data'
   | 'mindmap.create'
   | 'mindmap.delete'
-  | 'mindmap.structure'
+  | 'mindmap.tree'
   | 'mindmap.layout'
   | 'group.create'
   | 'group.delete'
@@ -289,8 +157,8 @@ const createFlatChange = <TId extends string>(
 
 export const whiteboardMutationSchema = schema({
   id: field<Document['id']>(),
-  name: field<string>().optional(),
-  background: field<Background>().optional(),
+  name: optional(field<string>()),
+  background: optional(field<Background>()),
   order: sequence<CanvasItemRef>({
     keyOf: canvasRefKey
   }),
@@ -312,7 +180,7 @@ export const whiteboardMutationSchema = schema({
   const edgeCreate = new Set<EdgeId>()
   const edgeDelete = new Set<EdgeId>()
   const edgeEndpoints = new Set<EdgeId>()
-  const edgeRoute = new Set<EdgeId>()
+  const edgePoints = new Set<EdgeId>()
   const edgeStyle = new Set<EdgeId>()
   const edgeLabels = new Set<EdgeId>()
   const edgeData = new Set<EdgeId>()
@@ -334,7 +202,7 @@ export const whiteboardMutationSchema = schema({
 
   const touchEdgeAll = (id?: string) => {
     pushTouchedId(edgeEndpoints, id)
-    pushTouchedId(edgeRoute, id)
+    pushTouchedId(edgePoints, id)
     pushTouchedId(edgeStyle, id)
     pushTouchedId(edgeLabels, id)
     pushTouchedId(edgeData, id)
@@ -369,14 +237,6 @@ export const whiteboardMutationSchema = schema({
         pushTouchedId(mindmapCreate, rootId)
         return
       }
-      if (write.node === shape.edges.shape.labels) {
-        pushTouchedId(edgeLabels, rootId)
-        return
-      }
-      if (write.node === shape.edges.shape.route) {
-        pushTouchedId(edgeRoute, rootId)
-        return
-      }
     }
 
     if (write.kind === 'entity.remove') {
@@ -394,14 +254,6 @@ export const whiteboardMutationSchema = schema({
       }
       if (write.node === shape.mindmaps) {
         pushTouchedId(mindmapDelete, rootId)
-        return
-      }
-      if (write.node === shape.edges.shape.labels) {
-        pushTouchedId(edgeLabels, rootId)
-        return
-      }
-      if (write.node === shape.edges.shape.route) {
-        pushTouchedId(edgeRoute, rootId)
         return
       }
     }
@@ -452,19 +304,12 @@ export const whiteboardMutationSchema = schema({
       return
     }
 
-    if (write.node === shape.edges.shape.route
-      || write.node === shape.edges.shape.route.shape.x
-      || write.node === shape.edges.shape.route.shape.y) {
-      pushTouchedId(edgeRoute, rootId)
+    if (write.node === shape.edges.shape.points) {
+      pushTouchedId(edgePoints, rootId)
       return
     }
 
-    if (write.node === shape.edges.shape.labels
-      || write.node === shape.edges.shape.labels.shape.text
-      || write.node === shape.edges.shape.labels.shape.t
-      || write.node === shape.edges.shape.labels.shape.offset
-      || write.node === shape.edges.shape.labels.shape.style
-      || write.node === shape.edges.shape.labels.shape.data) {
+    if (write.node === shape.edges.shape.labels) {
       pushTouchedId(edgeLabels, rootId)
       return
     }
@@ -483,16 +328,15 @@ export const whiteboardMutationSchema = schema({
       return
     }
 
-    if (write.node === shape.mindmaps.shape.root
-      || write.node === shape.mindmaps.shape.structure) {
-      pushTouchedId(mindmapStructure, rootId)
-      return
-    }
+      if (write.node === shape.mindmaps.shape.tree) {
+        pushTouchedId(mindmapStructure, rootId)
+        return
+      }
 
-    if (write.node === shape.mindmaps.shape.layout) {
-      pushTouchedId(mindmapLayout, rootId)
-      return
-    }
+      if (write.node === shape.mindmaps.shape.layout) {
+        pushTouchedId(mindmapLayout, rootId)
+        return
+      }
 
     if (write.node === shape.groups.shape.locked
       || write.node === shape.groups.shape.name) {
@@ -509,13 +353,13 @@ export const whiteboardMutationSchema = schema({
     'edge.create': createFlatChange(reset, edgeCreate),
     'edge.delete': createFlatChange(reset, edgeDelete),
     'edge.endpoints': createFlatChange(reset, edgeEndpoints),
-    'edge.route': createFlatChange(reset, edgeRoute),
+    'edge.points': createFlatChange(reset, edgePoints),
     'edge.style': createFlatChange(reset, edgeStyle),
     'edge.labels': createFlatChange(reset, edgeLabels),
     'edge.data': createFlatChange(reset, edgeData),
     'mindmap.create': createFlatChange(reset, mindmapCreate),
     'mindmap.delete': createFlatChange(reset, mindmapDelete),
-    'mindmap.structure': createFlatChange(reset, mindmapStructure),
+    'mindmap.tree': createFlatChange(reset, mindmapStructure),
     'mindmap.layout': createFlatChange(reset, mindmapLayout),
     'group.create': createFlatChange(reset, groupCreate),
     'group.delete': createFlatChange(reset, groupDelete),
@@ -537,7 +381,7 @@ export const whiteboardMutationSchema = schema({
       create: createTouchedIdsChange(reset, edgeCreate),
       delete: createTouchedIdsChange(reset, edgeDelete),
       endpoints: createTouchedIdsChange(reset, edgeEndpoints),
-      route: createTouchedIdsChange(reset, edgeRoute),
+      points: createTouchedIdsChange(reset, edgePoints),
       style: createTouchedIdsChange(reset, edgeStyle),
       labels: createTouchedIdsChange(reset, edgeLabels),
       data: createTouchedIdsChange(reset, edgeData),
@@ -559,7 +403,51 @@ export const whiteboardMutationSchema = schema({
 
 export type WhiteboardMutationSchema = typeof whiteboardMutationSchema
 export type WhiteboardMutationReaderBase = MutationReader<WhiteboardMutationSchema>
-export type WhiteboardMutationWriterBase = MutationWriter<WhiteboardMutationSchema>
+export type WhiteboardMutationWriterBase = {
+  id: { set(value: Document['id']): void }
+  name: { set(value: Document['name']): void }
+  background: { set(value: Document['background']): void }
+  order: {
+    insert(value: CanvasItemRef, anchor?: MutationSequenceAnchor): void
+    move(value: CanvasItemRef, anchor?: MutationSequenceAnchor): void
+    remove(value: CanvasItemRef): void
+    replace(value: readonly CanvasItemRef[]): void
+  }
+  nodes: ((id: NodeId) => {
+    patch(value: Partial<Node>): void
+  }) & {
+    create(id: NodeId, value: WhiteboardMutationNodeValue): void
+    replace(id: NodeId, value: WhiteboardMutationNodeValue): void
+    remove(id: NodeId): void
+  }
+  edges: ((id: EdgeId) => {
+    patch(value: Partial<Edge>): void
+  }) & {
+    create(id: EdgeId, value: WhiteboardMutationEdgeValue): void
+    replace(id: EdgeId, value: WhiteboardMutationEdgeValue): void
+    remove(id: EdgeId): void
+  }
+  groups: ((id: GroupId) => {
+    patch(value: Partial<Pick<import('@whiteboard/core/types').Group, 'locked' | 'name'>>): void
+  }) & {
+    create(id: GroupId, value: WhiteboardMutationGroupValue): void
+    replace(id: GroupId, value: WhiteboardMutationGroupValue): void
+    remove(id: GroupId): void
+  }
+  mindmaps: ((id: MindmapId) => {
+    layout: { set(value: MindmapLayoutSpec): void }
+    tree: {
+      insert(nodeId: string, value: MutationTreeInsertInput<WhiteboardMindmapTreeValue>): void
+      move(nodeId: string, value: MutationTreeMoveInput): void
+      patch(nodeId: string, value: Record<string, unknown>): void
+      remove(nodeId: string): void
+    }
+  }) & {
+    create(id: MindmapId, value: WhiteboardMutationMindmapValue): void
+    replace(id: MindmapId, value: WhiteboardMutationMindmapValue): void
+    remove(id: MindmapId): void
+  }
+}
 export type WhiteboardMutationQueryBase = MutationQuery<WhiteboardMutationSchema>
 export type WhiteboardMutationDelta = MutationDelta<WhiteboardMutationSchema>
 export type { MutationSequenceAnchor }

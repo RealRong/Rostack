@@ -1,39 +1,39 @@
 import type { Engine } from '@whiteboard/engine'
-import type { EdgeRouteWrite } from '@whiteboard/editor/write/types'
+import type { EdgePointsWrite } from '@whiteboard/editor/write/types'
 
-export const createEdgeRouteWrite = (
+export const createEdgePointsWrite = (
   engine: Engine
-): EdgeRouteWrite => ({
+): EdgePointsWrite => ({
   insert: (edgeId, point, to) => engine.execute({
-    type: 'edge.route.insert',
+    type: 'edge.points.insert',
     edgeId,
     point,
     to
   }),
-  set: (edgeId, route) => engine.execute({
-    type: 'edge.route.set',
+  set: (edgeId, points) => engine.execute({
+    type: 'edge.points.set',
     edgeId,
-    route
+    points
   }),
   update: (edgeId, pointId, fields) => engine.execute({
-    type: 'edge.route.update',
+    type: 'edge.points.update',
     edgeId,
     pointId,
     fields
   }),
   move: (edgeId, pointId, to) => engine.execute({
-    type: 'edge.route.move',
+    type: 'edge.points.move',
     edgeId,
     pointId,
     to
   }),
   delete: (edgeId, pointId) => engine.execute({
-    type: 'edge.route.delete',
+    type: 'edge.points.delete',
     edgeId,
     pointId
   }),
   clear: (edgeId) => engine.execute({
-    type: 'edge.route.clear',
+    type: 'edge.points.clear',
     edgeId
   })
 })

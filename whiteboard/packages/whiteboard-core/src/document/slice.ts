@@ -119,7 +119,7 @@ const cloneEdge = (edge: Edge): Edge => ({
   locked: edge.locked,
   source: cloneEdgeEnd(edge.source),
   target: cloneEdgeEnd(edge.target),
-  route: edge.route ? json.clone(edge.route) : undefined,
+  points: edge.points ? json.clone(edge.points) : undefined,
   style: edge.style ? json.clone(edge.style) : undefined,
   textMode: edge.textMode,
   labels: edge.labels ? json.clone(edge.labels) : undefined,
@@ -167,19 +167,12 @@ const remapEdgeEnd = ({
       }
 )
 
-const remapEdgeRoute = (
-  route: Edge['route'],
+const remapEdgePoints = (
+  points: Edge['points'],
   delta: Point
-): EdgeInput['route'] => (
-  route?.kind === 'manual'
-    ? {
-        kind: 'manual',
-        points: route.points.map((point) => offsetPoint(point, delta))
-      }
-    : route
-      ? json.clone(route)
-      : undefined
-)
+): EdgeInput['points'] => points
+  ? entityTable.read.list(points).map((point) => offsetPoint(point, delta))
+  : undefined
 
 const remapSliceEdgeInput = ({
   edge,
@@ -212,7 +205,7 @@ const remapSliceEdgeInput = ({
     id: nextEdgeId,
     source,
     target,
-    route: remapEdgeRoute(edge.route, delta)
+    points: remapEdgePoints(edge.points, delta)
   }
 }
 
@@ -268,7 +261,7 @@ const getEdgeBounds = ({
 
   const points: Point[] = [
     resolved.source.point,
-    ...edgeApi.route.points(edge.route).map((point) => json.clone(point)),
+    ...edgeApi.points.list(edge.points).map((point) => json.clone(point)),
     resolved.target.point
   ]
 
@@ -332,20 +325,13 @@ const translateEdge = (
         kind: 'point',
         point: offsetPoint(edge.target.point, delta)
       },
-  route: edge.route?.kind === 'manual'
-    ? {
-        kind: 'manual',
-        points: edge.route.points.map((point) => ({
-          id: point.id,
-          x: point.x + delta.x,
-          y: point.y + delta.y
-        }))
-      }
-    : edge.route
-      ? {
-          kind: 'auto'
-        }
-      : undefined
+  points: edge.points
+    ? entityTable.normalize.list(entityTable.read.list(edge.points).map((point) => ({
+        id: point.id,
+        x: point.x + delta.x,
+        y: point.y + delta.y
+      })))
+    : undefined
 })
 
 export const getSliceBounds = (
@@ -852,3 +838,4 @@ export const createInsertSliceOps = ({
     allEdgeIds
   })
 }
+import { entityTable } from '@shared/core'

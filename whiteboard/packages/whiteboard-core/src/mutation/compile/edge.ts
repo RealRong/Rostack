@@ -1,4 +1,4 @@
-import { json } from '@shared/core'
+import { entityTable, json } from '@shared/core'
 import {
   record as draftRecord,
   type RecordWrite
@@ -11,10 +11,6 @@ import {
 import type {
   WhiteboardCompileContext,
   WhiteboardCompileHandlerTable
-} from '@whiteboard/core/mutation/compile/helpers'
-import {
-  readCompileRegistries,
-  readCompileServices,
 } from '@whiteboard/core/mutation/compile/helpers'
 import { resolveLockDecision } from '@whiteboard/core/mutation/lock'
 import {
@@ -227,11 +223,11 @@ const emitEdgeRouteDiffOps = (
 
     nextMiddle.forEach((point) => {
       const routePoint: EdgeRoutePoint = {
-        id: readCompileServices(ctx).ids.edgeRoutePoint(),
+        id: ctx.services.ids.edgeRoutePoint(),
         x: point.x,
         y: point.y
       }
-      ctx.writer.edge(edgeId).route.insert(
+      ctx.writer.edge(edgeId).points.insert(
         routePoint,
         toMutationOrderedAnchor(to)
       )
@@ -245,7 +241,7 @@ const emitEdgeRouteDiffOps = (
 
   if (nextMiddle.length === 0) {
     currentMiddle.forEach((point) => {
-      ctx.writer.edge(edgeId).route.delete(point.id)
+      ctx.writer.edge(edgeId).points.delete(point.id)
     })
     return
   }
@@ -261,24 +257,24 @@ const emitEdgeRouteDiffOps = (
         fields.y = nextPoint.y
       }
       if (Object.keys(fields).length) {
-        ctx.writer.edge(edgeId).route.patch(point.id, fields)
+        ctx.writer.edge(edgeId).points.patch(point.id, fields)
       }
     })
     return
   }
 
   currentPoints.forEach((point) => {
-    ctx.writer.edge(edgeId).route.delete(point.id)
+    ctx.writer.edge(edgeId).points.delete(point.id)
   })
 
   let to: EdgeRoutePointAnchor = { kind: 'start' }
   nextPoints.forEach((point) => {
     const routePoint: EdgeRoutePoint = {
-      id: readCompileServices(ctx).ids.edgeRoutePoint(),
+      id: ctx.services.ids.edgeRoutePoint(),
       x: point.x,
       y: point.y
     }
-    ctx.writer.edge(edgeId).route.insert(
+    ctx.writer.edge(edgeId).points.insert(
       routePoint,
       toMutationOrderedAnchor(to)
     )
@@ -345,11 +341,11 @@ export const emitEdgeMovePatchOps = (
     ...(record ? { record } : {})
   }, ctx)
 
-  if (hasOwn(patch, 'route')) {
+  if (hasOwn(patch, 'points')) {
     emitEdgeRouteDiffOps(
       edge.id,
-      edge.route?.kind === 'manual' ? edge.route.points : [],
-      patch.route?.kind === 'manual' ? patch.route.points : [],
+      edge.points ? entityTable.read.list(edge.points) : [],
+      patch.points ?? [],
       ctx
     )
   }
@@ -360,14 +356,14 @@ const compileEdgeRouteDelete = (
   pointId: string,
   ctx: WhiteboardCompileContext
 ) => {
-  const point = edge.route?.kind === 'manual'
-    ? edge.route.points.find((entry) => entry.id === pointId)
+  const point = edge.points
+    ? entityTable.read.list(edge.points).find((entry) => entry.id === pointId)
     : undefined
   if (!point) {
     return ctx.invalid(`Edge ${edge.id} route point not found.`)
   }
 
-  ctx.writer.edge(edge.id).route.delete(pointId)
+  ctx.writer.edge(edge.id).points.delete(pointId)
 }
 
 type EdgeIntentHandlers = Pick<
@@ -381,12 +377,12 @@ type EdgeIntentHandlers = Pick<
   | 'edge.label.update'
   | 'edge.label.move'
   | 'edge.label.delete'
-  | 'edge.route.insert'
-  | 'edge.route.update'
-  | 'edge.route.set'
-  | 'edge.route.move'
-  | 'edge.route.delete'
-  | 'edge.route.clear'
+  | 'edge.points.insert'
+  | 'edge.points.update'
+  | 'edge.points.set'
+  | 'edge.points.move'
+  | 'edge.points.delete'
+  | 'edge.points.clear'
 >
 
 const failLockedEdgeModification = (
@@ -406,16 +402,16 @@ export const edgeIntentHandlers = {
     const built = edgeApi.op.create({
       payload: ctx.intent.input,
       doc: document,
-      registries: readCompileRegistries(ctx),
-      createEdgeId: readCompileServices(ctx).ids.edge,
-      createEdgeRoutePointId: readCompileServices(ctx).ids.edgeRoutePoint
+      registries: ctx.services.registries,
+      createEdgeId: ctx.services.ids.edge,
+      createEdgeRoutePointId: ctx.services.ids.edgeRoutePoint
     })
     if (!built.ok) {
       return ctx.invalid(built.error.message, built.error.details)
     }
 
     ctx.writer.edge.create(built.data.edge)
-    ctx.writer.document.order.insert({
+    ctx.writer.order.insert({
       kind: 'edge',
       id: built.data.edgeId
     })
@@ -503,9 +499,9 @@ export const edgeIntentHandlers = {
             type: intent.patch.type
           }
         : {}),
-      ...(intent.patch?.route
+      ...(intent.patch?.points
         ? {
-            route: intent.patch.route
+            points: intent.patch.points
           }
         : {})
     }, ctx)
@@ -524,7 +520,7 @@ export const edgeIntentHandlers = {
 
     ctx.intent.ids.forEach((id) => {
       ctx.writer.edge.delete(id)
-      ctx.writer.document.order.delete(canvasRefKey({
+      ctx.writer.order.delete(canvasRefKey({
         kind: 'edge',
         id
       }))
@@ -536,7 +532,7 @@ export const edgeIntentHandlers = {
       return
     }
 
-    const labelId = readCompileServices(ctx).ids.edgeLabel()
+    const labelId = ctx.services.ids.edgeLabel()
     const label: EdgeLabel = {
       id: labelId,
       ...(ctx.intent.label.text !== undefined ? { text: ctx.intent.label.text } : {}),
@@ -561,7 +557,9 @@ export const edgeIntentHandlers = {
       return
     }
 
-    const label = edge.labels?.find((entry) => entry.id === ctx.intent.labelId)
+    const label = edge.labels
+      ? entityTable.read.list(edge.labels).find((entry) => entry.id === ctx.intent.labelId)
+      : undefined
     if (!label) {
       return ctx.invalid(`Edge label ${ctx.intent.labelId} not found.`)
     }
@@ -586,14 +584,14 @@ export const edgeIntentHandlers = {
   'edge.label.delete': (ctx) => {
     ctx.writer.edge(ctx.intent.edgeId).labels.delete(ctx.intent.labelId)
   },
-  'edge.route.insert': (ctx) => {
+  'edge.points.insert': (ctx) => {
     const edge = ctx.expect.edge(ctx.intent.edgeId)
     if (!edge) {
       return
     }
 
-    const pointId = readCompileServices(ctx).ids.edgeRoutePoint()
-    ctx.writer.edge(edge.id).route.insert({
+    const pointId = ctx.services.ids.edgeRoutePoint()
+    ctx.writer.edge(edge.id).points.insert({
       id: pointId,
       x: ctx.intent.point.x,
       y: ctx.intent.point.y
@@ -604,14 +602,14 @@ export const edgeIntentHandlers = {
       pointId
     }
   },
-  'edge.route.update': (ctx) => {
+  'edge.points.update': (ctx) => {
     const edge = ctx.expect.edge(ctx.intent.edgeId)
     if (!edge) {
       return
     }
 
-    const point = edge.route?.kind === 'manual'
-      ? edge.route.points.find((entry) => entry.id === ctx.intent.pointId)
+    const point = edge.points
+      ? entityTable.read.list(edge.points).find((entry) => entry.id === ctx.intent.pointId)
       : undefined
     if (!point) {
       return ctx.invalid(`Edge ${edge.id} route point not found.`)
@@ -628,43 +626,43 @@ export const edgeIntentHandlers = {
       return
     }
 
-    ctx.writer.edge(edge.id).route.patch(point.id, fields)
+    ctx.writer.edge(edge.id).points.patch(point.id, fields)
   },
-  'edge.route.set': (ctx) => {
+  'edge.points.set': (ctx) => {
     const edge = ctx.expect.edge(ctx.intent.edgeId)
     if (!edge) {
       return
     }
     emitEdgeRouteDiffOps(
       edge.id,
-      edge.route?.kind === 'manual' ? edge.route.points : [],
-      ctx.intent.route.kind === 'manual' ? ctx.intent.route.points : [],
+      edge.points ? entityTable.read.list(edge.points) : [],
+      ctx.intent.points ?? [],
       ctx
     )
   },
-  'edge.route.move': (ctx) => {
-    ctx.writer.edge(ctx.intent.edgeId).route.move(
+  'edge.points.move': (ctx) => {
+    ctx.writer.edge(ctx.intent.edgeId).points.move(
       ctx.intent.pointId,
       toMutationOrderedAnchor(ctx.intent.to)
     )
   },
-  'edge.route.delete': (ctx) => {
+  'edge.points.delete': (ctx) => {
     const edge = ctx.expect.edge(ctx.intent.edgeId)
     if (!edge) {
       return
     }
     return compileEdgeRouteDelete(edge, ctx.intent.pointId, ctx)
   },
-  'edge.route.clear': (ctx) => {
+  'edge.points.clear': (ctx) => {
     const edge = ctx.expect.edge(ctx.intent.edgeId)
     if (!edge) {
       return
     }
-    if (edge.route?.kind !== 'manual') {
+    if (!edge.points) {
       return
     }
-    edge.route.points.forEach((point) => {
-      ctx.writer.edge(edge.id).route.delete(point.id)
+    entityTable.read.list(edge.points).forEach((point) => {
+      ctx.writer.edge(edge.id).points.delete(point.id)
     })
   }
 } satisfies EdgeIntentHandlers

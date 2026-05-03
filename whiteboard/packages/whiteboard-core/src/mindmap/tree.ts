@@ -184,9 +184,17 @@ export const toMindmapTree = (
   record: MindmapRecord
 ): MindmapTree => {
   const nodes: Record<MindmapNodeId, MindmapTreeNode> = {}
-  Object.entries(record.members).forEach(([id, member]) => {
+  Object.entries(record.tree.nodes).forEach(([id, snapshot]) => {
+    const member = snapshot.value ?? {
+      branchStyle: {
+        color: 'var(--ui-text-primary)',
+        line: 'curve',
+        width: 2,
+        stroke: 'solid'
+      }
+    }
     nodes[id] = {
-      parentId: member.parentId,
+      parentId: snapshot.parentId,
       side: member.side,
       collapsed: member.collapsed,
       branch: json.clone(member.branchStyle)
@@ -194,12 +202,26 @@ export const toMindmapTree = (
   })
 
   return {
-    rootNodeId: record.root,
+    rootNodeId: record.tree.rootId ?? '',
     nodes,
-    children: json.clone(record.children),
+    children: Object.fromEntries(
+      Object.entries(record.tree.nodes).map(([nodeId, node]) => [
+        nodeId,
+        [...node.children]
+      ])
+    ),
     layout: json.clone(record.layout)
   }
 }
+
+export const readMindmapRootId = (
+  record: MindmapRecord | undefined
+): MindmapNodeId | undefined => record?.tree.rootId
+
+export const readMindmapRecordNode = (
+  record: MindmapRecord | undefined,
+  nodeId: MindmapNodeId
+) => record?.tree.nodes[nodeId]
 
 export const getMindmapIdByNode = (
   node: Pick<Node, 'owner'> | undefined

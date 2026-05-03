@@ -100,8 +100,7 @@ const withNodePresentation = (
       return
     }
 
-    writer.preview.node.create({
-      id: nodeId,
+    writer.preview.node.create(nodeId, {
       presentation: {
         position
       },

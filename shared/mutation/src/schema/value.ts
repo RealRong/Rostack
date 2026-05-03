@@ -53,17 +53,13 @@ export type MutationValueOfShape<TShape extends MutationShape> = {
   readonly [K in MutationOptionalKeys<TShape>]?: MutationValueOfNode<TShape[K]>
 }
 
-export type MutationEntityValue<TId extends string, TShape extends MutationShape> = {
-  readonly id: TId
-} & MutationValueOfShape<TShape>
-
 export type MutationTableValue<TId extends string, TShape extends MutationShape> = {
   readonly ids: readonly TId[]
-  readonly byId: Readonly<Partial<Record<TId, MutationEntityValue<TId, TShape>>>>
+  readonly byId: Readonly<Partial<Record<TId, MutationValueOfShape<TShape>>>>
 }
 
 export type MutationMapValue<TId extends string, TShape extends MutationShape> = Readonly<
-  Partial<Record<TId, MutationEntityValue<TId, TShape>>>
+  Partial<Record<TId, MutationValueOfShape<TShape>>>
 >
 
 export type MutationDocument<TSchema extends MutationSchema> =

@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
+import { entityTable } from '@shared/core'
 import { createEdgeRoutePressSession } from '../src/input/features/edge/route'
 import { DEFAULT_DRAW_STATE } from '../src/schema/draw-state'
 import { createEditorStateRuntime } from '../src/state/runtime'
@@ -14,21 +15,18 @@ const createEdge = () => ({
     kind: 'point' as const,
     point: { x: 100, y: 20 }
   },
-  route: {
-    kind: 'manual' as const,
-    points: [{
+  points: entityTable.normalize.list([{
       id: 'point-1',
       x: 20,
       y: 20
-    }]
-  }
+    }])
 })
 
 const createDeps = () => {
   const edge = createEdge()
-  const setRoute = vi.fn(() => ({ ok: true }))
-  const insertRoute = vi.fn(() => ({ ok: true, data: { pointId: 'unused' } }))
-  const updateRoute = vi.fn(() => ({ ok: true }))
+  const setPoints = vi.fn(() => ({ ok: true }))
+  const insertPoints = vi.fn(() => ({ ok: true, data: { pointId: 'unused' } }))
+  const updatePoints = vi.fn(() => ({ ok: true }))
   const state = createEditorStateRuntime({
     initialTool: {
       type: 'select'
@@ -38,9 +36,9 @@ const createDeps = () => {
 
   return {
     edge,
-    setRoute,
-    insertRoute,
-    updateRoute,
+    setPoints,
+    insertPoints,
+    updatePoints,
     ctx: {
       state,
       viewport: {
@@ -78,10 +76,10 @@ const createDeps = () => {
       actions: {
         document: {
           edge: {
-            route: {
-              set: setRoute,
-              insertPoint: insertRoute,
-              movePoint: updateRoute
+            points: {
+              set: setPoints,
+              insertPoint: insertPoints,
+              movePoint: updatePoints
             }
           }
         }
@@ -118,11 +116,11 @@ const createStart = () => ({
 })
 
 describe('createEdgeRoutePressSession', () => {
-  it('commits insert tap through a single route.set', () => {
+  it('commits insert tap through a single points.set', () => {
     const {
-      setRoute,
-      insertRoute,
-      updateRoute,
+      setPoints,
+      insertPoints,
+      updatePoints,
       ctx
     } = createDeps()
 
@@ -140,23 +138,20 @@ describe('createEdgeRoutePressSession', () => {
       client: { x: 50, y: 10 }
     } as never)
 
-    expect(setRoute).toHaveBeenCalledTimes(1)
-    expect(setRoute).toHaveBeenCalledWith('edge-1', {
-      kind: 'manual',
-      points: [
-        { x: 20, y: 20 },
-        { x: 50, y: 10 }
-      ]
-    })
-    expect(insertRoute).not.toHaveBeenCalled()
-    expect(updateRoute).not.toHaveBeenCalled()
+    expect(setPoints).toHaveBeenCalledTimes(1)
+    expect(setPoints).toHaveBeenCalledWith('edge-1', [
+      { x: 20, y: 20 },
+      { x: 50, y: 10 }
+    ])
+    expect(insertPoints).not.toHaveBeenCalled()
+    expect(updatePoints).not.toHaveBeenCalled()
   })
 
-  it('commits insert drag through a single route.set', () => {
+  it('commits insert drag through a single points.set', () => {
     const {
-      setRoute,
-      insertRoute,
-      updateRoute,
+      setPoints,
+      insertPoints,
+      updatePoints,
       ctx
     } = createDeps()
 
@@ -184,15 +179,12 @@ describe('createEdgeRoutePressSession', () => {
       client: { x: 80, y: 30 }
     } as never)
 
-    expect(setRoute).toHaveBeenCalledTimes(1)
-    expect(setRoute).toHaveBeenCalledWith('edge-1', {
-      kind: 'manual',
-      points: [
-        { x: 20, y: 20 },
-        { x: 80, y: 30 }
-      ]
-    })
-    expect(insertRoute).not.toHaveBeenCalled()
-    expect(updateRoute).not.toHaveBeenCalled()
+    expect(setPoints).toHaveBeenCalledTimes(1)
+    expect(setPoints).toHaveBeenCalledWith('edge-1', [
+      { x: 20, y: 20 },
+      { x: 80, y: 30 }
+    ])
+    expect(insertPoints).not.toHaveBeenCalled()
+    expect(updatePoints).not.toHaveBeenCalled()
   })
 })

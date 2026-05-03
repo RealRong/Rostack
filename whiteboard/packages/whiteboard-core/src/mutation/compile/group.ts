@@ -3,9 +3,6 @@ import type {
   WhiteboardCompileHandlerTable
 } from '@whiteboard/core/mutation/compile/helpers'
 import {
-  readCompileServices
-} from '@whiteboard/core/mutation/compile/helpers'
-import {
   canvasRefKey,
   toCanvasOrderAnchor,
 } from '@whiteboard/core/mutation/support'
@@ -19,7 +16,7 @@ type GroupIntentHandlers = Pick<
 
 export const groupIntentHandlers = {
   'group.merge': (ctx) => {
-    const groupId = readCompileServices(ctx).ids.group()
+    const groupId = ctx.services.ids.group()
     ctx.writer.group.create({
       id: groupId
     })
@@ -43,14 +40,14 @@ export const groupIntentHandlers = {
   },
   'group.order.move': (ctx) => {
     const refs = ctx.intent.ids.flatMap((groupId) => ctx.query.group.refsInOrder(groupId))
-    const currentOrder = ctx.reader.document.order.items()
+    const currentOrder = ctx.reader.order.items()
     const existingRefs = refs.filter((ref) => (
       currentOrder.some((entry) => entry.kind === ref.kind && entry.id === ref.id)
     ))
     if (existingRefs.length === 0) {
       return
     }
-    ctx.writer.document.order.splice(
+    ctx.writer.order.splice(
       existingRefs.map((ref) => canvasRefKey(ref)),
       toCanvasOrderAnchor(currentOrder, existingRefs, ctx.intent.to)
     )

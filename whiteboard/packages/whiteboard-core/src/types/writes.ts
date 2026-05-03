@@ -41,18 +41,9 @@ export type SpatialNodeInput = Omit<SpatialNode, 'id'> & {
 
 export type NodeInput = SpatialNodeInput
 
-export type EdgeRouteInput =
-  | {
-      kind: 'auto'
-    }
-  | {
-      kind: 'manual'
-      points: Point[]
-    }
-
-export type EdgeInput = Omit<Edge, 'id' | 'route'> & {
+export type EdgeInput = Omit<Edge, 'id' | 'points'> & {
   id?: EdgeId
-  route?: EdgeRouteInput
+  points?: Point[]
 }
 
 export type NodeFieldPatch = {
@@ -90,7 +81,7 @@ export type EdgePatch = Partial<{
   type: EdgeType
   locked: boolean
   groupId: GroupId
-  route: EdgeRouteInput
+  points: Point[]
   style: EdgeStyle
   textMode: EdgeTextMode
   labels: readonly EdgeLabel[]
@@ -204,8 +195,7 @@ export type MindmapTopicSnapshot = {
   root: NodeId
   slot: TopicSlot
   nodes: Node[]
-  members: Record<NodeId, MindmapRecord['members'][NodeId]>
-  children: Record<NodeId, NodeId[]>
+  tree: MindmapRecord['tree']
 }
 
 export type MindmapTopicUpdateInput = {

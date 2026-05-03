@@ -3,10 +3,6 @@ import type {
   WhiteboardCompileContext,
   WhiteboardCompileHandlerTable
 } from '@whiteboard/core/mutation/compile/helpers'
-import {
-  readCompileRegistries,
-  readCompileServices
-} from '@whiteboard/core/mutation/compile/helpers'
 
 type DocumentIntentHandlers = Pick<
   WhiteboardCompileHandlerTable,
@@ -18,7 +14,7 @@ type DocumentIntentHandlers = Pick<
 export const documentIntentHandlers = {
   'document.replace': (ctx) => {
     const intent = ctx.intent
-    ctx.writer.document.create(
+    ctx.writer.replace(
       normalizeDocument(documentApi.assert(intent.document))
     )
   },
@@ -27,9 +23,9 @@ export const documentIntentHandlers = {
     const built = documentApi.slice.insert.ops({
       doc: ctx.document,
       slice: intent.slice,
-      registries: readCompileRegistries(ctx),
-      createNodeId: readCompileServices(ctx).ids.node,
-      createEdgeId: readCompileServices(ctx).ids.edge,
+      registries: ctx.services.registries,
+      createNodeId: ctx.services.ids.node,
+      createEdgeId: ctx.services.ids.edge,
       origin: intent.options?.origin,
       roots: intent.options?.roots
     })
@@ -53,7 +49,7 @@ export const documentIntentHandlers = {
     }
   },
   'document.background.set': (ctx) => {
-    ctx.writer.document.patch({
+    ctx.writer.patch({
       background: ctx.intent.background
     })
   }

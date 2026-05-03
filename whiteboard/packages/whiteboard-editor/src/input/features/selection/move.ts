@@ -28,7 +28,7 @@ const toMoveEdgePatches = (
 ) => result.preview.edges.map(({ id, patch }) => ({
   id,
   patch: {
-    route: patch.route,
+    points: patch.points,
     source: patch.source,
     target: patch.target
   }
@@ -169,8 +169,7 @@ export const createMoveInteraction = (
             return
           }
 
-          writer.preview.node.create({
-            id,
+          writer.preview.node.create(id, {
             patch: nextPatch,
             hovered: false,
             hidden: false
@@ -192,8 +191,7 @@ export const createMoveInteraction = (
       })
 
       nextNodeById.forEach((patch, id) => {
-        writer.preview.node.create({
-          id,
+        writer.preview.node.create(id, {
           patch,
           hovered: false,
           hidden: false
@@ -217,8 +215,7 @@ export const createMoveInteraction = (
       })
 
       nextEdgeById.forEach((patch, id) => {
-        writer.preview.edge.create({
-          id,
+        writer.preview.edge.create(id, {
           patch
         })
       })

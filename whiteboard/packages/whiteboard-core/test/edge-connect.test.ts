@@ -55,9 +55,7 @@ describe('edge.connect', () => {
     })
     expect(draftPatch).toEqual({
       type: 'straight',
-      route: {
-        kind: 'auto'
-      }
+      points: undefined
     })
 
     const world = edgeApi.connect.reconnectWorld({
@@ -88,9 +86,7 @@ describe('edge.connect', () => {
         }
       },
       type: 'straight',
-      route: {
-        kind: 'auto'
-      }
+      points: undefined
     })
   })
 })

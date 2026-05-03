@@ -8,10 +8,6 @@ import type {
   WhiteboardCompileHandlerTable
 } from '@whiteboard/core/mutation/compile/helpers'
 import {
-  readCompileRegistries,
-  readCompileServices,
-} from '@whiteboard/core/mutation/compile/helpers'
-import {
   emitMindmapMove,
   emitMindmapTopicPatch,
 } from '@whiteboard/core/mutation/compile/mindmap'
@@ -142,7 +138,7 @@ const compileNodeTextCommit = (
     )
   }
 
-  const input = readCompileServices(ctx).layout.commit({
+  const input = ctx.services.layout.commit({
     kind: 'node.text.commit',
     nodeId: intent.nodeId,
     node,
@@ -180,7 +176,7 @@ type NodeIntentHandlers = Pick<
 export const nodeIntentHandlers = {
   'node.create': (ctx) => {
     const document = ctx.document
-    const input = readCompileServices(ctx).layout.commit({
+    const input = ctx.services.layout.commit({
       kind: 'node.create',
       node: ctx.intent.input,
       position: ctx.intent.input.position
@@ -188,15 +184,15 @@ export const nodeIntentHandlers = {
     const built = nodeApi.op.create({
       payload: input,
       doc: document,
-      registries: readCompileRegistries(ctx),
-      createNodeId: readCompileServices(ctx).ids.node
+      registries: ctx.services.registries,
+      createNodeId: ctx.services.ids.node
     })
     if (!built.ok) {
       return ctx.invalid(built.error.message, built.error.details)
     }
 
     ctx.writer.node.create(built.data.node)
-    ctx.writer.document.order.insert({
+    ctx.writer.order.insert({
       kind: 'node',
       id: built.data.nodeId
     })
@@ -226,7 +222,7 @@ export const nodeIntentHandlers = {
     for (const entry of ctx.intent.updates) {
       const current = reader.node.get(entry.id)
       const update = current
-        ? readCompileServices(ctx).layout.commit({
+        ? ctx.services.layout.commit({
             kind: 'node.update',
             nodeId: entry.id,
             node: current,

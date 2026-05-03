@@ -1,4 +1,5 @@
 import type { Path } from '@shared/draft'
+import type { EntityTable } from '@shared/core'
 import type {
   MindmapId,
   MindmapLayoutSpec,
@@ -129,15 +130,6 @@ export type EdgeEnd =
   | NodeEdgeEnd
   | PointEdgeEnd
 
-export type EdgeRoute =
-  | {
-      kind: 'auto'
-    }
-  | {
-      kind: 'manual'
-      points: EdgeRoutePoint[]
-    }
-
 export type EdgeStyle = {
   color?: string
   opacity?: number
@@ -171,10 +163,10 @@ export interface Edge {
   type: EdgeType
   locked?: boolean
   groupId?: GroupId
-  route?: EdgeRoute
+  points?: EntityTable<string, EdgeRoutePoint>
   style?: EdgeStyle
   textMode?: EdgeTextMode
-  labels?: EdgeLabel[]
+  labels?: EntityTable<string, EdgeLabel>
   data?: Record<string, unknown>
 }
 

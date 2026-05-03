@@ -1,7 +1,4 @@
 import type {
-  MutationDocumentKeys,
-  MutationHasDocumentMembers,
-  MutationNamespaceKeys,
   MutationShapeKeys
 } from '../schema/facadeTypes'
 import type {
@@ -74,26 +71,12 @@ export type MutationDeltaNode<TNode> =
   : TNode extends MutationMapNode<infer TId extends string, infer TShape>
     ? MutationCollectionDelta<TId, TShape>
   : TNode extends MutationShape
-    ? MutationDeltaNamespace<TNode>
+    ? MutationDeltaShape<TNode>
   : never
-
-export type MutationDeltaDocument<TShape extends MutationShape> = {
-  readonly [K in MutationDocumentKeys<TShape>]: MutationDeltaNode<TShape[K]>
-}
 
 export type MutationDeltaShape<TShape extends MutationShape> = {
   readonly [K in MutationShapeKeys<TShape>]: MutationDeltaNode<TShape[K]>
 }
 
-export type MutationDeltaNamespace<TShape extends MutationShape> = {
-  readonly [K in MutationNamespaceKeys<TShape>]: MutationDeltaNode<TShape[K]>
-} & (
-  MutationHasDocumentMembers<TShape> extends false
-    ? {}
-    : {
-        document: MutationDeltaDocument<TShape>
-      }
-)
-
 export type MutationDeltaBaseOfShape<TShape extends MutationShape> =
-  MutationDeltaNamespace<TShape> & MutationDeltaControls
+  MutationDeltaShape<TShape> & MutationDeltaControls

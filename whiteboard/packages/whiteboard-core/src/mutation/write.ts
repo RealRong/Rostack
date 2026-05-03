@@ -1,3 +1,4 @@
+import { entityTable, type EntityTable } from '@shared/core'
 import type {
   MutationSequenceAnchor,
   MutationTreeInsertInput,
@@ -22,21 +23,21 @@ import type {
   NodeId,
 } from '@whiteboard/core/types'
 import type {
+  WhiteboardMutationEdgeValue,
+  WhiteboardMutationGroupValue,
+  WhiteboardMutationMindmapValue,
+  WhiteboardMutationNodeValue,
   WhiteboardMutationWriterBase,
 } from './model'
 import {
   canvasRefKey,
-  createMindmapTreeSnapshot,
-  getLabels,
-  getManualRoutePoints,
   parseCanvasRefKey,
   type WhiteboardMindmapTreeValue,
 } from './support'
 
 const toNodeValue = (
   node: Node
-) => ({
-  id: node.id,
+): WhiteboardMutationNodeValue => ({
   type: node.type,
   position: node.position,
   size: node.size,
@@ -48,29 +49,9 @@ const toNodeValue = (
   style: node.style,
 })
 
-const toEdgeLabelValue = (
-  label: EdgeLabel
-) => ({
-  id: label.id,
-  text: label.text,
-  t: label.t,
-  offset: label.offset,
-  style: label.style,
-  data: label.data,
-})
-
-const toEdgeRoutePointValue = (
-  point: EdgeRoutePoint
-) => ({
-  id: point.id,
-  x: point.x,
-  y: point.y,
-})
-
 const toEdgeValue = (
   edge: Edge
-) => ({
-  id: edge.id,
+): WhiteboardMutationEdgeValue => ({
   source: edge.source,
   target: edge.target,
   type: edge.type,
@@ -79,59 +60,34 @@ const toEdgeValue = (
   textMode: edge.textMode,
   style: edge.style,
   data: edge.data,
-  labels: {
-    ids: getLabels(edge).map((label) => label.id),
-    byId: Object.fromEntries(
-      getLabels(edge).map((label) => [label.id, toEdgeLabelValue(label)])
-    )
-  },
-  route: {
-    ids: getManualRoutePoints(edge).map((point) => point.id),
-    byId: Object.fromEntries(
-      getManualRoutePoints(edge).map((point) => [point.id, toEdgeRoutePointValue(point)])
-    )
-  }
+  labels: edge.labels,
+  points: edge.points
 })
 
-const toEdgeRoute = (
-  route: EdgePatch['route'] | Edge['route']
-): Edge['route'] | undefined => {
-  if (!route) {
-    return undefined
-  }
-  if (route.kind === 'auto') {
-    return {
-      kind: 'auto'
-    }
-  }
-
-  return {
-    kind: 'manual',
-    points: route.points.map((point, index) => ({
-      id: 'id' in point
-        ? point.id
-        : `route-point-${index}`,
+const toEdgePoints = (
+  points: EdgePatch['points'] | Edge['points']
+): Edge['points'] | undefined => Array.isArray(points)
+  ? entityTable.normalize.list(points.map((point, index) => ({
+      id: `route-point-${index}`,
       x: point.x,
       y: point.y
-    }))
-  }
-}
+    })))
+  : points
+    ? entityTable.normalize.table(points)
+    : undefined
 
 const toGroupValue = (
   group: Group
-) => ({
-  id: group.id,
+): WhiteboardMutationGroupValue => ({
   locked: group.locked,
   name: group.name,
 })
 
 const toMindmapValue = (
   mindmap: MindmapRecord
-) => ({
-  id: mindmap.id,
-  root: mindmap.root,
+): WhiteboardMutationMindmapValue => ({
   layout: mindmap.layout,
-  structure: createMindmapTreeSnapshot(mindmap)
+  tree: mindmap.tree
 })
 
 const moveItems = (input: {
@@ -205,26 +161,81 @@ const normalizeSequenceAnchor = (
   return undefined
 }
 
-export interface WhiteboardWriter {
-  document: {
-    create(document: Document): void
-    patch(patch: DocumentPatch): void
-    order: {
-      insert(ref: CanvasItemRef, anchor?: MutationSequenceAnchor | {
-        kind: 'start' | 'end' | 'before' | 'after'
-        itemId?: string
-      }): void
-      delete(ref: CanvasItemRef | string): void
-      move(ref: CanvasItemRef | string, anchor?: MutationSequenceAnchor | {
-        kind: 'start' | 'end' | 'before' | 'after'
-        itemId?: string
-      }): void
-      splice(refs: readonly (CanvasItemRef | string)[], anchor?: MutationSequenceAnchor | {
-        kind: 'start' | 'end' | 'before' | 'after'
-        itemId?: string
-      }): void
-      replace(order: readonly CanvasItemRef[]): void
+const EMPTY_EDGE_LABEL_TABLE: EntityTable<string, EdgeLabel> = {
+  ids: [],
+  byId: {}
+}
+
+const EMPTY_EDGE_ROUTE_POINT_TABLE: EntityTable<string, EdgeRoutePoint> = {
+  ids: [],
+  byId: {}
+}
+
+const moveOrderedIds = (
+  ids: readonly string[],
+  movedIds: readonly string[],
+  anchor?: MutationSequenceAnchor
+): string[] => {
+  const movedSet = new Set(movedIds)
+  const filtered = ids.filter((id) => !movedSet.has(id))
+  const insertIndex = (() => {
+    if (!anchor) {
+      return filtered.length
     }
+    if ('at' in anchor) {
+      return anchor.at === 'start'
+        ? 0
+        : filtered.length
+    }
+    if ('before' in anchor) {
+      const index = filtered.indexOf(anchor.before)
+      return index >= 0
+        ? index
+        : filtered.length
+    }
+    const index = filtered.indexOf(anchor.after)
+    return index >= 0
+      ? index + 1
+      : filtered.length
+  })()
+
+  return [
+    ...filtered.slice(0, insertIndex),
+    ...movedIds,
+    ...filtered.slice(insertIndex)
+  ]
+}
+
+const readEdgeLabelTable = (
+  edge: Edge | undefined
+): EntityTable<string, EdgeLabel> => edge?.labels
+  ? entityTable.normalize.table(edge.labels)
+  : EMPTY_EDGE_LABEL_TABLE
+
+const readEdgePointTable = (
+  edge: Edge | undefined
+): EntityTable<string, EdgeRoutePoint> => edge?.points
+  ? entityTable.normalize.table(edge.points)
+  : EMPTY_EDGE_ROUTE_POINT_TABLE
+
+export interface WhiteboardWriter {
+  replace(document: Document): void
+  patch(patch: DocumentPatch): void
+  order: {
+    insert(ref: CanvasItemRef, anchor?: MutationSequenceAnchor | {
+      kind: 'start' | 'end' | 'before' | 'after'
+      itemId?: string
+    }): void
+    delete(ref: CanvasItemRef | string): void
+    move(ref: CanvasItemRef | string, anchor?: MutationSequenceAnchor | {
+      kind: 'start' | 'end' | 'before' | 'after'
+      itemId?: string
+    }): void
+    splice(refs: readonly (CanvasItemRef | string)[], anchor?: MutationSequenceAnchor | {
+      kind: 'start' | 'end' | 'before' | 'after'
+      itemId?: string
+    }): void
+    replace(order: readonly CanvasItemRef[]): void
   }
   node: {
     create(node: Node): void
@@ -243,7 +254,7 @@ export interface WhiteboardWriter {
         move(labelId: string, anchor?: MutationSequenceAnchor): void
         delete(labelId: string): void
       }
-      route: {
+      points: {
         insert(point: EdgeRoutePoint, anchor?: MutationSequenceAnchor): void
         create(point: EdgeRoutePoint, anchor?: MutationSequenceAnchor): void
         patch(pointId: string, patch: Partial<EdgeRoutePoint>): void
@@ -260,9 +271,9 @@ export interface WhiteboardWriter {
   mindmap: {
     create(mindmap: MindmapRecord): void
     delete(id: MindmapId): void
-    patch(id: MindmapId, patch: Partial<Pick<MindmapRecord, 'root' | 'layout'>>): void
+    patch(id: MindmapId, patch: Partial<Pick<MindmapRecord, 'layout'>>): void
     (id: MindmapId): {
-      structure: {
+      tree: {
         insert(nodeId: string, value: MutationTreeInsertInput<WhiteboardMindmapTreeValue>): void
         move(nodeId: string, value: MutationTreeMoveInput): void
         patch(nodeId: string, patch: Record<string, unknown>): void
@@ -281,16 +292,16 @@ export const createWhiteboardWriter = (
       kind: 'start' | 'end' | 'before' | 'after'
       itemId?: string
     }) {
-      write.document.order.insert(ref, normalizeSequenceAnchor(anchor))
+      write.order.insert(ref, normalizeSequenceAnchor(anchor))
     },
     delete(ref: CanvasItemRef | string) {
-      write.document.order.remove(typeof ref === 'string' ? parseCanvasRefKey(ref) : ref)
+      write.order.remove(typeof ref === 'string' ? parseCanvasRefKey(ref) : ref)
     },
     move(ref: CanvasItemRef | string, anchor?: MutationSequenceAnchor | {
       kind: 'start' | 'end' | 'before' | 'after'
       itemId?: string
     }) {
-      write.document.order.move(
+      write.order.move(
         typeof ref === 'string' ? parseCanvasRefKey(ref) : ref,
         normalizeSequenceAnchor(anchor)
       )
@@ -300,7 +311,7 @@ export const createWhiteboardWriter = (
       itemId?: string
     }) {
       const moved = refs.map((ref) => typeof ref === 'string' ? parseCanvasRefKey(ref) : ref)
-      write.document.order.replace(
+      write.order.replace(
         moveItems({
           order: readDocument().order,
           moved,
@@ -309,60 +320,166 @@ export const createWhiteboardWriter = (
       )
     },
     replace(order: readonly CanvasItemRef[]) {
-      write.document.order.replace(order)
+      write.order.replace(order)
     }
   }
 
   const edgeItem = (edgeId: EdgeId) => ({
     labels: {
       insert(label: EdgeLabel, anchor?: MutationSequenceAnchor) {
-        write.edges(edgeId).labels.create(toEdgeLabelValue(label), anchor)
+        const table = readEdgeLabelTable(readDocument().edges[edgeId])
+        write.edges(edgeId).patch({
+          labels: {
+            byId: {
+              ...table.byId,
+              [label.id]: structuredClone(label)
+            },
+            ids: moveOrderedIds(table.ids, [label.id], anchor)
+          }
+        })
       },
       create(label: EdgeLabel, anchor?: MutationSequenceAnchor) {
-        write.edges(edgeId).labels.create(toEdgeLabelValue(label), anchor)
+        const table = readEdgeLabelTable(readDocument().edges[edgeId])
+        write.edges(edgeId).patch({
+          labels: {
+            byId: {
+              ...table.byId,
+              [label.id]: structuredClone(label)
+            },
+            ids: moveOrderedIds(table.ids, [label.id], anchor)
+          }
+        })
       },
       patch(labelId: string, patch: Partial<EdgeLabel>) {
-        write.edges(edgeId).labels(labelId).patch(patch)
+        const table = readEdgeLabelTable(readDocument().edges[edgeId])
+        const current = table.byId[labelId]
+        if (!current) {
+          return
+        }
+        write.edges(edgeId).patch({
+          labels: {
+            byId: {
+              ...table.byId,
+              [labelId]: {
+                ...current,
+                ...structuredClone(patch),
+                id: labelId
+              }
+            },
+            ids: table.ids
+          }
+        })
       },
       move(labelId: string, anchor?: MutationSequenceAnchor) {
-        write.edges(edgeId).labels.move(labelId, anchor)
+        const table = readEdgeLabelTable(readDocument().edges[edgeId])
+        if (!table.byId[labelId]) {
+          return
+        }
+        write.edges(edgeId).patch({
+          labels: {
+            byId: table.byId,
+            ids: moveOrderedIds(table.ids, [labelId], anchor)
+          }
+        })
       },
       delete(labelId: string) {
-        write.edges(edgeId).labels.remove(labelId)
+        const table = readEdgeLabelTable(readDocument().edges[edgeId])
+        if (!table.byId[labelId]) {
+          return
+        }
+        const next = entityTable.write.remove(table, labelId)
+        write.edges(edgeId).patch({
+          labels: next.ids.length > 0
+            ? next
+            : undefined
+        })
       }
     },
-    route: {
+    points: {
       insert(point: EdgeRoutePoint, anchor?: MutationSequenceAnchor) {
-        write.edges(edgeId).route.create(toEdgeRoutePointValue(point), anchor)
+        const points = readEdgePointTable(readDocument().edges[edgeId])
+        write.edges(edgeId).patch({
+          points: {
+            byId: {
+              ...points.byId,
+              [point.id]: structuredClone(point)
+            },
+            ids: moveOrderedIds(points.ids, [point.id], anchor)
+          }
+        })
       },
       create(point: EdgeRoutePoint, anchor?: MutationSequenceAnchor) {
-        write.edges(edgeId).route.create(toEdgeRoutePointValue(point), anchor)
+        const points = readEdgePointTable(readDocument().edges[edgeId])
+        write.edges(edgeId).patch({
+          points: {
+            byId: {
+              ...points.byId,
+              [point.id]: structuredClone(point)
+            },
+            ids: moveOrderedIds(points.ids, [point.id], anchor)
+          }
+        })
       },
       patch(pointId: string, patch: Partial<EdgeRoutePoint>) {
-        write.edges(edgeId).route(pointId).patch(patch)
+        const points = readEdgePointTable(readDocument().edges[edgeId])
+        const current = points.byId[pointId]
+        if (!current) {
+          return
+        }
+        write.edges(edgeId).patch({
+          points: {
+            byId: {
+              ...points.byId,
+              [pointId]: {
+                ...current,
+                ...structuredClone(patch),
+                id: pointId
+              }
+            },
+            ids: points.ids
+          }
+        })
       },
       move(pointId: string, anchor?: MutationSequenceAnchor) {
-        write.edges(edgeId).route.move(pointId, anchor)
+        const points = readEdgePointTable(readDocument().edges[edgeId])
+        if (!points.byId[pointId]) {
+          return
+        }
+        write.edges(edgeId).patch({
+          points: {
+            byId: points.byId,
+            ids: moveOrderedIds(points.ids, [pointId], anchor)
+          }
+        })
       },
       delete(pointId: string) {
-        write.edges(edgeId).route.remove(pointId)
+        const points = readEdgePointTable(readDocument().edges[edgeId])
+        if (!points.byId[pointId]) {
+          return
+        }
+        const next = entityTable.write.remove(points, pointId)
+        write.edges(edgeId).patch({
+          points: next.ids.length > 0
+            ? next
+            : undefined
+        })
       }
     }
   })
 
   const mindmapItem = (mindmapId: MindmapId) => ({
-    structure: {
+    tree: {
       insert(nodeId: string, value: MutationTreeInsertInput<WhiteboardMindmapTreeValue>) {
-        write.mindmaps(mindmapId).structure.insert(nodeId, value)
+        write.mindmaps(mindmapId).tree.insert(nodeId, value)
       },
       move(nodeId: string, value: MutationTreeMoveInput) {
-        write.mindmaps(mindmapId).structure.move(nodeId, value)
+        write.mindmaps(mindmapId).tree.move(nodeId, value)
       },
       patch(nodeId: string, patch: Record<string, unknown>) {
-        write.mindmaps(mindmapId).structure.patch(nodeId, patch)
+        write.mindmaps(mindmapId).tree.patch(nodeId, patch)
       },
       delete(nodeId: string) {
-        write.mindmaps(mindmapId).structure.remove(nodeId)
+        write.mindmaps(mindmapId).tree.remove(nodeId)
       }
     }
   })
@@ -371,7 +488,7 @@ export const createWhiteboardWriter = (
     (id: EdgeId) => edgeItem(id),
     {
       create(next: Edge) {
-        write.edges.create(toEdgeValue(next))
+        write.edges.create(next.id, toEdgeValue(next))
       },
       delete(id: EdgeId) {
         write.edges.remove(id)
@@ -382,7 +499,7 @@ export const createWhiteboardWriter = (
           return
         }
         const {
-          route,
+          points,
           labels,
           ...rest
         } = patch
@@ -392,12 +509,12 @@ export const createWhiteboardWriter = (
           ...(labels === undefined
             ? {}
             : {
-                labels: [...labels]
+                labels: entityTable.normalize.list(labels)
               }),
-          ...(route === undefined
+          ...(points === undefined
             ? {}
             : {
-                route: toEdgeRoute(route)
+                points: toEdgePoints(points)
               })
         }
         write.edges.replace(id, toEdgeValue({
@@ -411,16 +528,13 @@ export const createWhiteboardWriter = (
     (id: MindmapId) => mindmapItem(id),
     {
       create(next: MindmapRecord) {
-        write.mindmaps.create(toMindmapValue(next))
+        write.mindmaps.create(next.id, toMindmapValue(next))
       },
       delete(id: MindmapId) {
         write.mindmaps.remove(id)
       },
-      patch(id: MindmapId, patch: Partial<Pick<MindmapRecord, 'root' | 'layout'>>) {
+      patch(id: MindmapId, patch: Partial<Pick<MindmapRecord, 'layout'>>) {
         const item = write.mindmaps(id)
-        if (patch.root !== undefined) {
-          item.root.set(patch.root)
-        }
         if (patch.layout !== undefined) {
           item.layout.set(patch.layout)
         }
@@ -429,12 +543,11 @@ export const createWhiteboardWriter = (
   )
 
   return {
-    document: {
-      create(next) {
+    replace(next) {
         const current = readDocument()
-        write.document.id.set(next.id)
-        write.document.name.set(next.name)
-        write.document.background.set(next.background)
+        write.id.set(next.id)
+        write.name.set(next.name)
+        write.background.set(next.background)
         documentOrder.replace(next.order)
 
         Object.keys(current.nodes).forEach((id) => {
@@ -447,7 +560,7 @@ export const createWhiteboardWriter = (
             write.nodes.replace(node.id, toNodeValue(node))
             return
           }
-          write.nodes.create(toNodeValue(node))
+          write.nodes.create(node.id, toNodeValue(node))
         })
 
         Object.keys(current.edges).forEach((id) => {
@@ -460,7 +573,7 @@ export const createWhiteboardWriter = (
             write.edges.replace(entry.id, toEdgeValue(entry))
             return
           }
-          write.edges.create(toEdgeValue(entry))
+          write.edges.create(entry.id, toEdgeValue(entry))
         })
 
         Object.keys(current.groups).forEach((id) => {
@@ -473,7 +586,7 @@ export const createWhiteboardWriter = (
             write.groups.replace(entry.id, toGroupValue(entry))
             return
           }
-          write.groups.create(toGroupValue(entry))
+          write.groups.create(entry.id, toGroupValue(entry))
         })
 
         Object.keys(current.mindmaps).forEach((id) => {
@@ -486,28 +599,27 @@ export const createWhiteboardWriter = (
             write.mindmaps.replace(entry.id, toMindmapValue(entry))
             return
           }
-          write.mindmaps.create(toMindmapValue(entry))
+          write.mindmaps.create(entry.id, toMindmapValue(entry))
         })
       },
       patch(patch: DocumentPatch) {
         if (patch.id !== undefined) {
-          write.document.id.set(patch.id)
+          write.id.set(patch.id)
         }
         if ('name' in patch) {
-          write.document.name.set(patch.name)
+          write.name.set(patch.name)
         }
         if ('background' in patch) {
-          write.document.background.set(patch.background)
+          write.background.set(patch.background)
         }
         if ('order' in patch && patch.order) {
-          write.document.order.replace(patch.order)
+          write.order.replace(patch.order)
         }
       },
-      order: documentOrder,
-    },
+    order: documentOrder,
     node: {
       create(next) {
-        write.nodes.create(toNodeValue(next))
+        write.nodes.create(next.id, toNodeValue(next))
       },
       delete(id) {
         write.nodes.remove(id)
@@ -519,7 +631,7 @@ export const createWhiteboardWriter = (
     edge,
     group: {
       create(next) {
-        write.groups.create(toGroupValue(next))
+        write.groups.create(next.id, toGroupValue(next))
       },
       delete(id) {
         write.groups.remove(id)

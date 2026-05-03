@@ -159,10 +159,17 @@ export interface EditorStateInput {
   tool: Tool
 }
 
+export type NodePreviewValue = NodePreview
+export type NodePreviewRecord = Readonly<Record<NodeId, NodePreview | undefined>>
+export type EdgePreviewValue = EdgePreview
+export type EdgePreviewRecord = Readonly<Record<EdgeId, EdgePreview | undefined>>
+export type MindmapPreviewValue = MindmapPreviewEntry
+export type MindmapPreview = Readonly<Record<MindmapId, MindmapPreviewEntry | undefined>>
+
 export interface PreviewInput {
-  node: Readonly<Record<NodeId, NodePreview | undefined>>
-  edge: Readonly<Record<EdgeId, EdgePreview | undefined>>
-  mindmap: Readonly<Record<MindmapId, MindmapPreviewEntry | undefined>>
+  node: NodePreviewRecord
+  edge: EdgePreviewRecord
+  mindmap: MindmapPreview
   selection: SelectionPreview
   draw: DrawPreview | null
   edgeGuide?: EdgeGuidePreview
@@ -233,8 +240,6 @@ export interface MindmapPreviewEntry {
     drop?: MindmapDragDropTarget
   }
 }
-
-export type MindmapPreview = Readonly<Record<MindmapId, MindmapPreviewEntry | undefined>>
 
 export type EditorSceneLayout = WhiteboardLayoutService
 
@@ -401,7 +406,7 @@ export interface EdgeLabelView {
   labelId: string
   text: string
   displayText: string
-  style: NonNullable<Edge['labels']>[number]['style']
+  style: import('@whiteboard/core/types').EdgeLabel['style']
   size: Size
   point: Point
   angle: number

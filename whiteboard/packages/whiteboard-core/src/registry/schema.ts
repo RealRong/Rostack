@@ -122,8 +122,7 @@ const applyEdgeDefaults = (input: EdgeInput, registries: CoreRegistries): EdgeIn
   const type = input.type ?? 'straight'
   const next = cloneTarget({
     ...input,
-    type,
-    route: input.route ?? { kind: 'auto' as const }
+    type
   }) as EdgeInput
   const definition = registries.edgeTypes.get(type) as EdgeTypeDefinition | undefined
   if (definition?.defaultData) {

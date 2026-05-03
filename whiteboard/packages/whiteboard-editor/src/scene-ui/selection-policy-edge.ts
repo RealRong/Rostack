@@ -1,5 +1,5 @@
 import type { Edge, EdgeId } from '@whiteboard/core/types'
-import { collection } from '@shared/core'
+import { collection, entityTable } from '@shared/core'
 import type { EditorDefaults } from '@whiteboard/editor/schema/defaults'
 import type { SelectionToolbarEdgeScope } from '@whiteboard/editor/scene-ui/schema'
 
@@ -34,5 +34,8 @@ export const readEdgeScope = ({
   start: collection.uniform(edges, (entry) => entry.style?.start),
   end: collection.uniform(edges, (entry) => entry.style?.end),
   textMode: collection.uniform(edges, (entry) => entry.textMode ?? defaults.edge.textMode),
-  labelCount: primaryEdge?.labels?.length ?? 0
+  labelCount: entityTable.read.list(primaryEdge?.labels ?? {
+    ids: [],
+    byId: {}
+  }).length
 })

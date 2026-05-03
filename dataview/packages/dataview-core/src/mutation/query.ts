@@ -13,9 +13,6 @@ import {
   TITLE_FIELD_ID
 } from '@dataview/core/types'
 import {
-  entityTable,
-} from '@shared/core'
-import {
   createMutationQuery,
   type MutationDocument,
 } from '@shared/mutation'
@@ -29,6 +26,7 @@ import {
 } from './change'
 
 type RecordIdSource = readonly RecordId[] | ReadonlySet<RecordId>
+type DataviewQuerySource = DataDoc | DataviewMutationQuery
 
 const dataviewTitleField: Extract<Field, { kind: 'title' }> = {
   id: TITLE_FIELD_ID,
@@ -39,8 +37,6 @@ const dataviewTitleField: Extract<Field, { kind: 'title' }> = {
 }
 
 export interface DataviewQuery {
-  raw: DataviewMutationQuery
-  document(): DataDoc
   changes(delta: import('./schema').DataviewMutationDelta): DataviewMutationChanges
   records: {
     ids(): readonly RecordId[]
@@ -69,16 +65,6 @@ export interface DataviewQuery {
   }
 }
 
-export interface DataviewQueryContext {
-  document: DataDoc
-  query: DataviewQuery
-  fieldIds: readonly FieldId[]
-  fieldIdSet: ReadonlySet<FieldId>
-  fieldsById: ReadonlyMap<FieldId, Field>
-  activeViewId?: ViewId
-  activeView?: View
-}
-
 const toRecordIdSet = (
   validIds: RecordIdSource | undefined,
   fallback: () => readonly RecordId[]
@@ -90,51 +76,58 @@ const toRecordIdSet = (
   return new Set(validIds ?? fallback())
 }
 
+const isDataviewMutationQuery = (
+  input: DataviewQuerySource
+): input is DataviewMutationQuery => typeof (input as DataviewMutationQuery).records === 'function'
+
 export const createDataviewQuery = (
-  raw: DataviewMutationQuery
+  input: DataviewQuerySource
 ): DataviewQuery => {
+  const raw = isDataviewMutationQuery(input)
+    ? input
+    : createMutationQuery(
+        dataviewMutationSchema,
+        input as MutationDocument<typeof dataviewMutationSchema>
+      )
   const recordIds = () => raw.records.ids() as readonly RecordId[]
   const fieldIds = (): readonly FieldId[] => [
     TITLE_FIELD_ID,
     ...(raw.fields.ids() as readonly CustomFieldId[])
   ]
   const viewIds = () => raw.views.ids() as readonly ViewId[]
-  const getRecord = (recordId: RecordId): DataRecord | undefined =>
-    raw.records.get(recordId) as DataRecord | undefined
+  const getRecord = (recordId: RecordId): DataRecord | undefined => {
+    const value = raw.records.get(recordId)
+    return value
+      ? {
+          id: recordId,
+          ...value
+        } as DataRecord
+      : undefined
+  }
   const getField = (fieldId: FieldId): Field | undefined => {
     if (fieldId === TITLE_FIELD_ID) {
       return dataviewTitleField
     }
-    return raw.fields.get(fieldId as CustomFieldId) as Field | undefined
+    const value = raw.fields.get(fieldId as CustomFieldId)
+    return value
+      ? {
+          id: fieldId,
+          ...value
+        } as Field
+      : undefined
   }
-  const getView = (viewId: ViewId): View | undefined =>
-    raw.views.get(viewId) as View | undefined
-
-  const readDocument = (): DataDoc => {
-    const activeViewId = raw.document.activeViewId() as ViewId | undefined
-    const meta = raw.document.meta() as DataDoc['meta']
-
-    return {
-      records: entityTable.normalize.list(recordIds().flatMap((recordId) => {
-        const record = getRecord(recordId)
-        return record ? [record] : []
-      })),
-      fields: entityTable.normalize.list((raw.fields.ids() as readonly CustomFieldId[]).flatMap((fieldId) => {
-        const field = getField(fieldId)
-        return field && field.kind !== 'title'
-          ? [field] : []
-      })),
-      views: entityTable.normalize.list(viewIds().flatMap((viewId) => {
-        const view = getView(viewId)
-        return view ? [view] : []
-      })),
-      activeViewId,
-      meta
-    }
+  const getView = (viewId: ViewId): View | undefined => {
+    const value = raw.views.get(viewId)
+    return value
+      ? {
+          id: viewId,
+          ...value
+        } as View
+      : undefined
   }
 
   const getActiveViewId = (): ViewId | undefined => {
-    const activeViewId = raw.document.activeViewId() as ViewId | undefined
+    const activeViewId = raw.activeViewId() as ViewId | undefined
     if (activeViewId && raw.views.has(activeViewId)) {
       return activeViewId as ViewId
     }
@@ -143,9 +136,7 @@ export const createDataviewQuery = (
   }
 
   const query: DataviewQuery = {
-    raw,
-    document: readDocument,
-    changes: (delta) => createDataviewChanges(query, delta),
+    changes: (delta) => createDataviewChanges(raw, query, delta),
     records: {
       ids: recordIds,
       list: () => recordIds().flatMap((recordId) => {
@@ -201,31 +192,4 @@ export const createDataviewQuery = (
   }
 
   return query
-}
-
-export const createDataviewQueryContext = (
-  document: DataDoc
-): DataviewQueryContext => {
-  const raw = createMutationQuery(
-    dataviewMutationSchema,
-    document as MutationDocument<typeof dataviewMutationSchema>
-  )
-  const query = createDataviewQuery(raw)
-  const ids = query.fields.ids()
-  const fieldIdSet = new Set(ids)
-  const fieldsById = new Map<FieldId, Field>()
-
-  query.fields.list().forEach((field) => {
-    fieldsById.set(field.id, field)
-  })
-
-  return {
-    document,
-    query,
-    fieldIds: ids,
-    fieldIdSet,
-    fieldsById,
-    activeViewId: query.views.activeId(),
-    activeView: query.views.active()
-  }
 }

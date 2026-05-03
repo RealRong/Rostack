@@ -46,12 +46,12 @@ import {
   sameEdgeEnd,
   sameEdgeLabel,
   sameEdgeLabels,
-  sameEdgeRoute,
+  sameEdgePointsValue,
   sameResolvedEdgeEnd
 } from '@whiteboard/core/edge/equality'
 import { resolveEdgeEnds } from '@whiteboard/core/edge/endpoints'
 import {
-  isManualEdgeRoute,
+  hasManualEdgePoints,
   isNodeEdgeEnd,
   isPointEdgeEnd
 } from '@whiteboard/core/edge/guards'
@@ -107,7 +107,7 @@ import {
   collectRelatedEdgeIds,
   createEdgeRelations
 } from '@whiteboard/core/edge/relations'
-import { readEdgeRoutePoints } from '@whiteboard/core/edge/route'
+import { readEdgePoints } from '@whiteboard/core/edge/route'
 import { getNearestEdgeInsertIndex } from '@whiteboard/core/edge/segment'
 import {
   resolveEdgeView,
@@ -126,12 +126,12 @@ import {
 
 export const edge = {
   guard: {
-    isManualRoute: isManualEdgeRoute,
+    hasManualPoints: hasManualEdgePoints,
     isNodeEnd: isNodeEdgeEnd,
     isPointEnd: isPointEdgeEnd
   },
-  route: {
-    points: readEdgeRoutePoints,
+  points: {
+    list: readEdgePoints,
     set: setRoutePoints,
     insert: insertRoutePoint,
     move: moveRoutePoint,
@@ -161,7 +161,7 @@ export const edge = {
     nodes: resolveProjectedEdgeNodes,
     route: resolveProjectedEdgeRoute,
     box: resolveProjectedEdgeBox,
-    manualPoints: readManualRoutePoints,
+    points: readManualRoutePoints,
     labelRect: buildEdgeLabelRect,
     labelDisplayText: readEdgeLabelDisplayText,
     nodeSnapshot: createEdgeNodeSnapshot
@@ -241,7 +241,7 @@ export const edge = {
     anchor: sameEdgeAnchor,
     sameEnd: sameEdgeEnd,
     resolvedEnd: sameResolvedEdgeEnd,
-    route: sameEdgeRoute
+    points: sameEdgePointsValue
   },
   label: {
     railOffset: EDGE_LABEL_RAIL_OFFSET,

@@ -131,7 +131,8 @@ const lowerFieldCreate = (
     meta: intent.input.meta
   })
 
-  input.write.fields.create(field)
+  const { id: fieldId, ...nextFieldValue } = field
+  input.write.fields.create(fieldId, nextFieldValue)
   return { id: field.id }
 }
 
@@ -235,17 +236,21 @@ const lowerFieldDuplicate = (
     return
   }
 
-  const nextFieldId = createId('field')
+  const duplicatedFieldId = createId('field')
   const nextField = {
     ...structuredClone(sourceField),
-    id: nextFieldId,
+    id: duplicatedFieldId,
     name: fieldApi.schema.name.unique(
       `${sourceField.name} Copy`,
       reader.fields.list().filter(fieldApi.kind.isCustom)
     )
   } satisfies CustomField
 
-  input.write.fields.create(nextField)
+  const {
+    id: nextFieldWriteId,
+    ...nextFieldValue
+  } = nextField
+  input.write.fields.create(nextFieldWriteId, nextFieldValue)
 
   records.forEach((record) => {
     if (!Object.prototype.hasOwnProperty.call(record.values, sourceField.id)) {
@@ -254,14 +259,14 @@ const lowerFieldDuplicate = (
 
     writeRecordValues(input.write, [record.id], {
       set: {
-        [nextFieldId]: structuredClone(record.values[sourceField.id])
+        [duplicatedFieldId]: structuredClone(record.values[sourceField.id])
       }
     })
   })
 
   views.forEach((view) => {
     const viewFieldIds = viewApi.fields.read.ids(view)
-    if (view.type !== 'table' || viewFieldIds.includes(nextFieldId)) {
+    if (view.type !== 'table' || viewFieldIds.includes(duplicatedFieldId)) {
       return
     }
 
@@ -271,7 +276,7 @@ const lowerFieldDuplicate = (
     }
 
     input.write.views(view.id).fields.insert(
-      nextFieldId,
+      duplicatedFieldId,
       toAnchor(viewFieldIds[sourceIndex + 1])
     )
   })
@@ -309,7 +314,11 @@ const lowerFieldOptionCreate = (
     options: context.options,
     name: explicitName ?? createOptionName(context.options)
   })
-  input.write.fields(intent.field).options.create(nextOption)
+  input.write.fields(intent.field).options.create(nextOption.id, {
+    name: nextOption.name,
+    color: nextOption.color,
+    category: nextOption.category
+  })
   return { id: nextOption.id }
 }
 

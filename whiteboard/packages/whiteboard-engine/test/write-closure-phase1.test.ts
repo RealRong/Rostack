@@ -47,10 +47,7 @@ const createManualEdge = ({
   type: 'straight' as const,
   source,
   target,
-  route: {
-    kind: 'manual' as const,
-    points: [...points]
-  }
+  points: [...points]
 })
 
 test('canvas.selection.move compiles node, selected edge, and follow edge movement in one command', () => {
@@ -126,14 +123,11 @@ test('canvas.selection.move compiles node, selected edge, and follow edge moveme
 
   assert.deepEqual(result.commit.document.nodes.node_1?.position, { x: 30, y: 10 })
   assert.deepEqual(result.commit.document.nodes.node_2?.position, { x: 230, y: 10 })
-  assert.deepEqual(result.commit.document.edges.edge_follow?.route, {
-    kind: 'manual',
-    points: [{
+  assert.deepEqual(result.commit.document.edges.edge_follow?.points, [{
       id: 'follow_point_1',
       x: 130,
       y: 30
-    }]
-  })
+    }])
   assert.deepEqual(result.commit.document.edges.edge_selected?.source, {
     kind: 'point',
     point: { x: 70, y: 50 }
@@ -142,17 +136,14 @@ test('canvas.selection.move compiles node, selected edge, and follow edge moveme
     kind: 'point',
     point: { x: 130, y: 70 }
   })
-  assert.deepEqual(result.commit.document.edges.edge_selected?.route, {
-    kind: 'manual',
-    points: [{
+  assert.deepEqual(result.commit.document.edges.edge_selected?.points, [{
       id: 'selected_point_1',
       x: 100,
       y: 60
-    }]
-  })
+    }])
 })
 
-test('edge.reconnect.commit applies endpoint, type, and route in one command', () => {
+test('edge.reconnect.commit applies endpoint, type, and points in one command', () => {
   const document = documentApi.create('doc_write_closure_reconnect_commit')
   document.nodes.node_1 = createTextNode({
     id: 'node_1',
@@ -202,9 +193,7 @@ test('edge.reconnect.commit applies endpoint, type, and route in one command', (
     },
     patch: {
       type: 'straight',
-      route: {
-        kind: 'auto'
-      }
+      points: undefined
     }
   })
 
@@ -218,9 +207,7 @@ test('edge.reconnect.commit applies endpoint, type, and route in one command', (
     point: { x: 260, y: 80 }
   })
   assert.equal(result.commit.document.edges.edge_1?.type, 'straight')
-  assert.deepEqual(result.commit.document.edges.edge_1?.route, {
-    kind: 'auto'
-  })
+  assert.equal(result.commit.document.edges.edge_1?.points, undefined)
   assert.deepEqual(
     result.commit.authored.steps.map((step) => step.type),
     [

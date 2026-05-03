@@ -7,10 +7,6 @@ import type {
   WhiteboardCompileHandlerTable
 } from '@whiteboard/core/mutation/compile/helpers'
 import {
-  readCompileRegistries,
-  readCompileServices,
-} from '@whiteboard/core/mutation/compile/helpers'
-import {
   emitMindmapDelete,
   emitMindmapMove,
   emitMindmapTopicDelete,
@@ -127,9 +123,9 @@ export const compileCanvasDuplicate = (
   const built = documentApi.slice.insert.ops({
     doc: document,
     slice: exported.data.slice,
-    registries: readCompileRegistries(ctx),
-    createNodeId: readCompileServices(ctx).ids.node,
-    createEdgeId: readCompileServices(ctx).ids.edge,
+    registries: ctx.services.registries,
+    createNodeId: ctx.services.ids.node,
+    createEdgeId: ctx.services.ids.edge,
     delta: {
       x: 24,
       y: 24
@@ -247,7 +243,7 @@ const compileCanvasSelectionMove = (
       continue
     }
 
-    const rootId = reader.mindmap.get(mindmapId)?.root
+    const rootId = reader.mindmap.get(mindmapId)?.tree.rootId
     if (!rootId) {
       throw new Error(`Mindmap ${mindmapId} root missing.`)
     }
@@ -305,7 +301,7 @@ export const canvasIntentHandlers = {
   },
   'canvas.selection.move': (ctx) => compileCanvasSelectionMove(ctx),
   'document.order.move': (ctx) => {
-    const currentOrder = ctx.reader.document.order.items()
+    const currentOrder = ctx.reader.order.items()
     const existingRefs = ctx.intent.refs.filter((ref) => (
       currentOrder.some((entry) => sameCanvasRef(entry, ref))
     ))
@@ -315,14 +311,14 @@ export const canvasIntentHandlers = {
 
     const anchor = toCanvasOrderAnchor(currentOrder, existingRefs, ctx.intent.to)
     if (existingRefs.length === 1) {
-      ctx.writer.document.order.move(
+      ctx.writer.order.move(
         canvasRefKey(existingRefs[0]!),
         anchor
       )
       return
     }
 
-    ctx.writer.document.order.splice(
+    ctx.writer.order.splice(
       existingRefs.map((ref) => canvasRefKey(ref)),
       anchor
     )

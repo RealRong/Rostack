@@ -92,7 +92,7 @@ export const createInputFacts = (
     current.delta.edge.create.touchedIds(),
     current.delta.edge.delete.touchedIds(),
     current.delta.edge.endpoints.touchedIds(),
-    current.delta.edge.route.touchedIds(),
+    current.delta.edge.points.touchedIds(),
     current.delta.edge.style.touchedIds(),
     current.delta.edge.labels.touchedIds(),
     current.delta.edge.data.touchedIds()
@@ -114,7 +114,7 @@ export const createInputFacts = (
     || edgeTargets === 'all'
     || mindmapTargets === 'all'
     || groupTargets === 'all'
-  const order = reset || current.delta.document.order.changed()
+  const order = reset || current.delta.order.changed()
 
   if (reset) {
     return {

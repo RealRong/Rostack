@@ -9,10 +9,6 @@ import type {
   WhiteboardCompileHandlerTable
 } from '@whiteboard/core/mutation/compile/helpers'
 import {
-  readCompileRegistries,
-  readCompileServices,
-} from '@whiteboard/core/mutation/compile/helpers'
-import {
   canvasRefKey,
   readMindmapLayoutChangedNodeIds,
   resolveInsertedMindmapBranchStyle,
@@ -30,16 +26,35 @@ import {
   same
 } from '@whiteboard/core/mutation/common'
 
+const readMindmapRootId = (
+  record: MindmapRecord
+): NodeId | undefined => record.tree.rootId
+
+const readMindmapNode = (
+  record: MindmapRecord,
+  nodeId: NodeId
+) => record.tree.nodes[nodeId]
+
+const readMindmapNodeValue = (
+  record: MindmapRecord,
+  nodeId: NodeId
+) => readMindmapNode(record, nodeId)?.value
+
+const readMindmapChildren = (
+  record: MindmapRecord,
+  nodeId: NodeId
+): readonly NodeId[] => readMindmapNode(record, nodeId)?.children ?? []
+
 const compileMindmapCreate = (
   input: MindmapCreateInput,
   ctx: WhiteboardCompileContext
 ) => {
-  const mindmapId = input.id ?? readCompileServices(ctx).ids.mindmap()
-  const rootId = readCompileServices(ctx).ids.node()
+  const mindmapId = input.id ?? ctx.services.ids.mindmap()
+  const rootId = ctx.services.ids.node()
   const instantiated = mindmapApi.template.instantiate({
     template: input.template,
     rootId,
-    createNodeId: readCompileServices(ctx).ids.node
+    createNodeId: ctx.services.ids.node
   })
 
   const nodes = Object.entries(instantiated.nodes).flatMap(([nodeId, templateNode]) => {
@@ -60,7 +75,7 @@ const compileMindmapCreate = (
         data: templateNode.data,
         style: templateNode.style
       },
-      registries: readCompileRegistries(ctx)
+      registries: ctx.services.registries
     })
     if (!materialized.ok) {
       return []
@@ -72,19 +87,7 @@ const compileMindmapCreate = (
     return ctx.invalid('Mindmap template nodes could not be materialized.')
   }
 
-  const members = Object.fromEntries(
-    Object.entries(instantiated.tree.nodes).map(([nodeId, member]) => [
-      nodeId,
-      {
-        parentId: member.parentId,
-        side: member.side,
-        collapsed: member.collapsed,
-        branchStyle: member.branch
-      }
-    ])
-  ) as MindmapRecord['members']
-
-  ctx.writer.document.order.insert(
+  ctx.writer.order.insert(
     {
       kind: 'mindmap',
       id: mindmapId
@@ -98,10 +101,24 @@ const compileMindmapCreate = (
   })
   ctx.writer.mindmap.create({
     id: mindmapId,
-    root: rootId,
-    members,
-    children: instantiated.tree.children,
-    layout: instantiated.tree.layout
+    layout: instantiated.tree.layout,
+    tree: {
+      rootId,
+      nodes: Object.fromEntries(
+        Object.entries(instantiated.tree.nodes).map(([nodeId, member]) => [
+          nodeId,
+          {
+            ...(member.parentId === undefined ? {} : { parentId: member.parentId }),
+            children: [...(instantiated.tree.children[nodeId] ?? [])],
+            value: {
+              ...(member.side === undefined ? {} : { side: member.side }),
+              ...(member.collapsed === undefined ? {} : { collapsed: member.collapsed }),
+              branchStyle: member.branch
+            }
+          }
+        ])
+      )
+    }
   })
 
   return {
@@ -123,12 +140,12 @@ export const emitMindmapDelete = (
   const nodeIds = [...new Set(ctx.query.mindmap.subtreeNodeIds(id, tree.rootNodeId))]
   const connectedEdges = ctx.query.edge.connectedToNodes(new Set(nodeIds))
 
-  ctx.writer.document.order.delete(canvasRefKey({
+  ctx.writer.order.delete(canvasRefKey({
     kind: 'mindmap',
     id
   }))
   connectedEdges.forEach((edge: Edge) => {
-    ctx.writer.document.order.delete(canvasRefKey({
+    ctx.writer.order.delete(canvasRefKey({
       kind: 'edge',
       id: edge.id
     }))
@@ -146,9 +163,8 @@ export const emitMindmapMove = (
   position: Point
 ) => {
   const current = ctx.reader.mindmap.get(id)
-  const root = current
-    ? ctx.reader.node.get(current.root)
-    : undefined
+  const rootId = current ? readMindmapRootId(current) : undefined
+  const root = rootId ? ctx.reader.node.get(rootId) : undefined
   if (!current || !root) {
     return ctx.invalid(`Mindmap ${id} not found.`)
   }
@@ -196,15 +212,15 @@ export const emitMindmapTopicInsert = (
   }
 
   ctx.writer.node.create(node)
-  const tree = ctx.writer.mindmap(id).structure
+  const tree = ctx.writer.mindmap(id).tree
 
   switch (input.kind) {
     case 'child': {
-      if (!current.members[input.parentId]) {
+      if (!readMindmapNode(current, input.parentId)) {
         return ctx.invalid(`Parent node ${input.parentId} not found.`)
       }
 
-      const side = input.parentId === current.root
+      const side = input.parentId === readMindmapRootId(current)
         ? (input.options?.side ?? 'right')
         : undefined
       tree.insert(node.id, {
@@ -218,16 +234,17 @@ export const emitMindmapTopicInsert = (
       return
     }
     case 'sibling': {
-      const target = current.members[input.nodeId]
+      const target = readMindmapNode(current, input.nodeId)
+      const targetValue = readMindmapNodeValue(current, input.nodeId)
       const parentId = target?.parentId
       if (!target || !parentId) {
         return ctx.invalid(`Node ${input.nodeId} cannot create a sibling.`)
       }
 
-      const siblings = current.children[parentId] ?? []
+      const siblings = readMindmapChildren(current, parentId)
       const currentIndex = siblings.indexOf(input.nodeId)
-      const side = parentId === current.root
-        ? (target.side ?? 'right')
+      const side = parentId === readMindmapRootId(current)
+        ? (targetValue?.side ?? 'right')
         : undefined
       tree.insert(node.id, {
         parentId,
@@ -238,43 +255,44 @@ export const emitMindmapTopicInsert = (
             : currentIndex + 1,
         value: {
           ...(side === undefined ? {} : { side }),
-          branchStyle: resolveInsertedMindmapBranchStyle(current, parentId, target.side)
+          branchStyle: resolveInsertedMindmapBranchStyle(current, parentId, targetValue?.side)
         }
       })
       return
     }
     case 'parent': {
-      if (input.nodeId === current.root) {
+      if (input.nodeId === readMindmapRootId(current)) {
         return ctx.invalid('Root node cannot be wrapped.')
       }
 
-      const target = current.members[input.nodeId]
+      const target = readMindmapNode(current, input.nodeId)
+      const targetValue = readMindmapNodeValue(current, input.nodeId)
       const parentId = target?.parentId
       if (!target || !parentId) {
         return ctx.invalid(`Node ${input.nodeId} not found.`)
       }
 
-      const siblingIndex = (current.children[parentId] ?? []).indexOf(input.nodeId)
+      const siblingIndex = readMindmapChildren(current, parentId).indexOf(input.nodeId)
       if (siblingIndex < 0) {
         return ctx.invalid(`Node ${input.nodeId} is detached.`)
       }
 
-      const side = parentId === current.root
-        ? (target.side ?? input.options?.side ?? 'right')
+      const side = parentId === readMindmapRootId(current)
+        ? (targetValue?.side ?? input.options?.side ?? 'right')
         : undefined
       tree.insert(node.id, {
         parentId,
         index: siblingIndex,
         value: {
           ...(side === undefined ? {} : { side }),
-          branchStyle: resolveInsertedMindmapBranchStyle(current, parentId, target.side)
+          branchStyle: resolveInsertedMindmapBranchStyle(current, parentId, targetValue?.side)
         }
       })
       tree.move(input.nodeId, {
         parentId: node.id,
         index: 0
       })
-      if (target.side !== undefined) {
+      if (targetValue?.side !== undefined) {
         tree.patch(input.nodeId, {
           side: undefined
         })
@@ -293,20 +311,21 @@ export const emitMindmapTopicMove = (
     return ctx.invalid(`Mindmap ${id} not found.`)
   }
 
-  const member = current.members[input.nodeId]
+  const member = readMindmapNode(current, input.nodeId)
+  const memberValue = readMindmapNodeValue(current, input.nodeId)
   if (!member?.parentId) {
     return ctx.invalid(`Topic ${input.nodeId} cannot move.`)
   }
 
-  const nextSide = input.parentId === current.root
-    ? (input.side ?? member.side ?? 'right')
+  const nextSide = input.parentId === readMindmapRootId(current)
+    ? (input.side ?? memberValue?.side ?? 'right')
     : undefined
-  const tree = ctx.writer.mindmap(id).structure
+  const tree = ctx.writer.mindmap(id).tree
   tree.move(input.nodeId, {
     parentId: input.parentId,
     index: input.index
   })
-  if (!same(member.side, nextSide)) {
+  if (!same(memberValue?.side, nextSide)) {
     tree.patch(
       input.nodeId,
       {
@@ -326,16 +345,16 @@ export const emitMindmapTopicDelete = (
   if (!current || !tree) {
     return ctx.invalid(`Mindmap ${id} not found.`)
   }
-  if (nodeId === current.root) {
+  if (nodeId === readMindmapRootId(current)) {
     return ctx.invalid('Root topic cannot use mindmap.topic.delete.')
   }
 
   const nodeIds = [...new Set(ctx.query.mindmap.subtreeNodeIds(id, nodeId))]
   const connectedEdges = ctx.query.edge.connectedToNodes(new Set(nodeIds))
 
-  ctx.writer.mindmap(id).structure.delete(nodeId)
+  ctx.writer.mindmap(id).tree.delete(nodeId)
   connectedEdges.forEach((edge: Edge) => {
-    ctx.writer.document.order.delete(canvasRefKey({
+    ctx.writer.order.delete(canvasRefKey({
       kind: 'edge',
       id: edge.id
     }))
@@ -393,19 +412,19 @@ export const emitMindmapBranchPatch = (
   ctx: WhiteboardCompileContext,
   id: string,
   topicId: NodeId,
-  patch: Partial<MindmapRecord['members'][NodeId]['branchStyle']>
+  patch: Partial<NonNullable<MindmapRecord['tree']['nodes'][NodeId]['value']>['branchStyle']>
 ) => {
   const current = ctx.reader.mindmap.get(id)
   if (!current) {
     return ctx.invalid(`Mindmap ${id} not found.`)
   }
 
-  const member = current.members[topicId]
+  const member = readMindmapNodeValue(current, topicId)
   if (!member) {
     return ctx.invalid(`Topic ${topicId} not found.`)
   }
 
-  const nextBranchStyle: MindmapRecord['members'][NodeId]['branchStyle'] = {
+  const nextBranchStyle: NonNullable<MindmapRecord['tree']['nodes'][NodeId]['value']>['branchStyle'] = {
     ...member.branchStyle
   }
   let changed = false
@@ -424,7 +443,7 @@ export const emitMindmapBranchPatch = (
     return
   }
 
-  ctx.writer.mindmap(id).structure.patch(topicId, {
+  ctx.writer.mindmap(id).tree.patch(topicId, {
     branchStyle: nextBranchStyle
   })
 }
@@ -440,7 +459,7 @@ export const emitMindmapTopicCollapse = (
     return ctx.invalid(`Mindmap ${id} not found.`)
   }
 
-  const member = current.members[topicId]
+  const member = readMindmapNodeValue(current, topicId)
   if (!member) {
     return ctx.invalid(`Topic ${topicId} not found.`)
   }
@@ -450,7 +469,7 @@ export const emitMindmapTopicCollapse = (
     return
   }
 
-  ctx.writer.mindmap(id).structure.patch(topicId, {
+  ctx.writer.mindmap(id).tree.patch(topicId, {
     collapsed: nextCollapsed
   })
 }
@@ -472,7 +491,7 @@ type MindmapIntentHandlers = Pick<
 
 export const mindmapIntentHandlers = {
   'mindmap.create': (ctx) => compileMindmapCreate(
-    readCompileServices(ctx).layout.commit({
+    ctx.services.layout.commit({
       kind: 'mindmap.create',
       input: ctx.intent.input,
       position: ctx.intent.input.position
@@ -491,15 +510,15 @@ export const mindmapIntentHandlers = {
     emitMindmapMove(ctx, ctx.intent.id, ctx.intent.position)
   },
   'mindmap.topic.insert': (ctx) => {
-    const input = readCompileServices(ctx).layout.commit({
+    const input = ctx.services.layout.commit({
       kind: 'mindmap.topic.insert',
       mindmapId: ctx.intent.id,
       input: ctx.intent.input
     }).input
-    const nodeId = readCompileServices(ctx).ids.node()
+    const nodeId = ctx.services.ids.node()
     const materialized = nodeApi.materialize.committed({
       node: createMindmapTopicNode(nodeId, ctx.intent.id, input),
-      registries: readCompileRegistries(ctx)
+      registries: ctx.services.registries
     })
     if (!materialized.ok) {
       return ctx.invalid('Mindmap topic node could not be materialized.')
@@ -523,29 +542,33 @@ export const mindmapIntentHandlers = {
     if (!mindmap) {
       return ctx.invalid(`Mindmap ${intent.id} not found.`)
     }
-    if (intent.input.nodeId === mindmap.root) {
+    if (intent.input.nodeId === readMindmapRootId(mindmap)) {
       return ctx.invalid('Root topic clone is not supported by subtree clone.')
     }
 
-    const sourceMember = mindmap.members[intent.input.nodeId]
-    const targetParentId = intent.input.parentId ?? sourceMember?.parentId
+    const sourceNode = readMindmapNode(mindmap, intent.input.nodeId)
+    const sourceMember = readMindmapNodeValue(mindmap, intent.input.nodeId)
+    const targetParentId = intent.input.parentId ?? sourceNode?.parentId
     if (!sourceMember || !targetParentId) {
       return ctx.invalid(`Topic ${intent.input.nodeId} cannot be cloned.`)
     }
 
     const map: Record<NodeId, NodeId> = {}
     const walk = (sourceId: NodeId) => {
-      const nextId = readCompileServices(ctx).ids.node()
+      const nextId = ctx.services.ids.node()
       map[sourceId] = nextId
       const sourceNode = ctx.reader.node.get(sourceId)
       const parentId = sourceId === intent.input.nodeId
         ? targetParentId
-        : map[mindmap.members[sourceId]?.parentId ?? '']
+        : map[readMindmapNode(mindmap, sourceId)?.parentId ?? '']
       if (!sourceNode || !parentId) {
         return
       }
 
-      const source = mindmap.members[sourceId]
+      const source = readMindmapNodeValue(mindmap, sourceId)
+      if (!source) {
+        return
+      }
       emitMindmapTopicInsert(ctx, intent.id, {
         kind: 'child',
         parentId,
@@ -576,7 +599,7 @@ export const mindmapIntentHandlers = {
         emitMindmapTopicCollapse(ctx, intent.id, nextId, source.collapsed)
       }
 
-      ;(mindmap.children[sourceId] ?? []).forEach(walk)
+      readMindmapChildren(mindmap, sourceId).forEach(walk)
     }
 
     walk(intent.input.nodeId)

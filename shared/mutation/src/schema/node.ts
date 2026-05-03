@@ -2,6 +2,7 @@ import {
   MUTATION_NODE,
   MUTATION_OPTIONAL,
   MUTATION_SCHEMA,
+  MUTATION_TYPE,
 } from './constants'
 import type {
   MutationDeltaBaseOfShape
@@ -22,24 +23,37 @@ type MutationNodeBase<TKind extends string> = {
   readonly kind: TKind
 }
 
-export type MutationFieldNode<TValue, TOptional extends boolean = false> = MutationNodeBase<'field'> & {
+type MutationTypeBrand<TType> = {
+  readonly [MUTATION_TYPE]?: TType
+}
+
+export type MutationFieldNode<TValue, TOptional extends boolean = false> = MutationNodeBase<'field'> & MutationTypeBrand<{
+  value: TValue
+}> & {
   readonly [MUTATION_OPTIONAL]: TOptional
-  optional(): MutationFieldNode<TValue, true>
 }
 
 export type MutationObjectNode<TShape extends MutationShape> = MutationNodeBase<'object'> & {
   readonly shape: TShape
 }
 
-export type MutationDictionaryNode<TKey extends string, TValue> = MutationNodeBase<'dictionary'> & {
+export type MutationDictionaryNode<TKey extends string, TValue> = MutationNodeBase<'dictionary'> & MutationTypeBrand<{
+  key: TKey
+  value: TValue
+}> & {
 }
 
-export type MutationSequenceNode<TItem> = MutationNodeBase<'sequence'> & {
+export type MutationSequenceNode<TItem> = MutationNodeBase<'sequence'> & MutationTypeBrand<{
+  item: TItem
+}> & {
   readonly keyOf: MutationSequenceConfig<TItem>['keyOf']
   from(access: MutationAccessOverride<readonly TItem[]>): MutationSequenceNode<TItem>
 }
 
-export type MutationTreeNode<TNodeId extends string, TValue> = MutationNodeBase<'tree'> & {
+export type MutationTreeNode<TNodeId extends string, TValue> = MutationNodeBase<'tree'> & MutationTypeBrand<{
+  nodeId: TNodeId
+  value: TValue
+}> & {
   from(access: MutationAccessOverride<MutationTreeSnapshot<TValue>>): MutationTreeNode<TNodeId, TValue>
 }
 
@@ -50,14 +64,18 @@ export type MutationSingletonNode<TShape extends MutationShape> = MutationNodeBa
   ): MutationSingletonNode<TShape>
 }
 
-export type MutationTableNode<TId extends string, TShape extends MutationShape> = MutationNodeBase<'table'> & {
+export type MutationTableNode<TId extends string, TShape extends MutationShape> = MutationNodeBase<'table'> & MutationTypeBrand<{
+  id: TId
+}> & {
   readonly shape: TShape
   from(
     access: MutationAccessOverride<MutationTableValue<TId, TShape>>
   ): MutationTableNode<TId, TShape>
 }
 
-export type MutationMapNode<TId extends string, TShape extends MutationShape> = MutationNodeBase<'map'> & {
+export type MutationMapNode<TId extends string, TShape extends MutationShape> = MutationNodeBase<'map'> & MutationTypeBrand<{
+  id: TId
+}> & {
   readonly shape: TShape
   from(
     access: MutationAccessOverride<MutationMapValue<TId, TShape>>
@@ -81,6 +99,11 @@ export interface MutationShape {
 export type MutationOptionalNode = {
   readonly [MUTATION_OPTIONAL]: true
 }
+
+export type MutationOptionalizedNode<TNode extends MutationShapeNode> =
+  TNode extends MutationFieldNode<infer TValue, boolean>
+    ? MutationFieldNode<TValue, true>
+    : TNode & MutationOptionalNode
 
 export type MutationSchemaChangeSet = Record<string, unknown>
 

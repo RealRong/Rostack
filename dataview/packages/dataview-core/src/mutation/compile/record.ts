@@ -162,7 +162,8 @@ const lowerRecordCreate = (
     meta: intent.input.meta
   } satisfies DataRecord
 
-  input.write.records.create(record)
+  const { id: recordId, ...recordValue } = record
+  input.write.records.create(recordId, recordValue)
   return {
     id: record.id
   }

@@ -1,7 +1,7 @@
 import { toSpatialNode } from '@whiteboard/core/node/patch'
 import { getEdgePath } from '@whiteboard/core/edge/path'
 import { resolveEdgeEnds } from '@whiteboard/core/edge/endpoints'
-import { readEdgeRoutePoints } from '@whiteboard/core/edge/route'
+import { readEdgePoints } from '@whiteboard/core/edge/route'
 import type {
   Edge,
   NodeGeometry,
@@ -21,7 +21,7 @@ const buildEdgeHandles = (
   input: ResolveEdgeEndsInput,
   path: ReturnType<typeof getEdgePath>
 ): readonly EdgeHandle[] => {
-  const routePoints = readEdgeRoutePoints(input.edge.route)
+  const routePoints = readEdgePoints(input.edge.points)
   const handles: EdgeHandle[] = [
     {
       kind: 'end',

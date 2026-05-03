@@ -1,11 +1,12 @@
 import { equal } from '@shared/core'
-import { createMutationDelta } from '@shared/mutation'
-import { mergeMutationDeltas } from '@shared/mutation'
+import {
+  createMutationDelta,
+  mergeMutationDeltas,
+} from '@shared/mutation'
 import {
   isCheckpointProgram,
   whiteboardMutationSchema
 } from '@whiteboard/core/mutation'
-import type { MutationCommitRecord, MutationFootprint } from '@shared/mutation'
 import type { WhiteboardMutationDelta } from '@whiteboard/engine/mutation'
 import type { Engine } from '@whiteboard/engine'
 import type { EditorSceneRuntime } from '@whiteboard/editor-scene'
@@ -14,14 +15,17 @@ import {
   EMPTY_HOVER_STATE,
   isEditorHoverStateEqual
 } from '@whiteboard/editor/state/document'
-import type { EditorStateRuntime, EditorStateMutationDelta } from '@whiteboard/editor/state/runtime'
+import type {
+  EditorStateCommit,
+  EditorStateMutationDelta,
+  EditorStateRuntime,
+} from '@whiteboard/editor/state/runtime'
 import type { DocumentFrame } from '@whiteboard/editor-scene'
 
 const EMPTY_DOCUMENT_DELTA = createMutationDelta(
-  whiteboardMutationSchema,
-  {}
+  whiteboardMutationSchema
 )
-const EMPTY_EDITOR_DELTA = createMutationDelta(editorStateMutationSchema, {})
+const EMPTY_EDITOR_DELTA = createMutationDelta(editorStateMutationSchema)
 
 const resetEditorState = (
   state: EditorStateRuntime
@@ -121,16 +125,17 @@ export const attachEditorSync = (input: {
   let buffered: BufferedSceneCommit | null = null
 
   const bufferStateDelta = (
-    commit: MutationCommitRecord<unknown, MutationFootprint, EditorStateMutationDelta>
+    commit: EditorStateCommit
   ) => {
     if (!buffered) {
       return false
     }
 
     buffered.editorDelta = mergeMutationDeltas(
+      editorStateMutationSchema,
       buffered.editorDelta,
       commit.delta
-    ) as EditorStateMutationDelta
+    )
     return true
   }
 

@@ -109,7 +109,7 @@ export const createInputFacts = (
     current.delta.group.value.touchedIds()
   )
 
-  const reset = current.delta.reset === true
+  const reset = current.delta.reset()
     || nodeTargets === 'all'
     || edgeTargets === 'all'
     || mindmapTargets === 'all'

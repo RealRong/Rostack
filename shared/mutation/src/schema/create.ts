@@ -1,9 +1,11 @@
 import type {
   MutationAccessOverride,
+  MutationSequenceConfig,
   MutationTreeSnapshot
 } from './constants'
 import {
-  MUTATION_NODE
+  MUTATION_NODE,
+  MUTATION_OPTIONAL,
 } from './constants'
 import {
   setNodeAccess
@@ -35,9 +37,19 @@ const createNode = <const TNode extends object>(
   readonly [MUTATION_NODE]: true
 }
 
-export const createFieldNode = <TValue,>(): MutationFieldNode<TValue> => createNode({
+export const createFieldNode = <TValue, TOptional extends boolean = false>(
+  optional: TOptional = false as TOptional
+): MutationFieldNode<TValue, TOptional> => createNode({
+  kind: 'field',
+  [MUTATION_OPTIONAL]: optional,
+  optional() {
+    return createFieldNode<TValue, true>(true)
+  }
+} as {
   kind: 'field'
-})
+  [MUTATION_OPTIONAL]: TOptional
+  optional(): MutationFieldNode<TValue, true>
+}) as MutationFieldNode<TValue, TOptional>
 
 export const createObjectNode = <TShape extends MutationShape>(
   shape: TShape
@@ -51,12 +63,14 @@ export const createDictionaryNode = <TKey extends string, TValue,>(): MutationDi
 })
 
 export const createSequenceNode = <TItem,>(
+  config?: MutationSequenceConfig<TItem>,
   access?: MutationAccessOverride<readonly TItem[]>
 ): MutationSequenceNode<TItem> => {
   const node = createNode({
     kind: 'sequence',
+    keyOf: config?.keyOf ?? ((item: TItem) => item as string),
     from(nextAccess: MutationAccessOverride<readonly TItem[]>) {
-      return createSequenceNode(nextAccess)
+      return createSequenceNode(config, nextAccess)
     }
   })
 

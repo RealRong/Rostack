@@ -1,6 +1,3 @@
-import type {
-  MutationDeltaInput,
-} from '@shared/mutation'
 import { mindmap as mindmapApi } from '@whiteboard/core/mindmap'
 import {
   createMindmapTopicNode,
@@ -30,20 +27,8 @@ import type {
 } from '@whiteboard/core/types'
 import {
   clone,
-  entityKey,
   same
 } from '@whiteboard/core/mutation/common'
-
-const createIdDelta = (
-  key: string,
-  id: string
-): MutationDeltaInput => ({
-  changes: {
-    [key]: {
-      ids: [id]
-    }
-  }
-})
 
 const compileMindmapCreate = (
   input: MindmapCreateInput,
@@ -105,7 +90,7 @@ const compileMindmapCreate = (
       id: mindmapId
     } satisfies CanvasItemRef,
     {
-      kind: 'end'
+      at: 'end'
     }
   )
   nodes.forEach((node) => {
@@ -171,7 +156,6 @@ export const emitMindmapMove = (
     return
   }
 
-  ctx.delta(createIdDelta('mindmap.layout', id))
   ctx.writer.node.patch(root.id, {
     position: clone(position)!
   })
@@ -402,10 +386,6 @@ export const emitMindmapTopicPatch = (
     id
   })
 
-  ctx.footprint(entityKey('mindmap', id))
-  if (relayoutNodeIds.length > 0) {
-    ctx.delta(createIdDelta('mindmap.layout', id))
-  }
   ctx.writer.node.patch(topicId, writes)
 }
 

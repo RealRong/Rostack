@@ -42,7 +42,7 @@ export type MutationWrite =
     }
   | {
       kind: 'field.set'
-      node: MutationFieldNode<unknown>
+      node: MutationFieldNode<unknown, boolean>
       targetId?: string
       value: unknown
     }
@@ -67,29 +67,29 @@ export type MutationWrite =
     }
   | {
       kind: 'sequence.insert'
-      node: MutationSequenceNode<string>
+      node: MutationSequenceNode<unknown>
       targetId?: string
-      value: string
+      value: unknown
       anchor?: MutationSequenceAnchor
     }
   | {
       kind: 'sequence.move'
-      node: MutationSequenceNode<string>
+      node: MutationSequenceNode<unknown>
       targetId?: string
-      value: string
+      value: unknown
       anchor?: MutationSequenceAnchor
     }
   | {
       kind: 'sequence.remove'
-      node: MutationSequenceNode<string>
+      node: MutationSequenceNode<unknown>
       targetId?: string
-      value: string
+      value: unknown
     }
   | {
       kind: 'sequence.replace'
-      node: MutationSequenceNode<string>
+      node: MutationSequenceNode<unknown>
       targetId?: string
-      value: readonly string[]
+      value: readonly unknown[]
     }
   | {
       kind: 'tree.insert'

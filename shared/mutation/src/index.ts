@@ -33,7 +33,8 @@ export {
   createMutationWriter
 } from './writer/createWriter'
 export {
-  createMutationDelta
+  createMutationDelta,
+  createMutationResetDelta
 } from './delta/createDelta'
 export {
   mergeMutationDeltas

@@ -11,7 +11,7 @@ import type {
 } from './node'
 
 export type MutationDocumentMemberNode =
-  | MutationFieldNode<any>
+  | MutationFieldNode<any, boolean>
   | MutationObjectNode<any>
   | MutationDictionaryNode<any, any>
   | MutationSequenceNode<any>

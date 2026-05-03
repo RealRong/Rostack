@@ -1,24 +1,17 @@
 import {
-  type MutationDeltaOf,
+  createMutationEngine,
+  type MutationCommit,
+  type MutationDocument,
   type MutationOrigin,
-} from '@shared/mutation'
-import {
-  MutationEngine,
   type MutationResult,
-  type MutationOptions
+  type MutationWrite,
 } from '@shared/mutation'
 import type {
   WhiteboardCompileIds,
-  WhiteboardCompileContext,
   WhiteboardCompileServices,
   WhiteboardIntent,
-  whiteboardCompileHandlers
 } from '@whiteboard/core/mutation'
-import type {
-  WhiteboardReader,
-} from '@whiteboard/core/query'
 import {
-  isCheckpointProgram,
   whiteboardCompile,
   whiteboardMutationSchema
 } from '@whiteboard/core/mutation'
@@ -30,16 +23,24 @@ import { createId } from '@shared/core'
 import { resolveBoardConfig } from '../config'
 import type {
   CreateEngineOptions,
-  Engine
+  Engine,
+  MutationOptions,
 } from '../contracts/document'
 import type {
   ExecuteResult,
   Intent,
   IntentKind
 } from '../contracts/intent'
-import { failure } from '../result'
-import type { Document, ResultCode } from '@whiteboard/core/types'
+import { cancelled, failure, success } from '../result'
+import type { Document } from '@whiteboard/core/types'
 import type { WhiteboardMutationDelta } from '../mutation'
+import type {
+  EngineApplyCommit,
+  EngineCommit,
+} from '../types/engineWrite'
+
+type CoreCommit = MutationCommit<typeof whiteboardMutationSchema>
+type WhiteboardMutationDocument = MutationDocument<typeof whiteboardMutationSchema>
 
 const resolveIntentOrigin = (
   intent: Intent,
@@ -61,40 +62,87 @@ const resolveIntentOrigin = (
     ?? 'user'
 }
 
-const mapExecuteFailure = <
-  TResult extends MutationResult<unknown, import('../types/engineWrite').EngineApplyCommit, string>
->(
-  result: TResult
-): TResult => {
+const mapExecuteFailure = (
+  result: MutationResult<readonly unknown[], CoreCommit>
+): ExecuteResult => {
   if (result.ok) {
-    return result
-  }
-  if (
-    result.error.code !== 'mutation_engine.compile.blocked'
-    || typeof result.error.details !== 'object'
-    || result.error.details === null
-    || !('issues' in result.error.details)
-  ) {
-    return result
+    throw new Error('mapExecuteFailure only accepts failed execute results.')
   }
 
-  const issues = (result.error.details as {
-    issues?: readonly {
-      code: string
-      message: string
-      details?: unknown
-    }[]
-  }).issues
-  const issue = issues?.[0]
-  if (!issue || (issue.code !== 'invalid' && issue.code !== 'cancelled')) {
-    return result
+  const issue = result.issues[0]
+  if (!issue) {
+    return failure(
+      'invalid',
+      'Mutation execution failed without issues.'
+    )
   }
 
   return failure(
     issue.code,
     issue.message,
     issue.details
-  ) as TResult
+  )
+}
+
+const toEngineCommit = (
+  rev: number,
+  commit: CoreCommit & {
+    previousDocument?: unknown
+  }
+): EngineCommit => {
+  if (commit.kind === 'replace') {
+    return {
+      kind: 'replace',
+      rev,
+      origin: commit.origin,
+      document: commit.document as unknown as Document,
+      delta: commit.delta as WhiteboardMutationDelta,
+      inverse: commit.inverse,
+      authored: commit.writes,
+      previousDocument: (commit.previousDocument ?? commit.document) as unknown as Document
+    }
+  }
+
+  return {
+    kind: 'apply',
+    rev,
+    origin: commit.origin,
+    document: commit.document as unknown as Document,
+    delta: commit.delta as WhiteboardMutationDelta,
+    inverse: commit.inverse,
+    authored: commit.writes
+  }
+}
+
+const toApplyCommit = (
+  rev: number,
+  commit: CoreCommit
+): EngineApplyCommit => {
+  const mapped = toEngineCommit(rev, commit)
+  if (mapped.kind !== 'apply') {
+    throw new Error('Expected apply commit.')
+  }
+  return mapped
+}
+
+const mapExecuteResult = <TIntent extends Intent>(
+  rev: number,
+  result: MutationResult<readonly unknown[], CoreCommit>
+): ExecuteResult<TIntent['type'] & IntentKind> => {
+  if (result.ok) {
+    return {
+      ok: true,
+      data: result.data[0] as ExecuteResult<TIntent['type'] & IntentKind> extends {
+        ok: true
+        data: infer TData
+      }
+        ? TData
+        : never,
+      commit: toApplyCommit(rev, result.commit)
+    }
+  }
+
+  return mapExecuteFailure(result) as ExecuteResult<TIntent['type'] & IntentKind>
 }
 
 export const createEngine = ({
@@ -120,71 +168,92 @@ export const createEngine = ({
     layout
   }
 
-  const core = new MutationEngine<
-    Document,
-    WhiteboardIntent,
-    WhiteboardReader,
-    WhiteboardCompileServices,
-    string,
-    import('@shared/mutation').MutationWriter<typeof whiteboardMutationSchema>,
-    WhiteboardMutationDelta,
-    Pick<WhiteboardCompileContext, 'query' | 'expect'>,
-    typeof whiteboardCompileHandlers
-  >({
+  const core = createMutationEngine({
     schema: whiteboardMutationSchema,
-    document,
-    normalize: normalizeDocument,
+    document: document as unknown as WhiteboardMutationDocument,
+    normalize: (next) => normalizeDocument(next as unknown as Document) as unknown as WhiteboardMutationDocument,
     services,
     compile: whiteboardCompile,
-    history: {
-      capacity: 100,
-      capture: {
-        user: true,
-        remote: false,
-        system: false
-      }
-    }
+    history: true
   })
 
   core.subscribe((commit) => {
-    if (commit.kind === 'apply' && isCheckpointProgram(commit.authored)) {
-      core.history.clear()
-    }
     if (onDocumentChange) {
-      onDocumentChange(commit.document)
+      onDocumentChange(commit.document as unknown as Document)
     }
   })
 
   const subscribeCurrent: Engine['subscribe'] = (listener) => core.subscribe((commit) => {
     listener({
-      rev: commit.rev,
-      doc: commit.document
+      rev: core.current().rev,
+      doc: commit.document as unknown as Document
     })
   })
+
+  const history: Engine['history'] = {
+    state: core.history.state,
+    canUndo: core.history.canUndo,
+    canRedo: core.history.canRedo,
+    undo: () => {
+      const commit = core.history.undo()
+      if (!commit) {
+        return cancelled('Nothing to undo.')
+      }
+      return success(
+        toApplyCommit(core.current().rev, commit),
+        undefined
+      )
+    },
+    redo: () => {
+      const commit = core.history.redo()
+      if (!commit) {
+        return cancelled('Nothing to redo.')
+      }
+      return success(
+        toApplyCommit(core.current().rev, commit),
+        undefined
+      )
+    },
+    clear: core.history.clear
+  }
 
   const engine: Engine = {
     config,
     commits: {
-      subscribe: (listener: (commit: import('../types/engineWrite').EngineCommit) => void) => core.subscribe(listener)
+      subscribe: (listener: (commit: import('../types/engineWrite').EngineCommit) => void) => core.subscribe((commit) => {
+        listener(toEngineCommit(core.current().rev, commit))
+      })
     },
-    history: core.history,
-    doc: () => core.document(),
+    history,
+    doc: () => core.document() as unknown as Document,
     rev: () => core.current().rev,
     subscribe: subscribeCurrent,
     execute: <TIntent extends Intent>(
       intent: TIntent,
       options?: MutationOptions
-    ): ExecuteResult<TIntent['type'] & IntentKind> => mapExecuteFailure(
+    ): ExecuteResult<TIntent['type'] & IntentKind> => mapExecuteResult<TIntent>(
+      core.current().rev + 1,
       core.execute(intent, {
         origin: resolveIntentOrigin(intent, options?.origin)
       })
-    ) as ExecuteResult<TIntent['type'] & IntentKind>,
-    replace: (document, options) => core.replace(document, {
-      origin: options?.origin ?? 'system'
-    }),
-    apply: (program, options) => core.apply(program, {
-      origin: options?.origin ?? 'user'
-    })
+    ),
+    replace: (document, options) => toEngineCommit(
+      core.current().rev + 1,
+      core.replace(document as unknown as WhiteboardMutationDocument, {
+        origin: options?.origin ?? 'system',
+        history: options?.history
+      })
+    ),
+    apply: (writes: readonly MutationWrite[], options) => success(
+      toApplyCommit(
+        core.current().rev + 1,
+        core.apply(writes, {
+          origin: options?.origin ?? 'user',
+          history: options?.history
+        })
+      ),
+      undefined
+    )
   }
 
   return engine

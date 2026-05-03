@@ -1,35 +1,33 @@
 import { record as draftRecord } from '@shared/draft'
-import { MutationEngine, type MutationResult } from '@shared/mutation'
-import type {
-  MutationCommitRecord,
-  MutationDeltaOf,
-  MutationFootprint,
-  MutationReader,
-  MutationWriter
-} from '@shared/mutation'
 import {
-  createMutationProgramWriter,
-  createMutationWriter
+  createMutationEngine,
+  createMutationWriter,
+  type MutationCommit,
+  type MutationDelta,
+  type MutationDocument,
+  type MutationReader,
+  type MutationWrite,
+  type MutationWriter,
 } from '@shared/mutation'
 import type {
-  SelectionTarget
+  SelectionTarget,
 } from '@whiteboard/core/selection'
 import {
   patchDrawStyle,
   setDrawSlot,
   type BrushStylePatch,
-  type DrawState
+  type DrawState,
 } from '@whiteboard/editor/schema/draw-state'
 import type {
   DrawBrush,
-  DrawSlot
+  DrawSlot,
 } from '@whiteboard/editor/schema/draw-mode'
 import {
   DEFAULT_DRAW_BRUSH,
-  hasDrawBrush
+  hasDrawBrush,
 } from '@whiteboard/editor/schema/draw-mode'
 import type {
-  EditSession
+  EditSession,
 } from '@whiteboard/editor/schema/edit'
 import type { Tool } from '@whiteboard/editor/schema/tool'
 import {
@@ -37,10 +35,10 @@ import {
   normalizeEditorStateDocument,
   type EditorHoverState,
   type EditorStableInteractionState,
-  type EditorStateDocument
+  type EditorStateDocument,
 } from './document'
 import {
-  editorStateMutationSchema
+  editorStateMutationSchema,
 } from './model'
 import {
   EMPTY_PREVIEW_STATE,
@@ -48,22 +46,21 @@ import {
   isPreviewEdgeRecordEqual,
   isPreviewMindmapRecordEqual,
   isPreviewNodeRecordEqual,
-  isSelectionPreviewEqual
+  isSelectionPreviewEqual,
 } from './preview'
 import type { PreviewInput } from '@whiteboard/editor-scene'
 
 type InternalEditorStateWriter = MutationWriter<typeof editorStateMutationSchema>
+type EditorStateEngineIntent = {
+  type: '__editor_state__'
+}
 type EdgeGuideValue = PreviewInput['edgeGuide'] | undefined
 
 export type EditorStateSnapshot = EditorStateDocument
 export type EditorStateReader = MutationReader<typeof editorStateMutationSchema>
-export type EditorStateProgram = InternalEditorStateWriter
-export type EditorStateMutationDelta = MutationDeltaOf<typeof editorStateMutationSchema>
-export type EditorStateCommit = MutationCommitRecord<
-  EditorStateDocument,
-  MutationFootprint,
-  EditorStateMutationDelta
->
+export type EditorStateMutationDelta = MutationDelta<typeof editorStateMutationSchema>
+export type EditorStateCommit = MutationCommit<typeof editorStateMutationSchema>
+type EditorStateMutationDocument = MutationDocument<typeof editorStateMutationSchema>
 
 export interface EditorStateWriter {
   tool: {
@@ -142,27 +139,32 @@ export interface EditorStateStoreFacade {
   subscribe(listener: (commit: EditorStateCommit) => void): () => void
 }
 
+const createEditorStateEngine = (input: {
+  initialTool: Tool
+  initialDrawState: DrawState
+}) => createMutationEngine<
+  typeof editorStateMutationSchema,
+  EditorStateEngineIntent,
+  undefined
+>({
+  schema: editorStateMutationSchema,
+  document: buildEditorStateDocument({
+    tool: input.initialTool,
+    draw: input.initialDrawState
+  }) as unknown as EditorStateMutationDocument,
+  normalize: (document) => normalizeEditorStateDocument(
+    document as unknown as EditorStateDocument
+  ) as unknown as EditorStateMutationDocument,
+  compile: {
+    handlers: {}
+  },
+  services: undefined,
+  history: false
+})
+
 export interface EditorStateRuntime extends EditorStateStoreFacade {
-  engine: MutationEngine<
-    EditorStateDocument,
-    never,
-    EditorStateReader,
-    void,
-    string,
-    EditorStateProgram,
-    EditorStateMutationDelta
-  >
+  engine: ReturnType<typeof createEditorStateEngine>
   dispose(): void
-}
-
-const assertEditorStateCommit = <T,>(
-  result: MutationResult<T, unknown>
-): T => {
-  if (!result.ok) {
-    throw new Error(result.error.message)
-  }
-
-  return result.data
 }
 
 const applyCollectionReplace = <TId extends string, TValue>(
@@ -311,13 +313,15 @@ const createEditorStateWriter = (
   preview: {
     node: {
       create: (input) => {
-        writer.preview.node.create(input as any)
+        writer.preview.node.create(input)
       },
       patch: (id, writes) => {
-        writer.preview.node.patch(id, writes)
+        writer.preview.node(id).patch(
+          writes as Partial<NonNullable<PreviewInput['node'][string]>>
+        )
       },
       delete: (id) => {
-        writer.preview.node.delete(id)
+        writer.preview.node.remove(id)
       },
       replace: (next) => {
         const current = readSnapshot().preview.node
@@ -335,28 +339,32 @@ const createEditorStateWriter = (
             })
           },
           patch: (id, writes) => {
-            writer.preview.node.patch(id, writes)
+            writer.preview.node(id).patch(
+              writes as Partial<NonNullable<PreviewInput['node'][string]>>
+            )
           },
           remove: (id) => {
-            writer.preview.node.delete(id)
+            writer.preview.node.remove(id)
           }
         })
       },
       clear: () => {
         Object.keys(readSnapshot().preview.node).forEach((id) => {
-          writer.preview.node.delete(id)
+          writer.preview.node.remove(id)
         })
       }
     },
     edge: {
       create: (input) => {
-        writer.preview.edge.create(input as any)
+        writer.preview.edge.create(input)
       },
       patch: (id, writes) => {
-        writer.preview.edge.patch(id, writes)
+        writer.preview.edge(id).patch(
+          writes as Partial<NonNullable<PreviewInput['edge'][string]>>
+        )
       },
       delete: (id) => {
-        writer.preview.edge.delete(id)
+        writer.preview.edge.remove(id)
       },
       replace: (next) => {
         const current = readSnapshot().preview.edge
@@ -374,28 +382,32 @@ const createEditorStateWriter = (
             })
           },
           patch: (id, writes) => {
-            writer.preview.edge.patch(id, writes)
+            writer.preview.edge(id).patch(
+              writes as Partial<NonNullable<PreviewInput['edge'][string]>>
+            )
           },
           remove: (id) => {
-            writer.preview.edge.delete(id)
+            writer.preview.edge.remove(id)
           }
         })
       },
       clear: () => {
         Object.keys(readSnapshot().preview.edge).forEach((id) => {
-          writer.preview.edge.delete(id)
+          writer.preview.edge.remove(id)
         })
       }
     },
     mindmap: {
       create: (input) => {
-        writer.preview.mindmap.create(input as any)
+        writer.preview.mindmap.create(input)
       },
       patch: (id, writes) => {
-        writer.preview.mindmap.patch(id, writes)
+        writer.preview.mindmap(id).patch(
+          writes as Partial<NonNullable<PreviewInput['mindmap'][string]>>
+        )
       },
       delete: (id) => {
-        writer.preview.mindmap.delete(id)
+        writer.preview.mindmap.remove(id)
       },
       replace: (next) => {
         const current = readSnapshot().preview.mindmap
@@ -413,16 +425,18 @@ const createEditorStateWriter = (
             })
           },
           patch: (id, writes) => {
-            writer.preview.mindmap.patch(id, writes)
+            writer.preview.mindmap(id).patch(
+              writes as Partial<NonNullable<PreviewInput['mindmap'][string]>>
+            )
           },
           remove: (id) => {
-            writer.preview.mindmap.delete(id)
+            writer.preview.mindmap.remove(id)
           }
         })
       },
       clear: () => {
         Object.keys(readSnapshot().preview.mindmap).forEach((id) => {
-          writer.preview.mindmap.delete(id)
+          writer.preview.mindmap.remove(id)
         })
       }
     },
@@ -484,13 +498,13 @@ const createEditorStateWriter = (
     },
     reset: () => {
       Object.keys(readSnapshot().preview.node).forEach((id) => {
-        writer.preview.node.delete(id)
+        writer.preview.node.remove(id)
       })
       Object.keys(readSnapshot().preview.edge).forEach((id) => {
-        writer.preview.edge.delete(id)
+        writer.preview.edge.remove(id)
       })
       Object.keys(readSnapshot().preview.mindmap).forEach((id) => {
-        writer.preview.mindmap.delete(id)
+        writer.preview.mindmap.remove(id)
       })
       writer.preview.selection.patch(
         draftRecord.diff(
@@ -512,29 +526,13 @@ export const createEditorStateRuntime = (input: {
   initialTool: Tool
   initialDrawState: DrawState
 }): EditorStateRuntime => {
-  const engine = new MutationEngine<
-    EditorStateDocument,
-    never,
-    EditorStateReader,
-    void,
-    string,
-    EditorStateProgram,
-    EditorStateMutationDelta
-  >({
-    schema: editorStateMutationSchema,
-    document: buildEditorStateDocument({
-      tool: input.initialTool,
-      draw: input.initialDrawState
-    }),
-    normalize: normalizeEditorStateDocument,
-    history: false
-  })
+  const engine = createEditorStateEngine(input)
 
-  let currentDocument = engine.document()
+  let currentDocument = engine.document() as unknown as EditorStateDocument
   const listeners = new Set<(commit: EditorStateCommit) => void>()
 
   engine.subscribe((commit) => {
-    currentDocument = commit.document
+    currentDocument = commit.document as unknown as EditorStateDocument
     listeners.forEach((listener) => {
       listener(commit)
     })
@@ -543,10 +541,10 @@ export const createEditorStateRuntime = (input: {
   const read = () => currentDocument
 
   const write: EditorStateRuntime['write'] = (run) => {
-    const program = createMutationProgramWriter()
+    const writes: MutationWrite[] = []
     const rawWriter = createMutationWriter(
       editorStateMutationSchema,
-      program
+      writes
     )
     const writer = createEditorStateWriter(
       rawWriter,
@@ -558,13 +556,14 @@ export const createEditorStateRuntime = (input: {
       snapshot: currentDocument
     })
 
-    const built = program.build()
-    if (built.steps.length === 0) {
+    if (writes.length === 0) {
       return
     }
 
-    assertEditorStateCommit(engine.apply(built))
-    currentDocument = engine.document()
+    engine.apply(writes, {
+      history: false
+    })
+    currentDocument = engine.document() as unknown as EditorStateDocument
   }
 
   return {

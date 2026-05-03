@@ -7,8 +7,7 @@ import type {
   ChangeSet,
   Invalidation
 } from '@whiteboard/core/types/writes'
-import type { MutationProgram } from '@shared/mutation'
-import type { MutationFootprint } from '@shared/mutation'
+import type { MutationWrite } from '@shared/mutation'
 import type { Result, ResultCode } from '@whiteboard/core/types/result'
 
 export type KernelContext = {
@@ -38,10 +37,7 @@ export type KernelReduceData = {
   doc: Document
   changes: ChangeSet
   invalidation: Invalidation
-  inverse: MutationProgram
-  history: {
-    footprint: readonly MutationFootprint[]
-  }
+  inverse: readonly MutationWrite[]
   impact: KernelReadImpact
 }
 

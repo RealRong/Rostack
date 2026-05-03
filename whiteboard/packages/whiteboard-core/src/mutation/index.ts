@@ -24,6 +24,7 @@ export type {
   NodeBatchUpdate,
   NodeIntent,
   ReplaceDocumentIntent,
+  WhiteboardCompileAbort,
   WhiteboardCompileCode,
   WhiteboardCompileContext,
   WhiteboardCompileExpect,

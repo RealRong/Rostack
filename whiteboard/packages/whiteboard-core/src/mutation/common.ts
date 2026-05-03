@@ -2,9 +2,6 @@ import {
   equal,
   json
 } from '@shared/core'
-import type {
-  MutationFootprint
-} from '@shared/mutation'
 
 export const same = (
   left: unknown,
@@ -20,12 +17,3 @@ export const clone = <T,>(
 export const uniqueSorted = (
   ids: Iterable<string>
 ): readonly string[] => [...new Set(ids)].sort()
-
-export const entityKey = (
-  family: string,
-  id: string
-): MutationFootprint => ({
-  kind: 'entity',
-  family,
-  id
-})

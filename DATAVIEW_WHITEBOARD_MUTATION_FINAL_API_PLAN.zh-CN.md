@@ -123,7 +123,7 @@ const dataviewSchema = schema({
 const whiteboardSchema = schema({
   order: sequence<CanvasItemRef>(),
 
-  nodes: table<NodeId>({
+  nodes: map<NodeId>({
     type: field<NodeType>(),
     geometry: object({
       x: field<number>(),
@@ -136,7 +136,24 @@ const whiteboardSchema = schema({
     props: dictionary<string, unknown>(),
   }),
 
-  mindmaps: table<MindmapId>({
+  edges: map<EdgeId>({
+    source: field<NodeId>(),
+    target: field<NodeId>(),
+    labels: table<EdgeLabelId>({
+      text: field<string>(),
+    }),
+    route: table<EdgeRoutePointId>({
+      x: field<number>(),
+      y: field<number>(),
+    }),
+  }),
+
+  groups: map<GroupId>({
+    name: field<string | undefined>(),
+    locked: field<boolean>(),
+  }),
+
+  mindmaps: map<MindmapId>({
     rootId: field<NodeId>(),
     tree: tree<MindmapNodeId, MindmapNodeValue>(),
   }),
@@ -148,6 +165,8 @@ const whiteboardSchema = schema({
 - schema 表达真实文档结构
 - 内嵌 collection 是正式能力
 - 不再为了内核限制，把领域结构拆成别扭的平铺字段
+- whiteboard 顶层实体不做 `table`，因为顺序语义由 document 顶层 `order` 单独承担
+- whiteboard 顶层实体最终统一为 `map + order`
 
 ### 4. mutation delta 由 writer 自动产出，业务不再手写 mutation delta
 
@@ -743,13 +762,16 @@ whiteboard 业务内历史 reader helper、delta helper、query helper、facts h
 需要完成：
 
 1. 全量替换 `canvas.order` 为 `order`
-2. 收回 node / geometry / tree / props 到正式 schema
-3. 删除 registry / handle / path string 暴露点
-4. compile 只写正式 schema 字段
+2. whiteboard 顶层 `nodes / edges / groups / mindmaps` 固定为 `map`，不改成 `table`
+3. 收回 node / geometry / tree / props 到正式 schema
+4. `labels / route / mindmap tree` 这类真正需要局部结构操作的子结构，保留为正式 child collection
+5. 删除 registry / handle / path string 暴露点
+6. compile 只写正式 schema 字段
 
 完成标准：
 
 - `whiteboard-core` 不再存在 mutation path 业务协议
+- `whiteboard-core` 顶层实体结构稳定为 `order + map stores`
 
 ### Phase 7. 重写 Whiteboard engine / editor-scene / projection
 

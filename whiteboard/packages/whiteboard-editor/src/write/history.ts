@@ -1,11 +1,11 @@
-import type { HistoryPort } from '@shared/mutation'
-import type { IntentResult } from '@whiteboard/engine'
+import type { Engine } from '@whiteboard/engine'
 import type { HistoryWrite } from '@whiteboard/editor/write/types'
+import { cancelled } from '@whiteboard/engine/result'
 
 export const createHistoryWrite = (
-  history: Pick<HistoryPort<IntentResult>, 'undo' | 'redo' | 'clear'>
+  history: Pick<Engine['history'], 'undo' | 'redo' | 'clear'>
 ): HistoryWrite => ({
-  undo: history.undo,
-  redo: history.redo,
+  undo: () => history.undo() ?? cancelled('Nothing to undo.'),
+  redo: () => history.redo() ?? cancelled('Nothing to redo.'),
   clear: history.clear
 })

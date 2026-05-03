@@ -1,5 +1,6 @@
-import { createMutationDelta } from '@shared/mutation'
-import type { HistoryPort } from '@shared/mutation'
+import {
+  createMutationResetDelta,
+} from '@shared/mutation'
 import { whiteboardMutationSchema } from '@whiteboard/core/mutation'
 import type { Viewport } from '@whiteboard/core/types'
 import type { WhiteboardLayoutService } from '@whiteboard/core/layout'
@@ -41,27 +42,18 @@ import {
 } from '@whiteboard/editor/node'
 import type { Tool } from '@whiteboard/editor/schema/tool'
 import { createEditorWrite } from '@whiteboard/editor/write'
-import type { IntentResult } from '@whiteboard/engine'
 import type { Engine } from '@whiteboard/engine'
 import type { WhiteboardMutationDelta } from '@whiteboard/engine/mutation'
 
-const BOOTSTRAP_DOCUMENT_DELTA: WhiteboardMutationDelta = createMutationDelta(
-  whiteboardMutationSchema,
-  {
-    reset: true
-  }
+const BOOTSTRAP_DOCUMENT_DELTA: WhiteboardMutationDelta = createMutationResetDelta(
+  whiteboardMutationSchema
 )
 
-const BOOTSTRAP_EDITOR_DELTA = createMutationDelta(
-  editorStateMutationSchema,
-  {
-    reset: true
-  }
-)
+const BOOTSTRAP_EDITOR_DELTA = createMutationResetDelta(editorStateMutationSchema)
 
 export const createEditor = (input: {
   engine: Engine
-  history: HistoryPort<IntentResult>
+  history: Pick<Engine['history'], 'undo' | 'redo' | 'clear'>
   initialTool: Tool
   initialDrawState?: DrawState
   initialViewport: Viewport

@@ -1,5 +1,6 @@
 import {
   MUTATION_NODE,
+  MUTATION_OPTIONAL,
   MUTATION_SCHEMA,
 } from './constants'
 import type {
@@ -7,6 +8,7 @@ import type {
 } from '../delta/facadeTypes'
 import type {
   MutationAccessOverride,
+  MutationSequenceConfig,
   MutationTreeSnapshot,
 } from './constants'
 import type {
@@ -20,7 +22,9 @@ type MutationNodeBase<TKind extends string> = {
   readonly kind: TKind
 }
 
-export type MutationFieldNode<TValue> = MutationNodeBase<'field'> & {
+export type MutationFieldNode<TValue, TOptional extends boolean = false> = MutationNodeBase<'field'> & {
+  readonly [MUTATION_OPTIONAL]: TOptional
+  optional(): MutationFieldNode<TValue, true>
 }
 
 export type MutationObjectNode<TShape extends MutationShape> = MutationNodeBase<'object'> & {
@@ -31,6 +35,7 @@ export type MutationDictionaryNode<TKey extends string, TValue> = MutationNodeBa
 }
 
 export type MutationSequenceNode<TItem> = MutationNodeBase<'sequence'> & {
+  readonly keyOf: MutationSequenceConfig<TItem>['keyOf']
   from(access: MutationAccessOverride<readonly TItem[]>): MutationSequenceNode<TItem>
 }
 
@@ -60,7 +65,7 @@ export type MutationMapNode<TId extends string, TShape extends MutationShape> = 
 }
 
 export type MutationShapeNode =
-  | MutationFieldNode<unknown>
+  | MutationFieldNode<unknown, boolean>
   | MutationObjectNode<MutationShape>
   | MutationDictionaryNode<string, unknown>
   | MutationSequenceNode<unknown>
@@ -71,6 +76,10 @@ export type MutationShapeNode =
 
 export interface MutationShape {
   readonly [key: string]: MutationShapeNode | MutationShape
+}
+
+export type MutationOptionalNode = {
+  readonly [MUTATION_OPTIONAL]: true
 }
 
 export type MutationSchemaChangeSet = Record<string, unknown>

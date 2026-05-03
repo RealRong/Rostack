@@ -1,19 +1,10 @@
 import type {
-  MutationWriter,
-} from '@shared/mutation'
-import type {
-  MutationCompileControl,
-  MutationCompileHandlerInput,
+  MutationIssue,
 } from '@shared/mutation'
 import type { WhiteboardLayoutService } from '@whiteboard/core/layout'
-import {
-  whiteboardMutationSchema
+import type {
+  WhiteboardMutationDelta,
 } from '@whiteboard/core/mutation/model'
-import {
-  createWhiteboardQuery,
-  type WhiteboardQuery,
-  type WhiteboardReader,
-} from '@whiteboard/core/query'
 import type {
   CoreRegistries,
   Document,
@@ -27,8 +18,22 @@ import type {
   WhiteboardIntent,
   WhiteboardIntentKind,
 } from '@whiteboard/core/mutation/intents'
+import type {
+  WhiteboardQuery,
+  WhiteboardReader,
+} from '@whiteboard/core/query'
+import type {
+  WhiteboardWriter
+} from '@whiteboard/core/mutation/write'
 
-export type WhiteboardCompileCode = string
+export type WhiteboardCompileCode =
+  | 'invalid'
+  | 'cancelled'
+  | string
+
+export type WhiteboardCompileAbort = {
+  kind: 'invalid' | 'cancelled'
+}
 
 export type WhiteboardCompileIds = {
   node: () => NodeId
@@ -52,18 +57,28 @@ export type WhiteboardCompileExpect = {
   mindmap(id: MindmapId): Document['mindmaps'][MindmapId] | undefined
 }
 
-export type WhiteboardCompileContext<
+export interface WhiteboardCompileIssue extends MutationIssue {
+  code: WhiteboardCompileCode
+}
+
+export interface WhiteboardCompileContext<
   TIntent extends WhiteboardIntent = WhiteboardIntent
-> = MutationCompileHandlerInput<
-  Document,
-  TIntent,
-  MutationWriter<typeof whiteboardMutationSchema>,
-  WhiteboardReader,
-  WhiteboardCompileServices,
-  WhiteboardCompileCode
-> & {
+> {
+  intent: TIntent
+  document: Document
+  reader: WhiteboardReader
+  writer: WhiteboardWriter
   query: WhiteboardQuery
+  change: WhiteboardMutationDelta
+  issue: ((issue: WhiteboardCompileIssue & Record<string, unknown>) => void) & {
+    add(issue: WhiteboardCompileIssue): void
+    all(): readonly MutationIssue[]
+    hasErrors(): boolean
+  }
+  services: WhiteboardCompileServices
   expect: WhiteboardCompileExpect
+  invalid(message: string, details?: unknown): WhiteboardCompileAbort
+  cancelled(message: string, details?: unknown): WhiteboardCompileAbort
 }
 
 export type WhiteboardCompileIntent<
@@ -74,35 +89,22 @@ export type WhiteboardCompileHandler<
   K extends WhiteboardIntentKind = WhiteboardIntentKind
 > = (
   input: WhiteboardCompileContext<WhiteboardCompileIntent<K>>
-) => unknown | void | MutationCompileControl<WhiteboardCompileCode>
+) => unknown | void | WhiteboardCompileAbort
 
 export type WhiteboardCompileHandlerTable = {
   [K in WhiteboardIntentKind]: WhiteboardCompileHandler<K>
 }
 
 export const readCompileServices = (
-  input: WhiteboardCompileContext
-): WhiteboardCompileServices => {
-  if (!input.services) {
-    throw new Error('Whiteboard compile services are required.')
-  }
-
-  return input.services
-}
+  input: Pick<WhiteboardCompileContext, 'services'>
+): WhiteboardCompileServices => input.services
 
 export const readCompileRegistries = (
-  input: WhiteboardCompileContext
-): CoreRegistries => readCompileServices(input).registries
+  input: Pick<WhiteboardCompileContext, 'services'>
+): CoreRegistries => input.services.registries
 
-const createCompileExpect = (
-  input: MutationCompileHandlerInput<
-    Document,
-    WhiteboardIntent,
-    MutationWriter<typeof whiteboardMutationSchema>,
-    WhiteboardReader,
-    WhiteboardCompileServices,
-    WhiteboardCompileCode
-  >
+export const createCompileExpect = (
+  input: Pick<WhiteboardCompileContext, 'reader' | 'invalid'>
 ): WhiteboardCompileExpect => ({
   node: (id) => {
     const node = input.reader.node.get(id)
@@ -140,29 +142,4 @@ const createCompileExpect = (
     input.invalid(`Mindmap ${id} not found.`)
     return undefined
   },
-})
-
-export const createCompileContext = (
-  input: MutationCompileHandlerInput<
-    Document,
-    {
-      type: string
-    },
-    MutationWriter<typeof whiteboardMutationSchema>,
-    WhiteboardReader,
-    WhiteboardCompileServices,
-    WhiteboardCompileCode
-  >
-) => ({
-  query: createWhiteboardQuery(input.reader),
-  expect: createCompileExpect(
-    input as MutationCompileHandlerInput<
-      Document,
-      WhiteboardIntent,
-      MutationWriter<typeof whiteboardMutationSchema>,
-      WhiteboardReader,
-      WhiteboardCompileServices,
-      WhiteboardCompileCode
-    >
-  ),
 })

@@ -1,4 +1,5 @@
 import type {
+  MutationOptionalNode,
   MutationSchema,
   MutationDictionaryNode,
   MutationFieldNode,
@@ -15,7 +16,8 @@ import type {
 } from './constants'
 
 export type MutationValueOfNode<TNode> =
-  TNode extends MutationFieldNode<infer TValue> ? TValue
+  TNode extends MutationFieldNode<infer TValue, infer TOptional extends boolean>
+    ? (TOptional extends true ? TValue | undefined : TValue)
   : TNode extends MutationObjectNode<infer TShape> ? MutationValueOfShape<TShape>
   : TNode extends MutationDictionaryNode<infer TKey extends string, infer TValue>
     ? Readonly<Partial<Record<TKey, TValue>>>
@@ -33,8 +35,22 @@ export type MutationValueOfNode<TNode> =
     ? MutationValueOfShape<TNode>
   : never
 
+type MutationRequiredKeys<TShape extends MutationShape> = keyof {
+  readonly [K in keyof TShape as TShape[K] extends MutationOptionalNode
+    ? never
+    : K]: true
+}
+
+type MutationOptionalKeys<TShape extends MutationShape> = keyof {
+  readonly [K in keyof TShape as TShape[K] extends MutationOptionalNode
+    ? K
+    : never]: true
+}
+
 export type MutationValueOfShape<TShape extends MutationShape> = {
-  readonly [K in keyof TShape]: MutationValueOfNode<TShape[K]>
+  readonly [K in MutationRequiredKeys<TShape>]: MutationValueOfNode<TShape[K]>
+} & {
+  readonly [K in MutationOptionalKeys<TShape>]?: MutationValueOfNode<TShape[K]>
 }
 
 export type MutationEntityValue<TId extends string, TShape extends MutationShape> = {

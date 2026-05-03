@@ -1,9 +1,10 @@
-import { createMutationReader } from '@shared/mutation'
 import type { SelectionTarget } from '@whiteboard/core/selection'
 import {
-  whiteboardMutationSchema,
-  resolveLockDecision
+  resolveLockDecision,
 } from '@whiteboard/core/mutation'
+import {
+  createWhiteboardReader,
+} from '@whiteboard/core/query'
 import type { WhiteboardRuntime } from '@whiteboard/react/types/runtime'
 
 export type SelectionCan = {
@@ -25,10 +26,7 @@ export const readSelectionCan = ({
   editor: WhiteboardRuntime
   target: SelectionTarget
 }): SelectionCan => {
-  const reader = createMutationReader(
-    whiteboardMutationSchema,
-    () => editor.scene.document.snapshot()
-  )
+  const reader = createWhiteboardReader(() => editor.scene.document.snapshot())
   const pureNodeSelection =
     target.nodeIds.length > 0
     && target.edgeIds.length === 0

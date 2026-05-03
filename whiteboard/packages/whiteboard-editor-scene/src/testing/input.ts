@@ -1,6 +1,6 @@
 import {
   createMutationDelta,
-  type MutationDeltaInput
+  createMutationResetDelta
 } from '@shared/mutation'
 import type {
   SceneUpdateInput
@@ -21,10 +21,6 @@ import { createEmptyDocumentSnapshot } from '../projection/state'
 import {
   whiteboardMutationSchema
 } from '@whiteboard/core/mutation'
-
-const EMPTY_MUTATION_CHANGES = Object.freeze(
-  Object.create(null)
-) as Record<string, never>
 
 const DEFAULT_DRAW_STYLE = Object.freeze({
   color: 'currentColor',
@@ -55,24 +51,26 @@ export const toSceneUpdateInput = (
 ): SceneUpdateInput => input
 
 export const createEmptyRuntimeInputDelta = (): EditorStateMutationDelta => createMutationDelta(
-  editorStateMutationSchema,
-  {}
+  editorStateMutationSchema
 )
 
 export const createEditorStateInputDelta = (
-  input: MutationDeltaInput
+  input: {
+    reset?: boolean
+    changes?: Record<string, unknown>
+  }
 ): EditorStateMutationDelta => createMutationDelta(
   editorStateMutationSchema,
-  input
+  input.reset
+    ? createMutationResetDelta(editorStateMutationSchema)
+    : undefined
 )
 
 export const createEmptyInput = (): SceneUpdateInput => ({
   document: {
     rev: 0,
     snapshot: createEmptyDocumentSnapshot().document,
-    delta: createMutationDelta(whiteboardMutationSchema, {
-      changes: EMPTY_MUTATION_CHANGES
-    })
+    delta: createMutationDelta(whiteboardMutationSchema)
   },
   editor: {
     snapshot: buildEditorStateDocument({

@@ -51,7 +51,7 @@ type MutationWriterDictionary<TKey extends string, TValue> = {
   replace(value: Readonly<Partial<Record<TKey, TValue>>>): void
 }
 
-type MutationWriterSequence<TItem extends string> = {
+type MutationWriterSequence<TItem> = {
   insert(item: TItem, anchor?: MutationSequenceAnchor): void
   move(item: TItem, anchor?: MutationSequenceAnchor): void
   remove(item: TItem): void
@@ -95,11 +95,12 @@ type MutationWriterMapCollection<TId extends string, TShape extends MutationShap
 }
 
 type MutationWriterNode<TNode> =
-  TNode extends MutationFieldNode<infer TValue> ? MutationWriterField<TValue>
+  TNode extends MutationFieldNode<infer TValue, infer TOptional extends boolean>
+    ? MutationWriterField<TOptional extends true ? TValue | undefined : TValue>
   : TNode extends MutationObjectNode<infer TShape> ? MutationWriterObject<TShape>
   : TNode extends MutationDictionaryNode<infer TKey extends string, infer TValue>
     ? MutationWriterDictionary<TKey, TValue>
-  : TNode extends MutationSequenceNode<infer TItem extends string>
+  : TNode extends MutationSequenceNode<infer TItem>
     ? MutationWriterSequence<TItem>
   : TNode extends MutationTreeNode<infer TNodeId extends string, infer TValue>
     ? MutationWriterTree<TNodeId, TValue>
@@ -146,7 +147,7 @@ const pushWrite = (
 }
 
 const createFieldWriter = (
-  node: MutationFieldNode<unknown>,
+  node: MutationFieldNode<unknown, boolean>,
   writes: MutationWrite[],
   targetId?: string
 ) => ({
@@ -197,36 +198,36 @@ const createSequenceWriter = (
   writes: MutationWrite[],
   targetId?: string
 ) => ({
-  insert(item: string, anchor?: MutationSequenceAnchor) {
+  insert(item: unknown, anchor?: MutationSequenceAnchor) {
     pushWrite(writes, {
       kind: 'sequence.insert',
-      node: node as MutationSequenceNode<string>,
+      node,
       ...(targetId === undefined ? {} : { targetId }),
       value: item,
       ...(anchor === undefined ? {} : { anchor })
     })
   },
-  move(item: string, anchor?: MutationSequenceAnchor) {
+  move(item: unknown, anchor?: MutationSequenceAnchor) {
     pushWrite(writes, {
       kind: 'sequence.move',
-      node: node as MutationSequenceNode<string>,
+      node,
       ...(targetId === undefined ? {} : { targetId }),
       value: item,
       ...(anchor === undefined ? {} : { anchor })
     })
   },
-  remove(item: string) {
+  remove(item: unknown) {
     pushWrite(writes, {
       kind: 'sequence.remove',
-      node: node as MutationSequenceNode<string>,
+      node,
       ...(targetId === undefined ? {} : { targetId }),
       value: item
     })
   },
-  replace(value: readonly string[]) {
+  replace(value: readonly unknown[]) {
     pushWrite(writes, {
       kind: 'sequence.replace',
-      node: node as MutationSequenceNode<string>,
+      node,
       ...(targetId === undefined ? {} : { targetId }),
       value
     })

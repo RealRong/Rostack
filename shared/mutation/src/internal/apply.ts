@@ -39,7 +39,7 @@ const applyEntityCreate = (
     const ids = current?.ids ?? []
     const byId = current?.byId ?? {}
     return writeNodeValue(write.node, document, {
-      ids: insertSequenceItem(ids, currentTargetId, write.anchor),
+      ids: insertSequenceItem((item: string) => item, ids, currentTargetId, write.anchor),
       byId: {
         ...byId,
         [currentTargetId]: write.value
@@ -150,7 +150,7 @@ const applyEntityMove = (
     throw new Error('Mutation entity.move on table requires targetId.')
   }
   return writeNodeValue(write.node, document, {
-    ids: moveSequenceItem(current?.ids ?? [], currentTargetId, write.anchor),
+    ids: moveSequenceItem((item: string) => item, current?.ids ?? [], currentTargetId, write.anchor),
     byId: current?.byId ?? {}
   }, write.targetId)
 }
@@ -204,11 +204,11 @@ const applySequenceWrite = (
   const next = (() => {
     switch (write.kind) {
       case 'sequence.insert':
-        return insertSequenceItem(current, write.value, write.anchor)
+        return insertSequenceItem(write.node.keyOf, current, write.value, write.anchor)
       case 'sequence.move':
-        return moveSequenceItem(current, write.value, write.anchor)
+        return moveSequenceItem(write.node.keyOf, current, write.value, write.anchor)
       case 'sequence.remove':
-        return removeSequenceItem(current, write.value)
+        return removeSequenceItem(write.node.keyOf, current, write.value)
       case 'sequence.replace':
         return replaceSequence(current, write.value)
     }
@@ -294,7 +294,7 @@ export const describeMutationWrite = (
   path: readonly string[]
   targetId?: string
   key?: string
-  itemId?: string
+  itemId?: unknown
   nodeId?: string
 } => {
   const targetNode = write.node

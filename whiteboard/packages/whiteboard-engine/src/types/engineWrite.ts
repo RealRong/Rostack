@@ -1,30 +1,33 @@
 import type {
-  ApplyCommit,
-  MutationFootprint,
-  MutationCommitRecord,
-  MutationReplaceCommit
+  MutationOrigin,
+  MutationWrite,
 } from '@shared/mutation'
-import type {
-  WhiteboardMutationDelta
-} from '../mutation'
 import type {
   Document,
 } from '@whiteboard/core/types'
+import type {
+  WhiteboardMutationDelta,
+} from '../mutation'
 
-export type EngineApplyCommit = ApplyCommit<
-  Document,
-  MutationFootprint,
-  void,
-  WhiteboardMutationDelta
->
+type EngineCommitBase = {
+  rev: number
+  origin: MutationOrigin
+  document: Document
+  inverse: readonly MutationWrite[]
+  delta: WhiteboardMutationDelta
+}
 
-export type EngineCommit = MutationCommitRecord<
-  Document,
-  MutationFootprint,
-  WhiteboardMutationDelta
->
+export type EngineApplyCommit = EngineCommitBase & {
+  kind: 'apply'
+  authored: readonly MutationWrite[]
+}
 
-export type EngineReplaceCommit = MutationReplaceCommit<
-  Document,
-  WhiteboardMutationDelta
->
+export type EngineReplaceCommit = EngineCommitBase & {
+  kind: 'replace'
+  authored: readonly MutationWrite[]
+  previousDocument: Document
+}
+
+export type EngineCommit =
+  | EngineApplyCommit
+  | EngineReplaceCommit

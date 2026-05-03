@@ -1,6 +1,4 @@
-import type { HistoryPort } from '@shared/mutation'
 import type { Engine } from '@whiteboard/engine'
-import type { IntentResult } from '@whiteboard/engine'
 import {
   createDocumentWrite
 } from '@whiteboard/editor/write/document'
@@ -35,7 +33,7 @@ export const createEditorWrite = ({
   projection
 }: {
   engine: Engine
-  history: HistoryPort<IntentResult>
+  history: Pick<Engine['history'], 'undo' | 'redo' | 'clear'>
   document: DocumentFrame
   projection: EditorScene
 }): EditorWrite => {

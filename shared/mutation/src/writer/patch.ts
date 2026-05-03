@@ -19,7 +19,7 @@ import type {
 } from './writes'
 
 const emitFieldPatch = (
-  node: MutationFieldNode<unknown>,
+  node: MutationFieldNode<unknown, boolean>,
   value: unknown,
   targetId: string | undefined,
   writes: MutationWrite[]
@@ -54,10 +54,10 @@ const emitSequencePatch = (
 ) => {
   writes.push({
     kind: 'sequence.replace',
-    node: node as MutationSequenceNode<string>,
+    node,
     ...(targetId === undefined ? {} : { targetId }),
     value: Array.isArray(value)
-      ? value as readonly string[]
+      ? value as readonly unknown[]
       : []
   })
 }

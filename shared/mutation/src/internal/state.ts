@@ -282,39 +282,40 @@ export const replaceSequence = <TItem,>(
 )
 
 const insertIndexForAnchor = (
-  items: readonly string[],
+  itemKeys: readonly string[],
   anchor?: MutationSequenceAnchor
 ): number => {
   if (!anchor || ('at' in anchor && anchor.at === 'end')) {
-    return items.length
+    return itemKeys.length
   }
   if ('at' in anchor && anchor.at === 'start') {
     return 0
   }
   if ('before' in anchor) {
-    const index = items.indexOf(anchor.before)
+    const index = itemKeys.indexOf(anchor.before)
     return index < 0
-      ? items.length
+      ? itemKeys.length
       : index
   }
 
   if ('after' in anchor) {
-    const index = items.indexOf(anchor.after)
+    const index = itemKeys.indexOf(anchor.after)
     return index < 0
-      ? items.length
+      ? itemKeys.length
       : index + 1
   }
 
-  return items.length
+  return itemKeys.length
 }
 
-export const insertSequenceItem = <TItem extends string>(
+export const insertSequenceItem = <TItem>(
+  keyOf: (item: TItem) => string,
   items: readonly TItem[],
   item: TItem,
   anchor?: MutationSequenceAnchor
 ): readonly TItem[] => {
-  const next = items.filter((entry) => entry !== item)
-  const index = insertIndexForAnchor(next, anchor)
+  const next = items.filter((entry) => keyOf(entry) !== keyOf(item))
+  const index = insertIndexForAnchor(next.map((entry) => keyOf(entry)), anchor)
   return [
     ...next.slice(0, index),
     item,
@@ -322,16 +323,18 @@ export const insertSequenceItem = <TItem extends string>(
   ]
 }
 
-export const moveSequenceItem = <TItem extends string>(
+export const moveSequenceItem = <TItem>(
+  keyOf: (item: TItem) => string,
   items: readonly TItem[],
   item: TItem,
   anchor?: MutationSequenceAnchor
-): readonly TItem[] => insertSequenceItem(items, item, anchor)
+): readonly TItem[] => insertSequenceItem(keyOf, items, item, anchor)
 
-export const removeSequenceItem = <TItem extends string>(
+export const removeSequenceItem = <TItem>(
+  keyOf: (item: TItem) => string,
   items: readonly TItem[],
   item: TItem
-): readonly TItem[] => items.filter((entry) => entry !== item)
+): readonly TItem[] => items.filter((entry) => keyOf(entry) !== keyOf(item))
 
 const cloneTreeNodes = <TValue,>(
   nodes: Readonly<Record<string, MutationTreeNodeSnapshot<TValue>>>

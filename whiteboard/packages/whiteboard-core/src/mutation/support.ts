@@ -1,7 +1,6 @@
 import type {
-  MutationOrderedAnchor,
+  MutationSequenceAnchor,
   MutationTreeSnapshot,
-  MutationTreeSubtreeSnapshot
 } from '@shared/mutation'
 import {
   draft
@@ -49,6 +48,26 @@ const CANVAS_REF_SEPARATOR = '\u0000'
 export const canvasRefKey = (
   ref: CanvasItemRef
 ): string => `${ref.kind}${CANVAS_REF_SEPARATOR}${ref.id}`
+
+export const parseCanvasRefKey = (
+  key: string
+): CanvasItemRef => {
+  const separatorIndex = key.indexOf(CANVAS_REF_SEPARATOR)
+  if (separatorIndex <= 0 || separatorIndex >= key.length - 1) {
+    throw new Error(`Invalid canvas ref key: ${key}.`)
+  }
+
+  const kind = key.slice(0, separatorIndex)
+  const id = key.slice(separatorIndex + 1)
+  if (kind !== 'node' && kind !== 'edge' && kind !== 'mindmap') {
+    throw new Error(`Invalid canvas ref key kind: ${kind}.`)
+  }
+
+  return {
+    kind,
+    id
+  }
+}
 
 const cloneCanvasRef = (
   ref: CanvasItemRef | undefined
@@ -118,19 +137,23 @@ export const diffEdgeLabelPatch = (
 
 export const toMutationOrderedAnchor = (
   anchor: EdgeLabelAnchor | EdgeRoutePointAnchor
-): MutationOrderedAnchor => (
-  anchor.kind === 'start' || anchor.kind === 'end'
-    ? anchor
+): MutationSequenceAnchor => (
+  anchor.kind === 'start'
+    ? {
+        at: 'start'
+      }
+    : anchor.kind === 'end'
+      ? {
+          at: 'end'
+        }
     : anchor.kind === 'before'
       ? {
-          kind: 'before',
-          itemId: 'labelId' in anchor
+          before: 'labelId' in anchor
             ? anchor.labelId
             : anchor.pointId
         }
       : {
-          kind: 'after',
-          itemId: 'labelId' in anchor
+          after: 'labelId' in anchor
             ? anchor.labelId
             : anchor.pointId
         }
@@ -140,15 +163,15 @@ export const toCanvasOrderAnchor = (
   order: readonly CanvasItemRef[],
   movedRefs: readonly CanvasItemRef[],
   to: CanvasOrderAnchor
-): MutationOrderedAnchor => {
+): MutationSequenceAnchor => {
   if (to.kind === 'front') {
     return {
-      kind: 'start'
+      at: 'start'
     }
   }
   if (to.kind === 'back') {
     return {
-      kind: 'end'
+      at: 'end'
     }
   }
 
@@ -159,17 +182,20 @@ export const toCanvasOrderAnchor = (
   if (!anchorExists) {
     return to.kind === 'before'
       ? {
-          kind: 'start'
+          at: 'start'
         }
       : {
-          kind: 'end'
+          at: 'end'
         }
   }
 
-  return {
-    kind: to.kind,
-    itemId: anchorKey
-  }
+  return to.kind === 'before'
+    ? {
+        before: anchorKey
+      }
+    : {
+        after: anchorKey
+      }
 }
 
 export const getLabels = (
@@ -330,29 +356,6 @@ export const resolveInsertedMindmapBranchStyle = (
   )!
 }
 
-export const createMindmapTreeSubtreeSnapshot = (
-  current: MindmapRecord,
-  snapshot: MindmapTopicSnapshot
-): MutationTreeSubtreeSnapshot<WhiteboardMindmapTreeValue> => ({
-  rootId: snapshot.root,
-  parentId: snapshot.slot.parent,
-  index: snapshot.slot.prev
-    ? ((current.children[snapshot.slot.parent] ?? []).indexOf(snapshot.slot.prev) + 1)
-    : snapshot.slot.next
-      ? Math.max((current.children[snapshot.slot.parent] ?? []).indexOf(snapshot.slot.next), 0)
-      : (current.children[snapshot.slot.parent] ?? []).length,
-  nodes: Object.fromEntries(
-    Object.entries(snapshot.members).map(([nodeId, member]) => [
-      nodeId,
-      {
-        ...(member.parentId === undefined ? {} : { parentId: member.parentId }),
-        children: [...(snapshot.children[nodeId as NodeId] ?? [])],
-        value: createMindmapStructureValue(member, nodeId as NodeId)
-      }
-    ])
-  )
-})
-
 const readRequiredKey = (
   key: string | undefined,
   label: string
@@ -483,18 +486,16 @@ export const readCanvasOrderAnchorFromSlot = (
     prev?: CanvasItemRef
     next?: CanvasItemRef
   } | undefined
-): MutationOrderedAnchor => (
+): MutationSequenceAnchor => (
   slot?.prev
     ? {
-        kind: 'after',
-        itemId: canvasRefKey(slot.prev)
+        after: canvasRefKey(slot.prev)
       }
     : slot?.next
       ? {
-          kind: 'before',
-          itemId: canvasRefKey(slot.next)
+          before: canvasRefKey(slot.next)
         }
       : {
-        kind: 'end'
+        at: 'end'
       }
 )

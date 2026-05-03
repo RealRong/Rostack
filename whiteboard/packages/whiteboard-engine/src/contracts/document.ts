@@ -1,11 +1,6 @@
 import type {
-  HistoryPort,
-  MutationFootprint,
-  MutationProgram,
-  MutationReplaceResult,
-} from '@shared/mutation'
-import type {
-  MutationOptions
+  MutationOrigin,
+  MutationWrite,
 } from '@shared/mutation'
 import type {
   CoreRegistries,
@@ -25,6 +20,11 @@ import type {
 import type { IntentResult } from './result'
 import type { Revision } from './core'
 
+export type MutationOptions = {
+  origin?: MutationOrigin
+  history?: boolean
+}
+
 export interface EngineCurrent {
   rev: Revision
   doc: Document
@@ -34,15 +34,22 @@ export type EngineCommits = {
   subscribe(listener: (commit: EngineCommit) => void): () => void
 }
 
+export type EngineHistory = {
+  state(): {
+    undoDepth: number
+    redoDepth: number
+  }
+  canUndo(): boolean
+  canRedo(): boolean
+  undo(): IntentResult | undefined
+  redo(): IntentResult | undefined
+  clear(): void
+}
+
 export interface Engine {
   readonly config: BoardConfig
   readonly commits: EngineCommits
-  readonly history: HistoryPort<
-    IntentResult,
-    MutationProgram,
-    MutationFootprint,
-    EngineApplyCommit
-  >
+  readonly history: EngineHistory
   doc(): Document
   rev(): Revision
   subscribe(listener: (current: EngineCurrent) => void): () => void
@@ -53,9 +60,9 @@ export interface Engine {
   replace(
     document: Document,
     options?: MutationOptions
-  ): MutationReplaceResult<Document>
+  ): EngineCommit
   apply(
-    program: MutationProgram,
+    writes: readonly MutationWrite[],
     options?: MutationOptions
   ): IntentResult
 }

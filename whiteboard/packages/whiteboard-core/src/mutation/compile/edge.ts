@@ -549,7 +549,7 @@ export const edgeIntentHandlers = {
       label,
       ctx.intent.to
         ? toMutationOrderedAnchor(ctx.intent.to)
-        : { kind: 'end' }
+        : { at: 'end' }
     )
     return {
       labelId
@@ -599,7 +599,7 @@ export const edgeIntentHandlers = {
       y: ctx.intent.point.y
     }, ctx.intent.to
       ? toMutationOrderedAnchor(ctx.intent.to)
-      : { kind: 'end' })
+      : { at: 'end' })
     return {
       pointId
     }

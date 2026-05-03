@@ -1,262 +1,225 @@
 import {
   field,
   map,
-  object,
   schema,
   singleton,
 } from '@shared/mutation'
 import type {
-  SelectionTarget
-} from '@whiteboard/core/selection'
-import type {
   EdgeId,
   GroupId,
   MindmapId,
-  NodeId
+  NodeId,
 } from '@whiteboard/core/types'
 import type {
   EdgeGuidePreview,
   EdgePreview,
   MindmapPreviewEntry,
   NodePreview,
-  PreviewInput
+  PreviewInput,
 } from '@whiteboard/editor-scene'
 import type {
-  DrawState
+  DrawState,
 } from '@whiteboard/editor/schema/draw-state'
 import type {
-  EditSession
+  EditSession,
 } from '@whiteboard/editor/schema/edit'
 import type {
-  Tool
+  Tool,
 } from '@whiteboard/editor/schema/tool'
 import type {
   EditorHoverState,
   EditorStableInteractionState,
-  EditorStateDocument
+  EditorStateDocument,
 } from './document'
+
+type PreviewNodeValue = NodePreview & {
+  id: NodeId
+}
+
+type PreviewEdgeValue = EdgePreview & {
+  id: EdgeId
+}
+
+type PreviewMindmapValue = MindmapPreviewEntry & {
+  id: MindmapId
+}
+
+type PreviewMapValue<TId extends string, TValue> = Readonly<
+  Partial<Record<TId, TValue & {
+    id: TId
+  }>>
+>
+
+type PreviewRecord<TId extends string, TValue> = Readonly<
+  Partial<Record<TId, TValue>>
+>
 
 type PreviewDrawValue = {
   current: PreviewInput['draw']
 }
 
 type PreviewEdgeGuideValue = {
-  current: EdgeGuidePreview | undefined
+  current?: EdgeGuidePreview
 }
 
-type PreviewNodeEntry = NodePreview & {
-  id: NodeId
-}
+const stateShape = {
+  tool: field<Tool>(),
+  draw: field<DrawState>(),
+  selection: field<EditorStateDocument['state']['selection']>(),
+  edit: field<EditSession>(),
+  interaction: field<EditorStableInteractionState>(),
+} as const
 
-type PreviewEdgeEntry = EdgePreview & {
-  id: EdgeId
-}
+const hoverShape = {
+  node: field<NodeId | null>(),
+  edge: field<EdgeId | null>(),
+  mindmap: field<MindmapId | null>(),
+  group: field<GroupId | null>(),
+  selectionBox: field<boolean>(),
+} as const
 
-type PreviewMindmapRecordEntry = MindmapPreviewEntry & {
-  id: MindmapId
-}
+const previewNodeShape = {
+  patch: field<NodePreview['patch']>().optional(),
+  presentation: field<NodePreview['presentation']>().optional(),
+  hovered: field<boolean>(),
+  hidden: field<boolean>(),
+} as const
 
-export const editorStateMutationSchema = schema<EditorStateDocument>()({
-  state: singleton<EditorStateDocument, EditorStateDocument['state']>()({
-    tool: object<Tool>(),
-    draw: object<DrawState>(),
-    selection: object<SelectionTarget>(),
-    edit: object<EditSession>(),
-    interaction: object<EditorStableInteractionState>(),
-  }).from({
-      read: (document) => document.state,
-      write: (document, next) => ({
-        ...document,
-        state: next as EditorStateDocument['state'],
-      }),
-  }).changes(({ object }) => ({
-      tool: [object('tool').deep()],
-      draw: [object('draw').deep()],
-      selection: [object('selection').deep()],
-      edit: [object('edit').deep()],
-      interaction: [object('interaction').deep()],
-    })),
-  hover: singleton<EditorStateDocument, EditorHoverState>()({
-    node: field<NodeId | null>(),
-    edge: field<EdgeId | null>(),
-    mindmap: field<MindmapId | null>(),
-    group: field<GroupId | null>(),
-    selectionBox: field<boolean>(),
-  }).from({
-      read: (document) => document.hover,
-      write: (document, next) => ({
-        ...document,
-        hover: next as EditorHoverState,
-      }),
-  }).changes(({ field }) => ({
-      node: [field('node')],
-      edge: [field('edge')],
-      mindmap: [field('mindmap')],
-      group: [field('group')],
-      selectionBox: [field('selectionBox')],
-    })),
+const previewEdgeShape = {
+  patch: field<EdgePreview['patch']>().optional(),
+  activeRouteIndex: field<number>().optional(),
+} as const
+
+const previewMindmapShape = {
+  rootMove: field<MindmapPreviewEntry['rootMove']>().optional(),
+  subtreeMove: field<MindmapPreviewEntry['subtreeMove']>().optional(),
+} as const
+
+const selectionPreviewShape = {
+  marquee: field<PreviewInput['selection']['marquee']>().optional(),
+  guides: field<PreviewInput['selection']['guides']>(),
+} as const
+
+const toPreviewMapValue = <TId extends string, TValue extends object>(
+  source: PreviewRecord<TId, TValue>
+): PreviewMapValue<TId, TValue> => Object.fromEntries(
+  Object.entries(source).flatMap(([id, value]) => value === undefined
+    ? []
+    : [[id, {
+        id: id as TId,
+        ...value
+      }]]
+  )
+) as PreviewMapValue<TId, TValue>
+
+const fromPreviewMapValue = <TId extends string, TValue extends {
+  id: TId
+} & object>(
+  source: PreviewMapValue<TId, TValue>
+): PreviewRecord<TId, Omit<TValue, 'id'>> => Object.fromEntries(
+  Object.entries(source).flatMap(([id, value]) => value === undefined
+    ? []
+    : [[id, Object.fromEntries(
+        Object.entries(value as Record<string, unknown>).filter(([key]) => key !== 'id')
+      )]]
+  )
+) as PreviewRecord<TId, Omit<TValue, 'id'>>
+
+export const editorStateMutationSchema = schema({
+  state: singleton(stateShape).from({
+    read: (document: EditorStateDocument) => document.state,
+    write: (document: EditorStateDocument, next) => ({
+      ...document,
+      state: next,
+    }),
+  }),
+  hover: singleton(hoverShape).from({
+    read: (document: EditorStateDocument) => document.hover,
+    write: (document: EditorStateDocument, next) => ({
+      ...document,
+      hover: next as EditorHoverState,
+    }),
+  }),
   preview: {
-    node: map<EditorStateDocument, NodeId, PreviewNodeEntry>()({
-      patch: object<NodePreview['patch']>(),
-      presentation: object<NodePreview['presentation']>(),
-      hovered: field<boolean>(),
-      hidden: field<boolean>(),
-    }).from({
-        read: (document) => Object.fromEntries(
-          Object.entries(document.preview.node).map(([id, preview]) => [
-            id,
-            preview
-              ? {
-                  id: id as NodeId,
-                  ...preview
-                }
-              : undefined
-          ])
-        ),
-        write: (document, next) => ({
-          ...document,
-          preview: {
-            ...document.preview,
-            node: Object.fromEntries(
-              Object.entries(next as Readonly<Record<NodeId, PreviewNodeEntry | undefined>>).map(([id, preview]) => [
-                id,
-                preview
-                  ? {
-                      patch: preview.patch,
-                      presentation: preview.presentation,
-                      hovered: preview.hovered,
-                      hidden: preview.hidden
-                    }
-                  : undefined
-              ])
-            ) as PreviewInput['node']
-          }
-        }),
-      }).changes(({ object, field }) => ({
-        patch: [object('patch').deep()],
-        presentation: [object('presentation').deep()],
-        hovered: [field('hovered')],
-        hidden: [field('hidden')],
-      })),
-    edge: map<EditorStateDocument, EdgeId, PreviewEdgeEntry>()({
-      patch: object<EdgePreview['patch']>(),
-      activeRouteIndex: field<number | undefined>(),
-    }).from({
-        read: (document) => Object.fromEntries(
-          Object.entries(document.preview.edge).map(([id, preview]) => [
-            id,
-            preview
-              ? {
-                  id: id as EdgeId,
-                  ...preview
-                }
-              : undefined
-          ])
-        ),
-        write: (document, next) => ({
-          ...document,
-          preview: {
-            ...document.preview,
-            edge: Object.fromEntries(
-              Object.entries(next as Readonly<Record<EdgeId, PreviewEdgeEntry | undefined>>).map(([id, preview]) => [
-                id,
-                preview
-                  ? {
-                      patch: preview.patch,
-                      activeRouteIndex: preview.activeRouteIndex
-                    }
-                  : undefined
-              ])
-            ) as PreviewInput['edge']
-          }
-        }),
-      }).changes(({ object, field }) => ({
-        patch: [object('patch').deep()],
-        activeRouteIndex: [field('activeRouteIndex')],
-      })),
-    mindmap: map<EditorStateDocument, MindmapId, PreviewMindmapRecordEntry>()({
-      rootMove: object<MindmapPreviewEntry['rootMove']>(),
-      subtreeMove: object<MindmapPreviewEntry['subtreeMove']>(),
-    }).from({
-        read: (document) => Object.fromEntries(
-          Object.entries(document.preview.mindmap).map(([id, preview]) => [
-            id,
-            preview
-              ? {
-                  id: id as MindmapId,
-                  ...preview
-                }
-              : undefined
-          ])
-        ),
-        write: (document, next) => ({
-          ...document,
-          preview: {
-            ...document.preview,
-            mindmap: Object.fromEntries(
-              Object.entries(next as Readonly<Record<MindmapId, PreviewMindmapRecordEntry | undefined>>).map(([id, preview]) => [
-                id,
-                preview
-                  ? {
-                      rootMove: preview.rootMove,
-                      subtreeMove: preview.subtreeMove
-                    }
-                  : undefined
-              ])
-            ) as PreviewInput['mindmap']
-          }
-        }),
-      }).changes(({ object }) => ({
-        rootMove: [object('rootMove').deep()],
-        subtreeMove: [object('subtreeMove').deep()],
-      })),
-    selection: singleton<EditorStateDocument, PreviewInput['selection']>()({
-      marquee: field<PreviewInput['selection']['marquee']>(),
-      guides: object<PreviewInput['selection']['guides']>(),
-    }).from({
-        read: (document) => document.preview.selection,
-        write: (document, next) => ({
-          ...document,
-          preview: {
-            ...document.preview,
-            selection: next as PreviewInput['selection']
-          }
-        }),
-      }).changes(({ object, field }) => ({
-        marquee: [field('marquee')],
-        guides: [object('guides').deep()],
-      })),
-    draw: singleton<EditorStateDocument, PreviewDrawValue>()({
+    node: map<NodeId, typeof previewNodeShape>(previewNodeShape).from({
+      read: (document: EditorStateDocument) => (
+        toPreviewMapValue<NodeId, NodePreview>(document.preview.node)
+      ),
+      write: (document: EditorStateDocument, next) => ({
+        ...document,
+        preview: {
+          ...document.preview,
+          node: fromPreviewMapValue<NodeId, PreviewNodeValue>(
+            next as PreviewMapValue<NodeId, PreviewNodeValue>
+          ) as PreviewInput['node'],
+        },
+      }),
+    }),
+    edge: map<EdgeId, typeof previewEdgeShape>(previewEdgeShape).from({
+      read: (document: EditorStateDocument) => (
+        toPreviewMapValue<EdgeId, EdgePreview>(document.preview.edge)
+      ),
+      write: (document: EditorStateDocument, next) => ({
+        ...document,
+        preview: {
+          ...document.preview,
+          edge: fromPreviewMapValue<EdgeId, PreviewEdgeValue>(
+            next as PreviewMapValue<EdgeId, PreviewEdgeValue>
+          ) as PreviewInput['edge'],
+        },
+      }),
+    }),
+    mindmap: map<MindmapId, typeof previewMindmapShape>(previewMindmapShape).from({
+      read: (document: EditorStateDocument) => (
+        toPreviewMapValue<MindmapId, MindmapPreviewEntry>(document.preview.mindmap)
+      ),
+      write: (document: EditorStateDocument, next) => ({
+        ...document,
+        preview: {
+          ...document.preview,
+          mindmap: fromPreviewMapValue<MindmapId, PreviewMindmapValue>(
+            next as PreviewMapValue<MindmapId, PreviewMindmapValue>
+          ) as PreviewInput['mindmap'],
+        },
+      }),
+    }),
+    selection: singleton(selectionPreviewShape).from({
+      read: (document: EditorStateDocument) => document.preview.selection,
+      write: (document: EditorStateDocument, next) => ({
+        ...document,
+        preview: {
+          ...document.preview,
+          selection: next as PreviewInput['selection'],
+        },
+      }),
+    }),
+    draw: singleton({
       current: field<PreviewInput['draw']>(),
     }).from({
-        read: (document) => ({
-          current: document.preview.draw
-        }),
-        write: (document, next) => ({
-          ...document,
-          preview: {
-            ...document.preview,
-            draw: (next as PreviewDrawValue).current
-          }
-        }),
-      }).changes(({ field }) => ({
-        current: [field('current')],
-      })),
-    edgeGuide: singleton<EditorStateDocument, PreviewEdgeGuideValue>()({
-      current: field<EdgeGuidePreview | undefined>(),
+      read: (document: EditorStateDocument) => ({
+        current: document.preview.draw,
+      }),
+      write: (document: EditorStateDocument, next) => ({
+        ...document,
+        preview: {
+          ...document.preview,
+          draw: (next as PreviewDrawValue).current,
+        },
+      }),
+    }),
+    edgeGuide: singleton({
+      current: field<EdgeGuidePreview>().optional(),
     }).from({
-        read: (document) => ({
-          current: document.preview.edgeGuide
-        }),
-        write: (document, next) => ({
-          ...document,
-          preview: {
-            ...document.preview,
-            edgeGuide: (next as PreviewEdgeGuideValue).current
-          }
-        }),
-      }).changes(({ field }) => ({
-        current: [field('current')],
-      })),
+      read: (document: EditorStateDocument) => ({
+        current: document.preview.edgeGuide,
+      }),
+      write: (document: EditorStateDocument, next) => ({
+        ...document,
+        preview: {
+          ...document.preview,
+          edgeGuide: (next as PreviewEdgeGuideValue).current,
+        },
+      }),
+    }),
   },
 })

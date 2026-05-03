@@ -34,7 +34,7 @@ export type MutationDictionaryDelta<TKey extends string> = {
   has(key: TKey): boolean
 }
 
-export type MutationSequenceDelta<TItem extends string> = {
+export type MutationSequenceDelta<TItem> = {
   changed(): boolean
   orderChanged(): boolean
   contains(item: TItem): boolean
@@ -55,14 +55,15 @@ export type MutationCollectionDelta<TId extends string, TShape extends MutationS
   created(id: TId): boolean
   removed(id: TId): boolean
   contains(id: TId): boolean
+  touchedIds(): ReadonlySet<TId> | 'all'
 }
 
 export type MutationDeltaNode<TNode> =
-  TNode extends MutationFieldNode<any> ? MutationFieldDelta
+  TNode extends MutationFieldNode<any, boolean> ? MutationFieldDelta
   : TNode extends MutationObjectNode<infer TShape> ? MutationObjectDelta<TShape>
   : TNode extends MutationDictionaryNode<infer TKey extends string, any>
     ? MutationDictionaryDelta<TKey>
-  : TNode extends MutationSequenceNode<infer TItem extends string>
+  : TNode extends MutationSequenceNode<infer TItem>
     ? MutationSequenceDelta<TItem>
   : TNode extends MutationTreeNode<infer TNodeId extends string, any>
     ? MutationTreeDelta<TNodeId>

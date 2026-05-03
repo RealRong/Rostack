@@ -1,19 +1,25 @@
-import type {
-  MutationError,
-  MutationFailure,
-  MutationResult
-} from '@shared/mutation'
 import type { EngineApplyCommit } from './engineWrite'
 
 export type WhiteboardErrorCode = string
 
-export type IntentError<C extends string = WhiteboardErrorCode> =
-  MutationError<C>
+export type IntentError<C extends string = WhiteboardErrorCode> = {
+  code: C
+  message: string
+  details?: unknown
+}
 
-export type IntentFailure<C extends string = WhiteboardErrorCode> =
-  MutationFailure<C>
+export type IntentFailure<C extends string = WhiteboardErrorCode> = {
+  ok: false
+  error: IntentError<C>
+}
 
 export type IntentResult<
   T = void,
   C extends string = WhiteboardErrorCode
-> = MutationResult<T, EngineApplyCommit, C>
+> =
+  | {
+      ok: true
+      data: T
+      commit: EngineApplyCommit
+    }
+  | IntentFailure<C>

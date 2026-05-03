@@ -1,5 +1,6 @@
 export const MUTATION_NODE = Symbol('mutation.node')
 export const MUTATION_SCHEMA = Symbol('mutation.schema')
+export const MUTATION_OPTIONAL = Symbol('mutation.optional')
 
 export type MutationTreeNodeSnapshot<TValue = unknown> = {
   parentId?: string
@@ -37,4 +38,8 @@ export type MutationTreeMoveInput = {
 export type MutationAccessOverride<TValue> = {
   read(document: unknown, targetId?: string): TValue
   write(document: unknown, value: TValue, targetId?: string): unknown
+}
+
+export type MutationSequenceConfig<TItem> = {
+  keyOf(item: TItem): string
 }

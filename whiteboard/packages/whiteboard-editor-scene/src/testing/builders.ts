@@ -1,5 +1,6 @@
 import {
   createMutationDelta as createTypedMutationDelta,
+  createMutationResetDelta,
 } from '@shared/mutation'
 import {
   createWhiteboardLayout,
@@ -22,10 +23,6 @@ import { createMutationDelta as createEditorStateDelta } from '@shared/mutation'
 import { editorStateMutationSchema } from '@whiteboard/editor/state/model'
 import { createEmptyRuntimeInputDelta } from './input'
 
-const EMPTY_MUTATION_CHANGES = Object.freeze(
-  Object.create(null)
-) as Record<string, never>
-
 export type EditorRuntimeDeltaFlags = Partial<{
   graph: boolean
   ui: boolean
@@ -35,22 +32,15 @@ export const createEditorRuntimeDelta = (
   input: EditorRuntimeDeltaFlags = {}
 ): EditorStateMutationDelta => (
   input.graph || input.ui
-    ? createEditorStateDelta(editorStateMutationSchema, {
-        reset: true
-      })
+    ? createMutationResetDelta(editorStateMutationSchema)
     : createEmptyRuntimeInputDelta()
 )
 
 export const createMutationDelta = (input: {
   reset?: boolean
-} = {}): WhiteboardMutationDelta => createTypedMutationDelta(whiteboardMutationSchema, {
-  ...(input.reset
-    ? {
-        reset: true
-      }
-    : {}),
-  changes: EMPTY_MUTATION_CHANGES
-})
+} = {}): WhiteboardMutationDelta => input.reset
+  ? createMutationResetDelta(whiteboardMutationSchema)
+  : createTypedMutationDelta(whiteboardMutationSchema)
 
 export interface EditorGraphLayoutState {
   nodeMeasures?: ReadonlyMap<NodeId, NodeDraftMeasure>

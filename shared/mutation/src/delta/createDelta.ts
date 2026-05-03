@@ -152,7 +152,7 @@ const descendantChanged = (
 ))
 
 const createFieldDelta = (
-  node: MutationFieldNode<unknown>,
+  node: MutationFieldNode<unknown, boolean>,
   writes: readonly MutationWrite[],
   targetId?: string
 ) => ({
@@ -188,19 +188,20 @@ const createDictionaryDelta = (
 })
 
 const createSequenceDelta = (
-  node: MutationSequenceNode<string>,
+  node: MutationSequenceNode<unknown>,
   writes: readonly MutationWrite[],
   targetId?: string
 ) => ({
   changed: () => nodeChanged(node, writes, targetId),
   orderChanged: () => nodeChanged(node, writes, targetId),
-  contains: (item: string) => writes.some((write) => (
+  contains: (item: unknown) => writes.some((write) => (
     write.node === node
     && (targetId === undefined || write.targetId === targetId)
     && (
       (write.kind === 'sequence.insert' || write.kind === 'sequence.move' || write.kind === 'sequence.remove')
-      && write.value === item
-      || write.kind === 'sequence.replace' && write.value.includes(item)
+      && node.keyOf(write.value) === node.keyOf(item)
+      || write.kind === 'sequence.replace'
+      && write.value.some((entry) => node.keyOf(entry) === node.keyOf(item))
     )
   ))
 })
@@ -305,7 +306,27 @@ const createCollectionDelta = (
         write.node === node
         || ownerNode(getNodeMeta(write.node).owner) === node
       )
-    ))
+    )),
+    touchedIds: () => {
+      const ids = new Set<string>()
+
+      for (const write of writes) {
+        if (
+          write.node !== node
+          && ownerNode(getNodeMeta(write.node).owner) !== node
+        ) {
+          continue
+        }
+
+        const id = readCurrentTargetId(write.targetId)
+        if (!id) {
+          return 'all'
+        }
+        ids.add(id)
+      }
+
+      return ids
+    }
   }
 )
 
@@ -337,7 +358,7 @@ const createNodeDelta = (
     case 'dictionary':
       return createDictionaryDelta(entry, writes, targetId)
     case 'sequence':
-      return createSequenceDelta(entry as MutationSequenceNode<string>, writes, targetId)
+      return createSequenceDelta(entry, writes, targetId)
     case 'tree':
       return createTreeDelta(entry as MutationTreeNode<string, unknown>, writes, targetId)
     case 'object':

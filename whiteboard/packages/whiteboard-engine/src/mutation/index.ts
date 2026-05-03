@@ -1,10 +1,10 @@
 import type {
-  MutationDeltaOf
+  MutationDelta
 } from '@shared/mutation'
 import {
   whiteboardMutationSchema
 } from '@whiteboard/core/mutation'
 
-export type WhiteboardMutationDelta = MutationDeltaOf<
+export type WhiteboardMutationDelta = MutationDelta<
   typeof whiteboardMutationSchema
 >

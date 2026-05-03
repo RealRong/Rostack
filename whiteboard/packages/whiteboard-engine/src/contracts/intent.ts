@@ -1,4 +1,3 @@
-import type { MutationCompileControl, MutationResult } from '@shared/mutation'
 import type {
   CanvasIntent,
   DocumentIntent,
@@ -8,18 +7,21 @@ import type {
   NodeIntent,
   ReplaceDocumentIntent,
   WhiteboardIntent,
-  whiteboardCompile,
+  whiteboardCompileHandlers,
 } from '@whiteboard/core/mutation'
-import type { EngineApplyCommit } from '../types/engineWrite'
+import type {
+  WhiteboardCompileAbort,
+} from '@whiteboard/core/mutation/compile/helpers'
 import type { WhiteboardErrorCode } from '../types/result'
+import type { IntentResult } from './result'
 
-type WhiteboardCompileHandlers = typeof whiteboardCompile.handlers
+type WhiteboardCompileHandlers = typeof whiteboardCompileHandlers
 
 type HandlerOutput<THandler> = Exclude<
   THandler extends (...args: any[]) => infer TResult
     ? TResult
     : never,
-  void | MutationCompileControl<any>
+  void | WhiteboardCompileAbort
 >
 
 type HandlerOfIntent<K extends WhiteboardIntent['type']> = K extends keyof WhiteboardCompileHandlers
@@ -42,4 +44,4 @@ export type IntentData<K extends IntentKind = IntentKind> = HandlerOutput<Handle
 export type EngineIntent = Intent
 
 export type ExecuteResult<K extends IntentKind = IntentKind> =
-  MutationResult<IntentData<K>, EngineApplyCommit, WhiteboardErrorCode>
+  IntentResult<IntentData<K>, WhiteboardErrorCode>

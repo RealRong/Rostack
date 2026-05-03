@@ -79,7 +79,8 @@ type MutationReaderCollection<TId extends string, TShape extends MutationShape> 
 }
 
 type MutationReaderNode<TNode> =
-  TNode extends MutationFieldNode<infer TValue> ? MutationReaderField<TValue>
+  TNode extends MutationFieldNode<infer TValue, infer TOptional extends boolean>
+    ? MutationReaderField<TOptional extends true ? TValue | undefined : TValue>
   : TNode extends MutationObjectNode<infer TShape> ? MutationReaderObject<TShape>
   : TNode extends MutationDictionaryNode<infer TKey extends string, infer TValue>
     ? MutationReaderDictionary<TKey, TValue>
@@ -117,7 +118,7 @@ export type MutationReader<TSchema extends MutationSchema = MutationSchema> =
     : never
 
 const createFieldReader = (
-  node: MutationFieldNode<unknown>,
+  node: MutationFieldNode<unknown, boolean>,
   readDocument: () => unknown,
   targetId?: string
 ) => () => readNodeValue(node, readDocument(), targetId)
@@ -141,8 +142,8 @@ const createSequenceReader = (
 ) => ({
   value: () => ((readNodeValue(node, readDocument(), targetId) as readonly unknown[] | undefined) ?? []),
   ids: () => ((readNodeValue(node, readDocument(), targetId) as readonly unknown[] | undefined) ?? []),
-  contains: (item: unknown) => (((readNodeValue(node, readDocument(), targetId) as readonly unknown[] | undefined) ?? []).includes(item)),
-  indexOf: (item: unknown) => (((readNodeValue(node, readDocument(), targetId) as readonly unknown[] | undefined) ?? []).indexOf(item))
+  contains: (item: unknown) => (((readNodeValue(node, readDocument(), targetId) as readonly unknown[] | undefined) ?? []).some((entry) => node.keyOf(entry) === node.keyOf(item))),
+  indexOf: (item: unknown) => (((readNodeValue(node, readDocument(), targetId) as readonly unknown[] | undefined) ?? []).findIndex((entry) => node.keyOf(entry) === node.keyOf(item)))
 })
 
 const createTreeReader = (

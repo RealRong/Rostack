@@ -1,8 +1,7 @@
 import {
   createMutationDelta,
   createMutationResetDelta,
-  type MutationDelta,
-  type MutationDeltaSource
+  type MutationDelta
 } from '../delta/createDelta'
 import {
   applyMutationWrites
@@ -29,8 +28,7 @@ import type {
   MutationWrite
 } from '../writer/writes'
 import type {
-  MutationCompileContext,
-  MutationCompileDefinition,
+  MutationCompile,
   MutationIssue,
   MutationResult
 } from '../compile/types'
@@ -63,7 +61,7 @@ export type MutationEngineOptions<
   schema: TSchema
   document: MutationDocument<TSchema>
   normalize(document: MutationDocument<TSchema>): MutationDocument<TSchema>
-  compile: MutationCompileDefinition<TSchema, TIntent, TServices>
+  compile: MutationCompile<TSchema, TIntent, TServices>
   services: TServices
   history?: boolean
 }
@@ -99,11 +97,7 @@ export const createMutationEngine = <
     outputs: unknown[],
     allWrites: MutationWrite[]
   ): MutationDocument<TSchema> => {
-    const handler = options.compile.handlers[intent.type] as ((ctx: MutationCompileContext<
-      TSchema,
-      TCurrentIntent,
-      TServices
-    >) => unknown) | undefined
+    const handler = options.compile.handlers[intent.type]
     if (!handler) {
       issues.add({
         code: 'missing_handler',
@@ -123,10 +117,7 @@ export const createMutationEngine = <
       read,
       write: writer,
       query,
-      change: {
-        current: () => change,
-        changes: (input: MutationDeltaSource<TSchema>) => createMutationDelta(options.schema, input)
-      },
+      change,
       issue: issues,
       services: options.services
     })

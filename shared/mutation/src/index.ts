@@ -76,6 +76,7 @@ export type {
   MutationQuery
 } from './query/createQuery'
 export type {
+  MutationCompile,
   MutationIssue,
   MutationResult
 } from './compile/types'

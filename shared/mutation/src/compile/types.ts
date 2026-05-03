@@ -1,6 +1,5 @@
 import type {
-  MutationDelta,
-  MutationDeltaSource
+  MutationDelta
 } from '../delta/createDelta'
 import type {
   MutationQuery
@@ -18,24 +17,13 @@ import type {
   MutationWriter
 } from '../writer/createWriter'
 
-export type MutationIssue = {
-  code: string
-  message: string
-  details?: unknown
-}
-
-export type MutationIssueCollector = {
+type MutationIssueCollector = {
   add(issue: MutationIssue): void
   all(): readonly MutationIssue[]
   hasErrors(): boolean
 }
 
-export type MutationChangeCollector<TSchema extends MutationSchema> = {
-  current(): MutationDelta<TSchema>
-  changes(input: MutationDeltaSource<TSchema>): MutationDelta<TSchema>
-}
-
-export type MutationCompileContext<
+type MutationCompileContext<
   TSchema extends MutationSchema,
   TIntent,
   TServices
@@ -45,12 +33,18 @@ export type MutationCompileContext<
   read: MutationReader<TSchema>
   write: MutationWriter<TSchema>
   query: MutationQuery<TSchema>
-  change: MutationChangeCollector<TSchema>
+  change: MutationDelta<TSchema>
   issue: MutationIssueCollector
   services: TServices
 }
 
-export type MutationCompileDefinition<
+export type MutationIssue = {
+  code: string
+  message: string
+  details?: unknown
+}
+
+export type MutationCompile<
   TSchema extends MutationSchema,
   TIntent extends {
     type: string

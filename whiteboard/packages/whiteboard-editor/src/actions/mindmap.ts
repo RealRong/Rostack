@@ -4,33 +4,27 @@ import type {
   MindmapNodeId,
   NodeId
 } from '@whiteboard/core/types'
+import type { EditorActionContext } from '@whiteboard/editor/actions'
 import type { EditController } from '@whiteboard/editor/actions/edit'
 import type { MindmapActions } from '@whiteboard/editor/actions/types'
 import { createMindmapActions as createMindmapWorkflowActions } from '@whiteboard/editor/tasks/mindmap'
-import type {
-  EditorScene
-} from '@whiteboard/editor-scene'
-import type { EditorTaskRuntime } from '@whiteboard/editor/tasks/runtime'
-import type { DocumentFrame } from '@whiteboard/editor-scene'
-import type { EditorWrite } from '@whiteboard/editor/write'
 
 const readMindmapRootMove = (input: {
-  graph: EditorScene
-  document: Pick<DocumentFrame, 'node'>
+  context: EditorActionContext
   nodeId: NodeId
 }) => {
-  const directNode = input.graph.nodes.get(input.nodeId)
-  const tree = input.graph.mindmaps.tree(input.nodeId)
+  const directNode = input.context.projection.nodes.get(input.nodeId)
+  const tree = input.context.projection.mindmaps.tree(input.nodeId)
   const rootView = directNode
     ? directNode
     : (
       tree
-        ? input.graph.nodes.get(tree.rootId)
+        ? input.context.projection.nodes.get(tree.rootId)
         : undefined
     )
   const node = directNode?.base.node ?? (
     tree
-      ? input.document.node(tree.rootId)
+      ? input.context.document.node(tree.rootId)
       : undefined
   )
   const mindmapId = directNode?.base.owner?.kind === 'mindmap'
@@ -45,7 +39,7 @@ const readMindmapRootMove = (input: {
 }
 
 const readBranchScopeIds = (input: {
-  graph: EditorScene
+  context: EditorActionContext
   id: MindmapId
   nodeIds: readonly MindmapNodeId[]
   scope?: 'node' | 'subtree'
@@ -55,39 +49,32 @@ const readBranchScopeIds = (input: {
   }
 
   return (
-    input.graph.mindmaps.tree(input.id)?.nodeIds as
+    input.context.projection.mindmaps.tree(input.id)?.nodeIds as
       | readonly MindmapNodeId[]
       | undefined
   ) ?? input.nodeIds
 }
 
-export const createMindmapActionApi = (input: {
-  graph: EditorScene
-  document: Pick<DocumentFrame, 'node'>
-  state: Pick<import('@whiteboard/editor/state/runtime').EditorStateStoreFacade, 'write'>
-  tasks: EditorTaskRuntime
-  write: Pick<EditorWrite, 'mindmap'>
-  edit: Pick<EditController, 'focusMindmapNode' | 'focusMindmapRoot'>
-}): MindmapActions => {
+export const createMindmapActionApi = (
+  context: EditorActionContext,
+  edit: EditController
+): MindmapActions => {
   const workflow = createMindmapWorkflowActions({
-    graph: input.graph,
-    state: input.state,
-    tasks: input.tasks,
-    write: input.write,
-    focusNode: input.edit.focusMindmapNode,
-    focusRoot: input.edit.focusMindmapRoot
+    context,
+    focusNode: edit.focusMindmapNode,
+    focusRoot: edit.focusMindmapRoot
   })
 
   return {
     create: workflow.create,
-    delete: (ids) => input.write.mindmap.delete(ids),
-    patch: (id, value) => input.write.mindmap.layout.set(id, value.layout ?? {}),
+    delete: (ids) => context.write.mindmap.delete(ids),
+    patch: (id, value) => context.write.mindmap.layout.set(id, value.layout ?? {}),
     insert: workflow.insert,
-    moveSubtree: (id, value) => input.write.mindmap.topic.move(id, value),
-    removeSubtree: (id, value) => input.write.mindmap.topic.delete(id, value),
-    cloneSubtree: (id, value) => input.write.mindmap.topic.clone(id, value),
+    moveSubtree: (id, value) => context.write.mindmap.topic.move(id, value),
+    removeSubtree: (id, value) => context.write.mindmap.topic.delete(id, value),
+    cloneSubtree: (id, value) => context.write.mindmap.topic.clone(id, value),
     insertRelative: workflow.insertRelative,
-    moveByDrop: (value) => input.write.mindmap.topic.move(value.id, {
+    moveByDrop: (value) => context.write.mindmap.topic.move(value.id, {
       nodeId: value.nodeId,
       parentId: value.drop.parentId,
       index: value.drop.index,
@@ -95,8 +82,7 @@ export const createMindmapActionApi = (input: {
     }),
     moveRoot: (value) => {
       const resolved = readMindmapRootMove({
-        graph: input.graph,
-        document: input.document,
+        context,
         nodeId: value.nodeId
       })
       if (!resolved.node || !resolved.mindmapId) {
@@ -117,13 +103,13 @@ export const createMindmapActionApi = (input: {
         return undefined
       }
 
-      return input.write.mindmap.move(resolved.mindmapId, value.position)
+      return context.write.mindmap.move(resolved.mindmapId, value.position)
     },
     style: {
-      branch: (value) => input.write.mindmap.branch.update(
+      branch: (value) => context.write.mindmap.branch.update(
         value.id,
         [...readBranchScopeIds({
-          graph: input.graph,
+          context,
           id: value.id,
           nodeIds: value.nodeIds,
           scope: value.scope
@@ -137,13 +123,13 @@ export const createMindmapActionApi = (input: {
         }))
       ),
       topic: (value) => {
-        const mindmapId = input.graph.mindmaps.ofNodes(value.nodeIds)
+        const mindmapId = context.projection.mindmaps.ofNodes(value.nodeIds)
         if (!mindmapId) {
           return undefined
         }
 
         const style = mindmapApi.topicStyle.toNodeStylePatch(value.patch)
-        return input.write.mindmap.topic.update(
+        return context.write.mindmap.topic.update(
           mindmapId,
           value.nodeIds.map((topicId) => ({
             topicId,

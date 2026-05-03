@@ -3,35 +3,22 @@ import type {
 } from '@whiteboard/core/document'
 import type { SelectionTarget } from '@whiteboard/core/selection'
 import type { Point } from '@whiteboard/core/types'
-import type { DocumentFrame } from '@whiteboard/editor-scene'
+import type { EditorActionContext } from '@whiteboard/editor/actions'
 import type {
   ClipboardActions,
   ClipboardTarget,
+  SelectionActions,
 } from '@whiteboard/editor/actions/types'
 import {
   createClipboardPacket,
   type ClipboardPacket
 } from '@whiteboard/editor/clipboard'
-import type { SelectionActionHelpers } from '@whiteboard/editor/actions/selection'
-import type { EditorStateStores } from '@whiteboard/editor/scene-ui/state'
-import type { EditorStateStoreFacade } from '@whiteboard/editor/state/runtime'
-import type { EditorViewport } from '@whiteboard/editor/state/viewport'
-import type { DocumentWrite } from '@whiteboard/editor/write/types'
-
-type ClipboardActionHelpersHost = {
-  documentSource: Pick<DocumentFrame, 'slice'>
-  document: Pick<DocumentWrite, 'insert'>
-  selection: Pick<SelectionActionHelpers, 'delete'>
-  selectionState: Pick<EditorStateStores['selection'], 'get'>
-  state: Pick<EditorStateStoreFacade, 'write'>
-  viewport: Pick<EditorViewport, 'get'>
-}
 
 const replaceSelection = (
-  state: Pick<EditorStateStoreFacade, 'write'>,
+  context: EditorActionContext,
   selection: SelectionTarget
 ) => {
-  state.write(({
+  context.state.write(({
     writer
   }) => {
     writer.selection.set(selection)
@@ -39,7 +26,7 @@ const replaceSelection = (
 }
 
 const applyInsertedRoots = (input: {
-  context: ClipboardActionHelpersHost
+  context: EditorActionContext
   inserted: {
     roots: SliceRoots
     allNodeIds: readonly string[]
@@ -54,23 +41,23 @@ const applyInsertedRoots = (input: {
     : input.inserted.allEdgeIds
 
   if (nodeIds.length > 0 || edgeIds.length > 0) {
-    replaceSelection(input.context.state, {
+    replaceSelection(input.context, {
       nodeIds,
       edgeIds
     })
     return
   }
 
-  replaceSelection(input.context.state, {
+  replaceSelection(input.context, {
     nodeIds: [],
     edgeIds: []
   })
 }
 
 const readSelectionTarget = (
-  context: ClipboardActionHelpersHost
+  context: EditorActionContext
 ): Exclude<ClipboardTarget, 'selection'> | undefined => {
-  const target = context.selectionState.get()
+  const target = context.stores.selection.get()
 
   if (target.nodeIds.length > 0 || target.edgeIds.length > 0) {
     return {
@@ -83,7 +70,7 @@ const readSelectionTarget = (
 }
 
 const resolveClipboardTarget = (input: {
-  context: ClipboardActionHelpersHost
+  context: EditorActionContext
   target: ClipboardTarget
 }): Exclude<ClipboardTarget, 'selection'> | undefined => (
   input.target === 'selection'
@@ -92,7 +79,7 @@ const resolveClipboardTarget = (input: {
 )
 
 const readClipboardPacket = (input: {
-  context: ClipboardActionHelpersHost
+  context: EditorActionContext
   target: ClipboardTarget
 }): ClipboardPacket | undefined => {
   const resolved = resolveClipboardTarget(input)
@@ -100,14 +87,15 @@ const readClipboardPacket = (input: {
     return undefined
   }
 
-  const exported = input.context.documentSource.slice(resolved)
+  const exported = input.context.document.slice(resolved)
   return exported
     ? createClipboardPacket(exported)
     : undefined
 }
 
 export const createClipboardActions = (
-  context: ClipboardActionHelpersHost
+  context: EditorActionContext,
+  selection: SelectionActions
 ): ClipboardActions => ({
   copy: (target: ClipboardTarget = 'selection') =>
     readClipboardPacket({
@@ -132,7 +120,7 @@ export const createClipboardActions = (
     }
 
     if (resolved.nodeIds?.length || resolved.edgeIds?.length) {
-      const removed = context.selection.delete(resolved, {
+      const removed = selection.delete(resolved, {
         clearSelection: true
       })
       if (!removed) {
@@ -151,7 +139,7 @@ export const createClipboardActions = (
     const origin = options?.origin ?? {
       ...context.viewport.get().center
     }
-    const inserted = context.document.insert(packet.slice, {
+    const inserted = context.write.document.insert(packet.slice, {
       origin,
       roots: packet.roots
     })

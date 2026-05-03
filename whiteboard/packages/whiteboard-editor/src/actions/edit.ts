@@ -1,14 +1,10 @@
 import type { EdgeLabel } from '@whiteboard/core/types'
+import type { EditorActionContext } from '@whiteboard/editor/actions'
 import type {
   EditorEditActions,
   MindmapInsertBehavior
 } from '@whiteboard/editor/actions/types'
-import type { DocumentFrame } from '@whiteboard/editor-scene'
 import type { EditField, EditSession } from '@whiteboard/editor/schema/edit'
-import type { NodeTypeSupport } from '@whiteboard/editor/node'
-import type { EditorStateStores } from '@whiteboard/editor/scene-ui/state'
-import type { EditorStateStoreFacade } from '@whiteboard/editor/state/runtime'
-import type { EditorWrite } from '@whiteboard/editor/write'
 
 const resolveNodeCommitValue = (input: {
   text: string
@@ -58,15 +54,9 @@ export interface EditController {
   }) => void
 }
 
-export const createEditController = (input: {
-  edit: Pick<EditorStateStores['edit'], 'get'>
-  state: Pick<EditorStateStoreFacade, 'read' | 'write'>
-  document: Pick<DocumentFrame, 'node' | 'edge'>
-  nodeType: Pick<NodeTypeSupport, 'edit'>
-  write: Pick<EditorWrite, 'node' | 'edge'>
-}): EditController => {
+export const createEditController = (context: EditorActionContext): EditController => {
   const clearEdit = () => {
-    input.state.write(({
+    context.state.write(({
       writer
     }) => {
       writer.edit.clear()
@@ -79,7 +69,7 @@ export const createEditController = (input: {
       edgeIds?: readonly string[]
     }
   ) => {
-    input.state.write(({
+    context.state.write(({
       writer
     }) => {
       writer.selection.set({
@@ -90,9 +80,9 @@ export const createEditController = (input: {
   }
 
   const updateEdit = (
-    patch: (current: NonNullable<ReturnType<typeof input.edit.get>>) => NonNullable<ReturnType<typeof input.edit.get>>
+    patch: (current: NonNullable<ReturnType<typeof context.stores.edit.get>>) => NonNullable<ReturnType<typeof context.stores.edit.get>>
   ) => {
-    input.state.write(({
+    context.state.write(({
       writer,
       snapshot
     }) => {
@@ -110,12 +100,12 @@ export const createEditController = (input: {
     field,
     caret
   }: StartNodeEditInput): EditSession => {
-    const committed = input.document.node(nodeId)
+    const committed = context.document.node(nodeId)
     if (!committed) {
       return null
     }
 
-    const capability = input.nodeType.edit(committed.type, field)
+    const capability = context.nodeType.edit(committed.type, field)
     if (!capability) {
       return null
     }
@@ -138,7 +128,7 @@ export const createEditController = (input: {
     labelId,
     caret
   }: StartEdgeLabelEditInput): EditSession => {
-    const edge = input.document.edge(edgeId)
+    const edge = context.document.edge(edgeId)
     const label = edge?.labels?.find((entry: EdgeLabel) => entry.id === labelId)
     if (!edge || !label) {
       return null
@@ -163,7 +153,7 @@ export const createEditController = (input: {
     edgeId: string
     labelId: string
   }) => {
-    const currentEdit = input.edit.get()
+    const currentEdit = context.stores.edit.get()
     if (
       currentEdit
       && currentEdit.kind === 'edge-label'
@@ -192,7 +182,7 @@ export const createEditController = (input: {
         field: 'text'
       })
       if (startEdit) {
-        input.state.write(({
+        context.state.write(({
           writer
         }) => {
           writer.selection.set({
@@ -227,7 +217,7 @@ export const createEditController = (input: {
         field: 'text'
       })
       if (startEdit) {
-        input.state.write(({
+        context.state.write(({
           writer
         }) => {
           writer.selection.set({
@@ -246,7 +236,7 @@ export const createEditController = (input: {
   }
 
   const cancel = () => {
-    const currentEdit = input.edit.get()
+    const currentEdit = context.stores.edit.get()
     if (!currentEdit) {
       return
     }
@@ -257,30 +247,30 @@ export const createEditController = (input: {
       return
     }
 
-    const committedLabel = input.document.edge(currentEdit.edgeId)?.labels?.find(
+    const committedLabel = context.document.edge(currentEdit.edgeId)?.labels?.find(
       (label: EdgeLabel) => label.id === currentEdit.labelId
     )
     if (!committedLabel || committedLabel.text?.trim()) {
       return
     }
 
-    input.write.edge.label.delete(currentEdit.edgeId, currentEdit.labelId)
+    context.write.edge.label.delete(currentEdit.edgeId, currentEdit.labelId)
   }
 
   const commit = () => {
-    const currentEdit = input.edit.get()
+    const currentEdit = context.stores.edit.get()
     if (!currentEdit) {
       return
     }
 
     if (currentEdit.kind === 'node') {
-      const committed = input.document.node(currentEdit.nodeId)
+      const committed = context.document.node(currentEdit.nodeId)
       if (!committed) {
         clearEdit()
         return
       }
 
-      const capability = input.nodeType.edit(
+      const capability = context.nodeType.edit(
         committed.type,
         currentEdit.field
       )
@@ -290,7 +280,7 @@ export const createEditController = (input: {
       }
 
       clearEdit()
-      input.write.node.text.commit({
+      context.write.node.text.commit({
         nodeId: currentEdit.nodeId,
         field: currentEdit.field,
         value: resolveNodeCommitValue({
@@ -305,11 +295,11 @@ export const createEditController = (input: {
     clearEdit()
 
     if (!currentEdit.text.trim()) {
-      input.write.edge.label.delete(currentEdit.edgeId, currentEdit.labelId)
+      context.write.edge.label.delete(currentEdit.edgeId, currentEdit.labelId)
       return
     }
 
-    input.write.edge.label.update(
+    context.write.edge.label.update(
       currentEdit.edgeId,
       currentEdit.labelId,
       {
@@ -329,7 +319,7 @@ export const createEditController = (input: {
           caret: options?.caret
         })
         if (nextEdit) {
-          input.state.write(({
+          context.state.write(({
             writer
           }) => {
             writer.edit.set(nextEdit)
@@ -343,7 +333,7 @@ export const createEditController = (input: {
           caret: options?.caret
         })
         if (nextEdit) {
-          input.state.write(({
+          context.state.write(({
             writer
           }) => {
             writer.edit.set(nextEdit)

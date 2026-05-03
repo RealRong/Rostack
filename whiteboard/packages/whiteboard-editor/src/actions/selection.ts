@@ -4,10 +4,7 @@ import type {
   CanvasItemRef,
   GroupId
 } from '@whiteboard/core/types'
-import type { EditorScene } from '@whiteboard/editor-scene'
-import type { EditorDefaults } from '@whiteboard/editor/schema/defaults'
-import type { EditorStateStoreFacade } from '@whiteboard/editor/state/runtime'
-import type { EditorStateStores } from '@whiteboard/editor/scene-ui/state'
+import type { EditorActionContext } from '@whiteboard/editor/actions'
 import type {
   CanvasWrite,
   GroupWrite,
@@ -19,26 +16,11 @@ import type {
 
 const DEFAULT_FRAME_PADDING = 32
 
-export type SelectionActionHelpers = Pick<
-  SelectionActions,
-  'duplicate' | 'delete' | 'order' | 'group' | 'ungroup' | 'frame'
->
-
-type SelectionActionHelpersHost = {
-  read: EditorScene
-  canvas: CanvasWrite
-  group: GroupWrite
-  node: Pick<NodeWrite, 'create'>
-  selection: Pick<EditorStateStores['selection'], 'get'>
-  state: Pick<EditorStateStoreFacade, 'write'>
-  defaults: EditorDefaults['templates']
-}
-
 const replaceSelection = (
-  state: Pick<EditorStateStoreFacade, 'write'>,
+  context: EditorActionContext,
   selection: SelectionTarget
 ) => {
-  state.write(({
+  context.state.write(({
     writer
   }) => {
     writer.selection.set(selection)
@@ -80,8 +62,7 @@ const toCanvasRefs = (
 
 const createFrame = (
   node: Pick<NodeWrite, 'create'>,
-  state: SelectionActionHelpersHost['state'],
-  defaults: EditorDefaults['templates'],
+  context: EditorActionContext,
   bounds: {
     x: number
     y: number
@@ -95,7 +76,7 @@ const createFrame = (
       x: bounds.x - padding,
       y: bounds.y - padding
     },
-    template: defaults.frame({
+    template: context.defaults.frame({
       bounds,
       padding
     })
@@ -104,23 +85,14 @@ const createFrame = (
     return false
   }
 
-  replaceSelection(state, {
+  replaceSelection(context, {
     nodeIds: [result.data.nodeId],
     edgeIds: []
   })
   return true
 }
 
-export const createSelectionActions = (input: {
-  document: Pick<import('@whiteboard/editor-scene').DocumentFrame, 'nodeIds' | 'edgeIds'>
-  read: EditorScene
-  canvas: CanvasWrite
-  group: GroupWrite
-  node: Pick<NodeWrite, 'create'>
-  selection: Pick<EditorStateStores['selection'], 'get'>
-  state: Pick<EditorStateStoreFacade, 'write'>
-  defaults: EditorDefaults['templates']
-}): SelectionActions => {
+export const createSelectionActions = (context: EditorActionContext): SelectionActions => {
   const applySelection = (
     mode: 'replace' | 'add' | 'subtract' | 'toggle',
     target: SelectionInput
@@ -128,12 +100,12 @@ export const createSelectionActions = (input: {
     const selection = mode === 'replace'
       ? selectionApi.target.normalize(target)
       : selectionApi.target.apply(
-          input.selection.get(),
+          context.stores.selection.get(),
           selectionApi.target.normalize(target),
           mode
         )
 
-    replaceSelection(input.state, selection)
+    replaceSelection(context, selection)
   }
 
   return {
@@ -151,8 +123,8 @@ export const createSelectionActions = (input: {
     },
     selectAll: () => {
       applySelection('replace', {
-        nodeIds: input.document.nodeIds(),
-        edgeIds: input.document.edgeIds()
+        nodeIds: context.document.nodeIds(),
+        edgeIds: context.document.edgeIds()
       })
     },
     clear: () => {
@@ -168,13 +140,13 @@ export const createSelectionActions = (input: {
         return false
       }
 
-      const result = input.canvas.duplicate(refs)
+      const result = context.write.canvas.duplicate(refs)
       if (!result.ok) {
         return false
       }
 
       if (options?.selectInserted !== false) {
-        replaceSelection(input.state, {
+        replaceSelection(context, {
           nodeIds: result.data.roots.nodeIds.length > 0
             ? result.data.roots.nodeIds
             : result.data.allNodeIds,
@@ -193,13 +165,13 @@ export const createSelectionActions = (input: {
         return false
       }
 
-      const result = input.canvas.delete(refs)
+      const result = context.write.canvas.delete(refs)
       if (!result.ok) {
         return false
       }
 
       if (options?.clearSelection !== false) {
-        replaceSelection(input.state, {
+        replaceSelection(context, {
           nodeIds: [],
           edgeIds: []
         })
@@ -209,9 +181,9 @@ export const createSelectionActions = (input: {
     },
     order: (value, mode) => {
       const target = selectionApi.target.normalize(value)
-      const groupIds = input.read.groups.exact(target)
+      const groupIds = context.projection.groups.exact(target)
       if (groupIds.length > 0) {
-        return orderGroups(input.group, groupIds, mode).ok
+        return orderGroups(context.write.group, groupIds, mode).ok
       }
 
       const refs = toCanvasRefs(target)
@@ -219,12 +191,12 @@ export const createSelectionActions = (input: {
         return false
       }
 
-      const { order } = input.canvas
+      const { order } = context.write.canvas
       return orderRefs(order, refs, mode).ok
     },
     group: (value, options) => {
       const target = selectionApi.target.normalize(value)
-      const result = input.group.merge(target)
+      const result = context.write.group.merge(target)
       if (!result.ok) {
         return false
       }
@@ -233,39 +205,38 @@ export const createSelectionActions = (input: {
         return true
       }
 
-      replaceSelection(input.state, target)
+      replaceSelection(context, target)
       return true
     },
     ungroup: (value, options) => {
       const target = selectionApi.target.normalize(value)
-      const groupIds = [...input.read.groups.exact(target)]
+      const groupIds = [...context.projection.groups.exact(target)]
       if (!groupIds.length) {
         return false
       }
 
-      const result = input.group.ungroup(groupIds)
+      const result = context.write.group.ungroup(groupIds)
       if (!result.ok) {
         return false
       }
 
       if (options?.fallbackSelection === 'none') {
-        replaceSelection(input.state, {
+        replaceSelection(context, {
           nodeIds: [],
           edgeIds: []
         })
         return true
       }
 
-      replaceSelection(input.state, {
+      replaceSelection(context, {
         nodeIds: result.data.nodeIds,
         edgeIds: result.data.edgeIds
       })
       return true
     },
     frame: (bounds, options) => createFrame(
-      input.node,
-      input.state,
-      input.defaults,
+      context.write.node,
+      context,
       bounds,
       options?.padding ?? DEFAULT_FRAME_PADDING
     )

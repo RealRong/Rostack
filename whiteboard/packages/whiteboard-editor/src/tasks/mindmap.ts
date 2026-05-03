@@ -11,31 +11,13 @@ import type {
   MindmapActions,
   MindmapInsertBehavior
 } from '@whiteboard/editor/actions/types'
-import type {
-  EditorScene
-} from '@whiteboard/editor-scene'
-import type { EditorWrite } from '@whiteboard/editor/write'
+import type { EditorActionContext } from '@whiteboard/editor/actions'
 import type { EditorTaskRuntime } from './runtime'
 import {
   isEditorTaskRuntimeDisposedError
 } from './runtime'
 
 const DEFAULT_MINDMAP_ENTER_DURATION_MS = 220
-
-type MindmapActionDeps = {
-  graph: EditorScene
-  state: Pick<import('@whiteboard/editor/state/runtime').EditorStateStoreFacade, 'write'>
-  tasks: EditorTaskRuntime
-  write: Pick<EditorWrite, 'mindmap'>
-  focusNode: (input: {
-    nodeId: MindmapNodeId
-    behavior: MindmapInsertBehavior | undefined
-  }) => void
-  focusRoot: (input: {
-    nodeId: MindmapNodeId
-    focus: 'edit-root' | 'select-root' | 'none' | undefined
-  }) => void
-}
 
 type MindmapEnterJob = {
   nodeId: MindmapNodeId
@@ -72,11 +54,11 @@ const readProgress = (
 }
 
 const withNodePresentation = (
-  state: MindmapActionDeps['state'],
+  context: EditorActionContext,
   nodeId: MindmapNodeId,
   position?: Point
 ) => {
-  state.write(({
+  context.state.write(({
     writer,
     snapshot
   }) => {
@@ -147,19 +129,19 @@ const readInsertAnchorId = (
 }
 
 const buildEnterJob = (input: {
-  graph: EditorScene
+  context: EditorActionContext
   treeId: MindmapId
   nodeId: MindmapNodeId
   anchorId?: MindmapNodeId
 }): MindmapEnterJob | undefined => {
-  const tree = input.graph.mindmaps.tree(input.treeId)
-  const targetRect = input.graph.nodes.get(input.nodeId)?.geometry.rect
+  const tree = input.context.projection.mindmaps.tree(input.treeId)
+  const targetRect = input.context.projection.nodes.get(input.nodeId)?.geometry.rect
   if (!tree || !targetRect) {
     return undefined
   }
 
   const parentId = tree.tree.nodes[input.nodeId]?.parentId
-  const anchorRect = input.graph.nodes.get(
+  const anchorRect = input.context.projection.nodes.get(
     input.anchorId ?? parentId ?? ''
   )?.geometry.rect
   if (!anchorRect) {
@@ -184,7 +166,7 @@ const buildEnterJob = (input: {
 }
 
 const resolveEnterJob = async (input: {
-  graph: EditorScene
+  context: EditorActionContext
   treeId: MindmapId
   nodeId: MindmapNodeId
   anchorId?: MindmapNodeId
@@ -200,11 +182,11 @@ const resolveEnterJob = async (input: {
 }
 
 const animateEnter = async (input: {
-  state: MindmapActionDeps['state']
+  context: EditorActionContext
   tasks: EditorTaskRuntime
   job: MindmapEnterJob
 }) => {
-  withNodePresentation(input.state, input.job.nodeId, input.job.from)
+  withNodePresentation(input.context, input.job.nodeId, input.job.from)
 
   try {
     while (true) {
@@ -227,14 +209,14 @@ const animateEnter = async (input: {
       }
 
       withNodePresentation(
-        input.state,
+        input.context,
         input.job.nodeId,
         interpolatePoint(input.job.from, input.job.to, nextProgress)
       )
     }
   } finally {
     withNodePresentation(
-      input.state,
+      input.context,
       input.job.nodeId
     )
   }
@@ -253,13 +235,20 @@ const runTask = (
 }
 
 export const createMindmapActions = ({
-  graph,
-  state,
-  tasks,
-  write,
+  context,
   focusNode,
   focusRoot
-}: MindmapActionDeps) => {
+}: {
+  context: EditorActionContext
+  focusNode: (input: {
+    nodeId: MindmapNodeId
+    behavior: MindmapInsertBehavior | undefined
+  }) => void
+  focusRoot: (input: {
+    nodeId: MindmapNodeId
+    focus: 'edit-root' | 'select-root' | 'none' | undefined
+  }) => void
+}) => {
   const animateAndFocus = (input: {
     treeId: MindmapId
     nodeId: MindmapNodeId
@@ -269,18 +258,18 @@ export const createMindmapActions = ({
     const shouldEnter = input.behavior?.enter === 'from-anchor'
     const job = shouldEnter
       ? await resolveEnterJob({
-          graph,
+          context,
           treeId: input.treeId,
           nodeId: input.nodeId,
           anchorId: input.anchorId,
-          tasks
+          tasks: context.tasks
         })
       : undefined
 
     if (job) {
       await animateEnter({
-        state,
-        tasks,
+        context,
+        tasks: context.tasks,
         job
       })
     }
@@ -295,7 +284,7 @@ export const createMindmapActions = ({
     payload,
     options
   ) => {
-    const result = write.mindmap.create(payload)
+    const result = context.write.mindmap.create(payload)
     if (result.ok) {
       focusRoot({
         nodeId: result.data.rootId,
@@ -310,7 +299,7 @@ export const createMindmapActions = ({
     input,
     options
   ) => {
-    const result = write.mindmap.topic.insert(id, input)
+    const result = context.write.mindmap.topic.insert(id, input)
     if (result.ok) {
       animateAndFocus({
         treeId: id,
@@ -325,7 +314,7 @@ export const createMindmapActions = ({
   const insertRelative: MindmapActions['insertRelative'] = (
     input
   ) => {
-    const tree = graph.mindmaps.tree(input.id)
+    const tree = context.projection.mindmaps.tree(input.id)
     if (!tree) {
       return undefined
     }
@@ -345,7 +334,7 @@ export const createMindmapActions = ({
       return undefined
     }
 
-    const result = write.mindmap.topic.insert(input.id, insertInput)
+    const result = context.write.mindmap.topic.insert(input.id, insertInput)
     if (result.ok) {
       animateAndFocus({
         treeId: input.id,

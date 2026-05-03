@@ -48,11 +48,11 @@ import type { EditorStateStoreFacade } from '@whiteboard/editor/state/runtime'
 import { EMPTY_PREVIEW_STATE } from '@whiteboard/editor/state/preview'
 import type { EditorStateStores } from '@whiteboard/editor/scene-ui/state'
 
-export type CreateEditorActionsApiDeps = {
+export type EditorActionContext = {
   document: DocumentFrame
   projection: EditorScene
-  state: Pick<EditorStateStoreFacade, 'read' | 'write'>
-  stores: Pick<EditorStateStores, 'tool' | 'draw' | 'selection' | 'edit' | 'preview'>
+  state: EditorStateStoreFacade
+  stores: EditorStateStores
   viewport: EditorViewport
   tasks: EditorTaskRuntime
   write: EditorWrite
@@ -93,7 +93,7 @@ export const createEditorActionsApi = ({
   write,
   nodeType,
   defaults
-}: CreateEditorActionsApiDeps): EditorActions => {
+}: EditorActionContext): EditorActions => {
   const setTool = (
     nextTool: Tool
   ) => {
@@ -121,47 +121,23 @@ export const createEditorActionsApi = ({
       : DEFAULT_DRAW_BRUSH
   }
 
-  const selection = createSelectionActions({
+  const context = {
     document,
-    read: projection,
-    canvas: write.canvas,
-    group: write.group,
-    node: write.node,
-    selection: stores.selection,
+    projection,
     state,
-    defaults
-  })
-  const edit = createEditController({
-    edit: stores.edit,
-    state,
-    document,
-    nodeType,
-    write
-  })
-  const edge = createEdgeActions({
-    graph: projection,
-    document,
-    editSession: stores.edit,
-    state,
-    write,
-    edit
-  })
-  const mindmap = createMindmapActionApi({
-    graph: projection,
-    document,
-    state,
+    stores,
+    viewport,
     tasks,
     write,
-    edit
-  })
-  const clipboard = createClipboardActions({
-    documentSource: document,
-    document: write.document,
-    selection,
-    selectionState: stores.selection,
-    state,
-    viewport
-  })
+    nodeType,
+    defaults
+  } satisfies EditorActionContext
+
+  const selection = createSelectionActions(context)
+  const edit = createEditController(context)
+  const edge = createEdgeActions(context, edit)
+  const mindmap = createMindmapActionApi(context, edit)
+  const clipboard = createClipboardActions(context, selection)
 
   const sessionTool: ToolActions = {
     set: setTool,

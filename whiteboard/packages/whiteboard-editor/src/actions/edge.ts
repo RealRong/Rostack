@@ -4,19 +4,16 @@ import type {
   EdgeRouteInput,
   Point
 } from '@whiteboard/core/types'
+import type { EditorActionContext } from '@whiteboard/editor/actions'
 import type { EdgeActions } from '@whiteboard/editor/actions/types'
-import type { EditorScene } from '@whiteboard/editor-scene'
 import type { EditSession } from '@whiteboard/editor/schema/edit'
-import type { DocumentFrame } from '@whiteboard/editor-scene'
-import type { EditorStateStores } from '@whiteboard/editor/scene-ui/state'
-import type { EditorStateStoreFacade } from '@whiteboard/editor/state/runtime'
-import type { EditorWrite } from '@whiteboard/editor/write'
+import type { EditController } from '@whiteboard/editor/actions/edit'
 
 const readEdgeOrThrow = (
-  graph: EditorScene,
+  context: EditorActionContext,
   edgeId: string
 ) => {
-  const edge = graph.edges.get(edgeId)?.base.edge
+  const edge = context.projection.edges.get(edgeId)?.base.edge
   if (!edge) {
     throw new Error(`Edge ${edgeId} not found.`)
   }
@@ -25,19 +22,18 @@ const readEdgeOrThrow = (
 }
 
 const writeRouteFromPoint = (input: {
-  graph: EditorScene
-  write: Pick<EditorWrite, 'edge'>
+  context: EditorActionContext
   edgeId: string
   resolve: (edge: ReturnType<typeof readEdgeOrThrow>) => { route?: EdgeRouteInput } | undefined
 }) => {
   const patch = input.resolve(
-    readEdgeOrThrow(input.graph, input.edgeId)
+    readEdgeOrThrow(input.context, input.edgeId)
   )
   if (!patch) {
     throw new Error(`Edge route point ${input.edgeId} not found.`)
   }
 
-  return input.write.edge.route.set(
+  return input.context.write.edge.route.set(
     input.edgeId,
     patch.route ?? {
       kind: 'auto'
@@ -46,11 +42,11 @@ const writeRouteFromPoint = (input: {
 }
 
 const createStartEdgeLabelSession = (input: {
-  document: Pick<DocumentFrame, 'edge'>
+  context: EditorActionContext
   edgeId: string
   labelId: string
 }): EditSession => {
-  const edge = input.document.edge(input.edgeId)
+  const edge = input.context.document.edge(input.edgeId)
   const label = edge?.labels?.find((entry) => entry.id === input.labelId)
   if (!edge || !label) {
     return null
@@ -69,11 +65,11 @@ const createStartEdgeLabelSession = (input: {
 }
 
 const setEdgeLabelSelection = (input: {
-  state: Pick<EditorStateStoreFacade, 'write'>
+  context: EditorActionContext
   edgeId: string
   edit: EditSession
 }) => {
-  input.state.write(({
+  input.context.state.write(({
     writer
   }) => {
     writer.selection.set({
@@ -86,28 +82,19 @@ const setEdgeLabelSelection = (input: {
   })
 }
 
-export const createEdgeActions = (input: {
-  graph: EditorScene
-  document: Pick<DocumentFrame, 'edge'>
-  editSession: Pick<EditorStateStores['edit'], 'get'>
-  state: Pick<EditorStateStoreFacade, 'write'>
-  write: Pick<EditorWrite, 'edge'>
-  edit: {
-    clearEditingEdgeLabel: (input: {
-      edgeId: string
-      labelId: string
-    }) => void
-  }
-}): EdgeActions => ({
-  create: (value) => input.write.edge.create(value),
+export const createEdgeActions = (
+  context: EditorActionContext,
+  edit: EditController
+): EdgeActions => ({
+  create: (value) => context.write.edge.create(value),
   patch: (edgeIds, patch) => {
     const update = edgeApi.update.fromPatch(patch)
     if (!update.fields && !update.record) {
       return undefined
     }
 
-    return input.write.edge.updateMany(
-      edgeIds.flatMap((id) => input.document.edge(id)
+    return context.write.edge.updateMany(
+      edgeIds.flatMap((id) => context.document.edge(id)
         ? [{
             id,
             input: update
@@ -115,39 +102,37 @@ export const createEdgeActions = (input: {
         : [])
     )
   },
-  move: (value) => input.write.edge.move(value),
-  reconnectCommit: (value) => input.write.edge.reconnectCommit(value),
-  delete: (ids) => input.write.edge.delete(ids),
+  move: (value) => context.write.edge.move(value),
+  reconnectCommit: (value) => context.write.edge.reconnectCommit(value),
+  delete: (ids) => context.write.edge.delete(ids),
   route: {
-    set: (edgeId, route) => input.write.edge.route.set(edgeId, route),
+    set: (edgeId, route) => context.write.edge.route.set(edgeId, route),
     insertPoint: (edgeId, index, point) => {
-      const edge = readEdgeOrThrow(input.graph, edgeId)
+      const edge = readEdgeOrThrow(context, edgeId)
       const inserted = edgeApi.route.insert(edge, index, point)
       if (!inserted.ok) {
         throw new Error(inserted.error.message)
       }
 
-      return input.write.edge.route.set(edgeId, inserted.data.patch.route ?? {
+      return context.write.edge.route.set(edgeId, inserted.data.patch.route ?? {
         kind: 'auto'
       })
     },
     movePoint: (edgeId, index, point) => writeRouteFromPoint({
-      graph: input.graph,
-      write: input.write,
+      context,
       edgeId,
       resolve: (edge) => edgeApi.route.move(edge, index, point)
     }),
     removePoint: (edgeId, index) => writeRouteFromPoint({
-      graph: input.graph,
-      write: input.write,
+      context,
       edgeId,
       resolve: (edge) => edgeApi.route.remove(edge, index)
     }),
-    clear: (edgeId) => input.write.edge.route.clear(edgeId)
+    clear: (edgeId) => context.write.edge.route.clear(edgeId)
   },
   label: {
     add: (edgeId) => {
-      const currentEdit = input.editSession.get()
+      const currentEdit = context.stores.edit.get()
       if (
         currentEdit
         && currentEdit.kind === 'edge-label'
@@ -156,20 +141,20 @@ export const createEdgeActions = (input: {
         return undefined
       }
 
-      const inserted = input.write.edge.label.insert(edgeId)
+      const inserted = context.write.edge.label.insert(edgeId)
       if (!inserted.ok) {
         return undefined
       }
 
       const nextEdit = createStartEdgeLabelSession({
-        document: input.document,
+        context,
         edgeId,
         labelId: inserted.data.labelId
       })
 
       if (nextEdit) {
         setEdgeLabelSelection({
-          state: input.state,
+          context,
           edgeId,
           edit: nextEdit
         })
@@ -177,7 +162,7 @@ export const createEdgeActions = (input: {
 
       return inserted.data.labelId
     },
-    patch: (edgeId, labelId, patch) => input.write.edge.label.update(
+    patch: (edgeId, labelId, patch) => context.write.edge.label.update(
       edgeId,
       labelId,
       edgeApi.label.patch.fromPatch({
@@ -189,30 +174,30 @@ export const createEdgeActions = (input: {
       })
     ),
     remove: (edgeId, labelId) => {
-      input.edit.clearEditingEdgeLabel({
+      edit.clearEditingEdgeLabel({
         edgeId,
         labelId
       })
-      return input.write.edge.label.delete(edgeId, labelId)
+      return context.write.edge.label.delete(edgeId, labelId)
     }
   },
   style: {
-    color: (edgeIds, value) => input.write.edge.style.color(edgeIds, value),
-    opacity: (edgeIds, value) => input.write.edge.style.opacity(edgeIds, value),
-    width: (edgeIds, value) => input.write.edge.style.width(edgeIds, value),
-    dash: (edgeIds, value) => input.write.edge.style.dash(edgeIds, value),
-    start: (edgeIds, value) => input.write.edge.style.start(edgeIds, value),
-    end: (edgeIds, value) => input.write.edge.style.end(edgeIds, value),
-    swapMarkers: (edgeIds) => input.write.edge.style.swapMarkers(edgeIds)
+    color: (edgeIds, value) => context.write.edge.style.color(edgeIds, value),
+    opacity: (edgeIds, value) => context.write.edge.style.opacity(edgeIds, value),
+    width: (edgeIds, value) => context.write.edge.style.width(edgeIds, value),
+    dash: (edgeIds, value) => context.write.edge.style.dash(edgeIds, value),
+    start: (edgeIds, value) => context.write.edge.style.start(edgeIds, value),
+    end: (edgeIds, value) => context.write.edge.style.end(edgeIds, value),
+    swapMarkers: (edgeIds) => context.write.edge.style.swapMarkers(edgeIds)
   },
   type: {
-    set: (edgeIds, value) => input.write.edge.type.set(edgeIds, value)
+    set: (edgeIds, value) => context.write.edge.type.set(edgeIds, value)
   },
   lock: {
-    set: (edgeIds, locked) => input.write.edge.lock.set(edgeIds, locked),
-    toggle: (edgeIds) => input.write.edge.lock.toggle(edgeIds)
+    set: (edgeIds, locked) => context.write.edge.lock.set(edgeIds, locked),
+    toggle: (edgeIds) => context.write.edge.lock.toggle(edgeIds)
   },
   textMode: {
-    set: (edgeIds, value) => input.write.edge.textMode.set(edgeIds, value)
+    set: (edgeIds, value) => context.write.edge.textMode.set(edgeIds, value)
   }
 })

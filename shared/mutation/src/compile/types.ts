@@ -32,7 +32,7 @@ export type MutationIssueCollector = {
 
 export type MutationChangeCollector<TSchema extends MutationSchema> = {
   current(): MutationDelta<TSchema>
-  changes(input: MutationDeltaSource): MutationDelta<TSchema>
+  changes(input: MutationDeltaSource<TSchema>): MutationDelta<TSchema>
 }
 
 export type MutationCompileContext<

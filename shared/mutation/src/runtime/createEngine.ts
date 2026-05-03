@@ -1,6 +1,7 @@
 import {
   createMutationDelta,
-  type MutationDeltaInput,
+  createMutationResetDelta,
+  type MutationDelta,
   type MutationDeltaSource
 } from '../delta/createDelta'
 import {
@@ -44,7 +45,7 @@ export type MutationCommit<TSchema extends MutationSchema> = {
   document: MutationDocument<TSchema>
   writes: readonly MutationWrite[]
   inverse: readonly MutationWrite[]
-  delta: MutationDeltaInput
+  delta: MutationDelta<TSchema>
 }
 
 export type MutationCurrent<TSchema extends MutationSchema> = {
@@ -115,18 +116,19 @@ export const createMutationEngine = <
     const writer = createMutationWriter(options.schema, scopedWrites)
     const read = createMutationReader(options.schema, () => workingDocument)
     const query = createMutationQuery(options.schema, () => workingDocument)
+    const change = createMutationDelta(options.schema, scopedWrites)
     const result = handler({
       intent,
       document: workingDocument,
       read,
       write: writer,
-        query,
-        change: {
-          current: () => createMutationDelta(options.schema, scopedWrites),
-          changes: (input: MutationDeltaSource) => createMutationDelta(options.schema, input)
-        },
-        issue: issues,
-        services: options.services
+      query,
+      change: {
+        current: () => change,
+        changes: (input: MutationDeltaSource<TSchema>) => createMutationDelta(options.schema, input)
+      },
+      issue: issues,
+      services: options.services
     })
     outputs.push(result)
     allWrites.push(...scopedWrites)
@@ -156,15 +158,14 @@ export const createMutationEngine = <
   ) => {
     const applied = applyMutationWritesWithInverse(document, writes)
     document = options.normalize(applied.document)
+    const delta = createMutationDelta(options.schema, writes)
     const commit = publish({
       kind: 'apply',
       origin,
       document,
       writes,
       inverse: applied.inverse,
-      delta: {
-        writes
-      }
+      delta
     })
 
     if (trackHistory && origin !== 'history') {
@@ -243,10 +244,7 @@ export const createMutationEngine = <
         document,
         writes: [],
         inverse: [],
-        delta: {
-          reset: true,
-          writes: []
-        }
+        delta: createMutationResetDelta(options.schema)
       })
       if (replaceOptions?.history) {
         history.push({
@@ -289,9 +287,7 @@ export const createMutationEngine = <
           document,
           writes: currentWrites,
           inverse: entry.writes,
-          delta: {
-            writes: currentWrites
-          }
+          delta: createMutationDelta(options.schema, currentWrites)
         })
       },
       redo() {
@@ -307,9 +303,7 @@ export const createMutationEngine = <
           document,
           writes: entry.writes,
           inverse: entry.inverse,
-          delta: {
-            writes: entry.writes
-          }
+          delta: createMutationDelta(options.schema, entry.writes)
         })
       },
       clear() {

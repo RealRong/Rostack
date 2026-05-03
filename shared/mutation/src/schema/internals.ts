@@ -2,6 +2,9 @@ import type {
   MutationAccessOverride
 } from './constants'
 import type {
+  MutationSchema,
+  MutationSchemaChangeFactory,
+  MutationSchemaChangeSet,
   MutationMapNode,
   MutationSequenceNode,
   MutationShape,
@@ -41,6 +44,10 @@ type MutationAccessOfNode<TNode extends MutationAccessNode> =
 
 const nodeMetaMap = new WeakMap<MutationShapeNode, MutationNodeMeta>()
 const nodeAccessMap = new WeakMap<MutationAccessNode, MutationAccessOverride<unknown>>()
+const schemaChangeFactoryMap = new WeakMap<
+  MutationSchema<MutationShape, MutationSchemaChangeSet>,
+  MutationSchemaChangeFactory<MutationShape, MutationSchemaChangeSet>
+>()
 
 export const getNodeMeta = (
   node: MutationShapeNode
@@ -81,4 +88,27 @@ export const copyNodeAccess = <TNode extends MutationAccessNode>(
     setNodeAccess(target, access)
   }
   return target
+}
+
+export const getSchemaChangeFactory = <
+  TShape extends MutationShape,
+  TChanges extends MutationSchemaChangeSet
+>(
+  schema: MutationSchema<TShape, TChanges>
+): MutationSchemaChangeFactory<TShape, TChanges> | undefined => schemaChangeFactoryMap.get(
+  schema as MutationSchema<MutationShape, MutationSchemaChangeSet>
+) as MutationSchemaChangeFactory<TShape, TChanges> | undefined
+
+export const setSchemaChangeFactory = <
+  TShape extends MutationShape,
+  TChanges extends MutationSchemaChangeSet
+>(
+  schema: MutationSchema<TShape, TChanges>,
+  factory: MutationSchemaChangeFactory<TShape, TChanges>
+): MutationSchema<TShape, TChanges> => {
+  schemaChangeFactoryMap.set(
+    schema as MutationSchema<MutationShape, MutationSchemaChangeSet>,
+    factory as MutationSchemaChangeFactory<MutationShape, MutationSchemaChangeSet>
+  )
+  return schema
 }

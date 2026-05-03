@@ -3,6 +3,9 @@ import {
   MUTATION_SCHEMA,
 } from './constants'
 import type {
+  MutationDeltaBaseOfShape
+} from '../delta/facadeTypes'
+import type {
   MutationAccessOverride,
   MutationTreeSnapshot,
 } from './constants'
@@ -70,9 +73,24 @@ export interface MutationShape {
   readonly [key: string]: MutationShapeNode | MutationShape
 }
 
-export type MutationSchema<TShape extends MutationShape = MutationShape> = {
+export type MutationSchemaChangeSet = Record<string, unknown>
+
+export type MutationSchemaChangeFactory<
+  TShape extends MutationShape,
+  TChanges extends MutationSchemaChangeSet
+> = (
+  change: MutationDeltaBaseOfShape<TShape>
+) => TChanges
+
+export type MutationSchema<
+  TShape extends MutationShape = MutationShape,
+  TChanges extends MutationSchemaChangeSet = {}
+> = {
   readonly [MUTATION_SCHEMA]: true
   readonly shape: TShape
+  changes<TNextChanges extends MutationSchemaChangeSet>(
+    factory: MutationSchemaChangeFactory<TShape, TNextChanges>
+  ): MutationSchema<TShape, TNextChanges>
 }
 
 export const isMutationNode = (value: unknown): value is MutationShapeNode => Boolean(

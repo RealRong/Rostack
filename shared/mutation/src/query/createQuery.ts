@@ -16,7 +16,7 @@ import type {
 
 export type MutationQuery<TSchema extends MutationSchema = MutationSchema> =
   MutationReader<TSchema> & {
-    changes(input: MutationDeltaSource): MutationDelta<TSchema>
+    changes(input: MutationDeltaSource<TSchema>): MutationDelta<TSchema>
   }
 
 export const createMutationQuery = <TSchema extends MutationSchema>(
@@ -25,7 +25,7 @@ export const createMutationQuery = <TSchema extends MutationSchema>(
 ): MutationQuery<TSchema> => Object.assign(
   createMutationReader(schema, input),
   {
-    changes(changeInput: MutationDeltaSource) {
+    changes(changeInput: MutationDeltaSource<TSchema>) {
       return createMutationDelta(schema, changeInput)
     }
   }

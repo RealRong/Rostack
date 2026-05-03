@@ -16,109 +16,111 @@ import {
   isMutationNode
 } from '../schema/node'
 import type {
+  MutationDeltaBaseOfShape,
+  MutationDeltaControls
+} from './facadeTypes'
+import type {
   MutationOwnerMeta
 } from '../schema/meta'
-import type {
-  MutationDocumentKeys,
-  MutationHasDocumentMembers,
-  MutationNamespaceKeys
-} from '../schema/facadeTypes'
 import {
   getNodeMeta
 } from '../schema/meta'
+import {
+  getSchemaChangeFactory
+} from '../schema/internals'
 import type {
   MutationWrite
 } from '../writer/writes'
 
-export type MutationDeltaInput = {
-  reset?: true
-  writes?: readonly MutationWrite[]
+type MutationDeltaState = {
+  reset: boolean
+  writes: readonly MutationWrite[]
 }
 
-export type MutationDeltaSource =
-  | MutationDeltaInput
+type MutationDeltaCarrier<TSchema extends MutationSchema = MutationSchema> = {
+  delta: MutationDelta<TSchema>
+}
+
+export type MutationDeltaSource<TSchema extends MutationSchema = MutationSchema> =
+  | MutationDelta<TSchema>
+  | MutationDeltaCarrier<TSchema>
   | readonly MutationWrite[]
 
-type MutationFieldDelta = {
-  changed(): boolean
-}
-
-type MutationDictionaryDelta<TKey extends string> = {
-  changed(key?: TKey): boolean
-  anyChanged(): boolean
-  has(key: TKey): boolean
-}
-
-type MutationSequenceDelta<TItem extends string> = {
-  changed(): boolean
-  orderChanged(): boolean
-  contains(item: TItem): boolean
-}
-
-type MutationTreeDelta<TNodeId extends string> = {
-  changed(): boolean
-  structureChanged(): boolean
-  nodeChanged(nodeId: TNodeId): boolean
-}
-
-type MutationObjectDelta<TShape extends MutationShape> = MutationDeltaDocument<TShape> & {
-  changed(): boolean
-}
-
-type MutationCollectionDelta<TId extends string, TShape extends MutationShape> = ((id: TId) => MutationObjectDelta<TShape>) & {
-  changed(id?: TId): boolean
-  created(id: TId): boolean
-  removed(id: TId): boolean
-}
-
-type MutationDeltaNode<TNode> =
-  TNode extends MutationFieldNode<any> ? MutationFieldDelta
-  : TNode extends MutationObjectNode<infer TShape> ? MutationObjectDelta<TShape>
-  : TNode extends MutationDictionaryNode<infer TKey extends string, any>
-    ? MutationDictionaryDelta<TKey>
-  : TNode extends MutationSequenceNode<infer TItem extends string>
-    ? MutationSequenceDelta<TItem>
-  : TNode extends MutationTreeNode<infer TNodeId extends string, any>
-    ? MutationTreeDelta<TNodeId>
-  : TNode extends MutationSingletonNode<infer TShape>
-    ? MutationObjectDelta<TShape>
-  : TNode extends MutationTableNode<infer TId extends string, infer TShape>
-    ? MutationCollectionDelta<TId, TShape>
-  : TNode extends MutationMapNode<infer TId extends string, infer TShape>
-    ? MutationCollectionDelta<TId, TShape>
-  : TNode extends MutationShape
-    ? MutationDeltaNamespace<TNode>
-  : never
-
-type MutationDeltaDocument<TShape extends MutationShape> = {
-  readonly [K in MutationDocumentKeys<TShape>]: MutationDeltaNode<TShape[K]>
-}
-
-type MutationDeltaNamespace<TShape extends MutationShape> = {
-  readonly [K in MutationNamespaceKeys<TShape>]: MutationDeltaNode<TShape[K]>
-} & (
-  MutationHasDocumentMembers<TShape> extends false
-    ? {}
-    : {
-        document: MutationDeltaDocument<TShape>
-      }
-)
-
 export type MutationDelta<TSchema extends MutationSchema = MutationSchema> =
-  TSchema extends MutationSchema<infer TShape>
-    ? MutationDeltaNamespace<TShape> & {
-        reset(): boolean
-        writes(): readonly MutationWrite[]
-      }
+  TSchema extends MutationSchema<infer TShape, infer TChanges>
+    ? MutationDeltaBaseOfShape<TShape> & TChanges
     : never
 
-const normalizeSource = (
-  input: MutationDeltaSource
-): MutationDeltaInput => Array.isArray(input)
-  ? {
+const deltaStateMap = new WeakMap<object, MutationDeltaState & {
+  schema: MutationSchema
+}>()
+
+const isDelta = (
+  value: unknown
+): value is MutationDelta => Boolean(
+  value
+  && typeof value === 'object'
+  && typeof (value as Record<string, unknown>).reset === 'function'
+  && typeof (value as Record<string, unknown>).writes === 'function'
+  && deltaStateMap.has(value as object)
+)
+
+const hasDelta = (
+  value: unknown
+): value is MutationDeltaCarrier => Boolean(
+  value
+  && typeof value === 'object'
+  && 'delta' in (value as Record<string, unknown>)
+  && isDelta((value as MutationDeltaCarrier).delta)
+)
+
+const readDeltaState = (
+  delta: MutationDelta
+): MutationDeltaState & {
+  schema: MutationSchema
+} => {
+  const state = deltaStateMap.get(delta as object)
+  if (!state) {
+    throw new Error('Mutation delta was not created by @shared/mutation.')
+  }
+  return state
+}
+
+export const resolveMutationDeltaSource = <TSchema extends MutationSchema>(
+  schema: TSchema,
+  input?: MutationDeltaSource<TSchema>
+): MutationDeltaState => {
+  if (input === undefined) {
+    return {
+      reset: false,
+      writes: []
+    }
+  }
+
+  if (Array.isArray(input)) {
+    return {
+      reset: false,
       writes: input
     }
-  : input as MutationDeltaInput
+  }
+
+  if (isDelta(input)) {
+    const state = readDeltaState(input)
+    if (state.schema !== schema) {
+      throw new Error('Mutation delta source belongs to a different schema.')
+    }
+    return {
+      reset: state.reset,
+      writes: state.writes
+    }
+  }
+
+  if (hasDelta(input)) {
+    return resolveMutationDeltaSource(schema, input.delta as MutationDelta<TSchema>)
+  }
+
+  throw new Error('Unsupported mutation delta source.')
+}
 
 const ownerNode = (
   owner: MutationOwnerMeta
@@ -363,15 +365,51 @@ const createNamespaceDelta = (
   }
 }
 
+export const createMutationDeltaFromState = <TSchema extends MutationSchema>(
+  schema: TSchema,
+  state: MutationDeltaState
+): MutationDelta<TSchema> => {
+  const writes = state.writes
+  const controls = {
+    reset: () => state.reset,
+    writes: () => [...writes]
+  } satisfies MutationDeltaControls
+  const base = Object.assign(
+    createNamespaceDelta(schema.shape, writes),
+    controls
+  ) as MutationDeltaBaseOfShape<typeof schema.shape>
+  const aggregates = getSchemaChangeFactory(schema)?.(base)
+  const delta = Object.assign(base, aggregates ?? {}) as MutationDelta<TSchema>
+
+  deltaStateMap.set(delta as object, {
+    schema,
+    reset: state.reset,
+    writes
+  })
+
+  return delta
+}
+
 export const createMutationDelta = <TSchema extends MutationSchema>(
   schema: TSchema,
-  input: MutationDeltaSource
+  input?: MutationDeltaSource<TSchema>
 ): MutationDelta<TSchema> => {
-  const normalized = normalizeSource(input)
-  const writes = normalized.writes ?? []
-  const delta = createNamespaceDelta(schema.shape, writes) as MutationDelta<TSchema>
-  return Object.assign(delta, {
-    reset: () => normalized.reset === true,
-    writes: () => [...writes]
-  })
+  if (input !== undefined && isDelta(input)) {
+    const state = readDeltaState(input)
+    if (state.schema === schema) {
+      return input as MutationDelta<TSchema>
+    }
+  }
+
+  return createMutationDeltaFromState(
+    schema,
+    resolveMutationDeltaSource(schema, input)
+  )
 }
+
+export const createMutationResetDelta = <TSchema extends MutationSchema>(
+  schema: TSchema
+): MutationDelta<TSchema> => createMutationDeltaFromState(schema, {
+  reset: true,
+  writes: []
+})

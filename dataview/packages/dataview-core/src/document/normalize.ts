@@ -9,7 +9,6 @@ const normalizeDocument = (document: DataDoc): DataDoc => {
   const records = sharedEntityTable.normalize.table(document.records)
   const preferredActiveViewId = documentViews.activeId.resolve(document)
   const nextDocument: DataDoc = {
-    schemaVersion: document.schemaVersion,
     records,
     fields: field.schema.normalize(sharedEntityTable.normalize.table(document.fields)),
     views: documentViews.normalize({
@@ -28,7 +27,6 @@ const normalizeDocument = (document: DataDoc): DataDoc => {
 }
 
 const cloneDocument = (document: DataDoc): DataDoc => ({
-  schemaVersion: document.schemaVersion,
   records: sharedEntityTable.clone.table(document.records),
   fields: sharedEntityTable.clone.table(document.fields),
   views: sharedEntityTable.clone.table(document.views),

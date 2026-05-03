@@ -12,7 +12,6 @@ import {
 } from '@dataview/core/mutation'
 
 const createEmptyDocument = (): DataDoc => ({
-  schemaVersion: 1,
   fields: entityTable.normalize.list([]),
   views: entityTable.normalize.list([]),
   records: entityTable.normalize.list([]),

@@ -23,14 +23,8 @@ import type {
   viewTypeSpec
 } from '@dataview/core/view/model/typeSpec'
 import type {
-  MutationOptions,
-  MutationResult
-} from '@shared/mutation'
-import type {
-  MutationProgram
-} from '@shared/mutation'
-import type {
-  MutationReplaceCommit
+  MutationOrigin,
+  MutationWrite,
 } from '@shared/mutation'
 import type {
   ActiveViewApi
@@ -96,6 +90,11 @@ export interface DataviewSpec {
     page: Record<string, unknown>
     card: Record<string, unknown>
   }
+}
+
+export interface MutationOptions {
+  origin?: MutationOrigin
+  history?: boolean
 }
 
 export interface CreateEngineOptions {
@@ -193,7 +192,9 @@ export interface Engine {
   subscribe(listener: (current: DataviewCurrent) => void): () => void
 
   doc(): DataDoc
-  replace(document: DataDoc, options?: MutationOptions): MutationReplaceCommit<DataDoc>
+  replace(document: DataDoc, options?: MutationOptions): EngineApplyCommit & {
+    previousDocument: DataDoc
+  }
 
   execute<I extends ExecuteInput>(
     input: I,
@@ -201,7 +202,7 @@ export interface Engine {
   ): ExecuteResultOf<I>
 
   apply(
-    program: MutationProgram,
+    writes: readonly MutationWrite[],
     options?: MutationOptions
-  ): MutationResult<void, EngineApplyCommit>
+  ): EngineApplyCommit
 }

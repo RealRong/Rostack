@@ -115,7 +115,6 @@ export const createDataviewQuery = (
     const meta = raw.document.meta() as DataDoc['meta']
 
     return {
-      schemaVersion: raw.document.schemaVersion() as DataDoc['schemaVersion'],
       records: entityTable.normalize.list(recordIds().flatMap((recordId) => {
         const record = getRecord(recordId)
         return record ? [record] : []

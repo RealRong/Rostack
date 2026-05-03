@@ -10,7 +10,6 @@ export {
   createYjsSyncStore,
   type InternalYjsSyncStore,
   type YjsSyncCodec,
-  type YjsSyncMeta,
   type YjsSyncStore
 } from './store'
 export {

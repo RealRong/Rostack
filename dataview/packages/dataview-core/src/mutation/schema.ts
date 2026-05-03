@@ -80,7 +80,6 @@ const viewShape = {
 const views = table<ViewId, typeof viewShape>(viewShape)
 
 export const dataviewMutationSchema = schema({
-  schemaVersion: field<DataDoc['schemaVersion']>(),
   activeViewId: field<DataDoc['activeViewId']>(),
   meta: field<DataDoc['meta']>(),
   records,

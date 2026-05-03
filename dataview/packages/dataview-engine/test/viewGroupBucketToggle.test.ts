@@ -85,7 +85,6 @@ const createDocument = () => {
   const fields = createFields()
 
   return {
-    schemaVersion: 1,
     fields: createFieldTable(fields),
     views: {
       byId: {
@@ -170,7 +169,6 @@ const createMultiViewDocument = () => {
   const fields = createFields()
 
   return {
-    schemaVersion: 1,
     fields: createFieldTable(fields),
     views: {
       byId: {
@@ -214,7 +212,6 @@ const createEmptyDocument = () => {
   const fields = createFields()
 
   return {
-    schemaVersion: 1,
     fields: createFieldTable(fields),
     views: {
       byId: {},
@@ -925,7 +922,6 @@ test('engine.active.records.create supports multiple concrete select filters and
 
   const engine = createEngineForTest({
     document: {
-      schemaVersion: 1,
       fields: createFieldTable(fields),
       views: {
         byId: {

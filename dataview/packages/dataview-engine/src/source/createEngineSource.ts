@@ -45,7 +45,8 @@ const TITLE_FIELD: Field = {
     id: TITLE_FIELD_ID,
     name: 'Title',
     kind: 'title',
-    system: true
+    system: true,
+    meta: undefined
 };
 const VALUE_ID_SEPARATOR = '\u0000';
 const valueId = (value: ValueRef): string => `${value.recordId}${VALUE_ID_SEPARATOR}${value.fieldId}`;

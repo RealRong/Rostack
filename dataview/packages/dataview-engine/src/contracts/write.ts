@@ -1,21 +1,19 @@
 import type { DataDoc } from '@dataview/core/types'
+import {
+  dataviewMutationSchema
+} from '@dataview/core/mutation'
 import type {
-  MutationFootprint
-} from '@shared/mutation'
-import type {
-  ApplyCommit,
-  CommitStream,
-  MutationCommitRecord
+  MutationCommit
 } from '@shared/mutation'
 
-export type EngineApplyCommit = ApplyCommit<
-  DataDoc,
-  MutationFootprint
->
+type DataviewMutationCommit = MutationCommit<typeof dataviewMutationSchema>
 
-export type EngineCommit = MutationCommitRecord<
-  DataDoc,
-  MutationFootprint
->
+export type EngineApplyCommit = Omit<DataviewMutationCommit, 'document'> & {
+  document: DataDoc
+}
 
-export type EngineCommits = CommitStream<EngineCommit>
+export type EngineCommit = EngineApplyCommit
+
+export interface EngineCommits {
+  subscribe(listener: (commit: EngineCommit) => void): () => void
+}

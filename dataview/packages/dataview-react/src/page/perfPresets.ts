@@ -37,7 +37,6 @@ import type {
 } from '@shared/ui/menu'
 
 const PERF_PRESET_META_KEY = 'dataviewPerfPreset'
-const DEFAULT_SCHEMA_VERSION = 1
 const DAY_MS = 24 * 60 * 60 * 1000
 const ANCHOR_DATE_UTC = Date.UTC(2026, 3, 15, 12, 0, 0)
 
@@ -1412,7 +1411,6 @@ const createRoadmapDocument = (recordCount: number, seed: number): DataDoc => {
   })
 
   return document.normalize({
-    schemaVersion: DEFAULT_SCHEMA_VERSION,
     activeViewId: tableView.id,
     fields: createEntityTable(fields),
     views: createEntityTable([tableView, boardView, galleryView]),
@@ -1640,7 +1638,6 @@ const createSalesDocument = (recordCount: number, seed: number): DataDoc => {
   })
 
   return document.normalize({
-    schemaVersion: DEFAULT_SCHEMA_VERSION,
     activeViewId: boardView.id,
     fields: createEntityTable(fields),
     views: createEntityTable([boardView, tableView, galleryView]),
@@ -1830,7 +1827,6 @@ const createContentDocument = (recordCount: number, seed: number): DataDoc => {
   })
 
   return document.normalize({
-    schemaVersion: DEFAULT_SCHEMA_VERSION,
     activeViewId: galleryView.id,
     fields: createEntityTable(fields),
     views: createEntityTable([galleryView, tableView, boardView]),
@@ -2092,7 +2088,6 @@ const createEngineeringDocument = (recordCount: number, seed: number): DataDoc =
   })
 
   return document.normalize({
-    schemaVersion: DEFAULT_SCHEMA_VERSION,
     activeViewId: tableView.id,
     fields: createEntityTable(fields),
     views: createEntityTable([tableView, boardView, galleryView]),
@@ -2345,7 +2340,6 @@ const createDenseAnalyticsDocument = (recordCount: number, seed: number): DataDo
   })
 
   return document.normalize({
-    schemaVersion: DEFAULT_SCHEMA_VERSION,
     activeViewId: tableView.id,
     fields: createEntityTable(fields),
     views: createEntityTable([tableView, boardView, galleryView]),

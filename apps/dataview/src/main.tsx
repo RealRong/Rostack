@@ -99,7 +99,6 @@ const createDefaultDocument = (): DataDoc => {
   }
 
   return {
-    schemaVersion: 1,
     fields: fieldTable,
     views: {
       byId: {

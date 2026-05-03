@@ -6,7 +6,6 @@ import type {
 } from '@shared/collab'
 import type {
   YjsSyncCodec as SharedYjsSyncCodec,
-  YjsSyncMeta,
   YjsSyncStore as SharedYjsSyncStore
 } from '@shared/collab-yjs'
 import type { HistoryPort } from '@shared/mutation'
@@ -15,8 +14,6 @@ import type { MutationProgram } from '@shared/mutation'
 import type { DataDoc } from '@dataview/core/types'
 import type { Engine } from '@dataview/engine'
 import type { EngineApplyCommit } from '@dataview/engine/contracts/write'
-
-export type SharedMeta = YjsSyncMeta<1>
 
 export type SharedChange = {
   id: string
@@ -34,8 +31,7 @@ export type YjsSyncCodec = SharedYjsSyncCodec<SharedChange, SharedCheckpoint>
 
 export type YjsSyncStore = SharedYjsSyncStore<
   SharedChange,
-  SharedCheckpoint,
-  SharedMeta
+  SharedCheckpoint
 >
 
 export type CreateYjsSessionOptions = {

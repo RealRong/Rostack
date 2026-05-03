@@ -304,7 +304,6 @@ Dataview 最终 schema：
 
 ```ts
 schema({
-  schemaVersion: field<number>(),
   activeViewId: field<ViewId | undefined>(),
 
   records: table<RecordId>({

@@ -9,18 +9,13 @@ import {
 } from '@dataview/core/mutation'
 import {
   createDataviewQueryContext,
-  dataviewCompileHandlers,
   dataviewMutationSchema,
   type DataviewMutationDelta,
-  type DataviewMutationReader,
-  type DataviewMutationWriter
 } from '@dataview/core/mutation'
 import {
   createMutationDelta,
-  MutationEngine,
-} from '@shared/mutation'
-import type {
-  MutationOptions
+  createMutationEngine,
+  type MutationWrite,
 } from '@shared/mutation'
 import { createActiveViewApi } from '@dataview/engine/active/api/active'
 import { createFieldsApi } from '@dataview/engine/api/fields'
@@ -28,7 +23,8 @@ import { createRecordsApi } from '@dataview/engine/api/records'
 import { createViewsApi } from '@dataview/engine/api/views'
 import type {
   CreateEngineOptions,
-  Engine
+  Engine,
+  MutationOptions
 } from '@dataview/engine/contracts/api'
 import type {
   DataviewCurrent
@@ -46,12 +42,11 @@ import {
   createEngineSource
 } from '@dataview/engine/source/createEngineSource'
 import { createPerformanceRuntime } from '@dataview/engine/runtime/performance'
+import { now } from '@dataview/engine/runtime/clock'
 import type {
-  MutationProgram
-} from '@shared/mutation'
-import type {
+  ExecuteInput,
+  ExecuteResultOf,
   Intent,
-  DataviewErrorCode
 } from '@dataview/engine/types/intent'
 
 const DEFAULT_HISTORY_CONFIG = {
@@ -61,10 +56,6 @@ const DEFAULT_HISTORY_CONFIG = {
   captureRemote: false
 } as const
 
-const EMPTY_MUTATION_CHANGES = Object.freeze(
-  Object.create(null)
-) as Record<string, never>
-
 export const createEngine = (options: CreateEngineOptions): Engine => {
   const performance = createPerformanceRuntime(options.performance)
   const historyConfig = {
@@ -72,75 +63,58 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
     ...(options.history ?? {})
   }
   const projection = createDataviewProjection()
-  const mutationEngine = new MutationEngine<
-    DataDoc,
-    Intent,
-    DataviewMutationReader,
-    void,
-    DataviewErrorCode,
-    DataviewMutationWriter,
-    DataviewMutationDelta,
-    Pick<import('@dataview/core/mutation/compile/contracts').DataviewCompileContext, 'query' | 'expect'>,
-    typeof dataviewCompileHandlers
-  >({
+  const mutationEngine = createMutationEngine({
     schema: dataviewMutationSchema,
     document: options.document,
     normalize: documentApi.normalize,
     compile,
+    services: undefined,
     history: historyConfig.enabled
-      ? {
-          capacity: historyConfig.capacity,
-          capture: {
-            user: true,
-            system: historyConfig.captureSystem,
-            remote: historyConfig.captureRemote
-          }
-        }
-      : false
   })
   const currentListeners = new Set<(current: DataviewCurrent) => void>()
   const commitListeners = new Set<(commit: EngineCommit) => void>()
+  const asDataDoc = (document: unknown): DataDoc => document as DataDoc
+  const toEngineCommit = (commit: ReturnType<typeof mutationEngine.apply>): EngineCommit => ({
+    ...commit,
+    document: asDataDoc(commit.document)
+  })
 
   projection.update({
-    document: mutationEngine.current().document,
-    delta: createMutationDelta(dataviewMutationSchema, {
-      reset: true,
-      changes: EMPTY_MUTATION_CHANGES
-    })
+    document: asDataDoc(mutationEngine.current().document),
+    delta: createMutationDelta(dataviewMutationSchema, [])
   })
   const source = createEngineSource({
-    readDocument: () => mutationEngine.document(),
+    readDocument: () => asDataDoc(mutationEngine.document()),
     subscribeDocument: (listener) => mutationEngine.subscribe((commit) => {
-      listener(commit as EngineCommit)
+      listener(toEngineCommit(commit))
     }),
     projection
   })
 
   const readCurrent = (): DataviewCurrent => {
     const current = mutationEngine.current()
-    const context = createDataviewQueryContext(current.document)
+    const document = asDataDoc(current.document)
+    const context = createDataviewQueryContext(document)
     return {
       rev: current.rev,
-      doc: current.document,
+      doc: document,
       active: projection.read.active.snapshot(),
       docActiveViewId: context.activeViewId,
       docActiveView: context.activeView
     }
   }
 
-  mutationEngine.subscribe((commit) => {
-    const nextCommit = commit as EngineCommit
+  mutationEngine.subscribe((rawCommit) => {
+    const commit = toEngineCommit(rawCommit)
+    const startedAt = now()
     const projectionResult = projection.update({
-      document: nextCommit.document,
-      delta: createMutationDelta(
-        dataviewMutationSchema,
-        nextCommit.delta
-      ) as DataviewMutationDelta
+      document: commit.document,
+      delta: commit.delta as DataviewMutationDelta
     })
     const commitTrace = createDataviewCommitTrace({
       performance,
-      startedAt: nextCommit.at,
-      commit: nextCommit,
+      startedAt,
+      commit,
       index: {
         trace: projection.read.index.trace()
       },
@@ -159,9 +133,32 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
       listener(current)
     })
     commitListeners.forEach((listener) => {
-      listener(nextCommit)
+      listener(commit)
     })
   })
+
+  const execute = <I extends ExecuteInput>(
+    input: I,
+    executeOptions?: MutationOptions
+  ): ExecuteResultOf<I> => {
+    const result = mutationEngine.execute(
+      input as Intent | readonly Intent[],
+      executeOptions
+    )
+    if (!result.ok) {
+      return result as ExecuteResultOf<I>
+    }
+
+    const data = Array.isArray(input)
+      ? result.data
+      : result.data[0]
+
+    return {
+      ok: true,
+      data,
+      commit: toEngineCommit(result.commit)
+    } as ExecuteResultOf<I>
+  }
 
   const engineBase = {
     current: readCurrent,
@@ -171,13 +168,17 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
         currentListeners.delete(listener)
       }
     },
-    doc: () => mutationEngine.document(),
-    replace: (nextDocument: DataDoc, replaceOptions?: MutationOptions) => (
-      mutationEngine.replace(nextDocument, replaceOptions)
-    ),
-    execute: mutationEngine.execute.bind(mutationEngine),
-    apply: (program: MutationProgram, applyOptions?: MutationOptions) => (
-      mutationEngine.apply(program, applyOptions)
+    doc: () => asDataDoc(mutationEngine.document()),
+    replace: (nextDocument: DataDoc, replaceOptions?: MutationOptions) => {
+      const commit = mutationEngine.replace(nextDocument, replaceOptions)
+      return {
+        ...toEngineCommit(commit),
+        previousDocument: asDataDoc(commit.previousDocument)
+      }
+    },
+    execute,
+    apply: (writes: readonly MutationWrite[], applyOptions?: MutationOptions) => (
+      toEngineCommit(mutationEngine.apply(writes, applyOptions))
     )
   }
   const engineWithInfra = {
@@ -190,7 +191,20 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
         }
       }
     },
-    history: mutationEngine.history,
+    history: {
+      state: mutationEngine.history.state,
+      canUndo: mutationEngine.history.canUndo,
+      canRedo: mutationEngine.history.canRedo,
+      undo: () => {
+        const commit = mutationEngine.history.undo()
+        return commit ? toEngineCommit(commit) : undefined
+      },
+      redo: () => {
+        const commit = mutationEngine.history.redo()
+        return commit ? toEngineCommit(commit) : undefined
+      },
+      clear: mutationEngine.history.clear
+    },
     performance: performance.api
   } satisfies Pick<
     Engine,

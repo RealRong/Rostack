@@ -7,6 +7,7 @@ import type {
   ViewId
 } from '@dataview/core/types'
 import type {
+  DataviewMutationChanges,
   DataviewMutationDelta,
   DataviewQuery,
   DataviewQueryContext
@@ -333,7 +334,7 @@ const hasAnyTouchedField = (
   : setCore.intersectsValues(candidates, fields)
 
 const hasQuerySchemaChanges = (input: {
-  changes: import('@dataview/core/mutation').DataviewDeltaQuery
+  changes: DataviewMutationChanges
   plan: QueryPlan
 }): boolean => {
   const schemaFields = input.changes.fieldSchemaTouchedIds()
@@ -359,7 +360,7 @@ const hasQuerySchemaChanges = (input: {
 }
 
 const hasQueryFieldChanges = (input: {
-  changes: import('@dataview/core/mutation').DataviewDeltaQuery
+  changes: DataviewMutationChanges
   plan: QueryPlan
 }): boolean => {
   const touchedFields = input.changes.touchedFields()
@@ -386,14 +387,14 @@ const hasQueryFieldChanges = (input: {
 }
 
 const hasQueryInputChanges = (input: {
-  changes: import('@dataview/core/mutation').DataviewDeltaQuery
+  changes: DataviewMutationChanges
   plan: QueryPlan
 }): boolean => input.changes.recordSetChanged()
   || hasQuerySchemaChanges(input)
   || hasQueryFieldChanges(input)
 
 const hasVisibleInputChanges = (input: {
-  changes: import('@dataview/core/mutation').DataviewDeltaQuery
+  changes: DataviewMutationChanges
   plan: QueryPlan
 }): boolean => {
   const touchedFields = input.changes.touchedFields()
@@ -434,7 +435,7 @@ const hasVisibleInputChanges = (input: {
 }
 
 const hasSortInputChanges = (input: {
-  changes: import('@dataview/core/mutation').DataviewDeltaQuery
+  changes: DataviewMutationChanges
   active: DataviewActiveSpec
 }): boolean => {
   if (
@@ -666,7 +667,7 @@ export const createDataviewActivePlan = (input: {
   const summaryAction = resolveSummaryAction({
     phaseRebuild,
     enabled: active.calcFields.length > 0,
-    rebuild: input.frame.delta.view.calc.changed(active.id)
+    rebuild: input.frame.delta.views(active.id).calc.changed()
       || calcSchemaChanged
       || groupSchemaChanged,
     sync: input.frame.changes.viewQueryChanged(active.id, 'search')
@@ -682,7 +683,7 @@ export const createDataviewActivePlan = (input: {
   })
 
   return {
-    reset: input.frame.delta.reset === true
+    reset: input.frame.delta.reset()
       || phaseRebuild
       || sectionChanged
       || calcFieldsChanged,

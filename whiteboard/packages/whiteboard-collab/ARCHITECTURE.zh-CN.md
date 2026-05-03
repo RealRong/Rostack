@@ -90,10 +90,6 @@
 共享协议只定义三类持久数据：
 
 ```ts
-type SharedMeta = {
-  schemaVersion: 1
-}
-
 type SharedChange = {
   id: string
   actorId: string

@@ -3,7 +3,7 @@ import type {
   RecordId
 } from '@dataview/core/types'
 import type {
-  DataviewDeltaQuery,
+  DataviewMutationChanges,
   DataviewMutationDelta,
   DataviewQuery
 } from '@dataview/core/mutation'
@@ -124,12 +124,11 @@ const createIndexDeriveContext = (
 }
 
 const createContentDelta = (
-  document: DataDoc,
   query: DataviewQuery,
-  delta: DataviewMutationDelta
+  changes: DataviewMutationChanges,
+  reset: boolean
 ): ContentDelta => {
-  const changes = query.changes(delta)
-  if (delta.reset === true) {
+  if (reset) {
     return {
       records: 'all',
       values: 'all',
@@ -210,9 +209,9 @@ export const deriveIndex = (input: {
   const nextDemand = input.demand ?? input.previousDemand
   const demandDelta = diffNormalizedIndexDemand(input.previousDemand, nextDemand)
   const contentDelta = createContentDelta(
-    input.document,
     createDataviewQueryContext(input.document).query,
-    input.delta
+    createDataviewQueryContext(input.document).query.changes(input.delta),
+    input.delta.reset()
   )
   const context = createIndexDeriveContext(input.document, contentDelta)
   const totalStart = now()
@@ -447,7 +446,11 @@ export const ensureDataviewIndex = (input: {
   }
 
   const document = input.frame.context.document
-  const contentDelta = createContentDelta(document, input.frame.query, input.frame.delta)
+  const contentDelta = createContentDelta(
+    input.frame.query,
+    input.frame.changes,
+    input.frame.delta.reset()
+  )
   const previous = input.previous
 
   if (
@@ -478,7 +481,7 @@ export const ensureDataviewIndex = (input: {
     })
 
     return {
-      action: input.frame.delta.reset === true
+      action: input.frame.delta.reset()
         ? 'rebuild'
         : next.trace?.changed
           ? 'sync'

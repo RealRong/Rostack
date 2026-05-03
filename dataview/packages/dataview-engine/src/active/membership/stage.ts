@@ -124,10 +124,10 @@ export const runMembershipStep = (input: {
     previous: input.previous.membership,
     view: input.active.view,
     reader: input.frame.reader,
+    changes: input.frame.changes,
     query: input.query,
     queryDelta: input.queryDelta,
     index: input.index.index.state,
-    delta: input.frame.delta,
     indexDelta: input.index.index.delta,
     action
   })

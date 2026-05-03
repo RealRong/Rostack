@@ -6,7 +6,7 @@ import type {
   ViewId
 } from '@dataview/core/types'
 import type {
-  DataviewDeltaQuery,
+  DataviewMutationChanges,
   DataviewMutationDelta,
   DataviewQuery,
   DataviewQueryContext
@@ -48,7 +48,7 @@ export interface DataviewFrame {
   reader: DataviewQuery
   query: DataviewQuery
   delta: DataviewMutationDelta
-  changes: DataviewDeltaQuery
+  changes: DataviewMutationChanges
   active?: DataviewActiveSpec
 }
 

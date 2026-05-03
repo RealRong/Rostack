@@ -98,7 +98,6 @@ const createDocument = (recordCount: number) => {
   }
 
   return {
-    schemaVersion: 1,
     activeViewId: VIEW_TABLE,
     fields: createFieldTable(fields),
     views: {

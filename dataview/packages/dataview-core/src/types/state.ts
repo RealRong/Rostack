@@ -369,7 +369,6 @@ export type View =
   | KanbanView
 
 export interface DataDoc {
-  schemaVersion: number
   records: EntityTable<RecordId, DataRecord>
   fields: EntityTable<CustomFieldId, CustomField>
   views: EntityTable<ViewId, View>

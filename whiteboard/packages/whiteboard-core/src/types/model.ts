@@ -214,7 +214,6 @@ export interface Document {
 }
 
 export interface Snapshot {
-  schemaVersion: string
   document: Document
 }
 

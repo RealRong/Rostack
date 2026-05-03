@@ -432,7 +432,7 @@ export const createProjection = <
         read,
         revision,
         dirty: {
-          reset: input.delta.reset === true,
+          reset: input.delta.reset(),
           delta: input.delta
         },
         phase: phaseState

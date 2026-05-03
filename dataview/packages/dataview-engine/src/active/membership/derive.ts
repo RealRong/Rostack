@@ -44,7 +44,7 @@ import type {
   QueryPhaseState as QueryState
 } from '@dataview/engine/active/state'
 import type {
-  DataviewMutationDelta,
+  DataviewMutationChanges,
   DataviewQuery
 } from '@dataview/core/mutation'
 import {
@@ -348,12 +348,11 @@ const sameSectionIds = (
 ) => equal.sameOrder(left, right)
 
 const resolveChangedRecordIds = (input: {
-  reader: DataviewQuery
-  delta: DataviewMutationDelta
+  changes: DataviewMutationChanges
   queryDelta: QueryDelta
   bucketDelta?: IndexDelta['bucket']
 }): ReadonlySet<RecordId> | 'all' => {
-  const touchedRecords = input.reader.changes(input.delta).touchedRecords()
+  const touchedRecords = input.changes.touchedRecords()
   if (touchedRecords === 'all') {
     return 'all'
   }
@@ -449,10 +448,10 @@ export const syncMembershipState = (input: {
   previous?: MembershipState
   view: View
   reader: DataviewQuery
+  changes: DataviewMutationChanges
   query: QueryState
   queryDelta: QueryDelta
   index: IndexState
-  delta: DataviewMutationDelta
   indexDelta?: IndexDelta
   action: 'reuse' | 'sync' | 'rebuild'
 }): {
@@ -513,8 +512,7 @@ export const syncMembershipState = (input: {
 
   const bucketIndex = readBucketIndex(input.index.bucket, bucket.normalize(input.view.group))
   const changedRecordIds = resolveChangedRecordIds({
-    reader: input.reader,
-    delta: input.delta,
+    changes: input.changes,
     queryDelta: input.queryDelta,
     bucketDelta: input.indexDelta?.bucket
   })

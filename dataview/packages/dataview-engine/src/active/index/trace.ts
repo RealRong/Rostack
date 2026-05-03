@@ -10,7 +10,7 @@ import type {
 
 export const fullRebuildFrom = (
   delta: DataviewMutationDelta
-) => delta.reset === true
+) => delta.reset()
 
 export const searchEntryCountOf = (
   search: SearchIndex

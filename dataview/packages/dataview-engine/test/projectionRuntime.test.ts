@@ -54,7 +54,6 @@ const createView = (input?: {
 })
 
 const createDocument = (view = createView()) => ({
-  schemaVersion: 1,
   activeViewId: view.id,
   fields: {
     byId: {
@@ -123,7 +122,6 @@ const createDocument = (view = createView()) => ({
 })
 
 const createEmptyDocument = () => ({
-  schemaVersion: 1,
   activeViewId: undefined,
   fields: {
     byId: {

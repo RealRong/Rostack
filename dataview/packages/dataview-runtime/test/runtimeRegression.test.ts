@@ -119,7 +119,6 @@ const createDocument = () => {
   const fields = createFields()
 
   return {
-    schemaVersion: 1,
     activeViewId: VIEW_TABLE,
     fields: createFieldTable(fields),
     views: {

@@ -6,5 +6,3 @@ export const document = {
   normalize: documentDocument.normalize,
   clone: documentDocument.clone
 } as const
-
-export { DEFAULT_SCHEMA_VERSION } from '@dataview/core/document/create'

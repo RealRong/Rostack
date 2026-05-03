@@ -1,8 +1,4 @@
 import type {
-  MutationCompileControl,
-  MutationExecuteInput,
-  MutationExecuteResult,
-  MutationExecuteResultOfInput,
   MutationResult
 } from '@shared/mutation'
 import type {
@@ -10,9 +6,6 @@ import type {
 } from '@dataview/core/types'
 import type {
   ValidationCode
-} from '@dataview/core/mutation'
-import type {
-  compile
 } from '@dataview/core/mutation'
 import type {
   EngineApplyCommit
@@ -25,36 +18,19 @@ export type DataviewErrorCode =
   | 'mutation_engine.apply.empty'
   | 'mutation_engine.execute.empty'
 
-type DataviewCompileHandlers = typeof compile.handlers
-
-type HandlerOutput<THandler> = Exclude<
-  THandler extends (...args: any[]) => infer TResult
-    ? TResult
-    : never,
-  void | MutationCompileControl<any>
->
-
-type HandlerOfIntent<K extends CoreIntent['type']> = K extends keyof DataviewCompileHandlers
-  ? DataviewCompileHandlers[K]
-  : never
-
 export type Intent = CoreIntent
 export type IntentKind = Intent['type']
-export type IntentData<K extends IntentKind = IntentKind> = HandlerOutput<HandlerOfIntent<K>>
-export type ExecuteResult<K extends IntentKind = IntentKind> =
-  MutationExecuteResult<IntentData<K>, EngineApplyCommit, DataviewErrorCode>
-export type ExecuteInput = MutationExecuteInput<Intent>
-export type ExecuteResultOf<I extends ExecuteInput> =
-  MutationExecuteResultOfInput<
-    DataviewCompileHandlers,
-    Intent,
-    EngineApplyCommit,
-    I,
-    DataviewErrorCode
-  >
+export type IntentData = unknown
+export type ExecuteInput = Intent | readonly Intent[]
+export type ExecuteResult = MutationResult<unknown, EngineApplyCommit>
+export type ExecuteResultOf<I extends ExecuteInput> = MutationResult<
+  I extends readonly Intent[]
+    ? readonly unknown[]
+    : unknown,
+  EngineApplyCommit
+>
 
 export type DispatchResult = MutationResult<
   unknown,
-  EngineApplyCommit,
-  DataviewErrorCode
+  EngineApplyCommit
 >

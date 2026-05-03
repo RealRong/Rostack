@@ -30,7 +30,6 @@ const createDocument = (): DataDoc => {
   const fields = createFields()
 
   return {
-    schemaVersion: 1,
     activeViewId: VIEW_ID,
     fields: entityTable.normalize.list(fields),
     views: {

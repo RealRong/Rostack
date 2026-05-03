@@ -63,7 +63,6 @@ const createRecord = (
 const createDocument = (
   record: DataRecord
 ): DataDoc => ({
-  schemaVersion: 1,
   activeViewId: VIEW_ID,
   fields: entityTable.normalize.list(createFields()),
   views: entityTable.normalize.list([createView()]),

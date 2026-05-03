@@ -1,11 +1,4 @@
 import type {
-  HistoryPort,
-  MutationFootprint
-} from '@shared/mutation'
-import type {
-  MutationResult
-} from '@shared/mutation'
-import type {
   EngineApplyCommit
 } from './write'
 
@@ -16,9 +9,14 @@ export interface DataviewHistoryConfig {
   captureRemote: boolean
 }
 
-export type DataviewHistory = HistoryPort<
-  MutationResult<void, EngineApplyCommit>,
-  import('@shared/mutation').MutationProgram,
-  MutationFootprint,
-  EngineApplyCommit
->
+export interface DataviewHistory {
+  state(): {
+    undoDepth: number
+    redoDepth: number
+  }
+  canUndo(): boolean
+  canRedo(): boolean
+  undo(): EngineApplyCommit | undefined
+  redo(): EngineApplyCommit | undefined
+  clear(): void
+}

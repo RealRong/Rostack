@@ -7,8 +7,7 @@ import { createCollabLocalOrigin } from './localOrigin'
 import {
   createYjsSyncStore,
   type InternalYjsSyncStore,
-  type YjsSyncCodec,
-  type YjsSyncMeta
+  type YjsSyncCodec
 } from './store'
 
 export type YjsCollabTransport<
@@ -17,14 +16,13 @@ export type YjsCollabTransport<
   },
   Checkpoint extends {
     id: string
-  },
-  Meta extends YjsSyncMeta = YjsSyncMeta<1>
+  }
 > = {
   store: CollabStore<Change, Checkpoint>
   provider?: CollabProvider
   awareness?: unknown
   origin: unknown
-  syncStore: InternalYjsSyncStore<Change, Checkpoint, Meta>
+  syncStore: InternalYjsSyncStore<Change, Checkpoint>
 }
 
 export const createSharedStore = <
@@ -33,8 +31,7 @@ export const createSharedStore = <
   },
   Checkpoint extends {
     id: string
-  },
-  Meta extends YjsSyncMeta = YjsSyncMeta<1>
+  }
 >({
   doc,
   localOrigin,
@@ -42,10 +39,9 @@ export const createSharedStore = <
 }: {
   doc: Y.Doc
   localOrigin: unknown
-  syncStore: InternalYjsSyncStore<Change, Checkpoint, Meta>
+  syncStore: InternalYjsSyncStore<Change, Checkpoint>
 }): CollabStore<Change, Checkpoint> => ({
   read: () => {
-    syncStore.readMeta()
     return syncStore.readSnapshot()
   },
   subscribe: (listener) => {
@@ -85,29 +81,21 @@ export const createYjsCollabTransport = <
   },
   Checkpoint extends {
     id: string
-  },
-  Meta extends YjsSyncMeta = YjsSyncMeta<1>
+  }
 >({
   doc,
   provider,
   codec,
-  origin = createCollabLocalOrigin(),
-  schemaVersion
+  origin = createCollabLocalOrigin()
 }: {
   doc: Y.Doc
   provider?: CollabProvider
   codec: YjsSyncCodec<Change, Checkpoint>
   origin?: unknown
-  schemaVersion?: Meta['schemaVersion']
-}): YjsCollabTransport<Change, Checkpoint, Meta> => {
-  const syncStore = createYjsSyncStore<Change, Checkpoint, Meta>({
+}): YjsCollabTransport<Change, Checkpoint> => {
+  const syncStore = createYjsSyncStore<Change, Checkpoint>({
     doc,
-    codec,
-    ...(schemaVersion === undefined
-      ? {}
-      : {
-          schemaVersion
-        })
+    codec
   })
 
   return {

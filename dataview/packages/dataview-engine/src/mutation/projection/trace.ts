@@ -44,7 +44,7 @@ export const createDataviewCommitTrace = (
       outputMs: input.outputMs,
       snapshotMs: input.active.trace.snapshotMs
     },
-    delta: summarizeDelta(input.commit.delta),
+    delta: summarizeDelta(input.commit),
     index: input.index.trace ?? createEmptyIndexTrace(),
     view: input.active.trace.view,
     snapshot: input.active.trace.snapshot

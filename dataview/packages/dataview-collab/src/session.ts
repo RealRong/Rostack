@@ -49,7 +49,6 @@ export const createYjsSession = ({
     },
     document: {
       empty: () => documentApi.normalize({
-        schemaVersion: engine.doc().schemaVersion,
         activeViewId: undefined,
         fields: {
           byId: {},

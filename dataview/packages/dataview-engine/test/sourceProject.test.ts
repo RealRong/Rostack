@@ -56,7 +56,6 @@ const createDocument = () => {
   const tableView = createTableView()
 
   return {
-    schemaVersion: 1,
     activeViewId: tableView.id,
     fields: createFieldTable(fields),
     views: {

@@ -33,56 +33,16 @@ import {
   entityTable
 } from '@shared/core'
 import {
-  defineMutationSchema,
   dictionary,
+  field,
   sequence,
   object,
-  singleton,
-  collection,
-  value,
+  schema,
+  table,
   type MutationDeltaOf,
   type MutationReader,
   type MutationWriter,
 } from '@shared/mutation'
-
-const appendMissingIds = <TId extends string>(
-  previous: readonly TId[],
-  nextById: Readonly<Record<string, unknown>>
-): TId[] => {
-  const nextIds = previous.filter((id) => nextById[id] !== undefined)
-  const seen = new Set(nextIds)
-
-  Object.keys(nextById).forEach((id) => {
-    if (seen.has(id as TId)) {
-      return
-    }
-
-    nextIds.push(id as TId)
-    seen.add(id as TId)
-  })
-
-  return nextIds
-}
-
-const writeTableById = <
-  TKey extends 'records' | 'fields' | 'views',
-  TId extends string
->(
-  document: DataDoc,
-  key: TKey,
-  nextById: Readonly<Record<string, unknown>>
-): DataDoc => {
-  const current = document[key]
-  const nextIds = appendMissingIds<TId>(current.ids as unknown as readonly TId[], nextById)
-
-  return {
-    ...document,
-    [key]: {
-      byId: nextById,
-      ids: nextIds
-    }
-  } as DataDoc
-}
 
 const readFieldOptions = (
   document: DataDoc,
@@ -196,143 +156,99 @@ const writeViewFields = (
   }
 }
 
-export const dataviewMutationSchema = defineMutationSchema<DataDoc>()({
-  document: singleton<DataDoc, DataDoc>()({
-    access: {
-      read: (document) => document,
-      write: (_document, next) => next as DataDoc
-    },
-    members: {
-      schemaVersion: value<DataDoc['schemaVersion']>(),
-      activeViewId: value<DataDoc['activeViewId']>(),
-      meta: object<NonNullable<DataDoc['meta']>>()
-    },
-    changes: ({ value, object }) => ({
-      schemaVersion: [value('schemaVersion')],
-      activeViewId: [value('activeViewId')],
-      meta: [object('meta').deep()]
+export const dataviewMutationSchema = schema<DataDoc>()({
+  schemaVersion: field<DataDoc['schemaVersion']>(),
+  activeViewId: field<DataDoc['activeViewId']>(),
+  meta: object<NonNullable<DataDoc['meta']>>(),
+  record: table<DataDoc, RecordId, DataRecord>()({
+    title: field<DataRecord['title']>(),
+    type: field<DataRecord['type']>(),
+    values: dictionary<CustomFieldId, unknown>(),
+    meta: object<NonNullable<DataRecord['meta']>>(),
+  }).from({
+    path: 'records'
+  }).changes(({ field, dictionary, object }) => ({
+    title: [field('title')],
+    type: [field('type')],
+    values: [dictionary('values').deep()],
+    meta: [object('meta').deep()]
+  })),
+  field: table<DataDoc, CustomFieldId, CustomField>()({
+    name: field<CustomField['name']>(),
+    kind: field<CustomField['kind']>(),
+    system: field<boolean>(),
+    displayFullUrl: field<boolean>(),
+    format: field<Extract<CustomField, { kind: 'number' }>['format']>(),
+    precision: field<Extract<CustomField, { kind: 'number' }>['precision']>(),
+    currency: field<Extract<CustomField, { kind: 'number' }>['currency']>(),
+    useThousandsSeparator: field<Extract<CustomField, { kind: 'number' }>['useThousandsSeparator']>(),
+    defaultOptionId: field<Extract<CustomField, { kind: 'status' }>['defaultOptionId']>(),
+    displayDateFormat: field<Extract<CustomField, { kind: 'date' }>['displayDateFormat']>(),
+    displayTimeFormat: field<Extract<CustomField, { kind: 'date' }>['displayTimeFormat']>(),
+    defaultValueKind: field<Extract<CustomField, { kind: 'date' }>['defaultValueKind']>(),
+    defaultTimezone: field<Extract<CustomField, { kind: 'date' }>['defaultTimezone']>(),
+    multiple: field<Extract<CustomField, { kind: 'asset' }>['multiple']>(),
+    accept: field<Extract<CustomField, { kind: 'asset' }>['accept']>(),
+    meta: object<NonNullable<CustomField['meta']>>(),
+    options: sequence<FieldOption>().using({
+      read: (document, fieldId) => readFieldOptions(document as DataDoc, fieldId as CustomFieldId),
+      write: (document, fieldId, options) => writeFieldOptions(document as DataDoc, fieldId as CustomFieldId, options),
+      identify: (option) => option.id,
+      emit: 'options'
     })
-  }),
-  record: collection<DataDoc, RecordId, DataRecord>()({
-    access: {
-      read: (document) => document.records.byId,
-      write: (document, next) => writeTableById<'records', RecordId>(
-        document,
-        'records',
-        next as Readonly<Record<string, unknown>>
-      )
-    },
-    members: {
-      title: value<DataRecord['title']>(),
-      type: value<DataRecord['type']>(),
-      values: dictionary<CustomFieldId, unknown>({ at: 'values' }),
-      meta: object<NonNullable<DataRecord['meta']>>()
-    },
-    changes: ({ value, dictionary, object }) => ({
-      title: [value('title')],
-      type: [value('type')],
-      values: [dictionary('values').deep()],
-      meta: [object('meta').deep()]
+  }).from({
+    path: 'fields'
+  }).changes(({ field, object }) => ({
+    name: [field('name')],
+    kind: [field('kind')],
+    system: [field('system')],
+    displayFullUrl: [field('displayFullUrl')],
+    format: [field('format')],
+    precision: [field('precision')],
+    currency: [field('currency')],
+    useThousandsSeparator: [field('useThousandsSeparator')],
+    defaultOptionId: [field('defaultOptionId')],
+    displayDateFormat: [field('displayDateFormat')],
+    displayTimeFormat: [field('displayTimeFormat')],
+    defaultValueKind: [field('defaultValueKind')],
+    defaultTimezone: [field('defaultTimezone')],
+    multiple: [field('multiple')],
+    accept: [field('accept')],
+    meta: [object('meta').deep()]
+  })),
+  view: table<DataDoc, ViewId, View>()({
+    name: field<View['name']>(),
+    type: field<View['type']>(),
+    search: field<View['search']>(),
+    filter: field<View['filter']>(),
+    sort: field<View['sort']>(),
+    group: field<View['group']>(),
+    calc: field<View['calc']>(),
+    options: field<View['options']>(),
+    fields: sequence<FieldId>().using({
+      read: (document, viewId) => readViewFields(document as DataDoc, viewId as ViewId),
+      write: (document, viewId, fieldIds) => writeViewFields(document as DataDoc, viewId as ViewId, fieldIds),
+      identify: (fieldId) => fieldId,
+      emit: 'fields'
+    }),
+    order: sequence<RecordId>().using({
+      read: (document, viewId) => readViewOrder(document as DataDoc, viewId as ViewId),
+      write: (document, viewId, order) => writeViewOrder(document as DataDoc, viewId as ViewId, order),
+      identify: (recordId) => recordId,
+      emit: 'order'
     })
-  }),
-  field: collection<DataDoc, CustomFieldId, CustomField>()({
-    access: {
-      read: (document) => document.fields.byId,
-      write: (document, next) => writeTableById<'fields', CustomFieldId>(
-        document,
-        'fields',
-        next as Readonly<Record<string, unknown>>
-      )
-    },
-    members: {
-      name: value<CustomField['name']>(),
-      kind: value<CustomField['kind']>(),
-      system: value<boolean>(),
-      displayFullUrl: value<boolean>(),
-      format: value<Extract<CustomField, { kind: 'number' }>['format']>(),
-      precision: value<Extract<CustomField, { kind: 'number' }>['precision']>(),
-      currency: value<Extract<CustomField, { kind: 'number' }>['currency']>(),
-      useThousandsSeparator: value<Extract<CustomField, { kind: 'number' }>['useThousandsSeparator']>(),
-      defaultOptionId: value<Extract<CustomField, { kind: 'status' }>['defaultOptionId']>(),
-      displayDateFormat: value<Extract<CustomField, { kind: 'date' }>['displayDateFormat']>(),
-      displayTimeFormat: value<Extract<CustomField, { kind: 'date' }>['displayTimeFormat']>(),
-      defaultValueKind: value<Extract<CustomField, { kind: 'date' }>['defaultValueKind']>(),
-      defaultTimezone: value<Extract<CustomField, { kind: 'date' }>['defaultTimezone']>(),
-      multiple: value<Extract<CustomField, { kind: 'asset' }>['multiple']>(),
-      accept: value<Extract<CustomField, { kind: 'asset' }>['accept']>(),
-      meta: object<NonNullable<CustomField['meta']>>()
-    },
-    changes: ({ value, object }) => ({
-      name: [value('name')],
-      kind: [value('kind')],
-      system: [value('system')],
-      displayFullUrl: [value('displayFullUrl')],
-      format: [value('format')],
-      precision: [value('precision')],
-      currency: [value('currency')],
-      useThousandsSeparator: [value('useThousandsSeparator')],
-      defaultOptionId: [value('defaultOptionId')],
-      displayDateFormat: [value('displayDateFormat')],
-      displayTimeFormat: [value('displayTimeFormat')],
-      defaultValueKind: [value('defaultValueKind')],
-      defaultTimezone: [value('defaultTimezone')],
-      multiple: [value('multiple')],
-      accept: [value('accept')],
-      meta: [object('meta').deep()]
-    }),
-    sequence: {
-      options: sequence<FieldOption>()({
-        read: readFieldOptions,
-        write: writeFieldOptions,
-        identify: (option) => option.id,
-        emits: 'options'
-      })
-    }
-  }),
-  view: collection<DataDoc, ViewId, View>()({
-    access: {
-      read: (document) => document.views.byId,
-      write: (document, next) => writeTableById<'views', ViewId>(
-        document,
-        'views',
-        next as Readonly<Record<string, unknown>>
-      )
-    },
-    members: {
-      name: value<View['name']>(),
-      type: value<View['type']>(),
-      search: value<View['search']>(),
-      filter: value<View['filter']>(),
-      sort: value<View['sort']>(),
-      group: value<View['group']>(),
-      calc: value<View['calc']>(),
-      options: value<View['options']>()
-    },
-    changes: ({ value, object }) => ({
-      name: [value('name')],
-      type: [value('type')],
-      search: [value('search')],
-      filter: [value('filter')],
-      sort: [value('sort')],
-      group: [value('group')],
-      calc: [value('calc')],
-      options: [value('options')]
-    }),
-    sequence: {
-      fields: sequence<FieldId>()({
-        read: readViewFields,
-        write: writeViewFields,
-        identify: (fieldId) => fieldId,
-        emits: 'fields'
-      }),
-      order: sequence<RecordId>()({
-        read: readViewOrder,
-        write: writeViewOrder,
-        identify: (recordId) => recordId,
-        emits: 'order'
-      })
-    }
-  })
+  }).from({
+    path: 'views'
+  }).changes(({ field }) => ({
+    name: [field('name')],
+    type: [field('type')],
+    search: [field('search')],
+    filter: [field('filter')],
+    sort: [field('sort')],
+    group: [field('group')],
+    calc: [field('calc')],
+    options: [field('options')]
+  }))
 })
 
 export type DataviewMutationSchema = typeof dataviewMutationSchema

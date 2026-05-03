@@ -747,7 +747,69 @@ shared/mutation/src/
 
 ## 实施方案
 
+### 总原则
+
+实施顺序必须先处理 `shared/mutation` 自身，不允许一边保留旧实现一边继续叠加新能力。
+
+也就是说：
+
+1. 先把 `shared/mutation` 重构成最终新形态主体
+2. 旧实现、旧类型、旧导出、旧 facade、旧 schema surface 全部清空
+3. 在 `shared/mutation` 自身已经只剩一套新实现之后，才允许继续改 dataview / whiteboard / projection / runtime / compile
+
+明确要求：
+
+- 不保留兼容层
+- 不保留双轨实现
+- 不保留旧 `model.ts` 大杂烩结构
+- 不接受“先接着做功能，最后再清理”
+
+`shared/mutation` 必须先收敛成单一主体，再做其余阶段。
+
+### Phase 0：先清空 shared/mutation 旧实现，只保留新主体
+
+这一阶段是后续所有阶段的硬前置条件，未完成前不得继续往下推进。
+
+1. 拆掉 `shared/mutation/src/model.ts` 超大聚合文件
+2. 新实现按职责拆分到独立目录：
+   - `schema/`
+   - `reader/`
+   - `writer/`
+   - `delta/`
+   - `query/`
+   - `compile/`
+   - `runtime/`
+   - `internal/`
+3. 旧作者 API 直接删除，不保留兼容导出：
+   - `defineMutationSchema`
+   - `collection`
+   - `namespace`
+   - `value`
+   - 旧 `singleton()({ ... })` 写法
+4. 旧 schema 类型直接删除：
+   - `MutationSchemaDefinition`
+   - `MutationSingletonSpec`
+   - `MutationCollectionSpec`
+   - `MutationNamespaceSpec`
+   - 旧 family config 类型族
+5. 旧 schema member 描述直接删除：
+   - `MutationValueMemberSpec`
+   - `MutationRecordMemberSpec`
+   - `MutationKeyedMemberSpec`
+   - `at`
+   - `__value`
+   - `__key`
+6. 旧 facade / 旧 registry / 旧 handle 风格实现直接删除，不保留空壳
+7. `index.ts` 只重新导出最终新 API，旧入口全部断开
+8. Phase 0 完成标准：
+   - `shared/mutation` 目录内只剩一套 shape-first 实现
+   - 不再存在任何旧 schema surface 导出
+   - 不再存在任何旧实现代码分支
+   - 不再存在继续兼容旧调用方的桥接代码
+
 ### Phase 1：重写 schema surface 为 shape-first
+
+这一阶段是在 Phase 0 已经清空旧实现之后，对新主体正式定型。
 
 1. 新建 `schema/schema.ts`
 2. 新建：
@@ -759,27 +821,30 @@ shared/mutation/src/
    - `singleton.ts`
    - `sequence.ts`
    - `tree.ts`
-3. 删除旧作者 API 中以下概念：
+3. 作者 API 只保留：
+   - `field`
+   - `object`
+   - `dictionary`
+   - `table`
+   - `map`
+   - `singleton`
+   - `sequence`
+   - `tree`
+4. 把 schema 改成直接描述 document shape
+5. 禁止重新引入：
    - `roots`
    - `entities`
    - `structures`
    - `fields`
    - `ordered`
-   - 顶层 `tree`
-4. 删除旧 `model.ts` 中以下概念：
-   - `MutationValueMemberSpec`
-   - `MutationRecordMemberSpec`
-   - `MutationKeyedMemberSpec`
-   - `at`
-   - `__value`
-   - `__key`
-5. 把 schema 改成直接描述 document shape
+   - 顶层 `tree` registry
 
 ### Phase 2：实现标准 shape 自动推导
 
 1. 标准 `table / map / dictionary / sequence / tree` 全部自动推导读写路径
 2. 新增 `.from(...)` 作为极少数 override 入口
 3. 禁止把 `access.read/write` 作为默认 schema 必填项继续保留
+4. 所有自动推导都只建立在新 shape-first schema 上，不再兼容旧 family config
 
 ### Phase 3：重写 reader / writer / delta / query facade
 
@@ -789,6 +854,7 @@ shared/mutation/src/
 4. query 生成业务导航 API
 5. 删除所有 `reader.entity(handle)` / `writer.structure(handle)` 风格 API
 6. 删除所有旧 helper reader / helper query
+7. facade 只面向新 schema 生成，不保留旧 schema 到新 facade 的桥接逻辑
 
 ### Phase 4：重写 change 系统
 
@@ -797,6 +863,7 @@ shared/mutation/src/
 3. 删除 `mutationDeltaSchema`
 4. 删除手写 path-based delta schema
 5. 删除业务层 delta adapter
+6. change 系统只依赖新 schema 主体，不为旧 family / legacy delta 分支保留任何兼容代码
 
 ### Phase 5：重写 compile context
 
@@ -808,6 +875,7 @@ shared/mutation/src/
 6. 删除 `ctx.footprint`
 7. 删除 `ctx.expect`
 8. 删除 issue path 参数
+9. compile context 直接建立在新 reader / writer / query / change facade 上
 
 ### Phase 6：重写 runtime surface
 
@@ -816,6 +884,7 @@ shared/mutation/src/
 3. 删除对外 runtime 泛型桥
 4. `apply()` 输入改为 internal writes
 5. `execute()` 输出直接从 handler 推导
+6. runtime 只消费新 schema 和新 internal writes，不接受 legacy schema surface
 
 ### Phase 7：internal writes 内收
 
@@ -823,6 +892,7 @@ shared/mutation/src/
 2. 所有 `program step` 改为 internal write step
 3. 删除所有对外 `program` 类型出口
 4. `apply / inverse / footprint / delta` 全部消费 internal writes
+5. 不保留 `program` 命名兼容层
 
 ### Phase 8：清理出口
 
@@ -833,8 +903,11 @@ shared/mutation/src/
    - `write` 子路径
 3. 删除所有 barrel re-export
 4. 删除 internal compiled spec 对外导出
+5. 再次确认 `shared/mutation` 不存在任何 legacy export 回流
 
 ### Phase 9：业务全面切换
+
+这一阶段发生在 `shared/mutation` 已经彻底收敛之后，业务只允许适配新主体。
 
 1. dataview 全部切到：
    - `read.xxx`
@@ -849,6 +922,7 @@ shared/mutation/src/
 3. 删除 compile helper 中的历史协议
 4. 删除 projection / active pipeline 里所有 path 字符串消费
 5. 删除所有 schema handle 业务暴露点
+6. 不为调用方保留任何过渡适配层
 
 ---
 
@@ -870,4 +944,3 @@ shared/mutation/src/
 12. `@shared/mutation` 根入口是唯一公开入口
 13. 不保留兼容 API
 14. 不保留第二套实现
-

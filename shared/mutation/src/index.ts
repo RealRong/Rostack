@@ -1,145 +1,87 @@
-export type {
-  MutationEntityTarget,
-  MutationOrderedTarget,
-  MutationTreeTarget,
-  MutationTarget,
-  AppliedMutationProgram,
-  MutationEntityProgramStep,
-  MutationEntityRef,
-  MutationProgram,
-  MutationProgramStep,
-  MutationOrderedProgramStep,
-  MutationTreeProgramStep,
-} from './engine/program/program'
-export type {
-  MutationProgramWriter
-} from './engine/program/writer'
-export type {
-  CompiledEntitySpec,
-  CompiledOrderedSpec,
-  CompiledTreeSpec,
-  MutationApplyResult,
-  MutationCompileControl,
-  MutationCompileDefinition,
-  MutationCompileHandler,
-  MutationCompileHandlerInput,
-  MutationCompileHandlerTable,
-  MutationCompileHandlerContext,
-  MutationCompileInput,
-  MutationCompileIssue,
-  MutationEntitySpec,
-  MutationCompileSource,
-  MutationCompileReaderTools,
-  MutationCurrent,
-  MutationEngineOptions,
-  MutationError,
-  MutationExecuteInput,
-  MutationExecuteResult,
-  MutationExecuteResultOfInput,
-  MutationFailure,
-  MutationHistoryOptions,
-  MutationIntent,
-  MutationOptions,
-  MutationResult,
-} from './engine/contracts'
 export {
-  isMutationProgramStep,
-} from './engine/program/program'
+  schema
+} from './schema/schema'
 export {
-  createMutationProgramWriter
-} from './engine/program/writer'
+  field
+} from './schema/field'
 export {
-  APPLY_EMPTY_CODE,
-  COMPILE_APPLY_FAILED_CODE,
-  COMPILE_BLOCKED_CODE,
-  COMPILE_EMPTY_CODE,
-  EMPTY_COMPILE_ISSUES,
-  EMPTY_DELTA,
-  EMPTY_ISSUES,
-  EMPTY_OUTPUTS,
-  EXECUTE_EMPTY_CODE,
-  hasCompileErrors,
-  isCompileControl,
-  mutationFailure,
-  mutationSuccess,
-  normalizeCompileIssue,
-} from './engine/contracts'
+  object
+} from './schema/object'
 export {
-  mergeMutationDeltas,
-  normalizeMutationDelta
-} from './engine/delta'
+  dictionary
+} from './schema/dictionary'
 export {
-  MutationEngine
-} from './engine/runtime'
+  table
+} from './schema/table'
+export {
+  map
+} from './schema/map'
+export {
+  singleton
+} from './schema/singleton'
+export {
+  sequence
+} from './schema/sequence'
+export {
+  tree
+} from './schema/tree'
+
+export {
+  createMutationReader
+} from './reader/createReader'
+export {
+  createMutationWriter
+} from './writer/createWriter'
+export {
+  createMutationDelta
+} from './delta/createDelta'
+export {
+  mergeMutationDeltas
+} from './delta/merge'
+export {
+  createMutationQuery
+} from './query/createQuery'
+export {
+  createMutationEngine
+} from './runtime/createEngine'
+
 export type {
-  HistoryPort,
-} from './localHistory'
-export type {
-  MutationDeltaOf,
-  MutationSchema,
-  MutationSchemaDefinition,
-  MutationCollectionSpec,
-  MutationDictionarySpec,
-  MutationFamilySpec,
-  ShapeCollectionNode,
-  ShapeSequenceNode,
-  ShapeSingletonNode,
-  ShapeTreeNode,
-  MutationNamespaceSpec,
-  MutationObjectSpec,
-  MutationQuery,
-  MutationReader,
-  MutationSequenceSpec,
+  MutationAccessOverride,
   MutationSequenceAnchor,
-  MutationSingletonSpec,
-  MutationTreeSpec,
-  MutationValueSpec,
-  MutationWriter,
-} from './model'
-export {
-  createMutationDelta,
-  createMutationQuery,
-  createMutationReader,
-  createMutationWriter,
-  collection,
-  field,
-  defineMutationSchema,
-  dictionary,
-  map,
-  namespace,
-  object,
-  schema,
-  sequence,
-  singleton,
-  table,
-  tree,
-  value,
-} from './model'
-export type {
-  ApplyCommit,
-  CommitRecord,
-  CommitStream,
-  MutationChange,
-  MutationChangeInput,
-  MutationCommit,
-  MutationCommitRecord,
-  MutationDelta,
-  MutationDeltaInput,
-  MutationFootprint,
-  MutationIssue,
-  MutationOrderedAnchor,
-  MutationOrderedSlot,
-  MutationOrigin,
-  Origin,
-  MutationReplaceCommit,
-  MutationReplaceResult,
-  MutationStructuralFact,
+  MutationTreeInsertInput,
+  MutationTreeMoveInput,
   MutationTreeNodeSnapshot,
-  MutationTreeSnapshot,
-  MutationTreeSubtreeSnapshot,
-} from './write'
-export {
-  assertMutationFootprint,
-  assertMutationFootprintList,
-  isMutationFootprint,
-} from './write'
+  MutationTreeSnapshot
+} from './schema/constants'
+export type {
+  MutationSchema
+} from './schema/node'
+export type {
+  MutationDocument,
+  MutationValueOfShape
+} from './schema/value'
+export type {
+  MutationReader
+} from './reader/createReader'
+export type {
+  MutationWriter
+} from './writer/createWriter'
+export type {
+  MutationWrite
+} from './writer/writes'
+export type {
+  MutationDelta
+} from './delta/createDelta'
+export type {
+  MutationQuery
+} from './query/createQuery'
+export type {
+  MutationIssue,
+  MutationResult
+} from './compile/types'
+export type {
+  MutationCommit
+} from './runtime/createEngine'
+export type {
+  MutationOrigin
+} from './runtime/history'

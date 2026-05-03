@@ -1,10 +1,9 @@
 import {
-  defineMutationSchema,
-  namespace,
-  collection,
+  field,
+  map,
   object,
+  schema,
   singleton,
-  value,
 } from '@shared/mutation'
 import type {
   SelectionTarget
@@ -57,56 +56,52 @@ type PreviewMindmapRecordEntry = MindmapPreviewEntry & {
   id: MindmapId
 }
 
-export const editorStateMutationSchema = defineMutationSchema<EditorStateDocument>()({
+export const editorStateMutationSchema = schema<EditorStateDocument>()({
   state: singleton<EditorStateDocument, EditorStateDocument['state']>()({
-    access: {
+    tool: object<Tool>(),
+    draw: object<DrawState>(),
+    selection: object<SelectionTarget>(),
+    edit: object<EditSession>(),
+    interaction: object<EditorStableInteractionState>(),
+  }).from({
       read: (document) => document.state,
       write: (document, next) => ({
         ...document,
         state: next as EditorStateDocument['state'],
       }),
-    },
-    members: {
-      tool: object<Tool>(),
-      draw: object<DrawState>(),
-      selection: object<SelectionTarget>(),
-      edit: object<EditSession>(),
-      interaction: object<EditorStableInteractionState>(),
-    },
-    changes: ({ object }) => ({
+  }).changes(({ object }) => ({
       tool: [object('tool').deep()],
       draw: [object('draw').deep()],
       selection: [object('selection').deep()],
       edit: [object('edit').deep()],
       interaction: [object('interaction').deep()],
-    }),
-  }),
+    })),
   hover: singleton<EditorStateDocument, EditorHoverState>()({
-    access: {
+    node: field<NodeId | null>(),
+    edge: field<EdgeId | null>(),
+    mindmap: field<MindmapId | null>(),
+    group: field<GroupId | null>(),
+    selectionBox: field<boolean>(),
+  }).from({
       read: (document) => document.hover,
       write: (document, next) => ({
         ...document,
         hover: next as EditorHoverState,
       }),
-    },
-    members: {
-      node: value<NodeId | null>(),
-      edge: value<EdgeId | null>(),
-      mindmap: value<MindmapId | null>(),
-      group: value<GroupId | null>(),
-      selectionBox: value<boolean>(),
-    },
-    changes: ({ value }) => ({
-      node: [value('node')],
-      edge: [value('edge')],
-      mindmap: [value('mindmap')],
-      group: [value('group')],
-      selectionBox: [value('selectionBox')],
-    }),
-  }),
-  preview: namespace({
-    node: collection<EditorStateDocument, NodeId, PreviewNodeEntry>()({
-      access: {
+  }).changes(({ field }) => ({
+      node: [field('node')],
+      edge: [field('edge')],
+      mindmap: [field('mindmap')],
+      group: [field('group')],
+      selectionBox: [field('selectionBox')],
+    })),
+  preview: {
+    node: map<EditorStateDocument, NodeId, PreviewNodeEntry>()({
+      patch: object<NodePreview['patch']>(),
+      presentation: object<NodePreview['presentation']>(),
+      hovered: field<boolean>(),
+      hidden: field<boolean>(),
+    }).from({
         read: (document) => Object.fromEntries(
           Object.entries(document.preview.node).map(([id, preview]) => [
             id,
@@ -137,22 +132,16 @@ export const editorStateMutationSchema = defineMutationSchema<EditorStateDocumen
             ) as PreviewInput['node']
           }
         }),
-      },
-      members: {
-        patch: object<NodePreview['patch']>(),
-        presentation: object<NodePreview['presentation']>(),
-        hovered: value<boolean>(),
-        hidden: value<boolean>(),
-      },
-      changes: ({ object, value }) => ({
+      }).changes(({ object, field }) => ({
         patch: [object('patch').deep()],
         presentation: [object('presentation').deep()],
-        hovered: [value('hovered')],
-        hidden: [value('hidden')],
-      }),
-    }),
-    edge: collection<EditorStateDocument, EdgeId, PreviewEdgeEntry>()({
-      access: {
+        hovered: [field('hovered')],
+        hidden: [field('hidden')],
+      })),
+    edge: map<EditorStateDocument, EdgeId, PreviewEdgeEntry>()({
+      patch: object<EdgePreview['patch']>(),
+      activeRouteIndex: field<number | undefined>(),
+    }).from({
         read: (document) => Object.fromEntries(
           Object.entries(document.preview.edge).map(([id, preview]) => [
             id,
@@ -181,18 +170,14 @@ export const editorStateMutationSchema = defineMutationSchema<EditorStateDocumen
             ) as PreviewInput['edge']
           }
         }),
-      },
-      members: {
-        patch: object<EdgePreview['patch']>(),
-        activeRouteIndex: value<number | undefined>(),
-      },
-      changes: ({ object, value }) => ({
+      }).changes(({ object, field }) => ({
         patch: [object('patch').deep()],
-        activeRouteIndex: [value('activeRouteIndex')],
-      }),
-    }),
-    mindmap: collection<EditorStateDocument, MindmapId, PreviewMindmapRecordEntry>()({
-      access: {
+        activeRouteIndex: [field('activeRouteIndex')],
+      })),
+    mindmap: map<EditorStateDocument, MindmapId, PreviewMindmapRecordEntry>()({
+      rootMove: object<MindmapPreviewEntry['rootMove']>(),
+      subtreeMove: object<MindmapPreviewEntry['subtreeMove']>(),
+    }).from({
         read: (document) => Object.fromEntries(
           Object.entries(document.preview.mindmap).map(([id, preview]) => [
             id,
@@ -221,18 +206,14 @@ export const editorStateMutationSchema = defineMutationSchema<EditorStateDocumen
             ) as PreviewInput['mindmap']
           }
         }),
-      },
-      members: {
-        rootMove: object<MindmapPreviewEntry['rootMove']>(),
-        subtreeMove: object<MindmapPreviewEntry['subtreeMove']>(),
-      },
-      changes: ({ object }) => ({
+      }).changes(({ object }) => ({
         rootMove: [object('rootMove').deep()],
         subtreeMove: [object('subtreeMove').deep()],
-      }),
-    }),
+      })),
     selection: singleton<EditorStateDocument, PreviewInput['selection']>()({
-      access: {
+      marquee: field<PreviewInput['selection']['marquee']>(),
+      guides: object<PreviewInput['selection']['guides']>(),
+    }).from({
         read: (document) => document.preview.selection,
         write: (document, next) => ({
           ...document,
@@ -241,18 +222,13 @@ export const editorStateMutationSchema = defineMutationSchema<EditorStateDocumen
             selection: next as PreviewInput['selection']
           }
         }),
-      },
-      members: {
-        marquee: value<PreviewInput['selection']['marquee']>(),
-        guides: object<PreviewInput['selection']['guides']>(),
-      },
-      changes: ({ object, value }) => ({
-        marquee: [value('marquee')],
+      }).changes(({ object, field }) => ({
+        marquee: [field('marquee')],
         guides: [object('guides').deep()],
-      }),
-    }),
+      })),
     draw: singleton<EditorStateDocument, PreviewDrawValue>()({
-      access: {
+      current: field<PreviewInput['draw']>(),
+    }).from({
         read: (document) => ({
           current: document.preview.draw
         }),
@@ -263,16 +239,12 @@ export const editorStateMutationSchema = defineMutationSchema<EditorStateDocumen
             draw: (next as PreviewDrawValue).current
           }
         }),
-      },
-      members: {
-        current: value<PreviewInput['draw']>(),
-      },
-      changes: ({ value }) => ({
-        current: [value('current')],
-      }),
-    }),
+      }).changes(({ field }) => ({
+        current: [field('current')],
+      })),
     edgeGuide: singleton<EditorStateDocument, PreviewEdgeGuideValue>()({
-      access: {
+      current: field<EdgeGuidePreview | undefined>(),
+    }).from({
         read: (document) => ({
           current: document.preview.edgeGuide
         }),
@@ -283,13 +255,8 @@ export const editorStateMutationSchema = defineMutationSchema<EditorStateDocumen
             edgeGuide: (next as PreviewEdgeGuideValue).current
           }
         }),
-      },
-      members: {
-        current: value<EdgeGuidePreview | undefined>(),
-      },
-      changes: ({ value }) => ({
-        current: [value('current')],
-      }),
-    }),
-  }),
+      }).changes(({ field }) => ({
+        current: [field('current')],
+      })),
+  },
 })

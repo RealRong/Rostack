@@ -17,7 +17,6 @@
       "@shared/draft": ["shared/draft/src/index.ts"],
       "@shared/draft/*": ["shared/draft/src/*"],
       "@shared/mutation": ["shared/mutation/src/index.ts"],
-      "@shared/mutation/*": ["shared/mutation/src/*"],
       "@shared/collab": ["shared/collab/src/index.ts"],
       "@shared/collab/*": ["shared/collab/src/*"],
       "@shared/collab-yjs": ["shared/collab-yjs/src/index.ts"],

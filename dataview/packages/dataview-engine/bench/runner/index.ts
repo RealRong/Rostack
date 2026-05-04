@@ -58,11 +58,7 @@ const parseArgs = (argv: string[]) => {
 
 const createBenchEngine = (fixture) => createEngine({
   spec: dataviewSpec,
-  document: fixture.document,
-  performance: {
-    traces: true,
-    stats: true
-  }
+  document: fixture.document
 })
 
 const runScenarioIteration = (scenario, size) => {
@@ -71,23 +67,13 @@ const runScenarioIteration = (scenario, size) => {
 
   scenario.setup?.(engine, fixture)
   scenario.prepare?.(engine, fixture)
-  engine.performance.traces.clear()
-  engine.performance.stats.clear()
 
   const startedAt = performance.now()
   scenario.run(engine, fixture)
   const elapsedMs = performance.now() - startedAt
-  const trace = engine.performance.traces.last()
-  const stats = engine.performance.stats.snapshot()
-
-  if (!trace) {
-    throw new Error(`Scenario "${scenario.id}" did not produce a perf trace.`)
-  }
 
   return {
-    elapsedMs,
-    trace,
-    stats
+    elapsedMs
   }
 }
 
@@ -103,38 +89,8 @@ const summarizeRuns = (runs, scenario, size) => {
     },
     iterations: runs.length,
     avg: {
-      elapsedMs: averageOf(runs.map(run => run.elapsedMs)),
-      totalMs: averageOf(runs.map(run => run.trace.timings.totalMs)),
-      commitMs: averageOf(runs.map(run => run.trace.timings.commitMs ?? 0)),
-      indexMs: averageOf(runs.map(run => run.trace.timings.indexMs ?? 0)),
-      viewMs: averageOf(runs.map(run => run.trace.timings.viewMs ?? 0)),
-      snapshotMs: averageOf(runs.map(run => run.trace.timings.snapshotMs ?? 0))
-    },
-    changedStores: [...last.trace.snapshot.changedStores],
-    indexActions: {
-      records: last.trace.index.records.action,
-      search: last.trace.index.search.action,
-      bucket: last.trace.index.bucket.action,
-      sort: last.trace.index.sort.action,
-      summaries: last.trace.index.summaries.action
-    },
-    plan: {
-      ...last.trace.view.plan
-    },
-    stageDurationsMs: Object.fromEntries(
-      last.trace.view.stages.map(stage => [stage.stage, stage.durationMs])
-    ),
-    stageTimingsMs: Object.fromEntries(
-      last.trace.view.stages.map(stage => [
-        stage.stage,
-        {
-          total: stage.durationMs,
-          derive: stage.deriveMs,
-          publish: stage.publishMs
-        }
-      ])
-    ),
-    stats: last.stats
+      elapsedMs: averageOf(runs.map(run => run.elapsedMs))
+    }
   }
 }
 
@@ -145,9 +101,7 @@ const reportResults = (results) => {
   results.results.forEach(result => {
     console.log('')
     console.log(`${result.size} | ${result.scenario.id} | records=${result.records}`)
-    console.log(`  avg total=${result.avg.totalMs.toFixed(3)}ms index=${result.avg.indexMs.toFixed(3)}ms view=${result.avg.viewMs.toFixed(3)}ms snapshot=${result.avg.snapshotMs.toFixed(3)}ms`)
-    console.log(`  changed stores=${result.changedStores.join(',') || '(none)'}`)
-    console.log(`  index actions=${Object.entries(result.indexActions).map(([key, value]) => `${key}:${value}`).join(' ')}`)
+    console.log(`  avg elapsed=${result.avg.elapsedMs.toFixed(3)}ms`)
   })
 }
 

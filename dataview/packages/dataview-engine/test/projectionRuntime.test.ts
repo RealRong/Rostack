@@ -268,7 +268,6 @@ test('ensureDataviewIndex keeps one active index and syncs active demand changes
     false
   )
   assert.deepEqual(second?.index.delta?.demand?.calculations.removed.map(entry => entry.fieldId), [FIELD_POINTS])
-  assert.equal(second?.index.trace?.summaries.action, 'sync')
 })
 
 test('createDataviewActivePlan keeps layout-only change inside publish', () => {
@@ -354,10 +353,6 @@ test('runDataviewActive derives grouped sections and summaries in one active pip
   assert.deepEqual(active.snapshot?.sections.ids, ['todo', 'doing', '(empty)'])
   assert.deepEqual(active.snapshot?.items.ids, [1, 2])
   assert.equal(active.snapshot?.summaries.has('todo'), true)
-  assert.equal(active.trace.query.action, 'rebuild')
-  assert.equal(active.trace.membership.action, 'rebuild')
-  assert.equal(active.trace.summary.action, 'rebuild')
-  assert.equal(active.trace.publish.action, 'rebuild')
 })
 
 test('createDataviewProjection now runs active only and clears snapshot when active view disappears', () => {

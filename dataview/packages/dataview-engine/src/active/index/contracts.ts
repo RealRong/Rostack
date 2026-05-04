@@ -13,9 +13,6 @@ import type {
 } from '@dataview/core/types'
 import type { DataviewQuery } from '@dataview/core/mutation'
 import type {
-  IndexTrace
-} from '@dataview/engine/contracts/performance'
-import type {
   MembershipTransition,
   CalculationTransition
 } from '@dataview/engine/active/shared/transition'
@@ -176,5 +173,4 @@ export interface IndexDeriveContext extends IndexReadContext, FieldSyncContext {
 export interface IndexDeriveResult {
   state: IndexState
   delta?: IndexDelta
-  trace?: IndexTrace
 }

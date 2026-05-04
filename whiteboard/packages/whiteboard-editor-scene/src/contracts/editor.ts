@@ -809,6 +809,38 @@ export interface SceneFrame {
   }): string | undefined
 }
 
+export interface SceneVisibility {
+  point(input: {
+    point: Point
+    threshold?: number
+    kinds?: readonly ('node' | 'edge' | 'mindmap')[]
+    exclude?: Partial<{
+      node: readonly string[]
+      edge: readonly string[]
+      mindmap: readonly string[]
+    }>
+  }): {
+    ordered: readonly SceneHitItem[]
+    topmost?: SceneHitItem
+  }
+  rect(input: {
+    rect: Rect
+    kinds?: readonly ('node' | 'edge' | 'mindmap')[]
+    exclude?: Partial<{
+      node: readonly string[]
+      edge: readonly string[]
+      mindmap: readonly string[]
+    }>
+  }): {
+    ordered: readonly SceneHitItem[]
+    visibleIds: {
+      node: readonly string[]
+      edge: readonly string[]
+      mindmap: readonly string[]
+    }
+  }
+}
+
 export interface SceneHit {
   node(input: {
     point: Point
@@ -883,6 +915,7 @@ export interface EditorScene {
   groups: SceneGroups
   selection: SceneSelection
   frame: SceneFrame
+  visibility: SceneVisibility
   hit: SceneHit
   overlay: SceneOverlay
   spatial: SceneSpatial

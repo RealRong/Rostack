@@ -61,8 +61,6 @@ const percentDeltaOf = (baseline: number, current: number) => {
   return (current - baseline) / baseline
 }
 
-const compareActions = (baseline, current) => JSON.stringify(baseline) === JSON.stringify(current)
-
 const compareBenchmarks = (input) => {
   const baseline = loadJson(input.baseline)
   const current = loadJson(input.current)
@@ -80,7 +78,7 @@ const compareBenchmarks = (input) => {
       return
     }
 
-    const metrics = ['totalMs', 'indexMs', 'viewMs', 'snapshotMs']
+    const metrics = ['elapsedMs']
     metrics.forEach(metric => {
       const baselineValue = baselineResult.avg?.[metric]
       const currentValue = result.avg?.[metric]
@@ -104,23 +102,6 @@ const compareBenchmarks = (input) => {
       }
     })
 
-    if (!compareActions(baselineResult.plan, result.plan)) {
-      warnings.push({
-        scenario: key,
-        kind: 'plan',
-        baseline: baselineResult.plan,
-        current: result.plan
-      })
-    }
-
-    if (!compareActions(baselineResult.indexActions, result.indexActions)) {
-      warnings.push({
-        scenario: key,
-        kind: 'indexActions',
-        baseline: baselineResult.indexActions,
-        current: result.indexActions
-      })
-    }
   })
 
   return {

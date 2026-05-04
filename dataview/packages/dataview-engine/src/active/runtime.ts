@@ -39,9 +39,7 @@ import {
   createEmptyDataviewStoreChanges,
   EMPTY_FIELD_FAMILY,
   EMPTY_ITEM_FAMILY,
-  EMPTY_SNAPSHOT_TRACE,
   EMPTY_SECTION_FAMILY,
-  EMPTY_STAGE_TRACE,
   EMPTY_SUMMARY_FAMILY,
   emptyMembershipPhaseState,
   emptyQueryPhaseState,
@@ -56,9 +54,6 @@ import type {
 import type {
   ViewState
 } from '@dataview/engine/contracts/view'
-import {
-  createSnapshotTrace
-} from '@dataview/engine/active/projection/trace'
 import type {
   ProjectionFamilyChange,
   ProjectionFamilySnapshot
@@ -216,23 +211,7 @@ const clearActiveState = (
         items: 'replace',
         summaries: 'replace'
       }
-    : createEmptyDataviewStoreChanges(),
-  trace: {
-    query: EMPTY_STAGE_TRACE,
-    membership: EMPTY_STAGE_TRACE,
-    summary: EMPTY_STAGE_TRACE,
-    publish: {
-      action: previous.snapshot
-        ? 'sync'
-        : 'reuse',
-      changed: Boolean(previous.snapshot),
-      deriveMs: 0,
-      publishMs: 0
-    },
-    snapshot: previous.snapshot
-      ? createSnapshotTrace(previous.snapshot, undefined)
-      : EMPTY_SNAPSHOT_TRACE
-  }
+    : createEmptyDataviewStoreChanges()
 })
 
 export const runDataviewActive = (input: {
@@ -279,10 +258,6 @@ export const runDataviewActive = (input: {
     summary: summary.state,
     previous: input.previous
   })
-  const snapshotTrace = createSnapshotTrace(
-    input.previous.snapshot,
-    publish.snapshot
-  )
 
   return {
     spec: active,
@@ -309,14 +284,7 @@ export const runDataviewActive = (input: {
       nextSummaries: publish.summaries,
       sectionDelta: publish.sectionDelta,
       itemDelta: publish.itemDelta
-    }),
-    trace: {
-      query: query.trace,
-      membership: membership.trace,
-      summary: summary.trace,
-      publish: publish.trace,
-      snapshot: snapshotTrace
-    }
+    })
   }
 }
 

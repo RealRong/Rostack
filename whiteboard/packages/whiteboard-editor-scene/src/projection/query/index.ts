@@ -47,6 +47,7 @@ import { createChromeRead } from './chrome'
 import { createFrameRead } from './frame'
 import { createHitRead } from './hit'
 import { createSelectionRead } from './selection'
+import { createVisibilityRead } from './visibility'
 import {
   createViewRead,
   type ProjectionViewRead
@@ -185,6 +186,10 @@ export const createProjectionRead = (runtime: {
   const bounds = createBoundsRead({
     state: runtime.state
   })
+  const visibility = createVisibilityRead({
+    state: runtime.state,
+    spatial
+  })
   const readMindmapStructureByValue = (
     value: string
   ) => {
@@ -234,10 +239,15 @@ export const createProjectionRead = (runtime: {
       const exclude = options?.exclude?.length
         ? new Set(options.exclude)
         : undefined
-      const candidateIds = spatial.rect(rect, {
-        kinds: ['node']
-      })
-        .map((record) => record.item.id)
+      const candidateIds = visibility.rect({
+        rect,
+        kinds: ['node'],
+        exclude: options?.exclude?.length
+          ? {
+              node: options.exclude
+            }
+          : undefined
+      }).visibleIds.node
         .filter((nodeId) => !exclude?.has(nodeId))
 
       return nodeApi.hit.filterIdsInRect({
@@ -286,10 +296,10 @@ export const createProjectionRead = (runtime: {
     entries: () => runtime.state().graph.edges.entries(),
     idsInRect: (rect, options) => {
       const mode = options?.match ?? 'touch'
-      return spatial.rect(rect, {
+      return visibility.rect({
+        rect,
         kinds: ['edge']
-      }).flatMap((record) => {
-        const edgeId = record.item.id
+      }).visibleIds.edge.flatMap((edgeId) => {
         const current = runtime.state().graph.edges.get(edgeId)
         return current && current.route.ends && edgeApi.hit.test({
           path: {
@@ -529,6 +539,7 @@ export const createProjectionRead = (runtime: {
   })
   const hit = createHitRead({
     state: runtime.state,
+    visibility,
     spatial
   })
   const view = createViewRead({
@@ -592,6 +603,7 @@ export const createProjectionRead = (runtime: {
     groups,
     selection,
     frame,
+    visibility,
     hit,
     view,
     overlay,

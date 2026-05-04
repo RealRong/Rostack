@@ -13,7 +13,6 @@ import {
 } from '@dataview/engine/active/membership/derive'
 import type {
   DataviewActiveState,
-  DataviewStageTrace,
   MembershipPhaseDelta,
   MembershipPhaseState,
   QueryPhaseDelta,
@@ -25,10 +24,6 @@ import {
 import type {
   SectionId
 } from '@dataview/engine/contracts/shared'
-import { now } from '@dataview/engine/runtime/clock'
-import {
-  createActiveStageMetrics
-} from '@dataview/engine/active/projection/metrics'
 
 const buildMembershipDelta = (input: {
   previous: MembershipPhaseState
@@ -96,30 +91,15 @@ export const runMembershipStep = (input: {
 }): {
   state: MembershipPhaseState
   delta: MembershipPhaseDelta
-  trace: DataviewStageTrace
 } => {
   const action = input.plan.membership.action
   if (action === 'reuse') {
     return {
       state: input.previous.membership,
-      delta: EMPTY_MEMBERSHIP_PHASE_DELTA,
-      trace: {
-        action,
-        changed: false,
-        deriveMs: 0,
-        publishMs: 0,
-        metrics: createActiveStageMetrics({
-          inputCount: input.previous.membership.sections.order.length,
-          outputCount: input.previous.membership.sections.order.length,
-          reusedNodeCount: input.previous.membership.sections.order.length,
-          rebuiltNodeCount: 0,
-          changedSectionCount: 0
-        })
-      }
+      delta: EMPTY_MEMBERSHIP_PHASE_DELTA
     }
   }
 
-  const deriveStart = now()
   const synced = syncMembershipState({
     previous: input.previous.membership,
     view: input.active.view,
@@ -136,30 +116,9 @@ export const runMembershipStep = (input: {
     records: synced.records,
     action
   })
-  const deriveMs = now() - deriveStart
-  const outputCount = synced.state.sections.order.length
-  const changedSectionCount = delta.rebuild
-    ? outputCount
-    : Math.min(outputCount, delta.changed.length + delta.removed.length)
 
   return {
     state: synced.state,
-    delta,
-    trace: {
-      action,
-      changed: delta.rebuild
-        || delta.orderChanged
-        || delta.removed.length > 0
-        || delta.changed.length > 0
-        || delta.records.size > 0,
-      deriveMs,
-      publishMs: 0,
-      metrics: createActiveStageMetrics({
-        inputCount: input.previous.membership.sections.order.length,
-        outputCount,
-        changedNodeCount: changedSectionCount,
-        changedSectionCount
-      })
-    }
+    delta
   }
 }

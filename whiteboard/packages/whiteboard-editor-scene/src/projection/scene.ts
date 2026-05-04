@@ -158,6 +158,7 @@ export const createScene = (input: {
     groups: input.read.groups,
     selection: input.read.selection,
     frame: input.read.frame,
+    visibility: input.read.visibility,
     hit: input.read.hit,
     overlay: input.read.overlay,
     spatial: input.read.spatial,

@@ -229,15 +229,7 @@ const createEmptyDocument = () => {
 
 const createEngineForTest = options => createEngine({
   spec: dataviewSpec,
-  document: options.document,
-  ...(options.perf
-    ? {
-        performance: {
-          traces: options.perf.trace,
-          stats: options.perf.stats
-        }
-      }
-    : {})
+  document: options.document
 })
 
 const applyHistory = (engine, kind) => {
@@ -1226,92 +1218,6 @@ test('engine.active state clears grouped summaries when filters leave every sect
   )
 })
 
-test('engine.performance syncs summaries when grouped filters change visible membership', () => {
-  const engine = createEngineForTest({
-    document: createDocument(),
-    perf: {
-      trace: true,
-      stats: true
-    }
-  })
-
-  openView(engine, VIEW_TABLE).group.set(FIELD_STATUS)
-  openView(engine, VIEW_TABLE).summary.set(FIELD_STATUS, 'countByOption')
-  engine.performance.traces.clear()
-  engine.performance.stats.clear()
-
-  addFilterRule(openView(engine, VIEW_TABLE), FIELD_POINTS, {
-    presetId: 'gt',
-    value: 100
-  })
-
-  const trace = engine.performance.traces.last()
-  const summaryStage = trace?.view.stages.find(stage => stage.stage === 'summary')
-
-  assert.equal(readViewState(engine)?.summaries.get('todo')?.get(FIELD_STATUS)?.kind, 'empty')
-  assert.equal(readViewState(engine)?.summaries.get('doing')?.get(FIELD_STATUS)?.kind, 'empty')
-  assert.equal(readViewState(engine)?.summaries.get('done')?.get(FIELD_STATUS)?.kind, 'empty')
-  assert.ok(trace)
-  assert.equal(trace.view.plan.summary, 'sync')
-  assert.equal(summaryStage?.action, 'sync')
-  assert.equal(trace.snapshot.changedStores.includes('summaries'), true)
-})
-
-test('engine.performance syncs index demand when effective filter adds a bucket index', () => {
-  const engine = createEngineForTest({
-    document: createDocument(),
-    perf: {
-      trace: true,
-      stats: true
-    }
-  })
-
-  engine.performance.traces.clear()
-  engine.performance.stats.clear()
-
-  addFilterRule(openView(engine, VIEW_TABLE), FIELD_STATUS, {
-    presetId: 'eq',
-    value: filter.value.optionSet.create(['todo'])
-  })
-
-  const trace = engine.performance.traces.last()
-
-  assert.ok(trace)
-  assert.equal(trace.index.bucket.action, 'sync')
-  assert.notEqual(trace.index.bucket.action, 'rebuild')
-})
-
-test('engine.performance reuses summaries when sort only reorders records', () => {
-  const engine = createEngineForTest({
-    document: createDocument(),
-    perf: {
-      trace: true,
-      stats: true
-    }
-  })
-
-  openView(engine, VIEW_TABLE).summary.set(FIELD_POINTS, 'sum')
-  const summariesBefore = readViewState(engine)?.summaries
-  engine.performance.traces.clear()
-  engine.performance.stats.clear()
-
-  setSingleSortRule(openView(engine, VIEW_TABLE), FIELD_POINTS, 'desc')
-
-  const trace = engine.performance.traces.last()
-  const summaryStage = trace?.view.stages.find(stage => stage.stage === 'summary')
-
-  assert.deepEqual(
-    [...(readViewState(engine)?.summaries?.get('root')?.byField.entries() ?? [])],
-    [...(summariesBefore?.get('root')?.byField.entries() ?? [])]
-  )
-  assert.ok(trace)
-  assert.equal(trace.view.plan.query, 'sync')
-  assert.equal(trace.view.plan.membership, 'sync')
-  assert.equal(trace.view.plan.summary, 'reuse')
-  assert.equal(summaryStage?.action, 'reuse')
-  assert.equal(trace.snapshot.changedStores.includes('summaries'), false)
-})
-
 test('engine.active sync reuses unaffected grouped sections and summaries on data changes', () => {
   const engine = createEngineForTest({
     document: createDocument()
@@ -1387,49 +1293,6 @@ test('engine.active reconcile keeps undo redo equivalent across sequential delta
 
   assert.equal(applyHistory(engine, 'redo'), true)
   assert.deepEqual(viewSnapshot(engine), afterGroupMove)
-})
-
-test('engine.performance traces active view derive and snapshot behavior for incremental updates', () => {
-  const engine = createEngineForTest({
-    document: createDocument(),
-    perf: {
-      trace: true,
-      stats: true
-    }
-  })
-
-  openView(engine, VIEW_TABLE).group.set(FIELD_STATUS)
-  openView(engine, VIEW_TABLE).summary.set(FIELD_POINTS, 'sum')
-  engine.performance.traces.clear()
-  engine.performance.stats.clear()
-
-  engine.records.fields.set('rec_1', FIELD_STATUS, 'done')
-
-  const trace = engine.performance.traces.last()
-  const stats = engine.performance.stats.snapshot()
-  const sectionsStage = trace?.view.stages.find(stage => stage.stage === 'membership')
-  const summaryStage = trace?.view.stages.find(stage => stage.stage === 'summary')
-
-  assert.ok(trace)
-  assert.equal(trace.kind, 'dispatch')
-  assert.equal(trace.delta.summary.records, true)
-  assert.equal(trace.delta.summary.indexes, true)
-  assert.equal(trace.view.plan.query, 'reuse')
-  assert.equal(trace.view.plan.membership, 'sync')
-  assert.equal(trace.view.plan.summary, 'sync')
-  assert.equal(trace.index.bucket.action, 'sync')
-  assert.equal(trace.index.summaries.action, 'reuse')
-  assert.ok(trace.snapshot.changedStores.includes('sections'))
-  assert.ok(trace.snapshot.changedStores.includes('items'))
-  assert.ok(trace.snapshot.changedStores.includes('summaries'))
-  assert.equal(sectionsStage?.action, 'sync')
-  assert.equal(summaryStage?.action, 'sync')
-  assert.ok((sectionsStage?.metrics?.reusedNodeCount ?? 0) >= 2)
-  assert.ok((summaryStage?.metrics?.reusedNodeCount ?? 0) >= 1)
-  assert.equal(stats.commits.total, 1)
-  assert.equal(stats.commits.dispatch, 1)
-  assert.equal(stats.stages.membership.sync, 1)
-  assert.equal(stats.indexes.bucket.changed, 1)
 })
 
 test('view.create resolves duplicate names in the write planner', () => {

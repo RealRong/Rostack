@@ -13,9 +13,6 @@ import type {
 import {
   createDataviewResolvedContext,
 } from '@dataview/engine/active/frame'
-import type {
-  IndexTrace
-} from '@dataview/engine/contracts/performance'
 import {
   buildCalculationIndex,
   ensureCalculationIndex,
@@ -48,11 +45,6 @@ import {
   buildSortIndex,
   deriveSortIndex
 } from '@dataview/engine/active/index/sort'
-import {
-  createIndexStageTrace,
-  fullRebuildFrom,
-  searchEntryCountOf
-} from '@dataview/engine/active/index/trace'
 import type {
   BucketKey,
   ContentDelta,
@@ -62,7 +54,6 @@ import type {
   IndexState,
   NormalizedIndexDemand
 } from '@dataview/engine/active/index/contracts'
-import { now } from '@dataview/engine/runtime/clock'
 import {
   createCalculationTransition,
   createMembershipTransition
@@ -70,16 +61,12 @@ import {
 import {
   createRows
 } from '@dataview/engine/active/shared/rows'
-import {
-  trace
-} from '@shared/trace'
 
 export interface DataviewActiveIndex {
   demand: NormalizedIndexDemand
   state: IndexState
   revision: number
   delta?: import('@dataview/engine/active/index/contracts').IndexDelta
-  trace?: IndexTrace
 }
 
 export interface DataviewIndexResult {
@@ -213,22 +200,15 @@ export const deriveIndex = (input: {
     input.change
   )
   const context = createIndexDeriveContext(input.document, contentDelta)
-  const totalStart = now()
-  const touchedRecordCount = trace.count(contentDelta.records as ReadonlySet<RecordId> | 'all')
-  const touchedFieldCount = trace.count(contentDelta.touchedFields as ReadonlySet<string> | 'all')
-  const rebuild = fullRebuildFrom(input.change)
   const bucketDelta = createMembershipTransition<BucketKey, RecordId>()
   const calculationDelta = createCalculationTransition()
 
-  const recordsStart = now()
   const records = syncRecordIndex(
     previous.records,
     context,
     nextDemand.recordFields
   )
-  const recordsMs = now() - recordsStart
 
-  const searchStart = now()
   const syncedSearch = syncSearchIndex(
     previous.search,
     context,
@@ -240,9 +220,7 @@ export const deriveIndex = (input: {
     records,
     nextDemand.search
   )
-  const searchMs = now() - searchStart
 
-  const bucketStart = now()
   const syncedBucket = syncBucketIndex(
     previous.bucket,
     context,
@@ -255,7 +233,6 @@ export const deriveIndex = (input: {
     records,
     nextDemand.buckets
   )
-  const bucketMs = now() - bucketStart
 
   const previousSectionBucketKey = input.previousDemand.buckets.find(spec => spec.mode !== undefined || spec.interval !== undefined)
     ? bucketSpec.key.write(input.previousDemand.buckets.find(spec => spec.mode !== undefined || spec.interval !== undefined)!)
@@ -270,16 +247,13 @@ export const deriveIndex = (input: {
     bucketDelta.rebuild = true
   }
 
-  const sortStart = now()
   const sort = deriveSortIndex({
     previous: previous.sort,
     context,
     records,
     fieldIds: nextDemand.sortFields
   })
-  const sortMs = now() - sortStart
 
-  const summariesStart = now()
   const syncedSummaries = syncCalculationIndex(
     previous.calculations,
     previous.records,
@@ -293,7 +267,6 @@ export const deriveIndex = (input: {
     records,
     nextDemand.calculations
   )
-  const summariesMs = now() - summariesStart
 
   const state = {
     records,
@@ -341,75 +314,7 @@ export const deriveIndex = (input: {
       ? {
           delta
         }
-      : {}),
-    trace: {
-      changed: (
-        records !== previous.records
-        || search !== previous.search
-        || bucket !== previous.bucket
-        || sort !== previous.sort
-        || summaries !== previous.calculations
-        || state.rows !== previous.rows
-      ),
-      timings: {
-        totalMs: now() - totalStart,
-        recordsMs,
-        searchMs,
-        bucketMs,
-        sortMs,
-        summariesMs
-      },
-      records: createIndexStageTrace({
-        previous: previous.records,
-        next: records,
-        rebuild,
-        durationMs: recordsMs,
-        inputSize: previous.records.ids.length,
-        outputSize: records.ids.length,
-        touchedRecordCount,
-        touchedFieldCount
-      }),
-      search: createIndexStageTrace({
-        previous: previous.search,
-        next: search,
-        rebuild,
-        durationMs: searchMs,
-        inputSize: searchEntryCountOf(previous.search),
-        outputSize: searchEntryCountOf(search),
-        touchedRecordCount,
-        touchedFieldCount
-      }),
-      bucket: createIndexStageTrace({
-        previous: previous.bucket,
-        next: bucket,
-        rebuild,
-        durationMs: bucketMs,
-        inputSize: previous.bucket.fields.size,
-        outputSize: bucket.fields.size,
-        touchedRecordCount,
-        touchedFieldCount
-      }),
-      sort: createIndexStageTrace({
-        previous: previous.sort,
-        next: sort,
-        rebuild,
-        durationMs: sortMs,
-        inputSize: previous.sort.fields.size,
-        outputSize: sort.fields.size,
-        touchedRecordCount,
-        touchedFieldCount
-      }),
-      summaries: createIndexStageTrace({
-        previous: previous.calculations,
-        next: summaries,
-        rebuild,
-        durationMs: summariesMs,
-        inputSize: previous.calculations.fields.size,
-        outputSize: summaries.fields.size,
-        touchedRecordCount,
-        touchedFieldCount
-      })
-    }
+      : {})
   }
 }
 
@@ -418,19 +323,13 @@ const createActiveIndex = (input: {
   demand: NormalizedIndexDemand
   state: IndexState
   delta?: import('@dataview/engine/active/index/contracts').IndexDelta
-  trace?: IndexTrace
 }): DataviewActiveIndex => ({
   demand: input.demand,
   state: input.state,
   revision: input.revision,
   ...(input.delta
     ? {
-        delta: input.delta
-      }
-    : {}),
-  ...(input.trace
-    ? {
-        trace: input.trace
+      delta: input.delta
       }
     : {})
 })
@@ -475,14 +374,21 @@ export const ensureDataviewIndex = (input: {
       revision: input.frame.revision,
       demand: active.demand,
       state: next.state,
-      delta: next.delta,
-      trace: next.trace
+      delta: next.delta
     })
+    const changed = (
+      next.state.records !== previous.state.records
+      || next.state.search !== previous.state.search
+      || next.state.bucket !== previous.state.bucket
+      || next.state.sort !== previous.state.sort
+      || next.state.calculations !== previous.state.calculations
+      || next.state.rows !== previous.state.rows
+    )
 
     return {
       action: input.frame.change.reset()
         ? 'rebuild'
-        : next.trace?.changed
+        : changed
           ? 'sync'
           : 'reuse',
       index

@@ -20,16 +20,7 @@ test('bench compare reports timing regression over threshold', () => {
         id: 'record.value.points.single'
       },
       avg: {
-        totalMs: 10,
-        indexMs: 5,
-        viewMs: 4,
-        snapshotMs: 1
-      },
-      plan: {
-        query: 'reuse'
-      },
-      indexActions: {
-        records: 'sync'
+        elapsedMs: 10
       }
     }]
   })
@@ -40,16 +31,7 @@ test('bench compare reports timing regression over threshold', () => {
         id: 'record.value.points.single'
       },
       avg: {
-        totalMs: 14,
-        indexMs: 5,
-        viewMs: 4,
-        snapshotMs: 1
-      },
-      plan: {
-        query: 'reuse'
-      },
-      indexActions: {
-        records: 'sync'
+        elapsedMs: 14
       }
     }]
   })
@@ -63,10 +45,10 @@ test('bench compare reports timing regression over threshold', () => {
 
   assert.equal(result.ok, false)
   assert.equal(result.warnings[0]?.kind, 'timing')
-  assert.equal(result.warnings[0]?.metric, 'totalMs')
+  assert.equal(result.warnings[0]?.metric, 'elapsedMs')
 })
 
-test('bench compare reports plan drift even without timing regression', () => {
+test('bench compare ignores removed perf plan metadata', () => {
   const directory = mkdtempSync(join(tmpdir(), 'dataview-bench-compare-'))
   const baselinePath = writeJson(directory, 'baseline.json', {
     results: [{
@@ -75,16 +57,7 @@ test('bench compare reports plan drift even without timing regression', () => {
         id: 'record.value.status.grouped'
       },
       avg: {
-        totalMs: 10,
-        indexMs: 5,
-        viewMs: 4,
-        snapshotMs: 1
-      },
-      plan: {
-        sections: 'sync'
-      },
-      indexActions: {
-        group: 'sync'
+        elapsedMs: 10
       }
     }]
   })
@@ -95,16 +68,7 @@ test('bench compare reports plan drift even without timing regression', () => {
         id: 'record.value.status.grouped'
       },
       avg: {
-        totalMs: 10.2,
-        indexMs: 5,
-        viewMs: 4.1,
-        snapshotMs: 1.1
-      },
-      plan: {
-        sections: 'rebuild'
-      },
-      indexActions: {
-        group: 'sync'
+        elapsedMs: 10.2
       }
     }]
   })
@@ -116,6 +80,6 @@ test('bench compare reports plan drift even without timing regression', () => {
     minDeltaMs: 10
   })
 
-  assert.equal(result.ok, false)
-  assert.equal(result.warnings[0]?.kind, 'plan')
+  assert.equal(result.ok, true)
+  assert.equal(result.warnings.length, 0)
 })

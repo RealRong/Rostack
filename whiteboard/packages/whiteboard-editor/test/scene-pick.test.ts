@@ -6,6 +6,21 @@ import type { NodeSpec } from '../src'
 import { createEditorTestLayout } from './support'
 
 const nodes: NodeSpec = {
+  frame: {
+    meta: {
+      type: 'frame',
+      name: 'Frame',
+      family: 'frame',
+      icon: 'frame',
+      controls: []
+    },
+    behavior: {
+      role: 'frame',
+      connect: false,
+      resize: true,
+      rotate: false
+    }
+  },
   shape: {
     meta: {
       type: 'shape',
@@ -97,10 +112,98 @@ const createPickDocument = () => {
   return document
 }
 
-const createPickEditor = () => {
+const createVisibilityDocument = () => {
+  const document = documentApi.create('doc_scene_pick_visibility')
+  document.nodes['node-1'] = {
+    id: 'node-1',
+    type: 'shape',
+    position: {
+      x: 0,
+      y: 40
+    },
+    size: {
+      width: 80,
+      height: 80
+    }
+  }
+  document.nodes['node-2'] = {
+    id: 'node-2',
+    type: 'shape',
+    position: {
+      x: 280,
+      y: 40
+    },
+    size: {
+      width: 80,
+      height: 80
+    }
+  }
+  document.nodes.frame = {
+    id: 'frame',
+    type: 'frame',
+    position: {
+      x: 90,
+      y: 20
+    },
+    size: {
+      width: 180,
+      height: 120
+    }
+  }
+  document.nodes.child = {
+    id: 'child',
+    type: 'shape',
+    position: {
+      x: 140,
+      y: 55
+    },
+    size: {
+      width: 60,
+      height: 50
+    }
+  }
+  document.edges['edge-1'] = {
+    id: 'edge-1',
+    type: 'straight',
+    source: {
+      kind: 'node',
+      nodeId: 'node-1'
+    },
+    target: {
+      kind: 'node',
+      nodeId: 'node-2'
+    }
+  }
+  document.order = [
+    {
+      kind: 'edge',
+      id: 'edge-1'
+    },
+    {
+      kind: 'node',
+      id: 'frame'
+    },
+    {
+      kind: 'node',
+      id: 'child'
+    },
+    {
+      kind: 'node',
+      id: 'node-1'
+    },
+    {
+      kind: 'node',
+      id: 'node-2'
+    }
+  ]
+
+  return document
+}
+
+const createPickEditor = (document = createPickDocument()) => {
   const layoutService = createEditorTestLayout()
   const engine = engineApi.create({
-    document: createPickDocument(),
+    document,
     layout: layoutService
   })
 
@@ -134,9 +237,12 @@ describe('scene pick', () => {
       return
     }
 
-    const point = geometry.route.points[
-      Math.floor(geometry.route.points.length / 2)
-    ]!
+    const start = geometry.route.points[0]!
+    const end = geometry.route.points[geometry.route.points.length - 1]!
+    const point = {
+      x: (start.x + end.x) / 2,
+      y: (start.y + end.y) / 2
+    }
     const rect = {
       x: point.x - 16,
       y: point.y - 16,
@@ -205,5 +311,51 @@ describe('scene pick', () => {
       kind: 'node',
       id: 'node-1'
     })
+  })
+
+  it('reuses topmost visibility for hit and marquee filtering', () => {
+    const editor = createPickEditor(createVisibilityDocument())
+    const frameRect = editor.scene.nodes.get('frame')?.geometry.rect
+
+    expect(editor.scene.hit.item({
+      point: {
+        x: 110,
+        y: 80
+      },
+      threshold: 16,
+      kinds: ['node', 'edge']
+    })).toEqual({
+      kind: 'node',
+      id: 'frame'
+    })
+
+    expect(editor.scene.hit.edge({
+      point: {
+        x: 110,
+        y: 80
+      },
+      threshold: 16
+    })).toBeUndefined()
+
+    expect(editor.scene.hit.item({
+      point: {
+        x: 170,
+        y: 80
+      },
+      threshold: 16,
+      kinds: ['node', 'edge']
+    })).toEqual({
+      kind: 'node',
+      id: 'child'
+    })
+
+    expect(frameRect).toBeDefined()
+    if (!frameRect) {
+      return
+    }
+
+    expect(editor.scene.edges.idsInRect(frameRect, {
+      match: 'touch'
+    })).not.toContain('edge-1')
   })
 })

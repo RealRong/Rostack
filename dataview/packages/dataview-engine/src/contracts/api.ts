@@ -40,10 +40,6 @@ import type {
   EngineSource
 } from '@dataview/engine/contracts/source'
 import type {
-  PerformanceApi,
-  PerformanceOptions
-} from '@dataview/engine/contracts/performance'
-import type {
   EngineCommits,
   EngineApplyCommit
 } from '@dataview/engine/contracts/write'
@@ -101,7 +97,6 @@ export interface CreateEngineOptions {
   spec: DataviewSpec
   document: DataDoc
   history?: Partial<DataviewHistoryConfig>
-  performance?: PerformanceOptions
 }
 
 export interface ViewsApi {
@@ -186,7 +181,6 @@ export interface Engine {
   readonly views: ViewsApi
   readonly fields: FieldsApi
   readonly records: RecordsApi
-  readonly performance: PerformanceApi
 
   current(): DataviewCurrent
   subscribe(listener: (current: DataviewCurrent) => void): () => void

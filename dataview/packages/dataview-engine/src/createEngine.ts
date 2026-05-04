@@ -30,9 +30,6 @@ import type {
   EngineCommit
 } from '@dataview/engine/contracts/write'
 import {
-  createDataviewCommitTrace
-} from '@dataview/engine/mutation/projection/trace'
-import {
   createDataviewProjection
 } from '@dataview/engine/projection'
 import {
@@ -41,8 +38,10 @@ import {
 import {
   createEngineSource
 } from '@dataview/engine/source/createEngineSource'
-import { createPerformanceRuntime } from '@dataview/engine/runtime/performance'
-import { now } from '@dataview/engine/runtime/clock'
+import {
+  createActiveSourceProjection,
+  createDocumentSourceProjection
+} from '@dataview/engine/source/projections'
 import type {
   ExecuteInput,
   ExecuteResultOf,
@@ -57,12 +56,13 @@ const DEFAULT_HISTORY_CONFIG = {
 } as const
 
 export const createEngine = (options: CreateEngineOptions): Engine => {
-  const performance = createPerformanceRuntime(options.performance)
   const historyConfig = {
     ...DEFAULT_HISTORY_CONFIG,
     ...(options.history ?? {})
   }
   const projection = createDataviewProjection()
+  const documentSourceProjection = createDocumentSourceProjection()
+  const activeSourceProjection = createActiveSourceProjection()
   const mutationEngine = createMutationEngine({
     schema: dataviewMutationSchema,
     document: options.document,
@@ -97,12 +97,27 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
       })
     )
   })
+  documentSourceProjection.update({
+    document: initialDocument,
+    change: createDataviewChange(
+      createDataviewQuery(initialDocument),
+      createMutationChange(dataviewMutationSchema, [], {
+        reset: true
+      })
+    )
+  })
+  activeSourceProjection.update({
+    change: createDataviewChange(
+      createDataviewQuery(initialDocument),
+      createMutationChange(dataviewMutationSchema, [], {
+        reset: true
+      })
+    ),
+    active: projection.state().active
+  })
   const source = createEngineSource({
-    readDocument: () => toDataDoc(mutationEngine.document()),
-    subscribeDocument: (listener) => mutationEngine.subscribe((commit) => {
-      listener(toEngineCommit(commit))
-    }),
-    projection
+    documentProjection: documentSourceProjection,
+    activeProjection: activeSourceProjection
   })
 
   const readCurrent = (): DataviewCurrent => {
@@ -120,27 +135,18 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
   mutationEngine.subscribe((rawCommit) => {
     const commit = toEngineCommit(rawCommit)
     currentRevision += 1
-    const startedAt = now()
-    const projectionResult = projection.update({
+    projection.update({
       document: commit.document,
       change: commit.change
     })
-    const commitTrace = createDataviewCommitTrace({
-      performance,
-      startedAt,
-      commit,
-      index: {
-        trace: projection.read.index.trace()
-      },
-      active: {
-        trace: projection.read.publish.activeTrace(projectionResult.trace.totalMs)
-      },
-      outputMs: 0
+    documentSourceProjection.update({
+      document: commit.document,
+      change: commit.change
     })
-
-    if (commitTrace && performance.enabled) {
-      performance.recordCommit(commitTrace)
-    }
+    activeSourceProjection.update({
+      change: commit.change,
+      active: projection.state().active
+    })
 
     const current = readCurrent()
     currentListeners.forEach((listener) => {
@@ -221,11 +227,10 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
         return commit ? toEngineCommit(commit) : undefined
       },
       clear: mutationEngine.history.clear
-    },
-    performance: performance.api
+    }
   } satisfies Pick<
     Engine,
-    'current' | 'subscribe' | 'doc' | 'replace' | 'execute' | 'apply' | 'commits' | 'history' | 'performance'
+    'current' | 'subscribe' | 'doc' | 'replace' | 'execute' | 'apply' | 'commits' | 'history'
   >
 
   return {

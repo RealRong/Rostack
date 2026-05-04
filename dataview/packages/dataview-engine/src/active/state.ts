@@ -31,11 +31,6 @@ import {
   EMPTY_SUMMARY_STATE
 } from '@dataview/engine/active/summary/empty'
 import type {
-  SnapshotTrace,
-  ViewStageAction,
-  ViewStageMetrics
-} from '@dataview/engine/contracts/performance'
-import type {
   ItemId,
   ItemPlacement,
   SectionBucket,
@@ -117,14 +112,6 @@ export interface SummaryPhaseDelta {
   removed: readonly SectionId[]
 }
 
-export interface DataviewStageTrace {
-  action: ViewStageAction
-  changed: boolean
-  deriveMs: number
-  publishMs: number
-  metrics?: ViewStageMetrics
-}
-
 export interface DataviewStoreChanges {
   active: ProjectionValueChange<ViewState | undefined>
   fields: ProjectionFamilyChange<FieldId, Field>
@@ -146,13 +133,6 @@ export interface DataviewActiveState {
   summaries: ProjectionFamilySnapshot<SectionId, CalculationCollection>
   itemIds: ItemIdPool
   changes: DataviewStoreChanges
-  trace: {
-    query: DataviewStageTrace
-    membership: DataviewStageTrace
-    summary: DataviewStageTrace
-    publish: DataviewStageTrace
-    snapshot: SnapshotTrace
-  }
 }
 
 export interface DataviewState {
@@ -194,11 +174,6 @@ export const EMPTY_SUMMARY_PHASE_DELTA: SummaryPhaseDelta = {
   removed: EMPTY_SECTION_IDS
 }
 
-export const EMPTY_SNAPSHOT_TRACE: SnapshotTrace = {
-  storeCount: 0,
-  changedStores: []
-}
-
 export const EMPTY_FIELD_FAMILY: ProjectionFamilySnapshot<FieldId, Field> = {
   ids: EMPTY_FIELD_IDS,
   byId: EMPTY_FIELDS
@@ -217,13 +192,6 @@ export const EMPTY_ITEM_FAMILY: ProjectionFamilySnapshot<ItemId, ItemPlacement> 
 export const EMPTY_SUMMARY_FAMILY: ProjectionFamilySnapshot<SectionId, CalculationCollection> = {
   ids: EMPTY_SECTION_IDS,
   byId: EMPTY_SUMMARIES
-}
-
-export const EMPTY_STAGE_TRACE: DataviewStageTrace = {
-  action: 'reuse',
-  changed: false,
-  deriveMs: 0,
-  publishMs: 0
 }
 
 export const emptyQueryPhaseState = (): QueryPhaseState => ({
@@ -256,12 +224,5 @@ export const createEmptyDataviewActiveState = (): DataviewActiveState => ({
   items: EMPTY_ITEM_FAMILY,
   summaries: EMPTY_SUMMARY_FAMILY,
   itemIds: createItemIdPool(),
-  changes: createEmptyDataviewStoreChanges(),
-  trace: {
-    query: EMPTY_STAGE_TRACE,
-    membership: EMPTY_STAGE_TRACE,
-    summary: EMPTY_STAGE_TRACE,
-    publish: EMPTY_STAGE_TRACE,
-    snapshot: EMPTY_SNAPSHOT_TRACE
-  }
+  changes: createEmptyDataviewStoreChanges()
 })

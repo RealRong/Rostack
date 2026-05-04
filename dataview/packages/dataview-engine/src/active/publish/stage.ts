@@ -7,7 +7,6 @@ import type {
 } from '@dataview/engine/active/plan'
 import type {
   DataviewActiveState,
-  DataviewStageTrace,
   MembershipPhaseState,
   QueryPhaseState,
   SummaryPhaseState
@@ -51,10 +50,6 @@ import type {
 import type {
   ProjectionFamilySnapshot
 } from '@shared/projection'
-import { now } from '@dataview/engine/runtime/clock'
-import {
-  createActiveStageMetrics
-} from '@dataview/engine/active/projection/metrics'
 
 const SNAPSHOT_KEYS = [
   'view',
@@ -168,7 +163,6 @@ export const publishActiveView = (input: {
   summaries: ProjectionFamilySnapshot<SectionId, CalculationCollection>
   sectionDelta?: EntityDelta<SectionId>
   itemDelta?: EntityDelta<ItemId>
-  trace: DataviewStageTrace
 } => {
   const action = input.plan.publish.action
   const previous = input.previous.snapshot
@@ -178,23 +172,10 @@ export const publishActiveView = (input: {
       fields: input.previous.fields,
       sections: input.previous.sections,
       items: input.previous.items,
-      summaries: input.previous.summaries,
-      trace: {
-        action,
-        changed: false,
-        deriveMs: 0,
-        publishMs: 0,
-        metrics: createActiveStageMetrics({
-          inputCount: previous ? SNAPSHOT_KEYS.length : 0,
-          outputCount: previous ? SNAPSHOT_KEYS.length : 0,
-          reusedNodeCount: previous ? SNAPSHOT_KEYS.length : 0,
-          rebuiltNodeCount: 0
-        })
-      }
+      summaries: input.previous.summaries
     }
   }
 
-  const publishStart = now()
   const canReusePublished = previous?.view.id === input.active.id
   if (!canReusePublished) {
     input.previous.itemIds.gc.clear()
@@ -273,8 +254,6 @@ export const publishActiveView = (input: {
       })
     : undefined
   const snapshot = published?.value
-  const publishMs = now() - publishStart
-  const outputCount = SNAPSHOT_KEYS.length
 
   return {
     snapshot,
@@ -291,20 +270,6 @@ export const publishActiveView = (input: {
       ? {
           itemDelta: sections.delta.items
         }
-      : {}),
-    trace: {
-      action,
-      changed: snapshot !== previous,
-      deriveMs: 0,
-      publishMs,
-      metrics: createActiveStageMetrics({
-        inputCount: previous
-          ? outputCount
-          : 0,
-        outputCount,
-        reusedNodeCount: published?.reusedNodeCount ?? 0,
-        rebuiltNodeCount: published?.rebuiltNodeCount ?? outputCount
-      })
-    }
+      : {})
   }
 }

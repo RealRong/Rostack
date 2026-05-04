@@ -58,11 +58,7 @@ const parseArgs = (argv: string[]) => {
 
 const createBenchEngine = (fixture: ReturnType<typeof createFixture>) => createEngine({
   spec: dataviewSpec,
-  document: fixture.document,
-  performance: {
-    traces: true,
-    stats: true
-  }
+  document: fixture.document
 })
 
 const forceGc = () => {
@@ -81,8 +77,6 @@ const runScenarioIteration = (scenario: ReturnType<typeof getScenarios>[number],
 
   scenario.setup?.(engine, fixture)
   scenario.prepare?.(engine, fixture)
-  engine.performance.traces.clear()
-  engine.performance.stats.clear()
   forceGc()
 
   const stableHeapBeforeMb = heapUsedMb()
@@ -92,15 +86,9 @@ const runScenarioIteration = (scenario: ReturnType<typeof getScenarios>[number],
   const heapAfterRunMb = heapUsedMb()
   forceGc()
   const heapAfterGcMb = heapUsedMb()
-  const trace = engine.performance.traces.last()
-
-  if (!trace) {
-    throw new Error(`Scenario "${scenario.id}" did not produce a perf trace.`)
-  }
 
   return {
     elapsedMs,
-    trace,
     heapBeforeMb,
     stableHeapBeforeMb,
     heapAfterRunMb,
@@ -117,11 +105,7 @@ const summarizeRuns = (runs: ReturnType<typeof runScenarioIteration>[], scenario
   },
   iterations: runs.length,
   avg: {
-    elapsedMs: averageOf(runs.map(run => run.elapsedMs)),
-    totalMs: averageOf(runs.map(run => run.trace.timings.totalMs)),
-    indexMs: averageOf(runs.map(run => run.trace.timings.indexMs ?? 0)),
-    viewMs: averageOf(runs.map(run => run.trace.timings.viewMs ?? 0)),
-    snapshotMs: averageOf(runs.map(run => run.trace.timings.snapshotMs ?? 0))
+    elapsedMs: averageOf(runs.map(run => run.elapsedMs))
   },
   heapMb: {
     before: averageOf(runs.map(run => run.stableHeapBeforeMb)),
@@ -156,9 +140,8 @@ const reportResults = (results: {
   results.results.forEach(result => {
     console.log('')
     console.log(`${result.size} | ${result.scenario.id} | records=${result.records}`)
-    console.log(`  avg total=${result.avg.totalMs.toFixed(3)}ms index=${result.avg.indexMs.toFixed(3)}ms view=${result.avg.viewMs.toFixed(3)}ms snapshot=${result.avg.snapshotMs.toFixed(3)}ms`)
+    console.log(`  avg elapsed=${result.avg.elapsedMs.toFixed(3)}ms`)
     console.log(`  heap before=${result.heapMb.before.toFixed(2)}MB afterRun=${result.heapMb.afterRun.toFixed(2)}MB afterGc=${result.heapMb.afterGc.toFixed(2)}MB transient=${result.heapMb.transientDelta.toFixed(2)}MB retained=${result.heapMb.retainedDelta.toFixed(2)}MB`)
-    console.log(`  index actions=${Object.entries(result.indexActions).map(([key, value]) => `${key}:${value}`).join(' ')}`)
   })
 }
 

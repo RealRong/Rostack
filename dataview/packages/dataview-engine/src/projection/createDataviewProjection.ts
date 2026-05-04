@@ -31,11 +31,6 @@ import {
   ensureDataviewIndex
 } from '@dataview/engine/active/index/runtime'
 import type {
-  IndexTrace,
-  SnapshotTrace,
-  ViewTrace
-} from '@dataview/engine/contracts/performance'
-import type {
   ViewState
 } from '@dataview/engine/contracts/view'
 
@@ -63,84 +58,6 @@ export interface DataviewProjectionRead {
   }
   index: {
     state(): DataviewState['active']['index']
-    trace(): IndexTrace | undefined
-  }
-  publish: {
-    snapshotTrace(): SnapshotTrace
-    viewTrace(totalMs?: number): ViewTrace
-    activeTrace(totalMs?: number): {
-      view: ViewTrace
-      snapshot: SnapshotTrace
-      snapshotMs: number
-    }
-  }
-}
-
-const EMPTY_SNAPSHOT_TRACE: SnapshotTrace = {
-  storeCount: 0,
-  changedStores: []
-}
-
-const buildViewTrace = (input: {
-  state: DataviewState
-  totalMs: number
-}): ViewTrace => {
-  const trace = input.state.active.trace
-  return {
-    plan: {
-      query: trace.query.action,
-      membership: trace.membership.action,
-      summary: trace.summary.action,
-      publish: trace.publish.action
-    },
-    timings: {
-      totalMs: input.totalMs
-    },
-    stages: [{
-      stage: 'query',
-      action: trace.query.action,
-      executed: true,
-      changed: trace.query.changed,
-      durationMs: trace.query.deriveMs + trace.query.publishMs,
-      deriveMs: trace.query.deriveMs,
-      publishMs: trace.query.publishMs,
-      ...(trace.query.metrics
-        ? { metrics: trace.query.metrics }
-        : {})
-    }, {
-      stage: 'membership',
-      action: trace.membership.action,
-      executed: true,
-      changed: trace.membership.changed,
-      durationMs: trace.membership.deriveMs + trace.membership.publishMs,
-      deriveMs: trace.membership.deriveMs,
-      publishMs: trace.membership.publishMs,
-      ...(trace.membership.metrics
-        ? { metrics: trace.membership.metrics }
-        : {})
-    }, {
-      stage: 'summary',
-      action: trace.summary.action,
-      executed: true,
-      changed: trace.summary.changed,
-      durationMs: trace.summary.deriveMs + trace.summary.publishMs,
-      deriveMs: trace.summary.deriveMs,
-      publishMs: trace.summary.publishMs,
-      ...(trace.summary.metrics
-        ? { metrics: trace.summary.metrics }
-        : {})
-    }, {
-      stage: 'publish',
-      action: trace.publish.action,
-      executed: true,
-      changed: trace.publish.changed,
-      durationMs: trace.publish.deriveMs + trace.publish.publishMs,
-      deriveMs: trace.publish.deriveMs,
-      publishMs: trace.publish.publishMs,
-      ...(trace.publish.metrics
-        ? { metrics: trace.publish.metrics }
-        : {})
-    }]
   }
 }
 
@@ -170,23 +87,7 @@ export const createDataviewProjectionRead = (runtime: {
     snapshot: () => runtime.state().active.snapshot
   },
   index: {
-    state: () => runtime.state().active.index,
-    trace: () => runtime.state().active.index?.trace
-  },
-  publish: {
-    snapshotTrace: () => runtime.state().active.trace.snapshot,
-    viewTrace: (totalMs = 0) => buildViewTrace({
-      state: runtime.state(),
-      totalMs
-    }),
-    activeTrace: (totalMs = 0) => ({
-      view: buildViewTrace({
-        state: runtime.state(),
-        totalMs
-      }),
-      snapshot: runtime.state().active.trace.snapshot,
-      snapshotMs: runtime.state().active.trace.publish.publishMs
-    })
+    state: () => runtime.state().active.index
   }
 })
 

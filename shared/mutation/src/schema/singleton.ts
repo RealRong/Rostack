@@ -1,6 +1,6 @@
 import type {
-  MutationSingletonNode,
-  MutationShape
+  MutationShape,
+  MutationSingletonNode
 } from './node'
 import {
   createSingletonNode

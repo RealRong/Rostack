@@ -1,12 +1,9 @@
+import type {
+  CompiledMutationSchema
+} from '../compile/schema'
 import {
-  createMutationDelta,
-  type MutationDelta,
-  type MutationDeltaSource
-} from '../delta/createDelta'
-import {
-  createMutationReader,
-  type MutationReader
-} from '../reader/createReader'
+  getCompiledMutationSchema
+} from '../compile/schema'
 import type {
   MutationSchema
 } from '../schema/node'
@@ -14,19 +11,19 @@ import type {
   MutationDocument
 } from '../schema/value'
 
-export type MutationQuery<TSchema extends MutationSchema = MutationSchema> =
-  MutationReader<TSchema> & {
-    changes(input: MutationDeltaSource<TSchema>): MutationDelta<TSchema>
-  }
+export type MutationQuery<TSchema extends MutationSchema = MutationSchema> = {
+  readonly schema: TSchema
+  readonly document: MutationDocument<TSchema>
+  readonly compiled: CompiledMutationSchema
+}
 
 export const createMutationQuery = <TSchema extends MutationSchema>(
   schema: TSchema,
-  input: MutationDocument<TSchema> | (() => MutationDocument<TSchema>)
-): MutationQuery<TSchema> => Object.assign(
-  createMutationReader(schema, input),
-  {
-    changes(changeInput: MutationDeltaSource<TSchema>) {
-      return createMutationDelta(schema, changeInput)
-    }
-  }
-)
+  document: MutationDocument<TSchema>
+): MutationQuery<TSchema> => ({
+  schema,
+  document,
+  compiled: getCompiledMutationSchema(schema)
+})
+
+export const query = createMutationQuery

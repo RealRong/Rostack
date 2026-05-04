@@ -1,5 +1,4 @@
 import type {
-  MutationAccessOverride,
   MutationSequenceConfig,
   MutationTreeSnapshot
 } from './constants'
@@ -7,9 +6,6 @@ import {
   MUTATION_NODE,
   MUTATION_OPTIONAL,
 } from './constants'
-import {
-  setNodeAccess
-} from './internals'
 import type {
   MutationDictionaryNode,
   MutationFieldNode,
@@ -21,11 +17,6 @@ import type {
   MutationTableNode,
   MutationTreeNode
 } from './node'
-import type {
-  MutationMapValue,
-  MutationTableValue,
-  MutationValueOfShape
-} from './value'
 
 const createNode = <const TNode extends object>(
   node: TNode
@@ -56,103 +47,37 @@ export const createObjectNode = <TShape extends MutationShape>(
 
 export const createDictionaryNode = <TKey extends string, TValue,>(): MutationDictionaryNode<TKey, TValue> => createNode({
   kind: 'dictionary'
-})
+}) as MutationDictionaryNode<TKey, TValue>
 
 export const createSequenceNode = <TItem,>(
-  config?: MutationSequenceConfig<TItem>,
-  access?: MutationAccessOverride<readonly TItem[]>
-): MutationSequenceNode<TItem> => {
-  const node = createNode({
-    kind: 'sequence',
-    keyOf: config?.keyOf ?? ((item: TItem) => item as string),
-    from(nextAccess: MutationAccessOverride<readonly TItem[]>) {
-      return createSequenceNode(config, nextAccess)
-    }
-  })
+  config?: MutationSequenceConfig<TItem>
+): MutationSequenceNode<TItem> => createNode({
+  kind: 'sequence',
+  keyOf: config?.keyOf ?? ((item: TItem) => item as string)
+}) as MutationSequenceNode<TItem>
 
-  if (access) {
-    setNodeAccess(node, access)
-  }
-
-  return node
-}
-
-export const createTreeNode = <TNodeId extends string, TValue,>(
-  access?: MutationAccessOverride<MutationTreeSnapshot<TValue>>
-): MutationTreeNode<TNodeId, TValue> => {
-  const node = createNode<{
-    kind: 'tree'
-    from(nextAccess: MutationAccessOverride<MutationTreeSnapshot<TValue>>): MutationTreeNode<TNodeId, TValue>
-  }>({
-    kind: 'tree',
-    from(nextAccess: MutationAccessOverride<MutationTreeSnapshot<TValue>>) {
-      return createTreeNode(nextAccess) as MutationTreeNode<TNodeId, TValue>
-    }
-  }) as MutationTreeNode<TNodeId, TValue>
-
-  if (access) {
-    setNodeAccess(
-      node as MutationTreeNode<string, TValue>,
-      access as MutationAccessOverride<MutationTreeSnapshot<TValue>>
-    )
-  }
-
-  return node
-}
+export const createTreeNode = <TNodeId extends string, TValue,>(): MutationTreeNode<TNodeId, TValue> => createNode({
+  kind: 'tree',
+  valueShape: {} as MutationTreeSnapshot<TValue>
+}) as MutationTreeNode<TNodeId, TValue>
 
 export const createSingletonNode = <TShape extends MutationShape>(
-  shape: TShape,
-  access?: MutationAccessOverride<MutationValueOfShape<TShape>>
-): MutationSingletonNode<TShape> => {
-  const node = createNode({
-    kind: 'singleton',
-    shape,
-    from(nextAccess: MutationAccessOverride<MutationValueOfShape<TShape>>) {
-      return createSingletonNode(shape, nextAccess)
-    }
-  })
-
-  if (access) {
-    setNodeAccess(node, access)
-  }
-
-  return node
-}
+  shape: TShape
+): MutationSingletonNode<TShape> => createNode({
+  kind: 'singleton',
+  shape
+})
 
 export const createTableNode = <TId extends string, TShape extends MutationShape>(
-  shape: TShape,
-  access?: MutationAccessOverride<MutationTableValue<TId, TShape>>
-): MutationTableNode<TId, TShape> => {
-  const node = createNode({
-    kind: 'table',
-    shape,
-    from(nextAccess: MutationAccessOverride<MutationTableValue<TId, TShape>>) {
-      return createTableNode(shape, nextAccess)
-    }
-  })
-
-  if (access) {
-    setNodeAccess(node, access)
-  }
-
-  return node
-}
+  shape: TShape
+): MutationTableNode<TId, TShape> => createNode({
+  kind: 'table',
+  shape
+}) as MutationTableNode<TId, TShape>
 
 export const createMapNode = <TId extends string, TShape extends MutationShape>(
-  shape: TShape,
-  access?: MutationAccessOverride<MutationMapValue<TId, TShape>>
-): MutationMapNode<TId, TShape> => {
-  const node = createNode({
-    kind: 'map',
-    shape,
-    from(nextAccess: MutationAccessOverride<MutationMapValue<TId, TShape>>) {
-      return createMapNode(shape, nextAccess)
-    }
-  })
-
-  if (access) {
-    setNodeAccess(node, access)
-  }
-
-  return node
-}
+  shape: TShape
+): MutationMapNode<TId, TShape> => createNode({
+  kind: 'map',
+  shape
+}) as MutationMapNode<TId, TShape>

@@ -30,79 +30,94 @@ export {
 } from './schema/tree'
 
 export {
-  createMutationReader
+  compileMutationSchema,
+  getCompiledMutationNode,
+  getCompiledMutationSchema
+} from './compile/schema'
+export {
+  createMutationReader,
+  reader
 } from './reader/createReader'
 export {
-  createMutationWriter
+  createMutationWriter,
+  writer
 } from './writer/createWriter'
 export {
-  deserializeMutationWrites,
-  serializeMutationWrites
-} from './writer/serialize'
+  createMutationChange,
+  change,
+  extendMutationChange
+} from './change/createChange'
 export {
-  createMutationConflictScopes,
-  mutationConflictScopesIntersect
-} from './writer/conflict'
-export {
-  createMutationDelta,
-  createMutationResetDelta
-} from './delta/createDelta'
-export {
-  mergeMutationDeltas
-} from './delta/merge'
-export {
-  createMutationQuery
+  createMutationQuery,
+  query
 } from './query/createQuery'
 export {
   createMutationEngine
 } from './runtime/createEngine'
 
 export type {
-  MutationAccessOverride,
-  MutationSequenceAnchor,
-  MutationTreeInsertInput,
-  MutationTreeMoveInput,
-  MutationTreeNodeSnapshot,
-  MutationTreeSnapshot
-} from './schema/constants'
+  CompiledMutationDictionaryNode,
+  CompiledMutationFieldNode,
+  CompiledMutationMapNode,
+  CompiledMutationNode,
+  CompiledMutationObjectNode,
+  CompiledMutationSchema,
+  CompiledMutationSequenceNode,
+  CompiledMutationSingletonNode,
+  CompiledMutationTableNode,
+  CompiledMutationTreeNode,
+  CompiledMutationNodeFor
+} from './compile/schema'
 export type {
-  MutationSchema
-} from './schema/node'
-export type {
-  MutationDocument,
-  MutationValueOfShape
-} from './schema/value'
-export type {
-  MutationReader
-} from './reader/createReader'
-export type {
-  MutationWriter
-} from './writer/createWriter'
-export type {
-  MutationWrite
-} from './writer/writes'
-export type {
-  SerializedMutationWrite
-} from './writer/serialize'
-export type {
-  MutationConflictEntityRef,
-  MutationConflictScope
-} from './writer/conflict'
-export type {
-  MutationDelta,
-  MutationDeltaSource
-} from './delta/createDelta'
-export type {
-  MutationQuery
-} from './query/createQuery'
+  MutationChange
+} from './change/createChange'
 export type {
   MutationCompile,
   MutationIssue,
   MutationResult
 } from './compile/types'
 export type {
+  MutationSequenceAnchor,
+  MutationSequenceConfig,
+  MutationTreeInsertInput,
+  MutationTreeMoveInput,
+  MutationTreeNodeSnapshot,
+  MutationTreeSnapshot
+} from './schema/constants'
+export type {
+  MutationDocument,
+  MutationValueOfShape
+} from './schema/value'
+export type {
+  MutationQuery
+} from './query/createQuery'
+export type {
+  MutationReader
+} from './reader/createReader'
+export type {
   MutationCommit
 } from './runtime/createEngine'
 export type {
   MutationOrigin
 } from './runtime/history'
+export type {
+  MutationDictionaryNode,
+  MutationFieldNode,
+  MutationMapNode,
+  MutationObjectNode,
+  MutationSchema,
+  MutationSequenceNode,
+  MutationShape,
+  MutationShapeNode,
+  MutationSingletonNode,
+  MutationTableNode,
+  MutationTreeNode
+} from './schema/node'
+export type {
+  MutationEntityTarget,
+  MutationScope,
+  MutationWrite
+} from './writer/writes'
+export type {
+  MutationWriter
+} from './writer/createWriter'

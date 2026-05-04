@@ -1,10 +1,10 @@
 import type {
-  MutationOptionalNode,
-  MutationSchema,
   MutationDictionaryNode,
   MutationFieldNode,
   MutationMapNode,
   MutationObjectNode,
+  MutationOptionalNode,
+  MutationSchema,
   MutationSequenceNode,
   MutationShape,
   MutationSingletonNode,
@@ -18,7 +18,8 @@ import type {
 export type MutationValueOfNode<TNode> =
   TNode extends MutationFieldNode<infer TValue, infer TOptional extends boolean>
     ? (TOptional extends true ? TValue | undefined : TValue)
-  : TNode extends MutationObjectNode<infer TShape> ? MutationValueOfShape<TShape>
+  : TNode extends MutationObjectNode<infer TShape>
+    ? MutationValueOfShape<TShape>
   : TNode extends MutationDictionaryNode<infer TKey extends string, infer TValue>
     ? Partial<Record<TKey, TValue>>
   : TNode extends MutationSequenceNode<infer TItem>

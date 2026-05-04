@@ -5,4 +5,5 @@ import {
   createTreeNode
 } from './create'
 
-export const tree = <TNodeId extends string, TValue,>(): MutationTreeNode<TNodeId, TValue> => createTreeNode<TNodeId, TValue>()
+export const tree = <TNodeId extends string, TValue,>(): MutationTreeNode<TNodeId, TValue> =>
+  createTreeNode<TNodeId, TValue>()

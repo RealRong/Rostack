@@ -1,6 +1,6 @@
 import type {
-  MutationDelta
-} from '../delta/createDelta'
+  MutationChange
+} from '../change/createChange'
 import type {
   MutationQuery
 } from '../query/createQuery'
@@ -33,7 +33,7 @@ type MutationCompileContext<
   read: MutationReader<TSchema>
   write: MutationWriter<TSchema>
   query: MutationQuery<TSchema>
-  change: MutationDelta<TSchema>
+  change: MutationChange<TSchema>
   issue: MutationIssueCollector
   services: TServices
 }

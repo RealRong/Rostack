@@ -2,6 +2,7 @@ export const MUTATION_NODE = Symbol('mutation.node')
 export const MUTATION_SCHEMA = Symbol('mutation.schema')
 export const MUTATION_OPTIONAL = Symbol('mutation.optional')
 export const MUTATION_TYPE = Symbol('mutation.type')
+export const MUTATION_COMPILED_SCHEMA = Symbol('mutation.compiledSchema')
 
 export type MutationTreeNodeSnapshot<TValue = unknown> = {
   parentId?: string
@@ -34,11 +35,6 @@ export type MutationTreeInsertInput<TValue> = {
 export type MutationTreeMoveInput = {
   parentId?: string
   index?: number
-}
-
-export type MutationAccessOverride<TValue> = {
-  read(document: unknown, targetId?: string): TValue
-  write(document: unknown, value: TValue, targetId?: string): unknown
 }
 
 export type MutationSequenceConfig<TItem> = {

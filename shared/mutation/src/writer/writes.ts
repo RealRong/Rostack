@@ -4,123 +4,120 @@ import type {
   MutationTreeMoveInput,
   MutationTreeSnapshot
 } from '../schema/constants'
-import type {
-  MutationDictionaryNode,
-  MutationFieldNode,
-  MutationMapNode,
-  MutationSequenceNode,
-  MutationShape,
-  MutationSingletonNode,
-  MutationTableNode,
-  MutationTreeNode
-} from '../schema/node'
+
+export type MutationScope = readonly string[]
+
+export type MutationEntityTarget = {
+  readonly scope: MutationScope
+  readonly id: string
+}
 
 export type MutationWrite =
   | {
-      kind: 'entity.create'
-      node: MutationTableNode<string, MutationShape> | MutationMapNode<string, MutationShape>
-      targetId: string
-      value: unknown
-      anchor?: MutationSequenceAnchor
-    }
-  | {
-      kind: 'entity.replace'
-      node: MutationSingletonNode<MutationShape> | MutationTableNode<string, MutationShape> | MutationMapNode<string, MutationShape>
-      targetId?: string
-      value: unknown
-    }
-  | {
-      kind: 'entity.remove'
-      node: MutationTableNode<string, MutationShape> | MutationMapNode<string, MutationShape>
-      targetId: string
-    }
-  | {
-      kind: 'entity.move'
-      node: MutationTableNode<string, MutationShape>
-      targetId: string
-      anchor?: MutationSequenceAnchor
-    }
-  | {
       kind: 'field.set'
-      node: MutationFieldNode<unknown, boolean>
-      targetId?: string
+      nodeId: number
+      target?: MutationEntityTarget
       value: unknown
     }
   | {
       kind: 'dictionary.set'
-      node: MutationDictionaryNode<string, unknown>
-      targetId?: string
+      nodeId: number
+      target?: MutationEntityTarget
       key: string
       value: unknown
     }
   | {
       kind: 'dictionary.delete'
-      node: MutationDictionaryNode<string, unknown>
-      targetId?: string
+      nodeId: number
+      target?: MutationEntityTarget
       key: string
     }
   | {
       kind: 'dictionary.replace'
-      node: MutationDictionaryNode<string, unknown>
-      targetId?: string
+      nodeId: number
+      target?: MutationEntityTarget
       value: Readonly<Record<string, unknown>>
     }
   | {
+      kind: 'entity.create'
+      nodeId: number
+      target: MutationEntityTarget
+      value: unknown
+      anchor?: MutationSequenceAnchor
+    }
+  | {
+      kind: 'entity.replace'
+      nodeId: number
+      target?: MutationEntityTarget
+      value: unknown
+    }
+  | {
+      kind: 'entity.remove'
+      nodeId: number
+      target: MutationEntityTarget
+    }
+  | {
+      kind: 'entity.move'
+      nodeId: number
+      target: MutationEntityTarget
+      anchor?: MutationSequenceAnchor
+    }
+  | {
       kind: 'sequence.insert'
-      node: MutationSequenceNode<unknown>
-      targetId?: string
+      nodeId: number
+      target?: MutationEntityTarget
       value: unknown
       anchor?: MutationSequenceAnchor
     }
   | {
       kind: 'sequence.move'
-      node: MutationSequenceNode<unknown>
-      targetId?: string
+      nodeId: number
+      target?: MutationEntityTarget
       value: unknown
       anchor?: MutationSequenceAnchor
     }
   | {
       kind: 'sequence.remove'
-      node: MutationSequenceNode<unknown>
-      targetId?: string
+      nodeId: number
+      target?: MutationEntityTarget
       value: unknown
     }
   | {
       kind: 'sequence.replace'
-      node: MutationSequenceNode<unknown>
-      targetId?: string
+      nodeId: number
+      target?: MutationEntityTarget
       value: readonly unknown[]
     }
   | {
       kind: 'tree.insert'
-      node: MutationTreeNode<string, unknown>
-      targetId?: string
-      nodeId: string
+      nodeId: number
+      target?: MutationEntityTarget
+      treeNodeId: string
       value: MutationTreeInsertInput<unknown>
     }
   | {
       kind: 'tree.move'
-      node: MutationTreeNode<string, unknown>
-      targetId?: string
-      nodeId: string
+      nodeId: number
+      target?: MutationEntityTarget
+      treeNodeId: string
       value: MutationTreeMoveInput
     }
   | {
       kind: 'tree.remove'
-      node: MutationTreeNode<string, unknown>
-      targetId?: string
-      nodeId: string
+      nodeId: number
+      target?: MutationEntityTarget
+      treeNodeId: string
     }
   | {
       kind: 'tree.patch'
-      node: MutationTreeNode<string, unknown>
-      targetId?: string
-      nodeId: string
+      nodeId: number
+      target?: MutationEntityTarget
+      treeNodeId: string
       value: Record<string, unknown>
     }
   | {
       kind: 'tree.replace'
-      node: MutationTreeNode<string, unknown>
-      targetId?: string
+      nodeId: number
+      target?: MutationEntityTarget
       value: MutationTreeSnapshot<unknown>
     }

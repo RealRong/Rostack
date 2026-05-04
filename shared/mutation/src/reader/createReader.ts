@@ -1,12 +1,17 @@
-import {
-  readNodeValue,
-  scopeTargetId,
-  readTreeValue
-} from '../internal/state'
 import type {
-  MutationTreeNodeSnapshot,
-  MutationTreeSnapshot
-} from '../schema/constants'
+  CompiledMutationDictionaryNode,
+  CompiledMutationMapNode,
+  CompiledMutationNode,
+  CompiledMutationObjectNode,
+  CompiledMutationSchema,
+  CompiledMutationSequenceNode,
+  CompiledMutationSingletonNode,
+  CompiledMutationTableNode,
+  CompiledMutationTreeNode
+} from '../compile/schema'
+import {
+  getCompiledMutationSchema
+} from '../compile/schema'
 import type {
   MutationDictionaryNode,
   MutationFieldNode,
@@ -20,234 +25,337 @@ import type {
   MutationTableNode,
   MutationTreeNode
 } from '../schema/node'
-import {
-  isMutationNode
-} from '../schema/node'
 import type {
   MutationDocument,
   MutationMapValue,
   MutationTableValue,
+  MutationValueOfNode,
   MutationValueOfShape
 } from '../schema/value'
-import type {
-  MutationShapeKeys
-} from '../schema/facadeTypes'
 
-type MutationReaderField<TValue> = () => TValue
+type MutationReaderObject<TShape extends MutationShape> = {
+  readonly [K in Extract<keyof TShape, string>]: MutationReaderNode<TShape[K]>
+}
 
-type MutationReaderDictionary<TKey extends string, TValue> = {
-  value(): Readonly<Partial<Record<TKey, TValue>>>
+type MutationEntityReader<TShape extends MutationShape> = MutationReaderObject<TShape> & {
+  value(): MutationValueOfShape<TShape> | undefined
+}
+
+type MutationFieldReader<TValue> = () => TValue
+
+type MutationDictionaryReader<TKey extends string, TValue> = {
   get(key: TKey): TValue | undefined
   has(key: TKey): boolean
   keys(): readonly TKey[]
-  entries(): readonly (readonly [TKey, TValue])[]
+  entries(): readonly [TKey, TValue][]
+  values(): readonly TValue[]
+  value(): Partial<Record<TKey, TValue>>
 }
 
-type MutationReaderSequence<TItem> = {
+type MutationSequenceReader<TItem> = {
+  items(): readonly TItem[]
   value(): readonly TItem[]
-  ids(): readonly TItem[]
-  contains(item: TItem): boolean
-  indexOf(item: TItem): number
+  size(): number
 }
 
-type MutationReaderTree<TNodeId extends string, TValue> = {
-  value(): MutationTreeSnapshot<TValue>
-  node(nodeId: TNodeId): MutationTreeNodeSnapshot<TValue> | undefined
-  parent(nodeId: TNodeId): TNodeId | undefined
-  children(nodeId: TNodeId): readonly TNodeId[]
-  isRoot(nodeId: TNodeId): boolean
+type MutationTreeReader<TNodeId extends string, TValue> = {
+  value(): import('../schema/constants').MutationTreeSnapshot<TValue>
+  has(nodeId: TNodeId): boolean
+  node(nodeId: TNodeId): import('../schema/constants').MutationTreeNodeSnapshot<TValue> | undefined
 }
 
-type MutationReaderShape<TShape extends MutationShape> = {
-  readonly [K in MutationShapeKeys<TShape>]: MutationReaderNode<TShape[K]>
-}
+type MutationSingletonReader<TShape extends MutationShape> = MutationEntityReader<TShape>
 
-type MutationReaderObject<TShape extends MutationShape> = MutationReaderShape<TShape> & {
-  value(): MutationValueOfShape<TShape>
-}
-
-type MutationReaderCollection<TId extends string, TShape extends MutationShape> = ((id: TId) => MutationReaderObject<TShape>) & {
-  value(): MutationTableValue<TId, TShape> | MutationMapValue<TId, TShape>
+type MutationTableReader<TId extends string, TShape extends MutationShape> = ((id: TId) => MutationEntityReader<TShape>) & {
   ids(): readonly TId[]
   has(id: TId): boolean
-  get(id: TId): MutationValueOfShape<TShape> | undefined
+  get(id: TId): MutationEntityReader<TShape> | undefined
+  value(): MutationTableValue<TId, TShape>
 }
 
-type MutationReaderNode<TNode> =
+type MutationMapReader<TId extends string, TShape extends MutationShape> = ((id: TId) => MutationEntityReader<TShape>) & {
+  ids(): readonly TId[]
+  has(id: TId): boolean
+  get(id: TId): MutationEntityReader<TShape> | undefined
+  value(): MutationMapValue<TId, TShape>
+}
+
+export type MutationReaderNode<TNode> =
   TNode extends MutationFieldNode<infer TValue, infer TOptional extends boolean>
-    ? MutationReaderField<TOptional extends true ? TValue | undefined : TValue>
-  : TNode extends MutationObjectNode<infer TShape> ? MutationReaderObject<TShape>
-  : TNode extends MutationDictionaryNode<infer TKey extends string, infer TValue>
-    ? MutationReaderDictionary<TKey, TValue>
-  : TNode extends MutationSequenceNode<infer TItem>
-    ? MutationReaderSequence<TItem>
-  : TNode extends MutationTreeNode<infer TNodeId extends string, infer TValue>
-    ? MutationReaderTree<TNodeId, TValue>
-  : TNode extends MutationSingletonNode<infer TShape>
+    ? MutationFieldReader<TOptional extends true ? TValue | undefined : TValue>
+  : TNode extends MutationObjectNode<infer TShape>
     ? MutationReaderObject<TShape>
+  : TNode extends MutationDictionaryNode<infer TKey extends string, infer TValue>
+    ? MutationDictionaryReader<TKey, TValue>
+  : TNode extends MutationSequenceNode<infer TItem>
+    ? MutationSequenceReader<TItem>
+  : TNode extends MutationTreeNode<infer TNodeId extends string, infer TValue>
+    ? MutationTreeReader<TNodeId, TValue>
+  : TNode extends MutationSingletonNode<infer TShape>
+    ? MutationSingletonReader<TShape>
   : TNode extends MutationTableNode<infer TId extends string, infer TShape>
-    ? MutationReaderCollection<TId, TShape>
+    ? MutationTableReader<TId, TShape>
   : TNode extends MutationMapNode<infer TId extends string, infer TShape>
-    ? MutationReaderCollection<TId, TShape>
+    ? MutationMapReader<TId, TShape>
   : TNode extends MutationShape
-    ? MutationReaderShape<TNode>
+    ? MutationReaderObject<TNode>
   : never
 
 export type MutationReader<TSchema extends MutationSchema = MutationSchema> =
   TSchema extends MutationSchema<infer TShape>
-    ? MutationReaderShape<TShape>
+    ? MutationReaderObject<TShape>
     : never
 
-const createFieldReader = (
-  node: MutationFieldNode<unknown, boolean>,
-  readDocument: () => unknown,
-  targetId?: string
-) => () => readNodeValue(node, readDocument(), targetId)
+type ReadValue<TValue> = () => TValue
 
-const createDictionaryReader = (
-  node: MutationDictionaryNode<string, unknown>,
-  readDocument: () => unknown,
-  targetId?: string
-) => ({
-  value: () => (readNodeValue(node, readDocument(), targetId) as Record<string, unknown> | undefined) ?? {},
-  get: (key: string) => ((readNodeValue(node, readDocument(), targetId) as Record<string, unknown> | undefined) ?? {})[key],
-  has: (key: string) => key in (((readNodeValue(node, readDocument(), targetId) as Record<string, unknown> | undefined) ?? {})),
-  keys: () => Object.keys(((readNodeValue(node, readDocument(), targetId) as Record<string, unknown> | undefined) ?? {})),
-  entries: () => Object.entries(((readNodeValue(node, readDocument(), targetId) as Record<string, unknown> | undefined) ?? {}))
+const defineLazyProperty = <TObject extends object, TValue>(
+  target: TObject,
+  key: string,
+  create: () => TValue
+): void => {
+  let initialized = false
+  let currentValue: TValue
+
+  Object.defineProperty(target, key, {
+    enumerable: true,
+    configurable: false,
+    get() {
+      if (!initialized) {
+        currentValue = create()
+        initialized = true
+      }
+      return currentValue
+    }
+  })
+}
+
+const readRecordKeys = <TKey extends string, TValue>(
+  value: Partial<Record<TKey, TValue>> | undefined
+): TKey[] => Object.keys(value ?? {}) as TKey[]
+
+const createFieldReader = <TValue>(
+  readValue: ReadValue<TValue>
+): MutationFieldReader<TValue> => () => readValue()
+
+const createDictionaryReader = <TKey extends string, TValue>(
+  readValue: ReadValue<Partial<Record<TKey, TValue>> | undefined>
+): MutationDictionaryReader<TKey, TValue> => ({
+  get(key) {
+    return readValue()?.[key]
+  },
+  has(key) {
+    return key in (readValue() ?? {})
+  },
+  keys() {
+    return readRecordKeys(readValue())
+  },
+  entries() {
+    const value = readValue() ?? {}
+    return readRecordKeys(value).map((key) => [key, value[key] as TValue] as [TKey, TValue])
+  },
+  values() {
+    const value = readValue() ?? {}
+    return readRecordKeys(value).map((key) => value[key] as TValue)
+  },
+  value() {
+    return readValue() ?? {}
+  }
 })
 
-const createSequenceReader = (
-  node: MutationSequenceNode<unknown>,
-  readDocument: () => unknown,
-  targetId?: string
-) => ({
-  value: () => ((readNodeValue(node, readDocument(), targetId) as readonly unknown[] | undefined) ?? []),
-  ids: () => ((readNodeValue(node, readDocument(), targetId) as readonly unknown[] | undefined) ?? []),
-  contains: (item: unknown) => (((readNodeValue(node, readDocument(), targetId) as readonly unknown[] | undefined) ?? []).some((entry) => node.keyOf(entry) === node.keyOf(item))),
-  indexOf: (item: unknown) => (((readNodeValue(node, readDocument(), targetId) as readonly unknown[] | undefined) ?? []).findIndex((entry) => node.keyOf(entry) === node.keyOf(item)))
+const createSequenceReader = <TItem>(
+  readValue: ReadValue<readonly TItem[] | undefined>
+): MutationSequenceReader<TItem> => ({
+  items() {
+    return readValue() ?? []
+  },
+  value() {
+    return readValue() ?? []
+  },
+  size() {
+    return (readValue() ?? []).length
+  }
 })
 
-const createTreeReader = (
-  node: MutationTreeNode<string, unknown>,
-  readDocument: () => unknown,
-  targetId?: string
-) => ({
-  value: () => readTreeValue(node, readDocument(), targetId),
-  node: (nodeId: string) => readTreeValue(node, readDocument(), targetId).nodes[nodeId],
-  parent: (nodeId: string) => readTreeValue(node, readDocument(), targetId).nodes[nodeId]?.parentId,
-  children: (nodeId: string) => readTreeValue(node, readDocument(), targetId).nodes[nodeId]?.children ?? [],
-  isRoot: (nodeId: string) => readTreeValue(node, readDocument(), targetId).rootId === nodeId
+const createTreeReader = <TNodeId extends string, TValue>(
+  readValue: ReadValue<import('../schema/constants').MutationTreeSnapshot<TValue> | undefined>
+): MutationTreeReader<TNodeId, TValue> => ({
+  value() {
+    return readValue() ?? {
+      rootId: undefined,
+      nodes: {}
+    }
+  },
+  has(nodeId) {
+    return nodeId in this.value().nodes
+  },
+  node(nodeId) {
+    return this.value().nodes[nodeId]
+  }
 })
-
-const createShapeReader = (
-  shape: MutationShape,
-  readDocument: () => unknown,
-  targetId?: string
-): Record<string, unknown> => Object.fromEntries(
-  Object.entries(shape)
-    .map(([key, value]) => [
-      key,
-      createNodeReader(value as MutationShapeNode | MutationShape, readDocument, targetId)
-    ])
-)
 
 const createObjectReader = (
-  shape: MutationShape,
-  readValue: () => unknown,
-  readDocument: () => unknown,
-  targetId?: string
-) => Object.assign(
-  createShapeReader(shape, readDocument, targetId),
-  {
-    value: readValue
-  }
-)
+  node: CompiledMutationObjectNode,
+  readValue: ReadValue<unknown>
+): object => {
+  const result: Record<string, unknown> = {}
 
-const createCollectionReader = (
-  node: MutationTableNode<string, MutationShape> | MutationMapNode<string, MutationShape>,
-  readDocument: () => unknown,
-  ownerTargetId?: string
-) => Object.assign(
-  (id: string) => createObjectReader(
-    node.shape,
-    () => {
-      const source = readNodeValue(node, readDocument(), ownerTargetId) as MutationTableValue<string, MutationShape> | MutationMapValue<string, MutationShape> | undefined
-      if (node.kind === 'table') {
-        return (source as MutationTableValue<string, MutationShape> | undefined)?.byId?.[id]
+  for (const [key, entry] of Object.entries(node.entries)) {
+    defineLazyProperty(result, key, () => createReaderNode(
+      entry,
+      () => {
+        const owner = readValue() as Record<string, unknown> | undefined
+        return owner?.[key]
       }
-      return (source as MutationMapValue<string, MutationShape> | undefined)?.[id]
-    },
-    readDocument,
-    scopeTargetId(ownerTargetId, id)
-  ),
+    ))
+  }
+
+  return result
+}
+
+const createEntityReader = (
+  node: CompiledMutationObjectNode,
+  readValue: ReadValue<unknown>
+): object => Object.assign(
+  createObjectReader(node, readValue),
   {
-    value: () => readNodeValue(node, readDocument(), ownerTargetId) as MutationTableValue<string, MutationShape> | MutationMapValue<string, MutationShape>,
-    ids: () => {
-      const source = readNodeValue(node, readDocument(), ownerTargetId) as MutationTableValue<string, MutationShape> | MutationMapValue<string, MutationShape> | undefined
-      return node.kind === 'table'
-        ? [...((source as MutationTableValue<string, MutationShape> | undefined)?.ids ?? [])]
-        : Object.keys((source ?? {}) as Record<string, unknown>)
-    },
-    has: (id: string) => {
-      const source = readNodeValue(node, readDocument(), ownerTargetId) as MutationTableValue<string, MutationShape> | MutationMapValue<string, MutationShape> | undefined
-      return node.kind === 'table'
-        ? Boolean((source as MutationTableValue<string, MutationShape> | undefined)?.byId?.[id])
-        : Boolean((source as MutationMapValue<string, MutationShape> | undefined)?.[id])
-    },
-    get: (id: string) => {
-      const source = readNodeValue(node, readDocument(), ownerTargetId) as MutationTableValue<string, MutationShape> | MutationMapValue<string, MutationShape> | undefined
-      return node.kind === 'table'
-        ? (source as MutationTableValue<string, MutationShape> | undefined)?.byId?.[id]
-        : (source as MutationMapValue<string, MutationShape> | undefined)?.[id]
+    value() {
+      return readValue()
     }
   }
 )
 
-const createNodeReader = (
-  entry: MutationShapeNode | MutationShape,
-  readDocument: () => unknown,
-  targetId?: string
-): unknown => {
-  if (!isMutationNode(entry)) {
-    return createShapeReader(entry, readDocument, targetId)
+const createTableReader = (
+  node: CompiledMutationTableNode,
+  readValue: ReadValue<unknown>
+): MutationTableReader<string, MutationShape> => {
+  const entityCache = new Map<string, object>()
+
+  const createEntity = (id: string) => {
+    const cached = entityCache.get(id)
+    if (cached) {
+      return cached
+    }
+
+    const next = createEntityReader(
+      node.entity,
+      () => {
+        const table = (readValue() ?? {
+          ids: [],
+          byId: {}
+        }) as MutationTableValue<string, MutationShape>
+        return table.byId[id]
+      }
+    )
+    entityCache.set(id, next)
+    return next
   }
 
-  switch (entry.kind) {
+  return Object.assign(
+    (id: string) => createEntity(id),
+    {
+      ids() {
+        const table = readValue() as MutationTableValue<string, MutationShape> | undefined
+        return table?.ids ?? []
+      },
+      has(id: string) {
+        const table = readValue() as MutationTableValue<string, MutationShape> | undefined
+        return table?.byId[id] !== undefined
+      },
+      get(id: string) {
+        return this.has(id) ? createEntity(id) : undefined
+      },
+      value() {
+        return (readValue() as MutationTableValue<string, MutationShape> | undefined) ?? {
+          ids: [],
+          byId: {}
+        }
+      }
+    }
+  ) as MutationTableReader<string, MutationShape>
+}
+
+const createMapReader = (
+  node: CompiledMutationMapNode,
+  readValue: ReadValue<unknown>
+): MutationMapReader<string, MutationShape> => {
+  const entityCache = new Map<string, object>()
+
+  const createEntity = (id: string) => {
+    const cached = entityCache.get(id)
+    if (cached) {
+      return cached
+    }
+
+    const next = createEntityReader(
+      node.entity,
+      () => (readValue() as MutationMapValue<string, MutationShape> | undefined)?.[id]
+    )
+    entityCache.set(id, next)
+    return next
+  }
+
+  return Object.assign(
+    (id: string) => createEntity(id),
+    {
+      ids() {
+        return readRecordKeys(readValue() as MutationMapValue<string, MutationShape> | undefined)
+      },
+      has(id: string) {
+        const value = readValue() as MutationMapValue<string, MutationShape> | undefined
+        return value?.[id] !== undefined
+      },
+      get(id: string) {
+        return this.has(id) ? createEntity(id) : undefined
+      },
+      value() {
+        return (readValue() as MutationMapValue<string, MutationShape> | undefined) ?? {}
+      }
+    }
+  ) as MutationMapReader<string, MutationShape>
+}
+
+const createSingletonReader = (
+  node: CompiledMutationSingletonNode,
+  readValue: ReadValue<unknown>
+): MutationSingletonReader<MutationShape> => createEntityReader(
+  node.entity,
+  () => readValue()
+) as MutationSingletonReader<MutationShape>
+
+const createReaderNode = (
+  node: CompiledMutationNode,
+  readValue: ReadValue<unknown>
+): unknown => {
+  switch (node.kind) {
     case 'field':
-      return createFieldReader(entry, readDocument, targetId)
+      return createFieldReader(readValue)
     case 'dictionary':
-      return createDictionaryReader(entry, readDocument, targetId)
+      return createDictionaryReader(
+        readValue as ReadValue<Partial<Record<string, unknown>> | undefined>
+      )
     case 'sequence':
-      return createSequenceReader(entry, readDocument, targetId)
+      return createSequenceReader(readValue as ReadValue<readonly unknown[] | undefined>)
     case 'tree':
-      return createTreeReader(entry, readDocument, targetId)
+      return createTreeReader(
+        readValue as ReadValue<import('../schema/constants').MutationTreeSnapshot<unknown> | undefined>
+      )
     case 'object':
-      return createObjectReader(
-        entry.shape,
-        () => readNodeValue(entry, readDocument(), targetId),
-        readDocument,
-        targetId
-      )
+      return createObjectReader(node, readValue)
     case 'singleton':
-      return createObjectReader(
-        entry.shape,
-        () => readNodeValue(entry, readDocument()),
-        readDocument,
-        targetId
-      )
+      return createSingletonReader(node, readValue)
     case 'table':
+      return createTableReader(node, readValue)
     case 'map':
-      return createCollectionReader(entry, readDocument, targetId)
+      return createMapReader(node, readValue)
   }
 }
 
 export const createMutationReader = <TSchema extends MutationSchema>(
   schema: TSchema,
-  input: MutationDocument<TSchema> | (() => MutationDocument<TSchema>)
-): MutationReader<TSchema> => {
-  const readDocument = typeof input === 'function'
-    ? input as () => unknown
-    : () => input as unknown
+  document: MutationDocument<TSchema>
+): MutationReader<TSchema> => createObjectReader(
+  getCompiledMutationSchema(schema).root,
+  () => document as MutationValueOfNode<TSchema['shape']>
+) as MutationReader<TSchema>
 
-  return createShapeReader(schema.shape, readDocument) as MutationReader<TSchema>
-}
+export const reader = createMutationReader

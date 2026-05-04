@@ -1,6 +1,6 @@
 import type {
-  MutationTableNode,
-  MutationShape
+  MutationShape,
+  MutationTableNode
 } from './node'
 import {
   createTableNode

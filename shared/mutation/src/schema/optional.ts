@@ -18,7 +18,7 @@ export function optional<TNode extends MutationShapeNode>(
   node: TNode
 ): MutationOptionalizedNode<TNode> {
   return {
-  ...node,
-  [MUTATION_OPTIONAL]: true
-} as MutationOptionalizedNode<TNode>
+    ...node,
+    [MUTATION_OPTIONAL]: true
+  } as MutationOptionalizedNode<TNode>
 }

@@ -56,7 +56,7 @@ export type MutationValueOfShape<TShape extends MutationShape> = {
 
 export type MutationTableValue<TId extends string, TShape extends MutationShape> = {
   ids: TId[]
-  byId: Partial<Record<TId, MutationValueOfShape<TShape>>>
+  byId: Record<TId, MutationValueOfShape<TShape>>
 }
 
 export type MutationMapValue<TId extends string, TShape extends MutationShape> = Partial<

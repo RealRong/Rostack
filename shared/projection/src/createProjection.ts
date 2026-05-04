@@ -3,9 +3,6 @@ import {
   store
 } from '../../core/src/index'
 import type {
-  MutationDelta
-} from '@shared/mutation'
-import type {
   Action,
   Revision
 } from './core'
@@ -23,15 +20,19 @@ export interface ProjectionPhaseStatus {
   endedAt: number
 }
 
+export interface ProjectionChange {
+  reset(): boolean
+}
+
 export interface ProjectionDirty {
   reset: boolean
-  delta: MutationDelta
+  change: ProjectionChange
   [key: string]: unknown
 }
 
 export interface ProjectionContext<
   TInput extends {
-    delta: MutationDelta
+    change: ProjectionChange
   },
   TState,
   TRead,
@@ -111,7 +112,7 @@ export type ProjectionStoreRead<TField> =
 
 export type ProjectionPhase<
   TInput extends {
-    delta: MutationDelta
+    change: ProjectionChange
   },
   TState,
   TRead,
@@ -122,7 +123,7 @@ export type ProjectionPhase<
 
 export type ProjectionPhaseSpec<
   TInput extends {
-    delta: MutationDelta
+    change: ProjectionChange
   },
   TState,
   TRead,
@@ -136,7 +137,7 @@ export type ProjectionPhaseSpec<
 
 export type ProjectionPhaseTable<
   TInput extends {
-    delta: MutationDelta
+    change: ProjectionChange
   },
   TState,
   TRead,
@@ -149,7 +150,7 @@ export interface ProjectionPlan<TPhaseName extends string> {
 
 export interface ProjectionCreateOptions<
   TInput extends {
-    delta: MutationDelta
+    change: ProjectionChange
   },
   TState,
   TRead,
@@ -180,7 +181,7 @@ export interface ProjectionCreateOptions<
 
 export interface ProjectionRuntime<
   TInput extends {
-    delta: MutationDelta
+    change: ProjectionChange
   },
   TState,
   TRead,
@@ -322,7 +323,7 @@ const createStoreRuntime = <
 
 const toPhaseSpec = <
   TInput extends {
-    delta: MutationDelta
+    change: ProjectionChange
   },
   TState,
   TRead,
@@ -346,7 +347,7 @@ const toTraceAction = (
 
 export const createProjection = <
   TInput extends {
-    delta: MutationDelta
+    change: ProjectionChange
   },
   TState,
   TRead,
@@ -431,9 +432,9 @@ export const createProjection = <
         state,
         read,
         revision,
-        dirty: {
-          reset: input.delta.reset(),
-          delta: input.delta
+      dirty: {
+          reset: input.change.reset(),
+          change: input.change
         },
         phase: phaseState
       }

@@ -198,8 +198,7 @@ const lowerViewCreate = (
     }
   }
 
-  const { id: createdViewId, ...createdViewValue } = created
-  input.write.views.create(createdViewId, createdViewValue)
+  input.write.views.create(created.id, created)
   if (input.document.activeViewId === undefined) {
     input.write.activeViewId.set(created.id)
   }

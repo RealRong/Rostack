@@ -2,17 +2,15 @@ import type {
   DataDoc
 } from '@dataview/core/types'
 import {
-  document as documentApi
-} from '@dataview/core/document'
-import {
   compile
 } from '@dataview/core/mutation'
 import {
   dataviewMutationSchema,
-  type DataviewMutationDelta,
+  createDataviewChange,
+  createDataviewQuery,
 } from '@dataview/core/mutation'
 import {
-  createMutationDelta,
+  createMutationChange,
   createMutationEngine,
   type MutationWrite,
 } from '@shared/mutation'
@@ -68,25 +66,39 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
   const mutationEngine = createMutationEngine({
     schema: dataviewMutationSchema,
     document: options.document,
-    normalize: documentApi.normalize,
     compile,
     services: undefined,
     history: historyConfig.enabled
   })
   const currentListeners = new Set<(current: DataviewCurrent) => void>()
   const commitListeners = new Set<(commit: EngineCommit) => void>()
-  const asDataDoc = (document: unknown): DataDoc => document as DataDoc
-  const toEngineCommit = (commit: ReturnType<typeof mutationEngine.apply>): EngineCommit => ({
-    ...commit,
-    document: asDataDoc(commit.document)
-  })
+  let currentRevision = 0
+  const toDataDoc = (document: ReturnType<typeof mutationEngine.document>): DataDoc => document as DataDoc
+  const toEngineCommit = (commit: ReturnType<typeof mutationEngine.apply>): EngineCommit => {
+    const document = toDataDoc(commit.document)
 
+    return {
+      ...commit,
+      document,
+      change: createDataviewChange(
+        createDataviewQuery(document),
+        commit.change
+      )
+    }
+  }
+
+  const initialDocument = toDataDoc(mutationEngine.document())
   projection.update({
-    document: asDataDoc(mutationEngine.current().document),
-    delta: createMutationDelta(dataviewMutationSchema, [])
+    document: initialDocument,
+    change: createDataviewChange(
+      createDataviewQuery(initialDocument),
+      createMutationChange(dataviewMutationSchema, [], {
+        reset: true
+      })
+    )
   })
   const source = createEngineSource({
-    readDocument: () => asDataDoc(mutationEngine.document()),
+    readDocument: () => toDataDoc(mutationEngine.document()),
     subscribeDocument: (listener) => mutationEngine.subscribe((commit) => {
       listener(toEngineCommit(commit))
     }),
@@ -94,11 +106,10 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
   })
 
   const readCurrent = (): DataviewCurrent => {
-    const current = mutationEngine.current()
-    const document = asDataDoc(current.document)
+    const document = toDataDoc(mutationEngine.document())
     const context = createDataviewResolvedContext(document)
     return {
-      rev: current.rev,
+      rev: currentRevision,
       doc: document,
       active: projection.read.active.snapshot(),
       docActiveViewId: context.activeViewId,
@@ -108,10 +119,11 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
 
   mutationEngine.subscribe((rawCommit) => {
     const commit = toEngineCommit(rawCommit)
+    currentRevision += 1
     const startedAt = now()
     const projectionResult = projection.update({
       document: commit.document,
-      delta: commit.delta as DataviewMutationDelta
+      change: commit.change
     })
     const commitTrace = createDataviewCommitTrace({
       performance,
@@ -143,21 +155,27 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
     input: I,
     executeOptions?: MutationOptions
   ): ExecuteResultOf<I> => {
-    const result = mutationEngine.execute(
-      input as Intent | readonly Intent[],
-      executeOptions
-    )
+    if (Array.isArray(input)) {
+      const result = mutationEngine.execute(input, executeOptions)
+      if (!result.ok) {
+        return result as ExecuteResultOf<I>
+      }
+
+      return {
+        ok: true,
+        data: result.data,
+        commit: toEngineCommit(result.commit)
+      } as ExecuteResultOf<I>
+    }
+
+    const result = mutationEngine.execute(input as Intent, executeOptions)
     if (!result.ok) {
       return result as ExecuteResultOf<I>
     }
 
-    const data = Array.isArray(input)
-      ? result.data
-      : result.data[0]
-
     return {
       ok: true,
-      data,
+      data: result.data,
       commit: toEngineCommit(result.commit)
     } as ExecuteResultOf<I>
   }
@@ -170,13 +188,10 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
         currentListeners.delete(listener)
       }
     },
-    doc: () => asDataDoc(mutationEngine.document()),
+    doc: () => toDataDoc(mutationEngine.document()),
     replace: (nextDocument: DataDoc, replaceOptions?: MutationOptions) => {
       const commit = mutationEngine.replace(nextDocument, replaceOptions)
-      return {
-        ...toEngineCommit(commit),
-        previousDocument: asDataDoc(commit.previousDocument)
-      }
+      return toEngineCommit(commit)
     },
     execute,
     apply: (writes: readonly MutationWrite[], applyOptions?: MutationOptions) => (

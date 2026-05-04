@@ -5,6 +5,16 @@ export type {
   ValidationSeverity
 } from './compile'
 export {
+  createDataviewChange,
+} from './change'
+export type {
+  DataviewMutationChange,
+  DataviewMutationChangeExtension,
+  DataviewMutationFact,
+  DataviewMutationFactKind,
+  DataviewQueryAspect
+} from './change'
+export {
   createDataviewQuery,
 } from './query'
 export type {
@@ -14,13 +24,8 @@ export {
   dataviewMutationSchema,
 } from './schema'
 export type {
-  DataviewMutationDelta,
-  DataviewMutationQuery,
+  DataviewBaseMutationChange,
   DataviewMutationSchema,
   DataviewMutationReader,
   DataviewMutationWriter,
 } from './schema'
-export type {
-  DataviewMutationChanges,
-  DataviewQueryAspect
-} from './change'

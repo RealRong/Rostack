@@ -4,6 +4,10 @@ import type {
 import {
   getCompiledMutationSchema
 } from '../compile/schema'
+import {
+  createMutationReader,
+  type MutationReader
+} from '../reader/createReader'
 import type {
   MutationSchema
 } from '../schema/node'
@@ -11,7 +15,7 @@ import type {
   MutationDocument
 } from '../schema/value'
 
-export type MutationQuery<TSchema extends MutationSchema = MutationSchema> = {
+export type MutationQuery<TSchema extends MutationSchema = MutationSchema> = MutationReader<TSchema> & {
   readonly schema: TSchema
   readonly document: MutationDocument<TSchema>
   readonly compiled: CompiledMutationSchema
@@ -20,10 +24,13 @@ export type MutationQuery<TSchema extends MutationSchema = MutationSchema> = {
 export const createMutationQuery = <TSchema extends MutationSchema>(
   schema: TSchema,
   document: MutationDocument<TSchema>
-): MutationQuery<TSchema> => ({
-  schema,
-  document,
-  compiled: getCompiledMutationSchema(schema)
-})
+): MutationQuery<TSchema> => Object.assign(
+  createMutationReader(schema, document),
+  {
+    schema,
+    document,
+    compiled: getCompiledMutationSchema(schema)
+  }
+)
 
 export const query = createMutationQuery

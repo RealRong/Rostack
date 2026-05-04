@@ -131,8 +131,7 @@ const lowerFieldCreate = (
     meta: intent.input.meta
   })
 
-  const { id: fieldId, ...nextFieldValue } = field
-  input.write.fields.create(fieldId, nextFieldValue)
+  input.write.fields.create(field.id, field)
   return { id: field.id }
 }
 
@@ -246,11 +245,7 @@ const lowerFieldDuplicate = (
     )
   } satisfies CustomField
 
-  const {
-    id: nextFieldWriteId,
-    ...nextFieldValue
-  } = nextField
-  input.write.fields.create(nextFieldWriteId, nextFieldValue)
+  input.write.fields.create(nextField.id, nextField)
 
   records.forEach((record) => {
     if (!Object.prototype.hasOwnProperty.call(record.values, sourceField.id)) {
@@ -315,6 +310,7 @@ const lowerFieldOptionCreate = (
     name: explicitName ?? createOptionName(context.options)
   })
   input.write.fields(intent.field).options.create(nextOption.id, {
+    id: nextOption.id,
     name: nextOption.name,
     color: nextOption.color,
     category: nextOption.category

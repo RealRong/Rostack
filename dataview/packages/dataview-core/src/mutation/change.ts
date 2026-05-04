@@ -6,14 +6,19 @@ import type {
 import {
   TITLE_FIELD_ID
 } from '@dataview/core/types'
-import type {
-  MutationWrite,
+import {
+  extendMutationChange,
+  getCompiledMutationSchema,
+  type MutationChange,
+  type MutationWrite,
 } from '@shared/mutation'
 import {
   dataviewMutationSchema,
-  type DataviewMutationDelta,
-  type DataviewMutationQuery,
+  type DataviewMutationSchema,
 } from './schema'
+import type {
+  DataviewQuery
+} from './query'
 
 export type DataviewQueryAspect =
   | 'search'
@@ -24,7 +29,51 @@ export type DataviewQueryAspect =
 
 type TouchedIds<TId extends string> = ReadonlySet<TId> | 'all'
 
-export interface DataviewMutationChanges {
+export type DataviewMutationFactKind =
+  | 'record.insert'
+  | 'record.title'
+  | 'record.type'
+  | 'record.meta'
+  | 'record.remove'
+  | 'record.value'
+  | 'field.insert'
+  | 'field.remove'
+  | 'field.schema'
+  | 'view.insert'
+  | 'view.change'
+  | 'view.layout'
+  | 'view.calc'
+  | 'view.remove'
+  | 'activeView.set'
+  | 'reset'
+
+export type DataviewMutationFact = {
+  kind: DataviewMutationFactKind
+  count?: number
+}
+
+type DataviewMutationFactCount = number | 'all'
+
+const DATAVIEW_MUTATION_FACT_ORDER: readonly DataviewMutationFactKind[] = [
+  'record.insert',
+  'record.title',
+  'record.type',
+  'record.meta',
+  'record.remove',
+  'record.value',
+  'field.insert',
+  'field.remove',
+  'field.schema',
+  'view.insert',
+  'view.change',
+  'view.layout',
+  'view.calc',
+  'view.remove',
+  'activeView.set',
+  'reset'
+]
+
+export type DataviewMutationChangeExtension = {
   record: {
     setChanged(): boolean
     touchedIds(): TouchedIds<RecordId>
@@ -34,7 +83,6 @@ export interface DataviewMutationChanges {
   }
   field: {
     touchedIds(): TouchedIds<FieldId>
-    valueTouchedIds(): TouchedIds<FieldId>
     schemaTouchedIds(): TouchedIds<FieldId>
     schemaChanged(fieldId?: FieldId): boolean
   }
@@ -43,340 +91,351 @@ export interface DataviewMutationChanges {
     queryChanged(viewId: ViewId, aspect?: DataviewQueryAspect): boolean
     layoutChanged(viewId: ViewId): boolean
   }
-  recordSetChanged(): boolean
-  touchedRecords(): TouchedIds<RecordId>
-  touchedValueFields(): TouchedIds<FieldId>
-  fieldSchemaTouchedIds(): TouchedIds<FieldId>
-  touchedFields(): TouchedIds<FieldId>
-  fieldSchemaChanged(fieldId?: FieldId): boolean
-  viewQueryChanged(viewId: ViewId, aspect?: DataviewQueryAspect): boolean
-  viewLayoutChanged(viewId: ViewId): boolean
+  factCount(kind: DataviewMutationFactKind): DataviewMutationFactCount | undefined
+  facts(): readonly DataviewMutationFact[]
 }
 
-interface DataviewChangeQuery {
-  records: {
-    ids(): readonly RecordId[]
-    has(id: RecordId): boolean
-  }
-  fields: {
-    ids(): readonly FieldId[]
-    has(id: FieldId): boolean
-  }
-  views: {
-    has(id: ViewId): boolean
-  }
-}
+export type DataviewMutationChange = MutationChange<DataviewMutationSchema> & DataviewMutationChangeExtension
 
-const FIELD_SCHEMA_KEYS = [
-  'name',
-  'kind',
-  'displayFullUrl',
-  'format',
-  'precision',
-  'currency',
-  'useThousandsSeparator',
-  'defaultOptionId',
-  'displayDateFormat',
-  'displayTimeFormat',
-  'defaultValueKind',
-  'defaultTimezone',
-  'multiple',
-  'accept',
-  'meta'
-] as const
+const changeCache = new WeakMap<MutationChange<DataviewMutationSchema>, DataviewMutationChange>()
+
+const compiled = getCompiledMutationSchema(dataviewMutationSchema)
+const root = compiled.root.entries
+const recordNodes = root.records
+const fieldNodes = root.fields
+const viewNodes = root.views
+
+const VIEW_QUERY_ASPECTS: readonly DataviewQueryAspect[] = [
+  'search',
+  'filter',
+  'sort',
+  'group',
+  'order'
+]
+
+const FIELD_SCHEMA_NODE_IDS = new Set<number>([
+  fieldNodes.nodeId,
+  fieldNodes.entity.entries.name.nodeId,
+  fieldNodes.entity.entries.kind.nodeId,
+  fieldNodes.entity.entries.displayFullUrl.nodeId,
+  fieldNodes.entity.entries.format.nodeId,
+  fieldNodes.entity.entries.precision.nodeId,
+  fieldNodes.entity.entries.currency.nodeId,
+  fieldNodes.entity.entries.useThousandsSeparator.nodeId,
+  fieldNodes.entity.entries.defaultOptionId.nodeId,
+  fieldNodes.entity.entries.displayDateFormat.nodeId,
+  fieldNodes.entity.entries.displayTimeFormat.nodeId,
+  fieldNodes.entity.entries.defaultValueKind.nodeId,
+  fieldNodes.entity.entries.defaultTimezone.nodeId,
+  fieldNodes.entity.entries.multiple.nodeId,
+  fieldNodes.entity.entries.accept.nodeId,
+  fieldNodes.entity.entries.meta.nodeId,
+  fieldNodes.entity.entries.options.nodeId,
+  fieldNodes.entity.entries.options.entity.entries.name.nodeId,
+  fieldNodes.entity.entries.options.entity.entries.color.nodeId,
+  fieldNodes.entity.entries.options.entity.entries.category.nodeId
+])
+
+const VIEW_LAYOUT_NODE_IDS = new Set<number>([
+  viewNodes.nodeId,
+  viewNodes.entity.entries.name.nodeId,
+  viewNodes.entity.entries.type.nodeId,
+  viewNodes.entity.entries.options.nodeId,
+  viewNodes.entity.entries.fields.nodeId
+])
+
+const VIEW_QUERY_ASPECT_BY_NODE_ID = new Map<number, DataviewQueryAspect>([
+  [viewNodes.entity.entries.search.nodeId, 'search'],
+  [viewNodes.entity.entries.filter.nodeId, 'filter'],
+  [viewNodes.entity.entries.sort.nodeId, 'sort'],
+  [viewNodes.entity.entries.group.nodeId, 'group'],
+  [viewNodes.entity.entries.order.nodeId, 'order']
+])
+
+const targetId = (write: MutationWrite): string | undefined => write.target?.id
+
+const ownerId = (write: MutationWrite): string | undefined => {
+  const scope = write.target?.scope
+  return scope && scope.length > 0
+    ? scope[scope.length - 1]
+    : undefined
+}
 
 const hasTouchedIds = <TId extends string>(
   ids: TouchedIds<TId>
 ): boolean => ids === 'all' || ids.size > 0
 
-const collectTouchedIds = <TId extends string>(
-  reset: boolean,
-  writes: readonly MutationWrite[],
-  predicate: (write: MutationWrite) => TId | undefined
-): TouchedIds<TId> => {
-  if (reset) {
-    return 'all'
+const hasTouchedId = <TId extends string>(
+  ids: TouchedIds<TId>,
+  id: TId
+): boolean => ids === 'all' || ids.has(id)
+
+const countTouchedIds = <TId extends string>(
+  ids: TouchedIds<TId>
+): DataviewMutationFactCount | undefined => ids === 'all'
+  ? 'all'
+  : ids.size > 0
+    ? ids.size
+    : undefined
+
+const countSet = <TId extends string>(
+  ids: ReadonlySet<TId>
+): number | undefined => ids.size > 0
+  ? ids.size
+  : undefined
+
+const createAspectSet = (
+  map: Map<ViewId, Set<DataviewQueryAspect>>,
+  viewId: ViewId
+): Set<DataviewQueryAspect> => {
+  const existing = map.get(viewId)
+  if (existing) {
+    return existing
   }
 
-  const ids = new Set<TId>()
-  writes.forEach((write) => {
-    const id = predicate(write)
-    if (id !== undefined) {
-      ids.add(id)
-    }
-  })
-  return ids
+  const next = new Set<DataviewQueryAspect>()
+  map.set(viewId, next)
+  return next
 }
 
-export const createDataviewChanges = (
-  raw: DataviewMutationQuery,
-  query: DataviewChangeQuery,
-  delta: DataviewMutationDelta
-): DataviewMutationChanges => {
-  const nodes = dataviewMutationSchema.shape
-  const base = raw.changes(delta)
+const addAllQueryAspects = (
+  map: Map<ViewId, Set<DataviewQueryAspect>>,
+  viewId: ViewId
+): void => {
+  const aspects = createAspectSet(map, viewId)
+  VIEW_QUERY_ASPECTS.forEach((aspect) => {
+    aspects.add(aspect)
+  })
+}
+
+export const createDataviewChange = (
+  query: DataviewQuery,
+  base: MutationChange<DataviewMutationSchema>
+): DataviewMutationChange => {
+  const cached = changeCache.get(base)
+  if (cached) {
+    return cached
+  }
+
   const reset = base.reset()
   const writes = base.writes()
-  const createdFieldIds = collectTouchedIds<FieldId>(
-    reset,
-    writes,
-    (write) => write.kind === 'entity.create' && write.node === nodes.fields && typeof write.targetId === 'string'
-      ? write.targetId as FieldId
-      : undefined
-  )
-  const removedFieldIds = collectTouchedIds<FieldId>(
-    reset,
-    writes,
-    (write) => write.kind === 'entity.remove' && write.node === nodes.fields && typeof write.targetId === 'string'
-      ? write.targetId as FieldId
-      : undefined
-  )
-  const createdViewIds = collectTouchedIds<ViewId>(
-    reset,
-    writes,
-    (write) => write.kind === 'entity.create' && write.node === nodes.views && typeof write.targetId === 'string'
-      ? write.targetId as ViewId
-      : undefined
-  )
-  const removedViewIds = collectTouchedIds<ViewId>(
-    reset,
-    writes,
-    (write) => write.kind === 'entity.remove' && write.node === nodes.views && typeof write.targetId === 'string'
-      ? write.targetId as ViewId
-      : undefined
-  )
 
-  const createdRecordIds = collectTouchedIds<RecordId>(
-    reset,
-    writes,
-    (write) => write.kind === 'entity.create' && write.node === nodes.records && typeof write.targetId === 'string'
-      ? write.targetId as RecordId
-      : undefined
-  )
-
-  const removedRecordIds = collectTouchedIds<RecordId>(
-    reset,
-    writes,
-    (write) => write.kind === 'entity.remove' && write.node === nodes.records && typeof write.targetId === 'string'
-      ? write.targetId as RecordId
-      : undefined
-  )
-
-  const hasTouchedId = <TId extends string>(
-    ids: TouchedIds<TId>,
-    id: TId
-  ): boolean => ids === 'all' || ids.has(id)
-
-  let recordTitleTouched = false
-  const recordTitleIds = new Set<RecordId>()
+  const createdRecordIds = new Set<RecordId>()
+  const removedRecordIds = new Set<RecordId>()
+  const touchedRecordIds = new Set<RecordId>()
+  const titleRecordIds = new Set<RecordId>()
+  const typeRecordIds = new Set<RecordId>()
+  const metaRecordIds = new Set<RecordId>()
+  const valueRecordIds = new Set<RecordId>()
   const valueFieldIds = new Set<FieldId>()
+
+  const createdFieldIds = new Set<FieldId>()
+  const removedFieldIds = new Set<FieldId>()
   const fieldSchemaIds = new Set<FieldId>()
+
+  const createdViewIds = new Set<ViewId>()
+  const removedViewIds = new Set<ViewId>()
   const touchedViewIds = new Set<ViewId>()
   const viewQueryChanges = new Map<ViewId, Set<DataviewQueryAspect>>()
   const viewLayoutChanges = new Set<ViewId>()
+  const viewCalcIds = new Set<ViewId>()
 
-  writes.forEach((write) => {
-    if (write.node === nodes.records.shape.title) {
-      recordTitleTouched = true
-      if (typeof write.targetId === 'string') {
-        recordTitleIds.add(write.targetId as RecordId)
+  for (const write of writes) {
+    const id = targetId(write)
+
+    if (write.nodeId === recordNodes.nodeId && id) {
+      const recordId = id as RecordId
+      touchedRecordIds.add(recordId)
+
+      if (write.kind === 'entity.create') {
+        createdRecordIds.add(recordId)
+      } else if (write.kind === 'entity.remove') {
+        removedRecordIds.add(recordId)
+      } else if (write.kind === 'entity.replace') {
+        const nextRecord = write.value as Partial<{
+          title: string
+          type: string | undefined
+          meta: Record<string, unknown> | undefined
+          values: Record<string, unknown>
+        }>
+        if ('title' in nextRecord) {
+          titleRecordIds.add(recordId)
+          valueFieldIds.add(TITLE_FIELD_ID)
+        }
+        if ('type' in nextRecord) {
+          typeRecordIds.add(recordId)
+        }
+        if ('meta' in nextRecord) {
+          metaRecordIds.add(recordId)
+        }
+        if (nextRecord.values) {
+          valueRecordIds.add(recordId)
+          Object.keys(nextRecord.values).forEach((fieldId) => {
+            valueFieldIds.add(fieldId as FieldId)
+          })
+        }
       }
-      return
+      continue
     }
 
-    if (write.node === nodes.records.shape.values) {
+    if (write.nodeId === recordNodes.entity.entries.title.nodeId && id) {
+      touchedRecordIds.add(id as RecordId)
+      titleRecordIds.add(id as RecordId)
+      valueFieldIds.add(TITLE_FIELD_ID)
+      continue
+    }
+
+    if (
+      (
+        write.nodeId === recordNodes.entity.entries.type.nodeId
+        || write.nodeId === recordNodes.entity.entries.meta.nodeId
+      )
+      && id
+    ) {
+      const recordId = id as RecordId
+      touchedRecordIds.add(recordId)
+      if (write.nodeId === recordNodes.entity.entries.type.nodeId) {
+        typeRecordIds.add(recordId)
+      } else {
+        metaRecordIds.add(recordId)
+      }
+      continue
+    }
+
+    if (write.nodeId === recordNodes.entity.entries.values.nodeId && id) {
+      const recordId = id as RecordId
+      touchedRecordIds.add(recordId)
+      valueRecordIds.add(recordId)
       if (write.kind === 'dictionary.set' || write.kind === 'dictionary.delete') {
         valueFieldIds.add(write.key as FieldId)
-        return
-      }
-
-      if (write.kind === 'dictionary.replace') {
+      } else if (write.kind === 'dictionary.replace') {
         Object.keys(write.value).forEach((fieldId) => {
           valueFieldIds.add(fieldId as FieldId)
         })
       }
-      return
+      continue
     }
 
-    if (
-      typeof write.targetId === 'string'
-      && (
-        write.node === nodes.fields.shape.name
-        || write.node === nodes.fields.shape.kind
-        || write.node === nodes.fields.shape.displayFullUrl
-        || write.node === nodes.fields.shape.format
-        || write.node === nodes.fields.shape.precision
-        || write.node === nodes.fields.shape.currency
-        || write.node === nodes.fields.shape.useThousandsSeparator
-        || write.node === nodes.fields.shape.defaultOptionId
-        || write.node === nodes.fields.shape.displayDateFormat
-        || write.node === nodes.fields.shape.displayTimeFormat
-        || write.node === nodes.fields.shape.defaultValueKind
-        || write.node === nodes.fields.shape.defaultTimezone
-        || write.node === nodes.fields.shape.multiple
-        || write.node === nodes.fields.shape.accept
-        || write.node === nodes.fields.shape.meta
-        || write.node === nodes.fields.shape.options
-      )
-    ) {
-      fieldSchemaIds.add(write.targetId as FieldId)
-      return
+    if (FIELD_SCHEMA_NODE_IDS.has(write.nodeId)) {
+      const fieldId = (write.nodeId === fieldNodes.nodeId
+        ? id
+        : ownerId(write) ?? id) as FieldId | undefined
+      if (!fieldId) {
+        continue
+      }
+
+      if (write.nodeId === fieldNodes.nodeId) {
+        if (write.kind === 'entity.create') {
+          createdFieldIds.add(fieldId)
+        } else if (write.kind === 'entity.remove') {
+          removedFieldIds.add(fieldId)
+        }
+      }
+
+      fieldSchemaIds.add(fieldId)
+      continue
     }
 
-    if (
-      typeof write.targetId === 'string'
-      && (
-        write.node === nodes.views.shape.name
-        || write.node === nodes.views.shape.type
-        || write.node === nodes.views.shape.search
-        || write.node === nodes.views.shape.filter
-        || write.node === nodes.views.shape.sort
-        || write.node === nodes.views.shape.group
-        || write.node === nodes.views.shape.calc
-        || write.node === nodes.views.shape.options
-        || write.node === nodes.views.shape.fields
-        || write.node === nodes.views.shape.order
-      )
-    ) {
-      const viewId = write.targetId as ViewId
+    if (id && viewNodes.nodeId === write.nodeId) {
+      const viewId = id as ViewId
       touchedViewIds.add(viewId)
 
-      if (
-        write.node === nodes.views.shape.name
-        || write.node === nodes.views.shape.type
-        || write.node === nodes.views.shape.options
-        || write.node === nodes.views.shape.fields
-      ) {
+      if (write.kind === 'entity.create') {
+        createdViewIds.add(viewId)
+      } else if (write.kind === 'entity.remove') {
+        removedViewIds.add(viewId)
+      } else if (write.kind === 'entity.replace') {
+        const nextView = write.value as Partial<{
+          name: string
+          type: string
+          search: unknown
+          filter: unknown
+          sort: unknown
+          group: unknown
+          calc: unknown
+          options: unknown
+          fields: unknown
+          order: unknown
+        }>
+        if (
+          'name' in nextView
+          || 'type' in nextView
+          || 'options' in nextView
+          || 'fields' in nextView
+        ) {
+          viewLayoutChanges.add(viewId)
+        }
+        if (
+          'search' in nextView
+          || 'filter' in nextView
+          || 'sort' in nextView
+          || 'group' in nextView
+          || 'order' in nextView
+        ) {
+          addAllQueryAspects(viewQueryChanges, viewId)
+        }
+        if ('calc' in nextView) {
+          viewCalcIds.add(viewId)
+        }
+      }
+      continue
+    }
+
+    const aspect = VIEW_QUERY_ASPECT_BY_NODE_ID.get(write.nodeId)
+    if (
+      id
+      && (
+        aspect !== undefined
+        || VIEW_LAYOUT_NODE_IDS.has(write.nodeId)
+        || write.nodeId === viewNodes.entity.entries.calc.nodeId
+      )
+    ) {
+      const viewId = id as ViewId
+      touchedViewIds.add(viewId)
+
+      if (aspect !== undefined) {
+        createAspectSet(viewQueryChanges, viewId).add(aspect)
+      }
+      if (VIEW_LAYOUT_NODE_IDS.has(write.nodeId)) {
         viewLayoutChanges.add(viewId)
       }
-
-      const aspects = viewQueryChanges.get(viewId) ?? new Set<DataviewQueryAspect>()
-      if (write.node === nodes.views.shape.search) {
-        aspects.add('search')
-      } else if (write.node === nodes.views.shape.filter) {
-        aspects.add('filter')
-      } else if (write.node === nodes.views.shape.sort) {
-        aspects.add('sort')
-      } else if (write.node === nodes.views.shape.group) {
-        aspects.add('group')
-      } else if (write.node === nodes.views.shape.order) {
-        aspects.add('order')
+      if (write.nodeId === viewNodes.entity.entries.calc.nodeId) {
+        viewCalcIds.add(viewId)
       }
-      viewQueryChanges.set(viewId, aspects)
     }
-  })
+  }
 
-  const recordTitleChanged = (recordId?: RecordId): boolean => recordId === undefined
-    ? recordTitleTouched
-    : recordTitleIds.has(recordId)
-
-  let touchedRecordsCache: TouchedIds<RecordId> | undefined
-  let valueTouchedIdsCache: TouchedIds<FieldId> | undefined
-  let fieldSchemaTouchedIdsCache: TouchedIds<FieldId> | undefined
   let touchedFieldsCache: TouchedIds<FieldId> | undefined
   let touchedViewsCache: TouchedIds<ViewId> | undefined
+  let factsCache: readonly DataviewMutationFact[] | undefined
 
-  const touchedRecords = (): TouchedIds<RecordId> => collectTouchedIds<RecordId>(
-    reset,
-    writes,
-    (write) => {
-      if (write.node === nodes.records && typeof write.targetId === 'string') {
-        return write.targetId as RecordId
-      }
-      if (
-        typeof write.targetId === 'string'
-        && (
-          write.node === nodes.records.shape.title
-          || write.node === nodes.records.shape.type
-          || write.node === nodes.records.shape.values
-          || write.node === nodes.records.shape.meta
-        )
-      ) {
-        return write.targetId as RecordId
-      }
-      return undefined
-    }
-  )
+  const touchedRecords = (): TouchedIds<RecordId> => reset
+    ? 'all'
+    : touchedRecordIds
 
-  const valueTouchedIds = (): TouchedIds<FieldId> => {
-    if (valueTouchedIdsCache) {
-      return valueTouchedIdsCache
-    }
-
-    if (reset) {
-      valueTouchedIdsCache = 'all'
-      return valueTouchedIdsCache
-    }
-
-    const ids = new Set<FieldId>()
-    valueFieldIds.forEach((fieldId) => {
-      ids.add(fieldId)
-    })
-
-    if (recordTitleTouched) {
-      ids.add(TITLE_FIELD_ID)
-    }
-
-    valueTouchedIdsCache = ids
-    return valueTouchedIdsCache
-  }
-
-  const fieldSchemaChanged = (
-    fieldId?: FieldId
-  ): boolean => {
-    if (fieldId === undefined) {
-      const touched = fieldSchemaTouchedIds()
-      return touched === 'all' || touched.size > 0
-    }
-
-    if (fieldId === TITLE_FIELD_ID) {
-      return recordTitleChanged()
-    }
-    return hasTouchedId(createdFieldIds, fieldId)
-      || hasTouchedId(removedFieldIds, fieldId)
-      || fieldSchemaIds.has(fieldId)
-  }
+  const valueTouchedIds = (): TouchedIds<FieldId> => reset
+    ? 'all'
+    : valueFieldIds
 
   const fieldSchemaTouchedIds = (): TouchedIds<FieldId> => {
-    if (fieldSchemaTouchedIdsCache) {
-      return fieldSchemaTouchedIdsCache
-    }
-
     if (reset) {
-      fieldSchemaTouchedIdsCache = 'all'
-      return fieldSchemaTouchedIdsCache
+      return 'all'
     }
 
-    const ids = new Set<FieldId>()
-    if (recordTitleTouched) {
-      ids.add(TITLE_FIELD_ID)
-    }
-
-    fieldSchemaIds.forEach((fieldId) => {
+    const ids = new Set<FieldId>(fieldSchemaIds)
+    createdFieldIds.forEach((fieldId) => {
       ids.add(fieldId)
     })
-
-    if (createdFieldIds !== 'all') {
-      createdFieldIds.forEach((fieldId) => {
-        ids.add(fieldId)
-      })
-    }
-
-    if (removedFieldIds !== 'all') {
-      removedFieldIds.forEach((fieldId) => {
-        ids.add(fieldId)
-      })
-    }
-
-    fieldSchemaTouchedIdsCache = ids
-    return fieldSchemaTouchedIdsCache
+    removedFieldIds.forEach((fieldId) => {
+      ids.add(fieldId)
+    })
+    return ids
   }
 
   const touchedFields = (): TouchedIds<FieldId> => {
     if (touchedFieldsCache) {
       return touchedFieldsCache
     }
-
     const valueIds = valueTouchedIds()
     const schemaIds = fieldSchemaTouchedIds()
     if (valueIds === 'all' || schemaIds === 'all') {
@@ -395,28 +454,29 @@ export const createDataviewChanges = (
     if (touchedViewsCache) {
       return touchedViewsCache
     }
-
     if (reset) {
       touchedViewsCache = 'all'
       return touchedViewsCache
     }
 
-    const ids = new Set<ViewId>()
-    touchedViewIds.forEach((viewId) => {
-      ids.add(viewId)
-    })
-    if (createdViewIds !== 'all') {
-      createdViewIds.forEach((viewId) => {
-        ids.add(viewId)
-      })
-    }
-    if (removedViewIds !== 'all') {
-      removedViewIds.forEach((viewId) => {
-        ids.add(viewId)
-      })
-    }
-    touchedViewsCache = ids
+    touchedViewsCache = new Set<ViewId>([
+      ...touchedViewIds,
+      ...createdViewIds,
+      ...removedViewIds
+    ])
     return touchedViewsCache
+  }
+
+  const fieldSchemaChanged = (fieldId?: FieldId): boolean => {
+    if (fieldId === undefined) {
+      return hasTouchedIds(fieldSchemaTouchedIds())
+    }
+    if (fieldId === TITLE_FIELD_ID) {
+      return false
+    }
+    return createdFieldIds.has(fieldId)
+      || removedFieldIds.has(fieldId)
+      || fieldSchemaIds.has(fieldId)
   }
 
   const viewQueryChanged = (
@@ -424,22 +484,22 @@ export const createDataviewChanges = (
     aspect?: DataviewQueryAspect
   ): boolean => {
     if (!query.views.has(viewId)) {
-      return hasTouchedId(createdViewIds, viewId) || hasTouchedId(removedViewIds, viewId)
+      return createdViewIds.has(viewId) || removedViewIds.has(viewId)
     }
 
+    const aspects = viewQueryChanges.get(viewId)
     if (aspect === undefined) {
-      return viewQueryChanges.get(viewId)?.size !== undefined
-        && viewQueryChanges.get(viewId)!.size > 0
+      return (aspects?.size ?? 0) > 0
     }
 
-    return viewQueryChanges.get(viewId)?.has(aspect) === true
+    return aspects?.has(aspect) === true
   }
 
   const viewLayoutChanged = (
     viewId: ViewId
   ): boolean => {
     if (!query.views.has(viewId)) {
-      return hasTouchedId(createdViewIds, viewId) || hasTouchedId(removedViewIds, viewId)
+      return createdViewIds.has(viewId) || removedViewIds.has(viewId)
     }
 
     return viewLayoutChanges.has(viewId)
@@ -447,12 +507,81 @@ export const createDataviewChanges = (
 
   const recordSetChanged = (): boolean => (
     reset
-    || hasTouchedIds(createdRecordIds)
-    || hasTouchedIds(removedRecordIds)
+    || createdRecordIds.size > 0
+    || removedRecordIds.size > 0
   )
 
-  return {
-    record: {
+  const factCount = (
+    kind: DataviewMutationFactKind
+  ): DataviewMutationFactCount | undefined => {
+    switch (kind) {
+      case 'record.insert':
+        return countSet(createdRecordIds)
+      case 'record.title':
+        return countSet(titleRecordIds)
+      case 'record.type':
+        return countSet(typeRecordIds)
+      case 'record.meta':
+        return countSet(metaRecordIds)
+      case 'record.remove':
+        return countSet(removedRecordIds)
+      case 'record.value':
+        return countSet(valueRecordIds)
+      case 'field.insert':
+        return countSet(createdFieldIds)
+      case 'field.remove':
+        return countSet(removedFieldIds)
+      case 'field.schema':
+        return countTouchedIds(fieldSchemaTouchedIds())
+      case 'view.insert':
+        return countSet(createdViewIds)
+      case 'view.change':
+        return countTouchedIds(touchedViews())
+      case 'view.layout':
+        return countSet(viewLayoutChanges)
+      case 'view.calc':
+        return countSet(viewCalcIds)
+      case 'view.remove':
+        return countSet(removedViewIds)
+      case 'activeView.set':
+        return base.activeViewId.changed()
+          ? 1
+          : undefined
+      case 'reset':
+        return reset
+          ? 1
+          : undefined
+    }
+  }
+
+  const facts = (): readonly DataviewMutationFact[] => {
+    if (factsCache) {
+      return factsCache
+    }
+
+    const next: DataviewMutationFact[] = []
+    DATAVIEW_MUTATION_FACT_ORDER.forEach((kind) => {
+      const count = factCount(kind)
+      if (count === undefined) {
+        return
+      }
+
+      next.push({
+        kind,
+        ...(count === 'all'
+          ? {}
+          : {
+              count
+            })
+      })
+    })
+
+    factsCache = next
+    return factsCache
+  }
+
+  const extension: DataviewMutationChangeExtension = {
+  record: {
       setChanged: recordSetChanged,
       touchedIds: touchedRecords,
       values: {
@@ -461,7 +590,6 @@ export const createDataviewChanges = (
     },
     field: {
       touchedIds: touchedFields,
-      valueTouchedIds,
       schemaTouchedIds: fieldSchemaTouchedIds,
       schemaChanged: fieldSchemaChanged
     },
@@ -470,13 +598,11 @@ export const createDataviewChanges = (
       queryChanged: viewQueryChanged,
       layoutChanged: viewLayoutChanged
     },
-    recordSetChanged,
-    touchedRecords,
-    touchedValueFields: valueTouchedIds,
-    fieldSchemaTouchedIds,
-    touchedFields,
-    fieldSchemaChanged,
-    viewQueryChanged,
-    viewLayoutChanged,
+    factCount,
+    facts
   }
+
+  const change = extendMutationChange(base, extension)
+  changeCache.set(base, change)
+  return change
 }

@@ -192,9 +192,7 @@ export interface Engine {
   subscribe(listener: (current: DataviewCurrent) => void): () => void
 
   doc(): DataDoc
-  replace(document: DataDoc, options?: MutationOptions): EngineApplyCommit & {
-    previousDocument: DataDoc
-  }
+  replace(document: DataDoc, options?: MutationOptions): EngineApplyCommit
 
   execute<I extends ExecuteInput>(
     input: I,

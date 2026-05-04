@@ -5,12 +5,12 @@ import type {
   SearchIndex
 } from '@dataview/engine/active/index/contracts'
 import type {
-  DataviewMutationDelta
+  DataviewMutationChange
 } from '@dataview/core/mutation'
 
 export const fullRebuildFrom = (
-  delta: DataviewMutationDelta
-) => delta.reset()
+  change: DataviewMutationChange
+) => change.reset()
 
 export const searchEntryCountOf = (
   search: SearchIndex

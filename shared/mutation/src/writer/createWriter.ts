@@ -39,8 +39,12 @@ import type {
   MutationWrite
 } from './writes'
 
-type MutationWriterObject<TShape extends MutationShape> = {
+type MutationWriterFields<TShape extends MutationShape> = {
   readonly [K in Extract<keyof TShape, string>]: MutationWriterNode<TShape[K]>
+}
+
+type MutationWriterObject<TShape extends MutationShape> = MutationWriterFields<TShape> & {
+  patch(value: Partial<MutationValueOfShape<TShape>>): void
 }
 
 type MutationEntityWriter<TShape extends MutationShape> = MutationWriterObject<TShape> & {
@@ -292,6 +296,14 @@ const createObjectWriter = (
     defineLazyProperty(result, key, () => createWriterNode(entry, writes, target))
   }
 
+  Object.defineProperty(result, 'patch', {
+    enumerable: true,
+    configurable: false,
+    value(value: Record<string, unknown>) {
+      applyObjectPatch(node, result, value, writes, target)
+    }
+  })
+
   return result
 }
 
@@ -491,6 +503,57 @@ const createWriterNode = (
       return createTableWriter(node, writes, target)
     case 'map':
       return createMapWriter(node, writes, target)
+  }
+}
+
+const applyObjectPatch = (
+  node: CompiledMutationObjectNode,
+  writerObject: Record<string, unknown>,
+  value: Record<string, unknown>,
+  writes: MutationWrite[],
+  target?: MutationEntityTarget
+): void => {
+  void writes
+  for (const [key, patchValue] of Object.entries(value)) {
+    if (patchValue === undefined) {
+      continue
+    }
+
+    const entry = node.entries[key]
+    if (!entry) {
+      continue
+    }
+
+    const writerNode = writerObject[key] as Record<string, unknown>
+    switch (entry.kind) {
+      case 'field':
+        ;(writerNode as MutationFieldWriter<unknown>).set(patchValue)
+        break
+      case 'dictionary':
+        ;(writerNode as MutationDictionaryWriter<string, unknown>).replace(
+          patchValue as Record<string, unknown>
+        )
+        break
+      case 'sequence':
+        ;(writerNode as MutationSequenceWriter<unknown>).replace(
+          patchValue as readonly unknown[]
+        )
+        break
+      case 'tree':
+        ;(writerNode as MutationTreeWriter<string, unknown>).replace(
+          patchValue as import('../schema/constants').MutationTreeSnapshot<unknown>
+        )
+        break
+      case 'object':
+      case 'singleton':
+        ;(writerNode as {
+          patch(value: Record<string, unknown>): void
+        }).patch(patchValue as Record<string, unknown>)
+        break
+      case 'table':
+      case 'map':
+        throw new Error(`Mutation writer patch does not support "${entry.kind}" node "${key}".`)
+    }
   }
 }
 

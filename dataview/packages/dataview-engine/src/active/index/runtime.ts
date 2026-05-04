@@ -3,12 +3,8 @@ import type {
   RecordId
 } from '@dataview/core/types'
 import type {
-  DataviewMutationChanges,
-  DataviewMutationDelta,
+  DataviewMutationChange,
   DataviewQuery
-} from '@dataview/core/mutation'
-import {
-  createDataviewQuery
 } from '@dataview/core/mutation'
 import type {
   DataviewFrame,
@@ -129,10 +125,9 @@ const createIndexDeriveContext = (
 
 const createContentDelta = (
   query: DataviewQuery,
-  changes: DataviewMutationChanges,
-  reset: boolean
+  change: DataviewMutationChange
 ): ContentDelta => {
-  if (reset) {
+  if (change.reset()) {
     return {
       records: 'all',
       values: 'all',
@@ -143,16 +138,16 @@ const createContentDelta = (
     }
   }
 
-  const schemaTouched = changes.fieldSchemaTouchedIds()
+  const schemaTouched = change.field.schemaTouchedIds()
 
   return {
-    records: changes.touchedRecords(),
-    values: changes.touchedValueFields(),
+    records: change.record.touchedIds(),
+    values: change.record.values.touchedFieldIds(),
     schema: schemaTouched === 'all'
       ? new Set(query.fields.ids())
       : schemaTouched,
-    touchedFields: changes.touchedFields(),
-    recordSetChanged: changes.recordSetChanged(),
+    touchedFields: change.field.touchedIds(),
+    recordSetChanged: change.record.setChanged(),
     reset: false
   }
 }
@@ -207,8 +202,7 @@ export const deriveIndex = (input: {
   previousDemand: NormalizedIndexDemand
   document: DataDoc
   query: DataviewQuery
-  changes: DataviewMutationChanges
-  delta: DataviewMutationDelta
+  change: DataviewMutationChange
   demand?: NormalizedIndexDemand
 }): IndexDeriveResult => {
   const previous = input.previous
@@ -216,14 +210,13 @@ export const deriveIndex = (input: {
   const demandDelta = diffNormalizedIndexDemand(input.previousDemand, nextDemand)
   const contentDelta = createContentDelta(
     input.query,
-    input.changes,
-    input.delta.reset()
+    input.change
   )
   const context = createIndexDeriveContext(input.document, contentDelta)
   const totalStart = now()
   const touchedRecordCount = trace.count(contentDelta.records as ReadonlySet<RecordId> | 'all')
   const touchedFieldCount = trace.count(contentDelta.touchedFields as ReadonlySet<string> | 'all')
-  const rebuild = fullRebuildFrom(input.delta)
+  const rebuild = fullRebuildFrom(input.change)
   const bucketDelta = createMembershipTransition<BucketKey, RecordId>()
   const calculationDelta = createCalculationTransition()
 
@@ -454,8 +447,7 @@ export const ensureDataviewIndex = (input: {
   const document = input.frame.context.document
   const contentDelta = createContentDelta(
     input.frame.query,
-    input.frame.changes,
-    input.frame.delta.reset()
+    input.frame.change
   )
   const previous = input.previous
 
@@ -476,8 +468,7 @@ export const ensureDataviewIndex = (input: {
       previousDemand: previous.demand,
       document,
       query: input.frame.query,
-      changes: input.frame.changes,
-      delta: input.frame.delta,
+      change: input.frame.change,
       demand: active.demand
     })
     const index = createActiveIndex({
@@ -489,7 +480,7 @@ export const ensureDataviewIndex = (input: {
     })
 
     return {
-      action: input.frame.delta.reset()
+      action: input.frame.change.reset()
         ? 'rebuild'
         : next.trace?.changed
           ? 'sync'

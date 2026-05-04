@@ -6,8 +6,7 @@ import type {
   ViewId
 } from '@dataview/core/types'
 import type {
-  DataviewMutationChanges,
-  DataviewMutationDelta,
+  DataviewMutationChange,
   DataviewQuery,
 } from '@dataview/core/mutation'
 import {
@@ -54,8 +53,7 @@ export interface DataviewFrame {
   revision: Revision
   context: DataviewResolvedContext
   query: DataviewQuery
-  delta: DataviewMutationDelta
-  changes: DataviewMutationChanges
+  change: DataviewMutationChange
   active?: DataviewActiveSpec
 }
 
@@ -82,7 +80,7 @@ export const createDataviewResolvedContext = (
 export const createDataviewFrame = (input: {
   revision: Revision
   document: DataDoc
-  delta: DataviewMutationDelta
+  change: DataviewMutationChange
 }): DataviewFrame => {
   const context = createDataviewResolvedContext(input.document)
 
@@ -90,8 +88,7 @@ export const createDataviewFrame = (input: {
     revision: input.revision,
     context,
     query: context.query,
-    delta: input.delta,
-    changes: context.query.changes(input.delta),
+    change: input.change,
     active: resolveDataviewActive(context, context.activeViewId)
   }
 }

@@ -20,13 +20,13 @@ import {
   schema,
   sequence,
   table,
-  type MutationDelta,
-  type MutationQuery,
+  type MutationChange,
   type MutationReader,
   type MutationWriter,
 } from '@shared/mutation'
 
 const fieldOptionShape = {
+  id: field<FieldOption['id']>(),
   name: field<FieldOption['name']>(),
   color: field<FieldOption['color']>(),
   category: field<StatusCategory | undefined>(),
@@ -35,6 +35,7 @@ const fieldOptionShape = {
 const fieldOptions = table<FieldOptionId, typeof fieldOptionShape>(fieldOptionShape)
 
 const recordShape = {
+  id: field<DataRecord['id']>(),
   title: field<DataRecord['title']>(),
   type: field<DataRecord['type']>(),
   values: dictionary<CustomFieldId, unknown>(),
@@ -44,6 +45,7 @@ const recordShape = {
 const records = table<RecordId, typeof recordShape>(recordShape)
 
 const fieldShape = {
+  id: field<CustomField['id']>(),
   name: field<CustomField['name']>(),
   kind: field<CustomField['kind']>(),
   displayFullUrl: field<CustomField['displayFullUrl']>(),
@@ -65,6 +67,7 @@ const fieldShape = {
 const fields = table<CustomFieldId, typeof fieldShape>(fieldShape)
 
 const viewShape = {
+  id: field<View['id']>(),
   name: field<View['name']>(),
   type: field<ViewType>(),
   search: field<View['search']>(),
@@ -90,5 +93,4 @@ export const dataviewMutationSchema = schema({
 export type DataviewMutationSchema = typeof dataviewMutationSchema
 export type DataviewMutationWriter = MutationWriter<DataviewMutationSchema>
 export type DataviewMutationReader = MutationReader<DataviewMutationSchema>
-export type DataviewMutationQuery = MutationQuery<DataviewMutationSchema>
-export type DataviewMutationDelta = MutationDelta<DataviewMutationSchema>
+export type DataviewBaseMutationChange = MutationChange<DataviewMutationSchema>

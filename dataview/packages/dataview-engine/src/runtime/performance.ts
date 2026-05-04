@@ -1,8 +1,6 @@
 import { metrics } from '@shared/core'
 import {
   createDataviewQuery,
-  dataviewMutationSchema,
-  type DataviewMutationDelta
 } from '@dataview/core/mutation'
 import type {
   CommitTrace,
@@ -26,134 +24,32 @@ const countTouched = <T,>(
   ? 'all'
   : value.size
 
-const countWrites = (input: {
-  delta: DataviewMutationDelta
-  match(write: ReturnType<DataviewMutationDelta['writes']>[number]): boolean
-}): number | 'all' | undefined => {
-  if (input.delta.reset()) {
-    return 'all'
-  }
-
-  let count = 0
-  input.delta.writes().forEach((write) => {
-    if (input.match(write)) {
-      count += 1
-    }
-  })
-  return count > 0
-    ? count
-    : undefined
-}
-
 const summarizeTypedDelta = (
   commit: EngineCommit
 ): TraceDeltaSummary => {
-  const delta = commit.delta as DataviewMutationDelta
   const query = createDataviewQuery(commit.document)
-  const changes = query.changes(delta)
-  const nodes = dataviewMutationSchema.shape
-  const facts: Array<{
-    kind: string
-    count?: number
-  }> = []
-  const pushFact = (
-    kind: string,
-    count: number | 'all' | undefined
-  ) => {
-    if (count === undefined) {
-      return
-    }
-
-    facts.push({
-      kind,
-      ...(typeof count === 'number'
-        ? { count }
-        : {})
-    })
-  }
-
-  const touchedRecords = changes.touchedRecords()
-  const touchedFields = changes.touchedFields()
-  const touchedViews = changes.view.touchedIds()
-  const schemaTouchedFields = changes.fieldSchemaTouchedIds()
+  const change = commit.change
+  const touchedRecords = change.record.touchedIds()
+  const touchedFields = change.field.touchedIds()
+  const touchedViews = change.view.touchedIds()
+  const schemaTouchedFields = change.field.schemaTouchedIds()
   const activeViewId = query.views.activeId()
-
-  pushFact('record.insert', countWrites({
-    delta,
-    match: (write) => write.kind === 'entity.create' && write.node === nodes.records
-  }))
-  pushFact('record.title', countWrites({
-    delta,
-    match: (write) => write.node === nodes.records.shape.title
-  }))
-  pushFact('record.type', countWrites({
-    delta,
-    match: (write) => write.node === nodes.records.shape.type
-  }))
-  pushFact('record.meta', countWrites({
-    delta,
-    match: (write) => write.node === nodes.records.shape.meta
-  }))
-  pushFact('record.remove', countWrites({
-    delta,
-    match: (write) => write.kind === 'entity.remove' && write.node === nodes.records
-  }))
-  pushFact('record.value', countWrites({
-    delta,
-    match: (write) => write.node === nodes.records.shape.values
-  }))
-  pushFact('field.insert', countWrites({
-    delta,
-    match: (write) => write.kind === 'entity.create' && write.node === nodes.fields
-  }))
-  pushFact('field.remove', countWrites({
-    delta,
-    match: (write) => write.kind === 'entity.remove' && write.node === nodes.fields
-  }))
-  pushFact('field.schema', countTouched(schemaTouchedFields))
-  pushFact('view.insert', countWrites({
-    delta,
-    match: (write) => write.kind === 'entity.create' && write.node === nodes.views
-  }))
-  pushFact('view.change', countTouched(touchedViews))
-  pushFact('view.layout', countWrites({
-    delta,
-    match: (write) => (
-      write.node === nodes.views.shape.name
-      || write.node === nodes.views.shape.type
-      || write.node === nodes.views.shape.fields
-      || write.node === nodes.views.shape.options
-    )
-  }))
-  pushFact('view.calc', countWrites({
-    delta,
-    match: (write) => write.node === nodes.views.shape.calc
-  }))
-  pushFact('view.remove', countWrites({
-    delta,
-    match: (write) => write.kind === 'entity.remove' && write.node === nodes.views
-  }))
-  pushFact('activeView.set', delta.activeViewId.changed() ? 1 : undefined)
-  pushFact('reset', delta.reset() ? 1 : undefined)
 
   return {
     summary: {
       records: touchedRecords === 'all' || touchedRecords.size > 0,
       fields: touchedFields === 'all' || touchedFields.size > 0,
       views: touchedViews === 'all' || touchedViews.size > 0,
-      activeView: delta.activeViewId.changed(),
+      activeView: change.activeViewId.changed(),
       external: false,
       indexes: touchedRecords === 'all'
         || touchedRecords.size > 0
         || schemaTouchedFields === 'all'
         || schemaTouchedFields.size > 0
-        || (activeViewId !== undefined && changes.view.queryChanged(activeViewId))
-        || countWrites({
-          delta,
-          match: (write) => write.node === nodes.views.shape.calc
-        }) !== undefined
+        || (activeViewId !== undefined && change.view.queryChanged(activeViewId))
+        || change.factCount('view.calc') !== undefined
     },
-    facts,
+    facts: change.facts().map(item => ({ ...item })),
     entities: {
       touchedRecordCount: countTouched(touchedRecords),
       touchedFieldCount: countTouched(touchedFields),

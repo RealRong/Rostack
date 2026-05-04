@@ -720,7 +720,7 @@ export const createMutationChange = <TSchema extends MutationSchema>(
 }
 
 export const extendMutationChange = <
-  TChange extends MutationChange,
+  TChange extends object,
   TExtension extends object
 >(
   change: TChange,

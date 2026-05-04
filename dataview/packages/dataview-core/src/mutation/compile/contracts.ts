@@ -1,4 +1,5 @@
 import type {
+  MutationChange,
   MutationIssue,
 } from '@shared/mutation'
 import type {
@@ -6,8 +7,8 @@ import type {
   Intent,
 } from '@dataview/core/types'
 import type {
-  DataviewMutationDelta,
   DataviewMutationReader,
+  DataviewMutationSchema,
   DataviewMutationWriter,
 } from '../schema'
 import type {
@@ -51,7 +52,7 @@ export interface DataviewCompileContext<
   read: DataviewMutationReader
   write: DataviewMutationWriter
   query: DataviewQuery
-  change: DataviewMutationDelta
+  change: MutationChange<DataviewMutationSchema>
   issue: ((issue: ValidationIssue & Record<string, unknown>) => void) & {
     add(issue: ValidationIssue): void
     all(): readonly MutationIssue[]

@@ -3,7 +3,7 @@ import type {
   ViewId
 } from '@dataview/core/types'
 import {
-  type DataviewMutationDelta,
+  type DataviewMutationChange,
 } from '@dataview/core/mutation'
 import {
   createProjection,
@@ -43,7 +43,7 @@ export type DataviewProjectionPhaseName = 'active'
 
 export interface DataviewProjectionInput {
   document: DataDoc
-  delta: DataviewMutationDelta
+  change: DataviewMutationChange
 }
 
 export interface DataviewProjectionOutput {
@@ -237,7 +237,7 @@ export const createDataviewProjection = () => createProjection({
       const frame = createDataviewFrame({
         revision: ctx.revision,
         document: ctx.input.document,
-        delta: ctx.input.delta
+        change: ctx.input.change
       })
       const index = ensureDataviewIndex({
         frame,

@@ -111,6 +111,10 @@ export type MutationEngine<
     intent: TIntent,
     options?: MutationCommitOptions
   ): MutationResult<unknown, MutationCommit<TSchema>>
+  execute(
+    intent: readonly TIntent[],
+    options?: MutationCommitOptions
+  ): MutationResult<readonly unknown[], MutationCommit<TSchema>>
   subscribe(listener: MutationCommitListener<TSchema>): () => void
   watch(
     matches: MutationWatchMatcher<TSchema>,
@@ -313,6 +317,81 @@ export const createMutationEngine = <
     }
   }
 
+  function execute(
+    intent: TIntent,
+    options?: MutationCommitOptions
+  ): MutationResult<unknown, MutationCommit<TSchema>>
+  function execute(
+    intent: readonly TIntent[],
+    options?: MutationCommitOptions
+  ): MutationResult<readonly unknown[], MutationCommit<TSchema>>
+  function execute(
+    intent: TIntent | readonly TIntent[],
+    commitOptions?: MutationCommitOptions
+  ): MutationResult<unknown | readonly unknown[], MutationCommit<TSchema>> {
+    if (!options.compile) {
+      return {
+        ok: false,
+        issues: [{
+          code: 'mutation.compile.missing',
+          message: 'Mutation engine compile handlers are not configured.'
+        }]
+      }
+    }
+
+    const intents = Array.isArray(intent)
+      ? intent
+      : [intent]
+    const writes: MutationWrite[] = []
+    const issue = createIssueCollector()
+    const read = createMutationReader(options.schema, currentDocument)
+    const write = createMutationWriter(options.schema, writes)
+    const query = createMutationQuery(options.schema, currentDocument)
+    const data: unknown[] = []
+
+    for (const nextIntent of intents) {
+      const handler = options.compile.handlers[nextIntent.type]
+      if (!handler) {
+        return {
+          ok: false,
+          issues: [{
+            code: 'mutation.compile.handler_missing',
+            message: `No mutation compile handler for intent type "${nextIntent.type}".`
+          }]
+        }
+      }
+
+      data.push(handler({
+        intent: nextIntent,
+        document: currentDocument,
+        read,
+        write,
+        query,
+        get change() {
+          return createMutationChange(options.schema, writes)
+        },
+        issue,
+        services: options.services as TServices
+      }))
+    }
+
+    if (issue.hasErrors()) {
+      return {
+        ok: false,
+        issues: issue.all()
+      }
+    }
+
+    const commit = applyCommit(writes, commitOptions)
+    return {
+      ok: true,
+      data: Array.isArray(intent)
+        ? data
+        : data[0],
+      commit
+    }
+  }
+
   return {
     schema: options.schema,
     compiled,
@@ -325,60 +404,7 @@ export const createMutationEngine = <
     replace(document, commitOptions) {
       return replaceCommit(document, commitOptions)
     },
-    execute(intent, commitOptions) {
-      if (!options.compile) {
-        return {
-          ok: false,
-          issues: [{
-            code: 'mutation.compile.missing',
-            message: 'Mutation engine compile handlers are not configured.'
-          }]
-        }
-      }
-
-      const handler = options.compile.handlers[intent.type]
-      if (!handler) {
-        return {
-          ok: false,
-          issues: [{
-            code: 'mutation.compile.handler_missing',
-            message: `No mutation compile handler for intent type "${intent.type}".`
-          }]
-        }
-      }
-
-      const writes: MutationWrite[] = []
-      const issue = createIssueCollector()
-      const read = createMutationReader(options.schema, currentDocument)
-      const write = createMutationWriter(options.schema, writes)
-      const query = createMutationQuery(options.schema, currentDocument)
-      const context = {
-        intent,
-        document: currentDocument,
-        read,
-        write,
-        query,
-        get change() {
-          return createMutationChange(options.schema, writes)
-        },
-        issue,
-        services: options.services as TServices
-      }
-
-      const data = handler(context)
-      if (issue.hasErrors()) {
-        return {
-          ok: false,
-          issues: issue.all()
-        }
-      }
-
-      return {
-        ok: true,
-        data,
-        commit: applyCommit(writes, commitOptions)
-      }
-    },
+    execute,
     subscribe(listener) {
       listeners.add(listener)
       return () => {

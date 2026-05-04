@@ -11,15 +11,10 @@ import {
 } from '../query'
 import {
   dataviewMutationSchema,
-  type DataviewMutationReader,
-  type DataviewMutationWriter,
-  type DataviewMutationDelta,
-  type DataviewMutationQuery,
 } from '../schema'
 import {
   type DataviewCompileContext,
   type ValidationIssue,
-  type ValidationSeverity
 } from './contracts'
 import { dataviewFieldIntentHandlers } from './field'
 import { dataviewRecordIntentHandlers } from './record'
@@ -31,65 +26,96 @@ export const dataviewCompileHandlers = {
   ...dataviewViewIntentHandlers
 } as const
 
-export const compile: MutationCompile<
+type SharedCompileHandler = NonNullable<
+  MutationCompile<typeof dataviewMutationSchema, Intent, void>['handlers'][string]
+>
+
+type DataviewCompileHandlers = MutationCompile<
   typeof dataviewMutationSchema,
   Intent,
   void
-> = {
-  handlers: Object.fromEntries(
-    Object.entries(dataviewCompileHandlers).map(([type, handler]) => [
+>['handlers']
+
+const toMutationIssue = (
+  intent: Intent,
+  issue: ValidationIssue & Record<string, unknown>
+): MutationIssue => {
+  const {
+    code,
+    message,
+    details,
+    ...rest
+  } = issue
+
+  const detailValue = {
+    ...(details && typeof details === 'object'
+      ? details as Record<string, unknown>
+      : details === undefined
+        ? {}
+        : {
+            value: details
+          }),
+    ...rest,
+    source: {
+      type: intent.type
+    }
+  }
+
+  return {
+    code,
+    message,
+    ...(Object.keys(detailValue).length === 0
+      ? {}
+      : {
+          details: detailValue
+        })
+  }
+}
+
+const handlers = Object.fromEntries(
+  Object.entries(dataviewCompileHandlers).map(([type, handler]) => {
+    const compileHandler = handler as (input: DataviewCompileContext) => unknown
+    return [
       type,
-      (input: {
-        intent: Intent
-        document: DataDoc
-        read: DataviewMutationReader
-        write: DataviewMutationWriter
-        query: DataviewMutationQuery
-        change: DataviewMutationDelta
-        issue: {
-          add(issue: MutationIssue): void
-          all(): readonly MutationIssue[]
-          hasErrors(): boolean
-        }
-        services: void
-      }) => {
-        const compileHandler = handler as (
-          input: DataviewCompileContext
-        ) => unknown
-        const query = createDataviewQuery(input.query)
+      ((input) => {
+        const document = input.document as DataDoc
+        const query = createDataviewQuery(document)
         const issue = Object.assign(
           (next: ValidationIssue & Record<string, unknown>) => {
-            input.issue.add({
-              ...next,
-              source: {
-                type: input.intent.type
-              }
-            } as MutationIssue)
+            input.issue.add(toMutationIssue(input.intent, next))
           },
           {
             add: (next: ValidationIssue) => {
-              input.issue.add({
-                ...next,
-                source: {
-                  type: input.intent.type
-                }
-              } as MutationIssue)
+              input.issue.add(toMutationIssue(input.intent, next))
             },
             all: () => input.issue.all(),
             hasErrors: () => input.issue.hasErrors()
           }
         )
 
-        const context = {
-          ...input,
+        const context: DataviewCompileContext = {
+          intent: input.intent,
+          document,
+          read: input.read,
+          write: input.write,
           query,
+          change: input.change,
           issue,
-        } as DataviewCompileContext
+          services: input.services
+        }
 
         return compileHandler(context)
-      }
-    ])
-  ) as unknown as MutationCompile<typeof dataviewMutationSchema, Intent, void>['handlers']
+      }) satisfies SharedCompileHandler
+    ]
+  })
+) as DataviewCompileHandlers
+
+export const compile: MutationCompile<
+  typeof dataviewMutationSchema,
+  Intent,
+  void
+> = {
+  handlers
 }
 
 export type {

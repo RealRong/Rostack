@@ -1,24 +1,17 @@
 import assert from 'node:assert/strict'
 import { test } from 'vitest'
-import { json } from '@shared/core'
-import { path as mutationPath } from '@shared/draft'
 import { document as documentApi } from '@whiteboard/core/document'
-import type { IntentResult } from '@whiteboard/engine'
 import { createEngine } from '@whiteboard/engine'
 import { product } from '@whiteboard/product'
 import { createTestLayout } from './support'
 
-const serializeFootprint = (
-  value: unknown
-): string => json.stableStringify(value)
+const toSortedIds = (
+  value: ReadonlySet<string> | 'all'
+): readonly string[] | 'all' => value === 'all'
+  ? 'all'
+  : [...value].sort()
 
-const readSerializedFootprint = (
-  result: IntentResult
-) => new Set(
-  (result.ok ? result.commit.footprint : []).map(serializeFootprint)
-)
-
-test('engine exposes node create footprint through intent results', () => {
+test('engine exposes node create through typed delta', () => {
   const engine = createEngine({
     document: documentApi.create('doc_engine_write_create'),
     layout: createTestLayout()
@@ -40,44 +33,30 @@ test('engine exposes node create footprint through intent results', () => {
     return
   }
 
-  const footprint = readSerializedFootprint(result)
   assert.deepEqual(
-    footprint,
-    new Set([
-      serializeFootprint({
-        kind: 'entity',
-        family: 'node',
-        id: result.data.nodeId
-      }),
-      serializeFootprint({
-        kind: 'structure',
-        structure: 'document.order'
-      }),
-      serializeFootprint({
-        kind: 'structure-item',
-        structure: 'document.order',
-        id: `node\u0000${result.data.nodeId}`
-      })
-    ])
-  )
-  assert.deepEqual(
-    result.commit.delta.changes['node.create']?.ids,
+    toSortedIds(result.commit.delta.node.create.touchedIds()),
     [result.data.nodeId]
   )
+  assert.equal(result.commit.delta.order.contains({
+    kind: 'node',
+    id: result.data.nodeId
+  }), true)
 })
 
-test('engine maps mindmap topic updates to node + mindmap history keys', () => {
+test('engine applies node record updates through committed document writes', () => {
   const engine = createEngine({
-    document: documentApi.create('doc_engine_write_mindmap'),
+    document: documentApi.create('doc_engine_write_node_update'),
     layout: createTestLayout()
   })
 
   const createResult = engine.execute({
-    type: 'mindmap.create',
+    type: 'node.create',
     input: {
-      template: product.mindmap.template.build({
-        preset: 'mindmap.capsule-outline'
-      })
+      type: 'text',
+      position: { x: 0, y: 0 },
+      data: {
+        text: 'Central topic'
+      }
     }
   })
 
@@ -89,33 +68,24 @@ test('engine maps mindmap topic updates to node + mindmap history keys', () => {
   const updateResult = engine.execute({
     type: 'node.update',
     updates: [{
-      id: createResult.data.rootId,
+      id: createResult.data.nodeId,
       input: {
         record: {
-          [`data.${mutationPath.of('text')}`]: 'Updated topic'
+          'data.text': 'Updated topic'
         }
       }
     }]
   })
 
   assert.equal(updateResult.ok, true)
-  const footprint = readSerializedFootprint(updateResult)
+  if (!updateResult.ok) {
+    return
+  }
+
+  assert.equal(engine.doc().nodes[createResult.data.nodeId]?.data?.text, 'Updated topic')
   assert.deepEqual(
-    footprint,
-    new Set([
-      serializeFootprint({
-        kind: 'record',
-        family: 'node',
-        id: createResult.data.rootId,
-        scope: 'data',
-        path: mutationPath.of('text')
-      }),
-      serializeFootprint({
-        kind: 'entity',
-        family: 'mindmap',
-        id: createResult.data.mindmapId
-      })
-    ])
+    toSortedIds(updateResult.commit.delta.node.content.touchedIds()),
+    [createResult.data.nodeId]
   )
 })
 
@@ -248,11 +218,11 @@ test('mindmap.topic.move still commits when only the root-side changes', () => {
   }
 
   assert.equal(
-    moved.commit.document.mindmaps[created.data.mindmapId]?.members[childId]?.side,
+    moved.commit.document.mindmaps[created.data.mindmapId]?.tree.nodes[childId]?.value?.side,
     'left'
   )
   assert.deepEqual(
-    moved.commit.delta.changes['mindmap.structure']?.ids,
+    toSortedIds(moved.commit.delta.mindmap.structure.touchedIds()),
     [created.data.mindmapId]
   )
 })

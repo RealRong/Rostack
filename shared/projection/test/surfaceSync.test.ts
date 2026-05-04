@@ -1,8 +1,5 @@
 import { expect, it } from 'vitest'
 import type {
-  MutationDelta
-} from '@shared/mutation'
-import type {
   ProjectionFamilyChange,
   ProjectionFamilySnapshot,
   ProjectionValueChange
@@ -15,7 +12,7 @@ type Item = {
 }
 
 type Input = {
-  delta: MutationDelta
+  delta: TestDelta
   value: number
   items?: readonly Item[]
   skipValue?: boolean
@@ -31,33 +28,43 @@ type State = {
   customItemsChange: ProjectionFamilyChange<string, Item>
 }
 
-const EMPTY_CHANGES = Object.freeze(
+type TestDeltaChanges = Readonly<Record<string, {
+  ids?: readonly string[] | 'all'
+}>>
+
+type TestDelta = {
+  byKey: TestDeltaChanges
+  reset(): boolean
+}
+
+const EMPTY_CHANGES: TestDeltaChanges = Object.freeze(
   Object.create(null)
-) as MutationDelta['changes']
+)
 
 const createDelta = (
-  changes: MutationDelta['changes'] = EMPTY_CHANGES
-): MutationDelta => ({
-  changes
+  changes: TestDeltaChanges = EMPTY_CHANGES
+): TestDelta => ({
+  byKey: changes,
+  reset: () => false
 })
 
 const hasDeltaKey = (
-  delta: MutationDelta,
+  delta: TestDelta,
   key: string
 ): boolean => (
-  delta.reset === true
-  || Object.prototype.hasOwnProperty.call(delta.changes, key)
+  delta.reset()
+  || Object.prototype.hasOwnProperty.call(delta.byKey, key)
 )
 
 const readTouchedIds = (
-  delta: MutationDelta,
+  delta: TestDelta,
   key: string
 ): Set<string> | 'all' => {
-  if (delta.reset === true) {
+  if (delta.reset()) {
     return 'all'
   }
 
-  const ids = delta.changes[key]?.ids
+  const ids = delta.byKey[key]?.ids
   if (ids === 'all') {
     return 'all'
   }
@@ -90,10 +97,10 @@ const toSnapshot = (
 }
 
 const buildItemsChange = (input: {
-  delta: MutationDelta
+  delta: TestDelta
   snapshot: ProjectionFamilySnapshot<string, Item>
 }): ProjectionFamilyChange<string, Item> => {
-  if (input.delta.reset === true) {
+  if (input.delta.reset()) {
     return 'replace'
   }
 

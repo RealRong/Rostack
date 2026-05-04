@@ -206,16 +206,17 @@ export const deriveIndex = (input: {
   previous: IndexState
   previousDemand: NormalizedIndexDemand
   document: DataDoc
+  query: DataviewQuery
+  changes: DataviewMutationChanges
   delta: DataviewMutationDelta
   demand?: NormalizedIndexDemand
 }): IndexDeriveResult => {
   const previous = input.previous
   const nextDemand = input.demand ?? input.previousDemand
   const demandDelta = diffNormalizedIndexDemand(input.previousDemand, nextDemand)
-  const query = createDataviewQuery(input.document)
   const contentDelta = createContentDelta(
-    query,
-    query.changes(input.delta),
+    input.query,
+    input.changes,
     input.delta.reset()
   )
   const context = createIndexDeriveContext(input.document, contentDelta)
@@ -474,6 +475,8 @@ export const ensureDataviewIndex = (input: {
       previous: previous.state,
       previousDemand: previous.demand,
       document,
+      query: input.frame.query,
+      changes: input.frame.changes,
       delta: input.frame.delta,
       demand: active.demand
     })

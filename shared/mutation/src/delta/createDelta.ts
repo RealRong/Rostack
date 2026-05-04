@@ -13,6 +13,7 @@ import type {
 } from '../schema/node'
 import {
   readCurrentTargetId,
+  readOwnerTargetId,
   scopeTargetId
 } from '../internal/state'
 import {
@@ -20,7 +21,6 @@ import {
 } from '../schema/node'
 import type {
   MutationDeltaBaseOfShape,
-  MutationDeltaShape,
   MutationDeltaControls
 } from './facadeTypes'
 import type {
@@ -55,9 +55,221 @@ export type MutationDelta<TSchema extends MutationSchema = MutationSchema> =
     ? MutationDeltaBaseOfShape<TShape> & TChanges
     : never
 
-const deltaStateMap = new WeakMap<object, MutationDeltaState & {
+type MutationObjectContainerNode =
+  | MutationObjectNode<MutationShape>
+  | MutationSingletonNode<MutationShape>
+
+type MutationCollectionNode =
+  | MutationTableNode<string, MutationShape>
+  | MutationMapNode<string, MutationShape>
+
+type NodeWriteBuckets = Map<string, readonly MutationWrite[]>
+
+type CollectionTouchBucket = {
+  all: boolean
+  ids: Set<string>
+  created: Set<string>
+  removed: Set<string>
+}
+
+type MutationDeltaIndex = {
+  nodeWrites: WeakMap<MutationShapeNode, NodeWriteBuckets>
+  containerTargets: WeakMap<MutationObjectContainerNode, Set<string>>
+  collectionTouches: WeakMap<MutationCollectionNode, Map<string, CollectionTouchBucket>>
+}
+
+type MutationSchemaDeltaPlan = {
+  containerAncestorsByNode: WeakMap<
+    MutationShapeNode,
+    readonly MutationObjectContainerNode[]
+  >
+}
+
+type MutationDeltaRuntimeState = MutationDeltaState & {
   schema: MutationSchema
-}>()
+  index: MutationDeltaIndex
+  plan: MutationSchemaDeltaPlan
+  facadeCache: WeakMap<object, Map<string, unknown>>
+}
+
+const ROOT_TARGET_KEY = '__root__'
+
+const deltaStateMap = new WeakMap<object, MutationDeltaRuntimeState>()
+const schemaDeltaPlanMap = new WeakMap<MutationSchema, MutationSchemaDeltaPlan>()
+
+const toTargetKey = (
+  targetId?: string
+): string => targetId ?? ROOT_TARGET_KEY
+
+const ownerNode = (
+  owner: MutationOwnerMeta
+) => owner.kind === 'document'
+  ? undefined
+  : owner.node
+
+const pushNodeWrite = (
+  buckets: NodeWriteBuckets,
+  targetId: string | undefined,
+  write: MutationWrite
+) => {
+  const key = toTargetKey(targetId)
+  const list = buckets.get(key)
+  if (list) {
+    buckets.set(key, [
+      ...list,
+      write
+    ])
+    return
+  }
+  buckets.set(key, [write])
+}
+
+const getOrCreateMapValue = <TKey extends object, TValue>(
+  map: WeakMap<TKey, TValue>,
+  key: TKey,
+  create: () => TValue
+): TValue => {
+  const existing = map.get(key)
+  if (existing) {
+    return existing
+  }
+
+  const value = create()
+  map.set(key, value)
+  return value
+}
+
+const getOrCreateRecordValue = <TValue>(
+  map: Map<string, TValue>,
+  key: string,
+  create: () => TValue
+): TValue => {
+  const existing = map.get(key)
+  if (existing) {
+    return existing
+  }
+
+  const value = create()
+  map.set(key, value)
+  return value
+}
+
+const indexShapeContainers = (
+  shape: MutationShape,
+  plan: MutationSchemaDeltaPlan,
+  ancestors: readonly MutationObjectContainerNode[]
+) => {
+  Object.values(shape).forEach((entry) => {
+    if (!isMutationNode(entry)) {
+      indexShapeContainers(entry as MutationShape, plan, ancestors)
+      return
+    }
+
+    plan.containerAncestorsByNode.set(entry, ancestors)
+
+    switch (entry.kind) {
+      case 'object':
+        indexShapeContainers(entry.shape, plan, [
+          ...ancestors,
+          entry
+        ])
+        break
+      case 'singleton':
+        indexShapeContainers(entry.shape, plan, [
+          ...ancestors,
+          entry
+        ])
+        break
+      case 'table':
+      case 'map':
+        indexShapeContainers(entry.shape, plan, ancestors)
+        break
+      case 'field':
+      case 'dictionary':
+      case 'sequence':
+      case 'tree':
+        break
+    }
+  })
+}
+
+const getSchemaDeltaPlan = (
+  schema: MutationSchema
+): MutationSchemaDeltaPlan => {
+  const cached = schemaDeltaPlanMap.get(schema)
+  if (cached) {
+    return cached
+  }
+
+  const plan: MutationSchemaDeltaPlan = {
+    containerAncestorsByNode: new WeakMap()
+  }
+  indexShapeContainers(schema.shape, plan, [])
+  schemaDeltaPlanMap.set(schema, plan)
+  return plan
+}
+
+const createMutationDeltaIndex = (
+  schema: MutationSchema,
+  writes: readonly MutationWrite[]
+): MutationDeltaIndex => {
+  const plan = getSchemaDeltaPlan(schema)
+  const index: MutationDeltaIndex = {
+    nodeWrites: new WeakMap(),
+    containerTargets: new WeakMap(),
+    collectionTouches: new WeakMap()
+  }
+
+  writes.forEach((write) => {
+    const nodeBuckets = getOrCreateMapValue(index.nodeWrites, write.node, () => new Map())
+    pushNodeWrite(nodeBuckets, write.targetId, write)
+
+    const containerAncestors = plan.containerAncestorsByNode.get(write.node) ?? []
+    containerAncestors.forEach((container) => {
+      const targets = getOrCreateMapValue(index.containerTargets, container, () => new Set())
+      targets.add(toTargetKey(write.targetId))
+    })
+
+    const meta = getNodeMeta(write.node)
+    const collection = (
+      write.node.kind === 'table' || write.node.kind === 'map'
+    )
+      ? write.node
+      : ownerNode(meta.owner)
+
+    if (collection?.kind !== 'table' && collection?.kind !== 'map') {
+      return
+    }
+
+    const bucketMap = getOrCreateMapValue(index.collectionTouches, collection, () => new Map())
+    const bucket = getOrCreateRecordValue(
+      bucketMap,
+      toTargetKey(readOwnerTargetId(write.targetId)),
+      () => ({
+        all: false,
+        ids: new Set(),
+        created: new Set(),
+        removed: new Set()
+      })
+    )
+
+    const localId = readCurrentTargetId(write.targetId)
+    if (!localId) {
+      bucket.all = true
+      return
+    }
+
+    bucket.ids.add(localId)
+    if (write.kind === 'entity.create') {
+      bucket.created.add(localId)
+    }
+    if (write.kind === 'entity.remove') {
+      bucket.removed.add(localId)
+    }
+  })
+
+  return index
+}
 
 const isDelta = (
   value: unknown
@@ -80,9 +292,7 @@ const hasDelta = (
 
 const readDeltaState = (
   delta: MutationDelta
-): MutationDeltaState & {
-  schema: MutationSchema
-} => {
+): MutationDeltaRuntimeState => {
   const state = deltaStateMap.get(delta as object)
   if (!state) {
     throw new Error('Mutation delta was not created by @shared/mutation.')
@@ -126,215 +336,286 @@ export const resolveMutationDeltaSource = <TSchema extends MutationSchema>(
   throw new Error('Unsupported mutation delta source.')
 }
 
-const ownerNode = (
-  owner: MutationOwnerMeta
-) => owner.kind === 'document'
-  ? undefined
-  : owner.node
+const getNodeTargetWrites = (
+  state: MutationDeltaRuntimeState,
+  node: MutationShapeNode,
+  targetId?: string
+): readonly MutationWrite[] => {
+  const buckets = state.index.nodeWrites.get(node)
+  if (!buckets) {
+    return []
+  }
+
+  if (targetId !== undefined) {
+    return buckets.get(toTargetKey(targetId)) ?? []
+  }
+
+  return [...buckets.values()].flat()
+}
 
 const nodeChanged = (
+  state: MutationDeltaRuntimeState,
   node: MutationShapeNode,
-  writes: readonly MutationWrite[],
   targetId?: string
-): boolean => writes.some((write) => (
-  write.node === node
-  && (targetId === undefined || write.targetId === targetId)
-))
+): boolean => {
+  const buckets = state.index.nodeWrites.get(node)
+  if (!buckets) {
+    return false
+  }
 
-const descendantChanged = (
-  pathKey: string,
-  writes: readonly MutationWrite[],
+  if (targetId !== undefined) {
+    return (buckets.get(toTargetKey(targetId))?.length ?? 0) > 0
+  }
+
+  for (const writes of buckets.values()) {
+    if (writes.length > 0) {
+      return true
+    }
+  }
+  return false
+}
+
+const containerChanged = (
+  state: MutationDeltaRuntimeState,
+  node: MutationObjectContainerNode,
   targetId?: string
-): boolean => writes.some((write) => (
-  getNodeMeta(write.node).path.join('.').startsWith(pathKey)
-  && (targetId === undefined || write.targetId === targetId)
-))
+): boolean => {
+  const targets = state.index.containerTargets.get(node)
+  if (!targets) {
+    return false
+  }
+
+  if (targetId !== undefined) {
+    return targets.has(toTargetKey(targetId))
+  }
+
+  return targets.size > 0
+}
+
+const getCachedFacade = <TValue>(
+  state: MutationDeltaRuntimeState,
+  key: object,
+  targetId: string | undefined,
+  create: () => TValue
+): TValue => {
+  const keyMap = getOrCreateMapValue(state.facadeCache, key, () => new Map())
+  const cacheKey = toTargetKey(targetId)
+  if (keyMap.has(cacheKey)) {
+    return keyMap.get(cacheKey) as TValue
+  }
+
+  const value = create()
+  keyMap.set(cacheKey, value)
+  return value
+}
+
+const defineLazyNode = (
+  target: Record<string, unknown>,
+  key: string,
+  resolve: () => unknown
+) => {
+  Object.defineProperty(target, key, {
+    configurable: true,
+    enumerable: true,
+    get() {
+      const value = resolve()
+      Object.defineProperty(target, key, {
+        value,
+        configurable: false,
+        enumerable: true,
+        writable: false
+      })
+      return value
+    }
+  })
+}
 
 const createFieldDelta = (
   node: MutationFieldNode<unknown, boolean>,
-  writes: readonly MutationWrite[],
+  state: MutationDeltaRuntimeState,
   targetId?: string
-) => ({
-  changed: () => nodeChanged(node, writes, targetId)
-})
+) => getCachedFacade(state, node, targetId, () => ({
+  changed: () => nodeChanged(state, node, targetId)
+}))
 
 const createDictionaryDelta = (
   node: MutationDictionaryNode<string, unknown>,
-  writes: readonly MutationWrite[],
+  state: MutationDeltaRuntimeState,
   targetId?: string
-) => ({
-  changed: (key?: string) => writes.some((write) => (
-    write.node === node
-    && (targetId === undefined || write.targetId === targetId)
-    && (
-      key === undefined
-      || (
-        (write.kind === 'dictionary.set' || write.kind === 'dictionary.delete')
-        && write.key === key
-      )
-      || write.kind === 'dictionary.replace'
-    )
-  )),
-  anyChanged: () => nodeChanged(node, writes, targetId),
-  has: (key: string) => writes.some((write) => (
-    write.node === node
-    && (targetId === undefined || write.targetId === targetId)
-    && (
-      (write.kind === 'dictionary.set' && write.key === key)
-      || write.kind === 'dictionary.replace'
-    )
+) => getCachedFacade(state, node, targetId, () => ({
+  changed: (key?: string) => {
+    const writes = getNodeTargetWrites(state, node, targetId)
+    if (key === undefined) {
+      return writes.length > 0
+    }
+    return writes.some((write) => (
+      (write.kind === 'dictionary.set' || write.kind === 'dictionary.delete')
+        ? write.key === key
+        : write.kind === 'dictionary.replace'
+          ? key in write.value
+          : false
+    ))
+  },
+  anyChanged: () => nodeChanged(state, node, targetId),
+  has: (key: string) => getNodeTargetWrites(state, node, targetId).some((write) => (
+    write.kind === 'dictionary.set' && write.key === key
+    || write.kind === 'dictionary.replace' && key in write.value
   ))
-})
+}))
 
 const createSequenceDelta = (
   node: MutationSequenceNode<unknown>,
-  writes: readonly MutationWrite[],
+  state: MutationDeltaRuntimeState,
   targetId?: string
-) => ({
-  changed: () => nodeChanged(node, writes, targetId),
-  orderChanged: () => nodeChanged(node, writes, targetId),
-  contains: (item: unknown) => writes.some((write) => (
-    write.node === node
-    && (targetId === undefined || write.targetId === targetId)
-    && (
-      (write.kind === 'sequence.insert' || write.kind === 'sequence.move' || write.kind === 'sequence.remove')
-      && node.keyOf(write.value) === node.keyOf(item)
-      || write.kind === 'sequence.replace'
-      && write.value.some((entry) => node.keyOf(entry) === node.keyOf(item))
+) => getCachedFacade(state, node, targetId, () => ({
+  changed: () => nodeChanged(state, node, targetId),
+  orderChanged: () => nodeChanged(state, node, targetId),
+  contains: (item: unknown) => getNodeTargetWrites(state, node, targetId).some((write) => (
+    (
+      write.kind === 'sequence.insert'
+      || write.kind === 'sequence.move'
+      || write.kind === 'sequence.remove'
     )
+      ? node.keyOf(write.value) === node.keyOf(item)
+      : write.kind === 'sequence.replace'
+        ? write.value.some((entry) => node.keyOf(entry) === node.keyOf(item))
+        : false
   ))
-})
+}))
 
 const createTreeDelta = (
   node: MutationTreeNode<string, unknown>,
-  writes: readonly MutationWrite[],
+  state: MutationDeltaRuntimeState,
   targetId?: string
-) => ({
-  changed: () => nodeChanged(node, writes, targetId),
-  structureChanged: () => writes.some((write) => (
-    write.node === node
-    && (targetId === undefined || write.targetId === targetId)
-    && write.kind !== 'tree.patch'
-  )),
-  nodeChanged: (nodeId: string) => writes.some((write) => (
-    write.node === node
-    && (targetId === undefined || write.targetId === targetId)
-    && (
-      ('nodeId' in write && write.nodeId === nodeId)
-      || write.kind === 'tree.replace'
-    )
+) => getCachedFacade(state, node, targetId, () => ({
+  changed: () => nodeChanged(state, node, targetId),
+  structureChanged: () => getNodeTargetWrites(state, node, targetId).some((write) => write.kind !== 'tree.patch'),
+  nodeChanged: (nodeId: string) => getNodeTargetWrites(state, node, targetId).some((write) => (
+    ('nodeId' in write && write.nodeId === nodeId)
+    || write.kind === 'tree.replace'
   ))
-})
+}))
+
+const populateShapeDelta = (
+  target: Record<string, unknown>,
+  shape: MutationShape,
+  state: MutationDeltaRuntimeState,
+  targetId?: string
+) => {
+  Object.entries(shape).forEach(([key, entry]) => {
+    defineLazyNode(target, key, () => createNodeDelta(
+      entry as MutationShapeNode | MutationShape,
+      state,
+      targetId
+    ))
+  })
+}
 
 const createShapeDelta = (
   shape: MutationShape,
-  writes: readonly MutationWrite[],
+  state: MutationDeltaRuntimeState,
   targetId?: string
-): Record<string, unknown> => Object.fromEntries(
-  Object.entries(shape)
-    .map(([key, value]) => [
-      key,
-      createNodeDelta(value as MutationShapeNode | MutationShape, writes, targetId)
-    ])
-)
+): Record<string, unknown> => getCachedFacade(state, shape, targetId, () => {
+  const value: Record<string, unknown> = {}
+  populateShapeDelta(value, shape, state, targetId)
+  return value
+})
 
 const createObjectDelta = (
   node: MutationObjectNode<MutationShape> | MutationSingletonNode<MutationShape>,
-  writes: readonly MutationWrite[],
+  state: MutationDeltaRuntimeState,
   targetId?: string
-) => {
-  const pathKey = getNodeMeta(node).path.join('.')
-  return {
-    ...createShapeDelta(node.shape, writes, targetId),
-    changed: () => descendantChanged(pathKey, writes, targetId)
-  }
-}
+) => getCachedFacade(state, node, targetId, () => {
+  const value: Record<string, unknown> = {}
+  populateShapeDelta(value, node.shape, state, targetId)
+  Object.defineProperty(value, 'changed', {
+    value: () => nodeChanged(state, node, targetId) || containerChanged(state, node, targetId),
+    configurable: false,
+    enumerable: true,
+    writable: false
+  })
+  return value
+})
 
 const createCollectionDelta = (
   node: MutationTableNode<string, MutationShape> | MutationMapNode<string, MutationShape>,
-  writes: readonly MutationWrite[],
+  state: MutationDeltaRuntimeState,
   ownerTargetId?: string
-) => Object.assign(
-  (id: string) => ({
-    ...createShapeDelta(node.shape, writes, scopeTargetId(ownerTargetId, id)),
-    changed: () => writes.some((write) => (
-      write.targetId === scopeTargetId(ownerTargetId, id)
-      && (
-        write.node === node
-        || ownerNode(getNodeMeta(write.node).owner) === node
-      )
-    ))
-  }),
-  {
-    changed: (id?: string) => writes.some((write) => (
-      write.node === node
-      || ownerNode(getNodeMeta(write.node).owner) === node
-    ) && (id === undefined || write.targetId === scopeTargetId(ownerTargetId, id))),
-    created: (id: string) => writes.some((write) => (
-      write.kind === 'entity.create'
-      && write.node === node
-      && write.targetId === scopeTargetId(ownerTargetId, id)
-    )),
-    removed: (id: string) => writes.some((write) => (
-      write.kind === 'entity.remove'
-      && write.node === node
-      && write.targetId === scopeTargetId(ownerTargetId, id)
-    )),
-    contains: (id: string) => writes.some((write) => (
-      write.targetId === scopeTargetId(ownerTargetId, id)
-      && (
-        write.node === node
-        || ownerNode(getNodeMeta(write.node).owner) === node
-      )
-    )),
-    touchedIds: () => {
-      const ids = new Set<string>()
+) => getCachedFacade(state, node, ownerTargetId, () => {
+  const entityCache = new Map<string, unknown>()
+  const bucket = state.index.collectionTouches.get(node)?.get(toTargetKey(ownerTargetId))
 
-      for (const write of writes) {
-        if (
-          write.node !== node
-          && ownerNode(getNodeMeta(write.node).owner) !== node
-        ) {
-          continue
+  const readEntity = (id: string) => {
+    const existing = entityCache.get(id)
+    if (existing !== undefined) {
+      return existing
+    }
+
+    const scopedTargetId = scopeTargetId(ownerTargetId, id)
+    const value: Record<string, unknown> = {}
+    populateShapeDelta(value, node.shape, state, scopedTargetId)
+    Object.defineProperty(value, 'changed', {
+      value: () => bucket?.all === true || bucket?.ids.has(id) === true,
+      configurable: false,
+      enumerable: true,
+      writable: false
+    })
+    entityCache.set(id, value)
+    return value
+  }
+
+  return Object.assign(
+    (id: string) => readEntity(id),
+    {
+      changed: (id?: string) => {
+        if (!bucket) {
+          return false
         }
-
-        const id = readCurrentTargetId(write.targetId)
-        if (!id) {
+        return id === undefined
+          ? bucket.all || bucket.ids.size > 0
+          : bucket.all || bucket.ids.has(id)
+      },
+      created: (id: string) => bucket?.all === true || bucket?.created.has(id) === true,
+      removed: (id: string) => bucket?.all === true || bucket?.removed.has(id) === true,
+      contains: (id: string) => bucket?.all === true || bucket?.ids.has(id) === true,
+      touchedIds: () => {
+        if (!bucket) {
+          return new Set<string>()
+        }
+        if (bucket.all) {
           return 'all'
         }
-        ids.add(id)
+        return new Set(bucket.ids)
       }
-
-      return ids
     }
-  }
-)
+  )
+})
 
 const createNodeDelta = (
   entry: MutationShapeNode | MutationShape,
-  writes: readonly MutationWrite[],
+  state: MutationDeltaRuntimeState,
   targetId?: string
 ): unknown => {
   if (!isMutationNode(entry)) {
-    return createShapeDelta(entry, writes, targetId)
+    return createShapeDelta(entry, state, targetId)
   }
 
   switch (entry.kind) {
     case 'field':
-      return createFieldDelta(entry, writes, targetId)
+      return createFieldDelta(entry, state, targetId)
     case 'dictionary':
-      return createDictionaryDelta(entry, writes, targetId)
+      return createDictionaryDelta(entry, state, targetId)
     case 'sequence':
-      return createSequenceDelta(entry, writes, targetId)
+      return createSequenceDelta(entry, state, targetId)
     case 'tree':
-      return createTreeDelta(entry, writes, targetId)
+      return createTreeDelta(entry, state, targetId)
     case 'object':
-      return createObjectDelta(entry, writes, targetId)
+      return createObjectDelta(entry, state, targetId)
     case 'singleton':
-      return createObjectDelta(entry, writes, targetId)
+      return createObjectDelta(entry, state, targetId)
     case 'table':
     case 'map':
-      return createCollectionDelta(entry, writes, targetId)
+      return createCollectionDelta(entry, state, targetId)
   }
 }
 
@@ -342,23 +623,25 @@ export const createMutationDeltaFromState = <TSchema extends MutationSchema>(
   schema: TSchema,
   state: MutationDeltaState
 ): MutationDelta<TSchema> => {
-  const writes = state.writes
+  const runtimeState: MutationDeltaRuntimeState = {
+    ...state,
+    schema,
+    plan: getSchemaDeltaPlan(schema),
+    index: createMutationDeltaIndex(schema, state.writes),
+    facadeCache: new WeakMap()
+  }
   const controls = {
-    reset: () => state.reset,
-    writes: () => [...writes]
+    reset: () => runtimeState.reset,
+    writes: () => [...runtimeState.writes]
   } satisfies MutationDeltaControls
   const base = Object.assign(
-    createShapeDelta(schema.shape, writes),
+    createShapeDelta(schema.shape, runtimeState),
     controls
-  ) as MutationDeltaBaseOfShape<typeof schema.shape> & MutationDeltaShape<typeof schema.shape>
+  ) as MutationDeltaBaseOfShape<typeof schema.shape>
   const aggregates = getSchemaChangeFactory(schema)?.(base)
   const delta = Object.assign(base, aggregates ?? {}) as MutationDelta<TSchema>
 
-  deltaStateMap.set(delta as object, {
-    schema,
-    reset: state.reset,
-    writes
-  })
+  deltaStateMap.set(delta as object, runtimeState)
 
   return delta
 }

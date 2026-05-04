@@ -171,11 +171,7 @@ describe('graph delta patching', () => {
         ])
       }))
 
-    const liveDelta = createEditorStateInputDelta({
-      changes: {
-        'state.edit': true
-      }
-    })
+    const liveDelta = createEditorStateInputDelta({})
 
     const live = runtime.update(createInput({
         engine,

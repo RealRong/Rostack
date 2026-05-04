@@ -1,7 +1,11 @@
 import assert from 'node:assert/strict'
 import { test } from 'vitest'
 import { entityTable } from '@shared/core'
-import { createMutationDelta } from '@shared/mutation'
+import {
+  createMutationDelta,
+  createMutationResetDelta,
+  type MutationWrite
+} from '@shared/mutation'
 import { dataviewMutationSchema } from '@dataview/core/mutation'
 import { createDataviewFrame } from '@dataview/engine/active/frame'
 import { ensureDataviewIndex } from '@dataview/engine/active/index/runtime'
@@ -17,7 +21,9 @@ const FIELD_POINTS = 'points'
 
 const optionTable = <T extends { id: string }>(
   options: readonly T[]
-) => options.map((option) => ({ ...option }))
+) => entityTable.normalize.list(
+  options.map((option) => ({ ...option }))
+)
 
 const createView = (input?: {
   wrap?: boolean
@@ -162,11 +168,10 @@ const createEmptyDocument = () => ({
 
 const toDelta = (input: {
   reset?: true
-  changes?: Record<string, unknown>
-} = {}) => createMutationDelta(dataviewMutationSchema, {
-  ...(input.reset ? { reset: true } : {}),
-  changes: input.changes ?? {}
-})
+  writes?: readonly MutationWrite[]
+} = {}) => input.reset
+  ? createMutationResetDelta(dataviewMutationSchema)
+  : createMutationDelta(dataviewMutationSchema, input.writes ?? [])
 
 const createState = (): DataviewState => ({
   revision: 0,
@@ -178,14 +183,12 @@ test('createDataviewFrame resolves plain active spec from document', () => {
     revision: 1,
     document: createDocument(),
     delta: toDelta({
-      changes: {
-        'view.sort': {
-          ids: [VIEW_ID],
-          paths: {
-            [VIEW_ID]: ['sort.rules']
-          }
-        }
-      }
+      writes: [{
+        kind: 'field.set',
+        node: dataviewMutationSchema.shape.views.shape.sort,
+        targetId: VIEW_ID,
+        value: createView().sort
+      }]
     })
   })
 
@@ -216,11 +219,12 @@ test('ensureDataviewIndex keeps one active index and syncs active demand changes
       calc: {}
     })),
     delta: toDelta({
-      changes: {
-        'view.calc': {
-          ids: [VIEW_ID]
-        }
-      }
+      writes: [{
+        kind: 'field.set',
+        node: dataviewMutationSchema.shape.views.shape.calc,
+        targetId: VIEW_ID,
+        value: {}
+      }]
     })
   })
   const second = ensureDataviewIndex({
@@ -266,14 +270,14 @@ test('createDataviewActivePlan keeps layout-only change inside publish', () => {
       wrap: true
     })),
     delta: toDelta({
-      changes: {
-        'view.options': {
-          ids: [VIEW_ID],
-          paths: {
-            [VIEW_ID]: ['options.wrap']
-          }
-        }
-      }
+      writes: [{
+        kind: 'field.set',
+        node: dataviewMutationSchema.shape.views.shape.options,
+        targetId: VIEW_ID,
+        value: createView({
+          wrap: true
+        }).options
+      }]
     })
   })
   const ensured = ensureDataviewIndex({
@@ -345,9 +349,11 @@ test('createDataviewProjection now runs active only and clears snapshot when act
   const cleared = runtime.update({
     document: createEmptyDocument(),
     delta: toDelta({
-      changes: {
-        'document.activeViewId': true
-      }
+      writes: [{
+        kind: 'field.set',
+        node: dataviewMutationSchema.shape.activeViewId,
+        value: undefined
+      }]
     })
   })
 

@@ -1,6 +1,5 @@
 import { store } from '../../core/src/index.ts';
 import { expect, it } from 'vitest';
-import type { MutationDelta } from '@shared/mutation';
 import type { ProjectionFamilyChange, ProjectionFamilySnapshot } from '../src';
 import { createProjection } from '../src';
 type Item = {
@@ -8,28 +7,35 @@ type Item = {
     value: number;
 };
 type Input = {
-    delta: MutationDelta;
+    delta: TestDelta;
     items: readonly Item[];
 };
 type State = {
     items: Map<string, Item>;
     change: ProjectionFamilyChange<string, Item>;
 };
-const EMPTY_CHANGES = Object.freeze(Object.create(null)) as MutationDelta['changes'];
-const hasChange = (delta: MutationDelta, key: string): boolean => (delta.reset === true
-    || Object.prototype.hasOwnProperty.call(delta.changes, key));
-const readIds = (delta: MutationDelta, key: string): readonly string[] | 'all' | undefined => (delta.reset === true
+type TestDeltaChanges = Readonly<Record<string, {
+    ids?: readonly string[] | 'all';
+}>>;
+type TestDelta = {
+    byKey: TestDeltaChanges;
+    reset(): boolean;
+};
+const EMPTY_CHANGES: TestDeltaChanges = Object.freeze(Object.create(null));
+const hasChange = (delta: TestDelta, key: string): boolean => (delta.reset()
+    || Object.prototype.hasOwnProperty.call(delta.byKey, key));
+const readIds = (delta: TestDelta, key: string): readonly string[] | 'all' | undefined => (delta.reset()
     ? 'all'
-    : delta.changes[key]?.ids);
+    : delta.byKey[key]?.ids);
 const toSnapshot = (items: Map<string, Item>): ProjectionFamilySnapshot<string, Item> => ({
     ids: [...items.keys()],
     byId: items
 });
 const buildItemChange = (input: {
-    delta: MutationDelta;
+    delta: TestDelta;
     snapshot: ProjectionFamilySnapshot<string, Item>;
 }): ProjectionFamilyChange<string, Item> => {
-    if (input.delta.reset === true) {
+    if (input.delta.reset()) {
         return 'replace';
     }
     const written = readIds(input.delta, 'items.write');
@@ -71,8 +77,9 @@ const buildItemChange = (input: {
             : {})
     };
 };
-const createDelta = (changes: MutationDelta['changes'] = EMPTY_CHANGES): MutationDelta => ({
-    changes
+const createDelta = (changes: TestDeltaChanges = EMPTY_CHANGES): TestDelta => ({
+    byKey: changes,
+    reset: () => false
 });
 it('projection runtime exposes capture and keyed family subscriptions', () => {
     const runtime = createProjection<Input, State, {}, {

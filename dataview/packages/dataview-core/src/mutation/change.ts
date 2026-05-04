@@ -117,6 +117,34 @@ export const createDataviewChanges = (
   const base = raw.changes(delta)
   const reset = base.reset()
   const writes = base.writes()
+  const createdFieldIds = collectTouchedIds<FieldId>(
+    reset,
+    writes,
+    (write) => write.kind === 'entity.create' && write.node === nodes.fields && typeof write.targetId === 'string'
+      ? write.targetId as FieldId
+      : undefined
+  )
+  const removedFieldIds = collectTouchedIds<FieldId>(
+    reset,
+    writes,
+    (write) => write.kind === 'entity.remove' && write.node === nodes.fields && typeof write.targetId === 'string'
+      ? write.targetId as FieldId
+      : undefined
+  )
+  const createdViewIds = collectTouchedIds<ViewId>(
+    reset,
+    writes,
+    (write) => write.kind === 'entity.create' && write.node === nodes.views && typeof write.targetId === 'string'
+      ? write.targetId as ViewId
+      : undefined
+  )
+  const removedViewIds = collectTouchedIds<ViewId>(
+    reset,
+    writes,
+    (write) => write.kind === 'entity.remove' && write.node === nodes.views && typeof write.targetId === 'string'
+      ? write.targetId as ViewId
+      : undefined
+  )
 
   const createdRecordIds = collectTouchedIds<RecordId>(
     reset,
@@ -134,16 +162,119 @@ export const createDataviewChanges = (
       : undefined
   )
 
-  const recordTitleChanged = (recordId?: RecordId): boolean => (
-    recordId === undefined
-      ? query.records.ids().some((currentRecordId) => base.records(currentRecordId).title.changed())
-      : query.records.has(recordId)
-        ? base.records(recordId).title.changed()
-        : writes.some((write) => (
-            write.node === nodes.records.shape.title
-            && write.targetId === recordId
-          ))
-  )
+  const hasTouchedId = <TId extends string>(
+    ids: TouchedIds<TId>,
+    id: TId
+  ): boolean => ids === 'all' || ids.has(id)
+
+  let recordTitleTouched = false
+  const recordTitleIds = new Set<RecordId>()
+  const valueFieldIds = new Set<FieldId>()
+  const fieldSchemaIds = new Set<FieldId>()
+  const touchedViewIds = new Set<ViewId>()
+  const viewQueryChanges = new Map<ViewId, Set<DataviewQueryAspect>>()
+  const viewLayoutChanges = new Set<ViewId>()
+
+  writes.forEach((write) => {
+    if (write.node === nodes.records.shape.title) {
+      recordTitleTouched = true
+      if (typeof write.targetId === 'string') {
+        recordTitleIds.add(write.targetId as RecordId)
+      }
+      return
+    }
+
+    if (write.node === nodes.records.shape.values) {
+      if (write.kind === 'dictionary.set' || write.kind === 'dictionary.delete') {
+        valueFieldIds.add(write.key as FieldId)
+        return
+      }
+
+      if (write.kind === 'dictionary.replace') {
+        Object.keys(write.value).forEach((fieldId) => {
+          valueFieldIds.add(fieldId as FieldId)
+        })
+      }
+      return
+    }
+
+    if (
+      typeof write.targetId === 'string'
+      && (
+        write.node === nodes.fields.shape.name
+        || write.node === nodes.fields.shape.kind
+        || write.node === nodes.fields.shape.displayFullUrl
+        || write.node === nodes.fields.shape.format
+        || write.node === nodes.fields.shape.precision
+        || write.node === nodes.fields.shape.currency
+        || write.node === nodes.fields.shape.useThousandsSeparator
+        || write.node === nodes.fields.shape.defaultOptionId
+        || write.node === nodes.fields.shape.displayDateFormat
+        || write.node === nodes.fields.shape.displayTimeFormat
+        || write.node === nodes.fields.shape.defaultValueKind
+        || write.node === nodes.fields.shape.defaultTimezone
+        || write.node === nodes.fields.shape.multiple
+        || write.node === nodes.fields.shape.accept
+        || write.node === nodes.fields.shape.meta
+        || write.node === nodes.fields.shape.options
+      )
+    ) {
+      fieldSchemaIds.add(write.targetId as FieldId)
+      return
+    }
+
+    if (
+      typeof write.targetId === 'string'
+      && (
+        write.node === nodes.views.shape.name
+        || write.node === nodes.views.shape.type
+        || write.node === nodes.views.shape.search
+        || write.node === nodes.views.shape.filter
+        || write.node === nodes.views.shape.sort
+        || write.node === nodes.views.shape.group
+        || write.node === nodes.views.shape.calc
+        || write.node === nodes.views.shape.options
+        || write.node === nodes.views.shape.fields
+        || write.node === nodes.views.shape.order
+      )
+    ) {
+      const viewId = write.targetId as ViewId
+      touchedViewIds.add(viewId)
+
+      if (
+        write.node === nodes.views.shape.name
+        || write.node === nodes.views.shape.type
+        || write.node === nodes.views.shape.options
+        || write.node === nodes.views.shape.fields
+      ) {
+        viewLayoutChanges.add(viewId)
+      }
+
+      const aspects = viewQueryChanges.get(viewId) ?? new Set<DataviewQueryAspect>()
+      if (write.node === nodes.views.shape.search) {
+        aspects.add('search')
+      } else if (write.node === nodes.views.shape.filter) {
+        aspects.add('filter')
+      } else if (write.node === nodes.views.shape.sort) {
+        aspects.add('sort')
+      } else if (write.node === nodes.views.shape.group) {
+        aspects.add('group')
+      } else if (write.node === nodes.views.shape.order) {
+        aspects.add('order')
+      }
+      viewQueryChanges.set(viewId, aspects)
+    }
+  })
+
+  const recordTitleChanged = (recordId?: RecordId): boolean => recordId === undefined
+    ? recordTitleTouched
+    : recordTitleIds.has(recordId)
+
+  let touchedRecordsCache: TouchedIds<RecordId> | undefined
+  let valueTouchedIdsCache: TouchedIds<FieldId> | undefined
+  let fieldSchemaTouchedIdsCache: TouchedIds<FieldId> | undefined
+  let touchedFieldsCache: TouchedIds<FieldId> | undefined
+  let touchedViewsCache: TouchedIds<ViewId> | undefined
 
   const touchedRecords = (): TouchedIds<RecordId> => collectTouchedIds<RecordId>(
     reset,
@@ -168,168 +299,150 @@ export const createDataviewChanges = (
   )
 
   const valueTouchedIds = (): TouchedIds<FieldId> => {
+    if (valueTouchedIdsCache) {
+      return valueTouchedIdsCache
+    }
+
     if (reset) {
-      return 'all'
+      valueTouchedIdsCache = 'all'
+      return valueTouchedIdsCache
     }
 
     const ids = new Set<FieldId>()
-    writes.forEach((write) => {
-      if (write.node !== nodes.records.shape.values) {
-        return
-      }
-      if (write.kind === 'dictionary.set' || write.kind === 'dictionary.delete') {
-        ids.add(write.key as FieldId)
-        return
-      }
-      if (write.kind === 'dictionary.replace') {
-        Object.keys(write.value).forEach((fieldId) => {
-          ids.add(fieldId as FieldId)
-        })
-      }
+    valueFieldIds.forEach((fieldId) => {
+      ids.add(fieldId)
     })
 
-    if (recordTitleChanged()) {
+    if (recordTitleTouched) {
       ids.add(TITLE_FIELD_ID)
     }
 
-    return ids
+    valueTouchedIdsCache = ids
+    return valueTouchedIdsCache
   }
 
   const fieldSchemaChanged = (
     fieldId?: FieldId
   ): boolean => {
     if (fieldId === undefined) {
-      const currentFieldIds = query.fields.ids()
-      if (currentFieldIds.some((currentFieldId) => fieldSchemaChanged(currentFieldId))) {
-        return true
-      }
-
-      return writes.some((write) => write.node === nodes.fields)
+      const touched = fieldSchemaTouchedIds()
+      return touched === 'all' || touched.size > 0
     }
 
     if (fieldId === TITLE_FIELD_ID) {
       return recordTitleChanged()
     }
-    if (!query.fields.has(fieldId)) {
-      return base.fields.created(fieldId) || base.fields.removed(fieldId)
-    }
-
-    const field = base.fields(fieldId)
-    return base.fields.created(fieldId)
-      || base.fields.removed(fieldId)
-      || FIELD_SCHEMA_KEYS.some((key) => field[key].changed())
-      || field.options.changed()
+    return hasTouchedId(createdFieldIds, fieldId)
+      || hasTouchedId(removedFieldIds, fieldId)
+      || fieldSchemaIds.has(fieldId)
   }
 
   const fieldSchemaTouchedIds = (): TouchedIds<FieldId> => {
+    if (fieldSchemaTouchedIdsCache) {
+      return fieldSchemaTouchedIdsCache
+    }
+
     if (reset) {
-      return 'all'
+      fieldSchemaTouchedIdsCache = 'all'
+      return fieldSchemaTouchedIdsCache
     }
 
     const ids = new Set<FieldId>()
-    if (fieldSchemaChanged(TITLE_FIELD_ID)) {
+    if (recordTitleTouched) {
       ids.add(TITLE_FIELD_ID)
     }
 
-    query.fields.ids().forEach((fieldId) => {
-      if (fieldId !== TITLE_FIELD_ID && fieldSchemaChanged(fieldId)) {
+    fieldSchemaIds.forEach((fieldId) => {
+      ids.add(fieldId)
+    })
+
+    if (createdFieldIds !== 'all') {
+      createdFieldIds.forEach((fieldId) => {
         ids.add(fieldId)
-      }
-    })
+      })
+    }
 
-    writes.forEach((write) => {
-      if (write.node === nodes.fields && typeof write.targetId === 'string') {
-        ids.add(write.targetId as FieldId)
-      }
-    })
+    if (removedFieldIds !== 'all') {
+      removedFieldIds.forEach((fieldId) => {
+        ids.add(fieldId)
+      })
+    }
 
-    return ids
+    fieldSchemaTouchedIdsCache = ids
+    return fieldSchemaTouchedIdsCache
   }
 
   const touchedFields = (): TouchedIds<FieldId> => {
+    if (touchedFieldsCache) {
+      return touchedFieldsCache
+    }
+
     const valueIds = valueTouchedIds()
     const schemaIds = fieldSchemaTouchedIds()
     if (valueIds === 'all' || schemaIds === 'all') {
-      return 'all'
+      touchedFieldsCache = 'all'
+      return touchedFieldsCache
     }
 
-    return new Set<FieldId>([
+    touchedFieldsCache = new Set<FieldId>([
       ...valueIds,
       ...schemaIds
     ])
+    return touchedFieldsCache
   }
 
-  const touchedViews = (): TouchedIds<ViewId> => collectTouchedIds<ViewId>(
-    reset,
-    writes,
-    (write) => {
-      if (write.node === nodes.views && typeof write.targetId === 'string') {
-        return write.targetId as ViewId
-      }
-      if (
-        typeof write.targetId === 'string'
-        && (
-          write.node === nodes.views.shape.name
-          || write.node === nodes.views.shape.type
-          || write.node === nodes.views.shape.search
-          || write.node === nodes.views.shape.filter
-          || write.node === nodes.views.shape.sort
-          || write.node === nodes.views.shape.group
-          || write.node === nodes.views.shape.calc
-          || write.node === nodes.views.shape.options
-          || write.node === nodes.views.shape.fields
-          || write.node === nodes.views.shape.order
-        )
-      ) {
-        return write.targetId as ViewId
-      }
-      return undefined
+  const touchedViews = (): TouchedIds<ViewId> => {
+    if (touchedViewsCache) {
+      return touchedViewsCache
     }
-  )
+
+    if (reset) {
+      touchedViewsCache = 'all'
+      return touchedViewsCache
+    }
+
+    const ids = new Set<ViewId>()
+    touchedViewIds.forEach((viewId) => {
+      ids.add(viewId)
+    })
+    if (createdViewIds !== 'all') {
+      createdViewIds.forEach((viewId) => {
+        ids.add(viewId)
+      })
+    }
+    if (removedViewIds !== 'all') {
+      removedViewIds.forEach((viewId) => {
+        ids.add(viewId)
+      })
+    }
+    touchedViewsCache = ids
+    return touchedViewsCache
+  }
 
   const viewQueryChanged = (
     viewId: ViewId,
     aspect?: DataviewQueryAspect
   ): boolean => {
     if (!query.views.has(viewId)) {
-      return base.views.created(viewId) || base.views.removed(viewId)
+      return hasTouchedId(createdViewIds, viewId) || hasTouchedId(removedViewIds, viewId)
     }
 
-    const view = base.views(viewId)
     if (aspect === undefined) {
-      return view.search.changed()
-        || view.filter.changed()
-        || view.sort.changed()
-        || view.group.changed()
-        || view.order.changed()
+      return viewQueryChanges.get(viewId)?.size !== undefined
+        && viewQueryChanges.get(viewId)!.size > 0
     }
 
-    switch (aspect) {
-      case 'search':
-        return view.search.changed()
-      case 'filter':
-        return view.filter.changed()
-      case 'sort':
-        return view.sort.changed()
-      case 'group':
-        return view.group.changed()
-      case 'order':
-        return view.order.changed()
-    }
+    return viewQueryChanges.get(viewId)?.has(aspect) === true
   }
 
   const viewLayoutChanged = (
     viewId: ViewId
   ): boolean => {
     if (!query.views.has(viewId)) {
-      return base.views.created(viewId) || base.views.removed(viewId)
+      return hasTouchedId(createdViewIds, viewId) || hasTouchedId(removedViewIds, viewId)
     }
 
-    const view = base.views(viewId)
-    return view.name.changed()
-      || view.type.changed()
-      || view.fields.changed()
-      || view.options.changed()
+    return viewLayoutChanges.has(viewId)
   }
 
   const recordSetChanged = (): boolean => (

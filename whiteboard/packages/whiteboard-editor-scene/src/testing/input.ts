@@ -57,7 +57,6 @@ export const createEmptyRuntimeInputDelta = (): EditorStateMutationDelta => crea
 export const createEditorStateInputDelta = (
   input: {
     reset?: boolean
-    changes?: Record<string, unknown>
   }
 ): EditorStateMutationDelta => createMutationDelta(
   editorStateMutationSchema,

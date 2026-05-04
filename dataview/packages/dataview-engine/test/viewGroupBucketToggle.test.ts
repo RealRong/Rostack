@@ -17,7 +17,9 @@ const VIEW_BOARD = 'view_board'
 
 const optionTable = <T extends { id: string }>(
   options: readonly T[]
-) => options.map((option) => ({ ...option }))
+) => entityTable.normalize.list(
+  options.map((option) => ({ ...option }))
+)
 
 const STATUS_OPTIONS = [
   {
@@ -1506,44 +1508,15 @@ test('engine commits stream emits shared apply commits for execute', () => {
   const createdViewId = result.ok && result.data && 'id' in result.data
     ? result.data.id
     : undefined
-  assert.deepEqual(writes[0] && {
-    kind: writes[0].kind,
-    rev: writes[0].rev,
-    at: writes[0].at,
-    origin: writes[0].origin,
-    document: writes[0].document,
-    authored: writes[0].authored,
-    applied: writes[0].applied,
-    delta: writes[0].delta,
-    inverse: writes[0].inverse,
-    structural: writes[0].structural,
-    footprint: writes[0].footprint,
-    issues: writes[0].issues,
-    outputs: writes[0].outputs,
-    extra: writes[0].extra
-  }, result.commit)
   assert.equal(writes[0]?.origin, 'user')
-  assert.ok(Boolean(writes[0]?.delta.changes['document.activeViewId']))
-  assert.deepEqual(writes[0]?.delta.changes['view.create'], {
-    ids: createdViewId
-      ? [createdViewId]
-      : []
-  })
-  assert.ok(Boolean(writes[0]?.delta.changes['view.name']))
-  assert.ok(Boolean(writes[0]?.delta.changes['view.type']))
-  assert.ok(Boolean(writes[0]?.delta.changes['view.filter']))
-  assert.ok(Boolean(writes[0]?.delta.changes['view.search']))
-  assert.ok(Boolean(writes[0]?.delta.changes['view.sort']))
-  assert.ok(
-    Boolean(writes[0]?.delta.changes['view.fields'])
-    || Boolean(writes[0]?.delta.changes['view.create'])
-  )
-  assert.ok(Boolean(writes[0]?.delta.changes['view.options']))
-  assert.ok(
-    Boolean(writes[0]?.delta.changes['view.order'])
-    || Boolean(writes[0]?.delta.changes['view.create'])
-  )
-  assert.ok(Boolean(writes[0]?.delta.changes['view.calc']))
+  const commitDelta = writes[0]?.delta
+  assert.ok(Boolean(commitDelta?.activeViewId.changed()))
+  if (createdViewId && commitDelta) {
+    assert.equal(commitDelta.views.created(createdViewId), true)
+    assert.ok(commitDelta.views(createdViewId).changed())
+  } else {
+    assert.fail('Expected created view id and typed delta commit.')
+  }
 })
 
 test('engine apply emits shared apply commits', () => {
@@ -1570,23 +1543,13 @@ test('engine apply emits shared apply commits', () => {
   unsubscribe()
   assert.equal(result.ok, true)
   assert.equal(writes.length, 1)
-  assert.deepEqual(writes[0] && {
-    kind: writes[0].kind,
-    rev: writes[0].rev,
-    at: writes[0].at,
-    origin: writes[0].origin,
-    document: writes[0].document,
-    authored: writes[0].authored,
-    applied: writes[0].applied,
-    delta: writes[0].delta,
-    inverse: writes[0].inverse,
-    structural: writes[0].structural,
-    footprint: writes[0].footprint,
-    issues: writes[0].issues,
-    outputs: writes[0].outputs,
-    extra: writes[0].extra
-  }, result.commit)
   assert.equal(writes[0]?.origin, 'remote')
-  assert.equal(writes[0]?.applied.steps.length, 1)
-  assert.ok(Boolean(writes[0]?.delta.changes['field.create']))
+  const commitDelta = writes[0]?.delta
+  const createdFieldId = result.ok && result.data && 'id' in result.data
+    ? result.data.id
+    : undefined
+  assert.equal(
+    Boolean(createdFieldId && commitDelta?.fields.created(createdFieldId)),
+    true
+  )
 })

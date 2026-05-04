@@ -5,6 +5,12 @@ import { createEngine } from '@whiteboard/engine'
 import { product } from '@whiteboard/product'
 import { createTestLayout } from './support'
 
+const toSortedIds = (
+  value: ReadonlySet<string> | 'all'
+): readonly string[] | 'all' => value === 'all'
+  ? 'all'
+  : [...value].sort()
+
 test('engine exposes created mindmap roots through committed document and delta', () => {
   const engine = createEngine({
     document: documentApi.create('doc_mindmap_insert'),
@@ -30,10 +36,10 @@ test('engine exposes created mindmap roots through committed document and delta'
   assert.equal(document.nodes[rootId]?.type, 'text')
   assert.equal(document.nodes[rootId]?.owner?.kind, 'mindmap')
   assert.equal(document.nodes[rootId]?.owner?.id, mindmapId)
-  assert.equal(document.mindmaps[mindmapId]?.root, rootId)
-  assert.ok(Boolean(document.mindmaps[mindmapId]?.members[rootId]))
-  assert.deepEqual(result.commit.delta.changes['node.create']?.ids, [rootId])
-  assert.deepEqual(result.commit.delta.changes['mindmap.create']?.ids, [mindmapId])
+  assert.equal(document.mindmaps[mindmapId]?.tree.rootId, rootId)
+  assert.ok(Boolean(document.mindmaps[mindmapId]?.tree.nodes[rootId]))
+  assert.deepEqual(toSortedIds(result.commit.delta.node.create.touchedIds()), [rootId])
+  assert.deepEqual(toSortedIds(result.commit.delta.mindmap.create.touchedIds()), [mindmapId])
 })
 
 test('mindmap relayout stays in projection while root moves still report node geometry changes', () => {
@@ -95,15 +101,13 @@ test('mindmap relayout stays in projection while root moves still report node ge
     { x: 0, y: 0 }
   )
 
-  const geometryIds = moved.commit.delta.changes['node.geometry']?.ids
+  const geometryIds = toSortedIds(moved.commit.delta.node.geometry.touchedIds())
   assert.deepEqual(
-    Array.isArray(geometryIds)
-      ? [...geometryIds].sort()
-      : geometryIds,
+    geometryIds,
     [created.data.rootId]
   )
   assert.deepEqual(
-    moved.commit.delta.changes['mindmap.layout']?.ids,
-    [created.data.mindmapId]
+    toSortedIds(moved.commit.delta.mindmap.layout.touchedIds()),
+    []
   )
 })

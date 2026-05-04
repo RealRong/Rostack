@@ -102,9 +102,9 @@ test('node.text.commit deletes empty text nodes through engine semantics', () =>
 
   assert.equal(result.commit.document.nodes.text_1, undefined)
   assert.deepEqual(
-    result.commit.writes.steps.map((step) => step.type),
+    result.commit.writes.map((write) => write.kind),
     [
-      'entity.delete'
+      'entity.remove'
     ]
   )
 })
@@ -221,9 +221,10 @@ test('node.text.commit routes mindmap topic text and size through mindmap operat
     }
   )
   assert.deepEqual(
-    result.commit.writes.steps.map((step) => step.type),
+    result.commit.writes.map((write) => write.kind),
     [
-      'entity.patch'
+      'field.set',
+      'field.set'
     ]
   )
 })

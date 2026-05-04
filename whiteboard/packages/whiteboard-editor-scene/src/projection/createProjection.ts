@@ -262,7 +262,7 @@ export const createProjection = (input: {
         previous: previousEditorSnapshot,
         next: ctx.input.editor.snapshot,
         interaction: ctx.state.runtime.editor.interaction,
-        delta: ctx.input.editor.delta
+        change: ctx.input.editor.change
       })
       ctx.state.facts = createEmptyEditorSceneFacts()
       ctx.state.facts.input = createInputFacts({

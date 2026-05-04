@@ -76,39 +76,39 @@ export const createInputFacts = (
 ): EditorSceneInputFacts => {
   const { current, runtimeFacts } = input
   const nodeTargets = sceneScopeUnion(
-    current.delta.node.create.touchedIds(),
-    current.delta.node.delete.touchedIds(),
-    current.delta.node.geometry.touchedIds(),
-    current.delta.node.owner.touchedIds(),
-    current.delta.node.content.touchedIds()
+    current.change.node.create.touchedIds(),
+    current.change.node.delete.touchedIds(),
+    current.change.node.geometry.touchedIds(),
+    current.change.node.owner.touchedIds(),
+    current.change.node.content.touchedIds()
   )
   const edgeTargets = sceneScopeUnion(
-    current.delta.edge.create.touchedIds(),
-    current.delta.edge.delete.touchedIds(),
-    current.delta.edge.endpoints.touchedIds(),
-    current.delta.edge.points.touchedIds(),
-    current.delta.edge.style.touchedIds(),
-    current.delta.edge.labels.touchedIds(),
-    current.delta.edge.data.touchedIds()
+    current.change.edge.create.touchedIds(),
+    current.change.edge.delete.touchedIds(),
+    current.change.edge.endpoints.touchedIds(),
+    current.change.edge.points.touchedIds(),
+    current.change.edge.style.touchedIds(),
+    current.change.edge.labels.touchedIds(),
+    current.change.edge.data.touchedIds()
   )
   const mindmapTargets = sceneScopeUnion(
-    current.delta.mindmap.create.touchedIds(),
-    current.delta.mindmap.delete.touchedIds(),
-    current.delta.mindmap.structure.touchedIds(),
-    current.delta.mindmap.layout.touchedIds()
+    current.change.mindmap.create.touchedIds(),
+    current.change.mindmap.delete.touchedIds(),
+    current.change.mindmap.structure.touchedIds(),
+    current.change.mindmap.layout.touchedIds()
   )
   const groupTargets = sceneScopeUnion(
-    current.delta.group.create.touchedIds(),
-    current.delta.group.delete.touchedIds(),
-    current.delta.group.value.touchedIds()
+    current.change.group.create.touchedIds(),
+    current.change.group.delete.touchedIds(),
+    current.change.group.value.touchedIds()
   )
 
-  const reset = current.delta.reset()
+  const reset = current.change.reset()
     || nodeTargets === 'all'
     || edgeTargets === 'all'
     || mindmapTargets === 'all'
     || groupTargets === 'all'
-  const order = reset || current.delta.order.changed()
+  const order = reset || current.change.order.changed()
 
   if (reset) {
     return {
@@ -194,30 +194,30 @@ export const createGraphFacts = (input: {
       entity: sceneScopeFromIdDelta(input.working.phase.graph.entities.nodes),
       geometry: sceneScopeFromValues(input.working.phase.graph.geometry.nodes),
       content: sceneScopeUnion(
-        scopeFromTouchedIds(input.current.delta.node.content.touchedIds()),
+        scopeFromTouchedIds(input.current.change.node.content.touchedIds()),
         editingNode
       ),
-      owner: scopeFromTouchedIds(input.current.delta.node.owner.touchedIds())
+      owner: scopeFromTouchedIds(input.current.change.node.owner.touchedIds())
     },
     edge: {
       entity: sceneScopeFromIdDelta(input.working.phase.graph.entities.edges),
       geometry: sceneScopeFromValues(input.working.phase.graph.geometry.edges),
       content: sceneScopeUnion(
-        scopeFromTouchedIds(input.current.delta.edge.labels.touchedIds()),
-        scopeFromTouchedIds(input.current.delta.edge.style.touchedIds()),
-        scopeFromTouchedIds(input.current.delta.edge.data.touchedIds()),
+        scopeFromTouchedIds(input.current.change.edge.labels.touchedIds()),
+        scopeFromTouchedIds(input.current.change.edge.style.touchedIds()),
+        scopeFromTouchedIds(input.current.change.edge.data.touchedIds()),
         editingEdge
       )
     },
     mindmap: {
       entity: sceneScopeFromIdDelta(input.working.phase.graph.entities.mindmaps),
       geometry: sceneScopeFromValues(input.working.phase.graph.geometry.mindmaps),
-      owner: scopeFromTouchedIds(input.current.delta.mindmap.structure.touchedIds())
+      owner: scopeFromTouchedIds(input.current.change.mindmap.structure.touchedIds())
     },
     group: {
       entity: sceneScopeFromIdDelta(input.working.phase.graph.entities.groups),
       geometry: sceneScopeFromValues(input.working.phase.graph.geometry.groups),
-      owner: scopeFromTouchedIds(input.current.delta.group.value.touchedIds())
+      owner: scopeFromTouchedIds(input.current.change.group.value.touchedIds())
     },
     hasLifecycleChange: hasGraphEntityLifecycle(input.working)
   }

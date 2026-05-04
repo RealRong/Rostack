@@ -218,7 +218,7 @@ export const computeSubtreeDropTarget = ({
       parentId,
       index,
       side,
-      targetId: hoveredId,
+      hoveredId,
       connectionLine: hoveredAlign.line
     }
   }
@@ -255,7 +255,7 @@ export const computeSubtreeDropTarget = ({
     parentId,
     index,
     side,
-    targetId: hoveredId,
+    hoveredId,
     insertLine: {
       x1: hoveredRect.x - reorderLineOverflow,
       y1: lineY,

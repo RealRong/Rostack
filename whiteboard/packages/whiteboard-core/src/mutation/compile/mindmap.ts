@@ -382,18 +382,11 @@ export const emitMindmapTopicPatch = (
     return ctx.invalid(applied.message)
   }
 
-  const writes: Record<string, unknown> = {}
-  Object.entries(update.fields ?? {}).forEach(([field, value]) => {
-    writes[field] = clone(value)
-  })
-  Object.entries(update.record ?? {}).forEach(([path, value]) => {
-    writes[path] = clone(value)
-  })
-  if (Object.keys(writes).length === 0) {
+  if (Object.keys(applied.patch).length === 0) {
     return
   }
 
-  const relayoutNodeIds = readMindmapLayoutChangedNodeIds({
+  readMindmapLayoutChangedNodeIds({
     before: ctx.document,
     after: {
       ...ctx.document,
@@ -405,7 +398,7 @@ export const emitMindmapTopicPatch = (
     id
   })
 
-  ctx.writer.node.patch(topicId, writes)
+  ctx.writer.node.patch(topicId, applied.patch)
 }
 
 export const emitMindmapBranchPatch = (

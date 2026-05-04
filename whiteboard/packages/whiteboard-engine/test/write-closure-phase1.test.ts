@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'vitest'
+import { entityTable } from '@shared/core'
 import { document as documentApi } from '@whiteboard/core/document'
 import { createEngine } from '@whiteboard/engine'
 import { createTestLayout } from './support'
@@ -47,7 +48,7 @@ const createManualEdge = ({
   type: 'straight' as const,
   source,
   target,
-  points: [...points]
+  points: entityTable.normalize.list(points)
 })
 
 test('canvas.selection.move compiles node, selected edge, and follow edge movement in one command', () => {
@@ -123,7 +124,10 @@ test('canvas.selection.move compiles node, selected edge, and follow edge moveme
 
   assert.deepEqual(result.commit.document.nodes.node_1?.position, { x: 30, y: 10 })
   assert.deepEqual(result.commit.document.nodes.node_2?.position, { x: 230, y: 10 })
-  assert.deepEqual(result.commit.document.edges.edge_follow?.points, [{
+  assert.deepEqual(entityTable.read.list(result.commit.document.edges.edge_follow?.points ?? {
+      ids: [],
+      byId: {}
+    }), [{
       id: 'follow_point_1',
       x: 130,
       y: 30
@@ -136,7 +140,10 @@ test('canvas.selection.move compiles node, selected edge, and follow edge moveme
     kind: 'point',
     point: { x: 130, y: 70 }
   })
-  assert.deepEqual(result.commit.document.edges.edge_selected?.points, [{
+  assert.deepEqual(entityTable.read.list(result.commit.document.edges.edge_selected?.points ?? {
+      ids: [],
+      byId: {}
+    }), [{
       id: 'selected_point_1',
       x: 100,
       y: 60
@@ -209,10 +216,11 @@ test('edge.reconnect.commit applies endpoint, type, and points in one command', 
   assert.equal(result.commit.document.edges.edge_1?.type, 'straight')
   assert.equal(result.commit.document.edges.edge_1?.points, undefined)
   assert.deepEqual(
-    result.commit.writes.steps.map((step) => step.type),
+    result.commit.writes.map((write) => write.kind),
     [
-      'entity.patch',
-      'ordered.delete'
+      'field.set',
+      'field.set',
+      'field.set'
     ]
   )
 })

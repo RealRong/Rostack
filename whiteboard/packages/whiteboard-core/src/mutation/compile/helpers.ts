@@ -3,7 +3,7 @@ import type {
 } from '@shared/mutation'
 import type { WhiteboardLayoutService } from '@whiteboard/core/layout'
 import type {
-  WhiteboardMutationDelta,
+  WhiteboardMutationChange,
 } from '@whiteboard/core/mutation/model'
 import type {
   CoreRegistries,
@@ -69,7 +69,7 @@ export interface WhiteboardCompileContext<
   reader: WhiteboardReader
   writer: WhiteboardWriter
   query: WhiteboardQuery
-  change: WhiteboardMutationDelta
+  change: WhiteboardMutationChange
   issue: ((issue: WhiteboardCompileIssue & Record<string, unknown>) => void) & {
     add(issue: WhiteboardCompileIssue): void
     all(): readonly MutationIssue[]

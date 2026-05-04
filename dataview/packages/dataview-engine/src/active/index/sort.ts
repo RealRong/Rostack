@@ -50,12 +50,13 @@ const compareSortScalars = (
 }
 
 const buildSortScalars = (
+  field: Field | undefined,
   values: ReadonlyMap<RecordId, unknown>,
-  scalarOf: (value: unknown) => SortScalar | undefined
+  scalarOf: (field: Field | undefined, value: unknown) => SortScalar | undefined
 ): ReadonlyMap<RecordId, SortScalar> => {
   const sortScalars = new Map<RecordId, SortScalar>()
   values.forEach((value, recordId) => {
-    const scalar = scalarOf(value)
+    const scalar = scalarOf(field, value)
     if (scalar !== undefined) {
       sortScalars.set(recordId, scalar)
     }
@@ -127,7 +128,7 @@ const buildFieldSortIndex = (
   const values = records.values.get(fieldId)?.byRecord ?? EMPTY_VALUE_MAP
   const scalarOf = fieldSpec.index.sort.of(field)
   const sortScalars = scalarOf
-    ? buildSortScalars(values, scalarOf)
+    ? buildSortScalars(field, values, scalarOf)
     : undefined
   const compare = createRecordComparator({
     field,
@@ -189,7 +190,7 @@ const syncFieldSortIndex = (input: {
   const values = input.records.values.get(input.fieldId)?.byRecord ?? EMPTY_VALUE_MAP
   const scalarOf = fieldSpec.index.sort.of(field)
   const sortScalars = scalarOf
-    ? buildSortScalars(values, scalarOf)
+    ? buildSortScalars(field, values, scalarOf)
     : undefined
   const compare = createRecordComparator({
     field,

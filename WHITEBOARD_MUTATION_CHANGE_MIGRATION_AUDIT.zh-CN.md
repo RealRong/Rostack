@@ -144,3 +144,233 @@
 - `change` 只在 frame 边界组装
 - `replace` 只保留 reset 边界
 - `entity.replace` 不再存在
+
+## 9. 实施方案
+
+下面给出按最终形态推进的实施方案。原则只有三条：
+
+- 不保留兼容层
+- 不保留双轨协议
+- 每一阶段完成后，旧实现必须当场删除，不允许“先接一层适配再说”
+
+### Phase 1. 收敛 `whiteboard-core` 的 mutation 主体
+
+这一阶段只处理 `whiteboard-core`，目标是把白板的 mutation 定义点收回到 shared 的标准主体。
+
+需要完成：
+
+- 删除 `schema(...).changes(...)` 风格的 schema 内聚合变化定义
+- 删除 `WhiteboardMutationDelta` 类型名
+- 把 `whiteboard-core/src/mutation/model.ts` 改成：
+  - `whiteboardMutationSchema`
+  - `WhiteboardMutationChange = MutationChange<typeof whiteboardMutationSchema>`
+  - `createWhiteboardChange(query, baseChange)`
+- 删除 `write.targetId` / `TARGET_ID_SCOPE_SEPARATOR` / `readRootTargetId(...)`
+- 删除 `WhiteboardMutationWriterBase`
+- 删除 `nodes/edges/groups/mindmaps` 的 entity-level `.replace(...)`
+- 把 `whiteboard-core/src/mutation/write.ts` 改成只发正式 writes：
+  - `patch`
+  - `create`
+  - `remove`
+  - `move`
+  - `sequence.*`
+  - `tree.*`
+- 把 `edge.labels` / `edge.points` / `edge.patch(...)` 从“整实体 rebuild”改成字段级或子结构级 writes
+- 删除 `query.changes(...)`
+
+完成标准：
+
+- `whiteboard-core` 不再导出任何 `*Delta` mutation 类型
+- `whiteboard-core` 不再出现 `entity.replace`
+- `whiteboard-core` 不再出现 target path/string scope 协议
+- `whiteboard-core` query 只保留读，不再负责产出 mutation change
+
+### Phase 2. 收敛 `document.replace` 语义
+
+这一阶段单独处理整文档替换，因为它是白板里最容易把旧 `entity.replace` 带回来的入口。
+
+需要完成：
+
+- 删除 `document.replace` intent，或者把它彻底改成真正的 document diff compiler
+- 如果不做 diff compiler，则统一规定：
+  - 业务层不再发 `document.replace` intent
+  - 外部只允许调用 `engine.replace(document)`
+- 删除 `whiteboard-core/src/mutation/write.ts` 里遍历实体并下发 `replace` 的实现
+- 删除 compile 层里任何把 `document.replace` 降成 entity replace 的路径
+
+最终要求：
+
+- reset 级替换只有 `engine.replace(document)` 一条正式入口
+- mutation write union 内没有 entity-level replace
+- compile handlers 不再负责模拟整文档替换
+
+### Phase 3. 建立白板最终 change facade
+
+这一阶段把白板领域聚合变化从 schema 内联逻辑迁到 frame 边界。
+
+需要完成：
+
+- 定义 `WhiteboardChangeExtension`
+- 定义最终 frame 级类型：
+  - `WhiteboardFrameChange = WhiteboardMutationChange & WhiteboardChangeExtension`
+- 在 `createWhiteboardChange(query, baseChange)` 里统一生产：
+  - `node.*`
+  - `edge.*`
+  - `mindmap.*`
+  - `group.*`
+  - 其他白板领域聚合 facts
+- projection / engine / editor / scene 一律只读取 `frame.change`
+
+这里允许保留语义分类，但不允许保留旧位置。也就是说：
+
+- `node.create/delete/geometry/owner/content`
+- `edge.create/delete/endpoints/points/style/labels/data`
+- `mindmap.create/delete/structure/layout`
+- `group.create/delete/value`
+
+这些都可以继续存在，但只能存在于 `createWhiteboardChange(...)` 这一个正式入口里。
+
+完成标准：
+
+- `schema` 本身不再携带白板 change 聚合
+- `frame.change` 是白板对外唯一 mutation change 入口
+- 没有第二套 `delta` / `changes(...)` / `query.changes(...)` 并行存在
+
+### Phase 4. 切 `whiteboard-engine`
+
+这一阶段把 engine commit、history、runtime 命名和输入输出全部切到 `change`。
+
+需要完成：
+
+- `whiteboard-engine/src/types/engineWrite.ts` 中：
+  - `delta` 改成 `change`
+- `whiteboard-engine/src/runtime/engine.ts` 中：
+  - `toEngineCommit(...)` 输出 `change`
+  - `replace` commit 也输出 reset `change`
+- `whiteboard-engine/src/mutation/index.ts` 删除 `WhiteboardMutationDelta`
+- 任何 runtime / watch / event / subscription 侧如果还读 `commit.delta`，全部改成 `commit.change`
+
+完成标准：
+
+- `whiteboard-engine` 公开 commit 上不再有 `delta`
+- `replace` commit 和 `apply` commit 使用同一套 `change` 字段
+- engine 层不再暴露旧 mutation delta 名称
+
+### Phase 5. 切 `whiteboard-editor`
+
+这一阶段处理 editor 的写入口、bootstrap、sync 和输入响应。
+
+需要完成：
+
+- 删除或重写 `DocumentWrite.replace(...)`
+- `actions/app.ts` 不再转发 `document.replace` intent
+- editor bootstrap 从 `createMutationResetDelta(...)` 改成 reset `change`
+- `editor/sync.ts` 里删除：
+  - `EMPTY_DOCUMENT_DELTA`
+  - `EMPTY_EDITOR_DELTA`
+  - `mergeMutationDeltas(...)`
+- sync 层围绕：
+  - `commit.change`
+  - `commit.kind === 'replace'`
+  - `change.reset()`
+  重写，而不是继续合并旧 delta
+- `state/runtime.ts` 的公开命名改成 `*Change`
+- 所有 `commit.delta` 消费点改成 `commit.change`
+
+完成标准：
+
+- editor 层不再出现 `*Delta` mutation 类型名
+- editor sync 不再合并 delta
+- editor 的 document replace 不再走旧 intent 路径
+
+### Phase 6. 切 `whiteboard-editor-scene`
+
+这一阶段统一 scene contracts、runtime facts、testing builders 和测试 fixture。
+
+需要完成：
+
+- `contracts/editor.ts`：
+  - `Input.delta` 改成 `Input.change`
+  - `SceneUpdateInput.document.delta` 改成 `SceneUpdateInput.document.change`
+- `projection/createProjectionRuntime.ts` 改成转发 `change`
+- `runtimeFacts.ts` / `model/facts.ts` 全部从 `current.delta.*` 切到 `current.change.*`
+- testing builders / testing input / runtime tests / graph tests 全部改成新的 change 构造方式
+- 删除 `WhiteboardMutationDelta` / `EditorStateMutationDelta` test builders
+
+完成标准：
+
+- scene 层 contracts 中不再出现 `delta`
+- scene projection / facts / tests 只消费 `change`
+- testing 工厂和 fixture 不再手工拼 old delta
+
+### Phase 7. 清场与验收
+
+这一阶段不引入新能力，只做清零。
+
+必须删除：
+
+- `entity.replace`
+- `document.delta`
+- `commit.delta`
+- `WhiteboardMutationDelta`
+- `EditorStateMutationDelta`
+- `query.changes(...)`
+- `schema(...).changes(...)`
+- `WhiteboardMutationWriterBase`
+- `write.targetId`
+- `TARGET_ID_SCOPE_SEPARATOR`
+
+必须检查：
+
+- `rg -n "entity\\.replace|commit\\.delta|document\\.delta|MutationDelta|query\\.changes|TARGET_ID_SCOPE_SEPARATOR|targetId"` 在 `whiteboard/` 下应无残留
+- 所有白板相关测试工厂都已经切到 `change`
+- 所有 editor / scene / engine contracts 的公开字段名已经统一
+
+## 10. 推荐落地顺序
+
+如果按最少返工的方式做，顺序固定为：
+
+1. `whiteboard-core` schema / writer / query / change 主体
+2. `document.replace` 收口到 reset boundary
+3. `whiteboard-engine` commit/change 对齐
+4. `whiteboard-editor` bootstrap / sync / actions / input 回调
+5. `whiteboard-editor-scene` contracts / runtime facts / tests
+6. 最后一轮删除旧名字和扫尾
+
+这个顺序不能倒。原因很简单：
+
+- 如果先改 editor / scene，再回头改 core 的 `change` 定义，业务侧还要再迁一次
+- 如果不先收口 `document.replace`，`entity.replace` 会继续从写入口回流
+- 如果 engine 还没改成 `change`，editor 和 scene 改完也会继续带旧 commit 命名
+
+## 11. 最终公开 API 约束
+
+迁移完成后，白板 mutation-facing API 只允许保留下面这些形态：
+
+- `MutationChange<typeof whiteboardMutationSchema>`
+- `createWhiteboardChange(query, baseChange)`
+- `frame.change`
+- `engine.replace(document)` 作为 reset 边界
+- typed `reader`
+- typed `writer`
+- typed `query`
+
+明确不允许再出现：
+
+- `WhiteboardMutationDelta`
+- `EditorStateMutationDelta`
+- `document.delta`
+- `commit.delta`
+- `schema(...).changes(...)`
+- `query.changes(...)`
+- entity-level `.replace(...)`
+
+## 12. 本轮不做的事
+
+这份实施方案只覆盖 whiteboard mutation/change 迁移本身，不包括：
+
+- collab 重构
+- conflict scope 重写
+- scene 之外的渲染或交互能力扩展
+
+这些内容必须等 whiteboard mutation/change 全部收口到新主体之后再做。否则上层继续重写时，会再次把旧协议耦合带回来。

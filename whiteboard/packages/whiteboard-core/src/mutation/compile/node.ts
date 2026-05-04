@@ -50,7 +50,12 @@ const writeMindmapTopicUpdate = (
 
   const mindmapId = getNodeMindmapId(node)
   if (!mindmapId) {
-    const patch = nodeApi.update.toPatch(update)
+    const applied = nodeApi.update.apply(node, update)
+    if (!applied.ok) {
+      throw ctx.invalid(applied.message)
+    }
+
+    const patch = applied.patch
     if (Object.keys(patch).length > 0) {
       ctx.writer.node.patch(nodeId, patch)
     }
@@ -75,7 +80,7 @@ const writeMindmapTopicUpdate = (
     throw ctx.invalid('Mindmap topic owner is aggregate-owned.')
   }
 
-  const patch = nodeApi.update.toPatch({
+  const nextUpdate = {
     ...(fields
       ? {
           fields: {
@@ -86,13 +91,21 @@ const writeMindmapTopicUpdate = (
         }
       : {}),
     ...(update.record ? { record: update.record } : {})
-  })
+  } satisfies NodeUpdateInput
 
-  if (Object.keys(patch).length === 0) {
+  if (nodeApi.update.isEmpty(nextUpdate)) {
     return
   }
 
-  emitMindmapTopicPatch(ctx, mindmapId, nodeId, patch)
+  const applied = nodeApi.update.apply(node, nextUpdate)
+  if (!applied.ok) {
+    throw ctx.invalid(applied.message)
+  }
+  if (Object.keys(applied.patch).length === 0) {
+    return
+  }
+
+  emitMindmapTopicPatch(ctx, mindmapId, nodeId, applied.patch)
 }
 
 const compileNodeTextCommit = (

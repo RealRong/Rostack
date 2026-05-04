@@ -250,11 +250,11 @@ export const createMoveInteraction = (
     },
     up: () => {
       const commit = nodeApi.move.state.finish(state)
-      if (commit.delta) {
+      if (commit.translation) {
         editor.write.canvas.selection.move({
           nodeIds: input.target.nodeIds,
           edgeIds: input.target.edgeIds,
-          delta: commit.delta
+          delta: commit.translation
         })
       }
 

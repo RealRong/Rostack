@@ -1,4 +1,7 @@
 export {
+  createWhiteboardChange,
+} from './change'
+export {
   whiteboardCompile,
   whiteboardCompileHandlers
 } from './compile'
@@ -23,7 +26,6 @@ export type {
   MindmapTopicBatchUpdate,
   NodeBatchUpdate,
   NodeIntent,
-  ReplaceDocumentIntent,
   WhiteboardCompileAbort,
   WhiteboardCompileCode,
   WhiteboardCompileContext,
@@ -34,6 +36,18 @@ export type {
   WhiteboardIntent,
   WhiteboardIntentKind,
 } from './compile'
+export type {
+  WhiteboardChange,
+  WhiteboardChangeExtension,
+  WhiteboardTouchedIds,
+} from './change'
+export type {
+  WhiteboardMutationChange,
+  WhiteboardMutationQuery,
+  WhiteboardMutationReader,
+  WhiteboardMutationSchema,
+  WhiteboardMutationWriter,
+} from './model'
 export type {
   WhiteboardQuery,
   WhiteboardReader,

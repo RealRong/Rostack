@@ -1,6 +1,5 @@
 import {
-  createMutationDelta as createTypedMutationDelta,
-  createMutationResetDelta,
+  createMutationChange,
 } from '@shared/mutation'
 import {
   createWhiteboardLayout,
@@ -8,39 +7,52 @@ import {
   type NodeDraftMeasure
 } from '@whiteboard/core/layout'
 import {
-  type WhiteboardMutationDelta
-} from '@whiteboard/engine/mutation'
-import {
+  createWhiteboardChange,
   whiteboardMutationSchema
 } from '@whiteboard/core/mutation'
+import { createWhiteboardQuery } from '@whiteboard/core/query'
+import type {
+  WhiteboardChange
+} from '@whiteboard/engine/mutation'
 import type {
   EdgeId,
   NodeId,
   Size
 } from '@whiteboard/core/types'
-import type { EditorStateMutationDelta } from '@whiteboard/editor/state/runtime'
-import { createMutationDelta as createEditorStateDelta } from '@shared/mutation'
+import type { EditorStateChange } from '@whiteboard/editor/state/runtime'
 import { editorStateMutationSchema } from '@whiteboard/editor/state/model'
-import { createEmptyRuntimeInputDelta } from './input'
+import { createEmptyRuntimeInputChange } from './input'
 
-export type EditorRuntimeDeltaFlags = Partial<{
+export type EditorRuntimeChangeFlags = Partial<{
   graph: boolean
   ui: boolean
 }>
 
-export const createEditorRuntimeDelta = (
-  input: EditorRuntimeDeltaFlags = {}
-): EditorStateMutationDelta => (
+export const createEditorRuntimeChange = (
+  input: EditorRuntimeChangeFlags = {}
+): EditorStateChange => (
   input.graph || input.ui
-    ? createMutationResetDelta(editorStateMutationSchema)
-    : createEmptyRuntimeInputDelta()
+    ? createMutationChange(editorStateMutationSchema, [], {
+        reset: true
+      })
+    : createEmptyRuntimeInputChange()
 )
 
-export const createMutationDelta = (input: {
+export const createMutationChangeForDocument = (input: {
   reset?: boolean
-} = {}): WhiteboardMutationDelta => input.reset
-  ? createMutationResetDelta(whiteboardMutationSchema)
-  : createTypedMutationDelta(whiteboardMutationSchema)
+} = {}): WhiteboardChange => createWhiteboardChange(
+  createWhiteboardQuery(() => ({
+    id: 'doc_scene_test',
+    order: [],
+    nodes: {},
+    edges: {},
+    groups: {},
+    mindmaps: {}
+  })),
+  createMutationChange(whiteboardMutationSchema, [], {
+    reset: input.reset
+  })
+)
 
 export interface EditorGraphLayoutState {
   nodeMeasures?: ReadonlyMap<NodeId, NodeDraftMeasure>

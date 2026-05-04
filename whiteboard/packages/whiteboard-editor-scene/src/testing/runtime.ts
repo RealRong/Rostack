@@ -15,7 +15,7 @@ import {
 const normalizeInput = (input: SceneUpdateInput): Input => ({
   document: input.document,
   editor: input.editor,
-  delta: input.document.delta
+  change: input.document.change
 })
 
 const TEST_SCENE_VIEW = () => ({
@@ -83,7 +83,7 @@ export const createEditorSceneProjectionHarness = (input: {
     working: () => runtime.state(),
     update: (value) => {
       const result = runtime.update(
-        'delta' in value
+        'change' in value
           ? value
           : normalizeInput(value)
       )

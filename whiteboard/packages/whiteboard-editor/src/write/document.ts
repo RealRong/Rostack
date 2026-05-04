@@ -7,10 +7,7 @@ import type { DocumentWrite } from '@whiteboard/editor/write/types'
 export const createDocumentWrite = (
   engine: Engine
 ): DocumentWrite => ({
-  replace: (document: Document) => engine.execute({
-    type: 'document.replace',
-    document
-  }),
+  replace: (document: Document) => engine.replace(document),
   insert: (slice, options) => engine.execute({
     type: 'document.insert',
     slice,

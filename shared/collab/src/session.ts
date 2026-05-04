@@ -5,14 +5,6 @@ import type {
   MutationOrigin,
   MutationSchema,
   MutationWrite,
-  SerializedMutationWrite,
-} from '@shared/mutation'
-import {
-  createMutationConflictScopes,
-  deserializeMutationWrites,
-  mutationConflictScopesIntersect,
-  serializeMutationWrites,
-  type MutationConflictScope,
 } from '@shared/mutation'
 import {
   createSyncCursor,
@@ -20,6 +12,14 @@ import {
   planReplay,
   type CollabSnapshot,
 } from './replay'
+import {
+  createHistoryScopes,
+  historyScopesIntersect,
+  type HistoryScope,
+} from './historyScope'
+import type {
+  MutationCollabWrite,
+} from './write'
 
 export type CollabStatus =
   | 'idle'
@@ -61,7 +61,7 @@ export type CollabStore<
 export type MutationCollabChange = {
   id: string
   actorId: string
-  writes: readonly SerializedMutationWrite[]
+  writes: readonly MutationCollabWrite[]
 }
 
 export type MutationCollabCheckpoint<TDocument> = {
@@ -149,7 +149,7 @@ type MutationCollabHistoryEntry = {
   changeId: string
   writes: readonly MutationWrite[]
   inverse: readonly MutationWrite[]
-  scopes: readonly MutationConflictScope[]
+  scopes: readonly HistoryScope[]
   invalidated: boolean
 }
 
@@ -206,11 +206,11 @@ const removeHistoryEntry = (
 
 const markInvalidatedEntries = (
   entries: readonly MutationCollabHistoryEntry[],
-  scopes: readonly MutationConflictScope[]
+  scopes: readonly HistoryScope[]
 ): MutationCollabHistoryEntry[] => entries.map((entry) => entry.invalidated
   ? entry
   : scopes.some((remoteScope) => entry.scopes.some((localScope) => (
-      mutationConflictScopesIntersect(localScope, remoteScope)
+      historyScopesIntersect(localScope, remoteScope)
     )))
     ? {
         ...entry,
@@ -403,7 +403,7 @@ export const createMutationCollabSession = <
         changeId,
         writes: commit.writes,
         inverse: commit.inverse,
-        scopes: createMutationConflictScopes(commit.writes),
+        scopes: createHistoryScopes(options.schema, commit.writes),
         invalidated: false
       }
     ]
@@ -414,7 +414,7 @@ export const createMutationCollabSession = <
   const invalidateWithRemoteWrites = (
     writes: readonly MutationWrite[]
   ) => {
-    const scopes = createMutationConflictScopes(writes)
+    const scopes = createHistoryScopes(options.schema, writes)
     if (scopes.length === 0) {
       return
     }
@@ -475,10 +475,7 @@ export const createMutationCollabSession = <
       }
 
       try {
-        const writes = deserializeMutationWrites(
-          options.schema,
-          change.writes
-        )
+        const writes = change.writes
         const applied = engine.apply(writes, {
           origin: 'remote',
           history: false
@@ -526,7 +523,7 @@ export const createMutationCollabSession = <
     const change: MutationCollabChange = {
       id: changeId,
       actorId: options.actor.id,
-      writes: serializeMutationWrites(commit.writes)
+      writes: commit.writes
     }
 
     localChangeIds.add(change.id)

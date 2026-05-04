@@ -12,6 +12,14 @@ export {
   type MutationCollabSession,
   type MutationCollabSessionOptions
 } from './session'
+export type {
+  MutationCollabWrite
+} from './write'
+export {
+  createHistoryScopes,
+  historyScopesIntersect,
+  type HistoryScope
+} from './historyScope'
 export {
   createSyncCursor,
   normalizeSnapshot,

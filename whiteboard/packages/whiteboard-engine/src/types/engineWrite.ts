@@ -6,7 +6,7 @@ import type {
   Document,
 } from '@whiteboard/core/types'
 import type {
-  WhiteboardMutationDelta,
+  WhiteboardChange,
 } from '../mutation'
 
 type EngineCommitBase = {
@@ -14,7 +14,7 @@ type EngineCommitBase = {
   origin: MutationOrigin
   document: Document
   inverse: readonly MutationWrite[]
-  delta: WhiteboardMutationDelta
+  change: WhiteboardChange
 }
 
 export type EngineApplyCommit = EngineCommitBase & {

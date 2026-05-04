@@ -1,7 +1,11 @@
 import {
-  createMutationResetDelta,
+  createMutationChange,
 } from '@shared/mutation'
-import { whiteboardMutationSchema } from '@whiteboard/core/mutation'
+import {
+  createWhiteboardChange,
+  whiteboardMutationSchema,
+} from '@whiteboard/core/mutation'
+import { createWhiteboardQuery } from '@whiteboard/core/query'
 import type { Viewport } from '@whiteboard/core/types'
 import type { WhiteboardLayoutService } from '@whiteboard/core/layout'
 import { createEditorActionsApi } from '@whiteboard/editor/actions'
@@ -43,13 +47,20 @@ import {
 import type { Tool } from '@whiteboard/editor/schema/tool'
 import { createEditorWrite } from '@whiteboard/editor/write'
 import type { Engine } from '@whiteboard/engine'
-import type { WhiteboardMutationDelta } from '@whiteboard/engine/mutation'
+import type { WhiteboardChange } from '@whiteboard/engine/mutation'
 
-const BOOTSTRAP_DOCUMENT_DELTA: WhiteboardMutationDelta = createMutationResetDelta(
-  whiteboardMutationSchema
+const createResetDocumentChange = (
+  document: ReturnType<Engine['doc']>
+): WhiteboardChange => createWhiteboardChange(
+  createWhiteboardQuery(() => document),
+  createMutationChange(whiteboardMutationSchema, [], {
+    reset: true
+  })
 )
 
-const BOOTSTRAP_EDITOR_DELTA = createMutationResetDelta(editorStateMutationSchema)
+const BOOTSTRAP_EDITOR_CHANGE = createMutationChange(editorStateMutationSchema, [], {
+  reset: true
+})
 
 export const createEditor = (input: {
   engine: Engine
@@ -106,11 +117,11 @@ export const createEditor = (input: {
     document: {
       snapshot: input.engine.doc(),
       rev: input.engine.rev(),
-      delta: BOOTSTRAP_DOCUMENT_DELTA
+      change: createResetDocumentChange(input.engine.doc())
     },
     editor: {
       snapshot: state.read(),
-      delta: BOOTSTRAP_EDITOR_DELTA
+      change: BOOTSTRAP_EDITOR_CHANGE
     }
   })
 

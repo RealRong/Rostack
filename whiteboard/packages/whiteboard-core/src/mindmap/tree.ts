@@ -663,25 +663,25 @@ export const cloneSubtree = (
 
   const draft = cloneTree(tree)
   sourceIds.forEach((sourceId) => {
-    const targetId = map[sourceId]!
+    const nextNodeId = map[sourceId]!
     const cloned = cloneTreeNode(draft, sourceId)
     const sourceParentId = sourceId === input.nodeId
       ? parentId
       : map[tree.nodes[sourceId]!.parentId!]
-    draft.nodes[targetId] = {
+    draft.nodes[nextNodeId] = {
       ...cloned,
       parentId: sourceParentId,
       side: sourceId === input.nodeId
         ? (parentId === draft.rootNodeId ? (input.side ?? source.side) : undefined)
         : cloned.side
     }
-    draft.children[targetId] = []
+    draft.children[nextNodeId] = []
   })
 
   sourceIds.forEach((sourceId) => {
-    const targetId = map[sourceId]!
+    const nextNodeId = map[sourceId]!
     const sourceChildren = tree.children[sourceId] ?? []
-    draft.children[targetId] = sourceChildren.map((childId) => map[childId]!)
+    draft.children[nextNodeId] = sourceChildren.map((childId) => map[childId]!)
   })
 
   const children = ensureChildren(draft, parentId)

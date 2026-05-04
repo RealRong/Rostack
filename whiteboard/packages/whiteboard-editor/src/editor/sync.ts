@@ -1,13 +1,15 @@
 import { equal } from '@shared/core'
 import {
-  createMutationDelta,
-  mergeMutationDeltas,
+  createMutationChange,
+  type MutationWrite,
 } from '@shared/mutation'
 import {
+  createWhiteboardChange,
   isCheckpointProgram,
   whiteboardMutationSchema
 } from '@whiteboard/core/mutation'
-import type { WhiteboardMutationDelta } from '@whiteboard/engine/mutation'
+import { createWhiteboardQuery } from '@whiteboard/core/query'
+import type { WhiteboardChange } from '@whiteboard/engine/mutation'
 import type { Engine } from '@whiteboard/engine'
 import type { EditorSceneRuntime } from '@whiteboard/editor-scene'
 import { editorStateMutationSchema } from '@whiteboard/editor/state/model'
@@ -17,15 +19,19 @@ import {
 } from '@whiteboard/editor/state/document'
 import type {
   EditorStateCommit,
-  EditorStateMutationDelta,
+  EditorStateChange,
   EditorStateRuntime,
 } from '@whiteboard/editor/state/runtime'
 import type { DocumentFrame } from '@whiteboard/editor-scene'
 
-const EMPTY_DOCUMENT_DELTA = createMutationDelta(
-  whiteboardMutationSchema
+const createEmptyDocumentChange = (
+  document: ReturnType<Engine['doc']>
+): WhiteboardChange => createWhiteboardChange(
+  createWhiteboardQuery(() => document),
+  createMutationChange(whiteboardMutationSchema)
 )
-const EMPTY_EDITOR_DELTA = createMutationDelta(editorStateMutationSchema)
+
+const EMPTY_EDITOR_CHANGE = createMutationChange(editorStateMutationSchema)
 
 const resetEditorState = (
   state: EditorStateRuntime
@@ -90,30 +96,45 @@ type BufferedSceneCommit = {
   document: {
     snapshot: ReturnType<Engine['doc']>
     rev: ReturnType<Engine['rev']>
-    delta: WhiteboardMutationDelta
+    change: WhiteboardChange
   }
-  editorDelta: EditorStateMutationDelta
+  editorWrites: MutationWrite[]
+  editorReset: boolean
 }
 
 const pushSceneUpdate = (input: {
   engine: Engine
   state: EditorStateRuntime
   scene: Pick<EditorSceneRuntime, 'update'>
-  documentDelta: WhiteboardMutationDelta
-  editorDelta: EditorStateMutationDelta
+  documentChange: WhiteboardChange
+  editorChange: EditorStateChange
 }) => {
   input.scene.update({
     document: {
       snapshot: input.engine.doc(),
       rev: input.engine.rev(),
-      delta: input.documentDelta
+      change: input.documentChange
     },
     editor: {
       snapshot: input.state.read(),
-      delta: input.editorDelta
+      change: input.editorChange
     }
   })
 }
+
+const createBufferedEditorChange = (
+  buffered: Pick<BufferedSceneCommit, 'editorWrites' | 'editorReset'>
+): EditorStateChange => (
+  buffered.editorWrites.length === 0 && !buffered.editorReset
+    ? EMPTY_EDITOR_CHANGE
+    : createMutationChange(
+      editorStateMutationSchema,
+      buffered.editorWrites,
+      {
+        reset: buffered.editorReset
+      }
+    )
+)
 
 export const attachEditorSync = (input: {
   engine: Engine
@@ -124,23 +145,20 @@ export const attachEditorSync = (input: {
 }) => {
   let buffered: BufferedSceneCommit | null = null
 
-  const bufferStateDelta = (
+  const bufferStateChange = (
     commit: EditorStateCommit
   ) => {
     if (!buffered) {
       return false
     }
 
-    buffered.editorDelta = mergeMutationDeltas(
-      editorStateMutationSchema,
-      buffered.editorDelta,
-      commit.delta
-    )
+    buffered.editorWrites.push(...commit.change.writes())
+    buffered.editorReset = buffered.editorReset || commit.change.reset()
     return true
   }
 
   const unsubscribeEditorCommits = input.state.subscribe((commit) => {
-    if (bufferStateDelta(commit)) {
+    if (bufferStateChange(commit)) {
       return
     }
 
@@ -148,8 +166,8 @@ export const attachEditorSync = (input: {
       engine: input.engine,
       state: input.state,
       scene: input.scene,
-      documentDelta: EMPTY_DOCUMENT_DELTA,
-      editorDelta: commit.delta
+      documentChange: createEmptyDocumentChange(input.engine.doc()),
+      editorChange: commit.change
     })
   })
 
@@ -158,12 +176,13 @@ export const attachEditorSync = (input: {
       document: {
         snapshot: commit.document,
         rev: commit.rev,
-        delta: commit.delta
+        change: commit.change
       },
-      editorDelta: EMPTY_EDITOR_DELTA
+      editorWrites: [],
+      editorReset: false
     }
 
-    if (commit.kind === 'replace' || isCheckpointProgram(commit.writes)) {
+    if (commit.change.reset() || isCheckpointProgram(commit.writes)) {
       input.cancelInput()
       resetEditorState(input.state)
     } else {
@@ -184,7 +203,7 @@ export const attachEditorSync = (input: {
       document: current.document,
       editor: {
         snapshot: input.state.read(),
-        delta: current.editorDelta
+        change: createBufferedEditorChange(current)
       }
     })
   })

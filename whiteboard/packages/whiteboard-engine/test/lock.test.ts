@@ -1,6 +1,12 @@
 import assert from 'node:assert/strict'
 import { test } from 'vitest'
+import {
+  createMutationWriter,
+  type MutationWrite,
+  type MutationWriter,
+} from '@shared/mutation'
 import { document as documentApi } from '@whiteboard/core/document'
+import { whiteboardMutationSchema } from '@whiteboard/core/mutation'
 import { createEngine } from '@whiteboard/engine'
 import { createTestLayout } from './support'
 
@@ -34,12 +40,12 @@ const createTextNode = ({
 const createEdge = ({
   id,
   sourceId,
-  targetId,
+  destinationId,
   locked = false
 }: {
   id: string
   sourceId: string
-  targetId: string
+  destinationId: string
   locked?: boolean
 }) => ({
   id,
@@ -51,7 +57,7 @@ const createEdge = ({
   },
   target: {
     kind: 'node' as const,
-    nodeId: targetId
+    nodeId: destinationId
   },
   points: undefined
 })
@@ -72,7 +78,7 @@ const createLockedDocument = () => {
   const edge = createEdge({
     id: 'edge_1',
     sourceId: lockedNode.id,
-    targetId: freeNode.id
+    destinationId: freeNode.id
   })
 
   document.nodes[lockedNode.id] = lockedNode
@@ -111,7 +117,7 @@ const createEdgeLockedDocument = () => {
   const edge = createEdge({
     id: 'edge_locked',
     sourceId: firstNode.id,
-    targetId: secondNode.id,
+    destinationId: secondNode.id,
     locked: true
   })
 
@@ -134,6 +140,15 @@ const createEdgeLockedDocument = () => {
   ]
 
   return document
+}
+
+const collectWrites = (
+  build: (write: MutationWriter<typeof whiteboardMutationSchema>) => void
+): readonly MutationWrite[] => {
+  const writes: MutationWrite[] = []
+  const write = createMutationWriter(whiteboardMutationSchema, writes)
+  build(write)
+  return writes
 }
 
 test('engine blocks moving a locked node', () => {
@@ -230,26 +245,10 @@ test('engine allows remote unlock then delete in the same operation batch', () =
     layout: createTestLayout()
   })
 
-  const result = engine.apply({
-    steps: [{
-      type: 'entity.patch',
-      entity: {
-        kind: 'entity',
-        type: 'node',
-        id: 'node_locked'
-      },
-      writes: {
-        locked: false
-      }
-    }, {
-      type: 'entity.delete',
-      entity: {
-        kind: 'entity',
-        type: 'node',
-        id: 'node_locked'
-      }
-    }]
-  }, {
+  const result = engine.apply(collectWrites((write) => {
+    write.nodes('node_locked').locked.set(false)
+    write.nodes.remove('node_locked')
+  }), {
     origin: 'remote'
   })
 
@@ -292,29 +291,10 @@ test('engine allows remote unlock then edge update in the same batch', () => {
     layout: createTestLayout()
   })
 
-  const result = engine.apply({
-    steps: [{
-      type: 'entity.patch',
-      entity: {
-        kind: 'entity',
-        type: 'edge',
-        id: 'edge_locked'
-      },
-      writes: {
-        locked: false
-      }
-    }, {
-      type: 'entity.patch',
-      entity: {
-        kind: 'entity',
-        type: 'edge',
-        id: 'edge_locked'
-      },
-      writes: {
-        textMode: 'tangent'
-      }
-    }]
-  }, {
+  const result = engine.apply(collectWrites((write) => {
+    write.edges('edge_locked').locked.set(false)
+    write.edges('edge_locked').textMode.set('tangent')
+  }), {
     origin: 'remote'
   })
 

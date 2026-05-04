@@ -1,4 +1,4 @@
-import { document as documentApi, normalizeDocument } from '@whiteboard/core/document'
+import { document as documentApi } from '@whiteboard/core/document'
 import type {
   WhiteboardCompileContext,
   WhiteboardCompileHandlerTable
@@ -6,18 +6,11 @@ import type {
 
 type DocumentIntentHandlers = Pick<
   WhiteboardCompileHandlerTable,
-  'document.replace'
-  | 'document.insert'
+  'document.insert'
   | 'document.background.set'
 >
 
 export const documentIntentHandlers = {
-  'document.replace': (ctx) => {
-    const intent = ctx.intent
-    ctx.writer.replace(
-      normalizeDocument(documentApi.assert(intent.document))
-    )
-  },
   'document.insert': (ctx) => {
     const intent = ctx.intent
     const built = documentApi.slice.insert.ops({

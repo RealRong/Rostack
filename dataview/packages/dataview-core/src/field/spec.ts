@@ -350,7 +350,9 @@ export const fieldSpec = {
     },
     sort: {
       of: (field?: Pick<Field, 'kind'>) => readFieldSpec(field).index.sortScalar,
-      scalar: (field: Field | undefined, value: unknown): string | number | boolean | undefined => readFieldSpec(field).index.sortScalar?.(value)
+      scalar: (field: Field | undefined, value: unknown): string | number | boolean | undefined => (
+        readFieldSpec(field).index.sortScalar?.(field?.kind === 'title' ? undefined : field, value)
+      )
     }
   },
   calculation: {

@@ -11,6 +11,13 @@ import {
   createYjsMutationCollabSession
 } from '@shared/collab-yjs'
 import {
+  createMutationChange
+} from '@shared/mutation'
+import type {
+  MutationCommit,
+  MutationDocument
+} from '@shared/mutation'
+import {
   document as documentApi
 } from '@whiteboard/core/document'
 import {
@@ -42,10 +49,32 @@ export const useWhiteboardCollab = (input: {
       return
     }
 
-    const collabEngine: MutationCollabEngine<
+    const toMutationCommit = (
+      commit: ReturnType<typeof input.services.engine.replace>
+    ): MutationCommit<typeof whiteboardMutationSchema> => ({
+      ...commit,
+      change: commit.kind === 'replace'
+        ? createMutationChange(whiteboardMutationSchema, [], {
+            reset: true
+          })
+        : createMutationChange(whiteboardMutationSchema, commit.writes)
+    })
+
+    const collabEngine = {
+      commits: {
+        subscribe: (listener) => input.services.engine.commits.subscribe((commit) => {
+          listener(toMutationCommit(commit))
+        })
+      },
+      doc: () => input.services.engine.doc() as MutationDocument<typeof whiteboardMutationSchema>,
+      replace: (document: MutationDocument<typeof whiteboardMutationSchema>, options) => (
+        input.services.engine.replace(document as ReturnType<typeof input.services.engine.doc>, options)
+      ),
+      apply: (writes, options) => input.services.engine.apply(writes, options)
+    } as MutationCollabEngine<
       typeof whiteboardMutationSchema,
       IntentResult
-    > = input.services.engine
+    >
 
     const session = createYjsMutationCollabSession({
       schema: whiteboardMutationSchema,

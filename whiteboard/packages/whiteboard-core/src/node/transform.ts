@@ -1139,10 +1139,10 @@ export const projectSelectionTransform = <TNode extends Node>(input: {
   ))
 
 export const projectRotateTransformPatches = (options: {
-  targetId: NodeId
+  nodeId: NodeId
   rotation: number
 }): readonly TransformPreviewPatch[] => [{
-  id: options.targetId,
+  id: options.nodeId,
   rotation: options.rotation
 }]
 
@@ -1319,7 +1319,7 @@ const stepRotateTransform = <
     rotateSnapStep: input.rotateSnapStep
   })
   const patches = projectRotateTransformPatches({
-    targetId: state.target.id,
+    nodeId: state.target.id,
     rotation
   })
 

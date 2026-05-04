@@ -5,7 +5,6 @@ import type {
   GroupIntent,
   MindmapIntent,
   NodeIntent,
-  ReplaceDocumentIntent,
   WhiteboardIntent,
   whiteboardCompileHandlers,
 } from '@whiteboard/core/mutation'
@@ -35,7 +34,6 @@ export type {
   GroupIntent,
   MindmapIntent,
   NodeIntent,
-  ReplaceDocumentIntent,
 }
 
 export type IntentKind = WhiteboardIntent['type']

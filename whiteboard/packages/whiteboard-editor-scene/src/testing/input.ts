@@ -1,6 +1,5 @@
 import {
-  createMutationDelta,
-  createMutationResetDelta
+  createMutationChange
 } from '@shared/mutation'
 import type {
   SceneUpdateInput
@@ -12,15 +11,17 @@ import {
   buildEditorStateDocument
 } from '@whiteboard/editor/state/document'
 import type {
-  EditorStateMutationDelta
+  EditorStateChange
 } from '@whiteboard/editor/state/runtime'
 import {
   editorStateMutationSchema
 } from '@whiteboard/editor/state/model'
 import { createEmptyDocumentSnapshot } from '../projection/state'
 import {
+  createWhiteboardChange,
   whiteboardMutationSchema
 } from '@whiteboard/core/mutation'
+import { createWhiteboardQuery } from '@whiteboard/core/query'
 
 const DEFAULT_DRAW_STYLE = Object.freeze({
   color: 'currentColor',
@@ -50,26 +51,38 @@ export const toSceneUpdateInput = (
   input: SceneUpdateInput
 ): SceneUpdateInput => input
 
-export const createEmptyRuntimeInputDelta = (): EditorStateMutationDelta => createMutationDelta(
+export const createEmptyRuntimeInputChange = (): EditorStateChange => createMutationChange(
   editorStateMutationSchema
 )
 
-export const createEditorStateInputDelta = (
+export const createEditorStateInputChange = (
   input: {
     reset?: boolean
   }
-): EditorStateMutationDelta => createMutationDelta(
+): EditorStateChange => createMutationChange(
   editorStateMutationSchema,
-  input.reset
-    ? createMutationResetDelta(editorStateMutationSchema)
-    : undefined
+  [],
+  {
+    reset: input.reset
+  }
+)
+
+const createEmptyDocumentChange = (
+  input: {
+    reset?: boolean
+  } = {}
+) => createWhiteboardChange(
+  createWhiteboardQuery(() => createEmptyDocumentSnapshot().document),
+  createMutationChange(whiteboardMutationSchema, [], {
+    reset: input.reset
+  })
 )
 
 export const createEmptyInput = (): SceneUpdateInput => ({
   document: {
     rev: 0,
     snapshot: createEmptyDocumentSnapshot().document,
-    delta: createMutationDelta(whiteboardMutationSchema)
+    change: createEmptyDocumentChange()
   },
   editor: {
     snapshot: buildEditorStateDocument({
@@ -83,6 +96,6 @@ export const createEmptyInput = (): SceneUpdateInput => ({
         space: false
       }
     }),
-    delta: createEmptyRuntimeInputDelta()
+    change: createEmptyRuntimeInputChange()
   }
 })

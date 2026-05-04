@@ -23,6 +23,7 @@ import type {
   Point
 } from '@whiteboard/core/types'
 import type { IntentResult } from '@whiteboard/engine/types/result'
+import type { Engine } from '@whiteboard/engine'
 import type { ClipboardPacket } from '@whiteboard/editor/clipboard'
 import type {
   BrushStylePatch,
@@ -83,7 +84,7 @@ export type MindmapInsertRelation =
   | 'parent'
 
 export type AppActions = {
-  replace: (document: Document) => IntentResult
+  replace: (document: Document) => ReturnType<Engine['replace']>
 }
 
 export type ToolActions = {

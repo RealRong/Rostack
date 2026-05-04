@@ -1,9 +1,3 @@
-import type {
-  MutationDeltaSource,
-} from '@shared/mutation'
-import {
-  createMutationDelta,
-} from '@shared/mutation'
 import {
   getMindmapRecordByNodeId,
   readMindmapRootId,
@@ -11,21 +5,17 @@ import {
   resolveMindmapId,
   toMindmapTree,
 } from '@whiteboard/core/mindmap/tree'
-import {
-  whiteboardMutationSchema,
-  type WhiteboardMutationDelta,
-} from '@whiteboard/core/mutation/model'
 import type {
   CanvasItemRef,
   Document,
   Edge,
-  Group,
-  GroupId,
   MindmapId,
   MindmapRecord,
   MindmapTree,
   Node,
   NodeId,
+  Group,
+  GroupId,
 } from '@whiteboard/core/types'
 import {
   canvasRefKey,
@@ -47,13 +37,12 @@ export interface WhiteboardReader {
     indexOf(ref: CanvasItemRef): number
   }
   node: EntityReader<NodeId, Node>
-  edge: EntityReader<string, Edge>
+  edge: EntityReader<Edge['id'], Edge>
   group: EntityReader<GroupId, Group>
   mindmap: EntityReader<MindmapId, MindmapRecord>
 }
 
 export interface WhiteboardQuery {
-  changes(input?: MutationDeltaSource<typeof whiteboardMutationSchema>): WhiteboardMutationDelta
   edge: {
     connectedToNodes(nodeIds: ReadonlySet<NodeId>): readonly Edge[]
   }
@@ -138,7 +127,6 @@ export const createWhiteboardQuery = (
   const read = createWhiteboardReader(readDocument)
 
   return {
-    changes: (changeInput) => createMutationDelta(whiteboardMutationSchema, changeInput),
     edge: {
       connectedToNodes: (nodeIds) => read.edge.list().filter((edge) => (
         (edge.source.kind === 'node' && nodeIds.has(edge.source.nodeId))
@@ -197,8 +185,4 @@ export const createWhiteboardQuery = (
       },
     },
   }
-}
-
-export type {
-  WhiteboardMutationDelta
 }

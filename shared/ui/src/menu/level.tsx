@@ -422,7 +422,6 @@ export const Level = (props: LevelProps) => {
     }
 
     const open = isPathPrefix(path, props.controller.openPath)
-      && props.controller.openPath.length === path.length
     const presentation = resolvePresentation(item)
 
     return (

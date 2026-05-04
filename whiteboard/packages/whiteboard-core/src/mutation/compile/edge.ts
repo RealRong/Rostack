@@ -499,7 +499,7 @@ export const edgeIntentHandlers = {
             type: intent.patch.type
           }
         : {}),
-      ...(intent.patch?.points
+      ...(intent.patch && hasOwn(intent.patch, 'points')
         ? {
             points: intent.patch.points
           }

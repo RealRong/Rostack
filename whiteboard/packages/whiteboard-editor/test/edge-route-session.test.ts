@@ -88,6 +88,18 @@ const createDeps = () => {
   }
 }
 
+const readPoints = (
+  value: unknown
+): readonly { x: number; y: number }[] => (
+  value
+    ? entityTable.read.list(value as import('@shared/core').EntityTable<string, {
+      id: string
+      x: number
+      y: number
+    }>).map(({ x, y }) => ({ x, y }))
+    : []
+)
+
 const createStart = () => ({
   phase: 'down' as const,
   pointerId: 1,
@@ -139,7 +151,8 @@ describe('createEdgeRoutePressSession', () => {
     } as never)
 
     expect(setPoints).toHaveBeenCalledTimes(1)
-    expect(setPoints).toHaveBeenCalledWith('edge-1', [
+    expect(setPoints).toHaveBeenCalledWith('edge-1', expect.anything())
+    expect(readPoints(setPoints.mock.calls[0]?.[1])).toEqual([
       { x: 20, y: 20 },
       { x: 50, y: 10 }
     ])
@@ -180,7 +193,8 @@ describe('createEdgeRoutePressSession', () => {
     } as never)
 
     expect(setPoints).toHaveBeenCalledTimes(1)
-    expect(setPoints).toHaveBeenCalledWith('edge-1', [
+    expect(setPoints).toHaveBeenCalledWith('edge-1', expect.anything())
+    expect(readPoints(setPoints.mock.calls[0]?.[1])).toEqual([
       { x: 20, y: 20 },
       { x: 80, y: 30 }
     ])

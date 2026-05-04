@@ -5,10 +5,14 @@ import type {
   StatusCategory
 } from '@dataview/core/types'
 import {
+  readFieldOptionEntity,
+  readFieldOptionIds,
+  readFieldOptionIndex,
   normalizeOptionToken,
-  readFieldOptions,
-  readFieldOptionOrder
 } from '@dataview/core/field/option'
+import {
+  compare
+} from '@shared/core'
 
 export const STATUS_CATEGORIES = [
   'todo',
@@ -65,11 +69,12 @@ const CATEGORY_ALIASES: Record<StatusCategory, readonly string[]> = {
 const getStatusOptions = (
   field?: StatusFieldInput
 ) => field?.kind === 'status'
-  ? readFieldOptions(field).flatMap((option) => (
-      option.category !== undefined
+  ? readFieldOptionIds(field).flatMap((optionId) => {
+      const option = readFieldOptionEntity(field, optionId)
+      return option?.category !== undefined
         ? [option]
         : []
-    ))
+    })
   : []
 
 const getStatusExplicitDefaultOptionId = (
@@ -107,17 +112,6 @@ const inferCategoryFromText = (
   return undefined
 }
 
-const getStatusOptionRecord = (
-  field: StatusFieldInput | undefined,
-  optionId: unknown
-) => {
-  if (typeof optionId !== 'string') {
-    return undefined
-  }
-
-  return getStatusOptions(field).find(option => option.id === optionId)
-}
-
 export const createDefaultStatusOptions = (): StatusOption[] => (
   DEFAULT_STATUS_OPTIONS.map(option => ({ ...option }))
 )
@@ -141,7 +135,7 @@ export const getStatusOptionCategory = (
   field: StatusFieldInput | undefined,
   optionId: unknown
 ): StatusCategory | undefined => {
-  const option = getStatusOptionRecord(field, optionId)
+  const option = readFieldOptionEntity(field, optionId)
   if (!option) {
     return undefined
   }
@@ -181,7 +175,7 @@ export const getStatusFieldDefaultOption = (
 ) => {
   const explicitDefaultId = getStatusExplicitDefaultOptionId(field)
   if (explicitDefaultId) {
-    const explicitDefault = getStatusOptionRecord(field, explicitDefaultId)
+    const explicitDefault = readFieldOptionEntity(field, explicitDefaultId)
     if (explicitDefault) {
       return explicitDefault
     }
@@ -195,33 +189,45 @@ export const compareStatusFieldValues = (
   left: unknown,
   right: unknown
 ) => {
-  const compareTuple = (value: unknown) => {
+  const readComparable = (value: unknown) => {
     if (typeof value !== 'string') {
-      return [1, Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER, String(value ?? '')] as const
+      return {
+        missing: 1,
+        categoryOrder: Number.MAX_SAFE_INTEGER,
+        optionOrder: Number.MAX_SAFE_INTEGER,
+        label: String(value ?? '')
+      }
     }
 
-    const option = getStatusOptionRecord(field, value)
+    const option = readFieldOptionEntity(field, value)
     if (!option) {
-      return [1, Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER, value] as const
+      return {
+        missing: 1,
+        categoryOrder: Number.MAX_SAFE_INTEGER,
+        optionOrder: Number.MAX_SAFE_INTEGER,
+        label: value
+      }
     }
 
-    const category = getStatusOptionCategory(field, option.id) ?? 'todo'
-    const optionOrder = readFieldOptionOrder(field, option.id) ?? Number.MAX_SAFE_INTEGER
-    return [0, getStatusCategoryOrder(category), optionOrder, option.name] as const
-  }
-
-  const leftTuple = compareTuple(left)
-  const rightTuple = compareTuple(right)
-
-  for (let index = 0; index < leftTuple.length; index += 1) {
-    const leftValue = leftTuple[index]
-    const rightValue = rightTuple[index]
-    if (leftValue === rightValue) {
-      continue
+    return {
+      missing: 0,
+      categoryOrder: getStatusCategoryOrder(getStatusOptionCategory(field, option.id) ?? 'todo'),
+      optionOrder: readFieldOptionIndex(field, option.id) ?? Number.MAX_SAFE_INTEGER,
+      label: option.name
     }
-
-    return leftValue > rightValue ? 1 : -1
   }
 
-  return 0
+  const leftValue = readComparable(left)
+  const rightValue = readComparable(right)
+  if (leftValue.missing !== rightValue.missing) {
+    return leftValue.missing - rightValue.missing
+  }
+  if (leftValue.categoryOrder !== rightValue.categoryOrder) {
+    return leftValue.categoryOrder - rightValue.categoryOrder
+  }
+  if (leftValue.optionOrder !== rightValue.optionOrder) {
+    return leftValue.optionOrder - rightValue.optionOrder
+  }
+
+  return compare.compareText(leftValue.label, rightValue.label)
 }

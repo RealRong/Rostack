@@ -239,7 +239,7 @@ export type MindmapDragDropTarget = {
   parentId: MindmapNodeId
   index: number
   side?: 'left' | 'right'
-  targetId?: MindmapNodeId
+  hoveredId?: MindmapNodeId
   connectionLine?: MindmapDragDropLine
   insertLine?: MindmapDragDropLine
 }

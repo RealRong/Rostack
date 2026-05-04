@@ -60,10 +60,6 @@ export type MindmapBranchBatchUpdate = {
 
 export type DocumentIntent =
   | {
-      type: 'document.replace'
-      document: Document
-    }
-  | {
       type: 'document.insert'
       slice: Slice
       options?: SliceInsertOptions
@@ -317,8 +313,3 @@ export type WhiteboardIntent =
   | MindmapIntent
 
 export type WhiteboardIntentKind = WhiteboardIntent['type']
-
-export type ReplaceDocumentIntent = Extract<
-  WhiteboardIntent,
-  { type: 'document.replace' }
->

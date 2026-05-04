@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest'
+import { entityTable } from '@shared/core'
 import { document as documentApi } from '@whiteboard/core/document'
 import { engine as engineApi } from '@whiteboard/engine'
 import { editor as editorApi } from '../src'
@@ -212,19 +213,21 @@ const createMindmapEditor = () => {
   }
   document.mindmaps['mind-1'] = {
     id: 'mind-1',
-    root: 'root-1',
-    members: {
-      'root-1': {
-        branchStyle: {
-          color: '#111827',
-          line: 'curve',
-          width: 2,
-          stroke: 'solid'
+    tree: {
+      rootId: 'root-1',
+      nodes: {
+        'root-1': {
+          children: [],
+          value: {
+            branchStyle: {
+              color: '#111827',
+              line: 'curve',
+              width: 2,
+              stroke: 'solid'
+            }
+          }
         }
       }
-    },
-    children: {
-      'root-1': []
     },
     layout: {
       side: 'both',
@@ -286,10 +289,10 @@ const createEdgeEditor = () => {
       kind: 'node',
       nodeId: 'node-2'
     },
-    labels: [{
+    labels: entityTable.normalize.list([{
       id: 'label-1',
       text: 'Label'
-    }]
+    }])
   }
   document.order = [
     {

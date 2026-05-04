@@ -98,12 +98,12 @@ const commitEdgeMove = (
   state: EdgeMoveState
 ): {
   edgeId: string
-  delta: Point
+  translation: Point
 } | undefined => (
   !geometryApi.equal.point(state.delta, ZERO_POINT)
     ? {
         edgeId: state.edgeId,
-        delta: state.delta
+        translation: state.delta
       }
     : undefined
 )
@@ -171,7 +171,7 @@ export const createEdgeMoveSession = (
       if (commit) {
         editor.actions.document.edge.move({
           ids: [commit.edgeId],
-          delta: commit.delta
+          delta: commit.translation
         })
       }
 

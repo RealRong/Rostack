@@ -1,10 +1,6 @@
-import type {
-  MutationDelta
-} from '@shared/mutation'
-import {
-  whiteboardMutationSchema
+export type {
+  WhiteboardChange,
+  WhiteboardChangeExtension,
+  WhiteboardMutationChange,
+  WhiteboardTouchedIds,
 } from '@whiteboard/core/mutation'
-
-export type WhiteboardMutationDelta = MutationDelta<
-  typeof whiteboardMutationSchema
->

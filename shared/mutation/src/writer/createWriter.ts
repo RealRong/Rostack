@@ -284,16 +284,21 @@ const createObjectWriter = (
   target?: MutationEntityTarget
 ): object => {
   const result: Record<string, unknown> = {}
+  const writerEntries: Record<string, unknown> = {}
 
   for (const [key, entry] of Object.entries(node.entries)) {
-    defineLazyProperty(result, key, () => createWriterNode(entry, writes, target))
+    defineLazyProperty(writerEntries, key, () => createWriterNode(entry, writes, target))
+    if (key === 'patch') {
+      continue
+    }
+    defineLazyProperty(result, key, () => writerEntries[key])
   }
 
   Object.defineProperty(result, 'patch', {
     enumerable: true,
     configurable: false,
     value(value: Record<string, unknown>) {
-      applyObjectPatch(node, result, value, target)
+      applyObjectPatch(node, writerEntries, value, target)
     }
   })
 
@@ -455,7 +460,7 @@ const createWriterNode = (
 
 const applyObjectPatch = (
   node: CompiledMutationObjectNode,
-  writerObject: Record<string, unknown>,
+  writerObject: Readonly<Record<string, unknown>>,
   value: Record<string, unknown>,
   target?: MutationEntityTarget
 ): void => {

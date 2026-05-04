@@ -342,6 +342,10 @@ export const Base = forwardRef<Handle, Props>((props, ref) => {
 
   const closeSubmenuPath = useCallback((path: Path, reason: SubmenuCloseReason) => {
     pendingTriggerPressPathRef.current = null
+    if (!isPathPrefix(path, openPath)) {
+      return
+    }
+
     setOpenPath(parentPath(path))
     switch (reason) {
       case 'trigger':
@@ -354,7 +358,7 @@ export const Base = forwardRef<Handle, Props>((props, ref) => {
       default:
         clearActivePath()
     }
-  }, [clearActivePath, setActiveKeyboardPath, setActivePointerPath, setOpenPath])
+  }, [clearActivePath, openPath, setActiveKeyboardPath, setActivePointerPath, setOpenPath])
 
   const openSubmenuPath = useCallback((path: Path, item: SubmenuItem, source: 'pointer' | 'keyboard') => {
     pendingTriggerPressPathRef.current = null

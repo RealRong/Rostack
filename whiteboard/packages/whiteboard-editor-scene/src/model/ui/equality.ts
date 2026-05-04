@@ -212,7 +212,7 @@ const isMindmapDropTargetEqual = (
   && left.parentId === right.parentId
   && left.index === right.index
   && left.side === right.side
-  && left.targetId === right.targetId
+  && left.hoveredId === right.hoveredId
   && isMindmapDropLineEqual(left.connectionLine, right.connectionLine)
   && isMindmapDropLineEqual(left.insertLine, right.insertLine)
 )

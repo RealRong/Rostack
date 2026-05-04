@@ -111,7 +111,7 @@ type MutationDictionaryKeyIndex = {
 
 type MutationSequenceValueIndex = {
   all: boolean
-  values: unknown[]
+  keys: Set<string>
 }
 
 type MutationTreeNodeIndex = {
@@ -246,13 +246,11 @@ const hasTargetChanged = (
   target?: MutationEntityTarget
 ): boolean => readTargetTrieValue(index, nodeId, target) === true
 
-const pushUniqueObjectValue = (
-  values: unknown[],
-  value: unknown
+const addSequenceKey = (
+  keys: Set<string>,
+  key: string
 ): void => {
-  if (!values.some((entry) => Object.is(entry, value))) {
-    values.push(value)
-  }
+  keys.add(key)
 }
 
 const childTarget = (
@@ -348,31 +346,39 @@ const createMutationChangeIndex = (
       case 'sequence.insert':
       case 'sequence.move':
       case 'sequence.remove': {
+        if (node.kind !== 'sequence') {
+          throw new Error(`Sequence write requires a sequence node, received "${node.kind}".`)
+        }
+
         const values = ensureTargetTrieValue(
           index.sequenceValues,
           write.nodeId,
           write.target,
           () => ({
             all: false,
-            values: []
+            keys: new Set<string>()
           })
         )
-        pushUniqueObjectValue(values.values, write.value)
+        addSequenceKey(values.keys, node.keyOf(write.value))
         break
       }
 
       case 'sequence.replace': {
+        if (node.kind !== 'sequence') {
+          throw new Error(`Sequence write requires a sequence node, received "${node.kind}".`)
+        }
+
         const values = ensureTargetTrieValue(
           index.sequenceValues,
           write.nodeId,
           write.target,
           () => ({
             all: false,
-            values: []
+            keys: new Set<string>()
           })
         )
         values.all = true
-        values.values = [...write.value]
+        values.keys = new Set(write.value.map((item) => node.keyOf(item)))
         break
       }
 
@@ -445,6 +451,7 @@ const isDictionaryChanged = (
 const isSequenceChanged = (
   index: MutationChangeIndex,
   nodeId: number,
+  keyOf: (value: unknown) => string,
   target?: MutationEntityTarget,
   value?: unknown
 ): boolean => {
@@ -457,11 +464,15 @@ const isSequenceChanged = (
     return false
   }
 
-  if (value === undefined) {
-    return entry.all || entry.values.length > 0
+  if (entry.all) {
+    return true
   }
 
-  return entry.values.some((item) => Object.is(item, value))
+  if (value === undefined) {
+    return entry.keys.size > 0
+  }
+
+  return entry.keys.has(keyOf(value))
 }
 
 const isTreeChanged = (
@@ -528,11 +539,12 @@ const createDictionaryChange = (
 
 const createSequenceChange = (
   index: MutationChangeIndex,
+  node: import('../compile/schema').CompiledMutationSequenceNode,
   nodeId: number,
   target?: MutationEntityTarget
 ): MutationSequenceChange<unknown> => ({
   changed(value?: unknown) {
-    return isSequenceChanged(index, nodeId, target, value)
+    return isSequenceChanged(index, nodeId, node.keyOf, target, value)
   }
 })
 
@@ -682,7 +694,7 @@ const createChangeNode = (
     case 'dictionary':
       return createDictionaryChange(index, node.nodeId, target)
     case 'sequence':
-      return createSequenceChange(index, node.nodeId, target)
+      return createSequenceChange(index, node, node.nodeId, target)
     case 'tree':
       return createTreeChange(index, node.nodeId, target)
     case 'object':

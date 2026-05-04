@@ -75,7 +75,7 @@ describe('document engine subscribe', () => {
     if (!second.ok) {
       return
     }
-    const touchedIds = second.commit.delta.node.geometry.touchedIds()
+    const touchedIds = second.commit.change.node.geometry.touchedIds()
     expect(touchedIds === 'all' ? ['node_1'] : [...touchedIds]).toContain('node_1')
   })
 })

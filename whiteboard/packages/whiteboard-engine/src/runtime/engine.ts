@@ -1,3 +1,4 @@
+import { createId } from '@shared/core'
 import {
   createMutationEngine,
   type MutationCommit,
@@ -5,20 +6,21 @@ import {
   type MutationResult,
   type MutationWrite,
 } from '@shared/mutation'
-import type {
-  WhiteboardCompileIds,
-  WhiteboardCompileServices,
-  WhiteboardIntent,
-} from '@whiteboard/core/mutation'
-import {
-  whiteboardCompile,
-  whiteboardMutationSchema
-} from '@whiteboard/core/mutation'
 import {
   normalizeDocument
 } from '@whiteboard/core/document'
+import {
+  createWhiteboardChange,
+  whiteboardCompile,
+  whiteboardMutationSchema,
+  type WhiteboardChange,
+  type WhiteboardCompileIds,
+  type WhiteboardCompileServices,
+  type WhiteboardIntent,
+} from '@whiteboard/core/mutation'
+import { createWhiteboardQuery } from '@whiteboard/core/query'
 import { createRegistries } from '@whiteboard/core/registry'
-import { createId } from '@shared/core'
+import type { Document } from '@whiteboard/core/types'
 import { resolveBoardConfig } from '../config'
 import type {
   CreateEngineOptions,
@@ -28,11 +30,9 @@ import type {
 import type {
   ExecuteResult,
   Intent,
-  IntentKind
+  IntentKind,
 } from '../contracts/intent'
 import { cancelled, failure, success } from '../result'
-import type { Document } from '@whiteboard/core/types'
-import type { WhiteboardMutationDelta } from '../mutation'
 import type {
   EngineApplyCommit,
   EngineCommit,
@@ -61,7 +61,7 @@ const resolveIntentOrigin = (
 }
 
 const mapExecuteFailure = (
-  result: MutationResult<readonly unknown[], CoreCommit>
+  result: MutationResult<unknown, CoreCommit>
 ): ExecuteResult => {
   if (result.ok) {
     throw new Error('mapExecuteFailure only accepts failed execute results.')
@@ -82,6 +82,17 @@ const mapExecuteFailure = (
   )
 }
 
+const hasVisibleCommit = (
+  commit: CoreCommit
+): boolean => commit.change.reset() || commit.writes.length > 0
+
+const toWhiteboardChange = (
+  commit: CoreCommit
+): WhiteboardChange => createWhiteboardChange(
+  createWhiteboardQuery(() => commit.document),
+  commit.change
+)
+
 const toEngineCommit = (
   rev: number,
   commit: CoreCommit & {
@@ -94,7 +105,7 @@ const toEngineCommit = (
       rev,
       origin: commit.origin,
       document: commit.document,
-      delta: commit.delta,
+      change: toWhiteboardChange(commit),
       inverse: commit.inverse,
       writes: commit.writes,
       previousDocument: commit.previousDocument ?? commit.document
@@ -106,7 +117,7 @@ const toEngineCommit = (
     rev,
     origin: commit.origin,
     document: commit.document,
-    delta: commit.delta,
+    change: toWhiteboardChange(commit),
     inverse: commit.inverse,
     writes: commit.writes
   }
@@ -124,19 +135,19 @@ const toApplyCommit = (
 }
 
 const mapExecuteResult = <TIntent extends Intent>(
-  rev: number,
-  result: MutationResult<readonly unknown[], CoreCommit>
+  commit: EngineApplyCommit,
+  result: MutationResult<unknown, CoreCommit>
 ): ExecuteResult<TIntent['type'] & IntentKind> => {
   if (result.ok) {
     return {
       ok: true,
-      data: result.data[0] as ExecuteResult<TIntent['type'] & IntentKind> extends {
+      data: result.data as ExecuteResult<TIntent['type'] & IntentKind> extends {
         ok: true
         data: infer TData
       }
         ? TData
         : never,
-      commit: toApplyCommit(rev, result.commit)
+      commit
     }
   }
 
@@ -175,7 +186,44 @@ export const createEngine = ({
     history: true
   })
 
+  let currentRevision = 0
+  let pendingReplacePreviousDocument: Document | undefined
+  const commitRevisions = new WeakMap<CoreCommit, number>()
+
+  const readCommitRevision = (
+    commit: CoreCommit
+  ): number => {
+    const cached = commitRevisions.get(commit)
+    if (cached !== undefined) {
+      return cached
+    }
+
+    const nextRevision = hasVisibleCommit(commit)
+      ? currentRevision + 1
+      : currentRevision
+
+    if (hasVisibleCommit(commit)) {
+      currentRevision = nextRevision
+    }
+
+    commitRevisions.set(commit, nextRevision)
+    return nextRevision
+  }
+
+  const mapCoreCommit = (
+    commit: CoreCommit
+  ): EngineCommit => toEngineCommit(
+    readCommitRevision(commit),
+    commit.kind === 'replace' && pendingReplacePreviousDocument
+      ? {
+          ...commit,
+          previousDocument: pendingReplacePreviousDocument
+        }
+      : commit
+  )
+
   core.subscribe((commit) => {
+    readCommitRevision(commit)
     if (onDocumentChange) {
       onDocumentChange(commit.document)
     }
@@ -183,7 +231,7 @@ export const createEngine = ({
 
   const subscribeCurrent: Engine['subscribe'] = (listener) => core.subscribe((commit) => {
     listener({
-      rev: core.current().rev,
+      rev: readCommitRevision(commit),
       doc: commit.document
     })
   })
@@ -198,7 +246,7 @@ export const createEngine = ({
         return cancelled('Nothing to undo.')
       }
       return success(
-        toApplyCommit(core.current().rev, commit),
+        toApplyCommit(readCommitRevision(commit), commit),
         undefined
       )
     },
@@ -208,7 +256,7 @@ export const createEngine = ({
         return cancelled('Nothing to redo.')
       }
       return success(
-        toApplyCommit(core.current().rev, commit),
+        toApplyCommit(readCommitRevision(commit), commit),
         undefined
       )
     },
@@ -218,40 +266,52 @@ export const createEngine = ({
   const engine: Engine = {
     config,
     commits: {
-      subscribe: (listener: (commit: import('../types/engineWrite').EngineCommit) => void) => core.subscribe((commit) => {
-        listener(toEngineCommit(core.current().rev, commit))
+      subscribe: (listener: (commit: EngineCommit) => void) => core.subscribe((commit) => {
+        listener(mapCoreCommit(commit))
       })
     },
     history,
     doc: () => core.document(),
-    rev: () => core.current().rev,
+    rev: () => currentRevision,
     subscribe: subscribeCurrent,
     execute: <TIntent extends Intent>(
       intent: TIntent,
       options?: MutationOptions
-    ): ExecuteResult<TIntent['type'] & IntentKind> => mapExecuteResult<TIntent>(
-      core.current().rev + 1,
-      core.execute(intent, {
+    ): ExecuteResult<TIntent['type'] & IntentKind> => {
+      const result = core.execute(intent, {
         origin: resolveIntentOrigin(intent, options?.origin)
       })
-    ),
-    replace: (document, options) => toEngineCommit(
-      core.current().rev + 1,
-      core.replace(document, {
+
+      if (!result.ok) {
+        return mapExecuteFailure(result) as ExecuteResult<TIntent['type'] & IntentKind>
+      }
+
+      return mapExecuteResult<TIntent>(
+        toApplyCommit(readCommitRevision(result.commit), result.commit),
+        result
+      )
+    },
+    replace: (nextDocument, options) => {
+      pendingReplacePreviousDocument = core.document()
+      const commit = core.replace(nextDocument, {
         origin: options?.origin ?? 'system',
         history: options?.history
       })
-    ),
-    apply: (writes: readonly MutationWrite[], options) => success(
-      toApplyCommit(
-        core.current().rev + 1,
-        core.apply(writes, {
-          origin: options?.origin ?? 'user',
-          history: options?.history
-        })
-      ),
-      undefined
-    )
+      const mapped = mapCoreCommit(commit)
+      pendingReplacePreviousDocument = undefined
+      return mapped
+    },
+    apply: (writes: readonly MutationWrite[], options) => {
+      const commit = core.apply(writes, {
+        origin: options?.origin ?? 'user',
+        history: options?.history
+      })
+
+      return success(
+        toApplyCommit(readCommitRevision(commit), commit),
+        undefined
+      )
+    }
   }
 
   return engine

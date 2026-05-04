@@ -45,7 +45,7 @@ export type MoveEffect = {
 }
 
 export type MoveCommit = {
-  delta?: Point
+  translation?: Point
   edges: readonly MoveEdgeChange[]
 }
 
@@ -294,7 +294,7 @@ export const buildMoveCommit = (options: {
   delta: Point
   edgePlan?: MoveEdgePlan
 }): MoveCommit => ({
-  delta:
+  translation:
     options.delta.x === 0 && options.delta.y === 0
       ? undefined
       : options.delta,

@@ -44,11 +44,12 @@ import type {
   SliceInsertResult
 } from '@whiteboard/core/document'
 import type { IntentResult } from '@whiteboard/engine/types/result'
+import type { Engine } from '@whiteboard/engine'
 
 export type OrderStepDirection = 'forward' | 'backward'
 
 export type DocumentWrite = {
-  replace: (document: Document) => IntentResult
+  replace: (document: Document) => ReturnType<Engine['replace']>
   insert: (
     slice: Slice,
     options?: SliceInsertOptions

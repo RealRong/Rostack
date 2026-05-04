@@ -11,6 +11,7 @@ import type {
   CustomFieldId,
   CustomFieldKind,
   DateField,
+  Field,
   FieldOption,
   FlatOption,
   MultiSelectField,
@@ -43,6 +44,7 @@ import {
 } from '@dataview/core/field/kind/url'
 import {
   createFieldOptionId,
+  normalizeOptionToken,
   readFieldOption,
   readFieldOptionId,
   readFieldOptionOrder,
@@ -146,7 +148,7 @@ export interface KindSpec {
   index: {
     searchDefaultEnabled: boolean
     bucketKeys?: (value: unknown) => readonly string[] | undefined
-    sortScalar?: (value: unknown) => string | number | boolean | undefined
+    sortScalar?: (field: Field | undefined, value: unknown) => string | number | boolean | undefined
   }
   calculation: {
     uniqueKey: (field: FieldInput, value: unknown) => string
@@ -633,6 +635,32 @@ const getOptionOrder = (
   field: FieldInput,
   optionId: unknown
 ) => readFieldOptionOrder(field, optionId)
+
+const getStatusSortScalar = (
+  field: Field | undefined,
+  value: unknown
+): string | undefined => {
+  const comparableField = field?.kind === 'title'
+    ? undefined
+    : field
+
+  if (typeof value !== 'string') {
+    return undefined
+  }
+
+  const option = readFieldOption(comparableField, value)
+  if (!option) {
+    return undefined
+  }
+
+  const categoryOrder = getStatusCategoryOrder(
+    getStatusOptionCategory(comparableField, option.id) ?? 'todo'
+  )
+  const optionOrder = getOptionOrder(comparableField, option.id) ?? Number.MAX_SAFE_INTEGER
+  const normalizedName = normalizeOptionToken(option.name) ?? option.name
+
+  return `${String(categoryOrder).padStart(4, '0')}:${String(optionOrder).padStart(6, '0')}:${normalizedName}`
+}
 
 const normalizeOptionId = (
   field: FieldInput,
@@ -1537,7 +1565,7 @@ export const fieldKindSpec = {
     }),
     index: {
       searchDefaultEnabled: false,
-      sortScalar: parse.readFiniteNumber
+      sortScalar: (_field, value) => parse.readFiniteNumber(value)
     },
     calculation: {
       uniqueKey: (_field, value) => {
@@ -1594,7 +1622,8 @@ export const fieldKindSpec = {
     }),
     index: {
       searchDefaultEnabled: true,
-      bucketKeys: fastSingleOptionBucketKeys
+      bucketKeys: fastSingleOptionBucketKeys,
+      sortScalar: getStatusSortScalar
     },
     calculation: {
       uniqueKey: (_field, value) => `option:${asPlainString(value)}`,
@@ -1867,7 +1896,7 @@ export const fieldKindSpec = {
     }),
     index: {
       searchDefaultEnabled: false,
-      sortScalar: fieldDate.value.comparableTimestamp
+      sortScalar: (_field, value) => fieldDate.value.comparableTimestamp(value)
     },
     calculation: {
       uniqueKey: (_field, value) => json.stableStringify(value)

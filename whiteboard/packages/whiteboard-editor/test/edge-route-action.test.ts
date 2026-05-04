@@ -371,6 +371,18 @@ const createActions = (edge = createEdge()) => {
 }
 
 describe('edge points actions', () => {
+  const readPoints = (
+    value: unknown
+  ): readonly { x: number; y: number }[] => (
+    value
+      ? entityTable.read.list(value as import('@shared/core').EntityTable<string, {
+        id: string
+        x: number
+        y: number
+      }>).map(({ x, y }) => ({ x, y }))
+      : []
+  )
+
   it('inserts a point through points.set semantics', () => {
     const {
       actions,
@@ -386,7 +398,8 @@ describe('edge points actions', () => {
     })
 
     expect(setPoints).toHaveBeenCalledTimes(1)
-    expect(setPoints).toHaveBeenCalledWith('edge-1', [
+    expect(setPoints).toHaveBeenCalledWith('edge-1', expect.anything())
+    expect(readPoints(setPoints.mock.calls[0]?.[1])).toEqual([
       { x: 20, y: 20 },
       { x: 50, y: 10 }
     ])
@@ -411,10 +424,11 @@ describe('edge points actions', () => {
     })
 
     expect(setPoints).toHaveBeenCalledTimes(1)
-    expect(setPoints).toHaveBeenCalledWith('edge-1', [{
-        x: 60,
-        y: 12
-      }])
+    expect(setPoints).toHaveBeenCalledWith('edge-1', expect.anything())
+    expect(readPoints(setPoints.mock.calls[0]?.[1])).toEqual([{
+      x: 60,
+      y: 12
+    }])
     expect(insertPoints).not.toHaveBeenCalled()
     expect(updatePoints).not.toHaveBeenCalled()
     expect(deletePoints).not.toHaveBeenCalled()

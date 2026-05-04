@@ -2,7 +2,7 @@ import {
   createMutationEngine,
   createMutationWriter,
   type MutationCommit,
-  type MutationDelta,
+  type MutationChange,
   type MutationReader,
   type MutationWriter,
   type MutationWrite,
@@ -64,7 +64,7 @@ type EditorStateMutationWriter = MutationWriter<typeof editorStateMutationSchema
 
 export type EditorStateSnapshot = EditorStateDocument
 export type EditorStateReader = MutationReader<typeof editorStateMutationSchema>
-export type EditorStateMutationDelta = MutationDelta<typeof editorStateMutationSchema>
+export type EditorStateChange = MutationChange<typeof editorStateMutationSchema>
 export type EditorStateCommit = MutationCommit<typeof editorStateMutationSchema>
 
 export interface EditorStateWriter {

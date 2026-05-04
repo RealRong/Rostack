@@ -34,7 +34,7 @@ const normalizeSceneUpdateInput = (
 ): Input => ({
   document: input.document,
   editor: input.editor,
-  delta: input.document.delta
+  change: input.document.change
 })
 
 export const createProjectionRuntime = (input: {

@@ -52,7 +52,7 @@ import type {
   Revision
 } from '@shared/projection'
 import { store } from '@shared/core'
-import type { WhiteboardMutationDelta } from '@whiteboard/engine/mutation'
+import type { WhiteboardChange } from '@whiteboard/engine/mutation'
 import type {
   DrawState
 } from '@whiteboard/editor/schema/draw-state'
@@ -65,7 +65,7 @@ import type {
   EditorStateDocument as EditorSnapshot
 } from '@whiteboard/editor/state/document'
 import type {
-  EditorStateMutationDelta
+  EditorStateChange
 } from '@whiteboard/editor/state/runtime'
 import type {
   InteractionMode
@@ -94,7 +94,7 @@ import type { State } from './state'
 export interface Input {
   document: SceneUpdateInput['document']
   editor: SceneUpdateInput['editor']
-  delta: WhiteboardMutationDelta
+  change: WhiteboardChange
 }
 
 export interface SceneViewSnapshot {
@@ -116,11 +116,11 @@ export interface SceneUpdateInput {
   document: {
     snapshot: WhiteboardDocument
     rev: Revision
-    delta: WhiteboardMutationDelta
+    change: WhiteboardChange
   }
   editor: {
     snapshot: EditorSnapshot
-    delta: EditorStateMutationDelta
+    change: EditorStateChange
   }
 }
 

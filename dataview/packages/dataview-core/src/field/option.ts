@@ -19,6 +19,12 @@ export type OptionField = Extract<CustomField, {
 
 type OptionEntityTable<TOption extends FieldOption = FieldOption> = EntityTable<FieldOptionId, TOption>
 
+const readOptionTable = (
+  field?: CustomField
+): OptionEntityTable | undefined => isOptionField(field)
+  ? field.options
+  : undefined
+
 export const isOptionField = (
   field?: CustomField
 ): field is OptionField => (
@@ -29,20 +35,53 @@ export const isOptionField = (
 
 export const readFieldOptions = (
   field?: CustomField
-): FieldOption[] => isOptionField(field)
-  ? field.options.ids.flatMap((optionId) => {
-      const option = field.options.byId[optionId]
+): FieldOption[] => {
+  const table = readOptionTable(field)
+  return table
+    ? table.ids.flatMap((optionId) => {
+      const option = table.byId[optionId]
       return option
         ? [structuredClone(option)]
         : []
     })
-  : EMPTY_OPTIONS
+    : EMPTY_OPTIONS
+}
 
 export const readFieldOptionIds = (
   field?: CustomField
-): readonly FieldOptionId[] => isOptionField(field)
-  ? field.options.ids
-  : EMPTY_OPTION_IDS
+): readonly FieldOptionId[] => readOptionTable(field)?.ids ?? EMPTY_OPTION_IDS
+
+export const readFieldOptionEntity = (
+  field: CustomField | undefined,
+  optionId: unknown
+): FieldOption | undefined => {
+  const normalizedId = string.trimToUndefined(optionId)
+  if (!normalizedId) {
+    return undefined
+  }
+
+  return readOptionTable(field)?.byId[normalizedId]
+}
+
+export const readFieldOptionIndex = (
+  field: CustomField | undefined,
+  optionId: unknown
+): number | undefined => {
+  const normalizedId = string.trimToUndefined(optionId)
+  if (!normalizedId) {
+    return undefined
+  }
+
+  const ids = readOptionTable(field)?.ids
+  if (!ids) {
+    return undefined
+  }
+
+  const index = ids.indexOf(normalizedId)
+  return index >= 0
+    ? index
+    : undefined
+}
 
 export const normalizeOptionToken = (
   value: unknown
@@ -78,14 +117,7 @@ export const normalizeOptionIds = (
 export const readFieldOption = (
   field: CustomField | undefined,
   optionId: unknown
-): FieldOption | undefined => {
-  const normalizedId = string.trimToUndefined(optionId)
-  if (!normalizedId) {
-    return undefined
-  }
-
-  return readFieldOptions(field).find(option => option.id === normalizedId)
-}
+): FieldOption | undefined => readFieldOptionEntity(field, optionId)
 
 export const findFieldOptionByName = (
   field: CustomField | undefined,
@@ -96,7 +128,19 @@ export const findFieldOptionByName = (
     return undefined
   }
 
-  return readFieldOptions(field).find(option => normalizeOptionToken(option.name) === normalizedName)
+  const table = readOptionTable(field)
+  if (!table) {
+    return undefined
+  }
+
+  for (let index = 0; index < table.ids.length; index += 1) {
+    const option = table.byId[table.ids[index]!]
+    if (option && normalizeOptionToken(option.name) === normalizedName) {
+      return option
+    }
+  }
+
+  return undefined
 }
 
 export const findFieldOption = (
@@ -108,10 +152,25 @@ export const findFieldOption = (
     return undefined
   }
 
-  return readFieldOptions(field).find(option => (
-    normalizeOptionToken(option.id) === normalizedValue
-    || normalizeOptionToken(option.name) === normalizedValue
-  ))
+  const table = readOptionTable(field)
+  if (!table) {
+    return undefined
+  }
+
+  for (let index = 0; index < table.ids.length; index += 1) {
+    const option = table.byId[table.ids[index]!]
+    if (
+      option
+      && (
+        normalizeOptionToken(option.id) === normalizedValue
+        || normalizeOptionToken(option.name) === normalizedValue
+      )
+    ) {
+      return option
+    }
+  }
+
+  return undefined
 }
 
 export const readFieldOptionTokens = (
@@ -134,17 +193,7 @@ export const readFieldOptionTokens = (
 export const readFieldOptionOrder = (
   field: CustomField | undefined,
   optionId: unknown
-) => {
-  const normalizedId = string.trimToUndefined(optionId)
-  if (!normalizedId) {
-    return undefined
-  }
-
-  const index = readFieldOptions(field).findIndex(option => option.id === normalizedId)
-  return index >= 0
-    ? index
-    : undefined
-}
+) => readFieldOptionIndex(field, optionId)
 
 export const readFieldOptionId = (
   field: CustomField | undefined,

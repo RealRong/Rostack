@@ -146,10 +146,10 @@ test('moveElbowRouteSegment 会把拖拽后的 elbow segment 转成 manual point
       delta: 20
     }),
     {
-      points: [
-        { x: 0, y: 70 },
-        { x: 100, y: 70 }
-      ]
+      points: entityTable.normalize.list([
+        { id: 'point-1', x: 0, y: 70 },
+        { id: 'point-2', x: 100, y: 70 }
+      ])
     }
   )
 })

@@ -23,13 +23,16 @@ import type {
   NodeId,
 } from '@whiteboard/core/types'
 import type {
-  WhiteboardMutationWriterBase,
+  WhiteboardMutationWriter,
 } from './model'
 import {
   canvasRefKey,
   parseCanvasRefKey,
   type WhiteboardMindmapTreeValue,
 } from './support'
+import {
+  clone,
+} from './common'
 
 const moveItems = (input: {
   order: readonly CanvasItemRef[]
@@ -160,7 +163,6 @@ const readEdgePointTable = (
   : EMPTY_EDGE_ROUTE_POINT_TABLE
 
 export interface WhiteboardWriter {
-  replace(document: Document): void
   patch(patch: DocumentPatch): void
   order: {
     insert(ref: CanvasItemRef, anchor?: MutationSequenceAnchor | {
@@ -225,7 +227,7 @@ export interface WhiteboardWriter {
 }
 
 export const createWhiteboardWriter = (
-  write: WhiteboardMutationWriterBase,
+  write: WhiteboardMutationWriter,
   readDocument: () => Document
 ): WhiteboardWriter => {
   const documentOrder = {
@@ -261,7 +263,7 @@ export const createWhiteboardWriter = (
       )
     },
     replace(order: readonly CanvasItemRef[]) {
-      write.order.replace(order)
+      write.order.replace(clone(order))
     }
   }
 
@@ -273,7 +275,7 @@ export const createWhiteboardWriter = (
           labels: {
             byId: {
               ...table.byId,
-              [label.id]: structuredClone(label)
+              [label.id]: clone(label)
             },
             ids: moveOrderedIds(table.ids, [label.id], anchor)
           }
@@ -285,7 +287,7 @@ export const createWhiteboardWriter = (
           labels: {
             byId: {
               ...table.byId,
-              [label.id]: structuredClone(label)
+              [label.id]: clone(label)
             },
             ids: moveOrderedIds(table.ids, [label.id], anchor)
           }
@@ -303,7 +305,7 @@ export const createWhiteboardWriter = (
               ...table.byId,
               [labelId]: {
                 ...current,
-                ...structuredClone(patch),
+                ...clone(patch),
                 id: labelId
               }
             },
@@ -343,7 +345,7 @@ export const createWhiteboardWriter = (
           points: {
             byId: {
               ...points.byId,
-              [point.id]: structuredClone(point)
+              [point.id]: clone(point)
             },
             ids: moveOrderedIds(points.ids, [point.id], anchor)
           }
@@ -355,7 +357,7 @@ export const createWhiteboardWriter = (
           points: {
             byId: {
               ...points.byId,
-              [point.id]: structuredClone(point)
+              [point.id]: clone(point)
             },
             ids: moveOrderedIds(points.ids, [point.id], anchor)
           }
@@ -373,7 +375,7 @@ export const createWhiteboardWriter = (
               ...points.byId,
               [pointId]: {
                 ...current,
-                ...structuredClone(patch),
+                ...clone(patch),
                 id: pointId
               }
             },
@@ -429,7 +431,7 @@ export const createWhiteboardWriter = (
     (id: EdgeId) => edgeItem(id),
     {
       create(next: Edge) {
-        write.edges.create(next.id, next)
+        write.edges.create(next.id, clone(next))
       },
       delete(id: EdgeId) {
         write.edges.remove(id)
@@ -439,28 +441,44 @@ export const createWhiteboardWriter = (
         if (!current) {
           return
         }
-        const {
-          points,
-          labels,
-          ...rest
-        } = patch
-        const next: Edge = {
-          ...current,
-          ...rest,
-          ...(labels === undefined
-            ? {}
-            : {
-                labels: entityTable.normalize.list(labels)
-              }),
-          ...(points === undefined
-            ? {}
-            : {
-                points
-              })
+        const nextPatch: Partial<Edge> = {}
+
+        if ('source' in patch) {
+          nextPatch.source = clone(patch.source)
         }
-        write.edges.replace(id, {
-          ...next
-        })
+        if ('target' in patch) {
+          nextPatch.target = clone(patch.target)
+        }
+        if ('type' in patch) {
+          nextPatch.type = clone(patch.type)
+        }
+        if ('locked' in patch) {
+          nextPatch.locked = clone(patch.locked)
+        }
+        if ('groupId' in patch) {
+          nextPatch.groupId = clone(patch.groupId)
+        }
+        if ('style' in patch) {
+          nextPatch.style = clone(patch.style)
+        }
+        if ('textMode' in patch) {
+          nextPatch.textMode = clone(patch.textMode)
+        }
+        if ('data' in patch) {
+          nextPatch.data = clone(patch.data)
+        }
+        if ('labels' in patch) {
+          nextPatch.labels = patch.labels === undefined
+            ? undefined
+            : entityTable.normalize.list(clone(patch.labels))
+        }
+        if ('points' in patch) {
+          nextPatch.points = clone(patch.points)
+        }
+
+        if (Object.keys(nextPatch).length > 0) {
+          write.edges(id).patch(nextPatch)
+        }
       }
     }
   )
@@ -469,7 +487,7 @@ export const createWhiteboardWriter = (
     (id: MindmapId) => mindmapItem(id),
     {
       create(next: MindmapRecord) {
-        write.mindmaps.create(next.id, next)
+        write.mindmaps.create(next.id, clone(next))
       },
       delete(id: MindmapId) {
         write.mindmaps.remove(id)
@@ -484,101 +502,42 @@ export const createWhiteboardWriter = (
   )
 
   return {
-    replace(next) {
-        const current = readDocument()
-        write.id.set(next.id)
-        write.name.set(next.name)
-        write.background.set(next.background)
-        documentOrder.replace(next.order)
-
-        Object.keys(current.nodes).forEach((id) => {
-          if (!next.nodes[id]) {
-            write.nodes.remove(id)
-          }
-        })
-        Object.values(next.nodes).filter((node): node is Node => node !== undefined).forEach((node) => {
-          if (current.nodes[node.id]) {
-            write.nodes.replace(node.id, node)
-            return
-          }
-          write.nodes.create(node.id, node)
-        })
-
-        Object.keys(current.edges).forEach((id) => {
-          if (!next.edges[id]) {
-            write.edges.remove(id)
-          }
-        })
-        Object.values(next.edges).filter((entry): entry is Edge => entry !== undefined).forEach((entry) => {
-          if (current.edges[entry.id]) {
-            write.edges.replace(entry.id, entry)
-            return
-          }
-          write.edges.create(entry.id, entry)
-        })
-
-        Object.keys(current.groups).forEach((id) => {
-          if (!next.groups[id]) {
-            write.groups.remove(id)
-          }
-        })
-        Object.values(next.groups).filter((entry): entry is Group => entry !== undefined).forEach((entry) => {
-          if (current.groups[entry.id]) {
-            write.groups.replace(entry.id, entry)
-            return
-          }
-          write.groups.create(entry.id, entry)
-        })
-
-        Object.keys(current.mindmaps).forEach((id) => {
-          if (!next.mindmaps[id]) {
-            write.mindmaps.remove(id)
-          }
-        })
-        Object.values(next.mindmaps).filter((entry): entry is MindmapRecord => entry !== undefined).forEach((entry) => {
-          if (current.mindmaps[entry.id]) {
-            write.mindmaps.replace(entry.id, entry)
-            return
-          }
-          write.mindmaps.create(entry.id, entry)
-        })
-      },
-      patch(patch: DocumentPatch) {
-        if (patch.id !== undefined) {
-          write.id.set(patch.id)
-        }
-        if ('name' in patch) {
-          write.name.set(patch.name)
-        }
-        if ('background' in patch) {
-          write.background.set(patch.background)
-        }
-        if ('order' in patch && patch.order) {
-          write.order.replace(patch.order)
-        }
-      },
+    patch(patch: DocumentPatch) {
+      if ('id' in patch && patch.id !== undefined) {
+        write.id.set(clone(patch.id))
+      }
+      if ('name' in patch) {
+        write.name.set(clone(patch.name))
+      }
+      if ('background' in patch) {
+        write.background.set(clone(patch.background))
+      }
+      if ('order' in patch && patch.order !== undefined) {
+        write.order.replace(clone(patch.order))
+      }
+    },
     order: documentOrder,
     node: {
       create(next) {
-        write.nodes.create(next.id, next)
+        write.nodes.create(next.id, clone(next))
       },
       delete(id) {
         write.nodes.remove(id)
       },
       patch(id, patch) {
-        write.nodes(id).patch(patch)
+        write.nodes(id).patch(clone(patch))
       }
     },
     edge,
     group: {
       create(next) {
-        write.groups.create(next.id, next)
+        write.groups.create(next.id, clone(next))
       },
       delete(id) {
         write.groups.remove(id)
       },
       patch(id, patch) {
-        write.groups(id).patch(patch)
+        write.groups(id).patch(clone(patch))
       }
     },
     mindmap,

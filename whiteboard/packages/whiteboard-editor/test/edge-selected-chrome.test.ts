@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest'
+import { entityTable } from '@shared/core'
 import { document as documentApi } from '@whiteboard/core/document'
 import { engine as engineApi } from '@whiteboard/engine'
 import { editor as editorApi } from '../src'
@@ -102,10 +103,10 @@ const createEdgeDocument = () => {
       kind: 'node',
       nodeId: 'node-2'
     },
-    labels: [{
+    labels: entityTable.normalize.list([{
       id: 'label-1',
       text: 'First'
-    }]
+    }])
   }
   document.edges['edge-2'] = {
     id: 'edge-2',
@@ -118,10 +119,10 @@ const createEdgeDocument = () => {
       kind: 'node',
       nodeId: 'node-4'
     },
-    labels: [{
+    labels: entityTable.normalize.list([{
       id: 'label-2',
       text: 'Second'
-    }]
+    }])
   }
   document.order = [
     {

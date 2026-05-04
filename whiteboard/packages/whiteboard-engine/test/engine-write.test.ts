@@ -11,7 +11,7 @@ const toSortedIds = (
   ? 'all'
   : [...value].sort()
 
-test('engine exposes node create through typed delta', () => {
+test('engine exposes node create through typed change', () => {
   const engine = createEngine({
     document: documentApi.create('doc_engine_write_create'),
     layout: createTestLayout()
@@ -34,10 +34,10 @@ test('engine exposes node create through typed delta', () => {
   }
 
   assert.deepEqual(
-    toSortedIds(result.commit.delta.node.create.touchedIds()),
+    toSortedIds(result.commit.change.node.create.touchedIds()),
     [result.data.nodeId]
   )
-  assert.equal(result.commit.delta.order.contains({
+  assert.equal(result.commit.change.order.changed({
     kind: 'node',
     id: result.data.nodeId
   }), true)
@@ -84,7 +84,7 @@ test('engine applies node record updates through committed document writes', () 
 
   assert.equal(engine.doc().nodes[createResult.data.nodeId]?.data?.text, 'Updated topic')
   assert.deepEqual(
-    toSortedIds(updateResult.commit.delta.node.content.touchedIds()),
+    toSortedIds(updateResult.commit.change.node.content.touchedIds()),
     [createResult.data.nodeId]
   )
 })
@@ -222,7 +222,7 @@ test('mindmap.topic.move still commits when only the root-side changes', () => {
     'left'
   )
   assert.deepEqual(
-    toSortedIds(moved.commit.delta.mindmap.structure.touchedIds()),
+    toSortedIds(moved.commit.change.mindmap.structure.touchedIds()),
     [created.data.mindmapId]
   )
 })

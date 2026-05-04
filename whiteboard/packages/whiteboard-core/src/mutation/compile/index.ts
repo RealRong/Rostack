@@ -12,8 +12,12 @@ import type {
   WhiteboardCompileHandlerTable
 } from '@whiteboard/core/mutation/compile/helpers'
 import { mindmapIntentHandlers } from '@whiteboard/core/mutation/compile/mindmap'
+import {
+  whiteboardMutationSchema,
+  type WhiteboardMutationChange,
+  type WhiteboardMutationWriter,
+} from '@whiteboard/core/mutation/model'
 import { nodeIntentHandlers } from '@whiteboard/core/mutation/compile/node'
-import { whiteboardMutationSchema } from '@whiteboard/core/mutation/model'
 import {
   createWhiteboardQuery,
   createWhiteboardReader,
@@ -25,7 +29,6 @@ import type { Document } from '@whiteboard/core/types'
 import type { WhiteboardCompileServices } from './helpers'
 import type { WhiteboardIntent } from '@whiteboard/core/mutation/intents'
 const whiteboardCompileHandlers = {
-  'document.replace': documentIntentHandlers['document.replace'],
   'document.insert': documentIntentHandlers['document.insert'],
   'document.background.set': documentIntentHandlers['document.background.set'],
   'canvas.delete': canvasIntentHandlers['canvas.delete'],
@@ -115,8 +118,8 @@ const createCompileIssue = (input: {
 const createCompileContext = <TIntent extends WhiteboardIntent>(input: {
   intent: TIntent
   document: Document
-  write: import('@whiteboard/core/mutation/model').WhiteboardMutationWriterBase
-  change: import('@whiteboard/core/mutation/model').WhiteboardMutationDelta
+  write: WhiteboardMutationWriter
+  change: WhiteboardMutationChange
   issue: {
     add(issue: MutationIssue): void
     all(): readonly MutationIssue[]
@@ -210,8 +213,8 @@ const wrapCompileHandler = (
 ) => (input: {
   intent: WhiteboardIntent
   document: Document
-  write: import('@whiteboard/core/mutation/model').WhiteboardMutationWriterBase
-  change: import('@whiteboard/core/mutation/model').WhiteboardMutationDelta
+  write: WhiteboardMutationWriter
+  change: WhiteboardMutationChange
   issue: {
     add(issue: MutationIssue): void
     all(): readonly MutationIssue[]
@@ -260,7 +263,6 @@ export type {
   MindmapTopicBatchUpdate,
   NodeBatchUpdate,
   NodeIntent,
-  ReplaceDocumentIntent,
   WhiteboardIntent,
   WhiteboardIntentKind,
 } from '@whiteboard/core/mutation/intents'

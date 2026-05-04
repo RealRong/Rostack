@@ -5,7 +5,7 @@ import type {
 import {
   focusEditableEnd,
   focusEditablePoint,
-  readEditableText
+  normalizeEditableTextValue
 } from '@shared/dom'
 import { scheduler } from '@shared/core'
 import type { EditCaret } from '@whiteboard/editor'
@@ -14,7 +14,8 @@ export const syncEditableDraft = (
   element: HTMLDivElement,
   value: string
 ) => {
-  if (readEditableText(element) !== value) {
+  const current = normalizeEditableTextValue(element.textContent ?? '')
+  if (current !== value) {
     element.textContent = value
   }
 }

@@ -25,8 +25,6 @@ export const SelectionToolbar = ({
 }) => {
   const editor = useEditorRuntime()
   const toolbar = useStoreValue(editor.scene.ui.chrome.selection.toolbar)
-  const viewport = useStoreValue(editor.scene.ui.state.viewport)
-  void viewport
   const [activeScopeKey, setActiveScopeKey] = useState<string | null>(null)
   const worldToScreen = useCallback(
     (point: Point) => editor.viewport.worldToScreen(point),
@@ -157,6 +155,7 @@ export const SelectionToolbar = ({
       toolbarKey={toolbar.key}
       box={toolbar.box}
       itemCount={toolbarUnits}
+      viewport={editor.scene.ui.state.viewport}
       worldToScreen={worldToScreen}
       panelClassName={(activePanelKey) => (
         activePanelKey === 'more' || activePanelKey === 'scope'

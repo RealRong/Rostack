@@ -13,7 +13,33 @@ export const createEditorChromeUi = (input: {
     nodeType: NodeTypeSupport;
     defaults: EditorDefaults['selection'];
 }): EditorSceneUiChrome => {
-    const marquee = store.value(() => input.scene.overlay.marquee(), {
+    const chromeState = input.scene.stores.graph.state.chrome;
+    const marquee = store.value(() => {
+        store.read(input.state.viewport.value);
+        const current = store.read(chromeState).preview.marquee;
+        if (!current) {
+            return undefined;
+        }
+        const start = input.state.viewport.worldToScreen({
+            x: current.worldRect.x,
+            y: current.worldRect.y
+        });
+        const end = input.state.viewport.worldToScreen({
+            x: current.worldRect.x + current.worldRect.width,
+            y: current.worldRect.y + current.worldRect.height
+        });
+        return current
+            ? {
+                rect: {
+                    x: start.x,
+                    y: start.y,
+                    width: end.x - start.x,
+                    height: end.y - start.y
+                },
+                match: current.match
+            }
+            : undefined;
+    }, {
         isEqual: (left: EditorMarqueePreview | undefined, right: EditorMarqueePreview | undefined) => (left === right
             || (left?.match === right?.match
                 && left?.rect.x === right?.rect.x
@@ -21,9 +47,9 @@ export const createEditorChromeUi = (input: {
                 && left?.rect.width === right?.rect.width
                 && left?.rect.height === right?.rect.height))
     });
-    const draw = store.value(() => input.scene.overlay.draw());
-    const snapGuides = store.value(() => input.scene.overlay.guides());
-    const edgeGuide = store.value(() => input.scene.overlay.edgeGuide() ?? EMPTY_EDGE_GUIDE, {
+    const draw = store.value(() => store.read(chromeState).preview.draw);
+    const snapGuides = store.value(() => store.read(chromeState).preview.guides);
+    const edgeGuide = store.value(() => store.read(chromeState).preview.edgeGuide ?? EMPTY_EDGE_GUIDE, {
         isEqual: isEdgeGuideEqual
     });
     const overlay = store.value(() => {

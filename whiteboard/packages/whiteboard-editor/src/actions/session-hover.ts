@@ -1,7 +1,10 @@
 import type { HoverSessionActions } from '@whiteboard/editor/actions/types'
 import type { EditorActionContext } from '@whiteboard/editor/actions/context'
 import type { EditorHoverState } from '@whiteboard/editor/state/document'
-import { EMPTY_HOVER_STATE } from '@whiteboard/editor/state/document'
+import {
+  EMPTY_HOVER_STATE,
+  isEditorHoverStateEqual
+} from '@whiteboard/editor/state/document'
 import { EMPTY_PREVIEW_STATE } from '@whiteboard/editor/state/preview'
 import type { PreviewInput } from '@whiteboard/editor-scene'
 
@@ -18,6 +21,10 @@ export const createSessionHoverActions = (
 ): HoverSessionActions => ({
   get: () => readHover(context),
   set: (hoverState) => {
+    if (isEditorHoverStateEqual(readHover(context), hoverState)) {
+      return
+    }
+
     context.state.write(({
       writer
     }) => {
@@ -25,6 +32,10 @@ export const createSessionHoverActions = (
     })
   },
   clear: () => {
+    if (isEditorHoverStateEqual(readHover(context), EMPTY_HOVER_STATE)) {
+      return
+    }
+
     context.state.write(({
       writer
     }) => {

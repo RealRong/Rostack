@@ -5,7 +5,6 @@ import {
 } from 'react'
 import {
   observeElementSize,
-  readElementClientSize,
   type ElementSize
 } from '@shared/dom'
 
@@ -13,6 +12,8 @@ const EmptySize: ElementSize = {
   width: 0,
   height: 0
 }
+
+const CachedSizeByElement = new WeakMap<HTMLElement, ElementSize>()
 
 export const useElementSize = <ElementType extends HTMLElement>(
   ref: RefObject<ElementType | null>
@@ -26,10 +27,20 @@ export const useElementSize = <ElementType extends HTMLElement>(
       return
     }
 
+    const cached = CachedSizeByElement.get(element)
+    if (cached) {
+      setSize(current => (
+        current.width === cached.width
+        && current.height === cached.height
+          ? current
+          : cached
+      ))
+    }
+
     return observeElementSize(element, {
-      readInitialSize: readElementClientSize,
-      readEntrySize: (_entry, target) => readElementClientSize(target),
+      emitInitial: cached === undefined,
       onChange: next => {
+        CachedSizeByElement.set(element, next)
         setSize(current => (
           current.width === next.width
           && current.height === next.height

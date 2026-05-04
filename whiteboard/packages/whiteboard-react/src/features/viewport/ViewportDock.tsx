@@ -36,7 +36,7 @@ const formatZoom = (zoom: number) => `${Math.round(zoom * 100)}%`
 
 export const ViewportDock = () => {
   const editor = useEditor()
-  const zoom = useStoreValue(editor.scene.ui.state.viewport).zoom
+  const zoom = useStoreValue(editor.scene.ui.state.viewport.zoom)
   const fitToScreen = () => {
     const bounds = editor.scene.bounds()
     if (!bounds) {

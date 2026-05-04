@@ -10,17 +10,40 @@ import type { EditorDefaults } from '@whiteboard/editor/schema/defaults';
 import type { NodeTypeSupport } from '@whiteboard/editor/node';
 import type { EditorSelectionAffordanceView, EditorSelectionSummaryView, EditorSelectionView } from '@whiteboard/editor/scene-ui/schema';
 import type { EditorSceneUiSelection, EditorState } from '@whiteboard/editor/scene-ui/types';
+
+const readSceneQueryInvalidation = (
+    input: Pick<{
+        scene: EditorScene;
+        state: EditorState;
+    }, 'scene' | 'state'>
+) => {
+    store.read(input.scene.stores.document.revision);
+    store.read(input.state.preview);
+};
+
 export const createEditorSelectionUi = (input: {
     scene: EditorScene;
     state: EditorState;
     nodeType: NodeTypeSupport;
     defaults: EditorDefaults['selection'];
 }): EditorSceneUiSelection => {
-    const selectionMembers = store.value(() => input.scene.selection.members(store.read(input.state.selection)));
-    const selectionSummary = store.value(() => input.scene.selection.summary(store.read(input.state.selection)), {
+    const selectionMembers = store.value(() => {
+        readSceneQueryInvalidation(input);
+        const target = store.read(input.state.selection);
+        return input.scene.selection.members(target);
+    });
+    const selectionSummary = store.value(() => {
+        readSceneQueryInvalidation(input);
+        const target = store.read(input.state.selection);
+        return input.scene.selection.summary(target);
+    }, {
         isEqual: selectionApi.derive.summaryEqual
     });
-    const selectionAffordance = store.value(() => input.scene.selection.affordance(store.read(input.state.selection)), {
+    const selectionAffordance = store.value(() => {
+        readSceneQueryInvalidation(input);
+        const target = store.read(input.state.selection);
+        return input.scene.selection.affordance(target);
+    }, {
         isEqual: selectionApi.derive.affordanceEqual
     });
     const selectionViewSummary = store.value<EditorSelectionSummaryView>(() => {
@@ -135,6 +158,7 @@ export const createEditorSelectionUi = (input: {
         });
     });
     const selectionEdgeChrome = store.value(() => {
+        readSceneQueryInvalidation(input);
         const selection = store.read(input.state.selection);
         const selectedEdgeId = selectionApi.members.singleEdge(selection);
         if (!selectedEdgeId) {

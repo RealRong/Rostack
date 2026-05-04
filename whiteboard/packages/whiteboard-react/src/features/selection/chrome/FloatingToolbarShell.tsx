@@ -1,11 +1,13 @@
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   type ReactNode,
   type RefObject
 } from 'react'
+import { store } from '@shared/core'
 import type { Point, Rect } from '@whiteboard/core/types'
 import { cn, FloatingLayer, ToolbarBar } from '@shared/ui'
 import { useElementSize } from '@shared/react'
@@ -34,6 +36,7 @@ export const FloatingToolbarShell = <TPanelKey extends string>({
   toolbarKey,
   box,
   itemCount,
+  viewport,
   worldToScreen,
   panelClassName,
   renderToolbar,
@@ -43,6 +46,7 @@ export const FloatingToolbarShell = <TPanelKey extends string>({
   toolbarKey: string | null
   box?: Rect
   itemCount: number
+  viewport: store.ReadStore<unknown>
   worldToScreen: (point: Point) => Point
   panelClassName?: string | ((key: TPanelKey) => string | undefined)
   renderToolbar: (args: FloatingToolbarRenderArgs<TPanelKey>) => ReactNode
@@ -53,6 +57,7 @@ export const FloatingToolbarShell = <TPanelKey extends string>({
 }) => {
   const surface = useElementSize(containerRef)
   const buttonRefByKey = useRef<Partial<Record<TPanelKey, HTMLElement | null>>>({})
+  const toolbarRef = useRef<HTMLDivElement | null>(null)
   const [activePanelKey, setActivePanelKey] = useState<TPanelKey | null>(null)
   const [positionSession, setPositionSession] =
     useState<FloatingToolbarPositionSession | null>(null)
@@ -99,17 +104,23 @@ export const FloatingToolbarShell = <TPanelKey extends string>({
     return null
   }
 
+  const fallbackPosition: FloatingToolbarPositionSession = {
+    key: toolbarKey,
+    placement: livePlacement.placement,
+    anchorWorld: resolveToolbarAnchorWorld({
+      placement: livePlacement.placement,
+      rect: box
+    })
+  }
   const resolvedPosition = positionSession?.key === toolbarKey
     ? positionSession
-    : livePosition
-  const toolbarAnchor = resolvedPosition
-    ? worldToScreen(resolvedPosition.anchorWorld)
-    : livePlacement.anchor
+    : fallbackPosition
+  const toolbarAnchor = worldToScreen(resolvedPosition.anchorWorld)
   if (!toolbarAnchor) {
     return null
   }
 
-  const placement = resolvedPosition?.placement ?? livePlacement.placement
+  const placement = resolvedPosition.placement
   const toolbarStyle = buildToolbarStyle({
     placement,
     x: toolbarAnchor.x,
@@ -134,9 +145,44 @@ export const FloatingToolbarShell = <TPanelKey extends string>({
       : panelClassName
     : panelClassName
 
+  useLayoutEffect(() => {
+    const applyToolbarStyle = () => {
+      if (!toolbarRef.current) {
+        return
+      }
+
+      const anchor = worldToScreen(resolvedPosition.anchorWorld)
+      const nextStyle = buildToolbarStyle({
+        placement,
+        x: anchor.x,
+        y: placement === 'top'
+          ? anchor.y - 12
+          : anchor.y + 12,
+        containerWidth: surface.width,
+        itemCount: Math.max(itemCount, 1)
+      })
+
+      toolbarRef.current.style.left = `${nextStyle.left}px`
+      toolbarRef.current.style.top = `${nextStyle.top}px`
+      toolbarRef.current.style.transform = nextStyle.transform ?? ''
+    }
+
+    applyToolbarStyle()
+
+    return viewport.subscribe(applyToolbarStyle)
+  }, [
+    itemCount,
+    placement,
+    resolvedPosition.anchorWorld,
+    surface.width,
+    viewport,
+    worldToScreen
+  ])
+
   return (
     <FloatingLayer className="z-[var(--wb-z-toolbar)]">
       <ToolbarBar
+        ref={toolbarRef}
         className="absolute"
         style={toolbarStyle}
         onPointerDown={(event) => {

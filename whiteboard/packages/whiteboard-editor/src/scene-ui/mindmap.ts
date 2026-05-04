@@ -6,6 +6,8 @@ export const createEditorMindmapUi = (input: {
     state: EditorState;
 }): EditorSceneUiMindmap => ({
     addChildTargets: store.keyed((mindmapId) => {
+        store.read(input.scene.stores.document.revision);
+        store.read(input.state.preview);
         if (!input.scene.mindmaps.get(mindmapId)) {
             return undefined;
         }

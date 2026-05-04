@@ -78,7 +78,6 @@ export const patchGraphState = (input: {
     reset: context.reset
   })
 
-  context.working.revision.document = context.current.document.rev
   context.working.delta.graph.node = compileFamilyChangeFromIdDelta({
     snapshot: context.working.graph.nodes,
     delta: graphDelta.entities.nodes,

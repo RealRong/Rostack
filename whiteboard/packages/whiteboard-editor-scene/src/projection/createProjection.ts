@@ -275,6 +275,7 @@ export const createProjection = (input: {
         working: ctx.state,
         reset: ctx.dirty.reset
       })
+      ctx.state.revision.document = ctx.input.document.rev
 
       if (
         ctx.revision === 1

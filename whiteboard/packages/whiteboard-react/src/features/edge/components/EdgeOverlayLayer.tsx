@@ -100,7 +100,7 @@ export const EdgeOverlayLayer = memo(() => {
   const previewPresentation = overlay.previewPath
     ? resolveEdgePathPresentation(overlay.previewPath.style)
     : undefined
-  const zoom = useStoreValue(editor.scene.ui.state.viewport).zoom
+  const zoom = useStoreValue(editor.scene.ui.state.viewport.zoom)
   const snapRadius = 6 / Math.max(zoom, 0.0001)
 
   return (

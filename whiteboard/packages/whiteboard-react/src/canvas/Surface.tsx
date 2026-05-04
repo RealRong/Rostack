@@ -1,5 +1,10 @@
-import { useMemo, type CSSProperties, type RefObject } from 'react'
-import { useStoreValue } from '@shared/react'
+import {
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  type CSSProperties,
+  type RefObject
+} from 'react'
 import {
   useEditorRuntime,
   useTool
@@ -18,6 +23,14 @@ import { Marquee } from '@whiteboard/react/features/selection/Marquee'
 import type { ResolvedConfig } from '@whiteboard/react/types/common/config'
 import type { WhiteboardPresenceBinding } from '@whiteboard/react/types/common/presence'
 
+const viewportTransform = (viewport: ReturnType<ReturnType<typeof useEditorRuntime>['scene']['ui']['state']['viewport']['get']>): string => (
+  `translate(50%, 50%) scale(${viewport.zoom}) translate(${-viewport.center.x}px, ${-viewport.center.y}px)`
+)
+
+type ChromeViewportStyle = CSSProperties & {
+  '--wb-zoom': string
+}
+
 export const Surface = ({
   resolvedConfig,
   containerRef,
@@ -30,8 +43,9 @@ export const Surface = ({
   presenceBinding?: WhiteboardPresenceBinding
 }) => {
   const editor = useEditorRuntime()
-  const viewport = useStoreValue(editor.scene.ui.state.viewport)
   const tool = useTool()
+  const sceneViewportRef = useRef<HTMLDivElement | null>(null)
+  const chromeViewportRef = useRef<HTMLDivElement | null>(null)
   const viewportInput = useMemo(
     () => ({
       wheelEnabled: resolvedConfig.viewport.enableWheel,
@@ -39,25 +53,37 @@ export const Surface = ({
     }),
     [resolvedConfig.viewport.enableWheel, resolvedConfig.viewport.wheelSensitivity]
   )
-  const viewportTransform = useMemo(
-    () => `translate(50%, 50%) scale(${viewport.zoom}) translate(${-viewport.center.x}px, ${-viewport.center.y}px)`,
-    [viewport.center.x, viewport.center.y, viewport.zoom]
-  )
-  const sceneViewportStyle = useMemo(
-    () => ({
-      transform: viewportTransform,
-      transformOrigin: '0 0'
-    } as CSSProperties),
-    [viewportTransform]
-  )
-  const chromeViewportStyle = useMemo(
-    () => ({
-      transform: viewportTransform,
-      transformOrigin: '0 0',
-      '--wb-zoom': `${viewport.zoom}`
-    } as CSSProperties),
-    [viewport.zoom, viewportTransform]
-  )
+  const initialViewport = editor.scene.ui.state.viewport.get()
+  const initialTransform = viewportTransform(initialViewport)
+  const sceneViewportStyle = {
+    transform: initialTransform,
+    transformOrigin: '0 0'
+  } satisfies CSSProperties
+  const chromeViewportStyle = {
+    transform: initialTransform,
+    transformOrigin: '0 0',
+    '--wb-zoom': `${initialViewport.zoom}`
+  } satisfies ChromeViewportStyle
+
+  useLayoutEffect(() => {
+    const applyViewport = () => {
+      const viewport = editor.scene.ui.state.viewport.get()
+      const transform = viewportTransform(viewport)
+
+      if (sceneViewportRef.current) {
+        sceneViewportRef.current.style.transform = transform
+      }
+
+      if (chromeViewportRef.current) {
+        chromeViewportRef.current.style.transform = transform
+        chromeViewportRef.current.style.setProperty('--wb-zoom', `${viewport.zoom}`)
+      }
+    }
+
+    applyViewport()
+
+    return editor.scene.ui.state.viewport.subscribe(applyViewport)
+  }, [editor])
 
   useClipboard({
     containerRef
@@ -99,11 +125,19 @@ export const Surface = ({
         tabIndex={0}
       >
         <Background />
-        <div className="wb-root-scene-viewport" style={sceneViewportStyle}>
+        <div
+          ref={sceneViewportRef}
+          className="wb-root-scene-viewport"
+          style={sceneViewportStyle}
+        >
           <CanvasScene />
           <DrawLayer />
         </div>
-        <div className="wb-root-chrome-viewport" style={chromeViewportStyle}>
+        <div
+          ref={chromeViewportRef}
+          className="wb-root-chrome-viewport"
+          style={chromeViewportStyle}
+        >
           <NodeOverlayLayer />
           <EdgeOverlayLayer />
         </div>

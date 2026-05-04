@@ -54,6 +54,12 @@ export {
 export {
   createMutationEngine
 } from './runtime/createEngine'
+export {
+  applyMutationWrites
+} from './internal/apply'
+export {
+  buildMutationInverse
+} from './internal/inverse'
 
 export type {
   CompiledMutationDictionaryNode,
@@ -95,6 +101,9 @@ export type {
   MutationReader
 } from './reader/createReader'
 export type {
+  MutationEngine,
+  MutationEngineHistory,
+  MutationCommitOptions,
   MutationCommit
 } from './runtime/createEngine'
 export type {

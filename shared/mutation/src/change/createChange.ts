@@ -1,13 +1,10 @@
 import type {
-  CompiledMutationDictionaryNode,
   CompiledMutationMapNode,
   CompiledMutationNode,
   CompiledMutationObjectNode,
   CompiledMutationSchema,
-  CompiledMutationSequenceNode,
   CompiledMutationSingletonNode,
-  CompiledMutationTableNode,
-  CompiledMutationTreeNode
+  CompiledMutationTableNode
 } from '../compile/schema'
 import {
   getCompiledMutationSchema
@@ -20,7 +17,6 @@ import type {
   MutationSchema,
   MutationSequenceNode,
   MutationShape,
-  MutationShapeNode,
   MutationSingletonNode,
   MutationTableNode,
   MutationTreeNode
@@ -99,6 +95,45 @@ export type MutationChange<TSchema extends MutationSchema = MutationSchema> =
     }
     : never
 
+export type MutationChangeOptions = {
+  reset?: boolean
+}
+
+type MutationTargetTrie<TValue> = {
+  exact?: TValue
+  children?: Map<string, MutationTargetTrie<TValue>>
+}
+
+type MutationDictionaryKeyIndex = {
+  all: boolean
+  keys: Set<string>
+}
+
+type MutationSequenceValueIndex = {
+  all: boolean
+  values: unknown[]
+}
+
+type MutationTreeNodeIndex = {
+  all: boolean
+  nodeIds: Set<string>
+}
+
+type MutationChangeIndex = {
+  reset: boolean
+  writes: readonly MutationWrite[]
+  nodeChanged: Uint8Array
+  targetChanged: Map<number, MutationTargetTrie<true>>
+  entityTouched: Map<number, MutationTargetTrie<true>>
+  entityCreated: Map<number, MutationTargetTrie<true>>
+  entityRemoved: Map<number, MutationTargetTrie<true>>
+  dictionaryKeys: Map<number, MutationTargetTrie<MutationDictionaryKeyIndex>>
+  sequenceValues: Map<number, MutationTargetTrie<MutationSequenceValueIndex>>
+  treeNodes: Map<number, MutationTargetTrie<MutationTreeNodeIndex>>
+}
+
+const EMPTY_TARGET_PATH: readonly string[] = []
+
 const defineLazyProperty = <TObject extends object, TValue>(
   target: TObject,
   key: string,
@@ -120,193 +155,442 @@ const defineLazyProperty = <TObject extends object, TValue>(
   })
 }
 
-const targetsEqual = (
-  left?: MutationEntityTarget,
-  right?: MutationEntityTarget
-): boolean => {
-  if (!left && !right) {
-    return true
+const targetPath = (target?: MutationEntityTarget): readonly string[] => target
+  ? [...target.scope, target.id]
+  : EMPTY_TARGET_PATH
+
+const ensureTargetTrieRoot = <TValue>(
+  index: Map<number, MutationTargetTrie<TValue>>,
+  nodeId: number
+): MutationTargetTrie<TValue> => {
+  const existing = index.get(nodeId)
+  if (existing) {
+    return existing
   }
 
-  if (!left || !right) {
-    return false
+  const next: MutationTargetTrie<TValue> = {}
+  index.set(nodeId, next)
+  return next
+}
+
+const ensureTargetTrieValue = <TValue>(
+  index: Map<number, MutationTargetTrie<TValue>>,
+  nodeId: number,
+  target: MutationEntityTarget | undefined,
+  create: () => TValue
+): TValue => {
+  let current = ensureTargetTrieRoot(index, nodeId)
+
+  for (const part of targetPath(target)) {
+    let next = current.children?.get(part)
+    if (!next) {
+      if (!current.children) {
+        current.children = new Map<string, MutationTargetTrie<TValue>>()
+      }
+      next = {}
+      current.children.set(part, next)
+    }
+    current = next
   }
 
-  if (left.id !== right.id || left.scope.length !== right.scope.length) {
-    return false
+  if (current.exact === undefined) {
+    current.exact = create()
   }
 
-  for (let index = 0; index < left.scope.length; index += 1) {
-    if (left.scope[index] !== right.scope[index]) {
-      return false
+  return current.exact
+}
+
+const readTargetTrieValue = <TValue>(
+  index: Map<number, MutationTargetTrie<TValue>>,
+  nodeId: number,
+  target?: MutationEntityTarget
+): TValue | undefined => {
+  let current = index.get(nodeId)
+  if (!current) {
+    return undefined
+  }
+
+  for (const part of targetPath(target)) {
+    current = current.children?.get(part)
+    if (!current) {
+      return undefined
     }
   }
 
-  return true
+  return current.exact
 }
 
-const writeBelongsToEntity = (
+const markNodeChanged = (
+  bits: Uint8Array,
+  nodeId: number
+): void => {
+  bits[nodeId] = 1
+}
+
+const hasNodeChanged = (
+  bits: Uint8Array,
+  nodeId: number
+): boolean => bits[nodeId] === 1
+
+const markTargetChanged = (
+  index: Map<number, MutationTargetTrie<true>>,
+  nodeId: number,
+  target?: MutationEntityTarget
+): void => {
+  ensureTargetTrieValue(index, nodeId, target, () => true)
+}
+
+const hasTargetChanged = (
+  index: Map<number, MutationTargetTrie<true>>,
+  nodeId: number,
+  target?: MutationEntityTarget
+): boolean => readTargetTrieValue(index, nodeId, target) === true
+
+const pushUniqueObjectValue = (
+  values: unknown[],
+  value: unknown
+): void => {
+  if (!values.some((entry) => Object.is(entry, value))) {
+    values.push(value)
+  }
+}
+
+const childTarget = (
+  target: MutationEntityTarget | undefined,
+  id: string
+): MutationEntityTarget => ({
+  scope: target
+    ? [...target.scope, target.id]
+    : [],
+  id
+})
+
+const writeEntityNodeId = (
+  node: CompiledMutationNode
+): number | undefined => {
+  if (node.kind === 'singleton' || node.kind === 'table' || node.kind === 'map') {
+    return node.nodeId
+  }
+
+  return node.entityNodeId
+}
+
+const createMutationChangeIndex = (
   compiled: CompiledMutationSchema,
-  write: MutationWrite,
+  writes: readonly MutationWrite[],
+  options?: MutationChangeOptions
+): MutationChangeIndex => {
+  const index: MutationChangeIndex = {
+    reset: options?.reset ?? false,
+    writes,
+    nodeChanged: new Uint8Array(compiled.nodes.length),
+    targetChanged: new Map<number, MutationTargetTrie<true>>(),
+    entityTouched: new Map<number, MutationTargetTrie<true>>(),
+    entityCreated: new Map<number, MutationTargetTrie<true>>(),
+    entityRemoved: new Map<number, MutationTargetTrie<true>>(),
+    dictionaryKeys: new Map<number, MutationTargetTrie<MutationDictionaryKeyIndex>>(),
+    sequenceValues: new Map<number, MutationTargetTrie<MutationSequenceValueIndex>>(),
+    treeNodes: new Map<number, MutationTargetTrie<MutationTreeNodeIndex>>()
+  }
+
+  for (const write of writes) {
+    markNodeChanged(index.nodeChanged, write.nodeId)
+    markTargetChanged(index.targetChanged, write.nodeId, write.target)
+
+    const node = compiled.nodes[write.nodeId]
+    if (!node) {
+      throw new Error(`Unknown compiled mutation node ${write.nodeId}.`)
+    }
+
+    const entityNodeId = writeEntityNodeId(node)
+    if (entityNodeId !== undefined) {
+      markTargetChanged(index.entityTouched, entityNodeId, write.target)
+    }
+
+    switch (write.kind) {
+      case 'entity.create':
+        markTargetChanged(index.entityCreated, write.nodeId, write.target)
+        break
+
+      case 'entity.remove':
+        markTargetChanged(index.entityRemoved, write.nodeId, write.target)
+        break
+
+      case 'dictionary.set':
+      case 'dictionary.delete': {
+        const keys = ensureTargetTrieValue(
+          index.dictionaryKeys,
+          write.nodeId,
+          write.target,
+          () => ({
+            all: false,
+            keys: new Set<string>()
+          })
+        )
+        keys.keys.add(write.key)
+        break
+      }
+
+      case 'dictionary.replace': {
+        const keys = ensureTargetTrieValue(
+          index.dictionaryKeys,
+          write.nodeId,
+          write.target,
+          () => ({
+            all: false,
+            keys: new Set<string>()
+          })
+        )
+        keys.all = true
+        break
+      }
+
+      case 'sequence.insert':
+      case 'sequence.move':
+      case 'sequence.remove': {
+        const values = ensureTargetTrieValue(
+          index.sequenceValues,
+          write.nodeId,
+          write.target,
+          () => ({
+            all: false,
+            values: []
+          })
+        )
+        pushUniqueObjectValue(values.values, write.value)
+        break
+      }
+
+      case 'sequence.replace': {
+        const values = ensureTargetTrieValue(
+          index.sequenceValues,
+          write.nodeId,
+          write.target,
+          () => ({
+            all: false,
+            values: []
+          })
+        )
+        values.all = true
+        values.values = [...write.value]
+        break
+      }
+
+      case 'tree.insert':
+      case 'tree.move':
+      case 'tree.remove':
+      case 'tree.patch': {
+        const nodes = ensureTargetTrieValue(
+          index.treeNodes,
+          write.nodeId,
+          write.target,
+          () => ({
+            all: false,
+            nodeIds: new Set<string>()
+          })
+        )
+        nodes.nodeIds.add(write.treeNodeId)
+        break
+      }
+
+      case 'tree.replace': {
+        const nodes = ensureTargetTrieValue(
+          index.treeNodes,
+          write.nodeId,
+          write.target,
+          () => ({
+            all: false,
+            nodeIds: new Set<string>()
+          })
+        )
+        nodes.all = true
+        break
+      }
+    }
+  }
+
+  return index
+}
+
+const isFieldChanged = (
+  index: MutationChangeIndex,
+  nodeId: number,
+  target?: MutationEntityTarget
+): boolean => index.reset || hasTargetChanged(index.targetChanged, nodeId, target)
+
+const isDictionaryChanged = (
+  index: MutationChangeIndex,
+  nodeId: number,
+  target?: MutationEntityTarget,
+  key?: string
+): boolean => {
+  if (index.reset) {
+    return true
+  }
+
+  const entry = readTargetTrieValue(index.dictionaryKeys, nodeId, target)
+  if (!entry) {
+    return false
+  }
+
+  if (entry.all) {
+    return true
+  }
+
+  return key === undefined
+    ? entry.keys.size > 0
+    : entry.keys.has(key)
+}
+
+const isSequenceChanged = (
+  index: MutationChangeIndex,
+  nodeId: number,
+  target?: MutationEntityTarget,
+  value?: unknown
+): boolean => {
+  if (index.reset) {
+    return true
+  }
+
+  const entry = readTargetTrieValue(index.sequenceValues, nodeId, target)
+  if (!entry) {
+    return false
+  }
+
+  if (value === undefined) {
+    return entry.all || entry.values.length > 0
+  }
+
+  return entry.values.some((item) => Object.is(item, value))
+}
+
+const isTreeChanged = (
+  index: MutationChangeIndex,
+  nodeId: number,
+  target?: MutationEntityTarget,
+  treeNodeId?: string
+): boolean => {
+  if (index.reset) {
+    return true
+  }
+
+  const entry = readTargetTrieValue(index.treeNodes, nodeId, target)
+  if (!entry) {
+    return false
+  }
+
+  if (entry.all) {
+    return true
+  }
+
+  return treeNodeId === undefined
+    ? entry.nodeIds.size > 0
+    : entry.nodeIds.has(treeNodeId)
+}
+
+const isEntityChanged = (
+  index: MutationChangeIndex,
   entityNodeId: number,
   target?: MutationEntityTarget
-): boolean => {
-  if (!targetsEqual(write.target, target)) {
-    return false
-  }
+): boolean => index.reset || hasTargetChanged(index.entityTouched, entityNodeId, target)
 
-  const node = compiled.nodes[write.nodeId]
-  if (!node) {
-    return false
-  }
+const isEntityCreated = (
+  index: MutationChangeIndex,
+  entityNodeId: number,
+  target: MutationEntityTarget
+): boolean => !index.reset && hasTargetChanged(index.entityCreated, entityNodeId, target)
 
-  return write.nodeId === entityNodeId || node.entityNodeId === entityNodeId
-}
+const isEntityRemoved = (
+  index: MutationChangeIndex,
+  entityNodeId: number,
+  target: MutationEntityTarget
+): boolean => !index.reset && hasTargetChanged(index.entityRemoved, entityNodeId, target)
 
 const createFieldChange = (
+  index: MutationChangeIndex,
   nodeId: number,
-  writes: readonly MutationWrite[],
   target?: MutationEntityTarget
 ): MutationFieldChange => ({
   changed() {
-    return writes.some((write) => write.kind === 'field.set' && write.nodeId === nodeId && targetsEqual(write.target, target))
+    return isFieldChanged(index, nodeId, target)
   }
 })
 
 const createDictionaryChange = (
+  index: MutationChangeIndex,
   nodeId: number,
-  writes: readonly MutationWrite[],
   target?: MutationEntityTarget
 ): MutationDictionaryChange<string> => ({
   changed(key?: string) {
-    return writes.some((write) => {
-      if (write.nodeId !== nodeId || !targetsEqual(write.target, target)) {
-        return false
-      }
-
-      if (write.kind === 'dictionary.replace') {
-        return true
-      }
-
-      if (write.kind !== 'dictionary.set' && write.kind !== 'dictionary.delete') {
-        return false
-      }
-
-      return key === undefined || write.key === key
-    })
+    return isDictionaryChanged(index, nodeId, target, key)
   }
 })
 
 const createSequenceChange = (
+  index: MutationChangeIndex,
   nodeId: number,
-  writes: readonly MutationWrite[],
   target?: MutationEntityTarget
 ): MutationSequenceChange<unknown> => ({
   changed(value?: unknown) {
-    return writes.some((write) => {
-      if (write.nodeId !== nodeId || !targetsEqual(write.target, target)) {
-        return false
-      }
-
-      if (write.kind === 'sequence.replace') {
-        return value === undefined || write.value.includes(value)
-      }
-
-      if (
-        write.kind !== 'sequence.insert'
-        && write.kind !== 'sequence.move'
-        && write.kind !== 'sequence.remove'
-      ) {
-        return false
-      }
-
-      return value === undefined || Object.is(write.value, value)
-    })
+    return isSequenceChanged(index, nodeId, target, value)
   }
 })
 
 const createTreeChange = (
+  index: MutationChangeIndex,
   nodeId: number,
-  writes: readonly MutationWrite[],
   target?: MutationEntityTarget
 ): MutationTreeChange<string> => ({
   changed(treeNodeId?: string) {
-    return writes.some((write) => {
-      if (write.nodeId !== nodeId || !targetsEqual(write.target, target)) {
-        return false
-      }
-
-      if (write.kind === 'tree.replace') {
-        return true
-      }
-
-      if (
-        write.kind !== 'tree.insert'
-        && write.kind !== 'tree.move'
-        && write.kind !== 'tree.remove'
-        && write.kind !== 'tree.patch'
-      ) {
-        return false
-      }
-
-      return treeNodeId === undefined || write.treeNodeId === treeNodeId
-    })
+    return isTreeChanged(index, nodeId, target, treeNodeId)
   }
 })
 
 const createObjectChange = (
-  compiled: CompiledMutationSchema,
   node: CompiledMutationObjectNode,
-  writes: readonly MutationWrite[],
+  index: MutationChangeIndex,
   target?: MutationEntityTarget
 ): object => {
   const result: Record<string, unknown> = {}
 
   for (const [key, entry] of Object.entries(node.entries)) {
-    defineLazyProperty(result, key, () => createChangeNode(compiled, entry, writes, target))
+    defineLazyProperty(result, key, () => createChangeNode(entry, index, target))
   }
 
   return result
 }
 
 const createEntityChange = (
-  compiled: CompiledMutationSchema,
   entityNodeId: number,
   node: CompiledMutationObjectNode,
-  writes: readonly MutationWrite[],
+  index: MutationChangeIndex,
   target?: MutationEntityTarget
 ): object => Object.assign(
-  createObjectChange(compiled, node, writes, target),
+  createObjectChange(node, index, target),
   {
     changed() {
-      return writes.some((write) => writeBelongsToEntity(compiled, write, entityNodeId, target))
+      return isEntityChanged(index, entityNodeId, target)
     }
   }
 )
 
 const createSingletonChange = (
-  compiled: CompiledMutationSchema,
   node: CompiledMutationSingletonNode,
-  writes: readonly MutationWrite[],
+  index: MutationChangeIndex,
   target?: MutationEntityTarget
 ): MutationSingletonChange<MutationShape> => createEntityChange(
-  compiled,
   node.nodeId,
   node.entity,
-  writes,
+  index,
   target
 ) as MutationSingletonChange<MutationShape>
 
 const createTableChange = (
-  compiled: CompiledMutationSchema,
   node: CompiledMutationTableNode,
-  writes: readonly MutationWrite[],
+  index: MutationChangeIndex,
   target?: MutationEntityTarget
 ): MutationTableChange<string, MutationShape> => {
   const entityCache = new Map<string, object>()
-  const ownerScope = target
-    ? [...target.scope, target.id]
-    : []
 
   const createEntity = (id: string) => {
     const cached = entityCache.get(id)
@@ -315,14 +599,10 @@ const createTableChange = (
     }
 
     const next = createEntityChange(
-      compiled,
       node.nodeId,
       node.entity,
-      writes,
-      {
-        scope: ownerScope,
-        id
-      }
+      index,
+      childTarget(target, id)
     )
     entityCache.set(id, next)
     return next
@@ -333,61 +613,27 @@ const createTableChange = (
     {
       changed(id?: string) {
         if (id !== undefined) {
-          return writes.some((write) => writeBelongsToEntity(
-            compiled,
-            write,
-            node.nodeId,
-            {
-              scope: ownerScope,
-              id
-            }
-          ))
+          return isEntityChanged(index, node.nodeId, childTarget(target, id))
         }
 
-        return writes.some((write) => {
-          if (write.nodeId !== node.nodeId) {
-            return false
-          }
-          return write.kind === 'entity.create'
-            || write.kind === 'entity.replace'
-            || write.kind === 'entity.remove'
-            || write.kind === 'entity.move'
-        })
+        return index.reset || hasNodeChanged(index.nodeChanged, node.nodeId)
       },
       created(id: string) {
-        return writes.some((write) =>
-          write.kind === 'entity.create'
-          && write.nodeId === node.nodeId
-          && targetsEqual(write.target, {
-            scope: ownerScope,
-            id
-          })
-        )
+        return isEntityCreated(index, node.nodeId, childTarget(target, id))
       },
       removed(id: string) {
-        return writes.some((write) =>
-          write.kind === 'entity.remove'
-          && write.nodeId === node.nodeId
-          && targetsEqual(write.target, {
-            scope: ownerScope,
-            id
-          })
-        )
+        return isEntityRemoved(index, node.nodeId, childTarget(target, id))
       }
     }
   ) as MutationTableChange<string, MutationShape>
 }
 
 const createMapChange = (
-  compiled: CompiledMutationSchema,
   node: CompiledMutationMapNode,
-  writes: readonly MutationWrite[],
+  index: MutationChangeIndex,
   target?: MutationEntityTarget
 ): MutationMapChange<string, MutationShape> => {
   const entityCache = new Map<string, object>()
-  const ownerScope = target
-    ? [...target.scope, target.id]
-    : []
 
   const createEntity = (id: string) => {
     const cached = entityCache.get(id)
@@ -396,14 +642,10 @@ const createMapChange = (
     }
 
     const next = createEntityChange(
-      compiled,
       node.nodeId,
       node.entity,
-      writes,
-      {
-        scope: ownerScope,
-        id
-      }
+      index,
+      childTarget(target, id)
     )
     entityCache.set(id, next)
     return next
@@ -414,92 +656,68 @@ const createMapChange = (
     {
       changed(id?: string) {
         if (id !== undefined) {
-          return writes.some((write) => writeBelongsToEntity(
-            compiled,
-            write,
-            node.nodeId,
-            {
-              scope: ownerScope,
-              id
-            }
-          ))
+          return isEntityChanged(index, node.nodeId, childTarget(target, id))
         }
 
-        return writes.some((write) => {
-          if (write.nodeId !== node.nodeId) {
-            return false
-          }
-          return write.kind === 'entity.create'
-            || write.kind === 'entity.replace'
-            || write.kind === 'entity.remove'
-        })
+        return index.reset || hasNodeChanged(index.nodeChanged, node.nodeId)
       },
       created(id: string) {
-        return writes.some((write) =>
-          write.kind === 'entity.create'
-          && write.nodeId === node.nodeId
-          && targetsEqual(write.target, {
-            scope: ownerScope,
-            id
-          })
-        )
+        return isEntityCreated(index, node.nodeId, childTarget(target, id))
       },
       removed(id: string) {
-        return writes.some((write) =>
-          write.kind === 'entity.remove'
-          && write.nodeId === node.nodeId
-          && targetsEqual(write.target, {
-            scope: ownerScope,
-            id
-          })
-        )
+        return isEntityRemoved(index, node.nodeId, childTarget(target, id))
       }
     }
   ) as MutationMapChange<string, MutationShape>
 }
 
 const createChangeNode = (
-  compiled: CompiledMutationSchema,
   node: CompiledMutationNode,
-  writes: readonly MutationWrite[],
+  index: MutationChangeIndex,
   target?: MutationEntityTarget
 ): unknown => {
   switch (node.kind) {
     case 'field':
-      return createFieldChange(node.nodeId, writes, target)
+      return createFieldChange(index, node.nodeId, target)
     case 'dictionary':
-      return createDictionaryChange(node.nodeId, writes, target)
+      return createDictionaryChange(index, node.nodeId, target)
     case 'sequence':
-      return createSequenceChange(node.nodeId, writes, target)
+      return createSequenceChange(index, node.nodeId, target)
     case 'tree':
-      return createTreeChange(node.nodeId, writes, target)
+      return createTreeChange(index, node.nodeId, target)
     case 'object':
-      return createObjectChange(compiled, node, writes, target)
+      return createObjectChange(node, index, target)
     case 'singleton':
-      return createSingletonChange(compiled, node, writes, target)
+      return createSingletonChange(node, index, target)
     case 'table':
-      return createTableChange(compiled, node, writes, target)
+      return createTableChange(node, index, target)
     case 'map':
-      return createMapChange(compiled, node, writes, target)
+      return createMapChange(node, index, target)
   }
 }
 
 export const createMutationChange = <TSchema extends MutationSchema>(
   schema: TSchema,
-  writes: readonly MutationWrite[] = []
-): MutationChange<TSchema> => Object.assign(
-  createObjectChange(getCompiledMutationSchema(schema), getCompiledMutationSchema(schema).root, writes),
-  {
-    schema,
-    compiled: getCompiledMutationSchema(schema),
-    reset() {
-      return false
-    },
-    writes() {
-      return writes
+  writes: readonly MutationWrite[] = [],
+  options?: MutationChangeOptions
+): MutationChange<TSchema> => {
+  const compiled = getCompiledMutationSchema(schema)
+  const index = createMutationChangeIndex(compiled, writes, options)
+
+  return Object.assign(
+    createObjectChange(compiled.root, index),
+    {
+      schema,
+      compiled,
+      reset() {
+        return index.reset
+      },
+      writes() {
+        return index.writes
+      }
     }
-  }
-) as MutationChange<TSchema>
+  ) as MutationChange<TSchema>
+}
 
 export const extendMutationChange = <
   TChange extends MutationChange,

@@ -2,26 +2,41 @@ import {
   createMutationChange,
   type MutationChange
 } from '../change/createChange'
+import type {
+  MutationCompile,
+  MutationIssue,
+  MutationResult
+} from '../compile/types'
 import {
   getCompiledMutationSchema,
   type CompiledMutationSchema
 } from '../compile/schema'
-import type {
-  MutationCompile
-} from '../compile/types'
 import {
-  createMutationHistory,
-  type MutationOrigin
-} from './history'
+  applyMutationWrites
+} from '../internal/apply'
+import {
+  createMutationQuery
+} from '../query/createQuery'
+import {
+  createMutationReader
+} from '../reader/createReader'
 import type {
   MutationSchema
 } from '../schema/node'
 import type {
   MutationDocument
 } from '../schema/value'
+import {
+  createMutationWriter
+} from '../writer/createWriter'
 import type {
   MutationWrite
 } from '../writer/writes'
+import {
+  createMutationHistory,
+  type MutationHistoryState,
+  type MutationOrigin
+} from './history'
 
 export type MutationCommit<TSchema extends MutationSchema> = {
   kind: 'apply' | 'replace'
@@ -30,6 +45,34 @@ export type MutationCommit<TSchema extends MutationSchema> = {
   writes: readonly MutationWrite[]
   inverse: readonly MutationWrite[]
   change: MutationChange<TSchema>
+}
+
+export type MutationCommitOptions = {
+  origin?: MutationOrigin
+  history?: boolean
+}
+
+export type MutationEngineHistory<TSchema extends MutationSchema> = {
+  state(): MutationHistoryState
+  canUndo(): boolean
+  canRedo(): boolean
+  undo(): MutationCommit<TSchema> | undefined
+  redo(): MutationCommit<TSchema> | undefined
+  clear(): void
+}
+
+type MutationCommitListener<TSchema extends MutationSchema> = (
+  commit: MutationCommit<TSchema>
+) => void
+
+type MutationWatchMatcher<TSchema extends MutationSchema> = (
+  change: MutationChange<TSchema>,
+  commit: MutationCommit<TSchema>
+) => boolean
+
+type MutationWatchEntry<TSchema extends MutationSchema> = {
+  matches: MutationWatchMatcher<TSchema>
+  listener: MutationCommitListener<TSchema>
 }
 
 type MutationEngineOptions<
@@ -44,17 +87,79 @@ type MutationEngineOptions<
   normalize?: (document: MutationDocument<TSchema>) => MutationDocument<TSchema>
   compile?: MutationCompile<TSchema, TIntent, TServices>
   services?: TServices
-  history?: ReturnType<typeof createMutationHistory>
+  history?: boolean | ReturnType<typeof createMutationHistory>
 }
 
-export type MutationEngine<TSchema extends MutationSchema> = {
+export type MutationEngine<
+  TSchema extends MutationSchema,
+  TIntent extends {
+    type: string
+  } = never
+> = {
   readonly schema: TSchema
   readonly compiled: CompiledMutationSchema
   document(): MutationDocument<TSchema>
+  apply(
+    writes: readonly MutationWrite[],
+    options?: MutationCommitOptions
+  ): MutationCommit<TSchema>
   replace(
     document: MutationDocument<TSchema>,
-    origin?: MutationOrigin
+    options?: MutationCommitOptions
   ): MutationCommit<TSchema>
+  execute(
+    intent: TIntent,
+    options?: MutationCommitOptions
+  ): MutationResult<unknown, MutationCommit<TSchema>>
+  subscribe(listener: MutationCommitListener<TSchema>): () => void
+  watch(
+    matches: MutationWatchMatcher<TSchema>,
+    listener: MutationCommitListener<TSchema>
+  ): () => void
+  readonly history: MutationEngineHistory<TSchema>
+}
+
+type MutationIssueCollector = {
+  add(issue: MutationIssue): void
+  all(): readonly MutationIssue[]
+  hasErrors(): boolean
+}
+
+const createIssueCollector = (): MutationIssueCollector => {
+  const issues: MutationIssue[] = []
+
+  return {
+    add(issue) {
+      issues.push(issue)
+    },
+    all() {
+      return issues
+    },
+    hasErrors() {
+      return issues.length > 0
+    }
+  }
+}
+
+const hasVisibleCommit = <TSchema extends MutationSchema>(
+  commit: MutationCommit<TSchema>
+): boolean => commit.change.reset() || commit.writes.length > 0
+
+const shouldCaptureHistory = (
+  historyEnabled: boolean,
+  writes: readonly MutationWrite[],
+  origin: MutationOrigin,
+  options?: MutationCommitOptions
+): boolean => {
+  if (!historyEnabled || writes.length === 0 || origin === 'history') {
+    return false
+  }
+
+  if (options?.history !== undefined) {
+    return options.history
+  }
+
+  return origin === 'user'
 }
 
 export const createMutationEngine = <
@@ -65,16 +170,148 @@ export const createMutationEngine = <
   TServices = void
 >(
   options: MutationEngineOptions<TSchema, TIntent, TServices>
-): MutationEngine<TSchema> => {
-  const history = options.history ?? createMutationHistory()
+): MutationEngine<TSchema, TIntent> => {
   const compiled = getCompiledMutationSchema(options.schema)
+  const historyController = typeof options.history === 'object'
+    ? options.history
+    : createMutationHistory()
+  const historyEnabled = options.history !== false
+  const listeners = new Set<MutationCommitListener<TSchema>>()
+  const watches = new Set<MutationWatchEntry<TSchema>>()
   let currentDocument = options.normalize
     ? options.normalize(options.document)
     : options.document
 
-  void history
-  void options.compile
-  void options.services
+  const notify = (commit: MutationCommit<TSchema>): void => {
+    if (!hasVisibleCommit(commit)) {
+      return
+    }
+
+    listeners.forEach((listener) => {
+      listener(commit)
+    })
+
+    watches.forEach((entry) => {
+      if (entry.matches(commit.change, commit)) {
+        entry.listener(commit)
+      }
+    })
+  }
+
+  const applyCommit = (
+    writes: readonly MutationWrite[],
+    commitOptions?: MutationCommitOptions
+  ): MutationCommit<TSchema> => {
+    const origin = commitOptions?.origin ?? 'user'
+    const result = writes.length === 0
+      ? {
+          document: currentDocument,
+          inverse: [] as readonly MutationWrite[]
+        }
+      : applyMutationWrites(options.schema, currentDocument, writes)
+
+    currentDocument = result.document
+
+    if (shouldCaptureHistory(historyEnabled, writes, origin, commitOptions)) {
+      historyController.push({
+        writes,
+        inverse: result.inverse
+      })
+    }
+
+    const commit: MutationCommit<TSchema> = {
+      kind: 'apply',
+      origin,
+      document: currentDocument,
+      writes,
+      inverse: result.inverse,
+      change: createMutationChange(options.schema, writes)
+    }
+
+    notify(commit)
+    return commit
+  }
+
+  const replaceCommit = (
+    document: MutationDocument<TSchema>,
+    commitOptions?: MutationCommitOptions
+  ): MutationCommit<TSchema> => {
+    currentDocument = options.normalize
+      ? options.normalize(document)
+      : document
+    historyController.clear()
+
+    const commit: MutationCommit<TSchema> = {
+      kind: 'replace',
+      origin: commitOptions?.origin ?? 'system',
+      document: currentDocument,
+      writes: [],
+      inverse: [],
+      change: createMutationChange(options.schema, [], {
+        reset: true
+      })
+    }
+
+    notify(commit)
+    return commit
+  }
+
+  const replayHistory = (
+    writes: readonly MutationWrite[],
+    inverse: readonly MutationWrite[]
+  ): MutationCommit<TSchema> => {
+    const result = writes.length === 0
+      ? {
+          document: currentDocument,
+          inverse
+        }
+      : applyMutationWrites(options.schema, currentDocument, writes)
+
+    currentDocument = result.document
+
+    const commit: MutationCommit<TSchema> = {
+      kind: 'apply',
+      origin: 'history',
+      document: currentDocument,
+      writes,
+      inverse,
+      change: createMutationChange(options.schema, writes)
+    }
+
+    notify(commit)
+    return commit
+  }
+
+  const history: MutationEngineHistory<TSchema> = {
+    state() {
+      return historyController.state()
+    },
+    canUndo() {
+      return historyController.canUndo()
+    },
+    canRedo() {
+      return historyController.canRedo()
+    },
+    undo() {
+      const entry = historyController.popUndo()
+      if (!entry) {
+        return undefined
+      }
+
+      return replayHistory(entry.inverse, entry.writes)
+    },
+    redo() {
+      const entry = historyController.popRedo()
+      if (!entry) {
+        return undefined
+      }
+
+      return replayHistory(entry.writes, entry.inverse)
+    },
+    clear() {
+      historyController.clear()
+    }
+  }
 
   return {
     schema: options.schema,
@@ -82,19 +319,82 @@ export const createMutationEngine = <
     document() {
       return currentDocument
     },
-    replace(document, origin = 'system') {
-      currentDocument = options.normalize
-        ? options.normalize(document)
-        : document
+    apply(writes, commitOptions) {
+      return applyCommit(writes, commitOptions)
+    },
+    replace(document, commitOptions) {
+      return replaceCommit(document, commitOptions)
+    },
+    execute(intent, commitOptions) {
+      if (!options.compile) {
+        return {
+          ok: false,
+          issues: [{
+            code: 'mutation.compile.missing',
+            message: 'Mutation engine compile handlers are not configured.'
+          }]
+        }
+      }
+
+      const handler = options.compile.handlers[intent.type]
+      if (!handler) {
+        return {
+          ok: false,
+          issues: [{
+            code: 'mutation.compile.handler_missing',
+            message: `No mutation compile handler for intent type "${intent.type}".`
+          }]
+        }
+      }
+
+      const writes: MutationWrite[] = []
+      const issue = createIssueCollector()
+      const read = createMutationReader(options.schema, currentDocument)
+      const write = createMutationWriter(options.schema, writes)
+      const query = createMutationQuery(options.schema, currentDocument)
+      const context = {
+        intent,
+        document: currentDocument,
+        read,
+        write,
+        query,
+        get change() {
+          return createMutationChange(options.schema, writes)
+        },
+        issue,
+        services: options.services as TServices
+      }
+
+      const data = handler(context)
+      if (issue.hasErrors()) {
+        return {
+          ok: false,
+          issues: issue.all()
+        }
+      }
 
       return {
-        kind: 'replace',
-        origin,
-        document: currentDocument,
-        writes: [],
-        inverse: [],
-        change: createMutationChange(options.schema, [])
+        ok: true,
+        data,
+        commit: applyCommit(writes, commitOptions)
       }
-    }
+    },
+    subscribe(listener) {
+      listeners.add(listener)
+      return () => {
+        listeners.delete(listener)
+      }
+    },
+    watch(matches, listener) {
+      const entry: MutationWatchEntry<TSchema> = {
+        matches,
+        listener
+      }
+      watches.add(entry)
+      return () => {
+        watches.delete(entry)
+      }
+    },
+    history
   }
 }

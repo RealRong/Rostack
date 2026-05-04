@@ -92,4 +92,24 @@ describe('struct stores', () => {
 
     unsubscribe()
   })
+
+  test('combines derived child stores through store.read', () => {
+    const source = store.value(1)
+    const nested = store.value(() => store.read(source) + 1)
+    const combined = store.combine({
+      fields: {
+        value: {
+          get: () => store.read(source)
+        },
+        nested: {
+          get: () => store.read(nested)
+        }
+      }
+    })
+
+    expect(combined.get()).toEqual({
+      value: 1,
+      nested: 2
+    })
+  })
 })

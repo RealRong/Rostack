@@ -3,6 +3,7 @@ import {
   mindmap as mindmapApi,
   type MindmapLayout
 } from '@whiteboard/core/mindmap'
+import { geometry as geometryApi } from '@whiteboard/core/geometry'
 import type {
   MindmapId,
   MindmapRecord,
@@ -90,6 +91,56 @@ export const readMindmapTree = (
   ? mindmapApi.tree.fromRecord(record)
   : undefined
 
+const applyNodePresentationToRect = (input: {
+  rect: Rect
+  position?: {
+    x: number
+    y: number
+  }
+}): Rect => input.position
+  ? {
+      x: input.position.x,
+      y: input.position.y,
+      width: input.rect.width,
+      height: input.rect.height
+    }
+  : input.rect
+
+const applyNodePresentationToMindmapLayout = (input: {
+  input: Input
+  nodeIds: readonly NodeId[]
+  layout: MindmapLayout
+}): MindmapLayout => {
+  let changed = false
+  const node: MindmapLayout['node'] = {}
+
+  input.nodeIds.forEach((nodeId) => {
+    const rect = input.layout.node[nodeId]
+    if (!rect) {
+      return
+    }
+
+    const position = input.input.editor.snapshot.preview.node[nodeId]?.presentation?.position
+    const nextRect = applyNodePresentationToRect({
+      rect,
+      position
+    })
+    if (nextRect !== rect) {
+      changed = true
+    }
+    node[nodeId] = nextRect
+  })
+
+  if (!changed) {
+    return input.layout
+  }
+
+  return {
+    node,
+    bbox: geometryApi.rect.boundingRect(Object.values(node)) ?? input.layout.bbox
+  }
+}
+
 const buildMindmapEntry = (
   input: Input,
   working: WorkingState,
@@ -175,7 +226,12 @@ const buildMindmapEntry = (
             ghost: preview.subtreeMove.ghost
           }
         : undefined
-    }
+      }
+  })
+  const displayedLayout = applyNodePresentationToMindmapLayout({
+    input,
+    nodeIds,
+    layout
   })
 
   return {
@@ -186,10 +242,10 @@ const buildMindmapEntry = (
     nodeIds,
     structure: tree,
     tree: {
-      layout,
+      layout: displayedLayout,
       connectors: mindmapApi.render.resolve({
         tree,
-        computed: layout
+        computed: displayedLayout
       }).connectors
     }
   }

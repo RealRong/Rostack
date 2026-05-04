@@ -91,7 +91,7 @@ export const createEditorSelectionUi = (input: {
     const selectionView = store.combine<EditorSelectionView>({
         fields: {
             target: {
-                get: input.state.selection.get,
+                get: () => store.read(input.state.selection),
                 isEqual: selectionApi.target.equal
             },
             kind: {
@@ -105,10 +105,10 @@ export const createEditorSelectionUi = (input: {
                 }
             },
             summary: {
-                get: selectionViewSummary.get
+                get: () => store.read(selectionViewSummary)
             },
             affordance: {
-                get: selectionViewAffordance.get
+                get: () => store.read(selectionViewAffordance)
             }
         }
     });

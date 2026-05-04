@@ -133,21 +133,34 @@ describe('mindmap enter animation', () => {
       await Promise.resolve()
 
       const baseRect = editor.scene.nodes.get(inserted.data.nodeId)?.geometry.rect
+      const connectorAtStart = editor.scene.mindmaps.get(created.data.mindmapId)?.render.connectors
+        .find((connector) => connector.childId === inserted.data.nodeId)?.path
       expect(baseRect).toBeDefined()
+      expect(connectorAtStart).toBeDefined()
 
       await vi.advanceTimersByTimeAsync(120)
       const midPosition = editor.scene.stores.render.node.byId.get(inserted.data.nodeId)?.presentation?.position
+      const connectorAtMid = editor.scene.mindmaps.get(created.data.mindmapId)?.render.connectors
+        .find((connector) => connector.childId === inserted.data.nodeId)?.path
 
       await vi.advanceTimersByTimeAsync(200)
       const endPosition = editor.scene.stores.render.node.byId.get(inserted.data.nodeId)?.presentation?.position
       const endRect = editor.scene.nodes.get(inserted.data.nodeId)?.geometry.rect
+      const connectorAtEnd = editor.scene.mindmaps.get(created.data.mindmapId)?.render.connectors
+        .find((connector) => connector.childId === inserted.data.nodeId)?.path
 
       expect(midPosition).toBeDefined()
       expect(endPosition).toBeUndefined()
       expect(endRect).toBeDefined()
-      expect(baseRect!.x).toBe(endRect!.x)
+      expect(baseRect!.x).toBeLessThan(endRect!.x)
+      expect(baseRect!.x).not.toBe(endRect!.x)
       expect(midPosition!.x).toBeLessThan(endRect!.x)
       expect(midPosition!.x).not.toBe(endRect!.x)
+      expect(midPosition!.x).toBeGreaterThanOrEqual(baseRect!.x)
+      expect(connectorAtMid).toBeDefined()
+      expect(connectorAtEnd).toBeDefined()
+      expect(connectorAtStart).not.toBe(connectorAtEnd)
+      expect(connectorAtMid).not.toBe(connectorAtEnd)
     } finally {
       editor.dispose()
       nowSpy.mockRestore()

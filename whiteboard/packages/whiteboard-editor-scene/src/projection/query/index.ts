@@ -52,6 +52,26 @@ import {
   type ProjectionViewRead
 } from './view'
 
+const readDisplayedNodeRect = (input: {
+  state: WorkingState
+  nodeId: string
+}): Rect | undefined => {
+  const graphNode = input.state.graph.nodes.get(input.nodeId)
+  if (!graphNode) {
+    return undefined
+  }
+
+  const position = input.state.render.node.get(input.nodeId)?.presentation?.position
+  return position
+    ? {
+        x: position.x,
+        y: position.y,
+        width: graphNode.geometry.rect.width,
+        height: graphNode.geometry.rect.height
+      }
+    : graphNode.geometry.rect
+}
+
 export interface ProjectionScene extends Omit<EditorScene, 'stores' | 'pick'> {
   view: ProjectionViewRead
   capture: {
@@ -455,7 +475,11 @@ export const createProjectionRead = (runtime: {
       }
 
       const node = runtime.state().graph.nodes.get(selectedNodeId)
-      if (!node?.geometry.rect || node.base.node.locked) {
+      const rect = readDisplayedNodeRect({
+        state: runtime.state(),
+        nodeId: selectedNodeId
+      })
+      if (!node || !rect || node.base.node.locked) {
         return []
       }
 
@@ -466,7 +490,7 @@ export const createProjectionRead = (runtime: {
           tree: structure.tree
         },
         nodeId: selectedNodeId,
-        rect: node.geometry.rect
+        rect
       })
     },
     navigate: (input) => {

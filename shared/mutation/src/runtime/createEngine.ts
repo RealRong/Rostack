@@ -342,11 +342,9 @@ export const createMutationEngine = <
     const intents = Array.isArray(intent)
       ? intent
       : [intent]
+    let compileDocument = currentDocument
     const writes: MutationWrite[] = []
     const issue = createIssueCollector()
-    const read = createMutationReader(options.schema, currentDocument)
-    const write = createMutationWriter(options.schema, writes)
-    const query = createMutationQuery(options.schema, currentDocument)
     const data: unknown[] = []
 
     for (const nextIntent of intents) {
@@ -361,9 +359,15 @@ export const createMutationEngine = <
         }
       }
 
+      const read = createMutationReader(options.schema, compileDocument)
+      const write = createMutationWriter(options.schema, writes)
+      const query = createMutationQuery(options.schema, compileDocument)
+      const previousWriteCount = writes.length
+      const previousIssueCount = issue.all().length
+
       data.push(handler({
         intent: nextIntent,
-        document: currentDocument,
+        document: compileDocument,
         read,
         write,
         query,
@@ -373,6 +377,22 @@ export const createMutationEngine = <
         issue,
         services: options.services as TServices
       }))
+
+      if (issue.all().length > previousIssueCount) {
+        writes.length = previousWriteCount
+        break
+      }
+
+      const nextWrites = writes.slice(previousWriteCount)
+      if (nextWrites.length === 0) {
+        continue
+      }
+
+      compileDocument = applyMutationWrites(
+        options.schema,
+        compileDocument,
+        nextWrites
+      ).document
     }
 
     if (issue.hasErrors()) {

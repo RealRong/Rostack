@@ -31,7 +31,7 @@ export const createActiveViewApi = (
 ): ActiveViewApi => {
   const base = createActiveContext(engine)
   const readApi = createActiveViewReadApi({
-    reader: base.reader,
+    query: base.query,
     state: base.state
   })
   const fields = createFieldsApi(base)

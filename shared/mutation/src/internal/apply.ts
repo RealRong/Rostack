@@ -3,7 +3,6 @@ import type {
   CompiledMutationSchema,
   CompiledMutationTableNode,
   CompiledMutationMapNode,
-  CompiledMutationSingletonNode,
   CompiledMutationTreeNode,
   CompiledMutationSequenceNode
 } from '../compile/schema'
@@ -562,29 +561,16 @@ const readCollectionValue = (
 const readEntityValue = (
   context: MutationApplyContext,
   root: unknown,
-  node: CompiledMutationTableNode | CompiledMutationMapNode | CompiledMutationSingletonNode,
+  node: CompiledMutationTableNode | CompiledMutationMapNode,
   target?: MutationEntityTarget
-): unknown => {
-  if (node.kind === 'singleton') {
-    return readLineageValue(root, getLineage(context, node.nodeId), [])
-  }
-
-  return readLineageValue(root, getLineage(context, node.entity.nodeId), targetEntityIds(target))
-}
+): unknown => readLineageValue(root, getLineage(context, node.entity.nodeId), targetEntityIds(target))
 
 const ensureCollectionValue = (
   draft: MutationCowDraft,
   context: MutationApplyContext,
-  node: CompiledMutationTableNode | CompiledMutationMapNode | CompiledMutationSingletonNode,
+  node: CompiledMutationTableNode | CompiledMutationMapNode,
   target?: MutationEntityTarget
-): unknown => {
-  if (node.kind === 'singleton') {
-    const parent = ensureParentObjectForLeaf(draft, context, node, target)
-    return ensureObjectProperty(draft, parent.owner, parent.key)
-  }
-
-  return ensureLineageValue(draft, getLineage(context, node.nodeId), targetScopeIds(target))
-}
+): unknown => ensureLineageValue(draft, getLineage(context, node.nodeId), targetScopeIds(target))
 
 const findSequenceIndex = (
   node: CompiledMutationSequenceNode,
@@ -1034,43 +1020,6 @@ const applyWrite = (
       }
 
       const mapValue = ensureCollectionValue(draft, context, node, write.target) as RuntimeMapValue
-      mapValue[write.target.id] = cloneValue(write.value) as Record<string, unknown>
-      return
-    }
-
-    case 'entity.replace': {
-      if (node.kind !== 'singleton' && node.kind !== 'table' && node.kind !== 'map') {
-        throw new Error('entity.replace requires a singleton/table/map node.')
-      }
-
-      inverse.push({
-        kind: 'entity.replace',
-        nodeId: write.nodeId,
-        target: cloneTarget(write.target),
-        value: cloneValue(readEntityValue(context, draft.root, node, write.target))
-      })
-
-      if (node.kind === 'singleton') {
-        const parent = ensureParentObjectForLeaf(draft, context, node, undefined)
-        parent.owner[parent.key] = cloneValue(write.value)
-        return
-      }
-
-      if (!write.target) {
-        throw new Error('entity.replace requires a target for table/map nodes.')
-      }
-
-      const collection = ensureCollectionValue(draft, context, node, write.target)
-      if (node.kind === 'table') {
-        const table = collection as RuntimeTableValue
-        table.byId[write.target.id] = cloneValue(write.value) as Record<string, unknown>
-        if (!table.ids.includes(write.target.id)) {
-          table.ids.push(write.target.id)
-        }
-        return
-      }
-
-      const mapValue = collection as RuntimeMapValue
       mapValue[write.target.id] = cloneValue(write.value) as Record<string, unknown>
       return
     }

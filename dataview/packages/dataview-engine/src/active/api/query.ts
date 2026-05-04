@@ -192,7 +192,7 @@ export const createGroupApi = (
 ): ActiveViewApi['group'] => ({
   set: (fieldId) => {
     const view = base.view()
-    const field = base.reader.fields.get(fieldId)
+    const field = base.query().fields.get(fieldId)
     if (!view || !field) {
       return
     }

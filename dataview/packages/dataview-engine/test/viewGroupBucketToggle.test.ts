@@ -246,10 +246,9 @@ const applyHistory = (engine, kind) => {
     return false
   }
 
-  const result = kind === 'undo'
+  return Boolean(kind === 'undo'
     ? history.undo()
-    : history.redo()
-  return result.ok
+    : history.redo())
 }
 
 const readViewState = engine => engine.active.state()
@@ -1373,15 +1372,15 @@ test('engine.active reconcile keeps undo redo equivalent across sequential delta
   engine.records.fields.set('rec_1', FIELD_STATUS, 'doing')
   const afterGroupMove = viewSnapshot(engine)
 
-  assert.equal(engine.history.get().canUndo, true)
-  assert.equal(engine.history.get().canRedo, false)
+  assert.equal(engine.history.canUndo(), true)
+  assert.equal(engine.history.canRedo(), false)
 
   assert.equal(applyHistory(engine, 'undo'), true)
   assert.deepEqual(viewSnapshot(engine), afterPoints)
 
   assert.equal(applyHistory(engine, 'undo'), true)
   assert.deepEqual(viewSnapshot(engine), initial)
-  assert.equal(engine.history.get().canRedo, true)
+  assert.equal(engine.history.canRedo(), true)
 
   assert.equal(applyHistory(engine, 'redo'), true)
   assert.deepEqual(viewSnapshot(engine), afterPoints)
@@ -1509,11 +1508,11 @@ test('engine commits stream emits shared apply commits for execute', () => {
     ? result.data.id
     : undefined
   assert.equal(writes[0]?.origin, 'user')
-  const commitDelta = writes[0]?.delta
-  assert.ok(Boolean(commitDelta?.activeViewId.changed()))
-  if (createdViewId && commitDelta) {
-    assert.equal(commitDelta.views.created(createdViewId), true)
-    assert.ok(commitDelta.views(createdViewId).changed())
+  const commitChange = writes[0]?.change
+  assert.ok(Boolean(commitChange?.activeViewId.changed()))
+  if (createdViewId && commitChange) {
+    assert.equal(commitChange.views.created(createdViewId), true)
+    assert.ok(commitChange.views(createdViewId).changed())
   } else {
     assert.fail('Expected created view id and typed delta commit.')
   }
@@ -1544,12 +1543,12 @@ test('engine apply emits shared apply commits', () => {
   assert.equal(result.ok, true)
   assert.equal(writes.length, 1)
   assert.equal(writes[0]?.origin, 'remote')
-  const commitDelta = writes[0]?.delta
+  const commitChange = writes[0]?.change
   const createdFieldId = result.ok && result.data && 'id' in result.data
     ? result.data.id
     : undefined
   assert.equal(
-    Boolean(createdFieldId && commitDelta?.fields.created(createdFieldId)),
+    Boolean(createdFieldId && commitChange?.fields.created(createdFieldId)),
     true
   )
 })

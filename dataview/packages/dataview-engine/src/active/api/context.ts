@@ -17,7 +17,7 @@ import {
 export interface ActiveViewContext {
   id: ActiveViewApi['id']
   state: ActiveViewApi['state']
-  reader: DataviewQuery
+  query: () => DataviewQuery
   execute: Engine['execute']
   view: () => View | undefined
   resolveGroupField: (view?: View) => Field | undefined
@@ -27,21 +27,21 @@ export const createActiveContext = (
   engine: Pick<Engine, 'current' | 'doc' | 'execute'>
 ): ActiveViewContext => {
   const state = (): ViewState | undefined => engine.current().active
-  const reader = createDataviewQuery(engine.doc())
+  const query = () => createDataviewQuery(engine.doc())
   const view = () => engine.current().docActiveView
   const resolveGroupField = (
     currentView = view()
   ): Field | undefined => {
     const fieldId = currentView?.group?.fieldId
     return fieldId
-      ? reader.fields.get(fieldId)
+      ? query().fields.get(fieldId)
       : undefined
   }
 
   return {
     id: () => engine.current().docActiveViewId,
     state,
-    reader,
+    query,
     execute: engine.execute.bind(engine),
     view,
     resolveGroupField

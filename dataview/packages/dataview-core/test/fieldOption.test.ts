@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'vitest'
+import { entityTable } from '@shared/core'
 import type {
   SelectField,
   StatusField
@@ -8,11 +9,19 @@ import {
   field
 } from '@dataview/core/field'
 
+const optionTable = <T extends {
+  id: string
+}>(
+  options: readonly T[]
+) => entityTable.normalize.list(
+  options.map((option) => ({ ...option }))
+)
+
 const selectField: SelectField = {
   id: 'priority',
   name: 'Priority',
   kind: 'select',
-  options: [
+  options: optionTable([
     {
       id: 'high',
       name: 'High',
@@ -23,7 +32,7 @@ const selectField: SelectField = {
       name: 'In Progress',
       color: 'blue'
     }
-  ]
+  ])
 }
 
 const statusField: StatusField = {
@@ -31,7 +40,7 @@ const statusField: StatusField = {
   name: 'Status',
   kind: 'status',
   defaultOptionId: null,
-  options: [
+  options: optionTable([
     {
       id: 'todo',
       name: 'To do',
@@ -44,7 +53,7 @@ const statusField: StatusField = {
       color: 'blue',
       category: 'in_progress'
     }
-  ]
+  ])
 }
 
 test('field option read helpers share lookup semantics', () => {
@@ -83,7 +92,7 @@ test('field option write.replace preserves status option shape', () => {
       }
     ]),
     {
-      options: [
+      options: optionTable([
         {
           id: 'todo',
           name: 'To do',
@@ -102,7 +111,7 @@ test('field option write.replace preserves status option shape', () => {
           color: null,
           category: 'complete'
         }
-      ]
+      ])
     }
   )
 })

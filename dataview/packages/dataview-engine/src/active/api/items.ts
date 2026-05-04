@@ -27,7 +27,7 @@ const createMoveOrderAction = (
   beforeRecordId?: RecordId
 ): Extract<CoreIntent, { type: 'view.order.move' | 'view.order.splice' }> | undefined => {
   const view = base.view()
-  const viewId = base.reader.views.activeId()
+  const viewId = base.query().views.activeId()
   if (!view || !viewId || !recordIds.length) {
     return undefined
   }

@@ -13,11 +13,11 @@ import type {
 import type { DataviewQuery } from '@dataview/core/mutation'
 
 export const createActiveViewReadApi = (input: {
-  reader: DataviewQuery
+  query: () => DataviewQuery
   state: () => ViewState | undefined
 }): ActiveViewReadApi => {
   const readState = () => input.state()
-  const readField = (fieldId: FieldId) => input.reader.fields.get(fieldId)
+  const readField = (fieldId: FieldId) => input.query().fields.get(fieldId)
   const readSection = (sectionId: string) => readState()?.sections.get(sectionId)
   const readPlacement = (itemId: ItemId) => readState()?.items.read.placement(itemId)
   const readCell = (cell: CellRef): ViewCell | undefined => {
@@ -31,7 +31,7 @@ export const createActiveViewReadApi = (input: {
       return undefined
     }
 
-    const record = input.reader.records.get(placement.recordId)
+    const record = input.query().records.get(placement.recordId)
     if (!record) {
       return undefined
     }
@@ -43,12 +43,12 @@ export const createActiveViewReadApi = (input: {
       sectionId: placement.sectionId,
       record,
       field: readField(cell.fieldId),
-      value: input.reader.values.get(placement.recordId, cell.fieldId)
+      value: input.query().values.get(placement.recordId, cell.fieldId)
     }
   }
 
   return {
-    record: recordId => input.reader.records.get(recordId),
+    record: recordId => input.query().records.get(recordId),
     field: readField,
     section: readSection,
     placement: readPlacement,

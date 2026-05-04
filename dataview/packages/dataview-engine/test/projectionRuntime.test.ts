@@ -2,11 +2,15 @@ import assert from 'node:assert/strict'
 import { test } from 'vitest'
 import { entityTable } from '@shared/core'
 import {
-  createMutationDelta,
-  createMutationResetDelta,
-  type MutationWrite
+  createMutationChange,
+  createMutationWriter,
 } from '@shared/mutation'
-import { dataviewMutationSchema } from '@dataview/core/mutation'
+import {
+  createDataviewChange,
+  createDataviewQuery,
+  dataviewMutationSchema,
+  type DataviewMutationWriter
+} from '@dataview/core/mutation'
 import { createDataviewFrame } from '@dataview/engine/active/frame'
 import { ensureDataviewIndex } from '@dataview/engine/active/index/runtime'
 import { createDataviewActivePlan } from '@dataview/engine/active/plan'
@@ -166,12 +170,41 @@ const createEmptyDocument = () => ({
   meta: {}
 })
 
-const toDelta = (input: {
+const createChange = (
+  document: ReturnType<typeof createDocument>,
+  input: {
   reset?: true
-  writes?: readonly MutationWrite[]
-} = {}) => input.reset
-  ? createMutationResetDelta(dataviewMutationSchema)
-  : createMutationDelta(dataviewMutationSchema, input.writes ?? [])
+  write?: (writer: DataviewMutationWriter) => void
+} = {}
+) => {
+  const writes = []
+  if (input.write) {
+    const writer = createMutationWriter(dataviewMutationSchema, writes)
+    input.write(writer)
+  }
+
+  return createDataviewChange(
+    createDataviewQuery(document),
+    createMutationChange(dataviewMutationSchema, writes, input.reset
+      ? {
+          reset: true
+        }
+      : undefined)
+  )
+}
+
+const createFrame = (input: {
+  revision: number
+  document: ReturnType<typeof createDocument>
+  change?: {
+    reset?: true
+    write?: (writer: DataviewMutationWriter) => void
+  }
+}) => createDataviewFrame({
+  revision: input.revision,
+  document: input.document,
+  change: createChange(input.document, input.change)
+})
 
 const createState = (): DataviewState => ({
   revision: 0,
@@ -179,17 +212,16 @@ const createState = (): DataviewState => ({
 })
 
 test('createDataviewFrame resolves plain active spec from document', () => {
-  const frame = createDataviewFrame({
+  const frame = createFrame({
     revision: 1,
     document: createDocument(),
-    delta: toDelta({
-      writes: [{
-        kind: 'field.set',
-        node: dataviewMutationSchema.shape.views.shape.sort,
-        targetId: VIEW_ID,
-        value: createView().sort
-      }]
-    })
+    change: {
+      write: (write) => {
+        write.views(VIEW_ID).patch({
+          sort: createView().sort
+        })
+      }
+    }
   })
 
   assert.equal(frame.active?.id, VIEW_ID)
@@ -198,14 +230,14 @@ test('createDataviewFrame resolves plain active spec from document', () => {
 })
 
 test('ensureDataviewIndex keeps one active index and syncs active demand changes', () => {
-  const firstFrame = createDataviewFrame({
+  const firstFrame = createFrame({
     revision: 1,
     document: createDocument(createView({
       search: ''
     })),
-    delta: toDelta({
+    change: {
       reset: true
-    })
+    }
   })
   const first = ensureDataviewIndex({
     frame: firstFrame,
@@ -213,19 +245,18 @@ test('ensureDataviewIndex keeps one active index and syncs active demand changes
   })
   assert.equal(first?.action, 'rebuild')
 
-  const secondFrame = createDataviewFrame({
+  const secondFrame = createFrame({
     revision: 2,
     document: createDocument(createView({
       calc: {}
     })),
-    delta: toDelta({
-      writes: [{
-        kind: 'field.set',
-        node: dataviewMutationSchema.shape.views.shape.calc,
-        targetId: VIEW_ID,
-        value: {}
-      }]
-    })
+    change: {
+      write: (write) => {
+        write.views(VIEW_ID).patch({
+          calc: {}
+        })
+      }
+    }
   })
   const second = ensureDataviewIndex({
     frame: secondFrame,
@@ -241,12 +272,12 @@ test('ensureDataviewIndex keeps one active index and syncs active demand changes
 })
 
 test('createDataviewActivePlan keeps layout-only change inside publish', () => {
-  const previousFrame = createDataviewFrame({
+  const previousFrame = createFrame({
     revision: 1,
     document: createDocument(),
-    delta: toDelta({
+    change: {
       reset: true
-    })
+    }
   })
   const previousIndex = ensureDataviewIndex({
     frame: previousFrame,
@@ -264,21 +295,20 @@ test('createDataviewActivePlan keeps layout-only change inside publish', () => {
     previous: previousState.active
   })
 
-  const nextFrame = createDataviewFrame({
+  const nextFrame = createFrame({
     revision: 2,
     document: createDocument(createView({
       wrap: true
     })),
-    delta: toDelta({
-      writes: [{
-        kind: 'field.set',
-        node: dataviewMutationSchema.shape.views.shape.options,
-        targetId: VIEW_ID,
-        value: createView({
-          wrap: true
-        }).options
-      }]
-    })
+    change: {
+      write: (write) => {
+        write.views(VIEW_ID).patch({
+          options: createView({
+            wrap: true
+          }).options
+        })
+      }
+    }
   })
   const ensured = ensureDataviewIndex({
     frame: nextFrame,
@@ -297,12 +327,12 @@ test('createDataviewActivePlan keeps layout-only change inside publish', () => {
 })
 
 test('runDataviewActive derives grouped sections and summaries in one active pipeline', () => {
-  const frame = createDataviewFrame({
+  const frame = createFrame({
     revision: 1,
     document: createDocument(),
-    delta: toDelta({
+    change: {
       reset: true
-    })
+    }
   })
   const state = createState()
   const ensured = ensureDataviewIndex({
@@ -334,7 +364,7 @@ test('createDataviewProjection now runs active only and clears snapshot when act
   const runtime = createDataviewProjection()
   const first = runtime.update({
     document: createDocument(),
-    delta: toDelta({
+    change: createChange(createDocument(), {
       reset: true
     })
   })
@@ -348,12 +378,10 @@ test('createDataviewProjection now runs active only and clears snapshot when act
 
   const cleared = runtime.update({
     document: createEmptyDocument(),
-    delta: toDelta({
-      writes: [{
-        kind: 'field.set',
-        node: dataviewMutationSchema.shape.activeViewId,
-        value: undefined
-      }]
+    change: createChange(createEmptyDocument(), {
+      write: (write) => {
+        write.activeViewId.set(undefined)
+      }
     })
   })
 

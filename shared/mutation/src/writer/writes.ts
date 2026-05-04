@@ -46,12 +46,6 @@ export type MutationWrite =
       anchor?: MutationSequenceAnchor
     }
   | {
-      kind: 'entity.replace'
-      nodeId: number
-      target?: MutationEntityTarget
-      value: unknown
-    }
-  | {
       kind: 'entity.remove'
       nodeId: number
       target: MutationEntityTarget

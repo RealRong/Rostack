@@ -7,6 +7,8 @@ import {
   applyMutationWrites,
   dictionary,
   field,
+  getCompiledMutationNode,
+  optional,
   schema,
   sequence,
   table,
@@ -16,6 +18,7 @@ import {
 
 const boardSchema = schema({
   activeViewId: field<string | undefined>(),
+  subtitle: optional(field<string>()),
   prefs: {
     theme: field<'light' | 'dark'>()
   },
@@ -36,6 +39,7 @@ describe('applyMutationWrites', () => {
   test('applies writes with lazy COW and restores through inverse writes', () => {
     const document = {
       activeViewId: undefined,
+      subtitle: 'Board',
       prefs: {
         theme: 'light' as const
       },
@@ -90,9 +94,48 @@ describe('applyMutationWrites', () => {
     expect(restored.document).toEqual(document)
   })
 
+  test('applies object patch with explicit undefined for optional fields', () => {
+    const document = {
+      activeViewId: undefined,
+      subtitle: 'Board',
+      prefs: {
+        theme: 'light' as const
+      },
+      views: {
+        ids: [],
+        byId: {}
+      },
+      mindmaps: {
+        ids: [],
+        byId: {}
+      }
+    }
+
+    const writes = [] as import('../src').MutationWrite[]
+    const write = writer(boardSchema, writes)
+
+    write.patch({
+      subtitle: undefined
+    })
+
+    const subtitleNodeId = getCompiledMutationNode(boardSchema, boardSchema.shape.subtitle).nodeId
+    expect(writes).toEqual([{
+      kind: 'field.set',
+      nodeId: subtitleNodeId,
+      value: undefined
+    }])
+
+    const applied = applyMutationWrites(boardSchema, document, writes)
+    expect(applied.document.subtitle).toBeUndefined()
+
+    const restored = applyMutationWrites(boardSchema, applied.document, applied.inverse)
+    expect(restored.document).toEqual(document)
+  })
+
   test('applies tree writes and restores through inverse replace', () => {
     const document = {
       activeViewId: undefined,
+      subtitle: 'Board',
       prefs: {
         theme: 'light' as const
       },

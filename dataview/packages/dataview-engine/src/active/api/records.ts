@@ -24,7 +24,7 @@ const createMoveOrderAction = (
   beforeRecordId?: RecordId
 ): Extract<CoreIntent, { type: 'view.order.move' | 'view.order.splice' }> | undefined => {
   const view = base.view()
-  const viewId = base.reader.views.activeId()
+  const viewId = base.query().views.activeId()
   if (!view || !viewId || !recordIds.length) {
     return undefined
   }
@@ -111,7 +111,7 @@ export const createActiveRecordsApi = (input: {
     const created = buildRecordCreateIntents({
       recordId,
       values: createInput?.values,
-      hasField: fieldId => input.base.reader.fields.has(fieldId),
+      hasField: fieldId => input.base.query().fields.has(fieldId),
       filter: {
         mode: state.view.filter.mode,
         rules: state.query.filters.rules.map(rule => ({

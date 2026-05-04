@@ -19,7 +19,6 @@ import type {
   MutationSchema,
   MutationSequenceNode,
   MutationShape,
-  MutationShapeNode,
   MutationSingletonNode,
   MutationTableNode,
   MutationTreeNode
@@ -29,8 +28,6 @@ import type {
   MutationTreeMoveInput
 } from '../schema/constants'
 import type {
-  MutationMapValue,
-  MutationTableValue,
   MutationValueOfShape
 } from '../schema/value'
 import type {
@@ -47,9 +44,7 @@ type MutationWriterObject<TShape extends MutationShape> = MutationWriterFields<T
   patch(value: Partial<MutationValueOfShape<TShape>>): void
 }
 
-type MutationEntityWriter<TShape extends MutationShape> = MutationWriterObject<TShape> & {
-  replace(value: MutationValueOfShape<TShape>): void
-}
+type MutationEntityWriter<TShape extends MutationShape> = MutationWriterObject<TShape>
 
 type MutationFieldWriter<TValue> = {
   set(value: TValue): void
@@ -84,14 +79,12 @@ type MutationTableWriter<TId extends string, TShape extends MutationShape> = ((i
     value: MutationValueOfShape<TShape>,
     anchor?: import('../schema/constants').MutationSequenceAnchor
   ): void
-  replace(id: TId, value: MutationValueOfShape<TShape>): void
   remove(id: TId): void
   move(id: TId, anchor?: import('../schema/constants').MutationSequenceAnchor): void
 }
 
 type MutationMapWriter<TId extends string, TShape extends MutationShape> = ((id: TId) => MutationEntityWriter<TShape>) & {
   create(id: TId, value: MutationValueOfShape<TShape>): void
-  replace(id: TId, value: MutationValueOfShape<TShape>): void
   remove(id: TId): void
 }
 
@@ -300,7 +293,7 @@ const createObjectWriter = (
     enumerable: true,
     configurable: false,
     value(value: Record<string, unknown>) {
-      applyObjectPatch(node, result, value, writes, target)
+      applyObjectPatch(node, result, value, target)
     }
   })
 
@@ -308,30 +301,16 @@ const createObjectWriter = (
 }
 
 const createEntityWriter = (
-  nodeId: number,
   entity: CompiledMutationObjectNode,
   writes: MutationWrite[],
   target?: MutationEntityTarget
-): object => Object.assign(
-  createObjectWriter(entity, writes, target),
-  {
-    replace(value: MutationValueOfShape<MutationShape>) {
-      writes.push({
-        kind: 'entity.replace',
-        nodeId,
-        target,
-        value
-      })
-    }
-  }
-)
+): object => createObjectWriter(entity, writes, target)
 
 const createSingletonWriter = (
   node: CompiledMutationSingletonNode,
   writes: MutationWrite[],
   target?: MutationEntityTarget
 ): MutationSingletonWriter<MutationShape> => createEntityWriter(
-  node.nodeId,
   node.entity,
   writes,
   target
@@ -351,15 +330,10 @@ const createTableWriter = (
       return cached
     }
 
-    const next = createEntityWriter(
-      node.nodeId,
-      node.entity,
-      writes,
-      {
-        scope: ownerScope,
-        id
-      }
-    )
+    const next = createEntityWriter(node.entity, writes, {
+      scope: ownerScope,
+      id
+    })
     entityCache.set(id, next)
     return next
   }
@@ -377,17 +351,6 @@ const createTableWriter = (
           },
           value,
           anchor
-        })
-      },
-      replace(id: string, value: MutationValueOfShape<MutationShape>) {
-        writes.push({
-          kind: 'entity.replace',
-          nodeId: node.nodeId,
-          target: {
-            scope: ownerScope,
-            id
-          },
-          value
         })
       },
       remove(id: string) {
@@ -429,15 +392,10 @@ const createMapWriter = (
       return cached
     }
 
-    const next = createEntityWriter(
-      node.nodeId,
-      node.entity,
-      writes,
-      {
-        scope: ownerScope,
-        id
-      }
-    )
+    const next = createEntityWriter(node.entity, writes, {
+      scope: ownerScope,
+      id
+    })
     entityCache.set(id, next)
     return next
   }
@@ -448,17 +406,6 @@ const createMapWriter = (
       create(id: string, value: MutationValueOfShape<MutationShape>) {
         writes.push({
           kind: 'entity.create',
-          nodeId: node.nodeId,
-          target: {
-            scope: ownerScope,
-            id
-          },
-          value
-        })
-      },
-      replace(id: string, value: MutationValueOfShape<MutationShape>) {
-        writes.push({
-          kind: 'entity.replace',
           nodeId: node.nodeId,
           target: {
             scope: ownerScope,
@@ -510,15 +457,9 @@ const applyObjectPatch = (
   node: CompiledMutationObjectNode,
   writerObject: Record<string, unknown>,
   value: Record<string, unknown>,
-  writes: MutationWrite[],
   target?: MutationEntityTarget
 ): void => {
-  void writes
   for (const [key, patchValue] of Object.entries(value)) {
-    if (patchValue === undefined) {
-      continue
-    }
-
     const entry = node.entries[key]
     if (!entry) {
       continue
@@ -530,22 +471,34 @@ const applyObjectPatch = (
         ;(writerNode as MutationFieldWriter<unknown>).set(patchValue)
         break
       case 'dictionary':
+        if (patchValue === undefined) {
+          throw new Error(`Mutation writer patch cannot clear dictionary node "${key}" with undefined.`)
+        }
         ;(writerNode as MutationDictionaryWriter<string, unknown>).replace(
           patchValue as Record<string, unknown>
         )
         break
       case 'sequence':
+        if (patchValue === undefined) {
+          throw new Error(`Mutation writer patch cannot clear sequence node "${key}" with undefined.`)
+        }
         ;(writerNode as MutationSequenceWriter<unknown>).replace(
           patchValue as readonly unknown[]
         )
         break
       case 'tree':
+        if (patchValue === undefined) {
+          throw new Error(`Mutation writer patch cannot clear tree node "${key}" with undefined.`)
+        }
         ;(writerNode as MutationTreeWriter<string, unknown>).replace(
           patchValue as import('../schema/constants').MutationTreeSnapshot<unknown>
         )
         break
       case 'object':
       case 'singleton':
+        if (patchValue === undefined) {
+          throw new Error(`Mutation writer patch cannot clear ${entry.kind} node "${key}" with undefined.`)
+        }
         ;(writerNode as {
           patch(value: Record<string, unknown>): void
         }).patch(patchValue as Record<string, unknown>)

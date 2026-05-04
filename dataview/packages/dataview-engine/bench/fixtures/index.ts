@@ -11,7 +11,9 @@ const VIEW_TABLE = 'view_table'
 
 const optionTable = <T extends { id: string }>(
   options: readonly T[]
-) => options.map((option) => ({ ...option }))
+) => entityTable.normalize.list(
+  options.map((option) => ({ ...option }))
+)
 
 const SIZE_TO_COUNT = {
   small: 1000,

@@ -8,17 +8,18 @@ import {
 } from '@dataview/core/types'
 import {
   extendMutationChange,
-  getCompiledMutationSchema,
   type MutationChange,
   type MutationWrite,
 } from '@shared/mutation'
 import {
-  dataviewMutationSchema,
   type DataviewMutationSchema,
 } from './schema'
 import type {
   DataviewQuery
 } from './query'
+import {
+  dataviewChangeModel
+} from './changeModel'
 
 export type DataviewQueryAspect =
   | 'search'
@@ -99,59 +100,6 @@ export type DataviewMutationChange = MutationChange<DataviewMutationSchema> & Da
 
 const changeCache = new WeakMap<MutationChange<DataviewMutationSchema>, DataviewMutationChange>()
 
-const compiled = getCompiledMutationSchema(dataviewMutationSchema)
-const root = compiled.root.entries
-const recordNodes = root.records
-const fieldNodes = root.fields
-const viewNodes = root.views
-
-const VIEW_QUERY_ASPECTS: readonly DataviewQueryAspect[] = [
-  'search',
-  'filter',
-  'sort',
-  'group',
-  'order'
-]
-
-const FIELD_SCHEMA_NODE_IDS = new Set<number>([
-  fieldNodes.nodeId,
-  fieldNodes.entity.entries.name.nodeId,
-  fieldNodes.entity.entries.kind.nodeId,
-  fieldNodes.entity.entries.displayFullUrl.nodeId,
-  fieldNodes.entity.entries.format.nodeId,
-  fieldNodes.entity.entries.precision.nodeId,
-  fieldNodes.entity.entries.currency.nodeId,
-  fieldNodes.entity.entries.useThousandsSeparator.nodeId,
-  fieldNodes.entity.entries.defaultOptionId.nodeId,
-  fieldNodes.entity.entries.displayDateFormat.nodeId,
-  fieldNodes.entity.entries.displayTimeFormat.nodeId,
-  fieldNodes.entity.entries.defaultValueKind.nodeId,
-  fieldNodes.entity.entries.defaultTimezone.nodeId,
-  fieldNodes.entity.entries.multiple.nodeId,
-  fieldNodes.entity.entries.accept.nodeId,
-  fieldNodes.entity.entries.meta.nodeId,
-  fieldNodes.entity.entries.options.nodeId,
-  fieldNodes.entity.entries.options.entity.entries.name.nodeId,
-  fieldNodes.entity.entries.options.entity.entries.color.nodeId,
-  fieldNodes.entity.entries.options.entity.entries.category.nodeId
-])
-
-const VIEW_LAYOUT_NODE_IDS = new Set<number>([
-  viewNodes.nodeId,
-  viewNodes.entity.entries.name.nodeId,
-  viewNodes.entity.entries.type.nodeId,
-  viewNodes.entity.entries.options.nodeId,
-  viewNodes.entity.entries.fields.nodeId
-])
-
-const VIEW_QUERY_ASPECT_BY_NODE_ID = new Map<number, DataviewQueryAspect>([
-  [viewNodes.entity.entries.search.nodeId, 'search'],
-  [viewNodes.entity.entries.filter.nodeId, 'filter'],
-  [viewNodes.entity.entries.sort.nodeId, 'sort'],
-  [viewNodes.entity.entries.group.nodeId, 'group'],
-  [viewNodes.entity.entries.order.nodeId, 'order']
-])
-
 const targetId = (write: MutationWrite): string | undefined => write.target?.id
 
 const ownerId = (write: MutationWrite): string | undefined => {
@@ -198,16 +146,6 @@ const createAspectSet = (
   return next
 }
 
-const addAllQueryAspects = (
-  map: Map<ViewId, Set<DataviewQueryAspect>>,
-  viewId: ViewId
-): void => {
-  const aspects = createAspectSet(map, viewId)
-  VIEW_QUERY_ASPECTS.forEach((aspect) => {
-    aspects.add(aspect)
-  })
-}
-
 export const createDataviewChange = (
   query: DataviewQuery,
   base: MutationChange<DataviewMutationSchema>
@@ -239,11 +177,14 @@ export const createDataviewChange = (
   const viewQueryChanges = new Map<ViewId, Set<DataviewQueryAspect>>()
   const viewLayoutChanges = new Set<ViewId>()
   const viewCalcIds = new Set<ViewId>()
+  const recordNodes = dataviewChangeModel.record
+  const fieldNodes = dataviewChangeModel.field
+  const viewNodes = dataviewChangeModel.view
 
   for (const write of writes) {
     const id = targetId(write)
 
-    if (write.nodeId === recordNodes.nodeId && id) {
+    if (write.nodeId === recordNodes.entity && id) {
       const recordId = id as RecordId
       touchedRecordIds.add(recordId)
 
@@ -251,34 +192,11 @@ export const createDataviewChange = (
         createdRecordIds.add(recordId)
       } else if (write.kind === 'entity.remove') {
         removedRecordIds.add(recordId)
-      } else if (write.kind === 'entity.replace') {
-        const nextRecord = write.value as Partial<{
-          title: string
-          type: string | undefined
-          meta: Record<string, unknown> | undefined
-          values: Record<string, unknown>
-        }>
-        if ('title' in nextRecord) {
-          titleRecordIds.add(recordId)
-          valueFieldIds.add(TITLE_FIELD_ID)
-        }
-        if ('type' in nextRecord) {
-          typeRecordIds.add(recordId)
-        }
-        if ('meta' in nextRecord) {
-          metaRecordIds.add(recordId)
-        }
-        if (nextRecord.values) {
-          valueRecordIds.add(recordId)
-          Object.keys(nextRecord.values).forEach((fieldId) => {
-            valueFieldIds.add(fieldId as FieldId)
-          })
-        }
       }
       continue
     }
 
-    if (write.nodeId === recordNodes.entity.entries.title.nodeId && id) {
+    if (write.nodeId === recordNodes.title && id) {
       touchedRecordIds.add(id as RecordId)
       titleRecordIds.add(id as RecordId)
       valueFieldIds.add(TITLE_FIELD_ID)
@@ -287,14 +205,14 @@ export const createDataviewChange = (
 
     if (
       (
-        write.nodeId === recordNodes.entity.entries.type.nodeId
-        || write.nodeId === recordNodes.entity.entries.meta.nodeId
+        write.nodeId === recordNodes.type
+        || write.nodeId === recordNodes.meta
       )
       && id
     ) {
       const recordId = id as RecordId
       touchedRecordIds.add(recordId)
-      if (write.nodeId === recordNodes.entity.entries.type.nodeId) {
+      if (write.nodeId === recordNodes.type) {
         typeRecordIds.add(recordId)
       } else {
         metaRecordIds.add(recordId)
@@ -302,7 +220,7 @@ export const createDataviewChange = (
       continue
     }
 
-    if (write.nodeId === recordNodes.entity.entries.values.nodeId && id) {
+    if (write.nodeId === recordNodes.values && id) {
       const recordId = id as RecordId
       touchedRecordIds.add(recordId)
       valueRecordIds.add(recordId)
@@ -316,15 +234,15 @@ export const createDataviewChange = (
       continue
     }
 
-    if (FIELD_SCHEMA_NODE_IDS.has(write.nodeId)) {
-      const fieldId = (write.nodeId === fieldNodes.nodeId
+    if (fieldNodes.schema.has(write.nodeId)) {
+      const fieldId = (write.nodeId === fieldNodes.entity
         ? id
         : ownerId(write) ?? id) as FieldId | undefined
       if (!fieldId) {
         continue
       }
 
-      if (write.nodeId === fieldNodes.nodeId) {
+      if (write.nodeId === fieldNodes.entity) {
         if (write.kind === 'entity.create') {
           createdFieldIds.add(fieldId)
         } else if (write.kind === 'entity.remove') {
@@ -336,7 +254,7 @@ export const createDataviewChange = (
       continue
     }
 
-    if (id && viewNodes.nodeId === write.nodeId) {
+    if (id && viewNodes.entity === write.nodeId) {
       const viewId = id as ViewId
       touchedViewIds.add(viewId)
 
@@ -344,50 +262,17 @@ export const createDataviewChange = (
         createdViewIds.add(viewId)
       } else if (write.kind === 'entity.remove') {
         removedViewIds.add(viewId)
-      } else if (write.kind === 'entity.replace') {
-        const nextView = write.value as Partial<{
-          name: string
-          type: string
-          search: unknown
-          filter: unknown
-          sort: unknown
-          group: unknown
-          calc: unknown
-          options: unknown
-          fields: unknown
-          order: unknown
-        }>
-        if (
-          'name' in nextView
-          || 'type' in nextView
-          || 'options' in nextView
-          || 'fields' in nextView
-        ) {
-          viewLayoutChanges.add(viewId)
-        }
-        if (
-          'search' in nextView
-          || 'filter' in nextView
-          || 'sort' in nextView
-          || 'group' in nextView
-          || 'order' in nextView
-        ) {
-          addAllQueryAspects(viewQueryChanges, viewId)
-        }
-        if ('calc' in nextView) {
-          viewCalcIds.add(viewId)
-        }
       }
       continue
     }
 
-    const aspect = VIEW_QUERY_ASPECT_BY_NODE_ID.get(write.nodeId)
+    const aspect = viewNodes.queryAspectByNodeId.get(write.nodeId)
     if (
       id
       && (
         aspect !== undefined
-        || VIEW_LAYOUT_NODE_IDS.has(write.nodeId)
-        || write.nodeId === viewNodes.entity.entries.calc.nodeId
+        || viewNodes.layout.has(write.nodeId)
+        || write.nodeId === viewNodes.calc
       )
     ) {
       const viewId = id as ViewId
@@ -396,10 +281,10 @@ export const createDataviewChange = (
       if (aspect !== undefined) {
         createAspectSet(viewQueryChanges, viewId).add(aspect)
       }
-      if (VIEW_LAYOUT_NODE_IDS.has(write.nodeId)) {
+      if (viewNodes.layout.has(write.nodeId)) {
         viewLayoutChanges.add(viewId)
       }
-      if (write.nodeId === viewNodes.entity.entries.calc.nodeId) {
+      if (write.nodeId === viewNodes.calc) {
         viewCalcIds.add(viewId)
       }
     }

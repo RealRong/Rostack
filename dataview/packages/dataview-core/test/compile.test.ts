@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'vitest'
 import { entityTable } from '@shared/core'
-import { MutationEngine } from '@shared/mutation'
+import { createMutationEngine } from '@shared/mutation'
 import type {
   DataDoc,
   Intent
@@ -20,7 +20,7 @@ const createEmptyDocument = (): DataDoc => ({
 })
 
 test('MutationEngine.compile lowers field.create into executable operations', () => {
-  const mutation = new MutationEngine({
+  const mutation = createMutationEngine({
     schema: dataviewMutationSchema,
     document: createEmptyDocument(),
     normalize: document => document,

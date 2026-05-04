@@ -12,10 +12,10 @@
     "test:packages": "pnpm --filter @dataview/core run test && pnpm --filter @dataview/engine run test && pnpm --filter @dataview/meta run test && pnpm --filter @dataview/runtime run test && pnpm --filter @dataview/react run test && pnpm --filter @dataview/table run test",
     "bench": "pnpm --filter @dataview/engine run bench",
     "bench:compare": "pnpm --filter @dataview/engine run bench:compare",
-    "demo:dev": "pnpm -C ../apps/dataview run dev",
-    "demo:build": "pnpm -C ../apps/dataview run build",
-    "demo:preview": "pnpm -C ../apps/dataview run preview",
-    "demo:typecheck": "pnpm -C ../apps/dataview run typecheck"
+    "demo:dev": "pnpm -C ../app run dev",
+    "demo:build": "pnpm -C ../app run build",
+    "demo:preview": "pnpm -C ../app run preview",
+    "demo:typecheck": "pnpm -C ../app run typecheck"
   },
   "dependencies": {
     "@dataview/core": "workspace:*",

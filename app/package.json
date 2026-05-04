@@ -1,5 +1,5 @@
 {
-  "name": "@whiteboard/demo",
+  "name": "@rostack/app-demo",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -10,6 +10,12 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
+    "@dataview/core": "workspace:*",
+    "@dataview/engine": "workspace:*",
+    "@dataview/react": "workspace:*",
+    "@shared/core": "workspace:*",
+    "@shared/i18n": "workspace:*",
+    "@shared/ui": "workspace:*",
     "@whiteboard/core": "workspace:*",
     "@whiteboard/react": "workspace:*",
     "react": "^19.0.0",

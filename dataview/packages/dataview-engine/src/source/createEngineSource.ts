@@ -27,9 +27,8 @@ import {
   store
 } from '@shared/core'
 import type {
-  createActiveSourceProjection,
-  createDocumentSourceProjection
-} from '@dataview/engine/source/projections'
+  createDataviewProjection
+} from '@dataview/engine/projection'
 
 const VALUE_ID_SEPARATOR = '\u0000'
 
@@ -120,16 +119,15 @@ const toListedEntitySource = <TKey extends string | number, TValue>(
 })
 
 export const createEngineSource = (input: {
-  documentProjection: ReturnType<typeof createDocumentSourceProjection>
-  activeProjection: ReturnType<typeof createActiveSourceProjection>
+  projection: ReturnType<typeof createDataviewProjection>
 }): EngineSource => {
-  const documentRecords = toEntitySource(input.documentProjection.stores.records)
-  const documentFields = toListedEntitySource(toEntitySource(input.documentProjection.stores.fields))
-  const schemaFields = toListedEntitySource(toEntitySource(input.documentProjection.stores.schema.fields))
-  const views = toListedEntitySource(toEntitySource(input.documentProjection.stores.views))
-  const activeFields = toEntitySource(input.activeProjection.stores.fields)
-  const activeSections = toEntitySource(input.activeProjection.stores.sections)
-  const activeItems = toEntitySource(input.activeProjection.stores.items)
+  const documentRecords = toEntitySource(input.projection.stores.document.records)
+  const documentFields = toListedEntitySource(toEntitySource(input.projection.stores.document.fields))
+  const schemaFields = toListedEntitySource(toEntitySource(input.projection.stores.document.schema.fields))
+  const views = toListedEntitySource(toEntitySource(input.projection.stores.document.views))
+  const activeFields = toEntitySource(input.projection.stores.active.fields)
+  const activeSections = toEntitySource(input.projection.stores.active.sections)
+  const activeItems = toEntitySource(input.projection.stores.active.items)
   const activeItemRecord = store.keyed<ItemId, RecordId | undefined>(
     (itemId) => store.read(activeItems, itemId)?.recordId
   )
@@ -166,7 +164,7 @@ export const createEngineSource = (input: {
 
   return {
     document: {
-      meta: input.documentProjection.stores.meta,
+      meta: input.projection.stores.document.meta as EngineSource['document']['meta'],
       records: documentRecords,
       values: documentValues,
       fields: documentFields,
@@ -176,17 +174,17 @@ export const createEngineSource = (input: {
       views
     },
     active: {
-      view: input.activeProjection.stores.view,
-      viewId: input.activeProjection.stores.viewId,
-      viewType: input.activeProjection.stores.viewType,
-      query: input.activeProjection.stores.query,
-      table: input.activeProjection.stores.table,
-      gallery: input.activeProjection.stores.gallery,
-      kanban: input.activeProjection.stores.kanban,
+      view: input.projection.stores.active.view,
+      viewId: input.projection.stores.active.viewId,
+      viewType: input.projection.stores.active.viewType,
+      query: input.projection.stores.active.query,
+      table: input.projection.stores.active.table,
+      gallery: input.projection.stores.active.gallery,
+      kanban: input.projection.stores.active.kanban,
       records: {
-        matched: input.activeProjection.stores.records.matched,
-        ordered: input.activeProjection.stores.records.ordered,
-        visible: input.activeProjection.stores.records.visible
+        matched: input.projection.stores.active.records.matched,
+        ordered: input.projection.stores.active.records.ordered,
+        visible: input.projection.stores.active.records.visible
       },
       items: {
         ids: activeItems.ids,
@@ -201,7 +199,7 @@ export const createEngineSource = (input: {
         ...activeSections,
         list: activeSectionList
       } satisfies SectionSource,
-      summaries: input.activeProjection.stores.summaries.byId,
+      summaries: input.projection.stores.active.summaries.byId,
       fields: {
         ...activeFields,
         list: activeFieldList

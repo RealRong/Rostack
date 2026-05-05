@@ -366,7 +366,7 @@ test('createDataviewProjection now runs active only and clears snapshot when act
 
   assert.deepEqual(
     first.trace.phases.map((phase) => phase.name),
-    ['active']
+    ['document', 'active']
   )
   assert.equal(first.capture.activeId, VIEW_ID)
   assert.equal(first.capture.active?.sections.count, 3)
@@ -382,7 +382,7 @@ test('createDataviewProjection now runs active only and clears snapshot when act
 
   assert.deepEqual(
     cleared.trace.phases.map((phase) => phase.name),
-    ['active']
+    ['document', 'active']
   )
   assert.equal(cleared.capture.activeId, undefined)
   assert.equal(cleared.capture.active, undefined)

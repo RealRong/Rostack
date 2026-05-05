@@ -38,10 +38,6 @@ import {
 import {
   createEngineSource
 } from '@dataview/engine/source/createEngineSource'
-import {
-  createActiveSourceProjection,
-  createDocumentSourceProjection
-} from '@dataview/engine/source/projections'
 import type {
   ExecuteInput,
   ExecuteResultOf,
@@ -61,8 +57,6 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
     ...(options.history ?? {})
   }
   const projection = createDataviewProjection()
-  const documentSourceProjection = createDocumentSourceProjection()
-  const activeSourceProjection = createActiveSourceProjection()
   const mutationEngine = createMutationEngine({
     schema: dataviewMutationSchema,
     document: options.document,
@@ -97,27 +91,8 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
       })
     )
   })
-  documentSourceProjection.update({
-    document: initialDocument,
-    change: createDataviewChange(
-      createDataviewQuery(initialDocument),
-      createMutationChange(dataviewMutationSchema, [], {
-        reset: true
-      })
-    )
-  })
-  activeSourceProjection.update({
-    change: createDataviewChange(
-      createDataviewQuery(initialDocument),
-      createMutationChange(dataviewMutationSchema, [], {
-        reset: true
-      })
-    ),
-    active: projection.state().active
-  })
   const source = createEngineSource({
-    documentProjection: documentSourceProjection,
-    activeProjection: activeSourceProjection
+    projection
   })
 
   const readCurrent = (): DataviewCurrent => {
@@ -138,14 +113,6 @@ export const createEngine = (options: CreateEngineOptions): Engine => {
     projection.update({
       document: commit.document,
       change: commit.change
-    })
-    documentSourceProjection.update({
-      document: commit.document,
-      change: commit.change
-    })
-    activeSourceProjection.update({
-      change: commit.change,
-      active: projection.state().active
     })
 
     const current = readCurrent()
